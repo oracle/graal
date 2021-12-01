@@ -80,10 +80,11 @@ final class FieldBasedShapeGenerator<T> extends ShapeGenerator<T> {
     }
 
     @Override
-    StaticShape<T> generateShape(StaticShape<T> parentShape, Map<String, StaticProperty> staticProperties, boolean safetyChecks) {
-        Class<?> generatedStorageClass = generateStorage(gcl, storageSuperClass, staticProperties);
+    StaticShape<T> generateShape(StaticShape<T> parentShape, Map<String, StaticProperty> staticProperties, boolean safetyChecks, String storageClassName) {
+        Class<?> generatedStorageClass = generateStorage(gcl, storageSuperClass, staticProperties, storageClassName);
         Class<? extends T> generatedFactoryClass = generateFactory(gcl, generatedStorageClass, storageFactoryInterface);
         for (Entry<String, StaticProperty> entry : staticProperties.entrySet()) {
+            // We need to resolve field types so that loads are stamped with the proper type
             int offset = getObjectFieldOffset(generatedStorageClass, entry.getKey());
             entry.getValue().initOffset(offset);
         }
@@ -156,16 +157,15 @@ final class FieldBasedShapeGenerator<T> extends ShapeGenerator<T> {
         }
     }
 
-    private static Class<?> generateStorage(GeneratorClassLoader gcl, Class<?> storageSuperClass, Map<String, StaticProperty> staticProperties) {
+    private static Class<?> generateStorage(GeneratorClassLoader gcl, Class<?> storageSuperClass, Map<String, StaticProperty> staticProperties, String storageClassName) {
         String storageSuperName = Type.getInternalName(storageSuperClass);
-        String storageName = generateStorageName();
         ClassWriter storageWriter = new ClassWriter(0);
         int storageAccess = ACC_PUBLIC | ACC_SUPER | ACC_SYNTHETIC;
-        storageWriter.visit(V1_8, storageAccess, storageName, null, storageSuperName, null);
+        storageWriter.visit(V1_8, storageAccess, storageClassName, null, storageSuperName, null);
         addStorageConstructors(storageWriter, storageSuperClass, storageSuperName);
         addStorageFields(storageWriter, staticProperties);
         storageWriter.visitEnd();
-        return load(gcl, storageName, storageWriter.toByteArray());
+        return load(gcl, storageClassName, storageWriter.toByteArray());
     }
 
     @SuppressWarnings("unchecked")

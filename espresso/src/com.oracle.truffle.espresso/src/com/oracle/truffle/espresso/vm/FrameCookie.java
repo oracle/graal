@@ -28,12 +28,13 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
  * A cookie to be inserted into a {@link com.oracle.truffle.api.frame.Frame}. Espresso currently
- * uses a single {@link com.oracle.truffle.api.frame.FrameSlot} for inserting cookies of different
- * use cases. Before adding another use case to this cookie class, make sure either:
+ * uses a single {@link com.oracle.truffle.api.frame.FrameDescriptor#findOrAddAuxiliarySlot(Object)
+ * auxiliary slot} for inserting cookies of different use cases. Before adding another use case to
+ * this cookie class, make sure either:
  * <li>It does not conflict with other use cases (ie: no two use cases can inject a cookie in the
  * same frame)
  * <li>extend this class functionality to support multi-cookies.
- * 
+ *
  * @see VM#JVM_DoPrivileged(StaticObject, StaticObject, StaticObject, boolean, Meta,
  *      com.oracle.truffle.espresso.substitutions.SubstitutionProfiler)
  * @see StackWalk.FrameWalker#doStackWalk(com.oracle.truffle.espresso.runtime.StaticObject)

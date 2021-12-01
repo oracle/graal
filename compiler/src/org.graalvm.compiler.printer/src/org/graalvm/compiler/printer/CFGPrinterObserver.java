@@ -28,11 +28,8 @@ import static org.graalvm.compiler.debug.DebugOptions.PrintBackendCFG;
 import static org.graalvm.compiler.debug.DebugOptions.PrintCFG;
 
 import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -49,6 +46,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpHandler;
 import org.graalvm.compiler.debug.DebugDumpScope;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.PathUtilities;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.java.BciBlockMapping;
@@ -74,7 +72,7 @@ import jdk.vm.ci.services.Services;
 public class CFGPrinterObserver implements DebugDumpHandler {
 
     private CFGPrinter cfgPrinter;
-    private File cfgFile;
+    private String cfgFile;
     private JavaMethod curMethod;
     private CompilationIdentifier curCompilation;
     private List<String> curDecorators = Collections.emptyList();
@@ -165,12 +163,12 @@ public class CFGPrinterObserver implements DebugDumpHandler {
         OptionValues options = debug.getOptions();
         if (cfgPrinter == null) {
             try {
-                Path dumpFile = debug.getDumpPath(".cfg", false);
-                cfgFile = dumpFile.toFile();
-                OutputStream out = new BufferedOutputStream(new FileOutputStream(cfgFile));
+                String dumpFile = debug.getDumpPath(".cfg", false);
+                cfgFile = dumpFile;
+                OutputStream out = new BufferedOutputStream(PathUtilities.openOutputStream(cfgFile));
                 cfgPrinter = new CFGPrinter(out);
             } catch (IOException e) {
-                throw (GraalError) new GraalError("Could not open %s", cfgFile == null ? "[null]" : cfgFile.getAbsolutePath()).initCause(e);
+                throw (GraalError) new GraalError("Could not open %s", cfgFile == null ? "[null]" : PathUtilities.getAbsolutePath(cfgFile)).initCause(e);
             }
         }
 
@@ -272,14 +270,17 @@ public class CFGPrinterObserver implements DebugDumpHandler {
         String arch = Services.getSavedProperties().get("os.arch");
         final boolean isAArch64 = arch.equals("aarch64");
         for (DisassemblerProvider d : GraalServices.load(DisassemblerProvider.class)) {
-            String name = d.getName();
-            if (isAArch64 && name.equals("objdump") && d.isAvailable(options)) {
-                return d;
-            } else if (name.equals("hcf")) {
-                if (!isAArch64) {
+            if (d.isAvailable(options)) {
+                String name = d.getName();
+                if (isAArch64 && name.equals("objdump")) {
+                    // Prefer objdump disassembler over others
                     return d;
+                } else if (name.equals("hcf")) {
+                    if (!isAArch64) {
+                        return d;
+                    }
+                    selected = d;
                 }
-                selected = d;
             }
         }
         if (selected == null) {
@@ -314,7 +315,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
 
     public String getDumpPath() {
         if (cfgFile != null) {
-            return cfgFile.getAbsolutePath();
+            return PathUtilities.getAbsolutePath(cfgFile);
         }
         return null;
     }

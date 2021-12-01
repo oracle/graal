@@ -40,22 +40,8 @@
  */
 package org.graalvm.wasm.test;
 
-import com.oracle.truffle.api.Truffle;
-import junit.framework.AssertionFailedError;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.EnvironmentAccess;
-import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.Value;
-import org.graalvm.wasm.GlobalRegistry;
-import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmFunctionInstance;
-import org.graalvm.wasm.WasmInstance;
-import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.test.options.WasmTestOptions;
-import org.graalvm.wasm.utils.cases.WasmCase;
-import org.graalvm.wasm.utils.cases.WasmCaseData;
-import org.junit.Assert;
+import static junit.framework.TestCase.fail;
+import static org.graalvm.wasm.WasmUtil.prepend;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
@@ -75,8 +61,25 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static junit.framework.TestCase.fail;
-import static org.graalvm.wasm.WasmUtil.prepend;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.EnvironmentAccess;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
+import org.graalvm.wasm.GlobalRegistry;
+import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmFunctionInstance;
+import org.graalvm.wasm.WasmInstance;
+import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.test.options.WasmTestOptions;
+import org.graalvm.wasm.utils.cases.WasmCase;
+import org.graalvm.wasm.utils.cases.WasmCaseData;
+import org.junit.Assert;
+
+import com.oracle.truffle.api.Truffle;
+
+import junit.framework.AssertionFailedError;
 
 public abstract class WasmFileSuite extends AbstractWasmSuite {
 
@@ -273,7 +276,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
     private WasmTestStatus runTestCase(WasmCase testCase) {
         Path tempWorkingDirectory = null;
         try {
-            Context.Builder contextBuilder = Context.newBuilder("wasm");
+            Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
             contextBuilder.allowEnvironmentAccess(EnvironmentAccess.NONE);
             contextBuilder.out(TEST_OUT);
             contextBuilder.allowExperimentalOptions(true);
@@ -292,8 +295,18 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
             final String commandLineArgs = testCase.options().getProperty("command-line-args");
             if (commandLineArgs != null) {
                 // The first argument is the program name. We set it to the empty string in tests.
-                contextBuilder.arguments("wasm", prepend(commandLineArgs.split(" "), ""));
+                contextBuilder.arguments(WasmLanguage.ID, prepend(commandLineArgs.split(" "), ""));
             }
+
+            testCase.options().forEach((key, value) -> {
+                if (key instanceof String && value instanceof String) {
+                    String optionName = (String) key;
+                    String optionValue = (String) value;
+                    if (optionName.startsWith("wasm.")) {
+                        contextBuilder.option(optionName, optionValue);
+                    }
+                }
+            });
 
             final String envString = testCase.options().getProperty("env");
             if (envString != null) {

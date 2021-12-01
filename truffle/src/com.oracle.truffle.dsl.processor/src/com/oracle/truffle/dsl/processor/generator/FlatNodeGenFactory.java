@@ -259,7 +259,7 @@ public class FlatNodeGenFactory {
                 int index = 0;
                 for (Parameter p : specialization.getSignatureParameters()) {
                     TypeMirror targetType = p.getType();
-                    List<TypeMirror> sourceTypes = stateNode.getTypeSystem().lookupSourceTypes(targetType);
+                    Collection<TypeMirror> sourceTypes = stateNode.getTypeSystem().lookupSourceTypes(targetType);
                     if (sourceTypes.size() > 1) {
                         implicitCasts.add(new TypeGuard(targetType, index));
                     }
@@ -640,7 +640,7 @@ public class FlatNodeGenFactory {
         } catch (UnsupportedOperationException e) {
         }
         String cost = nodeInfo != null ? ElementUtils.getAnnotationValue(VariableElement.class, nodeInfo, "cost").getSimpleName().toString() : null;
-        if (cost == null || cost.equals("MONOMORPHIC") /* the default */) {
+        if ((cost == null || cost.equals("MONOMORPHIC") /* the default */) && isUndeclaredOrOverrideable(clazz, "getCost")) {
             if (primaryNode) {
                 clazz.add(createGetCostMethod(false));
             }
@@ -712,7 +712,7 @@ public class FlatNodeGenFactory {
                 wrapWithTraceOnReturn(uncached.add(createUncachedExecute(type)));
             }
 
-            if (cost == null || cost.equals("MONOMORPHIC") /* the default */) {
+            if ((cost == null || cost.equals("MONOMORPHIC") /* the default */) && isUndeclaredOrOverrideable(uncached, "getCost")) {
                 uncached.add(createGetCostMethod(true));
             }
             CodeExecutableElement isAdoptable = CodeExecutableElement.cloneNoAnnotations(ElementUtils.findExecutableElement(types.Node, "isAdoptable"));
@@ -772,7 +772,7 @@ public class FlatNodeGenFactory {
             int index = 0;
             for (Parameter p : specialization.getSignatureParameters()) {
                 TypeMirror targetType = p.getType();
-                List<TypeMirror> sourceTypes = node.getTypeSystem().lookupSourceTypes(targetType);
+                Collection<TypeMirror> sourceTypes = node.getTypeSystem().lookupSourceTypes(targetType);
                 if (sourceTypes.size() > 1) {
                     implicitCasts.add(new TypeGuard(targetType, index));
                 }
@@ -2594,7 +2594,7 @@ public class FlatNodeGenFactory {
             var = frameState.createValue(execution, targetType).nextName();
 
             LocalVariable fallbackVar;
-            List<TypeMirror> originalSourceTypes = typeSystem.lookupSourceTypes(targetType);
+            List<TypeMirror> originalSourceTypes = new ArrayList<>(typeSystem.lookupSourceTypes(targetType));
             List<TypeMirror> sourceTypes = resolveOptimizedImplicitSourceTypes(execution, targetType);
             if (sourceTypes.size() > 1) {
                 TypeGuard typeGuard = new TypeGuard(targetType, execution.getIndex());
@@ -2913,6 +2913,11 @@ public class FlatNodeGenFactory {
 
         return executable;
 
+    }
+
+    private static boolean isUndeclaredOrOverrideable(TypeElement sourceType, String methodName) {
+        List<ExecutableElement> elements = ElementUtils.getDeclaredMethodsInSuperTypes(sourceType, methodName);
+        return elements.isEmpty() || !elements.iterator().next().getModifiers().contains(Modifier.FINAL);
     }
 
     private ExecutableElement createAccessChildMethod(NodeChildData child, boolean uncached) {
@@ -5038,12 +5043,12 @@ public class FlatNodeGenFactory {
         }
 
         CodeTree assertion = null; // overrule with assertion
-        if (mode.isFastPath() || mode.isGuardFallback()) {
+        if (mode.isFastPath()) {
             if (!specialization.isDynamicParameterBound(expression, true) && !guard.isWeakReferenceGuard()) {
                 assertion = CodeTreeBuilder.createBuilder().startAssert().tree(expressionCode).end().build();
                 expressionCode = null;
             }
-        } else {
+        } else if (mode.isSlowPath() || mode.isUncached()) {
             if (guard.isConstantTrueInSlowPath(context, mode.isUncached())) {
                 assertion = CodeTreeBuilder.createBuilder().startStatement().string("// assert ").tree(expressionCode).end().build();
                 expressionCode = null;
@@ -5281,7 +5286,7 @@ public class FlatNodeGenFactory {
     }
 
     private List<TypeMirror> resolveOptimizedImplicitSourceTypes(NodeExecutionData execution, TypeMirror targetType) {
-        List<TypeMirror> allSourceTypes = typeSystem.lookupSourceTypes(targetType);
+        Collection<TypeMirror> allSourceTypes = typeSystem.lookupSourceTypes(targetType);
         List<TypeMirror> filteredSourceTypes = new ArrayList<>();
         for (TypeMirror sourceType : allSourceTypes) {
 
@@ -5307,7 +5312,7 @@ public class FlatNodeGenFactory {
 
     private ChildExecutionResult createExecuteChildImplicitCast(CodeTreeBuilder parent, FrameState originalFrameState, FrameState frameState, NodeExecutionData execution, LocalVariable target) {
         CodeTreeBuilder builder = parent.create();
-        List<TypeMirror> originalSourceTypes = typeSystem.lookupSourceTypes(target.getTypeMirror());
+        List<TypeMirror> originalSourceTypes = new ArrayList<>(typeSystem.lookupSourceTypes(target.getTypeMirror()));
         List<TypeMirror> sourceTypes = resolveOptimizedImplicitSourceTypes(execution, target.getTypeMirror());
         TypeGuard typeGuard = new TypeGuard(target.getTypeMirror(), execution.getIndex());
         boolean throwsUnexpected = false;
@@ -5449,7 +5454,7 @@ public class FlatNodeGenFactory {
             TypeGuard guard = (TypeGuard) object;
 
             TypeMirror type = guard.getType();
-            List<TypeMirror> sourceTypes = types.lookupSourceTypes(type);
+            Collection<TypeMirror> sourceTypes = types.lookupSourceTypes(type);
             if (sourceTypes.size() > 1) {
                 return sourceTypes.size();
             }

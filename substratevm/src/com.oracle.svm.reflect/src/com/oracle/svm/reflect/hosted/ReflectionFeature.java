@@ -24,20 +24,42 @@
  */
 package com.oracle.svm.reflect.hosted;
 
-import com.oracle.svm.core.configure.ConfigurationFile;
+// Checkstyle: allow reflection
+
+import java.lang.invoke.MethodHandle;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Executable;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.ParsingReason;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.configure.ConditionalElement;
+import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.ReflectionConfigurationParser;
 import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.reflect.ReflectionAccessorHolder;
+import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
+import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
+import com.oracle.svm.core.reflect.SubstrateReflectionAccessorFactory;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FallbackFeature;
+import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.FeatureAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
@@ -45,11 +67,13 @@ import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.snippets.ReflectionPlugins;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
-import com.oracle.svm.reflect.helpers.ReflectionProxy;
 import com.oracle.svm.util.ModuleSupport;
+import com.oracle.svm.util.ReflectionUtil;
+
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @AutomaticFeature
-public final class ReflectionFeature implements GraalFeature {
+public class ReflectionFeature implements GraalFeature {
 
     private AnnotationSubstitutionProcessor annotationSubstitutions;
 
@@ -58,10 +82,93 @@ public final class ReflectionFeature implements GraalFeature {
     private AnalysisUniverse aUniverse;
     private int loadedConfigurations;
 
+    final Map<Executable, Object> accessors = new ConcurrentHashMap<>();
+
+    private static final Method invokePrototype = ReflectionUtil.lookupMethod(ReflectionAccessorHolder.class, "invokePrototype", boolean.class, Object.class, Object[].class);
+    private static final Method newInstancePrototype = ReflectionUtil.lookupMethod(ReflectionAccessorHolder.class, "newInstancePrototype", Object[].class);
+    private static final Method methodHandleInvokeErrorMethod = ReflectionUtil.lookupMethod(ReflectionAccessorHolder.class, "methodHandleInvokeError", boolean.class, Object.class, Object[].class);
+    private static final Method newInstanceErrorMethod = ReflectionUtil.lookupMethod(ReflectionAccessorHolder.class, "newInstanceError", Object[].class);
+
+    FeatureImpl.BeforeAnalysisAccessImpl analysisAccess;
+
+    Object getOrCreateAccessor(Executable member) {
+        Object existing = accessors.get(member);
+        if (existing != null) {
+            return existing;
+        }
+
+        if (analysisAccess == null) {
+            throw VMError.shouldNotReachHere("New Method or Constructor found as reachable after static analysis: " + member);
+        }
+        return accessors.computeIfAbsent(member, m -> createAccessor(m));
+    }
+
+    /**
+     * Creates the accessor instances for {@link SubstrateMethodAccessor invoking a method } or
+     * {@link SubstrateConstructorAccessor allocating a new instance} using reflection. The accessor
+     * instances use function pointer calls to invocation stubs. The invocation stubs unpack the
+     * Object[] array arguments and invoke the actual method.
+     * 
+     * The stubs are methods with manually created Graal IR: {@link ReflectiveInvokeMethod} and
+     * {@link ReflectiveNewInstanceMethod}. Since they are only invoked via function pointers and
+     * never at a normal call site, they need to be registered for compilation manually. From the
+     * point of view of the static analysis, they are root methods.
+     * 
+     * {@link ConcurrentHashMap#computeIfAbsent} guarantees that this method is called only once per
+     * member, so no further synchronization is necessary.
+     */
+    private Object createAccessor(Executable member) {
+        String name = SubstrateUtil.uniqueShortName(member);
+        if (member instanceof Method) {
+            ResolvedJavaMethod invokeMethod;
+            if (member.getDeclaringClass() == MethodHandle.class && (member.getName().equals("invoke") || member.getName().equals("invokeExact"))) {
+                /* Method handles must not be invoked via reflection. */
+                invokeMethod = analysisAccess.getMetaAccess().lookupJavaMethod(methodHandleInvokeErrorMethod);
+            } else {
+                ResolvedJavaMethod prototype = analysisAccess.getMetaAccess().lookupJavaMethod(invokePrototype).getWrapped();
+                invokeMethod = createReflectiveInvokeMethod(name, prototype, (Method) member);
+            }
+            return ImageSingletons.lookup(SubstrateReflectionAccessorFactory.class).createMethodAccessor(member, register(invokeMethod));
+
+        } else {
+            ResolvedJavaMethod newInstanceMethod;
+            Class<?> holder = member.getDeclaringClass();
+            if (Modifier.isAbstract(holder.getModifiers()) || holder.isInterface() || holder.isPrimitive() || holder.isArray()) {
+                /*
+                 * Invoking the constructor of an abstract class always throws an
+                 * InstantiationException. It should not be possible to get a Constructor object for
+                 * an interface, array, or primitive type, but we are defensive and throw the
+                 * exception in that case too.
+                 */
+                newInstanceMethod = analysisAccess.getMetaAccess().lookupJavaMethod(newInstanceErrorMethod);
+            } else {
+                ResolvedJavaMethod prototype = analysisAccess.getMetaAccess().lookupJavaMethod(newInstancePrototype).getWrapped();
+                newInstanceMethod = createReflectiveNewInstanceMethod(name, prototype, (Constructor<?>) member);
+            }
+            return ImageSingletons.lookup(SubstrateReflectionAccessorFactory.class).createConstructorAccessor(member, register(newInstanceMethod));
+        }
+    }
+
+    private CFunctionPointer register(ResolvedJavaMethod method) {
+        AnalysisMethod aMethod = method instanceof AnalysisMethod ? (AnalysisMethod) method : analysisAccess.getUniverse().lookup(method);
+        analysisAccess.registerAsCompiled(aMethod);
+        return new MethodPointer(aMethod);
+    }
+
+    protected ResolvedJavaMethod createReflectiveInvokeMethod(String name, ResolvedJavaMethod prototype, Method method) {
+        return new ReflectiveInvokeMethod(name, prototype, method);
+    }
+
+    protected ResolvedJavaMethod createReflectiveNewInstanceMethod(String name, ResolvedJavaMethod prototype, Constructor<?> constructor) {
+        return new ReflectiveNewInstanceMethod(name, prototype, constructor);
+    }
+
+    protected void inspectAccessibleField(@SuppressWarnings("unused") Field field) {
+    }
+
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ModuleSupport.exportAndOpenPackageToUnnamed("java.base", "jdk.internal.reflect", false);
-        ModuleSupport.openModuleByClass(ReflectionProxy.class, null);
 
         reflectionData = new ReflectionDataBuilder((FeatureAccessImpl) access);
         ImageSingletons.add(RuntimeReflectionSupport.class, reflectionData);
@@ -72,17 +179,9 @@ public final class ReflectionFeature implements GraalFeature {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
         aUniverse = access.getUniverse();
 
-        ReflectionSubstitution subst = new ReflectionSubstitution(access.getMetaAccess().getWrapped(), access.getHostVM().getClassInitializationSupport(), access.getImageClassLoader());
-        access.registerSubstitutionProcessor(subst);
-        ImageSingletons.add(ReflectionSubstitution.class, subst);
-
         access.registerObjectReplacer(new ReflectionObjectReplacer(access.getMetaAccess()));
 
-        if (!ImageSingletons.contains(ReflectionSubstitutionType.Factory.class)) {
-            ImageSingletons.add(ReflectionSubstitutionType.Factory.class, new ReflectionSubstitutionType.Factory());
-        }
-
-        ReflectionConfigurationParser<Class<?>> parser = ConfigurationParserUtils.create(reflectionData, access.getImageClassLoader());
+        ReflectionConfigurationParser<ConditionalElement<Class<?>>> parser = ConfigurationParserUtils.create(reflectionData, access.getImageClassLoader());
         loadedConfigurations = ConfigurationParserUtils.parseAndRegisterConfigurations(parser, access.getImageClassLoader(), "reflection",
                         ConfigurationFiles.Options.ReflectionConfigurationFiles, ConfigurationFiles.Options.ReflectionConfigurationResources,
                         ConfigurationFile.REFLECTION.getFileName());
@@ -92,12 +191,21 @@ public final class ReflectionFeature implements GraalFeature {
     }
 
     @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        analysisAccess = (FeatureImpl.BeforeAnalysisAccessImpl) access;
+        /* duplicated to reduce the number of analysis iterations */
+        reflectionData.flushConditionalConfiguration(access);
+    }
+
+    @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
+        reflectionData.flushConditionalConfiguration(access);
         reflectionData.duringAnalysis(access);
     }
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
+        analysisAccess = null;
         reflectionData.afterAnalysis();
     }
 

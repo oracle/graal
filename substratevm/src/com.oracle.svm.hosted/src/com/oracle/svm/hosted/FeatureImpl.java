@@ -35,6 +35,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -227,11 +228,11 @@ public class FeatureImpl {
 
         public Set<Class<?>> reachableSubtypes(Class<?> baseClass) {
             return reachableSubtypes(getMetaAccess().lookupJavaType(baseClass)).stream()
-                            .map(AnalysisType::getJavaClass).collect(Collectors.toCollection(LinkedHashSet::new));
+                            .map(AnalysisType::getJavaClass).collect(Collectors.toCollection(HashSet::new));
         }
 
         Set<AnalysisType> reachableSubtypes(AnalysisType baseType) {
-            Set<AnalysisType> result = AnalysisUniverse.getSubtypes(baseType);
+            Set<AnalysisType> result = AnalysisUniverse.getAllSubtypes(baseType);
             result.removeIf(t -> !isReachable(t));
             return result;
         }
@@ -242,7 +243,7 @@ public class FeatureImpl {
         }
 
         Set<AnalysisMethod> reachableMethodOverrides(AnalysisMethod baseMethod) {
-            return AnalysisUniverse.getMethodImplementations(getBigBang(), baseMethod);
+            return AnalysisUniverse.getMethodImplementations(getBigBang(), baseMethod, true);
         }
     }
 

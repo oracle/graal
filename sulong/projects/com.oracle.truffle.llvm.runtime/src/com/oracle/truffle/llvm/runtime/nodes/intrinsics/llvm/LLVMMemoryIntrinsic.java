@@ -37,7 +37,9 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMMemSetNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemoryOpNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.LLVMReallocNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.memory.store.LLVMPointerStoreNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 public abstract class LLVMMemoryIntrinsic extends LLVMExpressionNode {
 
@@ -131,6 +133,61 @@ public abstract class LLVMMemoryIntrinsic extends LLVMExpressionNode {
 
         public static LLVMRealloc create() {
             return LLVMReallocNodeGen.create(null, null);
+        }
+    }
+
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    @NodeChild(type = LLVMExpressionNode.class)
+    public abstract static class LLVMPosixMemalign extends LLVMMemoryIntrinsic {
+        @Child private LLVMPointerStoreNode writePointer = LLVMPointerStoreNode.create();
+
+        @Specialization
+        protected int doVoid(LLVMPointer memptr, @SuppressWarnings("unused") int alignment, int size,
+                        @Cached BranchProfile outOfMemory) {
+            try {
+                if (size == 0) {
+                    writePointer.executeWithTarget(memptr, LLVMNativePointer.createNull());
+                    return 0;
+                }
+                LLVMNativePointer address = getLanguage().getLLVMMemory().allocateMemory(this, size);
+
+                /*
+                 * The current default alignment for allocateMemory in Unsafe is 16 bytes. Which is
+                 * the assumption for the alignment here. Sulong does not currently support
+                 * alignments that are bigger 16 bytes.
+                 */
+                assert ((address.asNative()) & (alignment - 1)) == 0 : "Memory allocation alignment is not 16 bytes.";
+                writePointer.executeWithTarget(memptr, address);
+                return 0;
+            } catch (OutOfMemoryError | ArithmeticException e) {
+                outOfMemory.enter();
+                return 1;
+            }
+        }
+
+        @Specialization
+        protected int doVoid(LLVMPointer memptr, @SuppressWarnings("unused") long alignment, long size,
+                        @Cached BranchProfile outOfMemory) {
+            try {
+                if (size == 0) {
+                    writePointer.executeWithTarget(memptr, LLVMNativePointer.createNull());
+                    return 0;
+                }
+                LLVMNativePointer address = getLanguage().getLLVMMemory().allocateMemory(this, size);
+
+                /*
+                 * The current default alignment for allocateMemory in Unsafe is 16 bytes. Which is
+                 * the assumption for the alignment here. Sulong does not currently support
+                 * alignments that are bigger 16 bytes.
+                 */
+                assert ((address.asNative()) & (alignment - 1)) == 0 : "Memory allocation alignment is not 16 bytes.";
+                writePointer.executeWithTarget(memptr, address);
+                return 0;
+            } catch (OutOfMemoryError | ArithmeticException e) {
+                outOfMemory.enter();
+                return 1;
+            }
         }
     }
 

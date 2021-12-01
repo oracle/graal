@@ -28,6 +28,7 @@ import java.io.PrintWriter;
 import java.util.Set;
 import java.util.function.Function;
 
+import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
@@ -98,6 +99,10 @@ public abstract class GeneratedPlugin {
 
     protected void createOtherClasses(AbstractProcessor processor, PrintWriter out) {
         String name = getReplacementName();
+        out.printf("//        class: %s\n", intrinsicMethod.getEnclosingElement());
+        out.printf("//       method: %s\n", intrinsicMethod);
+        out.printf("// generated-by: %s\n", getClass().getName());
+        out.printf("@JacocoIgnoreGenerated(\"deferred plugin support that is only called in libgraal\")\n");
         out.printf("final class %s implements PluginReplacementNode.ReplacementFunction {\n", name);
         out.printf("    static PluginReplacementNode.ReplacementFunction FUNCTION = new %s();\n", name);
         InjectedDependencies deps = new InjectedDependencies(false, intrinsicMethod);
@@ -215,6 +220,12 @@ public abstract class GeneratedPlugin {
         return true;
     }
 
+    protected boolean isWithExceptionReplacement(AbstractProcessor processor) {
+        Element nodeElement = intrinsicMethod.getEnclosingElement();
+        TypeMirror withExceptionNodeType = processor.getType("org.graalvm.compiler.nodes.WithExceptionNode");
+        return processor.env().getTypeUtils().isAssignable(nodeElement.asType(), withExceptionNodeType);
+    }
+
     protected static String getReturnKind(ExecutableElement method) {
         switch (method.getReturnType().getKind()) {
             case BOOLEAN:
@@ -304,7 +315,7 @@ public abstract class GeneratedPlugin {
         out.printf("        } else {\n");
         if (!isReplacement) {
             out.printf("            if (b.shouldDeferPlugin(this)) {\n");
-            out.printf("                b.replacePlugin(this, targetMethod, args, %s.FUNCTION);\n", getReplacementName());
+            out.printf("                b.replacePlugin%s(this, targetMethod, args, %s.FUNCTION);\n", getReplacementFunctionSuffix(processor), getReplacementName());
             out.printf("                return true;\n");
             out.printf("            }\n");
             out.printf("            assert b.canDeferPlugin(this) : b.getClass().toString() + \" \" + %s;\n", argFormatter.apply(nodeIdx));
@@ -313,5 +324,9 @@ public abstract class GeneratedPlugin {
 
         out.printf("        }\n");
         return argName;
+    }
+
+    protected String getReplacementFunctionSuffix(AbstractProcessor processor) {
+        return isWithExceptionReplacement(processor) ? "WithException" : "";
     }
 }

@@ -41,7 +41,6 @@
 package com.oracle.truffle.api.debug.test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
@@ -65,7 +64,7 @@ public class TestLazyParsingLanguage extends ProxyLanguage {
 
     @Override
     protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
-        return Truffle.getRuntime().createCallTarget(new LazyRootNode(languageInstance, request.getSource(), 1));
+        return new LazyRootNode(languageInstance, request.getSource(), 1).getCallTarget();
     }
 
     private static class LazyRootNode extends RootNode {
@@ -137,7 +136,7 @@ public class TestLazyParsingLanguage extends ProxyLanguage {
             Source source = sourceSection.getSource();
             if (nextLine <= source.getLineCount()) {
                 LazyRootNode root = new LazyRootNode(language, source, nextLine);
-                Truffle.getRuntime().createCallTarget(root).call();
+                root.getCallTarget().call();
             }
             return 42;
         }

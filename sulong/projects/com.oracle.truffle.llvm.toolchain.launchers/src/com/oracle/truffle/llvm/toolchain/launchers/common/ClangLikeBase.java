@@ -115,7 +115,9 @@ public abstract class ClangLikeBase extends Driver {
                     break;
             }
             if (arg.startsWith("-fuse-ld=")) {
-                unsupportedFlagExit("-fuse-ld");
+                if (!isDefaultLinker(arg)) {
+                    unsupportedFlagExit("-fuse-ld");
+                }
             }
         }
         this.args = keepArgs ? args : Arrays.stream(args).filter(Objects::nonNull).toArray(String[]::new);
@@ -171,6 +173,20 @@ public abstract class ClangLikeBase extends Driver {
     protected void getCompilerArgs(List<String> sulongArgs) {
         // use -gdwarf-5 instead of -g to enable source file checksums
         sulongArgs.addAll(Arrays.asList("-flto=full", "-gdwarf-5", "-O1"));
+    }
+
+    private boolean isDefaultLinker(String useLdFlag) {
+        // Check whether the -fuse-ld= flag would select the same tool we're going to use.
+        String linker = useLdFlag.substring(useLdFlag.indexOf('=') + 1);
+        if (os == OS.LINUX) {
+            return LinuxLinker.LLD.equals(linker);
+        } else if (os == OS.WINDOWS) {
+            return WindowsLinker.LLD_LINK.equals(linker) || WindowsLinker.LLD_LINK_NO_EXE.equals(linker);
+        } else if (os == OS.DARWIN) {
+            return DarwinLinker.LD_NAME.equals(linker);
+        } else {
+            return false;
+        }
     }
 
     protected void getLinkerArgs(List<String> sulongArgs) {

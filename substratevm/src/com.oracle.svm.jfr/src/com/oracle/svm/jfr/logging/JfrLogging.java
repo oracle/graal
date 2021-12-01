@@ -25,6 +25,8 @@
  */
 package com.oracle.svm.jfr.logging;
 
+import java.util.Set;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -97,13 +99,16 @@ public class JfrLogging {
         String[] result = new String[getMaxLogTagSetId(values) + 1];
         for (LogTag logTagSet : values) {
             StringBuilder builder = new StringBuilder();
-            for (JfrLogTag logTag : JfrLogConfiguration.LOG_TAG_SETS.get(logTagSet)) {
-                if (builder.length() > 0) {
-                    builder.append(",");
+            Set<JfrLogTag> set = JfrLogConfiguration.LOG_TAG_SETS.get(logTagSet);
+            if (set != null) {
+                for (JfrLogTag logTag : set) {
+                    if (builder.length() > 0) {
+                        builder.append(",");
+                    }
+                    builder.append(logTag.toString().toLowerCase());
                 }
-                builder.append(logTag.toString().toLowerCase());
+                result[getId(logTagSet)] = builder.toString();
             }
-            result[getId(logTagSet)] = builder.toString();
         }
         return result;
     }

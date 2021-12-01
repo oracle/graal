@@ -38,12 +38,12 @@ import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.NeverInline;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.handles.ObjectHandlesImpl;
 import com.oracle.svm.core.handles.ThreadLocalHandles;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
-import com.oracle.svm.core.util.ExceptionHelpers;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 import com.oracle.svm.jni.nativeapi.JNIObjectRefType;
 
@@ -70,6 +70,7 @@ public final class JNIObjectHandles {
         return RuntimeAssertionsSupport.singleton().desiredAssertionStatus(JNIObjectHandles.class);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static <T extends SignedWord> T nullHandle() {
         return ThreadLocalHandles.nullHandle();
     }
@@ -81,7 +82,7 @@ public final class JNIObjectHandles {
     static final int NATIVE_CALL_MIN_LOCAL_HANDLE_CAPACITY = 16;
 
     @SuppressWarnings("rawtypes") private static final FastThreadLocalObject<ThreadLocalHandles> handles //
-                    = FastThreadLocalFactory.createObject(ThreadLocalHandles.class);
+                    = FastThreadLocalFactory.createObject(ThreadLocalHandles.class, "JNIObjectHandles.handles");
 
     @Fold
     static boolean useImageHeapHandles() {
@@ -141,7 +142,12 @@ public final class JNIObjectHandles {
             return JNIGlobalHandles.getObject(handle);
         }
 
-        throw ExceptionHelpers.throwIllegalArgumentException("Invalid object handle");
+        throw throwIllegalArgumentException();
+    }
+
+    @NeverInline("Exception slow path")
+    private static IllegalArgumentException throwIllegalArgumentException() {
+        throw new IllegalArgumentException("Invalid object handle");
     }
 
     public static JNIObjectRefType getHandleType(JNIObjectHandle handle) {

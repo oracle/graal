@@ -41,9 +41,9 @@ import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
+import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.MemoryProtectionKeyProvider;
-import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Signal.AdvancedSignalDispatcher;
 import com.oracle.svm.core.posix.headers.Signal.sigaction;
@@ -60,8 +60,8 @@ class PosixSubstrateSegfaultHandlerFeature implements Feature {
 }
 
 class PosixSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
-    @CEntryPoint
-    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.NotPublished)
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate in segfault signal handler.")
     @Uninterruptible(reason = "Must be uninterruptible until it gets immune to safepoints")
     private static void dispatch(@SuppressWarnings("unused") int signalNumber, @SuppressWarnings("unused") siginfo_t sigInfo, ucontext_t uContext) {
@@ -95,7 +95,7 @@ class PosixSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
                     "dispatch", int.class, siginfo_t.class, ucontext_t.class);
 
     @Override
-    protected void install() {
+    protected void installInternal() {
         int structSigActionSize = SizeOf.get(sigaction.class);
         sigaction structSigAction = StackValue.get(structSigActionSize);
         LibC.memset(structSigAction, WordFactory.signed(0), WordFactory.unsigned(structSigActionSize));

@@ -18,6 +18,12 @@
     },
   },
 
+  jdk17: {
+    downloads+: {
+      JAVA_HOME: jdks["labsjdk-ce-17"],
+    },
+  },
+
   extra_jdk11: {
       downloads+: {
       EXTRA_JAVA_HOMES: jdks["labsjdk-ce-11"],
@@ -29,6 +35,10 @@
   },
 
   windows_11 : devkits["windows-jdk11"] + common.common + {
+    capabilities : ['windows', 'amd64']
+  },
+
+  windows_17 : devkits["windows-jdk17"] + common.common + {
     capabilities : ['windows', 'amd64']
   },
 

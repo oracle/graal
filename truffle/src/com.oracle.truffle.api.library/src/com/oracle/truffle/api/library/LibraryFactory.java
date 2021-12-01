@@ -488,7 +488,13 @@ public abstract class LibraryFactory<T extends Library> {
         return libraryClass;
     }
 
-    final List<Message> getMessages() {
+    /**
+     * Returns an unmodifiable list of messages that this library provides. The returned list is
+     * ordered by {@link Message#getId() message ids}.
+     *
+     * @since 22.0
+     */
+    public final List<Message> getMessages() {
         return messages;
     }
 

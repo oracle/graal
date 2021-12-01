@@ -36,12 +36,12 @@ import com.oracle.truffle.espresso.vm.VM;
 
 @EspressoSubstitutions
 public final class Target_java_lang_Object {
-    @Substitution(hasReceiver = true)
+    @Substitution(hasReceiver = true, isTrivial = true)
     public static int hashCode(@JavaType(Object.class) StaticObject self) {
         return VM.JVM_IHashCode(self);
     }
 
-    @Substitution(hasReceiver = true)
+    @Substitution(hasReceiver = true, isTrivial = true)
     public static @JavaType(Class.class) StaticObject getClass(@JavaType(Object.class) StaticObject self) {
         return self.getKlass().mirror();
     }

@@ -37,8 +37,8 @@ import com.oracle.truffle.llvm.parser.model.GlobalSymbol;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionSymbol;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
-import com.oracle.truffle.llvm.runtime.LLVMLocalScope;
 import com.oracle.truffle.llvm.runtime.LLVMScope;
+import com.oracle.truffle.llvm.runtime.LLVMScopeChain;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -61,7 +61,6 @@ import java.util.ArrayList;
  * scope, then that symbol's entry in the symbol table will be that of the defined symbol from the
  * local scope.
  *
- * @see InitializeScopeNode
  * @see InitializeSymbolsNode
  * @see InitializeGlobalNode
  * @see InitializeModuleNode
@@ -102,8 +101,8 @@ public final class InitializeOverwriteNode extends LLVMNode {
         this.allocExternalSymbols = allocExternaSymbolsList.toArray(AllocExternalSymbolNode.EMPTY);
     }
 
-    public void execute(LLVMContext context, LLVMLocalScope localScope, RTLDFlags rtldFlags) {
-        LLVMScope globalScope = context.getGlobalScope();
+    public void execute(LLVMContext context, LLVMScopeChain localScope, RTLDFlags rtldFlags) {
+        LLVMScopeChain globalScope = context.getGlobalScopeChain();
         for (int i = 0; i < allocExternalSymbols.length; i++) {
             AllocExternalSymbolNode allocSymbol = allocExternalSymbols[i];
             LLVMPointer pointer = allocSymbol.execute(localScope, globalScope, null, null, context, rtldFlags);

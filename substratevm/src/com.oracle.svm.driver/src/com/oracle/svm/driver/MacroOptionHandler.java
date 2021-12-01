@@ -91,11 +91,7 @@ class MacroOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         boolean explicitImageClasspath = enabledOption.forEachPropertyValue(
                         config, "ImageClasspath", entry -> nativeImage.addImageClasspath(ClasspathUtils.stringToClasspath(entry)), PATH_SEPARATOR_REGEX);
         if (!explicitImageModulePath && !explicitImageClasspath) {
-            if (NativeImage.USE_NI_JPMS) {
-                NativeImage.getJars(imageJarsDirectory).forEach(nativeImage::addImageModulePath);
-            } else {
-                NativeImage.getJars(imageJarsDirectory).forEach(nativeImage::addImageClasspath);
-            }
+            NativeImage.getJars(imageJarsDirectory).forEach(nativeImage::addImageClasspath);
         }
 
         String imageName = enabledOption.getProperty(config, "ImageName");

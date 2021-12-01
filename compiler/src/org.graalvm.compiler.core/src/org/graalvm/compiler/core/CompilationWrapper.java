@@ -34,11 +34,11 @@ import static org.graalvm.compiler.debug.DebugOptions.Dump;
 import static org.graalvm.compiler.debug.DebugOptions.DumpPath;
 import static org.graalvm.compiler.debug.DebugOptions.MethodFilter;
 import static org.graalvm.compiler.debug.DebugOptions.PrintBackendCFG;
+import static org.graalvm.compiler.debug.PathUtilities.getPath;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.Map;
 
@@ -291,20 +291,15 @@ public abstract class CompilationWrapper<T> {
                 return handleException(cause);
             }
 
-            File dumpPath = null;
+            String dumpPath = null;
             try {
                 String dir = this.outputDirectory.getPath();
                 if (dir != null) {
                     String dumpName = PathUtilities.sanitizeFileName(toString());
-                    dumpPath = new File(dir, dumpName);
-                    dumpPath.mkdirs();
-                    if (!dumpPath.exists()) {
-                        TTY.println("Warning: could not create diagnostics directory " + dumpPath);
-                        dumpPath = null;
-                    }
+                    dumpPath = PathUtilities.createDirectories(getPath(dir, dumpName));
                 }
             } catch (Throwable t) {
-                TTY.println("Warning: could not create Graal diagnostic directory");
+                TTY.println("Warning: could not create Graal diagnostics directory");
                 t.printStackTrace(TTY.out);
             }
 
@@ -330,8 +325,8 @@ public abstract class CompilationWrapper<T> {
                 return handleException(cause);
             }
 
-            File retryLogFile = new File(dumpPath, "retry.log");
-            try (PrintStream ps = new PrintStream(new FileOutputStream(retryLogFile))) {
+            String retryLogFile = getPath(dumpPath, "retry.log");
+            try (PrintStream ps = new PrintStream(PathUtilities.openOutputStream(retryLogFile))) {
                 ps.print(message);
             } catch (IOException ioe) {
                 TTY.printf("Error writing to %s: %s%n", retryLogFile, ioe);
@@ -340,7 +335,7 @@ public abstract class CompilationWrapper<T> {
             OptionValues retryOptions = new OptionValues(initialOptions,
                             Dump, ":" + DebugOptions.DiagnoseDumpLevel.getValue(initialOptions),
                             MethodFilter, null,
-                            DumpPath, dumpPath.getPath(),
+                            DumpPath, dumpPath,
                             PrintBackendCFG, true,
                             TrackNodeSourcePosition, true);
 
@@ -358,9 +353,9 @@ public abstract class CompilationWrapper<T> {
         }
     }
 
-    private T postRetry(ExceptionAction action, File retryLogFile, ByteArrayOutputStream logBaos, PrintStream ps, T res) {
+    private T postRetry(ExceptionAction action, String retryLogFile, ByteArrayOutputStream logBaos, PrintStream ps, T res) {
         ps.close();
-        try (FileOutputStream fos = new FileOutputStream(retryLogFile, true)) {
+        try (OutputStream fos = PathUtilities.openOutputStream(retryLogFile, true)) {
             fos.write(logBaos.toByteArray());
         } catch (Throwable e) {
             TTY.printf("Error writing to %s: %s%n", retryLogFile, e);

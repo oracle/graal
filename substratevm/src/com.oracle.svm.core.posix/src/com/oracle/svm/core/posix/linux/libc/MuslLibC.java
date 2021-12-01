@@ -49,7 +49,7 @@ public class MuslLibC implements LibCBase {
 
     @Override
     public String getTargetCompiler() {
-        return "musl-gcc";
+        return "x86_64-linux-musl-gcc";
     }
 
     @Override

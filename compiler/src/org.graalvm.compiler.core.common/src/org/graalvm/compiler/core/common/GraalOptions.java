@@ -199,16 +199,6 @@ public final class GraalOptions {
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> CanOmitFrame = new OptionKey<>(true);
 
-    // Ahead of time compilation
-    @Option(help = "Try to avoid emitting code where patching is required", type = OptionType.Expert)
-    public static final OptionKey<Boolean> ImmutableCode = new OptionKey<>(false);
-
-    @Option(help = "Generate position independent code", type = OptionType.Expert)
-    public static final OptionKey<Boolean> GeneratePIC = new OptionKey<>(false);
-
-    @Option(help = "Generate verify oop checks in AOT code", type = OptionType.Expert)
-    public static final OptionKey<Boolean> AOTVerifyOops = new OptionKey<>(false);
-
     // Runtime settings
     @Option(help = "", type = OptionType.Expert)
     public static final OptionKey<Boolean> SupportJsrBytecodes = new OptionKey<>(true);
@@ -288,6 +278,9 @@ public final class GraalOptions {
     @Option(help = "String.indexOf invocations will be evaluated at compile time if the receiver is a constant and its length is lower than this value.", type = OptionType.Expert)
     public static final OptionKey<Integer> StringIndexOfLimit = new OptionKey<>(4096);
 
-    @Option(help = "Emit substitutions for String methods", type = OptionType.Debug)//
+    @Option(help = "Emit substitutions for String methods", type = OptionType.Debug)
     public static final OptionKey<Boolean> EmitStringSubstitutions = new OptionKey<>(true);
+
+    @Option(help = "Perform checks that guards and deopts aren't introduced in graphs that should handle exceptions explicitly", type = OptionType.Debug)
+    public static final OptionKey<Boolean> StrictDeoptInsertionChecks = new OptionKey<>(false);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,10 +30,8 @@
 package com.oracle.truffle.llvm.runtime.nodes.control;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -46,13 +44,11 @@ import com.oracle.truffle.llvm.runtime.nodes.base.LLVMFrameNullerUtil;
 
 public abstract class LLVMFunctionRootNode extends LLVMExpressionNode {
 
-    private static final FrameSlot[] NO_SLOTS = new FrameSlot[0];
-
     @Children private final LLVMStatementNode[] copyArgumentsToFrame;
     @Child private LLVMUniquesRegionAllocNode uniquesRegionAllocNode;
     @Child private LLVMExpressionNode rootBody;
 
-    @CompilationFinal(dimensions = 1) private final FrameSlot[] frameSlotsToInitialize;
+    private final int frameSlotsToInitialize;
     private final LLVMStackAccess stackAccess;
 
     public LLVMFunctionRootNode(LLVMUniquesRegionAllocNode uniquesRegionAllocNode, LLVMStackAccess stackAccess, LLVMStatementNode[] copyArgumentsToFrame, LLVMDispatchBasicBlockNode rootBody,
@@ -61,7 +57,7 @@ public abstract class LLVMFunctionRootNode extends LLVMExpressionNode {
         this.stackAccess = stackAccess;
         this.copyArgumentsToFrame = copyArgumentsToFrame;
         this.rootBody = rootBody;
-        this.frameSlotsToInitialize = frameDescriptor.getSlots().toArray(NO_SLOTS);
+        this.frameSlotsToInitialize = frameDescriptor.getNumberOfSlots();
     }
 
     @ExplodeLoop
@@ -94,7 +90,7 @@ public abstract class LLVMFunctionRootNode extends LLVMExpressionNode {
             // don't clear slots if we're running in the interpreter
             return;
         }
-        for (FrameSlot frameSlot : frameSlotsToInitialize) {
+        for (int frameSlot = 0; frameSlot < frameSlotsToInitialize; frameSlot++) {
             // avoids phis for the contents of the frame slots tag array
             LLVMFrameNullerUtil.nullFrameSlot(frame, frameSlot);
         }

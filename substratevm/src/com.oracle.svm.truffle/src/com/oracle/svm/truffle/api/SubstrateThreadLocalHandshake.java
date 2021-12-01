@@ -65,8 +65,8 @@ public final class SubstrateThreadLocalHandshake extends ThreadLocalHandshake {
 
     static final SubstrateThreadLocalHandshake SINGLETON = new SubstrateThreadLocalHandshake();
 
-    static final FastThreadLocalInt PENDING = FastThreadLocalFactory.createInt().setMaxOffset(FastThreadLocal.FIRST_CACHE_LINE);
-    static final FastThreadLocalObject<TruffleSafepointImpl> STATE = FastThreadLocalFactory.createObject(TruffleSafepointImpl.class)
+    static final FastThreadLocalInt PENDING = FastThreadLocalFactory.createInt("SubstrateThreadLocalHandshake.PENDING").setMaxOffset(FastThreadLocal.FIRST_CACHE_LINE);
+    static final FastThreadLocalObject<TruffleSafepointImpl> STATE = FastThreadLocalFactory.createObject(TruffleSafepointImpl.class, "SubstrateThreadLocalHandshake.STATE")
                     .setMaxOffset(FastThreadLocal.FIRST_CACHE_LINE);
 
     @Platforms(Platform.HOSTED_ONLY.class)//
@@ -122,7 +122,7 @@ public final class SubstrateThreadLocalHandshake extends ThreadLocalHandshake {
     }
 
     @Uninterruptible(reason = "Used both from uninterruptable stub.", calleeMustBe = false)
-    @RestrictHeapAccess(reason = "Callee may allocate", access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true)
+    @RestrictHeapAccess(reason = "Callee may allocate", access = RestrictHeapAccess.Access.UNRESTRICTED)
     private static void invokeProcessHandshake(Object enclosingNode) {
         SINGLETON.processHandshake((Node) enclosingNode);
     }

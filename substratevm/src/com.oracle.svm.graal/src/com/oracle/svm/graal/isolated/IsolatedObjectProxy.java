@@ -81,14 +81,14 @@ public abstract class IsolatedObjectProxy<T> {
         return s;
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static int hashCode0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<?> handle) {
         return IsolatedCompileClient.get().unhand(handle).hashCode();
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static CompilerHandle<String> toString0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<?> handle) {
         Object obj = IsolatedCompileClient.get().unhand(handle);
         String s = "Isolated: " + obj;

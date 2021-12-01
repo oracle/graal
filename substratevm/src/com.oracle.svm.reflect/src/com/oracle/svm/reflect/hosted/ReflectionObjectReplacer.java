@@ -101,8 +101,17 @@ public class ReflectionObjectReplacer implements Function<Object, Object> {
                 // The declaring class must be reachable for the field lookup
                 declaring.registerAsReachable();
                 AnalysisField analysisField = metaAccess.lookupJavaField((Field) original);
+                if (analysisField == null) {
+                    /*
+                     * We are after static analysis, and the field has not been seen during the
+                     * static analysis. This is a corner case that happens when all static fields of
+                     * a type are iterated and read after static analysis. We can just ignore such
+                     * cases and not process the field.
+                     */
+                    return;
+                }
                 if (!GuardedAnnotationAccess.isAnnotationPresent(analysisField, Delete.class)) {
-                    ImageSingletons.lookup(ReflectionSubstitutionType.Factory.class).inspectAccessibleField((Field) original);
+                    ImageSingletons.lookup(ReflectionFeature.class).inspectAccessibleField((Field) original);
 
                     if (!analysisField.isUnsafeAccessed()) {
                         analysisField.registerAsAccessed();

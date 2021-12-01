@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Supplier;
 
@@ -56,6 +57,7 @@ import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.DefaultCompilerOptions;
+import com.oracle.truffle.api.impl.FrameWithoutBoxing;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
@@ -328,6 +330,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     private volatile WeakReference<OptimizedDirectCallNode> singleCallNode = NO_CALL;
     volatile List<OptimizedCallTarget> blockCompilations;
+    public final int id;
+    private static final AtomicInteger idCounter = new AtomicInteger(0);
 
     protected OptimizedCallTarget(OptimizedCallTarget sourceCallTarget, RootNode rootNode) {
         assert sourceCallTarget == null || sourceCallTarget.sourceCallTarget == null : "Cannot create a clone of a cloned CallTarget";
@@ -338,8 +342,8 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         this.resetCompilationProfile();
         // Do not adopt children of OSRRootNodes; we want to preserve the parent of the child
         // node(s).
-        this.uninitializedNodeCount = !(rootNode instanceof BaseOSRRootNode) ? GraalRuntimeAccessor.NODES.adoptChildrenAndCount(rootNode) : -1;
-        GraalRuntimeAccessor.NODES.setCallTarget(rootNode, this);
+        this.uninitializedNodeCount = isOSR() ? -1 : GraalRuntimeAccessor.NODES.adoptChildrenAndCount(rootNode);
+        id = idCounter.getAndIncrement();
     }
 
     final Assumption getNodeRewritingAssumption() {
@@ -505,7 +509,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     private static CompilationState getTier() {
         if (CompilerDirectives.inCompiledCode()) {
-            if (GraalCompilerDirectives.hasNextTier()) {
+            if (CompilerDirectives.hasNextTier()) {
                 if (CompilerDirectives.inCompilationRoot()) {
                     return CompilationState.FIRST_TIER_ROOT;
                 } else {
@@ -593,7 +597,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                         /*
                          * Compilation of OSR loop nodes is managed separately.
                          */
-                        && !(getRootNode() instanceof BaseOSRRootNode) //
+                        && !isOSR() //
                         && intCallCount >= engine.callThresholdInInterpreter //
                         && intLoopCallCount >= scaledThreshold(engine.callAndLoopThresholdInInterpreter); //
     }
@@ -613,7 +617,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     // Note: {@code PartialEvaluator} looks up this method by name and signature.
     protected final Object profiledPERoot(Object[] originalArguments) {
         Object[] args = originalArguments;
-        if (GraalCompilerDirectives.hasNextTier()) {
+        if (!CompilerDirectives.inInterpreter() && CompilerDirectives.hasNextTier()) {
             firstTierCall();
         }
         if (CompilerDirectives.inCompiledCode()) {
@@ -691,6 +695,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
                 // We are the source CallTarget, so make a copy.
                 this.uninitializedRootNode = NodeUtil.cloneNode(rootNode);
             }
+
+            assert !validate || GraalRuntimeAccessor.NODES.getCallTargetWithoutInitialization(rootNode) == this : "Call target out of sync.";
+
             GraalRuntimeAccessor.INSTRUMENT.onFirstExecution(getRootNode(), validate);
             if (engine.callTargetStatistics) {
                 this.initializedTimestamp = System.nanoTime();
@@ -831,16 +838,10 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     }
 
     final OptimizedCallTarget cloneUninitialized() {
-        assert sourceCallTarget == null;
+        assert sourceCallTarget == null : "Cannot clone a clone.";
         ensureInitialized();
-        RootNode clonedRoot;
-        if (GraalRuntimeAccessor.NODES.isCloneUninitializedSupported(rootNode)) {
-            assert uninitializedRootNode == null;
-            clonedRoot = GraalRuntimeAccessor.NODES.cloneUninitialized(rootNode);
-        } else {
-            clonedRoot = NodeUtil.cloneNode(uninitializedRootNode);
-        }
-        return runtime().createClonedCallTarget(clonedRoot, this);
+        RootNode clonedRoot = GraalRuntimeAccessor.NODES.cloneUninitialized(this, rootNode, uninitializedRootNode);
+        return (OptimizedCallTarget) clonedRoot.getCallTarget();
     }
 
     /**
@@ -994,7 +995,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         if (result == null) {
             result = rootNode.toString();
             if (sourceCallTarget != null) {
-                result += " <split-" + Integer.toHexString(hashCode()) + ">";
+                result += " <split-" + id + ">";
             }
             nameCache = result;
         }
@@ -1679,5 +1680,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
         this.argumentsProfile = newProfile;
         this.aotInitialized = true;
         return true;
+    }
+
+    boolean isOSR() {
+        return rootNode instanceof BaseOSRRootNode;
     }
 }

@@ -33,19 +33,28 @@ import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
+
+import jdk.vm.ci.services.Services;
+
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import java.awt.GraphicsEnvironment;
+import java.util.Optional;
 
 @Platforms({InternalPlatform.PLATFORM_JNI.class})
 @AutomaticFeature
 @SuppressWarnings({"unused"})
 public class JNIRegistrationAwt extends JNIRegistrationUtil implements Feature {
+
+    private static final int JDK_UPDATE = GraalServices.getJavaUpdateVersion();
+    private static final boolean IS_OPENJDK = Optional.ofNullable(Services.getSavedProperties().get("java.vm.name")).orElse("").startsWith("OpenJDK");
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
@@ -160,7 +169,13 @@ public class JNIRegistrationAwt extends JNIRegistrationUtil implements Feature {
 
         NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("fontmanager");
         nativeLibraries.addStaticJniLibrary("fontmanager", isHeadless() ? "awt_headless" : "awt_xawt");
-        nativeLibraries.addStaticJniLibrary("harfbuzz");
+        // harfbuzz became a separate library in OpenJDK 16/11.0.10 (JDK-8249821) and then went back
+        // to be included in fontmanager library in OpenJDK 17/11.0.13 (or 11.0.12 for OracleJDK).
+        // See JDK-8255790.
+        int jdk11HbUpdateBound = IS_OPENJDK ? 12 : 11;
+        if (JavaVersionUtil.JAVA_SPEC == 16 || (JavaVersionUtil.JAVA_SPEC == 11 && JDK_UPDATE >= 10 && JDK_UPDATE <= jdk11HbUpdateBound)) {
+            nativeLibraries.addStaticJniLibrary("harfbuzz");
+        }
 
         nativeLibraries.addDynamicNonJniLibrary("freetype");
 
@@ -175,33 +190,33 @@ public class JNIRegistrationAwt extends JNIRegistrationUtil implements Feature {
 
     private static void registerColorProfiles(DuringAnalysisAccess duringAnalysisAccess) {
         ResourcesRegistry resourcesRegistry = ImageSingletons.lookup(ResourcesRegistry.class);
-        resourcesRegistry.addResources("sun.java2d.cmm.profiles.*");
+        resourcesRegistry.addResources(ConfigurationCondition.alwaysTrue(), "sun.java2d.cmm.profiles.*");
     }
 
     private static void registerFlavorMapProps(DuringAnalysisAccess duringAnalysisAccess) {
         ResourcesRegistry resourcesRegistry = ImageSingletons.lookup(ResourcesRegistry.class);
-        resourcesRegistry.addResources("sun.datatransfer.resources.flavormap.properties");
+        resourcesRegistry.addResources(ConfigurationCondition.alwaysTrue(), "sun.datatransfer.resources.flavormap.properties");
     }
 
     private static void registerRTFReaderCharsets(DuringAnalysisAccess duringAnalysisAccess) {
         ResourcesRegistry resourcesRegistry = ImageSingletons.lookup(ResourcesRegistry.class);
-        resourcesRegistry.addResources("javax.swing.text.rtf.charsets.*");
+        resourcesRegistry.addResources(ConfigurationCondition.alwaysTrue(), "javax.swing.text.rtf.charsets.*");
     }
 
     private static void registerOceanThemeIcons(DuringAnalysisAccess duringAnalysisAccess) {
         ResourcesRegistry resourcesRegistry = ImageSingletons.lookup(ResourcesRegistry.class);
-        resourcesRegistry.addResources("javax.swing.plaf.metal.icons.*");
-        resourcesRegistry.addResources("javax.swing.plaf.basic.icons.*");
+        resourcesRegistry.addResources(ConfigurationCondition.alwaysTrue(), "javax.swing.plaf.metal.icons.*");
+        resourcesRegistry.addResources(ConfigurationCondition.alwaysTrue(), "javax.swing.plaf.basic.icons.*");
     }
 
     private static void registerHtml32bdtd(DuringAnalysisAccess duringAnalysisAccess) {
         ResourcesRegistry resourcesRegistry = ImageSingletons.lookup(ResourcesRegistry.class);
-        resourcesRegistry.addResources("javax.swing.text.html.parser.html32.bdtd");
+        resourcesRegistry.addResources(ConfigurationCondition.alwaysTrue(), "javax.swing.text.html.parser.html32.bdtd");
     }
 
     private static void registerDefaultCSS(DuringAnalysisAccess duringAnalysisAccess) {
         ResourcesRegistry resourcesRegistry = ImageSingletons.lookup(ResourcesRegistry.class);
-        resourcesRegistry.addResources("javax.swing.text.html.default.css");
+        resourcesRegistry.addResources(ConfigurationCondition.alwaysTrue(), "javax.swing.text.html.default.css");
     }
 
     private static NativeLibraries getNativeLibraries(DuringAnalysisAccess access) {

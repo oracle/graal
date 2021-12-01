@@ -47,6 +47,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.results.StaticAnalysisResults.BytecodeEntry;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.graal.pointsto.typestate.TypeStateUtils;
 
 import jdk.vm.ci.meta.JavaMethodProfile;
 import jdk.vm.ci.meta.JavaTypeProfile;
@@ -162,8 +163,8 @@ public class StaticAnalysisResultsBuilder extends AbstractAnalysisResultsBuilder
                             .sorted(Comparator.comparingInt(m2 -> m2.getState().typesCount()))
                             .forEach(monitorEnter -> {
                                 TypeState monitorEntryState = monitorEnter.getState();
-                                String typesString = monitorEntryState.closeToAllInstantiated(bb) ? "close to all instantiated"
-                                                : StreamSupport.stream(monitorEntryState.types().spliterator(), false).map(AnalysisType::getName).collect(Collectors.joining(", "));
+                                String typesString = TypeStateUtils.closeToAllInstantiated(bb, monitorEntryState) ? "close to all instantiated"
+                                                : StreamSupport.stream(monitorEntryState.types(bb).spliterator(), false).map(AnalysisType::getName).collect(Collectors.joining(", "));
                                 StringBuilder strb = new StringBuilder();
                                 strb.append("Location: ");
                                 String methodName = method.format("%h.%n(%p)");

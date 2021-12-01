@@ -54,7 +54,7 @@ import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleIn
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningDataGen.callGetURI;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningDataGen.callSetCallCount;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleInliningDataGen.callSetInlinedCallCount;
-import static org.graalvm.nativebridge.jni.JNIUtil.createString;
+import static org.graalvm.jniutils.JNIUtil.createString;
 
 import java.net.URI;
 
@@ -64,11 +64,11 @@ import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal;
 import org.graalvm.libgraal.LibGraal;
-import org.graalvm.nativebridge.jni.HSObject;
-import org.graalvm.nativebridge.jni.JNI.JNIEnv;
-import org.graalvm.nativebridge.jni.JNI.JObject;
-import org.graalvm.nativebridge.jni.JNI.JString;
-import org.graalvm.nativebridge.jni.JNIMethodScope;
+import org.graalvm.jniutils.HSObject;
+import org.graalvm.jniutils.JNI.JNIEnv;
+import org.graalvm.jniutils.JNI.JObject;
+import org.graalvm.jniutils.JNI.JString;
+import org.graalvm.jniutils.JNIMethodScope;
 
 import jdk.vm.ci.meta.JavaConstant;
 

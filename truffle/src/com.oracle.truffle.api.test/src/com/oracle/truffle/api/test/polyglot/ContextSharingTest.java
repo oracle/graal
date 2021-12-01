@@ -72,11 +72,17 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.tck.tests.ValueAssert;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class ContextSharingTest {
 
     private static Context context;
     private static Context secondaryContext;
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     @BeforeClass
     public static void setUp() {
@@ -90,8 +96,10 @@ public class ContextSharingTest {
 
     @AfterClass
     public static void tearDown() {
-        context.close();
-        secondaryContext.close();
+        if (context != null) {
+            context.close();
+            secondaryContext.close();
+        }
     }
 
     static class NoIdentity implements TruffleObject {

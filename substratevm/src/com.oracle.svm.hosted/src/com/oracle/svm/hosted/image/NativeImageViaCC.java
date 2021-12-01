@@ -283,6 +283,9 @@ public abstract class NativeImageViaCC extends NativeImage {
             cmd.add("/INCREMENTAL:NO");
             cmd.add("/NODEFAULTLIB:LIBCMT");
 
+            /* Use page size alignment to support memory mapping of the image heap. */
+            cmd.add("/FILEALIGN:4096");
+
             /* Put .lib and .exp files in a temp dir as we don't usually need them. */
             cmd.add("/IMPLIB:" + getTempDirectory().resolve(imageName + ".lib"));
 

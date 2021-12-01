@@ -36,17 +36,11 @@ import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
-import com.oracle.svm.hosted.FeatureImpl.CompilationAccessImpl;
-import com.oracle.svm.hosted.meta.HostedField;
-
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
  * Collects all {@link FastThreadLocal} instances that are actually used by the application.
@@ -90,37 +84,9 @@ class VMThreadLocalCollector implements Function<Object, Object> {
         return result;
     }
 
-    public List<VMThreadLocalInfo> sortThreadLocals(Feature.CompilationAccess a) {
-        CompilationAccessImpl config = (CompilationAccessImpl) a;
-
+    public List<VMThreadLocalInfo> sortThreadLocals() {
         sealed = true;
-
-        /*
-         * Find a unique static field for every VM thread local object. The field name is used to
-         * make the layout of VMThread deterministic.
-         */
-        for (ResolvedJavaField f : config.getFields()) {
-            HostedField field = (HostedField) f;
-            if (field.isStatic() && field.getStorageKind() == JavaKind.Object) {
-                Object fieldValue = SubstrateObjectConstant.asObject(field.readValue(null));
-                if (fieldValue instanceof FastThreadLocal) {
-                    FastThreadLocal threadLocal = (FastThreadLocal) fieldValue;
-                    VMThreadLocalInfo info = threadLocals.get(threadLocal);
-                    String fieldName = field.format("%H.%n");
-                    if (!field.isFinal()) {
-                        throw shouldNotReachHere("VMThreadLocal referenced from non-final field: " + fieldName);
-                    } else if (info.name != null) {
-                        throw shouldNotReachHere("VMThreadLocal referenced from two static final fields: " + info.name + ", " + fieldName);
-                    }
-                    info.name = fieldName;
-                }
-            }
-        }
         for (VMThreadLocalInfo info : threadLocals.values()) {
-            if (info.name == null) {
-                shouldNotReachHere("VMThreadLocal found that is not referenced from a static final field");
-            }
-
             assert info.sizeInBytes == -1;
             if (info.sizeSupplier != null) {
                 int unalignedSize = info.sizeSupplier.getAsInt();
@@ -158,7 +124,6 @@ class VMThreadLocalCollector implements Function<Object, Object> {
                 }
             }
         }
-        assert result != 0 : "not distinguishable: " + info1 + ", " + info2;
         return result;
     }
 

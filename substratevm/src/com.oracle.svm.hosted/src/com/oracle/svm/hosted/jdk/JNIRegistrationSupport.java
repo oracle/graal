@@ -76,7 +76,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 /** Registration of native JDK libraries. */
 @Platforms(InternalPlatform.PLATFORM_JNI.class)
 @AutomaticFeature
-class JNIRegistrationSupport extends JNIRegistrationUtil implements GraalFeature {
+public final class JNIRegistrationSupport extends JNIRegistrationUtil implements GraalFeature {
 
     private final ConcurrentMap<String, Boolean> registeredLibraries = new ConcurrentHashMap<>();
     private NativeLibraries nativeLibraries = null;
@@ -103,7 +103,7 @@ class JNIRegistrationSupport extends JNIRegistrationUtil implements GraalFeature
         registerLoadLibraryPlugin(plugins, System.class);
     }
 
-    void registerLoadLibraryPlugin(Plugins plugins, Class<?> clazz) {
+    public void registerLoadLibraryPlugin(Plugins plugins, Class<?> clazz) {
         Registration r = new Registration(plugins.getInvocationPlugins(), clazz);
         r.register1("loadLibrary", String.class, new InvocationPlugin() {
             @Override

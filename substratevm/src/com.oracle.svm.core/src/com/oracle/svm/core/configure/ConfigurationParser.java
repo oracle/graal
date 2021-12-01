@@ -36,9 +36,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
+
 import com.oracle.svm.core.util.json.JSONParserException;
 
 public abstract class ConfigurationParser {
+    public static final String CONDITIONAL_KEY = "condition";
+    public static final String TYPE_REACHABLE_KEY = "typeReachable";
     private final Map<String, Set<String>> seenUnknownAttributesByType = new HashMap<>();
     private final boolean strictConfiguration;
 
@@ -86,15 +90,19 @@ public abstract class ConfigurationParser {
 
         if (unknownAttributes.size() > 0) {
             String message = "Unknown attribute(s) [" + String.join(", ", unknownAttributes) + "] in " + type;
-            if (strictConfiguration) {
-                throw new JSONParserException(message);
-            } else {
-                // Checkstyle: stop
-                System.err.println("WARNING: " + message);
-                // Checkstyle: resume
-            }
+            warnOrFail(message);
             Set<String> unknownAttributesForType = seenUnknownAttributesByType.computeIfAbsent(type, key -> new HashSet<>());
             unknownAttributesForType.addAll(unknownAttributes);
+        }
+    }
+
+    protected void warnOrFail(String message) {
+        if (strictConfiguration) {
+            throw new JSONParserException(message);
+        } else {
+            // Checkstyle: stop
+            System.err.println("Warning: " + message);
+            // Checkstyle: resume
         }
     }
 
@@ -136,4 +144,19 @@ public abstract class ConfigurationParser {
         }
         throw new JSONParserException("Invalid long value '" + value + "' for element '" + propertyName + "'");
     }
+
+    protected ConfigurationCondition parseCondition(Map<String, Object> data) {
+        Object conditionData = data.get(CONDITIONAL_KEY);
+        if (conditionData != null) {
+            Map<String, Object> conditionObject = asMap(conditionData, "Attribute 'condition' must be an object");
+            Object conditionType = conditionObject.get(TYPE_REACHABLE_KEY);
+            if (conditionType instanceof String) {
+                return ConfigurationCondition.create((String) conditionType);
+            } else {
+                warnOrFail("'" + TYPE_REACHABLE_KEY + "' should be of type string");
+            }
+        }
+        return ConfigurationCondition.alwaysTrue();
+    }
+
 }

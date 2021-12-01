@@ -1,3 +1,5 @@
+# Sulong
+
 Sulong is a high-performance LLVM bitcode runtime built on the
 [GraalVM](https://www.graalvm.org) by [Oracle Labs](https://labs.oracle.com).
 
@@ -8,7 +10,7 @@ With Sulong you can execute programming languages that can be transformed
 to LLVM bitcode on GraalVM. This includes languages like C/C++, Fortran, and others.
 
 
-# User Documentation
+## User Documentation
 
 Sulong is part of [GraalVM](https://www.graalvm.org). If you are a user of GraalVM and want
 to run C/C++/... programs on GraalVM, we recommend downloading a pre-built binary of
@@ -16,7 +18,7 @@ to run C/C++/... programs on GraalVM, we recommend downloading a pre-built binar
 
 See [GraalVM LLVM Runtime](../docs/reference-manual/llvm/README.md) and [graalvm.org](https://www.graalvm.org/reference-manual/llvm/) for documentation about using the GraalVM LLVM runtime.
 
-# Contributor Documentation
+## Contributor Documentation
 
 If you are interested in the internals of Sulong, or want to contribute, there are those
 resources:
@@ -30,7 +32,7 @@ resources:
 * [FAQ](docs/contributor/FAQ.md)
 
 
-# Further Information
+## Further Information
 
 Sulong is developed in a research collaboration with
 [Johannes Kepler University, Linz](http://www.ssw.jku.at).

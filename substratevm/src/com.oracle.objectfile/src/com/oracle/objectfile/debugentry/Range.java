@@ -87,7 +87,7 @@ public class Range {
         }
         this.methodEntry = methodEntry;
         this.fullMethodName = isInline ? stringTable.uniqueDebugString(constructClassAndMethodName()) : stringTable.uniqueString(constructClassAndMethodName());
-        this.fullMethodNameWithParams = stringTable.uniqueString(constructClassAndMethodNameWithParams());
+        this.fullMethodNameWithParams = constructClassAndMethodNameWithParams();
         this.lo = lo;
         this.hi = hi;
         this.line = line;
@@ -181,8 +181,13 @@ public class Range {
         }
         builder.append(getMethodName());
         if (includeParams) {
-            builder.append('(');
-            builder.append(String.join(", ", methodEntry.paramNames));
+            builder.append("(");
+            String prefix = "";
+            for (TypeEntry t : methodEntry.paramTypes) {
+                builder.append(prefix);
+                builder.append(t.getTypeName());
+                prefix = ", ";
+            }
             builder.append(')');
         }
         if (includeReturnType) {
@@ -304,6 +309,13 @@ public class Range {
         }
         if (getLine() != sibling.getLine()) {
             /* cannot merge callers with different line numbers, move on. */
+            return sibling;
+        }
+        if (isLeaf() != sibling.isLeaf()) {
+            /*
+             * cannot merge leafs with non-leafs as that results in them becoming non-leafs and not
+             * getting proper line info
+             */
             return sibling;
         }
         /* splice out the sibling from the chain and update this one to include it. */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,19 +26,15 @@ package com.oracle.svm.core.configure;
 
 import java.util.List;
 
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
+
 import com.oracle.svm.core.TypeResult;
 
 public interface ReflectionConfigurationParserDelegate<T> {
 
-    /**
-     * @deprecated use {@link #resolveTypeResult(String)} instead.
-     */
-    @Deprecated
-    default T resolveType(String typeName) {
-        return resolveTypeResult(typeName).get();
-    }
+    TypeResult<ConfigurationCondition> resolveCondition(String typeName);
 
-    TypeResult<T> resolveTypeResult(String typeName);
+    TypeResult<T> resolveType(ConfigurationCondition condition, String typeName);
 
     void registerType(T type);
 
@@ -46,27 +42,29 @@ public interface ReflectionConfigurationParserDelegate<T> {
 
     void registerDeclaredClasses(T type);
 
+    void registerPermittedSubclasses(T type);
+
     void registerPublicFields(T type);
 
     void registerDeclaredFields(T type);
 
-    void registerPublicMethods(T type);
+    void registerPublicMethods(boolean queriedOnly, T type);
 
-    void registerDeclaredMethods(T type);
+    void registerDeclaredMethods(boolean queriedOnly, T type);
 
-    void registerPublicConstructors(T type);
+    void registerPublicConstructors(boolean queriedOnly, T type);
 
-    void registerDeclaredConstructors(T type);
+    void registerDeclaredConstructors(boolean queriedOnly, T type);
 
     void registerField(T type, String fieldName, boolean allowWrite) throws NoSuchFieldException;
 
-    boolean registerAllMethodsWithName(T type, String methodName);
+    boolean registerAllMethodsWithName(boolean queriedOnly, T type, String methodName);
 
-    void registerMethod(T type, String methodName, List<T> methodParameterTypes) throws NoSuchMethodException;
+    void registerMethod(boolean queriedOnly, T type, String methodName, List<T> methodParameterTypes) throws NoSuchMethodException;
 
-    void registerConstructor(T type, List<T> methodParameterTypes) throws NoSuchMethodException;
+    void registerConstructor(boolean queriedOnly, T type, List<T> methodParameterTypes) throws NoSuchMethodException;
 
-    boolean registerAllConstructors(T type);
+    boolean registerAllConstructors(boolean queriedOnly, T type);
 
     String getTypeName(T type);
 

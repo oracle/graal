@@ -104,6 +104,7 @@ public class ThreadStackPrinter {
 
         private static SingleShotFrameInfoQueryResultAllocator SingleShotFrameInfoQueryResultAllocator = new SingleShotFrameInfoQueryResultAllocator();
         private static DummyValueInfoAllocator DummyValueInfoAllocator = new DummyValueInfoAllocator();
+        private static CodeInfoAccess.FrameInfoState frameInfoState = new CodeInfoAccess.FrameInfoState();
 
         @Override
         protected void logFrame(Log log, Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptFrame) {
@@ -111,12 +112,13 @@ public class ThreadStackPrinter {
                 logVirtualFrames(log, sp, ip, deoptFrame);
             } else {
                 frameInfoReader.reset();
-                long entryOffset = CodeInfoAccess.initFrameInfoReader(codeInfo, ip, frameInfoReader);
-                if (entryOffset >= 0) {
+                frameInfoState.reset();
+                CodeInfoAccess.initFrameInfoReader(codeInfo, ip, frameInfoReader, frameInfoState);
+                if (frameInfoState.entryOffset >= 0) {
                     boolean isFirst = true;
                     FrameInfoQueryResult validResult;
                     SingleShotFrameInfoQueryResultAllocator.reload();
-                    while ((validResult = CodeInfoAccess.nextFrameInfo(codeInfo, entryOffset, frameInfoReader, SingleShotFrameInfoQueryResultAllocator, DummyValueInfoAllocator, isFirst)) != null) {
+                    while ((validResult = CodeInfoAccess.nextFrameInfo(codeInfo, frameInfoReader, SingleShotFrameInfoQueryResultAllocator, DummyValueInfoAllocator, frameInfoState)) != null) {
                         SingleShotFrameInfoQueryResultAllocator.reload();
                         if (!isFirst) {
                             log.newline();

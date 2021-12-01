@@ -50,10 +50,16 @@ public abstract class EspressoInstrumentableNode extends Node implements BciProv
 
     public abstract Method getMethod();
 
+    @Override
     public final EspressoContext getContext() {
+        /*
+         * WARNING: this returns the **current**, thread-local, context; not a context associated
+         * with this node.
+         */
         return EspressoContext.get(this);
     }
 
+    @Override
     public final boolean isInstrumentable() {
         return true;
     }

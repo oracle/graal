@@ -32,7 +32,7 @@ import org.graalvm.compiler.graph.NodeClass;
  * {@link NodeClass#isCanonicalizable()}.
  *
  * Since the "graph" infrastructure is general and not limited to compiler graphs, this interface
- * does not define any meaning for "canonicalizeable".
+ * does not define any meaning for "canonicalizable".
  */
 public interface CanonicalizableMarker {
 }

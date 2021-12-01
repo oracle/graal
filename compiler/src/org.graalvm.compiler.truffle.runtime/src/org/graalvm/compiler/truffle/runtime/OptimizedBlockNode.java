@@ -86,11 +86,7 @@ public final class OptimizedBlockNode<T extends Node> extends BlockNode<T> imple
         if (a == null) {
             if (CompilerDirectives.inInterpreter()) {
                 // no need to deoptimize if the block was never executed
-                if (arg == NO_ARGUMENT) {
-                    alwaysNoArgument = Truffle.getRuntime().createAssumption("Always zero block node argument.");
-                } else {
-                    alwaysNoArgument = NeverValidAssumption.INSTANCE;
-                }
+                alwaysNoArgument = makeAlwaysZeroAssumption(arg == NO_ARGUMENT);
             }
         } else if (a.isValid()) {
             if (arg == NO_ARGUMENT) {
@@ -101,6 +97,14 @@ public final class OptimizedBlockNode<T extends Node> extends BlockNode<T> imple
             }
         }
         return arg;
+    }
+
+    private static Assumption makeAlwaysZeroAssumption(boolean valid) {
+        if (valid) {
+            return Truffle.getRuntime().createAssumption("Always zero block node argument.");
+        } else {
+            return NeverValidAssumption.INSTANCE;
+        }
     }
 
     @Override
@@ -320,10 +324,18 @@ public final class OptimizedBlockNode<T extends Node> extends BlockNode<T> imple
                     if (i > 0) {
                         if (blockRanges == null) {
                             blockRanges = new int[8];
-                            blockSizes = new int[8];
+                            /*
+                             * blockSizes array needs one more slot than blockRanges because of the
+                             * assignment below the for-loop.
+                             */
+                            blockSizes = new int[blockRanges.length + 1];
                         } else if (currentBlockIndex >= blockRanges.length) {
                             blockRanges = Arrays.copyOf(blockRanges, blockRanges.length * 2);
-                            blockSizes = Arrays.copyOf(blockSizes, blockSizes.length * 2);
+                            /*
+                             * blockSizes array needs one more slot than blockRanges because of the
+                             * assignment below the for-loop.
+                             */
+                            blockSizes = Arrays.copyOf(blockSizes, blockRanges.length + 1);
                         }
                         blockSizes[currentBlockIndex] = currentBlockSize;
                         blockRanges[currentBlockIndex++] = i;
@@ -637,9 +649,9 @@ public final class OptimizedBlockNode<T extends Node> extends BlockNode<T> imple
                 }
 
                 PartialBlockRootNode<T> partialRootNode = new PartialBlockRootNode<>(new FrameDescriptor(), block, startIndex, endIndex, blockIndex);
-                GraalRuntimeAccessor.NODES.applyPolyglotEngine(rootNode, partialRootNode);
+                GraalRuntimeAccessor.NODES.applySharingLayer(rootNode, partialRootNode);
 
-                targets[i] = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(partialRootNode);
+                targets[i] = (OptimizedCallTarget) partialRootNode.getCallTarget();
                 targets[i].setNonTrivialNodeCount(blockSizes[i]);
                 // we know the parameter types for block compilations. No need to check, lets cast
                 // them unsafely.

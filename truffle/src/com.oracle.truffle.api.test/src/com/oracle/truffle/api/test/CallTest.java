@@ -41,21 +41,21 @@
 package com.oracle.truffle.api.test;
 
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 /**
  * <h3>Calling Another Tree</h3>
  *
  * <p>
- * A guest language implementation can create multiple call targets using the
- * {@link TruffleRuntime#createCallTarget(RootNode)} method. Those call targets can be passed around
- * as normal Java objects and used for calling guest language methods.
+ * A guest language implementation can create multiple root nodes and thus multiple call targets
+ * using the {@link RootNode#getCallTarget()} method. Those call targets can be passed around as
+ * normal Java objects and used for calling guest language methods.
  * </p>
  *
  * <p>
@@ -65,12 +65,16 @@ import com.oracle.truffle.api.nodes.RootNode;
  */
 public class CallTest {
 
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
+
     @Test
     public void test() {
-        TruffleRuntime runtime = Truffle.getRuntime();
-        CallTarget foo = runtime.createCallTarget(new ConstantRootNode(20));
-        CallTarget bar = runtime.createCallTarget(new ConstantRootNode(22));
-        CallTarget main = runtime.createCallTarget(new DualCallNode(foo, bar));
+        CallTarget foo = new ConstantRootNode(20).getCallTarget();
+        CallTarget bar = new ConstantRootNode(22).getCallTarget();
+        CallTarget main = new DualCallNode(foo, bar).getCallTarget();
         Object result = main.call();
         Assert.assertEquals(42, result);
     }

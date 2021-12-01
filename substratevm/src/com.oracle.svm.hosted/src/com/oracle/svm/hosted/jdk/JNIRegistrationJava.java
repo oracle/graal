@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -109,6 +109,7 @@ class JNIRegistrationJava extends JNIRegistrationUtil implements Feature {
         JNIRuntimeAccess.register(method(a, "java.lang.System", "getProperty", String.class));
         JNIRuntimeAccess.register(java.nio.charset.Charset.class);
         JNIRuntimeAccess.register(method(a, "java.nio.charset.Charset", "isSupported", String.class));
+        JNIRuntimeAccess.register(constructor(a, "java.lang.String", byte[].class));
         JNIRuntimeAccess.register(constructor(a, "java.lang.String", byte[].class, String.class));
         JNIRuntimeAccess.register(method(a, "java.lang.String", "getBytes", String.class));
         JNIRuntimeAccess.register(method(a, "java.lang.String", "getBytes"));

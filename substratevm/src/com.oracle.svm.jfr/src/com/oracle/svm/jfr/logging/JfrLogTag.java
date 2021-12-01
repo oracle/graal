@@ -38,5 +38,8 @@ enum JfrLogTag {
     BYTECODE,
     PARSER,
     METADATA,
-    DCMD
+    STREAMING,
+    THROTTLE,
+    DCMD,
+    START
 }

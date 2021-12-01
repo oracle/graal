@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,10 +24,50 @@
  */
 package com.oracle.svm.core.configure;
 
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
+
+import java.util.Collection;
+import java.util.Locale;
+
 public interface ResourcesRegistry {
-    void addResources(String pattern);
 
-    void ignoreResources(String pattern);
+    /**
+     * @deprecated Use
+     *             {@link ResourcesRegistry#addResources(org.graalvm.nativeimage.impl.ConfigurationCondition, String)}
+     *             instead.
+     */
+    @Deprecated
+    default void addResources(String pattern) {
+        addResources(ConfigurationCondition.alwaysTrue(), pattern);
+    }
 
-    void addResourceBundles(String name);
+    /**
+     * @deprecated Use
+     *             {@link ResourcesRegistry#ignoreResources(org.graalvm.nativeimage.impl.ConfigurationCondition, String)}
+     *             instead.
+     */
+    @Deprecated
+    default void ignoreResources(String pattern) {
+        ignoreResources(ConfigurationCondition.alwaysTrue(), pattern);
+    }
+
+    /**
+     * @deprecated Use
+     *             {@link ResourcesRegistry#addResourceBundles(org.graalvm.nativeimage.impl.ConfigurationCondition, String)}
+     *             instead.
+     */
+    @Deprecated
+    default void addResourceBundles(String name) {
+        addResourceBundles(ConfigurationCondition.alwaysTrue(), name);
+    }
+
+    void addResources(ConfigurationCondition condition, String pattern);
+
+    void ignoreResources(ConfigurationCondition condition, String pattern);
+
+    void addResourceBundles(ConfigurationCondition condition, String name);
+
+    void addResourceBundles(ConfigurationCondition condition, String basename, Collection<Locale> locales);
+
+    void addClassBasedResourceBundle(ConfigurationCondition condition, String basename, String className);
 }

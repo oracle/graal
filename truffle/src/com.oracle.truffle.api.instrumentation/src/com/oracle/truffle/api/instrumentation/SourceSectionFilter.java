@@ -228,11 +228,10 @@ public final class SourceSectionFilter {
         if (root == null) {
             return Collections.emptySet();
         }
-        Object polyglotEngine = InstrumentAccessor.nodesAccess().getPolyglotEngine(root);
-        if (polyglotEngine == null) {
+        InstrumentationHandler handler = (InstrumentationHandler) InstrumentAccessor.engineAccess().getInstrumentationHandler(root);
+        if (handler == null) {
             return Collections.emptySet();
         }
-        InstrumentationHandler handler = (InstrumentationHandler) InstrumentAccessor.engineAccess().getInstrumentationHandler(polyglotEngine);
         return handler.getProvidedTags(node);
     }
 

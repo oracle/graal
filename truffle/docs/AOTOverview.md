@@ -28,7 +28,7 @@ For more information see [TruffleLanguage.patchContext](https://www.graalvm.org/
 ### Code sharing within the same Isolate/Process
 
 A polyglot engine can be used in order to determine the scope of code sharing between contexts.
-An example of how that can be done can be found in the [reference manual](https://www.graalvm.org/reference-manual/embed-languages/#code-caching-across-multiple-contexts).
+An example of how that can be done can be found in the [reference manual](../../docs/reference-manual/embedding/embed-languages.md#code-caching-across-multiple-contexts).
 When a language is initialized for a polyglot context, a new language instance is requested from an engine.
 If the language supports [ContextPolicy.SHARED](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.ContextPolicy.html#SHARED), then the language instance will be reused for an engine instance.
 The source parsing cache is associated with a language instance, so parsing happens once per language instance.

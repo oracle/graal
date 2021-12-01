@@ -53,11 +53,12 @@ public final class JfrBufferAccess {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static JfrBuffer allocate(UnsignedWord dataSize) {
+    public static JfrBuffer allocate(UnsignedWord dataSize, JfrBufferType bufferType) {
         UnsignedWord headerSize = JfrBufferAccess.getHeaderSize();
         JfrBuffer result = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(headerSize.add(dataSize));
         if (result.isNonNull()) {
             result.setSize(dataSize);
+            result.setBufferType(bufferType);
             reinitialize(result);
         }
         return result;

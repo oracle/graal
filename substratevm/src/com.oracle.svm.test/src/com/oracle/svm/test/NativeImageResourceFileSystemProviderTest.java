@@ -54,12 +54,14 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.configure.ResourcesRegistry;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.junit.Assert;
 import org.junit.Test;
+
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.configure.ResourcesRegistry;
 
 public class NativeImageResourceFileSystemProviderTest {
 
@@ -78,8 +80,8 @@ public class NativeImageResourceFileSystemProviderTest {
         public void beforeAnalysis(BeforeAnalysisAccess access) {
             ResourcesRegistry registry = ImageSingletons.lookup(ResourcesRegistry.class);
             // Remove leading / for the resource patterns
-            registry.addResources(RESOURCE_FILE_1.substring(1));
-            registry.addResources(RESOURCE_FILE_2.substring(1));
+            registry.addResources(ConfigurationCondition.alwaysTrue(), RESOURCE_FILE_1.substring(1));
+            registry.addResources(ConfigurationCondition.alwaysTrue(), RESOURCE_FILE_2.substring(1));
         }
     }
 

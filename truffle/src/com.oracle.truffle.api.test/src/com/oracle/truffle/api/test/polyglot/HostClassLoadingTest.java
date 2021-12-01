@@ -53,11 +53,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URL;
+import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.security.CodeSource;
+import java.security.ProtectionDomain;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -66,20 +69,21 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
 import java.util.jar.Manifest;
 
-import com.oracle.truffle.api.exception.AbstractTruffleException;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import java.net.URLClassLoader;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class HostClassLoadingTest extends AbstractPolyglotTest {
 
@@ -89,6 +93,15 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
 
     // static number that has the same lifetime as HostClassLoadingTestClass1.class.
     private static int hostStaticFieldValue = 42;
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
+
+    public HostClassLoadingTest() {
+        needsLanguageEnv = true;
+    }
 
     @Test
     public void testAllowAccess() throws IOException {
@@ -386,6 +399,40 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
         } finally {
             deleteDir(tempDir);
         }
+    }
+
+    @Test
+    public void testProtectionDomainJar() throws IOException {
+        setupEnv();
+        Class<?> hostClass = HostClassLoadingTestClass1.class;
+        Path tempDir = renameHostClass(hostClass, TEST_REPLACE_CLASS_NAME);
+        Path jar = createJar(tempDir);
+        languageEnv.addToHostClassPath(languageEnv.getPublicTruffleFile(jar.toString()));
+        Object newSymbol = languageEnv.lookupHostSymbol(hostClass.getPackage().getName() + "." + TEST_REPLACE_CLASS_NAME);
+        Class<?> clz = (Class<?>) languageEnv.asHostObject(newSymbol);
+        ProtectionDomain protectionDomain = clz.getProtectionDomain();
+        assertNotNull(protectionDomain);
+        CodeSource codeSource = protectionDomain.getCodeSource();
+        assertNotNull(codeSource);
+        assertEquals(jar.toUri().toURL().toString(), codeSource.getLocation().toString());
+        Files.deleteIfExists(jar);
+        deleteDir(tempDir);
+    }
+
+    @Test
+    public void testProtectionDomainFolder() throws IOException {
+        setupEnv();
+        Class<?> hostClass = HostClassLoadingTestClass1.class;
+        Path tempDir = renameHostClass(hostClass, TEST_REPLACE_CLASS_NAME);
+        languageEnv.addToHostClassPath(languageEnv.getPublicTruffleFile(tempDir.toString()));
+        Object newSymbol = languageEnv.lookupHostSymbol(hostClass.getPackage().getName() + "." + TEST_REPLACE_CLASS_NAME);
+        Class<?> clz = (Class<?>) languageEnv.asHostObject(newSymbol);
+        ProtectionDomain protectionDomain = clz.getProtectionDomain();
+        assertNotNull(protectionDomain);
+        CodeSource codeSource = protectionDomain.getCodeSource();
+        assertNotNull(codeSource);
+        assertEquals(tempDir.toUri().toURL().toString(), codeSource.getLocation().toString());
+        deleteDir(tempDir);
     }
 
     private static void assertHostClassPath(Env env, final Class<?> hostClass, String newName, TruffleFile classPathEntry) {

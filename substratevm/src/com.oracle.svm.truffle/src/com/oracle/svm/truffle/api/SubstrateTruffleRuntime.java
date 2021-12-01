@@ -50,6 +50,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.deopt.Deoptimizer;
@@ -60,7 +61,6 @@ import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.stack.SubstrateStackIntrospection;
-import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.truffle.TruffleSupport;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.impl.AbstractFastThreadLocal;
@@ -131,13 +131,18 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         return SubstrateFastThreadLocal.SINGLETON;
     }
 
+    @Override
+    protected AutoCloseable openCompilerThreadScope() {
+        return new CompilerThreadScope();
+    }
+
     private void initializeAtRuntime(OptimizedCallTarget callTarget) {
         truffleCompiler.initialize(getOptionsForCompiler(callTarget), callTarget, true);
         if (SubstrateTruffleOptions.isMultiThreaded()) {
             compileQueue = TruffleSupport.singleton().createBackgroundCompileQueue(this);
         }
         if (callTarget.engine.traceTransferToInterpreter) {
-            RuntimeOptionValues.singleton().update(Deoptimizer.Options.TraceDeoptimization, true);
+            Deoptimizer.Options.TraceDeoptimization.update(true);
         }
         installDefaultListeners();
         RuntimeSupport.getRuntimeSupport().addTearDownHook(this::teardown);
@@ -417,6 +422,22 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
             return hasNextTier;
         }
 
+    }
+
+    private static final class CompilerThreadScope implements AutoCloseable {
+
+        CompilerThreadScope() {
+            open();
+        }
+
+        // Substituted by EnterpriseTruffleFeature
+        private void open() {
+        }
+
+        // Substituted by EnterpriseTruffleFeature
+        @Override
+        public void close() {
+        }
     }
 
 }

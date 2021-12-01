@@ -66,11 +66,10 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
         SecretKey key = gen.generateKey();
         Result expected = runEncryptDecrypt(key, algorithm);
         InstalledCode intrinsic = compileAndInstallSubstitution(klass, methodName);
-        if (intrinsic != null) {
-            Result actual = runEncryptDecrypt(key, algorithm);
-            assertEquals(expected, actual);
-            intrinsic.invalidate();
-        }
+        Assert.assertTrue("missing intrinsic", intrinsic != null);
+        Result actual = runEncryptDecrypt(key, algorithm);
+        assertEquals(expected, actual);
+        intrinsic.invalidate();
     }
 
     @Test

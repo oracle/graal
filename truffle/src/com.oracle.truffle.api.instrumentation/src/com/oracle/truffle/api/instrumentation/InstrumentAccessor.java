@@ -44,6 +44,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Supplier;
 
@@ -213,6 +214,12 @@ final class InstrumentAccessor extends Accessor {
         }
 
         @Override
+        public boolean hasThreadBindings(Object engine) {
+            InstrumentationHandler instrumentationHandler = (InstrumentationHandler) engineAccess().getInstrumentationHandler(engine);
+            return instrumentationHandler.hasThreadBindings();
+        }
+
+        @Override
         @CompilerDirectives.TruffleBoundary
         public void notifyContextCreated(Object engine, TruffleContext context) {
             InstrumentationHandler instrumentationHandler = (InstrumentationHandler) engineAccess().getInstrumentationHandler(engine);
@@ -334,11 +341,7 @@ final class InstrumentAccessor extends Accessor {
         }
 
         private static InstrumentationHandler getHandler(RootNode rootNode) {
-            Object polyglotEngineImpl = nodesAccess().getPolyglotEngine(rootNode);
-            if (polyglotEngineImpl == null) {
-                return null;
-            }
-            return (InstrumentationHandler) engineAccess().getInstrumentationHandler(polyglotEngineImpl);
+            return (InstrumentationHandler) engineAccess().getInstrumentationHandler(rootNode);
         }
 
         @Override
@@ -347,10 +350,13 @@ final class InstrumentAccessor extends Accessor {
         }
 
         private static boolean validEngine(RootNode rootNode) {
-            Object currentPolyglotEngine = InstrumentAccessor.engineAccess().getCurrentPolyglotEngine();
-            if (!InstrumentAccessor.engineAccess().skipEngineValidation(rootNode) &&
-                            currentPolyglotEngine != InstrumentAccessor.nodesAccess().getPolyglotEngine(rootNode)) {
-                throw InstrumentAccessor.engineAccess().invalidSharingError(currentPolyglotEngine);
+            if (InstrumentAccessor.engineAccess().skipEngineValidation(rootNode)) {
+                return true;
+            }
+            Object currentSharingLayer = InstrumentAccessor.engineAccess().getCurrentSharingLayer();
+            Object previousSharingLayer = InstrumentAccessor.nodesAccess().getSharingLayer(rootNode);
+            if (!Objects.equals(previousSharingLayer, currentSharingLayer)) {
+                throw InstrumentAccessor.engineAccess().invalidSharingError(rootNode, previousSharingLayer, currentSharingLayer);
             }
             return true;
         }

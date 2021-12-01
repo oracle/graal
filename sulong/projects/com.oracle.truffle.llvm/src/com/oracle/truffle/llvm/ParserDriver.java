@@ -29,12 +29,22 @@
  */
 package com.oracle.truffle.llvm;
 
+import java.io.IOException;
+import java.nio.ByteOrder;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.stream.Collectors;
+
+import org.graalvm.polyglot.io.ByteSequence;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLogger;
-import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.initialization.LoadModulesNode;
@@ -74,16 +84,6 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.target.TargetTriple;
-import org.graalvm.polyglot.io.ByteSequence;
-
-import java.io.IOException;
-import java.nio.ByteOrder;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.stream.Collectors;
 
 /**
  * Drives a parsing request.
@@ -151,7 +151,7 @@ final class ParserDriver {
             TruffleFile file = createNativeTruffleFile(source.getName(), source.getPath());
             // An empty call target is returned for native libraries.
             if (file == null) {
-                return LLVMLanguage.createCallTarget(RootNode.createConstantNode(0));
+                return RootNode.createConstantNode(0).getCallTarget();
             }
             return createNativeLibraryCallTarget(file);
         }
@@ -317,8 +317,10 @@ final class ParserDriver {
         }
         LLVMFunction newFunction = LLVMFunction.create(name, originalSymbol.getFunction(), originalSymbol.getType(),
                         parserResult.getRuntime().getBitcodeID(), external.getIndex(), external.isExported(), parserResult.getRuntime().getFile().getPath(), external.isExternalWeak());
-        LLVMScope fileScope = parserResult.getRuntime().getFileScope();
-        fileScope.register(newFunction);
+        parserResult.getRuntime().getFileScope().register(newFunction);
+        if (external.isExported()) {
+            parserResult.getRuntime().getPublicFileScope().register(newFunction);
+        }
         it.remove();
         parserResult.getDefinedFunctions().add(external);
     }
@@ -351,12 +353,14 @@ final class ParserDriver {
         TargetTriple targetTriple = TargetTriple.create(module.getTargetInformation(com.oracle.truffle.llvm.parser.model.target.TargetTriple.class).toString());
         verifyBitcodeSource(source, targetDataLayout, targetTriple);
         NodeFactory nodeFactory = context.getLanguage().getActiveConfiguration().createNodeFactory(language, targetDataLayout);
+        // Create a new public file scope to be returned inside sulong library.
+        LLVMScope publicFileScope = new LLVMScope();
         LLVMScope fileScope = new LLVMScope();
-        LLVMParserRuntime runtime = new LLVMParserRuntime(fileScope, nodeFactory, bitcodeID, file, source.getName(), getSourceFilesWithChecksums(context.getEnv(), module),
+        LLVMParserRuntime runtime = new LLVMParserRuntime(fileScope, publicFileScope, nodeFactory, bitcodeID, file, source.getName(), getSourceFilesWithChecksums(context.getEnv(), module),
                         binaryParserResult.getLocator());
         LLVMParser parser = new LLVMParser(source, runtime);
         LLVMParserResult result = parser.parse(module, targetDataLayout);
-        createDebugInfo(module, new LLVMSymbolReadResolver(runtime, new FrameDescriptor(), GetStackSpaceFactory.createAllocaFactory(), targetDataLayout, false));
+        createDebugInfo(module, new LLVMSymbolReadResolver(runtime, null, GetStackSpaceFactory.createAllocaFactory(), targetDataLayout, false));
         return result;
     }
 
@@ -539,12 +543,12 @@ final class ParserDriver {
      */
     private CallTarget createLibraryCallTarget(String name, LLVMParserResult parserResult, Source source) {
         if (context.getEnv().getOptions().get(SulongEngineOption.PARSE_ONLY)) {
-            return LLVMLanguage.createCallTarget(RootNode.createConstantNode(0));
+            return RootNode.createConstantNode(0).getCallTarget();
         } else {
             // check if the functions should be resolved eagerly or lazily.
             boolean lazyParsing = context.getEnv().getOptions().get(SulongEngineOption.LAZY_PARSING) && !context.getEnv().getOptions().get(SulongEngineOption.AOTCacheStore);
             LoadModulesNode loadModules = LoadModulesNode.create(name, parserResult, lazyParsing, context.isInternalLibraryFile(parserResult.getRuntime().getFile()), dependencies, source, language);
-            return LLVMLanguage.createCallTarget(loadModules);
+            return loadModules.getCallTarget();
         }
     }
 
@@ -555,11 +559,11 @@ final class ParserDriver {
      */
     private CallTarget createNativeLibraryCallTarget(TruffleFile file) {
         if (context.getEnv().getOptions().get(SulongEngineOption.PARSE_ONLY)) {
-            return LLVMLanguage.createCallTarget(RootNode.createConstantNode(0));
+            return RootNode.createConstantNode(0).getCallTarget();
         } else {
-            // check if the functions should be resolved eagerly or lazyly.
-            LoadNativeNode loadNative = LoadNativeNode.create(new FrameDescriptor(), language, file);
-            return LLVMLanguage.createCallTarget(loadNative);
+            // check if the functions should be resolved eagerly or lazily.
+            LoadNativeNode loadNative = LoadNativeNode.create(language, file);
+            return loadNative.getCallTarget();
         }
     }
 }

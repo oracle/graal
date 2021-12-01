@@ -11,6 +11,8 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
 {
   local that = self,
 
+  local mx_version = (import "../../graal-common.json").mx_version,
+
   // platform-specific snippets
   common: {
     packages+: {
@@ -18,7 +20,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
       '01:pip:astroid': '==1.1.0',
       'pip:pylint': '==1.1.0',
       'pip:ninja_syntax': '==1.7.2',
-      'mx': 'HEAD',
+      'mx': mx_version,
     },
     environment+: {
       GRAALVM_CHECK_EXPERIMENTAL_OPTIONS: "true",
@@ -50,20 +52,20 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
 
   darwin: self.common + {
     environment+: {
-      // for compatibility with macOS Sierra
-      MACOSX_DEPLOYMENT_TARGET: '10.12',
+      // for compatibility with macOS High Sierra
+      MACOSX_DEPLOYMENT_TARGET: '10.13',
     },
     capabilities: ['darwin', 'amd64'],
   },
 
   // generic targets
   gate:            {targets+: ['gate'], timelimit: "1:00:00"},
-  postMerge:       {targets+: ['post-merge']},
-  bench:           {targets+: ['bench', 'post-merge']},
-  dailyBench:      {targets+: ['bench', 'daily']},
-  daily:           {targets+: ['daily']},
-  weekly:          {targets+: ['weekly']},
-  weeklyBench:     {targets+: ['bench', 'weekly']},
+  postMerge:       {targets+: ['post-merge'],          notify_emails: ["gilles.m.duboscq@oracle.com"]},
+  bench:           {targets+: ['bench', 'post-merge'], notify_emails: ["gilles.m.duboscq@oracle.com"]},
+  dailyBench:      {targets+: ['bench', 'daily'],      notify_emails: ["gilles.m.duboscq@oracle.com"]},
+  daily:           {targets+: ['daily'],               notify_emails: ["gilles.m.duboscq@oracle.com"]},
+  weekly:          {targets+: ['weekly'],              notify_emails: ["gilles.m.duboscq@oracle.com"]},
+  weeklyBench:     {targets+: ['bench', 'weekly'],     notify_emails: ["gilles.m.duboscq@oracle.com"]},
   onDemand:        {targets+: ['on-demand']},
   onDemandBench:   {targets+: ['bench', 'on-demand']},
 
@@ -116,6 +118,9 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   jdk11_on_demand_bench_linux   : base.jdk11  + self.onDemandBench + self.x52,
   jdk11_on_demand_bench_darwin  : base.jdk11  + self.onDemandBench + self.darwin,
   jdk11_on_demand_bench_windows : base.jdk11  + self.onDemandBench + base.windows_11,
+  jdk17_gate_linux              : base.jdk17  + self.gate          + self.linux,
+  jdk17_gate_darwin             : base.jdk17  + self.gate          + self.darwin,
+  jdk17_gate_windows            : base.jdk17  + self.gate          + base.windows_17,
 
   // shared snippets
   eclipse: {

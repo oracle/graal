@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,9 +28,12 @@ package com.oracle.svm.configure.test.config;
 import java.io.IOException;
 import java.io.PipedReader;
 import java.io.PipedWriter;
+import java.util.Collection;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -44,14 +47,15 @@ public class ResourceConfigurationTest {
     @Test
     public void anyResourceMatches() {
         ResourceConfiguration rc = new ResourceConfiguration();
-        rc.addResourcePattern(".*/Resource.*txt$");
+        ConfigurationCondition defaultCond = ConfigurationCondition.alwaysTrue();
+        rc.addResourcePattern(defaultCond, ".*/Resource.*txt$");
 
         Assert.assertTrue(rc.anyResourceMatches("com/my/app/Resource0.txt"));
         Assert.assertTrue(rc.anyResourceMatches("com/my/app/Resource1.txt"));
         Assert.assertTrue(rc.anyResourceMatches("/Resource2.txt"));
         Assert.assertTrue(rc.anyResourceMatches("/Resource3.txt"));
 
-        rc.ignoreResourcePattern(".*/Resource2.txt$");
+        rc.ignoreResourcePattern(defaultCond, ".*/Resource2.txt$");
 
         Assert.assertTrue(rc.anyResourceMatches("com/my/app/Resource0.txt"));
         Assert.assertTrue(rc.anyResourceMatches("com/my/app/Resource1.txt"));
@@ -62,28 +66,20 @@ public class ResourceConfigurationTest {
     @Test
     public void printJson() {
         ResourceConfiguration rc = new ResourceConfiguration();
-        rc.addResourcePattern(".*/Resource.*txt$");
-        rc.ignoreResourcePattern(".*/Resource2.txt$");
+        ConfigurationCondition defaultCond = ConfigurationCondition.alwaysTrue();
+        rc.addResourcePattern(defaultCond, ".*/Resource.*txt$");
+        rc.ignoreResourcePattern(defaultCond, ".*/Resource2.txt$");
         PipedWriter pw = new PipedWriter();
         JsonWriter jw = new JsonWriter(pw);
 
         try (PipedReader pr = new PipedReader()) {
             pr.connect(pw);
 
-            Thread writerThread = new Thread(new Runnable() {
-
-                @Override
-                public void run() {
-                    try {
-                        rc.printJson(jw);
-                    } catch (IOException e) {
-                        Assert.fail(e.getMessage());
-                    } finally {
-                        try {
-                            jw.close();
-                        } catch (IOException e) {
-                        }
-                    }
+            Thread writerThread = new Thread(() -> {
+                try (JsonWriter w = jw) {
+                    rc.printJson(w);
+                } catch (IOException e) {
+                    Assert.fail(e.getMessage());
                 }
             });
 
@@ -93,17 +89,27 @@ public class ResourceConfigurationTest {
             ResourcesRegistry registry = new ResourcesRegistry() {
 
                 @Override
-                public void addResources(String pattern) {
+                public void addResources(ConfigurationCondition condition, String pattern) {
                     addedResources.add(pattern);
                 }
 
                 @Override
-                public void ignoreResources(String pattern) {
+                public void ignoreResources(ConfigurationCondition condition, String pattern) {
                     ignoredResources.add(pattern);
                 }
 
                 @Override
-                public void addResourceBundles(String name) {
+                public void addResourceBundles(ConfigurationCondition condition, String name) {
+                }
+
+                @Override
+                public void addResourceBundles(ConfigurationCondition condition, String basename, Collection<Locale> locales) {
+
+                }
+
+                @Override
+                public void addClassBasedResourceBundle(ConfigurationCondition condition, String basename, String className) {
+
                 }
             };
 

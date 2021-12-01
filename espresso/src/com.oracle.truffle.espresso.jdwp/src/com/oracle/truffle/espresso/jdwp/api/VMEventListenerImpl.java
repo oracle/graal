@@ -78,6 +78,7 @@ public final class VMEventListenerImpl implements VMEventListener {
     private byte threadStartSuspendPolicy;
     private byte threadDeathSuspendPolicy;
     private int vmDeathRequestId;
+    private byte vmDeathSuspendPolicy = SuspendStrategy.NONE;
     private int vmStartRequestId;
     private final List<PacketStream> heldEvents = new ArrayList<>();
     private final Map<Object, Object> currentContendedMonitor = new HashMap<>();
@@ -186,16 +187,17 @@ public final class VMEventListenerImpl implements VMEventListener {
                 debuggerController.prepareMethodBreakpoint(new MethodBreakpointEvent((MethodBreakpointInfo) hook, null));
                 debuggerController.suspend(context.asGuestThread(Thread.currentThread()));
                 active = true;
-            }
-            switch (hook.getKind()) {
-                case ONE_TIME:
-                    if (hook.hasFired()) {
-                        method.removedMethodHook(hook);
-                    }
-                    break;
-                case INDEFINITE:
-                    // leave the hook active
-                    break;
+
+                switch (hook.getKind()) {
+                    case ONE_TIME:
+                        if (hook.hasFired()) {
+                            method.removedMethodHook(hook);
+                        }
+                        break;
+                    case INDEFINITE:
+                        // leave the hook active
+                        break;
+                }
             }
         }
         return active;
@@ -211,16 +213,17 @@ public final class VMEventListenerImpl implements VMEventListener {
                 debuggerController.prepareMethodBreakpoint(new MethodBreakpointEvent((MethodBreakpointInfo) hook, returnValue));
                 debuggerController.suspend(context.asGuestThread(Thread.currentThread()));
                 active = true;
-            }
-            switch (hook.getKind()) {
-                case ONE_TIME:
-                    if (hook.hasFired()) {
-                        method.removedMethodHook(hook);
-                    }
-                    break;
-                case INDEFINITE:
-                    // leave the hook active
-                    break;
+
+                switch (hook.getKind()) {
+                    case ONE_TIME:
+                        if (hook.hasFired()) {
+                            method.removedMethodHook(hook);
+                        }
+                        break;
+                    case INDEFINITE:
+                        // leave the hook active
+                        break;
+                }
             }
         }
         return active;
@@ -889,16 +892,27 @@ public final class VMEventListenerImpl implements VMEventListener {
     }
 
     @Override
-    public void vmDied() {
+    public boolean vmDied() {
         if (connection == null) {
-            return;
+            return false;
         }
         PacketStream stream = new PacketStream().commandPacket().commandSet(64).command(100);
-        stream.writeByte(SuspendStrategy.NONE);
-        stream.writeInt(1);
+        stream.writeByte(vmDeathSuspendPolicy);
+        if (vmDeathRequestId != 0) {
+            stream.writeInt(2);
+            // requested event
+            stream.writeByte(RequestedJDWPEvents.VM_DEATH);
+            stream.writeInt(vmDeathRequestId);
+            // automatic event
+        } else {
+            // only automatic event to send
+            stream.writeInt(1);
+        }
         stream.writeByte(RequestedJDWPEvents.VM_DEATH);
-        stream.writeInt(vmDeathRequestId != -1 ? vmDeathRequestId : 0);
-        connection.queuePacket(stream);
+        stream.writeInt(0);
+        // don't queue this packet, send immediately
+        connection.sendVMDied(stream);
+        return vmDeathSuspendPolicy != SuspendStrategy.NONE;
     }
 
     @Override
@@ -934,13 +948,14 @@ public final class VMEventListenerImpl implements VMEventListener {
     }
 
     @Override
-    public void addVMDeathRequest(int id) {
-        this.vmStartRequestId = id;
+    public void addVMDeathRequest(int id, byte suspendPolicy) {
+        this.vmDeathRequestId = id;
+        this.vmDeathSuspendPolicy = suspendPolicy;
     }
 
     @Override
     public void addVMStartRequest(int id) {
-        this.vmDeathRequestId = id;
+        this.vmStartRequestId = id;
     }
 
     @Override

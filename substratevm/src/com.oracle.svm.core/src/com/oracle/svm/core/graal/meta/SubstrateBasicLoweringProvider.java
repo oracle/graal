@@ -27,7 +27,6 @@ package com.oracle.svm.core.graal.meta;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
@@ -35,7 +34,7 @@ import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.CompressionNode.CompressionOp;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -69,8 +68,8 @@ import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.graal.nodes.FloatingWordCastNode;
-import com.oracle.svm.core.graal.nodes.SubstrateCompressionNode;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
+import com.oracle.svm.core.graal.nodes.SubstrateCompressionNode;
 import com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity;
 import com.oracle.svm.core.graal.nodes.SubstrateNarrowOopStamp;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
@@ -79,7 +78,6 @@ import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
 import com.oracle.svm.core.meta.SharedField;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.snippets.SubstrateIsArraySnippets;
 
 import jdk.vm.ci.code.CodeUtil;
@@ -110,12 +108,11 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
     }
 
     @Override
-    public void setConfiguration(RuntimeConfiguration runtimeConfig, OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
-                    SnippetReflectionProvider snippetReflection) {
+    public void setConfiguration(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers) {
         this.runtimeConfig = runtimeConfig;
-        this.identityHashCodeSnippets = IdentityHashCodeSupport.createSnippetTemplates(options, factories, providers, target);
-        this.isArraySnippets = new IsArraySnippets.Templates(new SubstrateIsArraySnippets(), options, factories, providers, target);
-        initialize(options, factories, Group.NullFactory, providers, snippetReflection);
+        this.identityHashCodeSnippets = IdentityHashCodeSupport.createSnippetTemplates(options, providers);
+        this.isArraySnippets = new IsArraySnippets.Templates(new SubstrateIsArraySnippets(), options, providers);
+        initialize(options, Group.NullFactory, providers);
     }
 
     protected Providers getProviders() {
@@ -151,8 +148,7 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
     public ValueNode staticFieldBase(StructuredGraph graph, ResolvedJavaField f) {
         SharedField field = (SharedField) f;
         assert field.isStatic();
-        Object fields = field.getStorageKind() == JavaKind.Object ? StaticFieldsSupport.getStaticObjectFields() : StaticFieldsSupport.getStaticPrimitiveFields();
-        return ConstantNode.forConstant(SubstrateObjectConstant.forObject(fields), getProviders().getMetaAccess(), graph);
+        return graph.unique(StaticFieldsSupport.createStaticFieldBaseNode(field.getStorageKind() != JavaKind.Object));
     }
 
     private static ValueNode maybeUncompress(ValueNode node) {
@@ -177,7 +173,7 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
             return graph.unique(new LoadHubNode(tool.getStampProvider(), object));
         }
 
-        assert !object.isConstant() || object.asJavaConstant().isNull();
+        GraalError.guarantee(!object.isConstant() || object.asJavaConstant().isNull(), "Object should either not be a constant or the null constant %s", object);
 
         ObjectLayout objectLayout = getObjectLayout();
         Stamp headerBitsStamp = StampFactory.forUnsignedInteger(8 * objectLayout.getReferenceSize());

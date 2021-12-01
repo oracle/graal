@@ -110,180 +110,29 @@ public class Signal {
         VoidPointer si_addr();
     }
 
-    @Platforms(Platform.LINUX.class)
+    @Platforms({Platform.LINUX.class, Platform.DARWIN_AARCH64.class, Platform.IOS_AARCH64.class})
     @CPointerTo(nameOfCType = "long long int")
     public interface GregsPointer extends PointerBase {
         long read(int index);
-    }
-
-    /**
-     * Used in {@link SubstrateSegfaultHandler}. So, this must not be a {@link CEnum} as this would
-     * result in machine code that needs a proper a heap base.
-     */
-    @Platforms({Platform.LINUX_AMD64.class})
-    @CContext(PosixDirectives.class)
-    public static final class GregEnum {
-        @CConstant
-        public static native int REG_R8();
-
-        @CConstant
-        public static native int REG_R9();
-
-        @CConstant
-        public static native int REG_R10();
-
-        @CConstant
-        public static native int REG_R11();
-
-        @CConstant
-        public static native int REG_R12();
-
-        @CConstant
-        public static native int REG_R13();
-
-        @CConstant
-        public static native int REG_R14();
-
-        @CConstant
-        public static native int REG_R15();
-
-        @CConstant
-        public static native int REG_RDI();
-
-        @CConstant
-        public static native int REG_RSI();
-
-        @CConstant
-        public static native int REG_RBP();
-
-        @CConstant
-        public static native int REG_RBX();
-
-        @CConstant
-        public static native int REG_RDX();
-
-        @CConstant
-        public static native int REG_RAX();
-
-        @CConstant
-        public static native int REG_RCX();
-
-        @CConstant
-        public static native int REG_RSP();
-
-        @CConstant
-        public static native int REG_RIP();
-
-        @CConstant
-        public static native int REG_EFL();
-
-        @CConstant
-        public static native int REG_CSGSFS();
-
-        @CConstant
-        public static native int REG_ERR();
-
-        @CConstant
-        public static native int REG_TRAPNO();
-
-        @CConstant
-        public static native int REG_OLDMASK();
-
-        @CConstant
-        public static native int REG_CR2();
     }
 
     @CStruct
     public interface ucontext_t extends RegisterDumper.Context {
         @CFieldAddress("uc_mcontext.gregs")
         @Platforms({Platform.LINUX_AMD64.class})
-        GregsPointer uc_mcontext_gregs();
+        GregsPointer uc_mcontext_linux_amd64_gregs();
 
         @CFieldAddress("uc_mcontext")
         @Platforms({Platform.LINUX_AARCH64.class, Platform.ANDROID_AARCH64.class})
-        mcontext_t uc_mcontext();
+        mcontext_linux_aarch64_t uc_mcontext_linux_aarch64();
 
         @CField("uc_mcontext")
-        @Platforms({Platform.DARWIN.class})
-        MContext64 uc_mcontext64();
-    }
+        @Platforms({Platform.DARWIN_AMD64.class})
+        AMD64DarwinMContext64 uc_mcontext_darwin_amd64();
 
-    @Platforms({Platform.DARWIN.class})
-    @CStruct(value = "__darwin_mcontext64", addStructKeyword = true)
-    public interface MContext64 extends PointerBase {
-
-        @CFieldOffset("__ss.__rax")
-        int rax_offset();
-
-        @CFieldOffset("__ss.__rbx")
-        int rbx_offset();
-
-        @CFieldOffset("__ss.__rip")
-        int rip_offset();
-
-        @CFieldOffset("__ss.__rsp")
-        int rsp_offset();
-
-        @CFieldOffset("__ss.__rcx")
-        int rcx_offset();
-
-        @CFieldOffset("__ss.__rdx")
-        int rdx_offset();
-
-        @CFieldOffset("__ss.__rbp")
-        int rbp_offset();
-
-        @CFieldOffset("__ss.__rsi")
-        int rsi_offset();
-
-        @CFieldOffset("__ss.__rdi")
-        int rdi_offset();
-
-        @CFieldOffset("__ss.__r8")
-        int r8_offset();
-
-        @CFieldOffset("__ss.__r9")
-        int r9_offset();
-
-        @CFieldOffset("__ss.__r10")
-        int r10_offset();
-
-        @CFieldOffset("__ss.__r11")
-        int r11_offset();
-
-        @CFieldOffset("__ss.__r12")
-        int r12_offset();
-
-        @CFieldOffset("__ss.__r13")
-        int r13_offset();
-
-        @CFieldOffset("__ss.__r14")
-        int r14_offset();
-
-        @CFieldOffset("__ss.__r15")
-        int r15_offset();
-
-        @CFieldOffset("__ss.__rflags")
-        int efl_offset();
-    }
-
-    @CStruct
-    @Platforms({Platform.LINUX_AARCH64.class, Platform.ANDROID_AARCH64.class})
-    public interface mcontext_t extends PointerBase {
-        @CField
-        long fault_address();
-
-        @CFieldAddress
-        GregsPointer regs();
-
-        @CField
-        long sp();
-
-        @CField
-        long pc();
-
-        @CField
-        long pstate();
+        @CField("uc_mcontext")
+        @Platforms({Platform.DARWIN_AARCH64.class, Platform.IOS_AARCH64.class})
+        AArch64DarwinMContext64 uc_mcontext_darwin_aarch64();
     }
 
     public interface AdvancedSignalDispatcher extends CFunctionPointer {
@@ -393,4 +242,199 @@ public class Signal {
 
     @CFunction
     public static native int sigaddset(sigset_tPointer set, int signum);
+
+    /**
+     * Used in {@link SubstrateSegfaultHandler}. So, this must not be a {@link CEnum} as this would
+     * result in machine code that needs a proper a heap base.
+     *
+     * Information about Linux's AMD64 struct sigcontext_64 uc_mcontext can be found at
+     * https://github.com/torvalds/linux/blob/9e1ff307c779ce1f0f810c7ecce3d95bbae40896/arch/x86/include/uapi/asm/sigcontext.h#L238
+     */
+    @Platforms({Platform.LINUX_AMD64.class})
+    @CContext(PosixDirectives.class)
+    public static final class GregEnumLinuxAMD64 {
+        @CConstant
+        public static native int REG_R8();
+
+        @CConstant
+        public static native int REG_R9();
+
+        @CConstant
+        public static native int REG_R10();
+
+        @CConstant
+        public static native int REG_R11();
+
+        @CConstant
+        public static native int REG_R12();
+
+        @CConstant
+        public static native int REG_R13();
+
+        @CConstant
+        public static native int REG_R14();
+
+        @CConstant
+        public static native int REG_R15();
+
+        @CConstant
+        public static native int REG_RDI();
+
+        @CConstant
+        public static native int REG_RSI();
+
+        @CConstant
+        public static native int REG_RBP();
+
+        @CConstant
+        public static native int REG_RBX();
+
+        @CConstant
+        public static native int REG_RDX();
+
+        @CConstant
+        public static native int REG_RAX();
+
+        @CConstant
+        public static native int REG_RCX();
+
+        @CConstant
+        public static native int REG_RSP();
+
+        @CConstant
+        public static native int REG_RIP();
+
+        @CConstant
+        public static native int REG_EFL();
+
+        @CConstant
+        public static native int REG_CSGSFS();
+
+        @CConstant
+        public static native int REG_ERR();
+
+        @CConstant
+        public static native int REG_TRAPNO();
+
+        @CConstant
+        public static native int REG_OLDMASK();
+
+        @CConstant
+        public static native int REG_CR2();
+    }
+
+    /**
+     * Information about Linux's AArch64 struct sigcontext uc_mcontext can be found at
+     * https://github.com/torvalds/linux/blob/9e1ff307c779ce1f0f810c7ecce3d95bbae40896/arch/arm64/include/uapi/asm/sigcontext.h#L28
+     */
+    @CStruct(value = "mcontext_t")
+    @Platforms({Platform.LINUX_AARCH64.class, Platform.ANDROID_AARCH64.class})
+    public interface mcontext_linux_aarch64_t extends PointerBase {
+        @CField
+        long fault_address();
+
+        @CFieldAddress
+        GregsPointer regs();
+
+        @CField
+        long sp();
+
+        @CField
+        long pc();
+
+        @CField
+        long pstate();
+    }
+
+    /**
+     * Information about Darwin's AMD64 mcontext64 can be found at
+     * https://github.com/apple/darwin-xnu/blob/2ff845c2e033bd0ff64b5b6aa6063a1f8f65aa32/bsd/i386/_mcontext.h#L147
+     *
+     * Information about _STRUCT_X86_THREAD_STATE64 can be found at
+     * https://github.com/apple/darwin-xnu/blob/2ff845c2e033bd0ff64b5b6aa6063a1f8f65aa32/osfmk/mach/i386/_structs.h#L739
+     */
+    @Platforms({Platform.DARWIN_AMD64.class})
+    @CStruct(value = "__darwin_mcontext64", addStructKeyword = true)
+    public interface AMD64DarwinMContext64 extends PointerBase {
+        @CFieldOffset("__ss.__rax")
+        int rax_offset();
+
+        @CFieldOffset("__ss.__rbx")
+        int rbx_offset();
+
+        @CFieldOffset("__ss.__rip")
+        int rip_offset();
+
+        @CFieldOffset("__ss.__rsp")
+        int rsp_offset();
+
+        @CFieldOffset("__ss.__rcx")
+        int rcx_offset();
+
+        @CFieldOffset("__ss.__rdx")
+        int rdx_offset();
+
+        @CFieldOffset("__ss.__rbp")
+        int rbp_offset();
+
+        @CFieldOffset("__ss.__rsi")
+        int rsi_offset();
+
+        @CFieldOffset("__ss.__rdi")
+        int rdi_offset();
+
+        @CFieldOffset("__ss.__r8")
+        int r8_offset();
+
+        @CFieldOffset("__ss.__r9")
+        int r9_offset();
+
+        @CFieldOffset("__ss.__r10")
+        int r10_offset();
+
+        @CFieldOffset("__ss.__r11")
+        int r11_offset();
+
+        @CFieldOffset("__ss.__r12")
+        int r12_offset();
+
+        @CFieldOffset("__ss.__r13")
+        int r13_offset();
+
+        @CFieldOffset("__ss.__r14")
+        int r14_offset();
+
+        @CFieldOffset("__ss.__r15")
+        int r15_offset();
+
+        @CFieldOffset("__ss.__rflags")
+        int efl_offset();
+    }
+
+    /**
+     * Information about Darwin's AArch64 mcontext64 can be found at
+     * https://github.com/apple/darwin-xnu/blob/2ff845c2e033bd0ff64b5b6aa6063a1f8f65aa32/bsd/arm/_mcontext.h#L70
+     *
+     * Information about _STRUCT_ARM_THREAD_STATE64 can be found at
+     * https://github.com/apple/darwin-xnu/blob/2ff845c2e033bd0ff64b5b6aa6063a1f8f65aa32/osfmk/mach/arm/_structs.h#L102
+     */
+    @Platforms({Platform.DARWIN_AARCH64.class, Platform.IOS_AARCH64.class})
+    @CStruct(value = "__darwin_mcontext64", addStructKeyword = true)
+    public interface AArch64DarwinMContext64 extends PointerBase {
+        @CFieldAddress("__ss.__x")
+        GregsPointer regs();
+
+        @CField("__ss.__fp")
+        long fp();
+
+        @CField("__ss.__lr")
+        long lr();
+
+        @CField("__ss.__sp")
+        long sp();
+
+        @CField("__ss.__pc")
+        long pc();
+    }
+
 }

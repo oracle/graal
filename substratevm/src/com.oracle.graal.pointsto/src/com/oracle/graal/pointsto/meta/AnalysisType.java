@@ -103,9 +103,8 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
      */
     private volatile ConcurrentHashMap<UnsafePartitionKind, Collection<AnalysisField>> unsafeAccessedFields;
 
-    private static final AnalysisType[] EMPTY_ARRAY = {};
-
-    AnalysisType[] subTypes;
+    /** Immediate subtypes and this type itself. */
+    private final Set<AnalysisType> subTypes;
     AnalysisType superClass;
 
     private final int id;
@@ -143,7 +142,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     private final AnalysisType[] interfaces;
 
     /* isArray is an expensive operation so we eagerly compute it */
-    private boolean isArray;
+    private final boolean isArray;
 
     private final int dimension;
 
@@ -181,10 +180,24 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
              */
         }
 
-        subTypes = EMPTY_ARRAY;
         /* Ensure the super types as well as the component type (for arrays) is created too. */
         superClass = universe.lookup(wrapped.getSuperclass());
         interfaces = convertTypes(wrapped.getInterfaces());
+
+        subTypes = ConcurrentHashMap.newKeySet();
+        addSubType(this);
+
+        /* Build subtypes. */
+        if (superClass != null) {
+            superClass.addSubType(this);
+        }
+        if (isInterface() && interfaces.length == 0) {
+            objectType.addSubType(this);
+        }
+        for (AnalysisType interf : interfaces) {
+            interf.addSubType(this);
+        }
+
         if (isArray()) {
             this.componentType = universe.lookup(wrapped.getComponentType());
             int dim = 0;
@@ -462,7 +475,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
                  */
                 registerAsAllocated(null);
             }
-            universe.hostVM.executor().execute(initializationTask);
+            ensureInitialized();
         }
     }
 
@@ -787,6 +800,15 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         return this;
     }
 
+    /** Get the immediate subtypes, including this type itself. */
+    public Set<AnalysisType> getSubTypes() {
+        return subTypes;
+    }
+
+    private void addSubType(AnalysisType subType) {
+        this.subTypes.add(subType);
+    }
+
     @Override
     public AnalysisType findLeastCommonAncestor(ResolvedJavaType otherType) {
         ResolvedJavaType subst = universe.substitutions.resolve(((AnalysisType) otherType).wrapped);
@@ -813,7 +835,8 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     }
 
     public boolean hasSubTypes() {
-        return subTypes != null ? subTypes.length > 0 : false;
+        /* subTypes always includes this type itself. */
+        return subTypes.size() > 1;
     }
 
     @Override

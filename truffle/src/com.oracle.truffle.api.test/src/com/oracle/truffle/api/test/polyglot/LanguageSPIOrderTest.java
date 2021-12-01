@@ -51,6 +51,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -58,8 +59,8 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class LanguageSPIOrderTest {
 
@@ -83,6 +84,11 @@ public class LanguageSPIOrderTest {
 
     private static OrderContext getOrder(String languageId) {
         return currentContext.get(languageId);
+    }
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
     }
 
     @Test
@@ -292,7 +298,7 @@ public class LanguageSPIOrderTest {
 
         @Override
         protected CallTarget parse(com.oracle.truffle.api.TruffleLanguage.ParsingRequest request) throws Exception {
-            return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+            return RootNode.createConstantNode(42).getCallTarget();
         }
 
         @Override

@@ -30,23 +30,23 @@ import java.util.ListIterator;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.java.DefaultSuitesCreator;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
-import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 
 public class AArch64SuitesCreator extends DefaultSuitesCreator {
-    private final List<Class<? extends Phase>> insertReadReplacementBeforePositions;
+    private final List<Class<? extends BasePhase<? super CoreProviders>>> insertReadReplacementBeforePositions;
 
-    public AArch64SuitesCreator(CompilerConfiguration compilerConfiguration, Plugins plugins, List<Class<? extends Phase>> insertReadReplacementBeforePositions) {
+    public AArch64SuitesCreator(CompilerConfiguration compilerConfiguration, Plugins plugins, List<Class<? extends BasePhase<? super CoreProviders>>> insertReadReplacementBeforePositions) {
         super(compilerConfiguration, plugins);
         this.insertReadReplacementBeforePositions = insertReadReplacementBeforePositions;
     }
 
-    public AArch64SuitesCreator(CompilerConfiguration compilerConfiguration, List<Class<? extends Phase>> insertReadReplacementBeforePositions) {
+    public AArch64SuitesCreator(CompilerConfiguration compilerConfiguration, List<Class<? extends BasePhase<? super CoreProviders>>> insertReadReplacementBeforePositions) {
         super(compilerConfiguration);
         this.insertReadReplacementBeforePositions = insertReadReplacementBeforePositions;
     }
@@ -55,7 +55,7 @@ public class AArch64SuitesCreator extends DefaultSuitesCreator {
     public Suites createSuites(OptionValues options) {
         Suites suites = super.createSuites(options);
         ListIterator<BasePhase<? super LowTierContext>> findPhase = null;
-        for (Class<? extends Phase> phase : insertReadReplacementBeforePositions) {
+        for (Class<? extends BasePhase<? super CoreProviders>> phase : insertReadReplacementBeforePositions) {
             findPhase = suites.getLowTier().findPhase(phase);
             if (findPhase != null) {
                 // Put AArch64ReadReplacementPhase right before the requested phase

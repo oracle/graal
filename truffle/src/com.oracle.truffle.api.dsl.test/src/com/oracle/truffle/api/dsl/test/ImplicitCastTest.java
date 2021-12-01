@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.dsl.test;
 
 import static com.oracle.truffle.api.dsl.test.examples.ExampleNode.createArguments;
+import static org.junit.Assert.assertEquals;
 
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -720,4 +721,38 @@ public class ImplicitCastTest {
             return "s3";
         }
     }
+
+    @Test
+    public void testImplicitCastOrder() {
+        // the first type is always the direct implicit target type
+        // we assume it is the most likely type to find.
+        assertEquals(0b1, ImplicitCastOrderGen.specializeImplicitLong(42L));
+        // we expect types are specialized in implicit cast declaration order
+        assertEquals(0b10, ImplicitCastOrderGen.specializeImplicitLong(42));
+        assertEquals(0b100, ImplicitCastOrderGen.specializeImplicitLong((short) 42));
+        assertEquals(0b1000, ImplicitCastOrderGen.specializeImplicitLong(42d));
+    }
+
+    @TypeSystem
+    static class ImplicitCastOrder {
+
+        // we use method names that would cause ambiguities if the order would not be declaration
+        // order but some alphabetical or type based order.
+
+        @ImplicitCast
+        static long do1(int v) {
+            return v;
+        }
+
+        @ImplicitCast
+        static long do0(short v) {
+            return v;
+        }
+
+        @ImplicitCast
+        static long do11(double v) {
+            return (long) v;
+        }
+    }
+
 }

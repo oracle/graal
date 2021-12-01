@@ -38,6 +38,7 @@ import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CCharPointer;
@@ -49,13 +50,16 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AlwaysInline;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
+import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.util.Counter;
 
@@ -134,7 +138,7 @@ public class JavaMainWrapper {
                  * because they often depend on option values. The user is expected to manually run
                  * the startup hooks after setting all option values.
                  */
-                RuntimeSupport.getRuntimeSupport().executeStartupHooks();
+                VMRuntime.initialize();
             }
 
             /*
@@ -170,13 +174,13 @@ public class JavaMainWrapper {
              */
             RuntimeSupport.getRuntimeSupport().shutdown();
 
-            Counter.logValues();
+            Counter.logValues(Log.log());
         }
         return exitCode;
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(prologue = EnterCreateIsolateWithCArgumentsPrologue.class, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(prologue = EnterCreateIsolateWithCArgumentsPrologue.class)
     @SuppressWarnings("unused")
     public static int run(int argc, CCharPointerPointer argv) {
         return runCore();
@@ -260,11 +264,12 @@ public class JavaMainWrapper {
         return CTypeConversion.toJavaString(MAIN_ISOLATE_PARAMETERS.get().getArgv().read(0));
     }
 
-    private static class EnterCreateIsolateWithCArgumentsPrologue {
+    private static class EnterCreateIsolateWithCArgumentsPrologue implements CEntryPointOptions.Prologue {
         private static final CGlobalData<CCharPointer> errorMessage = CGlobalDataFactory.createCString(
                         "Failed to create the main Isolate.");
 
         @SuppressWarnings("unused")
+        @Uninterruptible(reason = "prologue")
         public static void enter(int paramArgc, CCharPointerPointer paramArgv) {
             CEntryPointCreateIsolateParameters args = MAIN_ISOLATE_PARAMETERS.get();
             args.setVersion(3);
@@ -272,7 +277,7 @@ public class JavaMainWrapper {
             args.setArgv(paramArgv);
 
             int code = CEntryPointActions.enterCreateIsolate(args);
-            if (code != 0) {
+            if (code != CEntryPointErrors.NO_ERROR) {
                 CEntryPointActions.failFatally(code, errorMessage.get());
             }
         }

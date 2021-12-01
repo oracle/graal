@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -69,7 +69,7 @@ public abstract class ValueInstruction extends Instruction implements SSAValue, 
 
     @Override
     public final void setFrameIdentifier(int frameIdentifier) {
-        assert this.frameIdentifier == -1;
+        assert (frameIdentifier >= 0 && this.frameIdentifier == -1) || (frameIdentifier < -1 && this.frameIdentifier >= 0);
         this.frameIdentifier = frameIdentifier;
     }
 }

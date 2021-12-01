@@ -62,9 +62,9 @@ public class SchedulingTest extends GraphScheduleTest {
             fs.replaceAtUsages(null);
             GraphUtil.killWithUnusedFloatingInputs(fs);
         }
-        graph.clearAllStateAfter();
+        graph.clearAllStateAfterForTestingOnly();
         SchedulePhase schedulePhase = new SchedulePhase(SchedulingStrategy.LATEST);
-        schedulePhase.apply(graph);
+        schedulePhase.apply(graph, getDefaultHighTierContext());
         ScheduleResult schedule = graph.getLastSchedule();
         NodeMap<Block> nodeToBlock = schedule.getCFG().getNodeToBlock();
         assertTrue(graph.getNodes().filter(LoopExitNode.class).count() == 1);

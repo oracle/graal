@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.jdk.localization;
 
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ListResourceBundle;
@@ -41,6 +42,7 @@ import com.oracle.svm.core.jdk.localization.bundles.ExtractedBundle;
 import com.oracle.svm.core.jdk.localization.bundles.StoredBundle;
 import com.oracle.svm.core.jdk.localization.compression.GzipBundleCompression;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.jdk.localization.compression.utils.BundleSerializationUtils;
 import org.graalvm.compiler.debug.GraalError;
 
 // Checkstyle: stop
@@ -49,8 +51,6 @@ import org.graalvm.nativeimage.Platforms;
 import sun.util.resources.OpenListResourceBundle;
 import sun.util.resources.ParallelListResourceBundle;
 // Checkstyle: resume
-
-import static com.oracle.svm.core.jdk.localization.compression.utils.BundleSerializationUtils.extractContent;
 
 public class BundleContentSubstitutedLocalizationSupport extends LocalizationSupport {
 
@@ -65,10 +65,15 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
 
     private final Map<Class<?>, StoredBundle> storedBundles = new ConcurrentHashMap<>();
 
-    public BundleContentSubstitutedLocalizationSupport(Locale defaultLocale, Set<Locale> locales, List<String> requestedPatterns, ForkJoinPool pool) {
-        super(defaultLocale, locales);
+    public BundleContentSubstitutedLocalizationSupport(Locale defaultLocale, Set<Locale> locales, Charset defaultCharset, List<String> requestedPatterns, ForkJoinPool pool) {
+        super(defaultLocale, locales, defaultCharset);
         this.pool = pool;
         this.compressBundlesPatterns = parseCompressBundlePatterns(requestedPatterns);
+    }
+
+    @Override
+    public boolean substituteLoadLookup() {
+        return true;
     }
 
     @Override
@@ -80,6 +85,14 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
             } else {
                 storeBundleContentOf(bundle);
             }
+        }
+    }
+
+    @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
+    protected void onClassBundlePrepared(Class<?> bundleClass) {
+        if (isBundleSupported(bundleClass)) {
+            prepareNonCompliant(bundleClass);
         }
     }
 
@@ -95,7 +108,7 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
         if (!isInDefaultLocale && shouldCompressBundle(bundle) && GzipBundleCompression.canCompress(bundle)) {
             return GzipBundleCompression.compress(bundle);
         }
-        Map<String, Object> content = extractContent(bundle);
+        Map<String, Object> content = BundleSerializationUtils.extractContent(bundle);
         return new ExtractedBundle(content);
     }
 
@@ -109,8 +122,13 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public boolean isBundleSupported(ResourceBundle bundle) {
-        return bundle instanceof ListResourceBundle || bundle instanceof OpenListResourceBundle || bundle instanceof ParallelListResourceBundle;
+    private static boolean isBundleSupported(ResourceBundle bundle) {
+        return isBundleSupported(bundle.getClass());
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static boolean isBundleSupported(Class<?> bundleClass) {
+        return ListResourceBundle.class.isAssignableFrom(bundleClass) || OpenListResourceBundle.class.isAssignableFrom(bundleClass) || ParallelListResourceBundle.class.isAssignableFrom(bundleClass);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

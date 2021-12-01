@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -35,8 +35,11 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMBuiltin;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI16Vector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI1Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI32Vector;
 import com.oracle.truffle.llvm.runtime.vector.LLVMI64Vector;
+import com.oracle.truffle.llvm.runtime.vector.LLVMI8Vector;
 
 public abstract class LLVMVectorReduce {
 
@@ -44,6 +47,28 @@ public abstract class LLVMVectorReduce {
     @NodeField(name = "vectorLength", type = int.class)
     public abstract static class LLVMVectorReduceAddNode extends LLVMBuiltin {
         protected abstract int getVectorLength();
+
+        @Specialization
+        @ExplodeLoop
+        protected byte doVector(LLVMI8Vector value) {
+            assert value.getLength() == getVectorLength();
+            byte result = 0;
+            for (int i = 0; i < getVectorLength(); i++) {
+                result += value.getValue(i);
+            }
+            return result;
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected short doVector(LLVMI16Vector value) {
+            assert value.getLength() == getVectorLength();
+            short result = 0;
+            for (int i = 0; i < getVectorLength(); i++) {
+                result += value.getValue(i);
+            }
+            return result;
+        }
 
         @Specialization
         @ExplodeLoop
@@ -75,6 +100,28 @@ public abstract class LLVMVectorReduce {
 
         @Specialization
         @ExplodeLoop
+        protected byte doVector(LLVMI8Vector value) {
+            assert value.getLength() == getVectorLength();
+            byte result = 1;
+            for (int i = 0; i < getVectorLength(); i++) {
+                result *= value.getValue(i);
+            }
+            return result;
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected short doVector(LLVMI16Vector value) {
+            assert value.getLength() == getVectorLength();
+            short result = 1;
+            for (int i = 0; i < getVectorLength(); i++) {
+                result *= value.getValue(i);
+            }
+            return result;
+        }
+
+        @Specialization
+        @ExplodeLoop
         protected int doVector(LLVMI32Vector value) {
             assert value.getLength() == getVectorLength();
             int result = 1;
@@ -100,6 +147,39 @@ public abstract class LLVMVectorReduce {
     @NodeField(name = "vectorLength", type = int.class)
     public abstract static class LLVMVectorReduceAndNode extends LLVMBuiltin {
         protected abstract int getVectorLength();
+
+        @Specialization
+        @ExplodeLoop
+        protected boolean doVector(LLVMI1Vector value) {
+            assert value.getLength() == getVectorLength();
+            boolean result = true;
+            for (int i = 0; i < getVectorLength(); i++) {
+                result &= value.getValue(i);
+            }
+            return result;
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected byte doVector(LLVMI8Vector value) {
+            assert value.getLength() == getVectorLength();
+            byte result = 0;
+            for (int i = 0; i < getVectorLength(); i++) {
+                result &= value.getValue(i);
+            }
+            return result;
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected short doVector(LLVMI16Vector value) {
+            assert value.getLength() == getVectorLength();
+            short result = 0;
+            for (int i = 0; i < getVectorLength(); i++) {
+                result &= value.getValue(i);
+            }
+            return result;
+        }
 
         @Specialization
         @ExplodeLoop
@@ -131,6 +211,39 @@ public abstract class LLVMVectorReduce {
 
         @Specialization
         @ExplodeLoop
+        protected boolean doVector(LLVMI1Vector value) {
+            assert value.getLength() == getVectorLength();
+            boolean result = false;
+            for (int i = 0; i < getVectorLength(); i++) {
+                result |= value.getValue(i);
+            }
+            return result;
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected byte doVector(LLVMI8Vector value) {
+            assert value.getLength() == getVectorLength();
+            byte result = 0;
+            for (int i = 0; i < getVectorLength(); i++) {
+                result |= value.getValue(i);
+            }
+            return result;
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected short doVector(LLVMI16Vector value) {
+            assert value.getLength() == getVectorLength();
+            short result = 0;
+            for (int i = 0; i < getVectorLength(); i++) {
+                result |= value.getValue(i);
+            }
+            return result;
+        }
+
+        @Specialization
+        @ExplodeLoop
         protected int doVector(LLVMI32Vector value) {
             assert value.getLength() == getVectorLength();
             int result = 0;
@@ -159,6 +272,39 @@ public abstract class LLVMVectorReduce {
 
         @Specialization
         @ExplodeLoop
+        protected boolean doVector(LLVMI1Vector value) {
+            assert value.getLength() == getVectorLength();
+            boolean result = false;
+            for (int i = 0; i < getVectorLength(); i++) {
+                result ^= value.getValue(i);
+            }
+            return result;
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected byte doVector(LLVMI8Vector value) {
+            assert value.getLength() == getVectorLength();
+            byte result = 0;
+            for (int i = 0; i < getVectorLength(); i++) {
+                result ^= value.getValue(i);
+            }
+            return result;
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected short doVector(LLVMI16Vector value) {
+            assert value.getLength() == getVectorLength();
+            short result = 0;
+            for (int i = 0; i < getVectorLength(); i++) {
+                result ^= value.getValue(i);
+            }
+            return result;
+        }
+
+        @Specialization
+        @ExplodeLoop
         protected int doVector(LLVMI32Vector value) {
             assert value.getLength() == getVectorLength();
             int result = 0;
@@ -184,6 +330,34 @@ public abstract class LLVMVectorReduce {
     @NodeField(name = "vectorLength", type = int.class)
     public abstract static class LLVMVectorReduceUnsignedMaxNode extends LLVMBuiltin {
         protected abstract int getVectorLength();
+
+        @Specialization
+        @ExplodeLoop
+        protected byte doVector(LLVMI8Vector value) {
+            assert value.getLength() == getVectorLength();
+            int max = 0;
+            for (int i = 0; i < getVectorLength(); i++) {
+                final int elem = (value.getValue(i) & LLVMExpressionNode.I8_MASK);
+                if (elem > max) {
+                    max = elem;
+                }
+            }
+            return (byte) max;
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected short doVector(LLVMI16Vector value) {
+            assert value.getLength() == getVectorLength();
+            int max = 0;
+            for (int i = 0; i < getVectorLength(); i++) {
+                final int elem = (value.getValue(i) & LLVMExpressionNode.I16_MASK);
+                if (elem > max) {
+                    max = elem;
+                }
+            }
+            return (short) max;
+        }
 
         @Specialization
         @ExplodeLoop
@@ -222,6 +396,34 @@ public abstract class LLVMVectorReduce {
 
         @Specialization
         @ExplodeLoop
+        protected byte doVector(LLVMI8Vector value) {
+            assert value.getLength() == getVectorLength();
+            int min = Integer.MAX_VALUE;
+            for (int i = 0; i < getVectorLength(); i++) {
+                final int elem = (value.getValue(i) & LLVMExpressionNode.I8_MASK);
+                if (elem < min) {
+                    min = elem;
+                }
+            }
+            return (byte) min;
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected short doVector(LLVMI16Vector value) {
+            assert value.getLength() == getVectorLength();
+            int min = Integer.MAX_VALUE;
+            for (int i = 0; i < getVectorLength(); i++) {
+                final int elem = (value.getValue(i) & LLVMExpressionNode.I16_MASK);
+                if (elem < min) {
+                    min = elem;
+                }
+            }
+            return (short) min;
+        }
+
+        @Specialization
+        @ExplodeLoop
         protected int doVector(LLVMI32Vector value) {
             assert value.getLength() == getVectorLength();
             long min = Long.MAX_VALUE;
@@ -256,9 +458,37 @@ public abstract class LLVMVectorReduce {
 
         @Specialization
         @ExplodeLoop
+        protected byte doVector(LLVMI8Vector value) {
+            assert value.getLength() == getVectorLength();
+            byte max = Byte.MIN_VALUE;
+            for (int i = 0; i < getVectorLength(); i++) {
+                final byte elem = value.getValue(i);
+                if (elem > max) {
+                    max = elem;
+                }
+            }
+            return max;
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected short doVector(LLVMI16Vector value) {
+            assert value.getLength() == getVectorLength();
+            short max = Short.MIN_VALUE;
+            for (int i = 0; i < getVectorLength(); i++) {
+                final short elem = value.getValue(i);
+                if (elem > max) {
+                    max = elem;
+                }
+            }
+            return max;
+        }
+
+        @Specialization
+        @ExplodeLoop
         protected int doVector(LLVMI32Vector value) {
             assert value.getLength() == getVectorLength();
-            int max = 0;
+            int max = Integer.MIN_VALUE;
             for (int i = 0; i < getVectorLength(); i++) {
                 final int elem = value.getValue(i);
                 if (elem > max) {
@@ -272,7 +502,7 @@ public abstract class LLVMVectorReduce {
         @ExplodeLoop
         protected long doVector(LLVMI64Vector value) {
             assert value.getLength() == getVectorLength();
-            long max = 0;
+            long max = Long.MIN_VALUE;
             for (int i = 0; i < getVectorLength(); i++) {
                 final long elem = value.getValue(i);
                 if (elem > max) {
@@ -287,6 +517,34 @@ public abstract class LLVMVectorReduce {
     @NodeField(name = "vectorLength", type = int.class)
     public abstract static class LLVMVectorReduceSignedMinNode extends LLVMBuiltin {
         protected abstract int getVectorLength();
+
+        @Specialization
+        @ExplodeLoop
+        protected byte doVector(LLVMI8Vector value) {
+            assert value.getLength() == getVectorLength();
+            byte min = Byte.MAX_VALUE;
+            for (int i = 0; i < getVectorLength(); i++) {
+                final byte elem = value.getValue(i);
+                if (elem < min) {
+                    min = elem;
+                }
+            }
+            return min;
+        }
+
+        @Specialization
+        @ExplodeLoop
+        protected short doVector(LLVMI16Vector value) {
+            assert value.getLength() == getVectorLength();
+            short min = Short.MAX_VALUE;
+            for (int i = 0; i < getVectorLength(); i++) {
+                final short elem = value.getValue(i);
+                if (elem < min) {
+                    min = elem;
+                }
+            }
+            return min;
+        }
 
         @Specialization
         @ExplodeLoop

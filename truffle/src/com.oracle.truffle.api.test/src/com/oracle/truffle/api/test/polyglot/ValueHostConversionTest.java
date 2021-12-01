@@ -40,24 +40,20 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.test.examples.TargetMappings;
-import com.oracle.truffle.tck.tests.ValueAssert.Trait;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.HostAccess;
-import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
-import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.PolyglotException.StackFrame;
-import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.proxy.Proxy;
-import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.Before;
-import org.junit.Test;
+import static com.oracle.truffle.tck.tests.ValueAssert.assertUnsupported;
+import static com.oracle.truffle.tck.tests.ValueAssert.assertValue;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.BOOLEAN;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.HOST_OBJECT;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.MEMBERS;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.NULL;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.NUMBER;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.PROXY_OBJECT;
+import static com.oracle.truffle.tck.tests.ValueAssert.Trait.STRING;
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -72,20 +68,21 @@ import java.util.Iterator;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.BOOLEAN;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.HOST_OBJECT;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.MEMBERS;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.NULL;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.NUMBER;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.PROXY_OBJECT;
-import static com.oracle.truffle.tck.tests.ValueAssert.Trait.STRING;
-import static com.oracle.truffle.tck.tests.ValueAssert.assertUnsupported;
-import static com.oracle.truffle.tck.tests.ValueAssert.assertValue;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.PolyglotException.StackFrame;
+import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.proxy.Proxy;
+import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Before;
+import org.junit.Test;
+
+import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.test.examples.TargetMappings;
+import com.oracle.truffle.tck.tests.ValueAssert.Trait;
 
 /**
  * Tests class for {@link Context#asValue(Object)}.
@@ -240,7 +237,7 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
 
     @Test
     public void testStaticClassProperties() {
-        Value recordClass = getStaticClass(JavaRecord.class);
+        Value recordClass = context.eval("sl", "function main() { return java(\"" + JavaRecord.class.getName() + "\"); }");
         assertTrue(recordClass.canInstantiate());
         assertTrue(recordClass.getMetaObject().asHostObject() == Class.class);
         assertFalse(recordClass.hasMember("getName"));
@@ -262,7 +259,7 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
 
         assertValue(recordClass, Trait.INSTANTIABLE, Trait.MEMBERS, Trait.HOST_OBJECT, Trait.META);
 
-        Value bigIntegerStatic = getStaticClass(BigInteger.class);
+        Value bigIntegerStatic = context.eval("sl", "function main() { return java(\"" + BigInteger.class.getName() + "\"); }");
         assertTrue(bigIntegerStatic.hasMember("ZERO"));
         assertTrue(bigIntegerStatic.hasMember("ONE"));
         Value bigIntegerOne = bigIntegerStatic.getMember("ONE");
@@ -274,21 +271,6 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
         Value bigResult = bigValue.getMember("add").execute(bigIntegerOne);
         Value expectedResult = bigIntegerStatic.getMember("valueOf").execute(9001);
         assertEquals(0, bigResult.getMember("compareTo").execute(expectedResult).asInt());
-    }
-
-    private Value getStaticClass(Class<?> clazz) {
-        ProxyLanguage.setDelegate(new ProxyLanguage() {
-            @Override
-            protected CallTarget parse(ParsingRequest request) {
-                return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
-                    @Override
-                    public Object execute(VirtualFrame frame) {
-                        return LanguageContext.get(this).env.lookupHostSymbol(clazz.getName());
-                    }
-                });
-            }
-        });
-        return context.asValue(context.eval(ProxyLanguage.ID, clazz.getName()));
     }
 
     @Test

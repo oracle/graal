@@ -70,7 +70,6 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
@@ -119,6 +118,10 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
     @BeforeClass
     public static void beforeClass() {
         Assume.assumeFalse(CompileImmediatelyCheck.isCompileImmediately());
+    }
+
+    public SourceListenerTest() {
+        needsInstrumentEnv = true;
     }
 
     @Test
@@ -503,14 +506,14 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
         Node node1 = new SourceSectionFilterTest.SourceSectionNode(source1.createSection(1));
         RootNode rootA = SourceSectionFilterTest.createRootNode(null, Boolean.FALSE, node1);
         impl.assertAllEvents();
-        Truffle.getRuntime().createCallTarget(rootA).call();
+        rootA.getCallTarget().call();
         impl.assertAllEvents(source1);
 
         Node node2 = new SourceSectionFilterTest.SourceSectionNode(source2.createSection(2));
         Node node3 = new SourceSectionFilterTest.SourceSectionNode(source3.createSection(2));
         RootNode rootB = SourceSectionFilterTest.createRootNode(null, Boolean.FALSE, node2, node3);
         impl.assertAllEvents(source1);
-        Truffle.getRuntime().createCallTarget(rootB).call();
+        rootB.getCallTarget().call();
         impl.assertAllEvents(source1, source2, source3);
     }
 
@@ -523,8 +526,8 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
         Node node2 = new SourceSectionFilterTest.SourceSectionNode(source2.createSection(1));
         RootNode root1 = SourceSectionFilterTest.createRootNode(source1.createSection(1, 1, 2, 5), Boolean.FALSE, node1);
         RootNode root2 = SourceSectionFilterTest.createRootNode(source2.createSection(1, 1, 2, 5), Boolean.FALSE, node2);
-        Truffle.getRuntime().createCallTarget(root1).call();
-        Truffle.getRuntime().createCallTarget(root2);
+        root1.getCallTarget().call();
+        root2.getCallTarget();
         // source1 was loaded and executed, source 2 was loaded only
 
         Set<String> executedSources = new TreeSet<>();
@@ -588,7 +591,7 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
         Node node2a = new SourceSectionFilterTest.SourceSectionNode(source2a.createSection(1));
         Node node2b = new SourceSectionFilterTest.SourceSectionNode(source2b.createSection(1));
         RootNode root2 = SourceSectionFilterTest.createRootNode(null, Boolean.FALSE, node2a, node2b);
-        Truffle.getRuntime().createCallTarget(root2).call();
+        root2.getCallTarget().call();
         assertEvents(impl.onlyNewEvents, source1);
         assertEvents(impl.allEvents, source1);
 
@@ -870,7 +873,7 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
             @Override
             protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
                 com.oracle.truffle.api.source.Source source = request.getSource();
-                return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+                return new RootNode(languageInstance) {
                     @Node.Child private NeverMaterializedNode child = new NeverMaterializedNode();
 
                     @Override
@@ -882,7 +885,7 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
                     public SourceSection getSourceSection() {
                         return source.createSection(1);
                     }
-                });
+                }.getCallTarget();
             }
         });
         context.eval(Source.create(ProxyLanguage.ID, "a"));
@@ -1414,7 +1417,7 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
             com.oracle.truffle.api.source.Source source = request.getSource();
-            return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+            return new RootNode(languageInstance) {
                 @Node.Child private MultiSourceBlock block = new MultiSourceBlock(source, source.getCharacters().toString());
 
                 @Override
@@ -1426,7 +1429,7 @@ public class SourceListenerTest extends AbstractInstrumentationTest {
                 public SourceSection getSourceSection() {
                     return source.createSection(1);
                 }
-            });
+            }.getCallTarget();
         }
 
         @GenerateWrapper

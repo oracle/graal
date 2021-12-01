@@ -66,6 +66,7 @@ public final class StackTraceEntry {
     private final int compilationTier;
     private final boolean compilationRoot;
     private volatile StackTraceElement stackTraceElement;
+    private final boolean isSynthetic;
 
     StackTraceEntry(String rootName) {
         this.sourceSection = null;
@@ -75,6 +76,7 @@ public final class StackTraceEntry {
         this.stackTraceElement = null;
         compilationTier = 0;
         compilationRoot = true;
+        isSynthetic = true;
     }
 
     StackTraceEntry(Instrumenter instrumenter, EventContext context, int compilationTier, boolean compilationRoot) {
@@ -84,6 +86,7 @@ public final class StackTraceEntry {
         this.rootName = extractRootName(instrumentedNode);
         this.compilationTier = compilationTier;
         this.compilationRoot = compilationRoot;
+        this.isSynthetic = false;
     }
 
     StackTraceEntry(Set<Class<?>> tags, SourceSection sourceSection, RootNode root, Node node, int compilationTier, boolean compilationRoot) {
@@ -93,6 +96,7 @@ public final class StackTraceEntry {
         this.rootName = extractRootName(root);
         this.compilationTier = compilationTier;
         this.compilationRoot = compilationRoot;
+        this.isSynthetic = false;
     }
 
     StackTraceEntry(StackTraceEntry location, int compilationTier, boolean compilationRoot) {
@@ -103,6 +107,7 @@ public final class StackTraceEntry {
         this.stackTraceElement = location.stackTraceElement;
         this.compilationTier = compilationTier;
         this.compilationRoot = compilationRoot;
+        this.isSynthetic = false;
     }
 
     StackTraceEntry(Instrumenter instrumenter, Node node, int compilationTier, boolean compilationRoot) {
@@ -112,6 +117,7 @@ public final class StackTraceEntry {
         this.rootName = extractRootName(instrumentedNode);
         this.compilationTier = compilationTier;
         this.compilationRoot = compilationRoot;
+        this.isSynthetic = false;
     }
 
     /**
@@ -283,6 +289,10 @@ public final class StackTraceEntry {
 
     Node getInstrumentedNode() {
         return instrumentedNode;
+    }
+
+    boolean isSynthetic() {
+        return isSynthetic;
     }
 
     /**

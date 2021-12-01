@@ -41,6 +41,7 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.os.ImageHeapProvider;
 
@@ -69,6 +70,7 @@ public abstract class Heap {
      * heap-specific resources, e.g., the TLAB. This method is called for every thread except the
      * main thread (i.e., the one that maps the image heap).
      */
+    @Uninterruptible(reason = "Thread is detaching and holds the THREAD_MUTEX.")
     public abstract void detachThread(IsolateThread isolateThread);
 
     public abstract void suspendAllocation();
@@ -216,5 +218,10 @@ public abstract class Heap {
      * If the passed value is within the Java heap, this method prints some information about that
      * value and returns true. Otherwise, the method returns false.
      */
-    public abstract boolean printLocationInfo(Log log, UnsignedWord value, boolean allowJavaHeapAccess);
+    public abstract boolean printLocationInfo(Log log, UnsignedWord value, boolean allowJavaHeapAccess, boolean allowUnsafeOperations);
+
+    /**
+     * Notify the GC that the value of a GC-relevant option changed.
+     */
+    public abstract void optionValueChanged(RuntimeOptionKey<?> key);
 }

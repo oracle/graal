@@ -48,7 +48,6 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
  *
  * For foreign objects, this node delegates to the {@link InteropLibrary#isIdentical} message.
  */
-@SuppressWarnings("deprecation") // for backwards compatibility
 @GenerateUncached
 public abstract class LLVMSameObjectNode extends LLVMNode {
 
@@ -112,22 +111,11 @@ public abstract class LLVMSameObjectNode extends LLVMNode {
             return true;
         }
 
-        // for backwards compatibility
-        @Specialization(limit = "3", guards = {"a != b", "references.isSame(a, b)"})
-        @GenerateAOT.Exclude
-        boolean doReferenceLibrary(Object a, Object b,
-                        @CachedLibrary("a") com.oracle.truffle.llvm.spi.ReferenceLibrary references) {
-            assert references.isSame(a, b);
-            return true;
-        }
-
-        @Specialization(limit = "3", guards = {"a != b", "!references.isSame(a, b)"})
+        @Specialization(limit = "3", guards = {"a != b"})
         @GenerateAOT.Exclude
         boolean doIdentical(Object a, Object b,
-                        @CachedLibrary("a") com.oracle.truffle.llvm.spi.ReferenceLibrary references,
                         @CachedLibrary("a") InteropLibrary aInterop,
                         @CachedLibrary("b") InteropLibrary bInterop) {
-            assert !references.isSame(a, b);
             return aInterop.isIdentical(a, b, bInterop);
         }
     }

@@ -24,12 +24,11 @@
  */
 package org.graalvm.compiler.replacements.test;
 
-import org.graalvm.compiler.replacements.ArraysSubstitutions;
-
 import java.util.Arrays;
 
 /**
- * Tests {@link ArraysSubstitutions}.
+ * Tests registerArraysPlugins in
+ * {@link org.graalvm.compiler.replacements.StandardGraphBuilderPlugins}.
  */
 public class ArraysSubstitutionsTestBase extends MethodSubstitutionTest {
 

@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.image;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
+import java.lang.reflect.Executable;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -40,7 +41,6 @@ import java.util.TreeMap;
 import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.option.HostedOptionValues;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.DataSection;
 import org.graalvm.compiler.debug.DebugContext;
@@ -48,12 +48,14 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.objectfile.ObjectFile;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoEncoder;
@@ -69,6 +71,7 @@ import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
 import com.oracle.svm.core.graal.code.SubstrateDataBuilder;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.NativeImageOptions;
@@ -88,6 +91,8 @@ import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.VMConstant;
 
@@ -211,12 +216,39 @@ public abstract class NativeImageCodeCache {
 
     public void buildRuntimeMetadata(CFunctionPointer firstMethod, UnsignedWord codeSize) {
         // Build run-time metadata.
-        FrameInfoCustomization frameInfoCustomization = new FrameInfoCustomization();
-        CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(frameInfoCustomization);
+        HostedFrameInfoCustomization frameInfoCustomization = new HostedFrameInfoCustomization();
+        CodeInfoEncoder.Encoders encoders = new CodeInfoEncoder.Encoders();
+        CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(frameInfoCustomization, encoders);
         for (Entry<HostedMethod, CompilationResult> entry : compilations.entrySet()) {
             final HostedMethod method = entry.getKey();
             final CompilationResult compilation = entry.getValue();
             codeInfoEncoder.addMethod(method, compilation, method.getCodeAddressOffset());
+        }
+
+        MethodMetadataEncoder methodMetadataEncoder = ImageSingletons.lookup(MethodMetadataEncoderFactory.class).create(encoders);
+        if (SubstrateOptions.ConfigureReflectionMetadata.getValue()) {
+            for (Executable queriedMethod : ImageSingletons.lookup(RuntimeReflectionSupport.class).getQueriedOnlyMethods()) {
+                HostedMethod method = imageHeap.getMetaAccess().lookupJavaMethod(queriedMethod);
+                methodMetadataEncoder.addReflectionMethodMetadata(imageHeap.getMetaAccess(), method, queriedMethod);
+            }
+            for (Object method : ImageSingletons.lookup(RuntimeReflectionSupport.class).getHidingMethods()) {
+                AnalysisMethod hidingMethod = (AnalysisMethod) method;
+                HostedType declaringType = imageHeap.getUniverse().lookup(hidingMethod.getDeclaringClass());
+                String name = hidingMethod.getName();
+                JavaType[] analysisParameterTypes = hidingMethod.getSignature().toParameterTypes(null);
+                HostedType[] parameterTypes = new HostedType[analysisParameterTypes.length];
+                for (int i = 0; i < analysisParameterTypes.length; ++i) {
+                    parameterTypes[i] = imageHeap.getUniverse().lookup(analysisParameterTypes[i]);
+                }
+                methodMetadataEncoder.addHidingMethodMetadata(declaringType, name, parameterTypes);
+            }
+        }
+        if (SubstrateOptions.IncludeMethodData.getValue()) {
+            for (HostedMethod method : imageHeap.getUniverse().getMethods()) {
+                if (method.getWrapped().isReachable() && !method.getWrapped().isIntrinsicMethod()) {
+                    methodMetadataEncoder.addReachableMethodMetadata(method);
+                }
+            }
         }
 
         if (NativeImageOptions.PrintMethodHistogram.getValue()) {
@@ -226,6 +258,7 @@ public abstract class NativeImageCodeCache {
 
         HostedImageCodeInfo imageCodeInfo = CodeInfoTable.getImageCodeCache().getHostedImageCodeInfo();
         codeInfoEncoder.encodeAllAndInstall(imageCodeInfo, new InstantReferenceAdjuster());
+        methodMetadataEncoder.encodeAllAndInstall();
         imageCodeInfo.setCodeStart(firstMethod);
         imageCodeInfo.setCodeSize(codeSize);
         imageCodeInfo.setDataOffset(codeSize);
@@ -411,7 +444,7 @@ public abstract class NativeImageCodeCache {
         }
     }
 
-    private static class FrameInfoCustomization extends FrameInfoEncoder.NamesFromMethod {
+    private static class HostedFrameInfoCustomization extends FrameInfoEncoder.SourceFieldsFromMethod {
         int numDeoptEntryPoints;
         int numDuringCallEntryPoints;
 
@@ -423,12 +456,12 @@ public abstract class NativeImageCodeCache {
         }
 
         @Override
-        protected boolean shouldStoreMethod() {
+        protected boolean storeDeoptTargetMethod() {
             return false;
         }
 
         @Override
-        protected boolean shouldInclude(ResolvedJavaMethod method, Infopoint infopoint) {
+        protected boolean includeLocalValues(ResolvedJavaMethod method, Infopoint infopoint) {
             CompilationInfo compilationInfo = ((HostedMethod) method).compilationInfo;
             BytecodeFrame topFrame = infopoint.debugInfo.frame();
 
@@ -513,5 +546,19 @@ public abstract class NativeImageCodeCache {
             }
             return false;
         }
+    }
+
+    public interface MethodMetadataEncoder {
+        void addReflectionMethodMetadata(MetaAccessProvider metaAccess, HostedMethod sharedMethod, Executable reflectMethod);
+
+        void addHidingMethodMetadata(HostedType declType, String name, HostedType[] paramTypes);
+
+        void addReachableMethodMetadata(HostedMethod method);
+
+        void encodeAllAndInstall();
+    }
+
+    public interface MethodMetadataEncoderFactory {
+        MethodMetadataEncoder create(CodeInfoEncoder.Encoders encoders);
     }
 }

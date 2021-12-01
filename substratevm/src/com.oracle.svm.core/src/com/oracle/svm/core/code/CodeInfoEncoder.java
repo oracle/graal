@@ -31,6 +31,7 @@ import java.util.TreeMap;
 
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.NumUtil;
+import org.graalvm.compiler.core.common.util.FrequencyEncoder;
 import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
 import org.graalvm.compiler.options.Option;
@@ -41,8 +42,10 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.CalleeSavedRegisters;
 import com.oracle.svm.core.ReservedRegisters;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;
+import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueInfo;
 import com.oracle.svm.core.code.FrameInfoQueryResult.ValueType;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -97,6 +100,46 @@ public class CodeInfoEncoder {
         final Counter virtualObjectsCount = new Counter(group, "Number of virtual objects", "Number of virtual objects encoded");
     }
 
+    public static final class Encoders {
+        final FrequencyEncoder<JavaConstant> objectConstants;
+        public final FrequencyEncoder<Class<?>> sourceClasses;
+        public final FrequencyEncoder<String> sourceMethodNames;
+        final FrequencyEncoder<String> names;
+
+        public Encoders() {
+            this.objectConstants = FrequencyEncoder.createEqualityEncoder();
+            this.sourceClasses = FrequencyEncoder.createEqualityEncoder();
+            this.sourceMethodNames = FrequencyEncoder.createEqualityEncoder();
+            if (FrameInfoDecoder.encodeSourceReferences()) {
+                this.names = FrequencyEncoder.createEqualityEncoder();
+            } else {
+                this.names = null;
+            }
+        }
+
+        private void encodeAllAndInstall(CodeInfo target, ReferenceAdjuster adjuster) {
+            JavaConstant[] encodedJavaConstants = objectConstants.encodeAll(new JavaConstant[objectConstants.getLength()]);
+            Class<?>[] sourceClassesArray = null;
+            String[] sourceMethodNamesArray = null;
+            if (FrameInfoDecoder.encodeSourceReferences()) {
+                sourceClassesArray = sourceClasses.encodeAll(new Class<?>[sourceClasses.getLength()]);
+                sourceMethodNamesArray = sourceMethodNames.encodeAll(new String[sourceMethodNames.getLength()]);
+            }
+            install(target, encodedJavaConstants, sourceClassesArray, sourceMethodNamesArray, adjuster);
+        }
+
+        @Uninterruptible(reason = "Nonmovable object arrays are not visible to GC until installed in target.")
+        private static void install(CodeInfo target, JavaConstant[] objectConstantsArray, Class<?>[] sourceClassesArray,
+                        String[] sourceMethodNamesArray, ReferenceAdjuster adjuster) {
+
+            NonmovableObjectArray<Object> frameInfoObjectConstants = adjuster.copyOfObjectConstantArray(objectConstantsArray);
+            NonmovableObjectArray<Class<?>> frameInfoSourceClasses = (sourceClassesArray != null) ? adjuster.copyOfObjectArray(sourceClassesArray) : NonmovableArrays.nullArray();
+            NonmovableObjectArray<String> frameInfoSourceMethodNames = (sourceMethodNamesArray != null) ? adjuster.copyOfObjectArray(sourceMethodNamesArray) : NonmovableArrays.nullArray();
+
+            CodeInfoAccess.setEncodings(target, frameInfoObjectConstants, frameInfoSourceClasses, frameInfoSourceMethodNames);
+        }
+    }
+
     static class IPData {
         protected long ip;
         protected int frameSizeEncoding;
@@ -108,15 +151,17 @@ public class CodeInfoEncoder {
     }
 
     private final TreeMap<Long, IPData> entries;
+    private final Encoders encoders;
     private final FrameInfoEncoder frameInfoEncoder;
 
     private NonmovableArray<Byte> codeInfoIndex;
     private NonmovableArray<Byte> codeInfoEncodings;
     private NonmovableArray<Byte> referenceMapEncoding;
 
-    public CodeInfoEncoder(FrameInfoEncoder.Customization frameInfoCustomization) {
+    public CodeInfoEncoder(FrameInfoEncoder.Customization frameInfoCustomization, Encoders encoders) {
         this.entries = new TreeMap<>();
-        this.frameInfoEncoder = new FrameInfoEncoder(frameInfoCustomization);
+        this.encoders = encoders;
+        this.frameInfoEncoder = new FrameInfoEncoder(frameInfoCustomization, encoders);
     }
 
     public static int getEntryOffset(Infopoint infopoint) {
@@ -184,8 +229,9 @@ public class CodeInfoEncoder {
     }
 
     public void encodeAllAndInstall(CodeInfo target, ReferenceAdjuster adjuster) {
+        encoders.encodeAllAndInstall(target, adjuster);
         encodeReferenceMaps();
-        frameInfoEncoder.encodeAllAndInstall(target, adjuster);
+        frameInfoEncoder.encodeAllAndInstall(target);
         encodeIPData();
 
         install(target);
@@ -259,7 +305,7 @@ public class CodeInfoEncoder {
             writeSizeEncoding(encodingBuffer, data, entryFlags);
             writeExceptionOffset(encodingBuffer, data, entryFlags);
             writeReferenceMapIndex(encodingBuffer, data, entryFlags);
-            writeDeoptFrameInfo(encodingBuffer, data, entryFlags);
+            writeEncodedFrameInfo(encodingBuffer, data, entryFlags);
         }
 
         codeInfoIndex = NonmovableArrays.createByteArray(TypeConversion.asU4(indexBuffer.getBytesWritten()));
@@ -364,7 +410,7 @@ public class CodeInfoEncoder {
     private static int flagsForDeoptFrameInfo(IPData data) {
         if (data.frameData == null) {
             return CodeInfoDecoder.FI_NO_DEOPT;
-        } else if (TypeConversion.isS4(data.frameData.indexInEncodings)) {
+        } else if (TypeConversion.isS4(data.frameData.encodedFrameInfoIndex)) {
             if (data.frameData.frame.isDeoptEntry) {
                 return CodeInfoDecoder.FI_DEOPT_ENTRY_INDEX_S4;
             } else {
@@ -375,11 +421,11 @@ public class CodeInfoEncoder {
         }
     }
 
-    private static void writeDeoptFrameInfo(UnsafeArrayTypeWriter writeBuffer, IPData data, int entryFlags) {
+    private static void writeEncodedFrameInfo(UnsafeArrayTypeWriter writeBuffer, IPData data, int entryFlags) {
         switch (CodeInfoDecoder.extractFI(entryFlags)) {
             case CodeInfoDecoder.FI_DEOPT_ENTRY_INDEX_S4:
             case CodeInfoDecoder.FI_INFO_ONLY_INDEX_S4:
-                writeBuffer.putS4(data.frameData.indexInEncodings);
+                writeBuffer.putS4(data.frameData.encodedFrameInfoIndex);
                 break;
         }
     }
@@ -444,7 +490,7 @@ class CodeInfoVerifier {
 
     private static void verifyFrame(CompilationResult compilation, BytecodeFrame expectedFrame, FrameInfoQueryResult actualFrame, BitSet visitedVirtualObjects) {
         assert (expectedFrame == null) == (actualFrame == null);
-        if (expectedFrame == null || !actualFrame.needLocalValues) {
+        if (expectedFrame == null || !actualFrame.hasLocalValueInfo()) {
             return;
         }
         verifyFrame(compilation, expectedFrame.caller(), actualFrame.getCaller(), visitedVirtualObjects);
@@ -623,12 +669,12 @@ class CollectingObjectReferenceVisitor implements ObjectReferenceVisitor {
     protected final SubstrateReferenceMap result = new SubstrateReferenceMap();
 
     @Override
-    public boolean visitObjectReference(Pointer objRef, boolean compressed) {
-        return visitObjectReferenceInline(objRef, 0, compressed);
+    public boolean visitObjectReference(Pointer objRef, boolean compressed, Object holderObject) {
+        return visitObjectReferenceInline(objRef, 0, compressed, holderObject);
     }
 
     @Override
-    public boolean visitObjectReferenceInline(Pointer objRef, int innerOffset, boolean compressed) {
+    public boolean visitObjectReferenceInline(Pointer objRef, int innerOffset, boolean compressed, Object holderObject) {
         int derivedOffset = NumUtil.safeToInt(objRef.rawValue());
         result.markReferenceAtOffset(derivedOffset, derivedOffset - innerOffset, compressed);
         return true;

@@ -24,28 +24,56 @@
  */
 package com.oracle.svm.jfr;
 
+import org.graalvm.compiler.core.common.NumUtil;
+import org.graalvm.compiler.options.OptionsParser;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.util.VMError;
+
 import jdk.jfr.internal.PlatformEventType;
 import jdk.jfr.internal.Type;
 import jdk.jfr.internal.TypeLibrary;
-import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 /**
  * The event IDs depend on the metadata.xml and therefore vary between JDK versions.
  */
 public enum JfrEvents {
-    ThreadStartEvent("jdk.ThreadStart"),
-    ThreadEndEvent("jdk.ThreadEnd"),
-    DataLossEvent("jdk.DataLoss");
+    ThreadStart("jdk.ThreadStart"),
+    ThreadEnd("jdk.ThreadEnd"),
+    DataLoss("jdk.DataLoss"),
+    ClassLoadingStatistics("jdk.ClassLoadingStatistics"),
+    InitialEnvironmentVariable("jdk.InitialEnvironmentVariable"),
+    InitialSystemProperty("jdk.InitialSystemProperty"),
+    JavaThreadStatistics("jdk.JavaThreadStatistics"),
+    JVMInformation("jdk.JVMInformation"),
+    OSInformation("jdk.OSInformation"),
+    PhysicalMemory("jdk.PhysicalMemory"),
+    ExecutionSample("jdk.ExecutionSample"),
+    NativeMethodSample("jdk.NativeMethodSample");
 
     private final long id;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     JfrEvents(String name) {
         this.id = getEventTypeId(name);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static String getMostSimilarEvent(String missingTypeName) {
+        float threshold = OptionsParser.FUZZY_MATCH_THRESHOLD;
+        String mostSimilar = null;
+        for (Type type : TypeLibrary.getInstance().getTypes()) {
+            if (type instanceof PlatformEventType) {
+                float similarity = OptionsParser.stringSimilarity(type.getName(), missingTypeName);
+                if (similarity > threshold) {
+                    threshold = similarity;
+                    mostSimilar = type.getName();
+                }
+            }
+        }
+        return mostSimilar;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -56,10 +84,17 @@ public enum JfrEvents {
                     return type.getId();
                 }
             }
-            return 0;
+
+            String exceptionMessage = "Event " + name + " was not found!";
+            String mostSimilarEvent = getMostSimilarEvent(name);
+            if (mostSimilarEvent != null) {
+                exceptionMessage += " The most similar event is " + mostSimilarEvent + ".";
+            }
+            exceptionMessage += " Take a look at 'metadata.xml' to see all available events.";
+
+            throw VMError.shouldNotReachHere(exceptionMessage);
         } catch (Exception ex) {
-            VMError.shouldNotReachHere(ex);
-            return 0;
+            throw VMError.shouldNotReachHere(ex);
         }
     }
 

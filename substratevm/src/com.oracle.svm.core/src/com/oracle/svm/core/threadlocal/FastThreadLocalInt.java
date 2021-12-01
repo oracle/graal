@@ -36,7 +36,8 @@ import org.graalvm.nativeimage.Platforms;
 public final class FastThreadLocalInt extends FastThreadLocal {
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    FastThreadLocalInt() {
+    FastThreadLocalInt(String name) {
+        super(name);
     }
 
     public int get() {

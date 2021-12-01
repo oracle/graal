@@ -26,6 +26,7 @@ package com.oracle.svm.reflect.target;
 
 // Checkstyle: allow reflection
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
@@ -44,6 +45,8 @@ public final class Target_java_lang_reflect_ReflectAccess {
     public Target_java_lang_reflect_Method copyMethod(Target_java_lang_reflect_Method method) {
         Target_java_lang_reflect_Method copy = method.copy();
         copy.genericInfo = method.genericInfo;
+        Util_java_lang_reflect_ReflectAccess.copyExecutable(SubstrateUtil.cast(copy, Target_java_lang_reflect_Executable.class),
+                        SubstrateUtil.cast(method, Target_java_lang_reflect_Executable.class));
         return copy;
     }
 
@@ -60,6 +63,24 @@ public final class Target_java_lang_reflect_ReflectAccess {
     public Target_java_lang_reflect_Constructor copyConstructor(Target_java_lang_reflect_Constructor constructor) {
         Target_java_lang_reflect_Constructor copy = constructor.copy();
         copy.genericInfo = constructor.genericInfo;
+        Util_java_lang_reflect_ReflectAccess.copyExecutable(SubstrateUtil.cast(copy, Target_java_lang_reflect_Executable.class),
+                        SubstrateUtil.cast(constructor, Target_java_lang_reflect_Executable.class));
         return copy;
+    }
+}
+
+class Util_java_lang_reflect_ReflectAccess {
+    static void copyExecutable(Target_java_lang_reflect_Executable copy, Target_java_lang_reflect_Executable executable) {
+        if (MethodMetadataDecoderImpl.hasQueriedMethods()) {
+            /* Isolated to avoid pulling the full signature parsing capabilities from the JDK. */
+            copy.parameters = executable.parameters;
+        }
+        copy.declaredAnnotations = executable.declaredAnnotations;
+        copy.parameterAnnotations = executable.parameterAnnotations;
+        copy.typeAnnotations = executable.typeAnnotations;
+        copy.annotatedReceiverType = executable.annotatedReceiverType;
+        copy.annotatedReturnType = executable.annotatedReturnType;
+        copy.annotatedParameterTypes = executable.annotatedParameterTypes;
+        copy.annotatedExceptionTypes = executable.annotatedExceptionTypes;
     }
 }

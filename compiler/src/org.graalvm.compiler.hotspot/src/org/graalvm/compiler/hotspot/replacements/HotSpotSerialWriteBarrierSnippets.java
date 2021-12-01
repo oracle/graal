@@ -26,9 +26,7 @@ package org.graalvm.compiler.hotspot.replacements;
 
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
 
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
-import org.graalvm.compiler.hotspot.nodes.GraalHotSpotVMConfigNode;
 import org.graalvm.compiler.nodes.gc.SerialArrayRangeWriteBarrier;
 import org.graalvm.compiler.nodes.gc.SerialWriteBarrier;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
@@ -41,8 +39,6 @@ import org.graalvm.compiler.replacements.gc.SerialWriteBarrierSnippets;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.WordFactory;
 
-import jdk.vm.ci.code.TargetDescription;
-
 public class HotSpotSerialWriteBarrierSnippets extends SerialWriteBarrierSnippets {
 
     public HotSpotSerialWriteBarrierSnippets() {
@@ -50,7 +46,7 @@ public class HotSpotSerialWriteBarrierSnippets extends SerialWriteBarrierSnippet
 
     @Override
     public Word cardTableAddress() {
-        return WordFactory.unsigned(GraalHotSpotVMConfigNode.cardTableAddress());
+        return WordFactory.unsigned(HotSpotReplacementsUtil.cardTableStart(INJECTED_VMCONFIG));
     }
 
     @Override
@@ -75,8 +71,8 @@ public class HotSpotSerialWriteBarrierSnippets extends SerialWriteBarrierSnippet
 
         private final SerialWriteBarrierLowerer lowerer;
 
-        public Templates(OptionValues options, Iterable<DebugHandlersFactory> factories, Group.Factory factory, HotSpotProviders providers, TargetDescription target) {
-            super(options, factories, providers, providers.getSnippetReflection(), target);
+        public Templates(OptionValues options, Group.Factory factory, HotSpotProviders providers) {
+            super(options, providers);
             this.lowerer = new SerialWriteBarrierLowerer(factory);
 
             HotSpotSerialWriteBarrierSnippets receiver = new HotSpotSerialWriteBarrierSnippets();

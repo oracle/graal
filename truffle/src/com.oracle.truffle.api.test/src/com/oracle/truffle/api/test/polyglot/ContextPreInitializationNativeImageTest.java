@@ -45,19 +45,20 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assume.assumeTrue;
 
 import org.graalvm.polyglot.Context;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.ContextLocal;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.ThreadLocalAction;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 /**
  * Note this test class currently depends on being executed in its own SVM image as it uses the
@@ -73,6 +74,11 @@ public class ContextPreInitializationNativeImageTest {
 
     static {
         System.setProperty("polyglot.image-build-time.PreinitializeContexts", LANGUAGE);
+    }
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
     }
 
     @Test
@@ -127,7 +133,7 @@ public class ContextPreInitializationNativeImageTest {
                 }
             });
 
-            Truffle.getRuntime().createCallTarget(new RootNode(this) {
+            new RootNode(this) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     /*
@@ -160,7 +166,7 @@ public class ContextPreInitializationNativeImageTest {
                     return null;
                 }
 
-            }).call();
+            }.getCallTarget().call();
 
         }
 

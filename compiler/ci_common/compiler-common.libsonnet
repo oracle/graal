@@ -16,6 +16,8 @@
     ]
   },
 
+  bench_jdks:: [common["labsjdk-ee-11"], common["labsjdk-ee-17"]],
+
   // Benchmarking building blocks
   // ****************************
   compiler_bench_base:: bench_common.bench_base + {
@@ -52,43 +54,6 @@
     ]
   },
 
-
-  many_forks_benchmarking:: common.build_base + {
-    // building block used to generate fork builds
-    local benchmarking_config_repo = self.ci_resources.infra.benchmarking_config_repo,
-    environment+: {
-      BENCHMARKING_CONFIG_REPO: "$BUILD_DIR/benchmarking-config",
-      FORK_COUNTS_DIRECTORY: "$BENCHMARKING_CONFIG_REPO/fork-counts",
-      FORK_COUNT_FILE: error "FORK_COUNT_FILE env var must be set to use the many forks execution!"
-    },
-    setup+: [
-      ["set-export", "CURRENT_BRANCH", ["git", "rev-parse", "--abbrev-ref", "HEAD"]],
-      ["echo", "[BENCH-FORKS-CONFIG] Using configuration files from branch ${CURRENT_BRANCH} if it exists remotely."],
-      ["git", "clone", benchmarking_config_repo, "${BENCHMARKING_CONFIG_REPO}"],
-      ["test", "${CURRENT_BRANCH}", "=", "master", "||", "git", "-C", "${BENCHMARKING_CONFIG_REPO}", "checkout", "--track", "origin/${CURRENT_BRANCH}", "||", "echo", "Using default fork counts since there is no branch named '${CURRENT_BRANCH}' in the benchmarking-config repo."]
-    ]
-  },
-
-  generate_fork_builds(suite_obj, subdir='compiler')::
-    /* based on a benchmark suite definition, generates the many forks version based on the hidden fields
-     * 'forks_batches' that specifies the number of batches this job should be split into and the corresponding
-     * 'forks_timelimit' that applies to those long-running jobs.
-     */
-
-    if std.objectHasAll(suite_obj, "forks_batches") && std.objectHasAll(suite_obj, "forks_timelimit") && suite_obj.forks_batches != null then
-      [ $.many_forks_benchmarking + suite_obj + {
-        local batch_str = (if suite_obj.forks_batches > 1 then "batch"+i else null),
-        "job_prefix":: "bench-forks-compiler",
-        "job_suffix":: batch_str,
-        "timelimit": suite_obj.forks_timelimit,
-        "environment" +: {
-          FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/" + subdir + "/" + suite_obj.suite + "_forks" + (if batch_str != null then "_"+batch_str else "") + ".json"
-        }
-      }
-      for i in std.range(0, suite_obj.forks_batches - 1)]
-    else
-      [],
-
   // JVM configurations
   // ******************
   c1:: {
@@ -123,5 +88,12 @@
       "MX_PRIMARY_SUITE_PATH": "../" + config.compiler.vm_suite,
       "MX_ENV_PATH": config.compiler.libgraal_env_file
     }
-  }
+  },
+
+  economy_mode:: {
+    platform+:: "-economy",
+    environment+: {
+      "JVM_CONFIG"+: "-economy",
+    }
+  },
 }

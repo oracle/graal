@@ -67,7 +67,6 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueDispatch;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
@@ -155,13 +154,13 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
 
     static final InteropLibrary UNCACHED_INTEROP = InteropLibrary.getFactory().getUncached();
 
-    final AbstractPolyglotImpl impl;
-    final PolyglotEngineImpl engine;
+    final PolyglotImpl impl;
+    final PolyglotLanguageInstance languageInstance;
 
-    PolyglotValueDispatch(AbstractPolyglotImpl impl, PolyglotEngineImpl engine) {
+    PolyglotValueDispatch(PolyglotImpl impl, PolyglotLanguageInstance languageInstance) {
         super(impl);
         this.impl = impl;
-        this.engine = engine;
+        this.languageInstance = languageInstance;
     }
 
     @Override
@@ -1185,7 +1184,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
         Object prev = hostEnter(context);
         try {
-            engine.host.pin(receiver);
+            languageInstance.sharing.engine.host.pin(receiver);
         } catch (Throwable e) {
             throw guestToHostException(context, e, true);
         } finally {
@@ -1278,7 +1277,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         PolyglotLanguage displayLanguage = EngineAccessor.EngineImpl.findObjectLanguage(context.engine, receiver);
         Object view;
         if (displayLanguage == null) {
-            displayLanguage = context.engine.hostLanguageInstance.language;
+            displayLanguage = context.engine.hostLanguage;
             view = context.getHostContext().getLanguageView(receiver);
         } else {
             view = receiver;
@@ -1601,7 +1600,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
     }
 
     static CallTarget createTarget(InteropNode root) {
-        CallTarget target = Truffle.getRuntime().createCallTarget(root);
+        CallTarget target = root.getCallTarget();
         Class<?>[] types = root.getArgumentTypes();
         if (types != null) {
             RUNTIME.initializeProfile(target, types);
@@ -1639,7 +1638,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         private final PolyglotLanguage language;
 
         private PrimitiveValue(PolyglotImpl impl, PolyglotLanguageInstance instance, Object primitiveValue) {
-            super(impl, instance != null ? instance.getEngine() : null);
+            super(impl, instance);
             /*
              * No caching needed for primitives. We do that to avoid the overhead of crossing a
              * Truffle call boundary.
@@ -1854,7 +1853,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         protected abstract String getOperationName();
 
         protected InteropNode(InteropValue polyglot) {
-            super(polyglot.engine);
+            super(polyglot.languageInstance);
             this.polyglot = polyglot;
         }
 
@@ -2017,8 +2016,8 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         final CallTarget asTypeLiteral;
         final Class<?> receiverType;
 
-        InteropValue(AbstractPolyglotImpl polyglot, PolyglotLanguageInstance languageInstance, Object receiverObject, Class<?> receiverType) {
-            super(polyglot, languageInstance.getEngine());
+        InteropValue(PolyglotImpl polyglot, PolyglotLanguageInstance languageInstance, Object receiverObject, Class<?> receiverType) {
+            super(polyglot, languageInstance);
             this.receiverType = receiverType;
             this.asClassLiteral = createTarget(new AsClassLiteralNode(this));
             this.asTypeLiteral = createTarget(new AsTypeLiteralNode(this));
@@ -2305,7 +2304,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
             Object prev = hostEnter(context);
             try {
-                return engine.host.isHostObject(receiver);
+                return getEngine().host.isHostObject(receiver);
             } catch (Throwable e) {
                 throw guestToHostException(context, e, true);
             } finally {
@@ -2313,12 +2312,16 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             }
         }
 
+        private PolyglotEngineImpl getEngine() {
+            return languageInstance.sharing.engine;
+        }
+
         @Override
         public boolean isProxyObject(Object languageContext, Object receiver) {
             PolyglotLanguageContext context = (PolyglotLanguageContext) languageContext;
             Object prev = hostEnter(context);
             try {
-                return engine.host.isHostProxy(receiver);
+                return getEngine().host.isHostProxy(receiver);
             } catch (Throwable e) {
                 throw guestToHostException(context, e, true);
             } finally {
@@ -2329,7 +2332,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         @Override
         public Object asProxyObject(Object languageContext, Object receiver) {
             if (isProxyObject(languageContext, receiver)) {
-                return engine.host.unboxProxyObject(receiver);
+                return getEngine().host.unboxProxyObject(receiver);
             } else {
                 return super.asProxyObject(languageContext, receiver);
             }
@@ -2338,7 +2341,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         @Override
         public Object asHostObject(Object languageContext, Object receiver) {
             if (isHostObject(languageContext, receiver)) {
-                return engine.host.unboxHostObject(receiver);
+                return getEngine().host.unboxHostObject(receiver);
             } else {
                 return super.asHostObject(languageContext, receiver);
             }

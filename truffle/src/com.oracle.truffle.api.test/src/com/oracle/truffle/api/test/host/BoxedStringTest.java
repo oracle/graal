@@ -46,12 +46,14 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 @SuppressWarnings("static-method")
 @ExportLibrary(InteropLibrary.class)
@@ -66,6 +68,11 @@ public class BoxedStringTest extends ProxyLanguageEnvTest implements TruffleObje
     private ExactMatchInterop interop;
 
     static final List<String> KEYS = Arrays.asList(new String[]{"charValue", "stringValue"});
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     @Before
     public void initObjects() {

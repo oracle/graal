@@ -31,15 +31,19 @@ package com.oracle.truffle.llvm.runtime.nodes.memory;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedReadLibrary;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMManagedWriteLibrary;
+import com.oracle.truffle.llvm.runtime.library.internal.LLVMNativeLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.memory.ManagedMemMoveHelperNodeGen.MemReadI16NodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.memory.ManagedMemMoveHelperNodeGen.MemReadI32NodeGen;
@@ -478,6 +482,41 @@ abstract class ManagedMemMoveHelperNode extends LLVMNode {
         @Specialization(guards = "unitSize == 8")
         void doNativeI64(LLVMNativePointer target, long value, @SuppressWarnings("unused") int unitSize) {
             getLanguage().getLLVMMemory().putI64(this, target, value);
+        }
+
+        private static long asPointer(LLVMPointer value, LLVMNativeLibrary lib) {
+            if (!lib.isPointer(value)) {
+                lib.toNativePointer(value);
+            }
+            try {
+                return lib.asPointer(value);
+            } catch (UnsupportedMessageException e) {
+                throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+
+        @Specialization(guards = "unitSize == 1")
+        void doObjectI8(LLVMNativePointer target, LLVMPointer value, @SuppressWarnings("unused") int unitSize,
+                        @Shared("lib") @CachedLibrary(limit = "3") LLVMNativeLibrary lib) {
+            getLanguage().getLLVMMemory().putI8(this, target, (byte) asPointer(value, lib));
+        }
+
+        @Specialization(guards = "unitSize == 2")
+        void doObjectI16(LLVMNativePointer target, LLVMPointer value, @SuppressWarnings("unused") int unitSize,
+                        @Shared("lib") @CachedLibrary(limit = "3") LLVMNativeLibrary lib) {
+            getLanguage().getLLVMMemory().putI16(this, target, (short) asPointer(value, lib));
+        }
+
+        @Specialization(guards = "unitSize == 4")
+        void doObjectI32(LLVMNativePointer target, LLVMPointer value, @SuppressWarnings("unused") int unitSize,
+                        @Shared("lib") @CachedLibrary(limit = "3") LLVMNativeLibrary lib) {
+            getLanguage().getLLVMMemory().putI32(this, target, (int) asPointer(value, lib));
+        }
+
+        @Specialization(guards = "unitSize == 8")
+        void doObjectI64(LLVMNativePointer target, LLVMPointer value, @SuppressWarnings("unused") int unitSize,
+                        @Shared("lib") @CachedLibrary(limit = "3") LLVMNativeLibrary lib) {
+            getLanguage().getLLVMMemory().putI64(this, target, asPointer(value, lib));
         }
     }
 

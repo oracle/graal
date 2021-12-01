@@ -27,9 +27,11 @@ package com.oracle.svm.core.configure;
 
 import java.io.IOException;
 import java.io.Reader;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Map;
 
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
 import com.oracle.svm.core.util.json.JSONParser;
@@ -56,10 +58,12 @@ public class SerializationConfigurationParser extends ConfigurationParser {
     }
 
     private void parseSerializationDescriptorObject(Map<String, Object> data) {
-        checkAttributes(data, "serialization descriptor object", Collections.singleton(NAME_KEY), Collections.singleton(CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY));
+        checkAttributes(data, "serialization descriptor object", Collections.singleton(NAME_KEY), Arrays.asList(CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY, CONDITIONAL_KEY));
+        ConfigurationCondition unresolvedCondition = parseCondition(data);
         String targetSerializationClass = asString(data.get(NAME_KEY));
         Object optionalCustomCtorValue = data.get(CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY);
         String customTargetConstructorClass = optionalCustomCtorValue != null ? asString(optionalCustomCtorValue) : null;
-        serializationSupport.registerWithTargetConstructorClass(targetSerializationClass, customTargetConstructorClass);
+
+        serializationSupport.registerWithTargetConstructorClass(unresolvedCondition, targetSerializationClass, customTargetConstructorClass);
     }
 }

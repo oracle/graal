@@ -56,6 +56,7 @@ public abstract class AbstractGetFieldNode extends Node implements ContextAccess
         this.slotCount = getField().getKind().getSlotCount();
     }
 
+    @Override
     public final EspressoContext getContext() {
         return EspressoContext.get(this);
     }
@@ -64,7 +65,7 @@ public abstract class AbstractGetFieldNode extends Node implements ContextAccess
         return fieldVersion.getField();
     }
 
-    public abstract int getField(VirtualFrame frame, long[] primitives, Object[] refs, BytecodeNode root, StaticObject receiver, int at, int statementIndex);
+    public abstract int getField(VirtualFrame frame, BytecodeNode root, StaticObject receiver, int at, int statementIndex);
 
     public static AbstractGetFieldNode create(Field.FieldVersion f) {
         // @formatter:off
@@ -93,7 +94,7 @@ public abstract class AbstractGetFieldNode extends Node implements ContextAccess
         } catch (UnsupportedMessageException | UnknownIdentifierException e) {
             error.enter();
             Meta meta = context.getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchFieldError, "Foreign object has no readable field " + fieldName);
+            throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchFieldError, "Foreign object has no readable field %s", fieldName);
         }
         return value;
     }
@@ -106,9 +107,9 @@ abstract class IntGetFieldNode extends AbstractGetFieldNode {
     }
 
     @Override
-    public int getField(VirtualFrame frame, long[] primitives, Object[] refs, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
+    public int getField(VirtualFrame frame, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
         root.notifyFieldAccess(frame, statementIndex, getField(), receiver);
-        BytecodeNode.putInt(primitives, at, executeGetField(receiver));
+        BytecodeNode.putInt(frame, at, executeGetField(receiver));
         return slotCount;
     }
 
@@ -144,7 +145,7 @@ abstract class IntGetFieldNode extends AbstractGetFieldNode {
         } catch (UnsupportedTypeException e) {
             error.enter();
             Meta meta = context.getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Foreign field " + fieldName + " cannot be cast to int");
+            throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Foreign field %s cannot be cast to int", fieldName);
         }
     }
 
@@ -160,9 +161,9 @@ abstract class BooleanGetFieldNode extends AbstractGetFieldNode {
     }
 
     @Override
-    public int getField(VirtualFrame frame, long[] primitives, Object[] refs, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
+    public int getField(VirtualFrame frame, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
         root.notifyFieldAccess(frame, statementIndex, getField(), receiver);
-        BytecodeNode.putInt(primitives, at, executeGetField(receiver) ? 1 : 0);
+        BytecodeNode.putInt(frame, at, executeGetField(receiver) ? 1 : 0);
         return slotCount;
     }
 
@@ -198,7 +199,7 @@ abstract class BooleanGetFieldNode extends AbstractGetFieldNode {
         } catch (UnsupportedTypeException e) {
             error.enter();
             Meta meta = context.getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Foreign field " + fieldName + " cannot be cast to boolean");
+            throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Foreign field %s cannot be cast to boolean", fieldName);
         }
     }
 
@@ -214,9 +215,9 @@ abstract class CharGetFieldNode extends AbstractGetFieldNode {
     }
 
     @Override
-    public int getField(VirtualFrame frame, long[] primitives, Object[] refs, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
+    public int getField(VirtualFrame frame, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
         root.notifyFieldAccess(frame, statementIndex, getField(), receiver);
-        BytecodeNode.putInt(primitives, at, executeGetField(receiver));
+        BytecodeNode.putInt(frame, at, executeGetField(receiver));
         return slotCount;
     }
 
@@ -258,7 +259,7 @@ abstract class CharGetFieldNode extends AbstractGetFieldNode {
         } catch (UnsupportedTypeException e) {
             error.enter();
             Meta meta = context.getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Foreign field " + fieldName + " cannot be cast to char");
+            throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Foreign field %s cannot be cast to char", fieldName);
         }
     }
 
@@ -274,9 +275,9 @@ abstract class ShortGetFieldNode extends AbstractGetFieldNode {
     }
 
     @Override
-    public int getField(VirtualFrame frame, long[] primitives, Object[] refs, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
+    public int getField(VirtualFrame frame, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
         root.notifyFieldAccess(frame, statementIndex, getField(), receiver);
-        BytecodeNode.putInt(primitives, at, executeGetField(receiver));
+        BytecodeNode.putInt(frame, at, executeGetField(receiver));
         return slotCount;
     }
 
@@ -312,7 +313,7 @@ abstract class ShortGetFieldNode extends AbstractGetFieldNode {
         } catch (UnsupportedTypeException e) {
             error.enter();
             Meta meta = context.getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Foreign field " + fieldName + " cannot be cast to short");
+            throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Foreign field %s cannot be cast to short", fieldName);
         }
     }
 
@@ -328,9 +329,9 @@ abstract class ByteGetFieldNode extends AbstractGetFieldNode {
     }
 
     @Override
-    public int getField(VirtualFrame frame, long[] primitives, Object[] refs, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
+    public int getField(VirtualFrame frame, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
         root.notifyFieldAccess(frame, statementIndex, getField(), receiver);
-        BytecodeNode.putInt(primitives, at, executeGetField(receiver));
+        BytecodeNode.putInt(frame, at, executeGetField(receiver));
         return slotCount;
     }
 
@@ -366,7 +367,7 @@ abstract class ByteGetFieldNode extends AbstractGetFieldNode {
         } catch (UnsupportedTypeException e) {
             error.enter();
             Meta meta = context.getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Foreign field " + fieldName + " cannot be cast to byte");
+            throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Foreign field %s cannot be cast to byte", fieldName);
         }
     }
 
@@ -382,9 +383,9 @@ abstract class LongGetFieldNode extends AbstractGetFieldNode {
     }
 
     @Override
-    public int getField(VirtualFrame frame, long[] primitives, Object[] refs, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
+    public int getField(VirtualFrame frame, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
         root.notifyFieldAccess(frame, statementIndex, getField(), receiver);
-        BytecodeNode.putLong(primitives, at, executeGetField(receiver));
+        BytecodeNode.putLong(frame, at, executeGetField(receiver));
         return slotCount;
     }
 
@@ -420,7 +421,7 @@ abstract class LongGetFieldNode extends AbstractGetFieldNode {
         } catch (UnsupportedTypeException e) {
             error.enter();
             Meta meta = context.getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Foreign field " + fieldName + " cannot be cast to long");
+            throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Foreign field %s cannot be cast to long", fieldName);
         }
     }
 
@@ -436,9 +437,9 @@ abstract class FloatGetFieldNode extends AbstractGetFieldNode {
     }
 
     @Override
-    public int getField(VirtualFrame frame, long[] primitives, Object[] refs, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
+    public int getField(VirtualFrame frame, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
         root.notifyFieldAccess(frame, statementIndex, getField(), receiver);
-        BytecodeNode.putFloat(primitives, at, executeGetField(receiver));
+        BytecodeNode.putFloat(frame, at, executeGetField(receiver));
         return slotCount;
     }
 
@@ -474,7 +475,7 @@ abstract class FloatGetFieldNode extends AbstractGetFieldNode {
         } catch (UnsupportedTypeException e) {
             error.enter();
             Meta meta = context.getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Foreign field " + fieldName + " cannot be cast to float");
+            throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Foreign field %s cannot be cast to float", fieldName);
         }
     }
 
@@ -490,9 +491,9 @@ abstract class DoubleGetFieldNode extends AbstractGetFieldNode {
     }
 
     @Override
-    public int getField(VirtualFrame frame, long[] primitives, Object[] refs, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
+    public int getField(VirtualFrame frame, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
         root.notifyFieldAccess(frame, statementIndex, getField(), receiver);
-        BytecodeNode.putDouble(primitives, at, executeGetField(receiver));
+        BytecodeNode.putDouble(frame, at, executeGetField(receiver));
         return slotCount;
     }
 
@@ -528,7 +529,7 @@ abstract class DoubleGetFieldNode extends AbstractGetFieldNode {
         } catch (UnsupportedTypeException e) {
             error.enter();
             Meta meta = context.getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Foreign field " + fieldName + " cannot be cast to double");
+            throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Foreign field %s cannot be cast to double", fieldName);
         }
     }
 
@@ -547,11 +548,11 @@ abstract class ObjectGetFieldNode extends AbstractGetFieldNode {
     }
 
     @Override
-    public int getField(VirtualFrame frame, long[] primitives, Object[] refs, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
+    public int getField(VirtualFrame frame, BytecodeNode root, StaticObject receiver, int at, int statementIndex) {
         root.notifyFieldAccess(frame, statementIndex, getField(), receiver);
         StaticObject result = executeGetField(receiver);
         root.checkNoForeignObjectAssumption(result);
-        BytecodeNode.putObject(refs, at, result);
+        BytecodeNode.putObject(frame, at, result);
         return slotCount;
     }
 
@@ -573,7 +574,7 @@ abstract class ObjectGetFieldNode extends AbstractGetFieldNode {
         } catch (UnsupportedTypeException e) {
             error.enter();
             Meta meta = context.getMeta();
-            throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Foreign field " + fieldName + " cannot be cast to " + typeKlass.getNameAsString());
+            throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Foreign field %s cannot be cast to %s", fieldName, typeKlass.getName());
         }
     }
 }

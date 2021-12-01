@@ -33,10 +33,10 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.windows.headers.FileAPI;
-import com.oracle.svm.core.windows.headers.LibC;
 
 @AutomaticFeature
 @Platforms(Platform.WINDOWS.class)
@@ -67,7 +67,7 @@ public class WindowsLogHandler implements LogHandler {
 
     @Override
     public void fatalError() {
-        if (SubstrateDiagnostics.isInProgress()) {
+        if (SubstrateDiagnostics.isFatalErrorHandlingInProgress()) {
             // Delay the shutdown a bit if another thread has something important to report.
             VMThreads.singleton().nativeSleep(3000);
         }

@@ -24,6 +24,18 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import java.util.concurrent.TimeUnit;
+
+import org.graalvm.compiler.test.GraalTest;
+import org.graalvm.compiler.truffle.runtime.BytecodeOSRMetadata;
+import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.junit.Assert;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TestRule;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -34,33 +46,21 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.impl.FrameWithoutBoxing;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
-import org.graalvm.compiler.truffle.runtime.BytecodeOSRMetadata;
-import org.graalvm.compiler.truffle.runtime.FrameWithoutBoxing;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TestRule;
-import org.junit.rules.Timeout;
 
-import java.util.concurrent.TimeUnit;
-
+@SuppressWarnings("deprecation")
 public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
 
     private static final GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
 
-    // 20s timeout
-    @Rule public TestRule timeout = new Timeout(20, TimeUnit.SECONDS);
+    @Rule public TestRule timeout = GraalTest.createTimeout(30, TimeUnit.SECONDS);
 
     private int osrThreshold;
 
@@ -79,7 +79,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
     @Test
     public void testSimpleInterpreterLoop() {
         RootNode rootNode = new Program(new InfiniteInterpreterLoop(), new FrameDescriptor());
-        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
         // Interpreter invocation should be OSR compiled and break out of the interpreter loop.
         Assert.assertEquals(42, target.call());
     }
@@ -92,7 +92,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         FrameDescriptor frameDescriptor = new FrameDescriptor();
         FixedIterationLoop osrNode = new FixedIterationLoop(frameDescriptor);
         RootNode rootNode = new Program(osrNode, frameDescriptor);
-        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
         Assert.assertEquals(FixedIterationLoop.OSR_RESULT, target.call(osrThreshold + 1));
     }
 
@@ -104,7 +104,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         FrameDescriptor frameDescriptor = new FrameDescriptor();
         FixedIterationLoop osrNode = new FixedIterationLoop(frameDescriptor);
         RootNode rootNode = new Program(osrNode, frameDescriptor);
-        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
         Assert.assertEquals(FixedIterationLoop.NORMAL_RESULT, target.call(osrThreshold));
     }
 
@@ -117,21 +117,21 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         FrameDescriptor frameDescriptor = new FrameDescriptor();
         TwoFixedIterationLoops osrNode = new TwoFixedIterationLoops(frameDescriptor);
         RootNode rootNode = new Program(osrNode, frameDescriptor);
-        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
         Assert.assertEquals(TwoFixedIterationLoops.OSR_IN_FIRST_LOOP, target.call(osrThreshold + 1));
 
         // Each loop runs for osrThreshold/2 + 1 iterations, so the second loop should trigger OSR.
         frameDescriptor = new FrameDescriptor();
         osrNode = new TwoFixedIterationLoops(frameDescriptor);
         rootNode = new Program(osrNode, frameDescriptor);
-        target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+        target = (OptimizedCallTarget) rootNode.getCallTarget();
         Assert.assertEquals(TwoFixedIterationLoops.OSR_IN_SECOND_LOOP, target.call(osrThreshold / 2 + 1));
 
         // Each loop runs for osrThreshold/2 iterations, so OSR should not get triggered.
         frameDescriptor = new FrameDescriptor();
         osrNode = new TwoFixedIterationLoops(frameDescriptor);
         rootNode = new Program(osrNode, frameDescriptor);
-        target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+        target = (OptimizedCallTarget) rootNode.getCallTarget();
         Assert.assertEquals(TwoFixedIterationLoops.NO_OSR, target.call(osrThreshold / 2));
     }
 
@@ -143,7 +143,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         FrameDescriptor frameDescriptor = new FrameDescriptor();
         UncompilableFixedIterationLoop osrNode = new UncompilableFixedIterationLoop(frameDescriptor);
         RootNode rootNode = new Program(osrNode, frameDescriptor);
-        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
         Assert.assertEquals(FixedIterationLoop.NORMAL_RESULT, target.call(osrThreshold + 1));
         // Compilation should be disabled after a compilation failure.
         Assert.assertEquals(osrNode.getGraalOSRMetadata(), BytecodeOSRMetadata.DISABLED);
@@ -157,7 +157,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         FrameDescriptor frameDescriptor = new FrameDescriptor();
         DeoptimizingFixedIterationLoop osrNode = new DeoptimizingFixedIterationLoop(frameDescriptor);
         RootNode rootNode = new Program(osrNode, frameDescriptor);
-        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
         // After osrThreshold+1 iterations, it should trigger OSR and deoptimize. OSR should not be
         // disabled, but the target should be invalid pending recompilation.
         Assert.assertEquals(FixedIterationLoop.NORMAL_RESULT, target.call(osrThreshold + 1));
@@ -183,7 +183,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         };
         FixedIterationLoop osrNode = new FixedIterationLoopWithChild(frameDescriptor, childToReplace);
         RootNode rootNode = new Program(osrNode, frameDescriptor);
-        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
         Assert.assertEquals(FixedIterationLoop.OSR_RESULT, target.call(osrThreshold + 1));
         BytecodeOSRMetadata osrMetadata = osrNode.getGraalOSRMetadata();
         OptimizedCallTarget osrTarget = osrMetadata.getOSRCompilations().get(BytecodeOSRTestNode.DEFAULT_TARGET);
@@ -214,7 +214,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         runtime.markFrameMaterializeCalled(frameDescriptor);
         MaterializedFixedIterationLoop osrNode = new MaterializedFixedIterationLoop(frameDescriptor);
         RootNode rootNode = new Program(osrNode, frameDescriptor);
-        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
         // OSR should succeed.
         Assert.assertEquals(FixedIterationLoop.OSR_RESULT, target.call(osrThreshold + 1));
         // Since the frame could be materialized, we should reuse the parent frame instead of
@@ -235,7 +235,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         );
         InfiniteInterpreterLoop osrNode = new InfiniteInterpreterLoop();
         RootNode rootNode = new Program(osrNode, new FrameDescriptor());
-        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
         Assert.assertEquals(42, target.call());
         BytecodeOSRMetadata osrMetadata = osrNode.getGraalOSRMetadata();
         int backEdgeCount = osrMetadata.getBackEdgeCount();
@@ -249,7 +249,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
     @Test
     public void testInterpreterStateObject() {
         RootNode rootNode = new Program(new InterpreterStateInfiniteLoop(), new FrameDescriptor());
-        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
         Assert.assertEquals(42, target.call());
     }
 
@@ -259,7 +259,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
     @Test
     public void testBeforeTransferCallback() {
         RootNode rootNode = new Program(new BeforeTransferInfiniteLoop(), new FrameDescriptor());
-        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
         Assert.assertEquals(42, target.call());
     }
 
@@ -271,7 +271,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         FrameDescriptor frameDescriptor = new FrameDescriptor();
         CheckStackWalkCallTarget osrNode = new CheckStackWalkCallTarget(frameDescriptor);
         RootNode rootNode = new Program(osrNode, frameDescriptor);
-        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
         Assert.assertEquals(FixedIterationLoop.OSR_RESULT, target.call(2 * osrThreshold));
     }
 
@@ -283,7 +283,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         FrameDescriptor frameDescriptor = new FrameDescriptor();
         CheckStackWalkFrame osrNode = new CheckStackWalkFrame(frameDescriptor);
         RootNode rootNode = new Program(osrNode, frameDescriptor);
-        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
         osrNode.callTarget = target; // set the call target so stack walking can use it
         Assert.assertEquals(FixedIterationLoop.OSR_RESULT, target.call(2 * osrThreshold));
     }
@@ -297,7 +297,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         FrameDescriptor frameDescriptor = new FrameDescriptor();
         CheckStackWalkFrameNested osrNode = new CheckStackWalkFrameNested(frameDescriptor);
         RootNode rootNode = new Program(osrNode, frameDescriptor);
-        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
         osrNode.callTarget = target; // set the call target so stack walking can use it
         Assert.assertEquals(FixedIterationLoop.OSR_RESULT, target.call(3 * osrThreshold));
         Assert.assertTrue(osrNode.hasDeoptimizedYet);
@@ -314,9 +314,9 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         FrameDescriptor frameDescriptor = new FrameDescriptor();
         CheckGetCallerFrameSkipsOSR osrNode = new CheckGetCallerFrameSkipsOSR(frameDescriptor);
         RootNode rootNode = new Program(osrNode, frameDescriptor);
-        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
         RootNode caller = new CheckGetCallerFrameSkipsOSR.Caller(target);
-        OptimizedCallTarget callerTarget = (OptimizedCallTarget) runtime.createCallTarget(caller);
+        OptimizedCallTarget callerTarget = (OptimizedCallTarget) caller.getCallTarget();
         osrNode.caller = callerTarget;
         Assert.assertEquals(FixedIterationLoop.OSR_RESULT, callerTarget.call(osrThreshold + 1));
     }
@@ -328,7 +328,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
     public void testFrameTransfer() {
         FrameDescriptor frameDescriptor = new FrameDescriptor();
         RootNode rootNode = new Program(new FrameTransferringNode(frameDescriptor), frameDescriptor);
-        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
         Assert.assertEquals(42, target.call());
     }
 
@@ -340,7 +340,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
     public void testFrameTransferWithTagUpdate() {
         FrameDescriptor frameDescriptor = new FrameDescriptor();
         RootNode rootNode = new Program(new FrameTransferringNodeWithTagUpdate(frameDescriptor), frameDescriptor);
-        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
         Assert.assertEquals(42, target.call());
     }
 
@@ -357,7 +357,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         // use a non-null default value to make sure it gets copied properly.
         FrameDescriptor frameDescriptor = new FrameDescriptor(new Object());
         RootNode rootNode = new Program(new FrameTransferringNodeWithUninitializedSlots(frameDescriptor), frameDescriptor);
-        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
         Assert.assertEquals(42, target.call());
     }
 
@@ -370,7 +370,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         FrameDescriptor frameDescriptor = new FrameDescriptor();
         FrameChangingNode osrNode = new FrameChangingNode(frameDescriptor);
         RootNode rootNode = new Program(osrNode, frameDescriptor);
-        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
         Assert.assertEquals(42, target.call());
         Assert.assertEquals(2, osrNode.osrCount);
     }
@@ -411,7 +411,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         FrameDescriptor frameDescriptor = new FrameDescriptor();
         BytecodeNode bytecodeNode = new BytecodeNode(3, frameDescriptor, tripleInput1);
         RootNode rootNode = new Program(bytecodeNode, frameDescriptor);
-        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
         // note: requires an extra iteration due to an awkward interaction with enterprise loop
         // peeling.
         Assert.assertEquals(3 * (osrThreshold + 2), target.call(osrThreshold + 2, 0));
@@ -428,7 +428,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         FrameDescriptor frameDescriptor = new FrameDescriptor();
         BytecodeNode bytecodeNode = new BytecodeNode(3, frameDescriptor, tripleInput1);
         RootNode rootNode = new Program(bytecodeNode, frameDescriptor);
-        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
         Assert.assertEquals(3 * osrThreshold, target.call(osrThreshold, 0));
         Assert.assertFalse(bytecodeNode.compiled);
         BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) bytecodeNode.getOSRMetadata();
@@ -443,7 +443,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         FrameDescriptor frameDescriptor = new FrameDescriptor();
         BytecodeNode bytecodeNode = new BytecodeNode(4, frameDescriptor, multiplyInputs);
         RootNode rootNode = new Program(bytecodeNode, frameDescriptor);
-        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
         Assert.assertEquals(2 * osrThreshold, target.call(osrThreshold, 2));
         Assert.assertTrue(bytecodeNode.compiled);
         BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) bytecodeNode.getOSRMetadata();
@@ -461,7 +461,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
         FrameDescriptor frameDescriptor = new FrameDescriptor();
         BytecodeNode bytecodeNode = new BytecodeNode(4, frameDescriptor, multiplyInputs);
         RootNode rootNode = new Program(bytecodeNode, frameDescriptor);
-        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
         Assert.assertEquals(2 * (osrThreshold - 1), target.call(2, osrThreshold - 1));
         Assert.assertTrue(bytecodeNode.compiled);
         BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) bytecodeNode.getOSRMetadata();
@@ -502,7 +502,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
             return (BytecodeOSRMetadata) getOSRMetadata();
         }
 
-        protected int getInt(Frame frame, FrameSlot frameSlot) {
+        protected int getInt(Frame frame, com.oracle.truffle.api.frame.FrameSlot frameSlot) {
             try {
                 return frame.getInt(frameSlot);
             } catch (FrameSlotTypeException e) {
@@ -510,7 +510,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
             }
         }
 
-        protected void setInt(Frame frame, FrameSlot frameSlot, int value) {
+        protected void setInt(Frame frame, com.oracle.truffle.api.frame.FrameSlot frameSlot, int value) {
             frame.setInt(frameSlot, value);
         }
 
@@ -552,8 +552,8 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
     }
 
     public static class FixedIterationLoop extends BytecodeOSRTestNode {
-        @CompilationFinal FrameSlot indexSlot;
-        @CompilationFinal FrameSlot numIterationsSlot;
+        @CompilationFinal com.oracle.truffle.api.frame.FrameSlot indexSlot;
+        @CompilationFinal com.oracle.truffle.api.frame.FrameSlot numIterationsSlot;
 
         static final String OSR_RESULT = "osr result";
         static final String NORMAL_RESULT = "normal result";
@@ -971,13 +971,13 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
     }
 
     public static class FrameTransferringNode extends BytecodeOSRTestNode {
-        @CompilationFinal FrameSlot booleanSlot;
-        @CompilationFinal FrameSlot byteSlot;
-        @CompilationFinal FrameSlot doubleSlot;
-        @CompilationFinal FrameSlot floatSlot;
-        @CompilationFinal FrameSlot intSlot;
-        @CompilationFinal FrameSlot longSlot;
-        @CompilationFinal FrameSlot objectSlot;
+        @CompilationFinal com.oracle.truffle.api.frame.FrameSlot booleanSlot;
+        @CompilationFinal com.oracle.truffle.api.frame.FrameSlot byteSlot;
+        @CompilationFinal com.oracle.truffle.api.frame.FrameSlot doubleSlot;
+        @CompilationFinal com.oracle.truffle.api.frame.FrameSlot floatSlot;
+        @CompilationFinal com.oracle.truffle.api.frame.FrameSlot intSlot;
+        @CompilationFinal com.oracle.truffle.api.frame.FrameSlot longSlot;
+        @CompilationFinal com.oracle.truffle.api.frame.FrameSlot objectSlot;
         @CompilationFinal Object o1;
         @CompilationFinal Object o2;
 
@@ -1181,8 +1181,8 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
     }
 
     public static class FrameChangingNode extends BytecodeOSRTestNode {
-        @CompilationFinal FrameSlot intSlot;
-        @CompilationFinal FrameSlot longSlot;
+        @CompilationFinal com.oracle.truffle.api.frame.FrameSlot intSlot;
+        @CompilationFinal com.oracle.truffle.api.frame.FrameSlot longSlot;
 
         public int osrCount = 0;
 
@@ -1273,7 +1273,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
 
     public static class BytecodeNode extends BytecodeOSRTestNode implements BytecodeOSRNode {
         @CompilationFinal(dimensions = 1) private final byte[] bytecodes;
-        @CompilationFinal(dimensions = 1) private final FrameSlot[] regs;
+        @CompilationFinal(dimensions = 1) private final com.oracle.truffle.api.frame.FrameSlot[] regs;
 
         boolean compiled;
 
@@ -1287,7 +1287,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
 
         public BytecodeNode(int numLocals, FrameDescriptor frameDescriptor, byte[] bytecodes) {
             this.bytecodes = bytecodes;
-            this.regs = new FrameSlot[numLocals];
+            this.regs = new com.oracle.truffle.api.frame.FrameSlot[numLocals];
             for (int i = 0; i < numLocals; i++) {
                 this.regs[i] = frameDescriptor.addFrameSlot("$" + i, FrameSlotKind.Int);
             }

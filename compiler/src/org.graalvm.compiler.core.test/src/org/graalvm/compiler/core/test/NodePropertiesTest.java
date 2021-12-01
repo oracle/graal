@@ -27,13 +27,13 @@ package org.graalvm.compiler.core.test;
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
-import org.graalvm.compiler.nodes.spi.Canonicalizable;
-import org.graalvm.compiler.nodes.spi.SimplifierTool;
-import org.graalvm.compiler.java.ComputeLoopFrequenciesClosure;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase.CustomSimplification;
@@ -177,14 +177,12 @@ public class NodePropertiesTest extends GraalCompilerTest {
     private void prepareGraphForLoopFrequencies(StructuredGraph g, HighTierContext htc) {
         // let canonicalizer work away branch probability nodes
         createCanonicalizerPhase().apply(g, htc);
-        // recompute the loop frequencies
-        ComputeLoopFrequenciesClosure.compute(g);
     }
 
     private static void assertFrequency(StructuredGraph g, int iterations) {
         NodeIterable<LoopBeginNode> loopBeginNodes = g.getNodes(LoopBeginNode.TYPE);
         LoopBeginNode loopBeginNode = loopBeginNodes.first();
-        Assert.assertEquals("loop frequency of " + loopBeginNode, iterations, loopBeginNode.loopFrequency(), 0);
+        Assert.assertEquals("loop frequency of " + loopBeginNode, iterations, ControlFlowGraph.compute(g, false, false, false, false).localLoopFrequency(loopBeginNode), 0);
     }
 
     @Test

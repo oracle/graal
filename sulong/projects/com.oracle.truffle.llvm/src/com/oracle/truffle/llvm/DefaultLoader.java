@@ -40,7 +40,7 @@ public final class DefaultLoader extends Loader {
     @Override
     public CallTarget load(LLVMContext context, Source source, BitcodeID id) {
         // per context, only one thread must do any parsing
-        synchronized (context.getGlobalScope()) {
+        synchronized (context.getGlobalScopeChain()) {
             return ParserDriver.parse(context, id, source);
         }
     }

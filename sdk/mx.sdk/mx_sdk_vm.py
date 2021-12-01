@@ -49,6 +49,7 @@ import os
 import shutil
 import tempfile
 import textwrap
+import types
 
 from os.path import join, exists, isfile, isdir, dirname, relpath
 from zipfile import ZipFile, ZIP_DEFLATED
@@ -113,9 +114,10 @@ class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
         self.dir_jars = dir_jars
         self.home_finder = home_finder
         self.build_time = build_time
+        self.relative_home_paths = {}
 
         assert isinstance(self.jar_distributions, list)
-        assert isinstance(self.build_args, list)
+        assert isinstance(self.build_args, (list, types.GeneratorType))
 
     def __str__(self):
         return self.destination
@@ -142,6 +144,11 @@ class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
         required_exports = mx_javamodules.requiredExports(distributions_transitive_clean, base_jdk())
         return AbstractNativeImageConfig.get_add_exports_list(required_exports)
 
+    def add_relative_home_path(self, language, path):
+        if language in self.relative_home_paths and self.relative_home_paths[language] != path:
+            raise Exception('the relative home path of {} is already set to {} and cannot also be set to {} for {}'.format(
+                language, self.relative_home_paths[language], path, self.destination))
+        self.relative_home_paths[language] = path
 
 class LauncherConfig(AbstractNativeImageConfig):
     def __init__(self, destination, jar_distributions, main_class, build_args, is_main_launcher=True,
@@ -167,14 +174,6 @@ class LauncherConfig(AbstractNativeImageConfig):
         self.extra_jvm_args = [] if extra_jvm_args is None else extra_jvm_args
         self.option_vars = [] if option_vars is None else option_vars
 
-        self.relative_home_paths = {}
-
-    def add_relative_home_path(self, language, path):
-        if language in self.relative_home_paths and self.relative_home_paths[language] != path:
-            raise Exception('the relative home path of {} is already set to {} and cannot also be set to {} for {}'.format(
-                language, self.relative_home_paths[language], path, self.destination))
-        self.relative_home_paths[language] = path
-
 
 class LanguageLauncherConfig(LauncherConfig):
     def __init__(self, destination, jar_distributions, main_class, build_args, language,
@@ -191,13 +190,31 @@ class LanguageLauncherConfig(LauncherConfig):
 
 
 class LibraryConfig(AbstractNativeImageConfig):
-    def __init__(self, destination, jar_distributions, build_args, jvm_library=False, use_modules=None, **kwargs):
+    def __init__(self, destination, jar_distributions, build_args, jvm_library=False, use_modules=None, home_finder=False, **kwargs):
         """
         :param bool jvm_library
         """
-        super(LibraryConfig, self).__init__(destination, jar_distributions, build_args, use_modules, **kwargs)
+        super(LibraryConfig, self).__init__(destination, jar_distributions, build_args, use_modules, home_finder=home_finder, **kwargs)
         self.jvm_library = jvm_library
 
+
+class LanguageLibraryConfig(LibraryConfig):
+    def __init__(self, destination, jar_distributions, main_class, build_args, language, is_sdk_launcher=True, launchers=None, option_vars=None, **kwargs):
+        """
+        :param str language
+        :param str main_class
+        """
+        super(LanguageLibraryConfig, self).__init__(destination, jar_distributions, build_args, home_finder=True, **kwargs)
+        self.is_sdk_launcher = is_sdk_launcher
+        self.main_class = main_class
+        self.language = language
+        self.default_symlinks = None
+        self.relative_home_paths = {}
+        self.launchers = [mx_subst.path_substitutions.substitute(l) for l in launchers] if launchers else []
+        self.option_vars = [] if option_vars is None else option_vars
+
+        # Ensure the language launcher can always find the language home
+        self.add_relative_home_path(language, relpath('.', dirname(destination)))
 
 class GraalVmComponent(object):
     def __init__(self,
@@ -896,9 +913,6 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
         jlink.append('--module-path=' + module_path)
         jlink.append('--output=' + dst_jdk_dir)
 
-        # These options are derived from how OpenJDK runs jlink to produce the final runtime image.
-        jlink.extend(['-J-XX:+UseSerialGC', '-J-Xms32M', '-J-Xmx512M', '-J-XX:TieredStopAtLevel=1'])
-        jlink.append('-J-Dlink.debug=true')
         if dedup_legal_notices:
             jlink.append('--dedup-legal-notices=error-if-not-same-content')
         jlink.append('--keep-packaged-modules=' + join(dst_jdk_dir, 'jmods'))

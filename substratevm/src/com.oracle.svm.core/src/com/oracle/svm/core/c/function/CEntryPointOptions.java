@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,8 @@ import java.util.function.Function;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.word.PointerBase;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -71,13 +73,21 @@ public @interface CEntryPointOptions {
      * If the supplier returns true, this entry point is added automatically when building a shared
      * library. This means the method is a root method for compilation, and everything reachable
      * from it is compiled too.
-     *
+     * <p>
      * The provided class must have a nullary constructor, which is used to instantiate the class.
      * Then the supplier function is called on the newly instantiated instance.
+     *
+     * @deprecated Use {@link CEntryPoint#include()}.
      */
+    @Deprecated
     Class<? extends BooleanSupplier> include() default CEntryPointOptions.AlwaysIncluded.class;
 
-    /** A {@link BooleanSupplier} that always returns {@code true}. */
+    /**
+     * A {@link BooleanSupplier} that always returns {@code true}.
+     *
+     * @deprecated Use {@link org.graalvm.nativeimage.c.function.CEntryPoint.AlwaysIncluded}.
+     */
+    @Deprecated
     class AlwaysIncluded implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
@@ -85,7 +95,13 @@ public @interface CEntryPointOptions {
         }
     }
 
-    /** A {@link BooleanSupplier} that always returns {@code false}. */
+    /**
+     * A {@link BooleanSupplier} that always returns {@code false}.
+     *
+     * @deprecated Use
+     *             {@link org.graalvm.nativeimage.c.function.CEntryPoint.NotIncludedAutomatically}.
+     */
+    @Deprecated
     class NotIncludedAutomatically implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
@@ -93,19 +109,50 @@ public @interface CEntryPointOptions {
         }
     }
 
+    /** Marker interface for all prologue classes. */
+    interface Prologue {
+    }
+
     /**
      * Special placeholder class for {@link #prologue()} for examining the entry point method's
      * signature and, in the case of an {@link IsolateThread} parameter, using {@link EnterPrologue}
      * or, in the case of an {@link Isolate} parameter, using {@link EnterIsolatePrologue}.
      */
-    final class AutomaticPrologue {
+    final class AutomaticPrologue implements Prologue {
     }
 
     /**
      * Special placeholder class for {@link #prologue()} to omit the prologue entirely. This value
      * is only permitted for entry point methods that are annotated with {@link Uninterruptible}.
      */
-    final class NoPrologue {
+    final class NoPrologue implements Prologue {
+    }
+
+    /** Marker interface for all prologue bailout classes. */
+    interface PrologueBailout {
+    }
+
+    /**
+     * Special placeholder class for {@link #prologueBailout()}. If the prologue returns a non-zero
+     * value, this class tries to convert the result of the prologue to a return value for the
+     * bailout. The behavior depends on the return type that is expected by the method that is
+     * annotated with {@link CEntryPointOptions}:
+     *
+     * <ul>
+     * <li>int: return the non-zero result from the prologue as the bailout value.</li>
+     * <li>void: bailout without a return value.</li>
+     * <li>any other return type: throw a build-time error</li>
+     * </ul>
+     */
+    final class AutomaticPrologueBailout implements PrologueBailout {
+    }
+
+    final class ReturnNullPointer implements PrologueBailout {
+        @SuppressWarnings("unused")
+        @Uninterruptible(reason = "Thread state not set up yet.")
+        public static PointerBase bailout(int prologueResult) {
+            return WordFactory.nullPointer();
+        }
     }
 
     /**
@@ -116,16 +163,36 @@ public @interface CEntryPointOptions {
      * The given class must have exactly one static method with parameters that are a subsequence of
      * the entry point method's parameters. In other words, individual parameters may be omitted,
      * but must be in the same order. The entry point method's parameters are matched to the
-     * prologue method's parameters. The prologue method must then use {@link CEntryPointActions}
-     * for establishing the execution context.
+     * prologue method's parameters. The prologue method must be {@link Uninterruptible} and its
+     * return type must either be int or void.
+     * <p>
+     * If the return type is an integer, then a return value of zero indicates success. A non-zero
+     * return value indicates a failure, and will result in early bailout. The value that is
+     * returned by the early bailout can be customized by specifying a class for
+     * {@link #prologueBailout}.
+     * <p>
+     * A void return type indicates that the prologue method directly handles errors (e.g., by
+     * calling {@link CEntryPointActions#failFatally}), so no extra bailout-related code will be
+     * generated.
      */
     Class<?> prologue() default AutomaticPrologue.class;
+
+    /**
+     * Specifies a class that is used when an early bailout occurs in the prologue. The given class
+     * must have exactly one static {@link Uninterruptible} method with an int argument. This method
+     * is invoked if the prologue methods returns a non-zero value.
+     */
+    Class<?> prologueBailout() default AutomaticPrologueBailout.class;
+
+    /** Marker interface for all epilogue classes. */
+    interface Epilogue {
+    }
 
     /**
      * Special placeholder class for {@link #epilogue()} to omit the epilogue entirely. This value
      * is only permitted for entry point methods that are annotated with {@link Uninterruptible}.
      */
-    final class NoEpilogue {
+    final class NoEpilogue implements Epilogue {
     }
 
     /**
@@ -133,8 +200,9 @@ public @interface CEntryPointOptions {
      * C in order to leave the execution context. See {@link CEntryPointSetup} for commonly used
      * epilogues.
      * <p>
-     * The given class must have exactly one static method with no parameters that must use the
-     * {@link CEntryPointActions} methods to leave the execution context.
+     * The given class must have exactly one static {@link Uninterruptible} method with no
+     * parameters. Within the epilogue method, {@link CEntryPointActions} can be used to leave the
+     * execution context.
      */
     Class<?> epilogue() default LeaveEpilogue.class;
 
@@ -155,5 +223,4 @@ public @interface CEntryPointOptions {
     }
 
     Publish publishAs() default Publish.SymbolAndHeader;
-
 }

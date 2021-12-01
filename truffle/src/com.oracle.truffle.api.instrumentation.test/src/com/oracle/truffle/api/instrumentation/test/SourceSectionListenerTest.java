@@ -54,7 +54,6 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
@@ -75,6 +74,10 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 public class SourceSectionListenerTest extends AbstractInstrumentationTest {
+
+    public SourceSectionListenerTest() {
+        needsInstrumentEnv = true;
+    }
 
     @Test
     public void testLoadSourceSection1() throws IOException {
@@ -394,7 +397,7 @@ public class SourceSectionListenerTest extends AbstractInstrumentationTest {
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
             com.oracle.truffle.api.source.Source source = request.getSource();
-            return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+            return new RootNode(languageInstance) {
                 @Node.Child private SingleSourceSectionNode onlyChild = new SingleSourceSectionNode(source);
 
                 @Override
@@ -406,7 +409,7 @@ public class SourceSectionListenerTest extends AbstractInstrumentationTest {
                 public com.oracle.truffle.api.source.SourceSection getSourceSection() {
                     return source.createSection(1);
                 }
-            });
+            }.getCallTarget();
         }
 
         @GenerateWrapper

@@ -24,13 +24,24 @@
  */
 package org.graalvm.compiler.core.test;
 
+import org.graalvm.compiler.api.directives.GraalDirectives;
+import org.graalvm.compiler.core.common.PermanentBailoutException;
+import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Builder;
+import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.nodeinfo.InputType;
+import org.graalvm.compiler.nodeinfo.NodeCycles;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.BeginNode;
+import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.EndNode;
+import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.IfNode;
+import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.ReturnNode;
@@ -38,6 +49,8 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.debug.ControlFlowAnchored;
+import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.junit.Assert;
@@ -48,6 +61,132 @@ public class SimpleCFGTest extends GraalCompilerTest {
     private static void dumpGraph(final StructuredGraph graph) {
         DebugContext debug = graph.getDebug();
         debug.dump(DebugContext.BASIC_LEVEL, graph, "Graph");
+    }
+
+    @NodeInfo(allowedUsageTypes = InputType.Anchor, cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
+    static class SingleSplit extends ControlSplitNode implements ControlFlowAnchored {
+        public static final NodeClass<SingleSplit> TYPE = NodeClass.create(SingleSplit.class);
+
+        @Successor AbstractBeginNode singleSuccessor;
+
+        protected SingleSplit() {
+            super(TYPE, StampFactory.forVoid());
+        }
+
+        void setSingleSuccessor(AbstractBeginNode node) {
+            updatePredecessor(singleSuccessor, node);
+            singleSuccessor = node;
+        }
+
+        @Override
+        public double probability(AbstractBeginNode successor) {
+            return getProfileData().getDesignatedSuccessorProbability();
+        }
+
+        @Override
+        public int getSuccessorCount() {
+            return 1;
+        }
+
+        @Override
+        public boolean setProbability(AbstractBeginNode successor, BranchProbabilityData profileData) {
+            throw new PermanentBailoutException("There is only one successor, so probability cannot change");
+        }
+
+        @Override
+        public BranchProbabilityData getProfileData() {
+            return BranchProbabilityNode.ALWAYS_TAKEN_PROFILE;
+        }
+
+        @Override
+        public AbstractBeginNode getPrimarySuccessor() {
+            return singleSuccessor;
+        }
+
+    }
+
+    static int single() {
+        GraalDirectives.deoptimizeAndInvalidate();
+        return -1;
+    }
+
+    @Test
+    public void testSingleSplit() {
+        StructuredGraph g = parseEager(getResolvedJavaMethod("single"), AllowAssumptions.NO);
+        FixedNode next = g.start().next();
+        g.start().setNext(null);
+        SingleSplit s = g.add(new SingleSplit());
+        AbstractBeginNode b = g.add(new BeginNode());
+        b.setNext(next);
+        s.setSingleSuccessor(b);
+        g.start().setNext(s);
+
+        g.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, g, "after build");
+        ControlFlowGraph.compute(g, true, true, true, true);
+    }
+
+    static int singleLoop(int end) {
+        int i = 0;
+        while (true) {
+            switch (i) {
+                default:
+            }
+            if (i == end) {
+                break;
+            }
+            i++;
+            continue;
+        }
+        return i;
+    }
+
+    @Test
+    public void testSingleSplitLoop() {
+        StructuredGraph g = parseEager(getResolvedJavaMethod("singleLoop"), AllowAssumptions.NO);
+        g.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, g, "after build");
+        ControlFlowGraph.compute(g, true, true, true, true);
+    }
+
+    static int foo(int a, int b) {
+        int res = 0;
+        int i = 0;
+        while (true) {
+            if (i >= a) {
+                break;
+            }
+            if (i == 123) {
+                GraalDirectives.deoptimizeAndInvalidate();
+            }
+            if (i == 126) {
+                GraalDirectives.deoptimizeAndInvalidate();
+            }
+            res += i;
+            i++;
+        }
+        if (b == 42) {
+            GraalDirectives.deoptimizeAndInvalidate();
+        }
+        return res;
+    }
+
+    @Override
+    protected void checkHighTierGraph(StructuredGraph graph) {
+        super.checkHighTierGraph(graph);
+        if (!modify) {
+            return;
+        }
+        for (LoopExitNode lex : graph.getNodes().filter(LoopExitNode.class)) {
+            lex.setStateAfter(lex.loopBegin().stateAfter());
+        }
+    }
+
+    private boolean modify = false;
+
+    @Test
+    public void testFoo() {
+        modify = true;
+        test("foo", 12, 12);
+        modify = false;
     }
 
     @Test

@@ -230,7 +230,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     public RootCallTarget getOrCreateUndefinedFunction(String name) {
         RootCallTarget target = undefinedFunctions.get(name);
         if (target == null) {
-            target = Truffle.getRuntime().createCallTarget(new SLUndefinedFunctionRootNode(this, name));
+            target = new SLUndefinedFunctionRootNode(this, name).getCallTarget();
             RootCallTarget other = undefinedFunctions.putIfAbsent(name, target);
             if (other != null) {
                 target = other;
@@ -275,8 +275,8 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
          * Register the builtin function in the builtin registry. Call targets for builtins may be
          * reused across multiple contexts.
          */
-        RootCallTarget newTarget = Truffle.getRuntime().createCallTarget(rootNode);
-        RootCallTarget oldTarget = builtinTargets.put(factory, newTarget);
+        RootCallTarget newTarget = rootNode.getCallTarget();
+        RootCallTarget oldTarget = builtinTargets.putIfAbsent(factory, newTarget);
         if (oldTarget != null) {
             return oldTarget;
         }
@@ -339,7 +339,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
              */
             evalMain = new SLEvalRootNode(this, null, functions);
         }
-        return Truffle.getRuntime().createCallTarget(evalMain);
+        return evalMain.getCallTarget();
     }
 
     /**
@@ -372,16 +372,6 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     @Override
     protected Object getLanguageView(SLContext context, Object value) {
         return SLLanguageView.create(value);
-    }
-
-    /*
-     * Still necessary for the old SL TCK to pass. We should remove with the old TCK. New language
-     * should not override this.
-     */
-    @SuppressWarnings("deprecation")
-    @Override
-    protected Object findExportedSymbol(SLContext context, String globalName, boolean onlyExplicit) {
-        return context.getFunctionRegistry().lookup(globalName, false);
     }
 
     @Override
@@ -421,4 +411,12 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         EXTERNAL_BUILTINS.add(builtin);
     }
 
+    @Override
+    protected void exitContext(SLContext context, ExitMode exitMode, int exitCode) {
+        /*
+         * Runs shutdown hooks during explicit exit triggered by TruffleContext#closeExit(Node, int)
+         * or natural exit triggered during natural context close.
+         */
+        context.runShutdownHooks();
+    }
 }

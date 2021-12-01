@@ -30,8 +30,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ForkJoinPool;
 
-import org.graalvm.compiler.options.OptionValues;
-
 public class NativeImageClassLoaderSupport extends AbstractNativeImageClassLoaderSupport {
 
     NativeImageClassLoaderSupport(ClassLoader defaultSystemClassLoader, String[] classpath, @SuppressWarnings("unused") String[] modulePath) {
@@ -54,7 +52,12 @@ public class NativeImageClassLoaderSupport extends AbstractNativeImageClassLoade
     }
 
     @Override
-    protected void processAddExportsAndAddOpens(OptionValues parsedHostedOptions) {
+    protected void processClassLoaderOptions() {
+        /* Nothing to do for Java 8 */
+    }
+
+    @Override
+    public void propagateQualifiedExports(String fromTargetModule, String toTargetModule) {
         /* Nothing to do for Java 8 */
     }
 

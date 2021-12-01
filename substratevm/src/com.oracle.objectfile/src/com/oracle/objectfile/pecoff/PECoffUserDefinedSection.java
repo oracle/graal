@@ -49,7 +49,6 @@ import com.oracle.objectfile.pecoff.PECoffObjectFile.PECoffSectionFlag;
 public class PECoffUserDefinedSection extends PECoffSection implements ObjectFile.RelocatableSectionImpl {
 
     private PECoffRelocationTable rel; // the section holding our relocations without addends
-    private PECoffRelocationTable rela; // the section holding our relocations with addends
 
     protected ElementImpl impl;
 
@@ -119,33 +118,23 @@ public class PECoffUserDefinedSection extends PECoffSection implements ObjectFil
     }
 
     @Override
-    public Element getOrCreateRelocationElement(boolean useImplicitAddend) {
+    public Element getOrCreateRelocationElement(long addend) {
         PECoffSymtab syms = (PECoffSymtab) getOwner().elementForName(".symtab");
         if (syms == null) {
             throw new IllegalStateException("cannot create a relocation section without corresponding symtab");
         }
-        boolean withExplicitAddends = !useImplicitAddend;
-        PECoffRelocationTable rs = withExplicitAddends ? rela : rel;
-        if (rs == null) {
-            // we have to create the section if it doesn't exist
-            rs = getOwner().getOrCreateRelocSection(syms, withExplicitAddends);
-            assert rs != null;
-            if (withExplicitAddends) {
-                rela = rs;
-            } else {
-                rel = rs;
-            }
+
+        if (rel == null) {
+            rel = getOwner().getOrCreateRelocSection(syms);
+            assert rel != null;
         }
-        return rs;
+        return rel;
     }
 
     @Override
-    public void markRelocationSite(int offset, ByteBuffer bb, ObjectFile.RelocationKind k, String symbolName, boolean useImplicitAddend, Long explicitAddend) {
-        if (useImplicitAddend != (explicitAddend == null)) {
-            throw new IllegalArgumentException("must have either an explicit or implicit addend");
-        }
+    public void markRelocationSite(int offset, ByteBuffer bb, ObjectFile.RelocationKind k, String symbolName, long addend) {
         PECoffSymtab syms = (PECoffSymtab) getOwner().elementForName(".symtab");
-        PECoffRelocationTable rs = (PECoffRelocationTable) getOrCreateRelocationElement(useImplicitAddend);
+        PECoffRelocationTable rs = (PECoffRelocationTable) getOrCreateRelocationElement(addend);
         assert symbolName != null;
         PECoffSymtab.Entry ent = syms.getSymbol(symbolName);
         if (ent == null) {
@@ -158,23 +147,14 @@ public class PECoffUserDefinedSection extends PECoffSection implements ObjectFil
         sbb.pushSeek(offset);
         /*
          * NOTE: Windows does not support explicit addends, and inline addends are applied even
-         * during dynamic linking. So if the caller supplies an explicit addend, we turn it into an
-         * implicit one by updating our content.
+         * during dynamic linking.
          */
         int length = ObjectFile.RelocationKind.getRelocationSize(k);
-        long currentInlineAddendValue = sbb.readTruncatedLong(length);
-        long desiredInlineAddendValue;
-        if (explicitAddend != null) {
-            /*
-             * This assertion is conservatively disallowing double-addend (could
-             * "add currentValue to explicitAddend"), because that seems more likely to be a bug
-             * than a feature.
-             */
-            assert currentInlineAddendValue == 0;
-            desiredInlineAddendValue = explicitAddend;
-        } else {
-            desiredInlineAddendValue = currentInlineAddendValue;
-        }
+        /*
+         * The addend is passed as a method parameter. The initial implicit addend value within the
+         * instruction does not need to be read, as it is noise.
+         */
+        long desiredInlineAddendValue = addend;
 
         /*
          * One more complication: for PC-relative relocation, at least on x86-64, Coff linkers
@@ -196,7 +176,7 @@ public class PECoffUserDefinedSection extends PECoffSection implements ObjectFil
         // return ByteBuffer cursor to where it was
         sbb.pop();
 
-        rs.addEntry(this, offset, PECoffMachine.getRelocation(getOwner().getMachine(), k), ent, explicitAddend);
+        rs.addEntry(this, offset, PECoffMachine.getRelocation(getOwner().getMachine(), k), ent, addend);
     }
 
     /**

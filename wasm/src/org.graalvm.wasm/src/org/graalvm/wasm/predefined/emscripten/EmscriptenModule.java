@@ -58,7 +58,7 @@ public class EmscriptenModule extends BuiltinModule {
 
     @Override
     protected WasmInstance createInstance(WasmLanguage language, WasmContext context, String name) {
-        WasmInstance instance = new WasmInstance(context, new WasmModule(name, null), NUMBER_OF_FUNCTIONS);
+        WasmInstance instance = new WasmInstance(context, WasmModule.createBuiltin(name), NUMBER_OF_FUNCTIONS);
 
         final WasmInstance testutil = context.moduleInstances().get("testutil");
         if (testutil != null) {

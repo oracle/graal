@@ -47,6 +47,7 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.memory.UnsafeWasmMemory;
 import org.graalvm.wasm.utils.Assert;
 import org.junit.Test;
@@ -60,7 +61,7 @@ public class WasmPolyglotTestSuite {
     @Test
     public void testEmpty() throws IOException {
         try (Context context = Context.newBuilder().build()) {
-            context.parse(Source.newBuilder("wasm", ByteSequence.create(new byte[0]), "someName").build());
+            context.parse(Source.newBuilder(WasmLanguage.ID, ByteSequence.create(new byte[0]), "someName").build());
         } catch (PolyglotException pex) {
             Assert.assertTrue("Must be a syntax error.", pex.isSyntaxError());
             Assert.assertTrue("Must not be an internal error.", !pex.isInternalError());
@@ -69,22 +70,22 @@ public class WasmPolyglotTestSuite {
 
     @Test
     public void test42() throws IOException {
-        Context.Builder contextBuilder = Context.newBuilder("wasm");
-        Source.Builder sourceBuilder = Source.newBuilder("wasm",
+        Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
+        Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID,
                         ByteSequence.create(binaryReturnConst),
                         "main");
         Source source = sourceBuilder.build();
         Context context = contextBuilder.build();
         context.eval(source);
-        Value mainFunction = context.getBindings("wasm").getMember("main").getMember("main");
+        Value mainFunction = context.getBindings(WasmLanguage.ID).getMember("main").getMember("main");
         Value result = mainFunction.execute();
         Assert.assertEquals("Should be equal: ", 42, result.asInt());
     }
 
     @Test
     public void unsafeMemoryFreed() throws IOException {
-        Context.Builder contextBuilder = Context.newBuilder("wasm");
-        Source.Builder sourceBuilder = Source.newBuilder("wasm",
+        Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
+        Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID,
                         ByteSequence.create(binaryReturnConst),
                         "main");
         Source source = sourceBuilder.build();
@@ -93,7 +94,7 @@ public class WasmPolyglotTestSuite {
         Context context = contextBuilder.build();
         context.enter();
         context.eval(source);
-        final Value mainModule = context.getBindings("wasm").getMember("main");
+        final Value mainModule = context.getBindings(WasmLanguage.ID).getMember("main");
         mainModule.getMember("main").execute();
         final TruffleLanguage.Env env = WasmContext.get(null).environment();
         final UnsafeWasmMemory memory = (UnsafeWasmMemory) env.asGuestValue(mainModule.getMember("memory"));
@@ -105,12 +106,12 @@ public class WasmPolyglotTestSuite {
     @Test
     public void overwriteElement() throws IOException, InterruptedException {
         final ByteSequence test = ByteSequence.create(compileWat("test", textOverwriteElement));
-        Context.Builder contextBuilder = Context.newBuilder("wasm");
-        Source.Builder sourceBuilder = Source.newBuilder("wasm", test, "main");
+        Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
+        Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID, test, "main");
         Source source = sourceBuilder.build();
         Context context = contextBuilder.build();
         context.eval(source);
-        Value mainFunction = context.getBindings("wasm").getMember("main").getMember("main");
+        Value mainFunction = context.getBindings(WasmLanguage.ID).getMember("main").getMember("main");
         Value result = mainFunction.execute();
         Assert.assertEquals("Should be equal: ", 11, result.asInt());
     }
@@ -119,10 +120,10 @@ public class WasmPolyglotTestSuite {
     public void divisionByZeroStressTest() throws IOException, InterruptedException {
         String divisionByZeroWAT = "(module (func (export \"main\") (result i32) i32.const 1 i32.const 0 i32.div_s))";
         ByteSequence test = ByteSequence.create(compileWat("test", divisionByZeroWAT));
-        Source source = Source.newBuilder("wasm", test, "main").build();
-        try (Context context = Context.create("wasm")) {
+        Source source = Source.newBuilder(WasmLanguage.ID, test, "main").build();
+        try (Context context = Context.create(WasmLanguage.ID)) {
             context.eval(source);
-            Value mainFunction = context.getBindings("wasm").getMember("main").getMember("main");
+            Value mainFunction = context.getBindings(WasmLanguage.ID).getMember("main").getMember("main");
 
             for (int iteration = 0; iteration < 20000; iteration++) {
                 try {

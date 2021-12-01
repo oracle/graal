@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.espresso.hotswap;
 
+import java.io.IOException;
+
 /**
  * Provides access to the enhanced HotSwap capabilities of Espresso. Every method allows
  * registration of HotSwap actions that will be fired on relevant class redefinition changes.
@@ -122,6 +124,23 @@ public final class EspressoHotSwap {
     }
 
     /**
+     * Registration of a HotSwap action that will be fired if changes are detected to the specified
+     * resource.
+     *
+     * @param loader the class loader to lookup the service type
+     * @param resource the resource to register a change listener on
+     * @param action the action to fire
+     * @return true if registration was successful
+     * @since 21.3
+     */
+    public static boolean registerResourceListener(ClassLoader loader, String resource, HotSwapAction action) throws IOException {
+        if (handler != null) {
+            return handler.registerResourceListener(loader, resource, action);
+        }
+        return false;
+    }
+
+    /**
      * Registration of a HotSwap action that will be fired if changes are detected to the declared
      * META-INF/services for {@code serviceType}.
      *
@@ -131,7 +150,7 @@ public final class EspressoHotSwap {
      * @return true if registration was successful
      * @since 21.2
      */
-    public static boolean registerMetaInfServicesListener(Class<?> serviceType, ClassLoader loader, HotSwapAction action) {
+    public static boolean registerMetaInfServicesListener(Class<?> serviceType, ClassLoader loader, HotSwapAction action) throws IOException {
         if (handler != null) {
             handler.registerMetaInfServicesListener(serviceType, loader, action);
         }

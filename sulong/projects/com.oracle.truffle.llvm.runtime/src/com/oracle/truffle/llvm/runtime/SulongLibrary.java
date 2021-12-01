@@ -42,7 +42,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -56,6 +55,7 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
 import com.oracle.truffle.llvm.runtime.except.LLVMIllegalSymbolIndexException;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -70,17 +70,19 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 public final class SulongLibrary implements TruffleObject {
 
     private final String name;
-    private final LLVMScope scope;
+    private final LLVMScopeChain scope;
     private final LLVMContext context;
     final CachedMainFunction main;
     private final LibraryLocator libraryLocator;
+    private final BitcodeID bitcodeID;
 
-    public SulongLibrary(String name, LLVMScope scope, CachedMainFunction main, LLVMContext context, LibraryLocator libraryLocator) {
+    public SulongLibrary(String name, LLVMScopeChain scope, CachedMainFunction main, LLVMContext context, LibraryLocator libraryLocator, BitcodeID bitcodeID) {
         this.name = name;
         this.scope = scope;
         this.main = main;
         this.context = context;
         this.libraryLocator = libraryLocator;
+        this.bitcodeID = bitcodeID;
     }
 
     public static final class CachedMainFunction {
@@ -103,8 +105,8 @@ public final class SulongLibrary implements TruffleObject {
             LLVMLanguage language = LLVMLanguage.get(null);
             RootCallTarget startCallTarget = language.getStartFunctionCode().getLLVMIRFunctionSlowPath();
             Path applicationPath = Paths.get(mainFunction.getStringPath());
-            RootNode rootNode = new LLVMGlobalRootNode(language, new FrameDescriptor(), mainFunction, startCallTarget, Objects.toString(applicationPath, ""));
-            return LLVMLanguage.createCallTarget(rootNode);
+            RootNode rootNode = new LLVMGlobalRootNode(language, mainFunction, startCallTarget, Objects.toString(applicationPath, ""));
+            return rootNode.getCallTarget();
         }
     }
 
@@ -133,6 +135,10 @@ public final class SulongLibrary implements TruffleObject {
 
     public String getName() {
         return name;
+    }
+
+    public BitcodeID getBitcodeID() {
+        return bitcodeID;
     }
 
     @GenerateUncached

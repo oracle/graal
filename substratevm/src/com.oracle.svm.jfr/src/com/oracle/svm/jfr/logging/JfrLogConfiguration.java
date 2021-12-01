@@ -30,10 +30,12 @@ import java.util.EnumSet;
 import java.util.Map;
 import java.util.Set;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.jfr.internal.LogLevel;
 import jdk.jfr.internal.LogTag;
@@ -109,6 +111,21 @@ class JfrLogConfiguration {
         result.put(LogTag.JFR_EVENT, EnumSet.of(JfrLogTag.JFR, JfrLogTag.EVENT));
         result.put(LogTag.JFR_SETTING, EnumSet.of(JfrLogTag.JFR, JfrLogTag.SETTING));
         result.put(LogTag.JFR_DCMD, EnumSet.of(JfrLogTag.JFR, JfrLogTag.DCMD));
+
+        // JDK17 support
+        if (JavaVersionUtil.JAVA_SPEC >= 17) {
+            try {
+                LogTag jfrSystemStreaming = Enum.valueOf(LogTag.class, "JFR_SYSTEM_STREAMING");
+                LogTag jfrSystemThrottle = Enum.valueOf(LogTag.class, "JFR_SYSTEM_THROTTLE");
+                result.put(jfrSystemStreaming, EnumSet.of(JfrLogTag.JFR, JfrLogTag.SYSTEM, JfrLogTag.STREAMING));
+                result.put(jfrSystemThrottle, EnumSet.of(JfrLogTag.JFR, JfrLogTag.SYSTEM, JfrLogTag.THROTTLE));
+                LogTag jfrStart = Enum.valueOf(LogTag.class, "JFR_START");
+                result.put(jfrStart, EnumSet.of(JfrLogTag.JFR, JfrLogTag.START));
+            } catch (IllegalArgumentException | NullPointerException e) {
+                throw VMError.shouldNotReachHere("Should be defined", e);
+            }
+        }
+
         return result;
     }
 

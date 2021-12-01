@@ -472,7 +472,7 @@ public final class TruffleLogger {
         if (!isLoggable(level)) {
             return;
         }
-        doLog(level, message, null, null, (Object) null);
+        doLog(level, message, null, null, (Object[]) null);
     }
 
     /**
@@ -490,7 +490,7 @@ public final class TruffleLogger {
         if (!isLoggable(level)) {
             return;
         }
-        doLog(level, messageSupplier, null, null, (Object) null);
+        doLog(level, messageSupplier, null, null, null);
     }
 
     /**
@@ -582,7 +582,7 @@ public final class TruffleLogger {
         if (!isLoggable(level)) {
             return;
         }
-        doLog(level, message, sourceClass, sourceMethod, (Object) null);
+        doLog(level, message, sourceClass, sourceMethod, (Object[]) null);
     }
 
     /**
@@ -602,7 +602,7 @@ public final class TruffleLogger {
         if (!isLoggable(level)) {
             return;
         }
-        doLog(level, messageSupplier, sourceClass, sourceMethod, (Object) null);
+        doLog(level, messageSupplier, sourceClass, sourceMethod, null);
     }
 
     /**
@@ -773,16 +773,6 @@ public final class TruffleLogger {
                         null,
                         thrown);
         callHandlers(logRecord);
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    private void doLog(
-                    final Level level,
-                    final Supplier<String> messageSupplier,
-                    final String className,
-                    final String methodName,
-                    final Object param) {
-        doLog(level, messageSupplier.get(), className, methodName, new Object[]{param});
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -1253,7 +1243,15 @@ public final class TruffleLogger {
                     }
                 }
             }
-            for (Map.Entry<String, Level> addedLevel : added.entrySet()) {
+            // In a multi context scenario there can be a logger with higher effective log level
+            // than a default one. When the newly configured context does not specify log level
+            // explicitly the effective log level of such a logger needs to be set to the default
+            // level.
+            Map<String, Level> addedWithDefaults = new HashMap<>(added);
+            for (String loggerName : newEffectiveLevels.keySet()) {
+                addedWithDefaults.putIfAbsent(loggerName, Level.INFO);
+            }
+            for (Map.Entry<String, Level> addedLevel : addedWithDefaults.entrySet()) {
                 final String loggerName = addedLevel.getKey();
                 final Level loggerLevel = addedLevel.getValue();
                 final Level currentLevel = newEffectiveLevels.get(loggerName);

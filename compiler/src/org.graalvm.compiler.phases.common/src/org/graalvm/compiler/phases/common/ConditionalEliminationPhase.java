@@ -190,7 +190,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                     cfg.visitDominatorTree(new MoveGuardsUpwards(), graph.isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL));
                 }
                 try (DebugContext.Scope scheduleScope = graph.getDebug().scope(SchedulePhase.class)) {
-                    SchedulePhase.run(graph, SchedulingStrategy.EARLIEST_WITH_GUARD_ORDER, cfg);
+                    SchedulePhase.run(graph, SchedulingStrategy.EARLIEST_WITH_GUARD_ORDER, cfg, context, false);
                 } catch (Throwable t) {
                     throw graph.getDebug().handle(t);
                 }
@@ -522,6 +522,42 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
             });
         }
 
+        /**
+         * {@link PiNode} anchored at a {@link ValueAnchorNode} are used to incorporate
+         * inter-procedural information such as static analysis results. When such a {@link PiNode}
+         * is proven by a previous condition, it can be optimized the same way as a condition.
+         */
+        private void processValueAnchor(ValueAnchorNode node) {
+            for (Node usage : node.usages().snapshot()) {
+                if (usage instanceof PiNode && ((PiNode) usage).getGuard() == node) {
+                    tryImproveAnchoredPi((PiNode) usage);
+                }
+            }
+        }
+
+        private void tryImproveAnchoredPi(PiNode piNode) {
+            InfoElement infoElement = infoElementProvider.infoElements(piNode.object());
+            while (infoElement != null) {
+                Stamp joinedStamp = infoElement.getStamp().join(piNode.piStamp());
+                if (joinedStamp.equals(infoElement.getStamp())) {
+                    /*
+                     * The PiNode is already proven by a dominating condition. We just re-anchor the
+                     * PiNode at the dominating point. If that point already has an equivalent
+                     * PiNode, the Canonicalizer will combine them.
+                     */
+                    piNode.setGuard(infoElement.getGuard());
+                    return;
+                }
+                infoElement = infoElementProvider.nextElement(infoElement);
+            }
+
+            /*
+             * The PiNode cannot be proven by a dominating condition. But the information can be
+             * used to eliminate dominating conditions or anchored PiNode.
+             */
+            registerNewStamp(piNode.object(), piNode.piStamp(), piNode.getGuard());
+        }
+
         @Override
         public Marks enter(Block block) {
             int infoElementsMark = undoOperations.size();
@@ -590,6 +626,8 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                     processIf((IfNode) node);
                 } else if (node instanceof EndNode) {
                     processEnd((EndNode) node);
+                } else if (node instanceof ValueAnchorNode) {
+                    processValueAnchor((ValueAnchorNode) node);
                 }
             }
         }

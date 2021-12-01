@@ -244,7 +244,7 @@ public class ReentrantBlockIteratorTest extends GraalCompilerTest {
         ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, false);
         ReentrantBlockIterator.apply(closure, cfg.getStartBlock());
         // schedule for IGV
-        new SchedulePhase(graph.getOptions()).apply(graph);
+        SchedulePhase.runWithoutContextOptimizations(graph);
         return blocks;
     }
 

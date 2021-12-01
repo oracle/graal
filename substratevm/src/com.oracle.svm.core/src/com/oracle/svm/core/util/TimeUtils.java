@@ -101,6 +101,10 @@ public class TimeUtils {
         return (nanos / nanosPerSecond);
     }
 
+    public static double nanosToSecondsDouble(long nanos) {
+        return (nanos / (double) nanosPerSecond);
+    }
+
     /** Return the nanoseconds remaining after taking out all the seconds. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long remainderNanosToSeconds(long nanos) {

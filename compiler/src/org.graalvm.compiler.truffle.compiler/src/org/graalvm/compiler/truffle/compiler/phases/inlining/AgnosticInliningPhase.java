@@ -93,4 +93,11 @@ public final class AgnosticInliningPhase extends BasePhase<CoreProviders> {
     private boolean optionsAllowInlining() {
         return request.options.get(PolyglotCompilerOptions.Inlining);
     }
+
+    @Override
+    public boolean checkContract() {
+        // inlining per definition increases graph size a lot
+        return false;
+    }
+
 }

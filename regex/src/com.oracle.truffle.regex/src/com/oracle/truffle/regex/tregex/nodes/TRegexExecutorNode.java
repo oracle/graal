@@ -182,7 +182,7 @@ public abstract class TRegexExecutorNode extends Node {
                 return codepoint | (c & (0xff >>> nBytes)) << (6 * (nBytes - 1));
             }
         } else {
-            assert getEncoding() == Encodings.UTF_16_RAW || getEncoding() == Encodings.UTF_32 || getEncoding() == Encodings.LATIN_1;
+            assert getEncoding() == Encodings.UTF_16_RAW || getEncoding() == Encodings.UTF_32 || getEncoding() == Encodings.LATIN_1 || getEncoding() == Encodings.ASCII;
             locals.setNextIndex(inputIncRaw(index));
             return inputReadRaw(locals);
         }
@@ -261,7 +261,7 @@ public abstract class TRegexExecutorNode extends Node {
                 } while (inputHasNext(locals, false) && inputUTF8IsTrailingByte(c));
             }
         } else {
-            assert getEncoding() == Encodings.UTF_16_RAW || getEncoding() == Encodings.UTF_32 || getEncoding() == Encodings.LATIN_1;
+            assert getEncoding() == Encodings.UTF_16_RAW || getEncoding() == Encodings.UTF_32 || getEncoding() == Encodings.LATIN_1 || getEncoding() == Encodings.ASCII;
             inputIncRaw(locals, forward);
         }
     }

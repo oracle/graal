@@ -2417,9 +2417,8 @@ public abstract class AArch64ASIMDAssembler {
      * <code>for i in 0..n-1 do dst[i] = src[i] << imm</code>
      *
      * @param size register size.
-     * @param eSize element size. Must be ElementSize.Word or ElementSize.DoubleWord. Note
-     *            ElementSize.DoubleWord is only applicable when size is 128 (i.e. the operation is
-     *            performed on more than one element).
+     * @param eSize element size. ElementSize.DoubleWord is only applicable when size is 128 (i.e.
+     *            the operation is performed on more than one element).
      * @param dst SIMD register.
      * @param src SIMD register.
      * @param shiftAmt shift amount.
@@ -2554,9 +2553,8 @@ public abstract class AArch64ASIMDAssembler {
      * dst[i] = (src1[i] >> byte(src2[i])</code>
      *
      * @param size register size.
-     * @param eSize element size. Must be ElementSize.Word or ElementSize.DoubleWord. Note
-     *            ElementSize.DoubleWord is only applicable when size is 128 (i.e. the operation is
-     *            performed on more than one element).
+     * @param eSize element size. ElementSize.DoubleWord is only applicable when size is 128 (i.e.
+     *            the operation is performed on more than one element).
      * @param dst SIMD register.
      * @param src1 SIMD register.
      * @param src2 SIMD register.
@@ -2604,9 +2602,8 @@ public abstract class AArch64ASIMDAssembler {
      * <code>for i in 0..n-1 do dst[i] = src[i] >> imm</code>
      *
      * @param size register size.
-     * @param eSize element size. Must be ElementSize.Word or ElementSize.DoubleWord. Note
-     *            ElementSize.DoubleWord is only applicable when size is 128 (i.e. the operation is
-     *            performed on more than one element).
+     * @param eSize element size. ElementSize.DoubleWord is only applicable when size is 128 (i.e.
+     *            the operation is performed on more than one element).
      * @param dst SIMD register.
      * @param src SIMD register.
      * @param shiftAmt shift right amount.
@@ -2984,9 +2981,8 @@ public abstract class AArch64ASIMDAssembler {
      * dst[i] = (src1[i] >>> byte(src2[i])</code>
      *
      * @param size register size.
-     * @param eSize element size. Must be ElementSize.Word or ElementSize.DoubleWord. Note
-     *            ElementSize.DoubleWord is only applicable when size is 128 (i.e. the operation is
-     *            performed on more than one element).
+     * @param eSize element size. ElementSize.DoubleWord is only applicable when size is 128 (i.e.
+     *            the operation is performed on more than one element).
      * @param dst SIMD register.
      * @param src1 SIMD register.
      * @param src2 SIMD register.
@@ -3057,9 +3053,8 @@ public abstract class AArch64ASIMDAssembler {
      * <code>dst = src >>> imm</code>
      *
      * @param size register size.
-     * @param eSize element size. Must be ElementSize.Word or ElementSize.DoubleWord. Note
-     *            ElementSize.DoubleWord is only applicable when size is 128 (i.e. the operation is
-     *            performed on more than one element).
+     * @param eSize element size. ElementSize.DoubleWord is only applicable when size is 128 (i.e.
+     *            the operation is performed on more than one element).
      * @param dst SIMD register.
      * @param src SIMD register.
      * @param shiftAmt shift right amount.

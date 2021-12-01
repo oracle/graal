@@ -65,14 +65,14 @@ final class IsolateAwareObjectConstantEquality implements ObjectConstantEquality
         throw VMError.shouldNotReachHere("Unknown object constant: " + b);
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     static boolean isolatedConstantHandleTargetsEqual(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<?> x, ClientHandle<?> y) {
         return IsolatedCompileClient.get().unhand(x) == IsolatedCompileClient.get().unhand(y);
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static boolean isolatedHandleTargetEqualImageObject(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<?> x, ImageHeapRef<?> y) {
         return IsolatedCompileClient.get().unhand(x) == ImageHeapObjects.deref(y);
     }

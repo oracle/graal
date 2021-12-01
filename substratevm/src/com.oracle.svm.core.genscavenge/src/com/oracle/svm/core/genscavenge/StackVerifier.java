@@ -103,8 +103,8 @@ final class StackVerifier {
         }
 
         @Override
-        public boolean visitObjectReference(Pointer objRef, boolean compressed) {
-            result &= HeapVerifier.verifyReference(null, objRef, compressed);
+        public boolean visitObjectReference(Pointer objRef, boolean compressed, Object holderObject) {
+            result &= HeapVerifier.verifyReference(holderObject, objRef, compressed);
             return true;
         }
     }

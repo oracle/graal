@@ -33,7 +33,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 
-public class TestSingleEvent {
+public class TestSingleEvent extends JFRTest {
     private static final long METADATA_TYPE_ID = 0;
     private static final long CONSTANT_POOL_TYPE_ID = 1;
 
@@ -70,7 +70,7 @@ public class TestSingleEvent {
         MetadataDescriptor.read(input);
     }
 
-    private void verifyConstantPools(RecordingInput input, long cpoolPos) throws IOException {
+    private static void verifyConstantPools(RecordingInput input, long cpoolPos) throws IOException {
         input.position(cpoolPos);
         input.readInt(); // size
         long typeId = input.readLong();

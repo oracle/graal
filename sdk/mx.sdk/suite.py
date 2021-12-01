@@ -41,7 +41,7 @@
 suite = {
   "mxversion" : "5.309.1",
   "name" : "sdk",
-  "version" : "21.3.0",
+  "version" : "22.0.0",
   "release" : False,
   "sourceinprojectwhitelist" : [],
   "url" : "https://github.com/oracle/graal",
@@ -105,8 +105,8 @@ suite = {
       }
     },
     "JLINE3" : {
-      "sha1" : "4cb5f6c20b10912ef3c12f4c4c3ebcdbcbe3a555",
-      "version" : "3.16.0.1",
+      "sha1" : "bac1579375a67379d8f308016138f9c37a646dd5",
+      "version" : "3.16.0.2",
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/jline3-shadowed-{version}.jar"],
       "license" : "BSD-new",
       "requires" : ["java.logging"],
@@ -145,29 +145,33 @@ suite = {
       ],
     },
     "LLVM_ORG" : {
-      "version" : "10.0.0-6-gad4288df64-bg263fb7a415",
+      "version" : "12.0.1-3-g6e0a5672bc-bgf11ed69a5a",
       "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
       "os_arch" : {
         "linux" : {
           "amd64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-linux-amd64.tar.gz"],
-            "sha1" : "89521da049c9275f63cc11c9f60a40050deec61c",
+            "sha1" : "9a22c2f67f359e62fe9bcf8d89c24295f9d489dd",
           },
           "aarch64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-linux-aarch64.tar.gz"],
-            "sha1" : "f0bdf96d621e0de31fb0e2036d77ff18d2fe87e2",
+            "sha1" : "c61f0795a8b3ca6fedcb640aa9b93db7d1c5bb14",
           }
         },
         "darwin" : {
           "amd64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-darwin-amd64.tar.gz"],
-            "sha1" : "e25ea07786bcb55c186b9bf9a20d5fcefd5587b1",
+            "sha1" : "f820252fc848e3f7ab7a7ebbe8e9b2d4b129a98e",
+          },
+          "aarch64" : {
+            # GR-34811
+            "optional": True,
           }
         },
         "windows" : {
           "amd64" : {
             "urls" : ["{host}/llvm-llvmorg-{version}-windows-amd64.tar.gz"],
-            "sha1" : "cbff9162b4a67dbaaa31efdb1002fd01912de5e5",
+            "sha1" : "a321d009a97545f8a6cf301678a79b4166a31d22",
           }
         },
         "<others>": {
@@ -179,19 +183,19 @@ suite = {
       "license" : "Apache-2.0-LLVM",
     },
     "LLVM_ORG_COMPILER_RT_LINUX" : {
-      "version" : "10.0.0-6-gad4288df64-bg263fb7a415",
+      "version" : "12.0.1-3-g6e0a5672bc-bgf11ed69a5a",
       "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
       # we really want linux-amd64, also on non-linux and non-amd64 platforms for cross-compilation
       "urls" : ["{host}/compiler-rt-llvmorg-{version}-linux-amd64.tar.gz"],
-      "sha1" : "687e1a131efb2b43b57c9b22849e642151845bfe",
+      "sha1" : "daf84066ea4f77f1b0ee7c96b14b948ae56517e9",
       "license" : "Apache-2.0-LLVM",
     },
     "LLVM_ORG_SRC" : {
-      "version" : "10.0.0-6-gad4288df64-bg263fb7a415",
+      "version" : "12.0.1-3-g6e0a5672bc-bgf11ed69a5a",
       "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
       "packedResource" : True,
       "urls" : ["{host}/llvm-src-llvmorg-{version}.tar.gz"],
-      "sha1" : "c5340ed83c3ff6040ed2dc49ab070a4cd0ccceea",
+      "sha1" : "623d031f0f0ec296557138b46ad153af65f839e3",
       "license" : "Apache-2.0-LLVM",
       },
   },
@@ -374,7 +378,7 @@ suite = {
           "org.graalvm.polyglot",
           "org.graalvm.options",
           "org.graalvm.word",
-          "org.graalvm.polyglot.impl to org.graalvm.truffle",
+          "org.graalvm.polyglot.impl to org.graalvm.truffle, com.oracle.graal.graal_enterprise",
           "org.graalvm.word.impl to jdk.internal.vm.compiler",
           "org.graalvm.nativeimage.impl to org.graalvm.nativeimage.builder,org.graalvm.nativeimage.configure,com.oracle.svm.svm_enterprise",
         ],

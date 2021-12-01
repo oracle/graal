@@ -107,7 +107,7 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
         testInvalidationCounterCompiled = 0;
         testInvalidationCounterInterpreted = 0;
         doInvalidate = false;
-        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
+        OptimizedCallTarget target = (OptimizedCallTarget) new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
                 if (CompilerDirectives.inInterpreter()) {
@@ -121,7 +121,7 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
                 }
                 return null;
             }
-        });
+        }.getCallTarget();
         final int compilationThreshold = target.getOptionValue(PolyglotCompilerOptions.LastTierCompilationThreshold);
         final int reprofileCount = target.getOptionValue(PolyglotCompilerOptions.ReplaceReprofileCount);
         assertTrue(compilationThreshold >= 2);
@@ -187,7 +187,7 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
         final int compilationThreshold = 20;
 
         setupContext("engine.Inlining", "true", "engine.SingleTierCompilationThreshold", String.valueOf(compilationThreshold), "engine.MultiTier", "false");
-        OptimizedCallTarget innermostCallTarget = (OptimizedCallTarget) runtime.createCallTarget(new RootTestNode(new FrameDescriptor(), testName + 0, new AbstractTestNode() {
+        OptimizedCallTarget innermostCallTarget = (OptimizedCallTarget) new RootTestNode(new FrameDescriptor(), testName + 0, new AbstractTestNode() {
             @Child private AbstractTestNode child = new ConstantTestNode(42);
             @Child private AbstractTestNode dummy = new ConstantTestNode(17);
 
@@ -200,12 +200,12 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
                 }
                 return child.execute(frame);
             }
-        }));
+        }).getCallTarget();
         assertEquals(compilationThreshold, (int) innermostCallTarget.getOptionValue(PolyglotCompilerOptions.SingleTierCompilationThreshold));
 
         OptimizedCallTarget ct = innermostCallTarget;
-        ct = (OptimizedCallTarget) runtime.createCallTarget(new RootTestNode(new FrameDescriptor(), testName + 1, new CallTestNode(ct)));
-        ct = (OptimizedCallTarget) runtime.createCallTarget(new RootTestNode(new FrameDescriptor(), testName + 2, new CallTestNode(ct)));
+        ct = (OptimizedCallTarget) new RootTestNode(new FrameDescriptor(), testName + 1, new CallTestNode(ct)).getCallTarget();
+        ct = (OptimizedCallTarget) new RootTestNode(new FrameDescriptor(), testName + 2, new CallTestNode(ct)).getCallTarget();
         final OptimizedCallTarget outermostCallTarget = ct;
 
         assertNull("assumption is initially null", getRewriteAssumption(innermostCallTarget));
@@ -264,14 +264,14 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
         // test single include
 
         setupContext("engine.CompileOnly", "foobar", "engine.MultiTier", "false");
-        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new NamedRootNode("foobar"));
+        OptimizedCallTarget target = (OptimizedCallTarget) new NamedRootNode("foobar").getCallTarget();
         final int compilationThreshold = target.getOptionValue(PolyglotCompilerOptions.SingleTierCompilationThreshold);
         for (int i = 0; i < compilationThreshold; i++) {
             assertNotCompiled(target);
             target.call();
         }
         assertCompiled(target);
-        target = (OptimizedCallTarget) runtime.createCallTarget(new NamedRootNode("baz"));
+        target = (OptimizedCallTarget) new NamedRootNode("baz").getCallTarget();
         for (int i = 0; i < compilationThreshold; i++) {
             assertNotCompiled(target);
             target.call();
@@ -283,14 +283,14 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
     public void testCompileOnly2() {
         // test single exclude
         setupContext("engine.CompileOnly", "~foobar", "engine.MultiTier", "false");
-        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new NamedRootNode("foobar"));
+        OptimizedCallTarget target = (OptimizedCallTarget) new NamedRootNode("foobar").getCallTarget();
         final int compilationThreshold = target.getOptionValue(PolyglotCompilerOptions.SingleTierCompilationThreshold);
         for (int i = 0; i < compilationThreshold; i++) {
             assertNotCompiled(target);
             target.call();
         }
         assertNotCompiled(target);
-        target = (OptimizedCallTarget) runtime.createCallTarget(new NamedRootNode("baz"));
+        target = (OptimizedCallTarget) new NamedRootNode("baz").getCallTarget();
         for (int i = 0; i < compilationThreshold; i++) {
             assertNotCompiled(target);
             target.call();
@@ -302,14 +302,14 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
     public void testCompileOnly3() {
         // test two includes/excludes
         setupContext("engine.CompileOnly", "foo,baz", "engine.MultiTier", "false");
-        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new NamedRootNode("foobar"));
+        OptimizedCallTarget target = (OptimizedCallTarget) new NamedRootNode("foobar").getCallTarget();
         final int compilationThreshold = target.getOptionValue(PolyglotCompilerOptions.SingleTierCompilationThreshold);
         for (int i = 0; i < compilationThreshold; i++) {
             assertNotCompiled(target);
             target.call();
         }
         assertCompiled(target);
-        target = (OptimizedCallTarget) runtime.createCallTarget(new NamedRootNode("baz"));
+        target = (OptimizedCallTarget) new NamedRootNode("baz").getCallTarget();
         for (int i = 0; i < compilationThreshold; i++) {
             assertNotCompiled(target);
             target.call();
@@ -336,10 +336,10 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
     public void testCompileOnly4() {
         // OSR should not trigger for compile-only includes
         setupContext("engine.CompileOnly", "foobar");
-        OptimizedCallTarget constant = (OptimizedCallTarget) runtime.createCallTarget(RootNode.createConstantNode(42));
+        OptimizedCallTarget constant = (OptimizedCallTarget) RootNode.createConstantNode(42).getCallTarget();
         final OSRRepeatingNode repeating = new OSRRepeatingNode(constant.getOptionValue(PolyglotCompilerOptions.OSRCompilationThreshold));
         final LoopNode loop = runtime.createLoopNode(repeating);
-        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new NamedRootNode("foobar") {
+        OptimizedCallTarget target = (OptimizedCallTarget) new NamedRootNode("foobar") {
 
             @Child LoopNode loopChild = loop;
 
@@ -349,7 +349,7 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
                 return super.execute(frame);
             }
 
-        });
+        }.getCallTarget();
         target.call();
         OptimizedCallTarget osrTarget = findOSRTarget(loop);
         if (osrTarget != null) {
@@ -367,7 +367,7 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
     private void testCompilationImpl(Boolean compileOptionValue, boolean expectedCompiled) {
         String[] options = compileOptionValue == null ? new String[]{"engine.MultiTier", "false"} : new String[]{"engine.Compilation", compileOptionValue.toString(), "engine.MultiTier", "false"};
         setupContext(options);
-        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new NamedRootNode("foobar"));
+        OptimizedCallTarget target = (OptimizedCallTarget) new NamedRootNode("foobar").getCallTarget();
         final int compilationThreshold = target.getOptionValue(PolyglotCompilerOptions.SingleTierCompilationThreshold);
         for (int i = 0; i < compilationThreshold; i++) {
             assertNotCompiled(target);
@@ -399,10 +399,10 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
     public void testCompileOnly5() {
         // OSR should trigger if compile-only with excludes
         setupContext("engine.CompileOnly", "~foobar");
-        OptimizedCallTarget constant = (OptimizedCallTarget) runtime.createCallTarget(RootNode.createConstantNode(42));
+        OptimizedCallTarget constant = (OptimizedCallTarget) RootNode.createConstantNode(42).getCallTarget();
         final OSRRepeatingNode repeating = new OSRRepeatingNode(constant.getOptionValue(PolyglotCompilerOptions.OSRCompilationThreshold));
         final LoopNode loop = runtime.createLoopNode(repeating);
-        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new NamedRootNode("foobar") {
+        OptimizedCallTarget target = (OptimizedCallTarget) new NamedRootNode("foobar") {
 
             @Child LoopNode loopChild = loop;
 
@@ -412,7 +412,7 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
                 return super.execute(frame);
             }
 
-        });
+        }.getCallTarget();
         target.call();
         OptimizedCallTarget osrTarget = findOSRTarget(loop);
         assertCompiled(osrTarget);
@@ -430,7 +430,7 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
         int[] innerMethod = {0};
         int[] innerBoundary = {0};
 
-        final OptimizedCallTarget innerTarget = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
+        final OptimizedCallTarget innerTarget = (OptimizedCallTarget) new RootNode(null) {
 
             @Override
             public String toString() {
@@ -462,8 +462,8 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
                     innerBoundary[0] = 1;
                 }
             }
-        });
-        final OptimizedCallTarget outerTarget = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
+        }.getCallTarget();
+        final OptimizedCallTarget outerTarget = (OptimizedCallTarget) new RootNode(null) {
 
             @Override
             public String toString() {
@@ -497,7 +497,7 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
                     outerBoundary[0]++;
                 }
             }
-        });
+        }.getCallTarget();
         final int compilationThreshold = outerTarget.getOptionValue(PolyglotCompilerOptions.LastTierCompilationThreshold);
         for (int i = 0; i < compilationThreshold; i++) {
             outerTarget.call();
@@ -520,8 +520,8 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
     @Test
     public void testManyArguments() {
         setupContext("engine.CompileImmediately", Boolean.TRUE.toString());
-        CallTarget fortyTwo = runtime.createCallTarget(new RootTestNode(new FrameDescriptor(), "42", new ConstantTestNode(42)));
-        OptimizedCallTarget ct = (OptimizedCallTarget) runtime.createCallTarget(new RootTestNode(new FrameDescriptor(), "caller", new CallTestNode(fortyTwo)));
+        CallTarget fortyTwo = new RootTestNode(new FrameDescriptor(), "42", new ConstantTestNode(42)).getCallTarget();
+        OptimizedCallTarget ct = (OptimizedCallTarget) new RootTestNode(new FrameDescriptor(), "caller", new CallTestNode(fortyTwo)).getCallTarget();
         for (int i = 0; i < 3; i++) {
             ct.call(IntStream.range(0, 100000).mapToObj(Integer::valueOf).toArray());
         }
@@ -533,8 +533,8 @@ public class OptimizedCallTargetTest extends TestWithSynchronousCompiling {
         setupContext("engine.CompileImmediately", Boolean.TRUE.toString(), "engine.CompilationFailureAction", "Throw",
                         "engine.BackgroundCompilation", Boolean.FALSE.toString(),
                         "engine.ArgumentTypeSpeculation", Boolean.FALSE.toString());
-        CallTarget fortyTwo = runtime.createCallTarget(new RootTestNode(new FrameDescriptor(), "42", new ConstantTestNode(42)));
-        OptimizedCallTarget ct = (OptimizedCallTarget) runtime.createCallTarget(new RootTestNode(new FrameDescriptor(), "caller", new CallTestNode(fortyTwo)));
+        CallTarget fortyTwo = new RootTestNode(new FrameDescriptor(), "42", new ConstantTestNode(42)).getCallTarget();
+        OptimizedCallTarget ct = (OptimizedCallTarget) new RootTestNode(new FrameDescriptor(), "caller", new CallTestNode(fortyTwo)).getCallTarget();
         for (int i = 0; i < 3; i++) {
             ct.call(IntStream.range(0, 20).mapToObj(Integer::valueOf).toArray());
         }

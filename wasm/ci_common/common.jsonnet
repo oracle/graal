@@ -93,7 +93,7 @@ local graal_suite_root = root_ci.graal_suite_root;
 
   wabt: {
     downloads+: {
-      WABT_DIR: {name: 'wabt', version: '1.0.12', platformspecific: true},
+      WABT_DIR: {name: 'wabt', version: '1.0.23', platformspecific: true},
     },
   },
 
@@ -185,6 +185,14 @@ local graal_suite_root = root_ci.graal_suite_root;
     ],
     logs: ['bench-results.json'],
     capabilities+: ['x52'],
+  },
+
+  wasm_unittest: {
+    environment+: {
+        "MX_TEST_RESULTS_PATTERN": "es-XXX.json",
+        "MX_TEST_RESULT_TAGS": "wasm"
+    },
+    logs+: ["*/es-*.json"]
   },
 
   jdk8_gate_linux_eclipse_jdt              : self.jdk8 + self.gate + self.linux + self.eclipse + self.jdt,

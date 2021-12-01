@@ -11,7 +11,7 @@ toc_group: graalvm-as-a-platform
 We have found that the easiest way to get started with implementing your own language is by extending an existing language such as SimpleLanguage.
 [SimpleLanguage](https://github.com/graalvm/simplelanguage) is a demonstration language built using the [Language API](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/package-summary.html).
 The SimpleLanguage project provides a showcase on how to use the Language APIs for writing your own language.
-It aims to use most of the available [Truffle language implementation framework](/graalvm-as-a-platform/language-implementation-framework/) (henceforth "Truffle") features, and documents their use extensively with inline source documentation.
+It aims to use most of the available [Truffle language implementation framework](../../truffle/docs/README.md) (henceforth "Truffle") features, and documents their use extensively with inline source documentation.
 
 To start, ensure [Maven3](https://maven.apache.org/download.cgi) and GraalVM are available in your system.
 
@@ -29,12 +29,7 @@ For macOS, use:
 export JAVA_HOME=/path/to/graalvm/Contents/Home
 export PATH=/path/to/graalvm/Contents/Home/bin:$PATH
 ```
-4. Execute `mvn package` from the SimpleLanguage folder to build the language.
-The command also builds a `slnative` executable in the `simplelanguage/native`
-directory and a `sl-component.jar` language component which later can be installed
-into GraalVM using the [GraalVM Updater](../reference-manual/graalvm-updater.md) tool.
-Please verify ithat the `native-image` plugin is available in your GraalVM distribution
-to avoid build failure:
+4. Execute `mvn package` from the SimpleLanguage folder to build the language. The command also builds a `slnative` executable in the `simplelanguage/native` directory and a `sl-component.jar` language component which later can be installed into GraalVM using the [GraalVM Updater](../reference-manual/graalvm-updater.md) tool. Please verify ithat the `native-image` plugin is available in your GraalVM distribution to avoid build failure:
 ```shell
 gu list
 gu install native-image
@@ -53,7 +48,8 @@ The SimpleLanguage demonstration language is licensed under the [Universal Permi
 
 ## IDE Setup
 
-The [Truffle framework](/graalvm-as-a-platform/language-implementation-framework/) provides language-agnostic infrastructure to realize standard IDE features by providing additional APIs. If you would like to experiment with your language and get the benefits of an IDE, consider importing SimpleLanguage as an example.
+The [Truffle framework](../../truffle/docs/README.md) provides language-agnostic infrastructure to realize standard IDE features by providing additional APIs.
+If you would like to experiment with your language and get the benefits of an IDE, consider importing SimpleLanguage as an example.
 
 ### Eclipse
 
@@ -109,21 +105,17 @@ Then attach a Java remote debugger (like Eclipse) on port 8000.
 
 Languages implemented with the [Truffle framework](https://github.com/oracle/graal/tree/master/truffle) can be packaged as _components_ which later can be installed into GraalVM using the [GraalVM Updater](../reference-manual/graalvm-updater.md) tool.
 Running `mvn package` in the SimpleLanguage folder also builds a `sl-component.jar`.
-This file is the SimpleLanguage component for GraalVM and can be installed by
-running:
+This file is the SimpleLanguage component for GraalVM and can be installed by running:
 ```shell
 gu -L install /path/to/sl-component.jar
 ```
 
 ## SimpleLanguage Native Image
 
-A language built with Truffle can be AOT compiled using [Native Image](../reference-manual/native-image/README.md). Running
-`mvn package` in the SimpleLanguage folder also builds a `slnative` executable
-in the `native` directory. This executable is the full SimpleLanguage
-implementation as a single native application, and has no need for GraalVM in
-order to execute SimpleLanguage code. Besides this, a big advantage of using the
-native executable when compared to running on GraalVM is the greatly faster
-startup time as shown bellow:
+A language built with Truffle can be AOT compiled using [Native Image](../reference-manual/native-image/README.md).
+Running `mvn package` in the SimpleLanguage folder also builds a `slnative` executable in the `native` directory.
+This executable is the full SimpleLanguage implementation as a single native application, and has no need for GraalVM in order to execute SimpleLanguage code.
+Besides this, a big advantage of using the native executable when compared to running on GraalVM is the greatly faster startup time as shown bellow:
 ```shell
 time ./sl language/tests/HelloWorld.sl
 == running on org.graalvm.polyglot.Engine@2db0f6b2
@@ -143,23 +135,17 @@ user    0m0.000s
 sys     0m0.000s
 ```
 
-This snipped shows a timed execution of a "Hello World" program using the `sl`
-launcher script, which runs SimpleLanguage on GraalVM, using Native
-Image. We can see that when running on GraalVM the execution takes 405ms. Since
-our SimpleLanguage program does just one print statement, we can conclude that
-almost all of this time is spent starting up GraalVM and initializing the
-language itself. When using the native executable we see that the execution takes
-only 4ms, showing two orders of magnitude faster startup than running on
-GraalVM.
+This snipped shows a timed execution of a "Hello World" program using the `sl` launcher script, which runs SimpleLanguage on GraalVM, using Native Image.
+We can see that when running on GraalVM the execution takes 405ms.
+Since our SimpleLanguage program does just one print statement, we can conclude that almost all of this time is spent starting up GraalVM and initializing the language itself.
+When using the native executable we see that the execution takes only 4ms, showing two orders of magnitude faster startup than running on GraalVM.
 
 For more information on the `native-image` tool consider reading the [reference manual](../reference-manual/native-image/README.md).
 
 ### Disable SimpleLanguage Native Image Build
 
-Building the native executable through Maven is attached to the Maven `package`
-phase. Since the native executable build can take a bit of time, we provide the
-option to skip this build by setting the `SL_BUILD_NATIVE` environment variable
-to `false` like so:
+Building the native executable through Maven is attached to the Maven `package` phase.
+Since the native executable build can take a bit of time, we provide the option to skip this build by setting the `SL_BUILD_NATIVE` environment variable to `false` like so:
 
 ```shell
 export SL_BUILD_NATIVE=false
@@ -178,113 +164,59 @@ Skipping the native image build because SL_BUILD_NATIVE is set to false.
 ...
 ```
 
-## Run SimpleLanguage with the Newest Compiler 21.2.0
+## Run SimpleLanguage with the Newest (Developement) version of the Compiler
 
-In the outstanding case that you need to execute SimpleLanguage with the newest
-version of the GraalVM compiler, please follow these instructions:
+To run SimpleLanguage with the development version of the GraalVM compiler we must build a GraalVM with that compiler.
+Clone the `graal` repository (https://github.com/oracle/graal) and follow the instructions in the `vm/README.md` file to build a GraalVM.
 
-1. Download the latest [JVMCI JDK 8](https://github.com/graalvm/graal-jvmci-8/releases/) and point JAVA_HOME at it:
-```shell
-export JAVA_HOME=/path/to/openjdk-8u292-jvmci-21.1-b04
-```
-2. Clone the "Graal" repository from the SimpleLanguage folder:
-```shell
-cd /path/to/simplelanguage
-git clone https://github.com/oracle/graal.git
-```
-3.  Clone the mx repository:
-```shell
-git clone https://github.com/graalvm/mx.git
-```
-4. Add mx to your path:
-```shell
-export PATH=/path/to/mx:$PATH
-```
-5. Navigate to the compiler folder:
-```shell
-cd /path/to/graal/compiler
-```
-6. Build the GraalVM compiler:
-```shell
-mx build
-```
-7. Run SimpleLanguage using the mx command:
-```shell
-mx -v --jdk=jvmci vm -cp /path/to/simplelanguage/launcher/target/launcher-21.2.0-SNAPSHOT.jar:/path/to/simplelanguage/language/target/simplelanguage.jar com.oracle.truffle.sl.launcher.SLMain  /path/to/simplelanguage/language/tests/SlScript.sl
-```
+Once that's done, point `JAVA_HOME` to the newly built GraalVM and proceed with normal building and running of SimpleLanguage.
 
 ## Run SimpleLanguage Using Command Line
 
-Executing SimpleLanguage code is normally done with the `sl` script which sets
-up the necessary command line depending on whether `JAVA_HOME` points to
-GraalVM or another JVM installation. The following subsections describe the
-command line for both cases.
+Executing SimpleLanguage code is normally done with the `sl` script which sets up the necessary command line depending on whether `JAVA_HOME` points to GraalVM or another JVM installation.
+The following subsections describe the command line for both cases.
 
 ### Run SimpleLanguage with GraalVM as JAVA_HOME
 
-Assuming `JAVA_HOME` points to the GraalVM installation and that the current
-working directory is the `simplelanguage` directory, to run SimpleLanguage one
-should execute the following command:
+Assuming `JAVA_HOME` points to the GraalVM installation and that the current working directory is the `simplelanguage` directory, to run SimpleLanguage one should execute the following command:
 
 ```shell
 $JAVA_HOME/bin/java \
-    -cp launcher/target/launcher-21.2.0-SNAPSHOT.jar \
+    -cp launcher/target/launcher-21.3.0-SNAPSHOT.jar \
     -Dtruffle.class.path.append=language/target/simplelanguage.jar \
     com.oracle.truffle.sl.launcher.SLMain language/tests/Add.sl
 ```
 
-In short, we place the launcher JAR on the class path and execute its main
-class, but we inform GraalVM of the presence of SimpleLanguage by using the
-`-Dtruffle.class.path.append` option and providing it the path to the fat
-language JAR. Having the language on a separate class path ensures a strong
-separation between the language implementation and its embedding context (in
-this case, the launcher).
+In short, we place the launcher JAR on the class path and execute its main class, but we inform GraalVM of the presence of SimpleLanguage by using the `-Dtruffle.class.path.append` option and providing it the path to the fat language JAR.
+Having the language on a separate class path ensures a strong separation between the language implementation and its embedding context (in this case, the launcher).
 
 #### Disable Class Path Separation
 
 *NOTE! This should only be used during development.*
 
-For development purposes it is useful to disable the class path separation and enable having the
-language implementation on the application class path (for example, for testing
+For development purposes it is useful to disable the class path separation and enable having the language implementation on the application class path (for example, for testing
 the internals of the language).
 
-For the GraalVM distribution based on JDK 8, you can add the `-XX:-UseJVMCIClassLoader`
-option. This disables the class path isolation, enabling the language
-implementation to be placed on the application class path. The command line can
-be as follows:
-
-```shell
-$JAVA_HOME/bin/java \
-    -XX:-UseJVMCIClassLoader -Dgraalvm.locatorDisabled=true \
-    -cp launcher/target/launcher-21.2.0-SNAPSHOT.jar:language/target/simplelanguage.jar \
-    com.oracle.truffle.sl.launcher.SLMain language/tests/Add.sl
-```
-
-For the JDK 11-based distribution of GraalVM, the `-XX:-UseJVMCIClassLoader` option
-is not valid. The Java Module System isolation is used. You can achieve the same behavior
-using `--add-exports` or `--upgrade-module-path`. The latter is preferable.
-
-The Language API JAR on Maven Central exports all API packages in its module-info. Apply the `--upgrade-module-path` option together with `-Dgraalvm.locatorDisabled=true` and this JAR to export Language API packages:
+The Language API JAR on Maven Central exports all API packages in its module-info.
+Apply the `--upgrade-module-path` option together with `-Dgraalvm.locatorDisabled=true` and this JAR to export Language API packages:
 ```shell
 -Dgraalvm.locatorDisabled=true --module-path=<yourModulePath>:${truffle.dir} --upgrade-module-path=${truffle.dir}/truffle-api.jar
 ```
 
 A sample POM using `--upgrade-module-path` to export Language API packages can be found in the [Simple Language POM.xml](https://github.com/graalvm/simplelanguage/blob/master/language/pom.xml#L58) file.
 
+NOTE: Disabling the locator effectively removes all installed languages from the module path as the locator also creates the class loader for the languages.
+To still use the builtin languages add them to the module-path by pointing the module-path to all needed language homes (e.g. $GRAALVM/languages/js).
+
 ### Other JVM Implementations
 
-Unlike GraalVM, which includes all the dependencies needed to run a language
-implemented with [Truffle](/graalvm-as-a-platform/language-implementation-framework/), other JVM implementations need additional
-JARs to be present on the class path. These are the Language API and GraalVM SDK
-JARs available from Maven Central.
+Unlike GraalVM, which includes all the dependencies needed to run a language implemented with [Truffle](../../truffle/docs/README.md), other JVM implementations need additional JARs to be present on the class path.
+These are the Language API and GraalVM SDK JARs available from Maven Central.
 
-Assuming `JAVA_HOME` points to a stock JDK installation, and that the current
-working directory is the `simplelanguage` directory and the Language API and
-GraalVM SDK JARs are present in that directory, one can execute SimpleLanguage
-with the following command:
+Assuming `JAVA_HOME` points to a stock JDK installation, and that the current working directory is the `simplelanguage` directory and the Language API and GraalVM SDK JARs are present in that directory, one can execute SimpleLanguage with the following command:
 
 ```shell
 $JAVA_HOME/bin/java \
-    -cp graal-sdk-21.2.0.jar:truffle-api-21.2.0.jar:launcher/target/launcher-21.2.0-SNAPSHOT.jar:language/target/simplelanguage.jar \
+    -cp graal-sdk-21.3.0.jar:truffle-api-21.3.0.jar:launcher/target/launcher-21.3.0-SNAPSHOT.jar:language/target/simplelanguage.jar \
     com.oracle.truffle.sl.launcher.SLMain language/tests/Add.sl
 ```

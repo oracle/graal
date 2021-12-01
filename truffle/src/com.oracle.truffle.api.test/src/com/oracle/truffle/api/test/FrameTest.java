@@ -45,21 +45,21 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Assume;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 /**
  * <h3>Storing Values in Frame Slots</h3>
@@ -92,17 +92,21 @@ import com.oracle.truffle.api.nodes.RootNode;
  * {@link com.oracle.truffle.api.test.FrameSlotTypeSpecializationTest}.
  * </p>
  */
+@SuppressWarnings("deprecation")
 public class FrameTest {
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     @Test
     public void test() {
-        TruffleRuntime runtime = Truffle.getRuntime();
         FrameDescriptor frameDescriptor = new FrameDescriptor();
         String varName = "localVar";
-        FrameSlot slot = frameDescriptor.addFrameSlot(varName, FrameSlotKind.Int);
+        com.oracle.truffle.api.frame.FrameSlot slot = frameDescriptor.addFrameSlot(varName, FrameSlotKind.Int);
         TestRootNode rootNode = new TestRootNode(frameDescriptor, new AssignLocal(slot), new ReadLocal(slot));
-        CallTarget target = runtime.createCallTarget(rootNode);
-        Object result = target.call();
+        Object result = rootNode.getCallTarget().call();
         assertEquals(42, result);
         frameDescriptor.removeFrameSlot(varName);
         assertNull(frameDescriptor.findFrameSlot(varName));
@@ -135,16 +139,16 @@ public class FrameTest {
 
     abstract class FrameSlotNode extends TestChildNode {
 
-        protected final FrameSlot slot;
+        protected final com.oracle.truffle.api.frame.FrameSlot slot;
 
-        FrameSlotNode(FrameSlot slot) {
+        FrameSlotNode(com.oracle.truffle.api.frame.FrameSlot slot) {
             this.slot = slot;
         }
     }
 
     class AssignLocal extends FrameSlotNode {
 
-        AssignLocal(FrameSlot slot) {
+        AssignLocal(com.oracle.truffle.api.frame.FrameSlot slot) {
             super(slot);
         }
 
@@ -157,7 +161,7 @@ public class FrameTest {
 
     class ReadLocal extends FrameSlotNode {
 
-        ReadLocal(FrameSlot slot) {
+        ReadLocal(com.oracle.truffle.api.frame.FrameSlot slot) {
             super(slot);
         }
 
@@ -195,7 +199,7 @@ public class FrameTest {
         }
 
         FrameRootNode frn = new FrameRootNode();
-        Object ret = Truffle.getRuntime().createCallTarget(frn).call();
+        Object ret = frn.getCallTarget().call();
         assertEquals("Returns itself", frn, ret);
     }
 }

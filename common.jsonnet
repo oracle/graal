@@ -105,8 +105,9 @@
     # enforce self.arch (useful for generating job names)
     arch:: error "self.arch not set",
     capabilities +: [],
-    catch_files +: [
-      "Graal diagnostic output saved in (?P<filename>.+\\.zip)"
+    catch_files +: common_json.catch_files,
+    logs : [
+      "*/es-*.json"
     ]
   },
 

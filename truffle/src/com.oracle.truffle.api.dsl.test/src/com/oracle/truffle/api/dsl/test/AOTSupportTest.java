@@ -242,7 +242,7 @@ public class AOTSupportTest extends AbstractPolyglotTest {
         context.initialize(LANGUAGE_ID);
         context.enter();
         TestRootNode root = new TestRootNode(TestLanguage.getCurrentLanguage(), node, null);
-        Truffle.getRuntime().createCallTarget(root);
+        root.getCallTarget();
         context.leave();
         return root;
     }

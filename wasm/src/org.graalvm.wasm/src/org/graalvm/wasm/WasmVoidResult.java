@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,11 +49,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 @ExportLibrary(InteropLibrary.class)
 @SuppressWarnings({"static-method", "unused"})
 public final class WasmVoidResult implements TruffleObject {
-    private static WasmVoidResult instance;
-
-    static {
-        instance = new WasmVoidResult();
-    }
+    private static final WasmVoidResult instance = new WasmVoidResult();
 
     private WasmVoidResult() {
     }

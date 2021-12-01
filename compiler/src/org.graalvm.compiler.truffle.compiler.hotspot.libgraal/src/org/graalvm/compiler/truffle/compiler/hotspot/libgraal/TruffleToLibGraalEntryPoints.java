@@ -60,20 +60,19 @@ import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibG
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.OpenDebugContextScope;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.PendingTransferToInterpreterOffset;
 import static org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleToLibGraal.Id.Shutdown;
-import static org.graalvm.nativebridge.jni.JNIUtil.GetArrayLength;
-import static org.graalvm.nativebridge.jni.JNIUtil.GetByteArrayElements;
-import static org.graalvm.nativebridge.jni.JNIUtil.NewByteArray;
-import static org.graalvm.nativebridge.jni.JNIUtil.NewObjectArray;
-import static org.graalvm.nativebridge.jni.JNIUtil.ReleaseByteArrayElements;
-import static org.graalvm.nativebridge.jni.JNIUtil.SetObjectArrayElement;
-import static org.graalvm.nativebridge.jni.JNIUtil.createHSString;
-import static org.graalvm.nativebridge.jni.JNIUtil.createString;
+import static org.graalvm.jniutils.JNIUtil.GetArrayLength;
+import static org.graalvm.jniutils.JNIUtil.GetByteArrayElements;
+import static org.graalvm.jniutils.JNIUtil.NewByteArray;
+import static org.graalvm.jniutils.JNIUtil.NewObjectArray;
+import static org.graalvm.jniutils.JNIUtil.ReleaseByteArrayElements;
+import static org.graalvm.jniutils.JNIUtil.SetObjectArrayElement;
+import static org.graalvm.jniutils.JNIUtil.createHSString;
+import static org.graalvm.jniutils.JNIUtil.createString;
 
 import java.io.IOException;
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
-import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -108,18 +107,18 @@ import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerImpl.
 import org.graalvm.graphio.GraphOutput;
 import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.jni.FromLibGraalCalls;
-import org.graalvm.nativebridge.jni.HSObject;
 import org.graalvm.libgraal.jni.LibGraalUtil;
-import org.graalvm.nativebridge.jni.JNI.JArray;
-import org.graalvm.nativebridge.jni.JNI.JByteArray;
-import org.graalvm.nativebridge.jni.JNI.JClass;
-import org.graalvm.nativebridge.jni.JNI.JNIEnv;
-import org.graalvm.nativebridge.jni.JNI.JObject;
-import org.graalvm.nativebridge.jni.JNI.JObjectArray;
-import org.graalvm.nativebridge.jni.JNI.JString;
-import org.graalvm.nativebridge.jni.JNIExceptionWrapper;
-import org.graalvm.nativebridge.jni.JNIMethodScope;
-import org.graalvm.nativebridge.jni.JNIUtil;
+import org.graalvm.jniutils.HSObject;
+import org.graalvm.jniutils.JNI.JArray;
+import org.graalvm.jniutils.JNI.JByteArray;
+import org.graalvm.jniutils.JNI.JClass;
+import org.graalvm.jniutils.JNI.JNIEnv;
+import org.graalvm.jniutils.JNI.JObject;
+import org.graalvm.jniutils.JNI.JObjectArray;
+import org.graalvm.jniutils.JNI.JString;
+import org.graalvm.jniutils.JNIExceptionWrapper;
+import org.graalvm.jniutils.JNIMethodScope;
+import org.graalvm.jniutils.JNIUtil;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
@@ -339,8 +338,8 @@ final class TruffleToLibGraalEntryPoints {
     public static JString getGraphDumpDirectory(JNIEnv env, JClass hsClazz, @CEntryPoint.IsolateThreadContext long isolateThreadId) {
         JNIMethodScope scope = LibGraalUtil.openScope(TruffleToLibGraalEntryPoints.class, GetGraphDumpDirectory, env);
         try (JNIMethodScope s = scope) {
-            Path path = DebugOptions.getDumpDirectory(HotSpotGraalOptionValues.defaultOptions());
-            scope.setObjectResult(createHSString(env, path.toString()));
+            String path = DebugOptions.getDumpDirectory(HotSpotGraalOptionValues.defaultOptions());
+            scope.setObjectResult(createHSString(env, path));
         } catch (IOException ioe) {
             scope.setObjectResult(WordFactory.nullPointer());
         } catch (Throwable t) {

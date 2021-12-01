@@ -56,7 +56,7 @@ public final class Subscription {
     }
 
     /** Size of this structure, in bytes. */
-    public static int BYTES = 48;
+    public static final int BYTES = 48;
 
     /**
      * Reads user-provided value that is attached to the subscription in the implementation and

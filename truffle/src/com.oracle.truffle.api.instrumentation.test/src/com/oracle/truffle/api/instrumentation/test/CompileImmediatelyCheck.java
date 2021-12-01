@@ -42,19 +42,18 @@ package com.oracle.truffle.api.instrumentation.test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 
 public class CompileImmediatelyCheck {
 
     public static boolean isCompileImmediately() {
-        CallTarget target = Truffle.getRuntime().createCallTarget(new RootNode(null) {
+        CallTarget target = new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
                 return CompilerDirectives.inCompiledCode();
             }
-        });
+        }.getCallTarget();
         return (boolean) target.call();
     }
 

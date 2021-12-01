@@ -253,13 +253,19 @@ public final class Support {
         return false;
     }
 
-    public static JNIObjectHandle handleException(JNIEnvironment localEnv) {
+    public static JNIObjectHandle handleException(JNIEnvironment localEnv, boolean clear) {
         if (jniFunctions().getExceptionCheck().invoke(localEnv)) {
             JNIObjectHandle exception = jniFunctions().getExceptionOccurred().invoke(localEnv);
-            jniFunctions().getExceptionClear().invoke(localEnv);
+            if (clear) {
+                jniFunctions().getExceptionClear().invoke(localEnv);
+            }
             return exception;
         }
         return nullHandle();
+    }
+
+    public static JNIObjectHandle readObjectField(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId) {
+        return jniFunctions().getGetObjectField().invoke(env, obj, fieldId);
     }
 
     /*
@@ -365,6 +371,12 @@ public final class Support {
         args.addressOf(0).setObject(l0);
         args.addressOf(1).setObject(l1);
         jniFunctions().getCallStaticVoidMethodA().invoke(env, clazz, method, args);
+    }
+
+    public static boolean callStaticBooleanMethodL(JNIEnvironment env, JNIObjectHandle clazz, JNIMethodId method, JNIObjectHandle l0) {
+        JNIValue args = StackValue.get(1, JNIValue.class);
+        args.addressOf(0).setObject(l0);
+        return jniFunctions().getCallStaticBooleanMethodA().invoke(env, clazz, method, args);
     }
 
     public static boolean callBooleanMethod(JNIEnvironment env, JNIObjectHandle obj, JNIMethodId method) {

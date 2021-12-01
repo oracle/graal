@@ -90,7 +90,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ContextLocal;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -108,6 +107,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.GCUtils;
 import com.oracle.truffle.api.test.option.OptionProcessorTest.OptionTestLang1;
 import com.oracle.truffle.api.test.polyglot.ContextAPITestLanguage.LanguageContext;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 import com.oracle.truffle.tck.tests.ValueAssert;
 import com.oracle.truffle.tck.tests.ValueAssert.Trait;
 
@@ -115,6 +115,11 @@ public class ContextAPITest extends AbstractPolyglotTest {
     private static HostAccess CONFIG;
 
     static LanguageContext langContext;
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     @BeforeClass
     public static void initHostAccess() throws Exception {
@@ -325,7 +330,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
                     throw new SyntaxError(request.getSource().createSection(0, 5));
                 }
 
-                return Truffle.getRuntime().createCallTarget(new RootNode(ProxyLanguage.get(null)) {
+                return new RootNode(ProxyLanguage.get(null)) {
                     private final com.oracle.truffle.api.source.Source source = request.getSource();
 
                     @Override
@@ -337,7 +342,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
                         }
                         return source.getCharacters();
                     }
-                });
+                }.getCallTarget();
             }
         });
     }
@@ -779,22 +784,6 @@ public class ContextAPITest extends AbstractPolyglotTest {
         }
     }
 
-    private static void testBindingsLegacy(Context context) {
-        TopScope values = new TopScope();
-        ProxyLanguage.setDelegate(new ProxyLanguage() {
-            @Override
-            @SuppressWarnings("deprecation")
-            protected Iterable<com.oracle.truffle.api.Scope> findTopScopes(LanguageContext env) {
-                return Arrays.asList(com.oracle.truffle.api.Scope.newBuilder("top", values).build());
-            }
-        });
-        Value bindings = context.getBindings(ProxyLanguage.ID);
-
-        testWritableBindings(bindings);
-
-        ValueAssert.assertValue(bindings, Trait.MEMBERS);
-    }
-
     private static void testBindings(Context context) {
         TopScope values = new TopScope();
         ProxyLanguage.setDelegate(new ProxyLanguage() {
@@ -886,7 +875,6 @@ public class ContextAPITest extends AbstractPolyglotTest {
         Context context = Context.getCurrent();
         testExecute(context);
         testPolyglotBindings(context);
-        testBindingsLegacy(context);
         testBindings(context);
 
         assertFails(() -> context.leave(), IllegalStateException.class);
@@ -905,7 +893,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
                         new ProxyLanguage() {
                             @Override
                             protected CallTarget parse(ParsingRequest request) throws Exception {
-                                return Truffle.getRuntime().createCallTarget(new RootNode(ProxyLanguage.get(null)) {
+                                return new RootNode(ProxyLanguage.get(null)) {
                                     @Override
                                     public Object execute(VirtualFrame frame) {
                                         try {
@@ -921,7 +909,7 @@ public class ContextAPITest extends AbstractPolyglotTest {
                                                         "test");
                                         return InteropLibrary.getUncached().execute(o);
                                     }
-                                });
+                                }.getCallTarget();
                             }
                         });
         context.enter();
@@ -1229,14 +1217,14 @@ public class ContextAPITest extends AbstractPolyglotTest {
         ProxyLanguage.setDelegate(new ProxyLanguage() {
             @Override
             protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
-                return Truffle.getRuntime().createCallTarget(new RootNode(this.languageInstance) {
+                return new RootNode(this.languageInstance) {
                     @Override
                     @TruffleBoundary
                     public Object execute(VirtualFrame frame) {
                         assertEquals(expectedContextClassLoader, Thread.currentThread().getContextClassLoader());
                         return true;
                     }
-                });
+                }.getCallTarget();
             }
         });
         context.eval(Source.newBuilder(ProxyLanguage.ID, "", "test").cached(false).buildLiteral());
@@ -1315,6 +1303,107 @@ public class ContextAPITest extends AbstractPolyglotTest {
         }
 
         static final LanguageReference<ValidExclusiveLanguage> REFERENCE = LanguageReference.create(ValidExclusiveLanguage.class);
+
+    }
+
+    @Test
+    public void testPermittedLanguages() {
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+            @Override
+            protected CallTarget parse(ParsingRequest request) throws Exception {
+                return RootNode.createConstantNode(42).getCallTarget();
+            }
+        });
+
+        try (Context c = Context.create()) {
+            c.eval(ContextAPITestLanguage.ID, "");
+            c.eval(ProxyLanguage.ID, "");
+            AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestInternalLanguage.ID, ""), IllegalArgumentException.class);
+        }
+
+        try (Context c = Context.create(ContextAPITestLanguage.ID)) {
+            c.eval(ContextAPITestLanguage.ID, "");
+            AbstractPolyglotTest.assertFails(() -> c.eval(ProxyLanguage.ID, ""), IllegalArgumentException.class);
+            AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestInternalLanguage.ID, ""), IllegalArgumentException.class);
+        }
+
+        try (Context c = Context.create(ProxyLanguage.ID)) {
+            c.eval(ProxyLanguage.ID, "");
+            AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestLanguage.ID, ""), IllegalArgumentException.class);
+            AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestInternalLanguage.ID, ""), IllegalArgumentException.class);
+        }
+
+        try (Engine e = Engine.create()) {
+            try (Context c = Context.newBuilder(ProxyLanguage.ID).engine(e).build()) {
+                AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestInternalLanguage.ID, ""), IllegalArgumentException.class);
+                AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestLanguage.ID, ""), IllegalArgumentException.class);
+                c.eval(ProxyLanguage.ID, "");
+            }
+        }
+
+        try (Engine e = Engine.create()) {
+            try (Context c = Context.newBuilder(ContextAPITestLanguage.ID).engine(e).build()) {
+                AbstractPolyglotTest.assertFails(() -> c.eval(ProxyLanguage.ID, ""), IllegalArgumentException.class);
+                AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestInternalLanguage.ID, ""), IllegalArgumentException.class);
+                c.eval(ContextAPITestLanguage.ID, "");
+            }
+        }
+
+        try (Engine e = Engine.create()) {
+            try (Context c = Context.newBuilder().engine(e).build()) {
+                c.eval(ContextAPITestLanguage.ID, "");
+                c.eval(ProxyLanguage.ID, "");
+                AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestInternalLanguage.ID, ""), IllegalArgumentException.class);
+            }
+        }
+
+        try (Engine e = Engine.create(ProxyLanguage.ID)) {
+            try (Context c = Context.newBuilder(ProxyLanguage.ID).engine(e).build()) {
+                AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestLanguage.ID, ""), IllegalArgumentException.class);
+                AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestInternalLanguage.ID, ""), IllegalArgumentException.class);
+                c.eval(ProxyLanguage.ID, "");
+            }
+        }
+
+        // restricted languages are inherited from the engine if not further specified in the
+        // context
+        try (Engine e = Engine.create(ProxyLanguage.ID)) {
+            try (Context c = Context.newBuilder().engine(e).build()) {
+                AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestLanguage.ID, ""), IllegalArgumentException.class);
+                AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestInternalLanguage.ID, ""), IllegalArgumentException.class);
+                c.eval(ProxyLanguage.ID, "");
+            }
+        }
+
+        try (Engine e = Engine.create(ProxyLanguage.ID, ContextAPITestLanguage.ID)) {
+            try (Context c = Context.newBuilder().engine(e).build()) {
+                c.eval(ContextAPITestLanguage.ID, "");
+                c.eval(ProxyLanguage.ID, "");
+                AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestInternalLanguage.ID, ""), IllegalArgumentException.class);
+            }
+        }
+
+        try (Engine e = Engine.create(ProxyLanguage.ID, ContextAPITestLanguage.ID)) {
+            try (Context c = Context.newBuilder(ProxyLanguage.ID).engine(e).build()) {
+                AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestLanguage.ID, ""), IllegalArgumentException.class);
+                AbstractPolyglotTest.assertFails(() -> c.eval(ContextAPITestInternalLanguage.ID, ""), IllegalArgumentException.class);
+                c.eval(ProxyLanguage.ID, "");
+            }
+        }
+
+        try (Engine e = Engine.create(ProxyLanguage.ID)) {
+            Context.Builder b = Context.newBuilder(ContextAPITestLanguage.ID).engine(e);
+            // fails language id is nost specified by the engine
+            AbstractPolyglotTest.assertFails(() -> b.build(), IllegalArgumentException.class);
+        }
+
+        try (Engine e = Engine.create(ProxyLanguage.ID)) {
+            Context.Builder b = Context.newBuilder(ContextAPITestInternalLanguage.ID).engine(e);
+            AbstractPolyglotTest.assertFails(() -> b.build(), IllegalArgumentException.class);
+        }
+
+        AbstractPolyglotTest.assertFails(() -> Context.create((String) null), NullPointerException.class);
+        AbstractPolyglotTest.assertFails(() -> Engine.create((String) null), NullPointerException.class);
 
     }
 

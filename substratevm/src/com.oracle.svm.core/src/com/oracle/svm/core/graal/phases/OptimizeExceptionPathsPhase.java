@@ -59,7 +59,7 @@ public class OptimizeExceptionPathsPhase extends Phase {
          * goes to a "regular" return.
          */
         NodeBitMap exceptionPaths = new NodeBitMap(graph);
-        for (UnwindNode unwind : graph.getNodes().filter(UnwindNode.class)) {
+        for (UnwindNode unwind : graph.getNodes(UnwindNode.TYPE)) {
             walkBack(unwind, exceptionPaths);
         }
         for (DeadEndNode deadEnd : graph.getNodes(DeadEndNode.TYPE)) {

@@ -90,7 +90,15 @@ class JMHRunnerTruffleBenchmarkSuite(mx_benchmark.JMHRunnerBenchmarkSuite):
         return "truffle"
 
     def extraVmArgs(self):
-        return ['-XX:-UseJVMCIClassLoader'] + super(JMHRunnerTruffleBenchmarkSuite, self).extraVmArgs()
+        extraVmArgs = super(JMHRunnerTruffleBenchmarkSuite, self).extraVmArgs()
+        jdk = mx.get_jdk()
+        if jdk.javaCompliance <= '1.8':
+            extraVmArgs = ['-XX:-UseJVMCIClassLoader'] + extraVmArgs
+        else:
+            extraVmArgs.extend(_open_module_exports_args())
+            # com.oracle.truffle.api.benchmark.InterpreterCallBenchmark$BenchmarkState needs DefaultTruffleRuntime
+            extraVmArgs.append('--add-exports=org.graalvm.truffle/com.oracle.truffle.api.impl=ALL-UNNAMED')
+        return extraVmArgs
 
 mx_benchmark.add_bm_suite(JMHRunnerTruffleBenchmarkSuite())
 #mx_benchmark.add_java_vm(mx_benchmark.DefaultJavaVm("server", "default"), priority=3)
@@ -176,6 +184,25 @@ def _path_args(depNames=None):
             # the main class hence the --add-modules argument
             return ['--add-modules=' + ','.join([m.name for m in modules]), '--module-path=' + os.pathsep.join(modulepath), '-cp', os.pathsep.join(classpath)]
     return ['-cp', mx.classpath(depNames)]
+
+def _open_module_exports_args():
+    """
+    Gets the VM args for exporting all Truffle API packages on JDK9 or later.
+    """
+    assert mx.get_jdk().javaCompliance >= '1.9'
+    truffle_api_dist = mx.distribution('TRUFFLE_API')
+    truffle_api_module_name = truffle_api_dist.moduleInfo['name']
+    module_info_open_exports = getattr(truffle_api_dist, 'moduleInfo:open')['exports']
+    args = []
+    for export in module_info_open_exports:
+        if ' to ' in export: # Qualified exports
+            package, targets = export.split(' to ')
+            targets = targets.replace(' ', '')
+        else: # Unqualified exports
+            package = export
+            targets = 'ALL-UNNAMED'
+        args.append('--add-exports=' + truffle_api_module_name + '/' + package + '=' + targets)
+    return args
 
 def _unittest_config_participant(config):
     vmArgs, mainClass, mainClassArgs = config
@@ -845,6 +872,20 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     truffle_jars=['truffle:TRUFFLE_NFI', 'truffle:TRUFFLE_NFI_LIBFFI'],
     support_distributions=['truffle:TRUFFLE_NFI_GRAALVM_SUPPORT'],
     support_libraries_distributions=['truffle:TRUFFLE_NFI_NATIVE_GRAALVM_SUPPORT'],
+    installable=False,
+    stability="supported",
+))
+
+
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+    suite=_suite,
+    name='ICU4J',
+    short_name='icu4j',
+    dir_name='truffle',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['Truffle'],
+    jar_distributions=['truffle:ICU4J', 'truffle:ICU4J-CHARSET'],
     installable=False,
     stability="supported",
 ))

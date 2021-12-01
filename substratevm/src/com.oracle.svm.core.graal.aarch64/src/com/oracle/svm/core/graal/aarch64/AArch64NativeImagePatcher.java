@@ -96,8 +96,9 @@ class SingleInstructionNativeImagePatcher extends CompilationResult.CodeAnnotati
     }
 
     @Override
-    public void patchCode(int relative, byte[] code) {
-        annotation.patch(annotation.instructionPosition, relative, code);
+    public void patchCode(long methodStartAddress, int relative, byte[] code) {
+        long startAddress = methodStartAddress + annotation.instructionPosition;
+        annotation.patch(startAddress, relative, code);
     }
 
     @Override
@@ -115,8 +116,9 @@ class AdrpLdrMacroInstructionNativeImagePatcher extends CompilationResult.CodeAn
     }
 
     @Override
-    public void patchCode(int relative, byte[] code) {
-        macroInstruction.patch(macroInstruction.instructionPosition, relative, code);
+    public void patchCode(long methodStartAddress, int relative, byte[] code) {
+        long startAddress = methodStartAddress + macroInstruction.instructionPosition;
+        macroInstruction.patch(startAddress, relative, code);
     }
 
     @Override
@@ -151,8 +153,9 @@ class AdrpAddMacroInstructionNativeImagePatcher extends CompilationResult.CodeAn
     }
 
     @Override
-    public void patchCode(int relative, byte[] code) {
-        macroInstruction.patch(macroInstruction.instructionPosition, relative, code);
+    public void patchCode(long methodStartAddress, int relative, byte[] code) {
+        long startAddress = methodStartAddress + macroInstruction.instructionPosition;
+        macroInstruction.patch(startAddress, relative, code);
     }
 
     @Override
@@ -187,8 +190,9 @@ class MovSequenceNativeImagePatcher extends CompilationResult.CodeAnnotation imp
     }
 
     @Override
-    public void patchCode(int relative, byte[] code) {
-        annotation.patch(annotation.instructionPosition, relative, code);
+    public void patchCode(long methodStartAddress, int relative, byte[] code) {
+        long startAddress = methodStartAddress + annotation.instructionPosition;
+        annotation.patch(startAddress, relative, code);
     }
 
     @Override

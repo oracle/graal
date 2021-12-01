@@ -73,11 +73,16 @@ public @interface APIOption {
 
     APIOptionKind kind() default APIOptionKind.Default;
 
+    char WHITESPACE_SEPARATOR = ' ';
+
     /**
      * Provide a custom separator that should be used to separate the option name from its option
-     * values. The default separator is {@code '='}.
+     * values. The default separator is {@code '='}. If {@code WHITESPACE_SEPARATOR} is used the
+     * option value has to be passed as the next argument (i.e., separated by whitespace on the
+     * command line). It is also allowed to provide more than one separator. See e.g. the options
+     * defined in {@code com.oracle.svm.hosted.NativeImageClassLoaderOptions}
      */
-    char valueSeparator() default '=';
+    char[] valueSeparator() default {'='};
 
     /**
      * The value that will be passed to a non-boolean option when no {@code =} is specified.

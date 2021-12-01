@@ -1,4 +1,5 @@
 common_vm: ${common} ${vm_setup} {
+  python_version: 3,
   logs: [
     "*/mxbuild/dists/stripped/*.map"
     "**/install.packages.R.log"
@@ -18,7 +19,7 @@ common_vm_darwin: ${common_vm} ${darwin} {
   environment: {
     LANG: en_US.UTF-8
     # for compatibility with macOS Sierra
-    MACOSX_DEPLOYMENT_TARGET: "10.12"
+    MACOSX_DEPLOYMENT_TARGET: "10.13"
   }
   setup: ${common_vm.setup}
 }
@@ -108,22 +109,27 @@ fastr: {
     F2C_BINARY: { name: "f2c-binary", version: "7", platformspecific: true },
     FASTR_RECOMMENDED_BINARY: { name: "fastr-recommended-pkgs", version: "12", platformspecific: true },
   }
+  catch_files: ${common.catch_files} [
+    "GNUR_CONFIG_LOG = (?P<filename>.+\\.log)",
+    "GNUR_MAKE_LOG = (?P<filename>.+\\.log)",
+  ]
 }
 
 fastr_linux: ${fastr} {
   packages: {
     readline: "==6.3",
-    pcre: "==8.43",
+    pcre2: "==10.37",
     zlib: ">=1.2.11",
     curl: ">=7.50.1",
-    gnur: "==4.0.3-gcc4.8.5-pcre8.42"
+    gnur: "==4.0.3-gcc4.8.5-pcre2"
   }
   environment: {
     TZDIR: "/usr/share/zoneinfo"
-    PKG_INCLUDE_FLAGS_OVERRIDE : "-I/cm/shared/apps/zlib/1.2.11/include -I/cm/shared/apps/bzip2/1.0.6/include -I/cm/shared/apps/xz/5.2.2/include -I/cm/shared/apps/pcre/8.43/include -I/cm/shared/apps/curl/7.50.1/include"
-    PKG_LDFLAGS_OVERRIDE : "-L/cm/shared/apps/zlib/1.2.11/lib -L/cm/shared/apps/bzip2/1.0.6/lib -L/cm/shared/apps/xz/5.2.2/lib -L/cm/shared/apps/pcre/8.43/lib -L/cm/shared/apps/curl/7.50.1/lib -L/cm/shared/apps/gcc/4.8.5/lib64"
-    GNUR_HOME_BINARY: "/cm/shared/apps/gnur/4.0.3-gcc4.8.5-pcre8.42/lib64/R",
+    PKG_INCLUDE_FLAGS_OVERRIDE : "-I/cm/shared/apps/zlib/1.2.11/include -I/cm/shared/apps/bzip2/1.0.6/include -I/cm/shared/apps/xz/5.2.2/include -I/cm/shared/apps/pcre2/10.37/include -I/cm/shared/apps/curl/7.50.1/include"
+    PKG_LDFLAGS_OVERRIDE : "-L/cm/shared/apps/zlib/1.2.11/lib -L/cm/shared/apps/bzip2/1.0.6/lib -L/cm/shared/apps/xz/5.2.2/lib -L/cm/shared/apps/pcre2/10.37/lib -L/cm/shared/apps/curl/7.50.1/lib -L/cm/shared/apps/gcc/4.8.5/lib64"
     FASTR_FC: "/cm/shared/apps/gcc/4.8.5/bin/gfortran"
+    FASTR_CC: "/cm/shared/apps/gcc/4.8.5/bin/gcc"
+    GNUR_HOME_BINARY: "/cm/shared/apps/gnur/4.0.3-gcc4.8.5-pcre2/lib64/R"
   }
   downloads: {
     BLAS_LAPACK_DIR: { name: "fastr-403-blas-lapack-gcc", version: "4.8.5", platformspecific: true },
@@ -132,17 +138,16 @@ fastr_linux: ${fastr} {
 
 fastr_darwin: ${fastr} {
   packages: {
-    "pcre": "==8.43",
-    "gnur": "==4.0.3-gcc10.2-pcre8.42"
+    "pcre2": "==10.37",
   }
   environment:  {
     PATH : "/usr/local/bin:$JAVA_HOME/bin:$PATH"
     FASTR_FC: "/cm/shared/apps/gcc/8.3.0/bin/gfortran"
+    FASTR_CC: "/cm/shared/apps/gcc/8.3.0/bin/gcc"
     TZDIR: "/usr/share/zoneinfo"
     FASTR_LIBZ_VER: "1.2.11"
-    GNUR_HOME_BINARY: "/cm/shared/apps/gnur/4.0.3-gcc10.2-pcre8.42/lib/R/"
-    PKG_INCLUDE_FLAGS_OVERRIDE : "-I/cm/shared/apps/pcre/8.43/include -I/cm/shared/apps/bzip2/1.0.6/include -I/cm/shared/apps/xz/5.2.2/include -I/cm/shared/apps/curl/7.50.1/include"
-    PKG_LDFLAGS_OVERRIDE : "-L/cm/shared/apps/bzip2/1.0.6/lib -L/cm/shared/apps/xz/5.2.2/lib -L/cm/shared/apps/pcre/8.43/lib -L/cm/shared/apps/curl/7.50.1/lib -L/cm/shared/apps/gcc/10.2.0/lib -L/usr/lib"
+    PKG_INCLUDE_FLAGS_OVERRIDE : "-I/cm/shared/apps/pcre2/pcre2-10.37/include -I/cm/shared/apps/bzip2/1.0.6/include -I/cm/shared/apps/xz/5.2.2/include -I/cm/shared/apps/curl/7.50.1/include"
+    PKG_LDFLAGS_OVERRIDE : "-L/cm/shared/apps/bzip2/1.0.6/lib -L/cm/shared/apps/xz/5.2.2/lib -L/cm/shared/apps/pcre2/pcre2-10.37/lib -L/cm/shared/apps/curl/7.50.1/lib -L/cm/shared/apps/gcc/10.2.0/lib -L/usr/lib"
   }
   downloads: {
     BLAS_LAPACK_DIR: { name: "fastr-403-blas-lapack-gcc", version: "8.3.0", platformspecific: true },
@@ -158,7 +163,6 @@ fastr_no_recommended: {
 # GRAALPYTHON
 graalpython_linux: ${sulong_linux} {
   packages: {
-    python: "==3.4.1",
     libffi: ">=3.2.1",
     bzip2: ">=1.0.6",
   }
@@ -179,15 +183,15 @@ vm_darwin: ${common_vm_darwin} {
 }
 
 vm_windows: ${common_vm_windows} {
-  capabilities: [windows, amd64]
+  capabilities: [windows_server_2016, amd64]
 }
 
 vm_windows-jdk11: ${common_vm_windows-jdk11} {
-  capabilities: [windows, amd64]
+  capabilities: [windows_server_2016, amd64]
 }
 
 vm_windows-jdk17: ${common_vm_windows-jdk17} {
-  capabilities: [windows, amd64]
+  capabilities: [windows_server_2016, amd64]
 }
 
 gate_vm_linux: ${vm_linux} {
@@ -286,8 +290,9 @@ ondemand_vm_darwin: ${vm_darwin} {
   targets: [ondemand]
 }
 
-mx_vm_common: [mx, --strip-jars, "--sources=sdk:GRAAL_SDK,truffle:TRUFFLE_API,compiler:GRAAL,substratevm:SVM", --with-debuginfo, --env, "${VM_ENV}", "--force-bash-launchers=env.FORCE_BASH_LAUNCHERS,"${non-product-native-launchers}, "--base-jdk-info=${BASE_JDK_NAME}:${BASE_JDK_VERSION}"]
-mx_vm_installables: ${mx_vm_common}
+mx_vm_cmd_suffix: ["--sources=sdk:GRAAL_SDK,truffle:TRUFFLE_API,compiler:GRAAL,substratevm:SVM", --with-debuginfo, "--base-jdk-info=${BASE_JDK_NAME}:${BASE_JDK_VERSION}"]
+mx_vm_common: [mx, --env, "${VM_ENV}"] ${mx_vm_cmd_suffix}
+mx_vm_installables: [mx, --env, "${VM_ENV}-complete"] ${mx_vm_cmd_suffix}
 
 maven_deploy_sdk: [--suite, sdk, maven-deploy, --validate, none, --all-distribution-types, --with-suite-revisions-metadata]
 maven_deploy_sdk_base:               ${maven_deploy_sdk} [--tags, graalvm,                             ${binaries-repository}]
@@ -339,40 +344,54 @@ libgraal_truffle: ${svm-common-linux-amd64} ${custom_vm_linux} ${vm_linux} {
     ${libgraal_build_ea_only}
     [mx, --env, ${libgraal_env}, gate, --task, "LibGraal Truffle"]
   ]
-  logs: ${common_vm.logs} ["*/graal-compiler.log"]
+  logs: ${common_vm.logs} ["*/graal-compiler.log", "*/es-*.json"]
   timelimit: "45:00"
   targets: [gate]
 }
 
+
+record_file_sizes: ["benchmark", "file-size:*", "--results-file", "sizes.json"]
+upload_file_sizes: [bench-uploader.py, "sizes.json"]
+
 deploy_graalvm_linux_amd64: {
   run: [
-    ${mx_vm_installables} [--dynamicimports, "${VM_EXTRA_SUITES}", "--exclude-components="${non-product-vm-components}, graalvm-show]
-    ${mx_vm_installables} [--dynamicimports, "${VM_EXTRA_SUITES}", "--exclude-components="${non-product-vm-components}, build]
-    ${mx_vm_installables} [--dynamicimports, "${VM_EXTRA_SUITES}", "--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk_components}
+    ${mx_vm_installables} [graalvm-show]
+    ${mx_vm_installables} [build]
+    ${mx_vm_installables} ${maven_deploy_sdk_components}
+    ${mx_vm_installables} ${record_file_sizes}
+    ${upload_file_sizes}
   ] ${collect_profiles} [
     ${mx_vm_common} ${vm_profiles} [graalvm-show]
     ${mx_vm_common} ${vm_profiles} [build]
+    ${mx_vm_common} ${vm_profiles} ${record_file_sizes}
+    ${upload_file_sizes}
     ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
     ${notify-nexus-deploy}
-    [set-export, GRAALVM_HOME, ${mx_vm_common} [--no-warning, graalvm-home]]
+    [set-export, GRAALVM_HOME, ${mx_vm_common} [--quiet, --no-warning, graalvm-home]]
   ]
   logs: ${common_vm.logs}
+  notify_emails: ["gilles.m.duboscq@oracle.com"]
   timelimit: "1:30:00"
 }
 
 deploy_graalvm_linux_aarch64: {
   run: [
     [set-export, VM_ENV, "${VM_ENV}-aarch64"]
-    ${mx_vm_installables} [--dynamicimports, "${VM_EXTRA_SUITES}", "--exclude-components="${non-product-vm-components}, graalvm-show]
-    ${mx_vm_installables} [--dynamicimports, "${VM_EXTRA_SUITES}", "--exclude-components="${non-product-vm-components}, build]
-    ${mx_vm_installables} [--dynamicimports, "${VM_EXTRA_SUITES}", "--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk_components}
+    ${mx_vm_installables} [graalvm-show]
+    ${mx_vm_installables} [build]
+    ${mx_vm_installables} ${maven_deploy_sdk_components}
+    ${mx_vm_installables} ${record_file_sizes}
+    ${upload_file_sizes}
   ] ${collect_profiles} [
     ${mx_vm_common} ${vm_profiles} [graalvm-show]
     ${mx_vm_common} ${vm_profiles} [build]
+    ${mx_vm_common} ${vm_profiles} ${record_file_sizes}
+    ${upload_file_sizes}
     ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
     ${notify-nexus-deploy}
   ]
   logs: ${common_vm.logs}
+  notify_emails: ["gilles.m.duboscq@oracle.com"]
   timelimit: "1:30:00"
 }
 
@@ -380,20 +399,26 @@ deploy_graalvm_base_darwin_amd64: {
   run: ${collect_profiles} [
     ${mx_vm_common} ${vm_profiles} [graalvm-show]
     ${mx_vm_common} ${vm_profiles} [build]
+    ${mx_vm_common} ${vm_profiles} ${record_file_sizes}
+    ${upload_file_sizes}
     ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
     ${notify-nexus-deploy}
   ]
+  notify_emails: ["gilles.m.duboscq@oracle.com"]
   timelimit: "1:45:00"
 }
 
 deploy_graalvm_installables_darwin_amd64: {
   run: [
-    ${mx_vm_installables} [--dynamicimports, "${VM_EXTRA_SUITES}", "--exclude-components="${non-product-vm-components}, graalvm-show]
-    ${mx_vm_installables} [--dynamicimports, "${VM_EXTRA_SUITES}", "--exclude-components="${non-product-vm-components}, build]
-    ${mx_vm_installables} [--dynamicimports, "${VM_EXTRA_SUITES}", "--exclude-components="${non-product-vm-components}] ${maven_deploy_sdk_components}
+    ${mx_vm_installables} [graalvm-show]
+    ${mx_vm_installables} [build]
+    ${mx_vm_installables} ${maven_deploy_sdk_components}
     ${notify-nexus-deploy}
+    ${mx_vm_installables} ${record_file_sizes}
+    ${upload_file_sizes}
     ${notify-releaser}
   ]
+  notify_emails: ["gilles.m.duboscq@oracle.com"]
   timelimit: "3:00:00"
 }
 
@@ -402,55 +427,61 @@ deploy_graalvm_base_windows_amd64: {
     [set-export, VM_ENV, "${VM_ENV}-win"]
     ${mx_vm_common} [graalvm-show]
     ${mx_vm_common} [build]
+    ${mx_vm_common} ${record_file_sizes}
+    ${upload_file_sizes}
     ${mx_vm_common} ${maven_deploy_sdk_base}
     ${notify-nexus-deploy}
   ]
+  notify_emails: ["gilles.m.duboscq@oracle.com"]
   timelimit: "1:30:00"
 }
 
 deploy_graalvm_installables_windows_amd64: {
   run: [
     [set-export, VM_ENV, "${VM_ENV}-win"]
-    ${mx_vm_installables} [--dynamicimports, "${VM_EXTRA_SUITES}", "--exclude-components="${non-product-vm-components-windows}, graalvm-show]
-    ${mx_vm_installables} [--dynamicimports, "${VM_EXTRA_SUITES}", "--exclude-components="${non-product-vm-components-windows}, build]
-    ${mx_vm_installables} [--dynamicimports, "${VM_EXTRA_SUITES}", "--exclude-components="${non-product-vm-components-windows}] ${maven_deploy_sdk_components}
+    ${mx_vm_installables} [graalvm-show]
+    ${mx_vm_installables} [build]
+    ${mx_vm_installables} ${maven_deploy_sdk_components}
     ${notify-nexus-deploy}
+    ${mx_vm_installables} ${record_file_sizes}
+    ${upload_file_sizes}
   ]
+  notify_emails: ["gilles.m.duboscq@oracle.com"]
   timelimit: "1:30:00"
 }
 
-deploy_graalvm_plus_ruby: {
+deploy_graalvm_ruby: {
   run: ${collect_profiles} [
     [set-export, VM_ENV, "${VM_ENV}-ruby"]
     ${mx_vm_common} ${vm_profiles} [graalvm-show]
     ${mx_vm_common} ${vm_profiles} [build]
     ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
     ${notify-nexus-deploy}
-    [set-export, GRAALVM_HOME, ${mx_vm_common} [--no-warning, graalvm-home]]
+    [set-export, GRAALVM_HOME, ${mx_vm_common} [--quiet, --no-warning, graalvm-home]]
   ]
   logs: ${common_vm.logs}
+  notify_emails: ["benoit.daloze@oracle.com", "gilles.m.duboscq@oracle.com"]
   timelimit: "1:45:00"
 }
+
 
 builds += [
   #
   # Gates
   #
-  ${vm_java_8} ${eclipse} ${jdt} ${gate_vm_linux} {
+  ${vm_java_17} ${eclipse} ${jdt} ${gate_vm_linux} {
     run: [
       [mx, gate, "-B=--force-deprecation-as-warning", --tags, "style,fullbuild"]
     ]
-    name: gate-vm-style-linux-amd64
+    name: gate-vm-style-jdk17-linux-amd64
   }
-  ${libgraal_compiler} ${vm_java_8}  { name: gate-vm-libgraal-compiler-8-linux-amd64 }
   ${libgraal_compiler} ${vm_java_11} { name: gate-vm-libgraal-compiler-11-linux-amd64 }
   ${libgraal_compiler} ${vm_java_17} { name: gate-vm-libgraal-compiler-17-linux-amd64 }
 
-  ${libgraal_truffle} ${vm_java_8}  { name: gate-vm-libgraal-truffle-8-linux-amd64 }
-  ${libgraal_truffle} ${vm_java_11} { name: gate-vm-libgraal-truffle-11-linux-amd64 }
-  ${libgraal_truffle} ${vm_java_17} { name: gate-vm-libgraal-truffle-17-linux-amd64 }
+  ${libgraal_truffle} ${vm_java_11} ${vm_unittest} { name: gate-vm-libgraal-truffle-11-linux-amd64 }
+  ${libgraal_truffle} ${vm_java_17} ${vm_unittest} { name: gate-vm-libgraal-truffle-17-linux-amd64 }
 
-  ${vm_java_8} ${svm-common-linux-amd64} ${sulong_linux} ${custom_vm_linux} ${gate_vm_linux} {
+  ${vm_java_17} ${svm-common-linux-amd64} ${sulong_linux} ${custom_vm_linux} ${gate_vm_linux} ${vm_unittest} {
     run: [
       [export, "SVM_SUITE="${svm_suite}]
       [mx, --dynamicimports, "$SVM_SUITE,/sulong", --disable-polyglot, --disable-libpolyglot, gate, --no-warning-as-error, --tags, "build,sulong"]
@@ -464,73 +495,57 @@ builds += [
   #
 
   # Linux/AMD64
-  ${vm_java_8}  ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} ${deploy_graalvm_linux_amd64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites}]]        ${deploy_graalvm_linux_amd64.run}, name: deploy-vm-java8-linux-amd64}
-  ${vm_java_11} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} ${deploy_graalvm_linux_amd64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites}]]        ${deploy_graalvm_linux_amd64.run}, name: deploy-vm-java11-linux-amd64}
-  ${vm_java_17} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} ${deploy_graalvm_linux_amd64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_java17}]] ${deploy_graalvm_linux_amd64.run}, name: deploy-vm-java17-linux-amd64}
+  ${vm_java_11} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} ${deploy_graalvm_linux_amd64} {name: deploy-vm-java11-linux-amd64}
+  ${vm_java_17} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} ${deploy_graalvm_linux_amd64} {name: deploy-vm-java17-linux-amd64}
 
   # Linux/AARCH64
-  ${vm_java_11} ${full_vm_build_linux_aarch64} ${linux-deploy} ${deploy_daily_vm_linux_aarch64} ${deploy_graalvm_linux_aarch64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_aarch64}]]        ${deploy_graalvm_linux_aarch64.run}, name: deploy-vm-java11-linux-aarch64}
-  ${vm_java_17} ${full_vm_build_linux_aarch64} ${linux-deploy} ${deploy_daily_vm_linux_aarch64} ${deploy_graalvm_linux_aarch64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_aarch64_java17}]] ${deploy_graalvm_linux_aarch64.run}, name: deploy-vm-java17-linux-aarch64}
+  ${vm_java_11} ${full_vm_build_linux_aarch64} ${linux-deploy} ${deploy_daily_vm_linux_aarch64} ${deploy_graalvm_linux_aarch64} {name: deploy-vm-java11-linux-aarch64}
+  ${vm_java_17} ${full_vm_build_linux_aarch64} ${linux-deploy} ${deploy_daily_vm_linux_aarch64} ${deploy_graalvm_linux_aarch64} {name: deploy-vm-java17-linux-aarch64}
 
   # Darwin/AMD64
-  ${vm_java_11} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} ${deploy_graalvm_base_darwin_amd64}         {                                                                                                                 name: deploy-vm-base-java11-darwin-amd64}
-  ${vm_java_11} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} ${deploy_graalvm_installables_darwin_amd64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites}]]        ${deploy_graalvm_installables_darwin_amd64.run}, name: deploy-vm-installable-java11-darwin-amd64}
-  ${vm_java_17} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} ${deploy_graalvm_base_darwin_amd64}         {                                                                                                                 name: deploy-vm-base-java17-darwin-amd64}
-  ${vm_java_17} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} ${deploy_graalvm_installables_darwin_amd64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_java17}]] ${deploy_graalvm_installables_darwin_amd64.run}, name: deploy-vm-installable-java17-darwin-amd64}
+  ${vm_java_11} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} ${deploy_graalvm_base_darwin_amd64}         {name: deploy-vm-base-java11-darwin-amd64}
+  ${vm_java_11} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} ${deploy_graalvm_installables_darwin_amd64} {name: deploy-vm-installable-java11-darwin-amd64}
+  ${vm_java_17} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} ${deploy_graalvm_base_darwin_amd64}         {name: deploy-vm-base-java17-darwin-amd64}
+  ${vm_java_17} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} ${deploy_graalvm_installables_darwin_amd64} {name: deploy-vm-installable-java17-darwin-amd64}
 
   # Windows/AMD64
-  ${vm_java_8}  ${deploy_daily_vm_windows} ${js_windows} ${vm_common_windows_jdk8} ${deploy_graalvm_base_windows_amd64}                       {                                                                                                                          name: deploy-vm-base-java8-windows-amd64}
-  ${vm_java_8}  ${deploy_daily_vm_windows} ${js_windows} ${vm_common_windows_jdk8} ${deploy_graalvm_installables_windows_amd64}               {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_windows}]]        ${deploy_graalvm_installables_windows_amd64.run}, name: deploy-vm-installable-java8-windows-amd64}
-  ${vm_java_11} ${deploy_daily_vm_windows-jdk11} ${svm-common-windows-jdk11} ${js_windows_jdk11} ${deploy_graalvm_base_windows_amd64}         {                                                                                                                          name: deploy-vm-base-java11-windows-amd64}
-  ${vm_java_11} ${deploy_daily_vm_windows-jdk11} ${svm-common-windows-jdk11} ${js_windows_jdk11} ${deploy_graalvm_installables_windows_amd64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_windows}]]        ${deploy_graalvm_installables_windows_amd64.run}, name: deploy-vm-installable-java11-windows-amd64}
-  ${vm_java_17} ${deploy_daily_vm_windows-jdk17} ${svm-common-windows-jdk17} ${js_windows_jdk17} ${deploy_graalvm_base_windows_amd64}         {                                                                                                                          name: deploy-vm-base-java17-windows-amd64}
-  ${vm_java_17} ${deploy_daily_vm_windows-jdk17} ${svm-common-windows-jdk17} ${js_windows_jdk17} ${deploy_graalvm_installables_windows_amd64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_windows_java17}]] ${deploy_graalvm_installables_windows_amd64.run}, name: deploy-vm-installable-java17-windows-amd64}
+  ${vm_java_11} ${svm-common-windows-jdk11} ${deploy_daily_vm_windows-jdk11} ${js_windows_jdk11} ${deploy_graalvm_base_windows_amd64}         {name: deploy-vm-base-java11-windows-amd64}
+  ${vm_java_11} ${svm-common-windows-jdk11} ${deploy_daily_vm_windows-jdk11} ${js_windows_jdk11} ${deploy_graalvm_installables_windows_amd64} {name: deploy-vm-installable-java11-windows-amd64}
+  ${vm_java_17} ${svm-common-windows-jdk17} ${deploy_daily_vm_windows-jdk17} ${js_windows_jdk17} ${deploy_graalvm_base_windows_amd64}         {name: deploy-vm-base-java17-windows-amd64}
+  ${vm_java_17} ${svm-common-windows-jdk17} ${deploy_daily_vm_windows-jdk17} ${js_windows_jdk17} ${deploy_graalvm_installables_windows_amd64} {name: deploy-vm-installable-java17-windows-amd64}
 
   #
-  # Deploy GraalVM+Ruby images
+  # Deploy the GraalVM Ruby image (GraalVM Base + ruby - js)
   #
 
-  ${vm_java_11} ${ruby_vm_build_linux} ${linux-deploy} ${deploy_daily_vm_linux} ${deploy_graalvm_plus_ruby} {name: deploy-vm-ruby-java11-linux-amd64}
-  ${vm_java_11} ${ruby_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} ${deploy_graalvm_plus_ruby} {name: deploy-vm-ruby-java11-darwin-amd64}
+  ${vm_java_11} ${ruby_vm_build_linux} ${linux-deploy} ${deploy_daily_vm_linux} ${deploy_graalvm_ruby} {name: deploy-vm-ruby-java11-linux-amd64}
+  ${vm_java_11} ${ruby_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} ${deploy_graalvm_ruby} {name: deploy-vm-ruby-java11-darwin-amd64}
 
   #
-  # Deploy GraalVM Complete (no FastR)
+  # Deploy GraalVM Complete
   #
 
   # Linux/AMD64
-  ${vm_java_8} ${full_vm_build_linux} ${linux-deploy} ${ondemand_vm_linux} {
-    run: [
-      [set-export, VM_ENV, "${VM_ENV}-complete"]
-      ${mx_vm_common} [graalvm-show]
-      ${mx_vm_common} [build]
-      ${mx_vm_common} ${maven_deploy_sdk_base}
-      ${notify-nexus-deploy}
-    ]
-    timelimit: "1:30:00"
-    name: deploy-vm-no-fastr-java8-linux-amd64
-  }
   ${vm_java_11} ${full_vm_build_linux} ${linux-deploy} ${ondemand_vm_linux} {
     run: [
-      [set-export, VM_ENV, "${VM_ENV}-complete"]
-      ${mx_vm_common} [graalvm-show]
-      ${mx_vm_common} [build]
-      ${mx_vm_common} ${maven_deploy_sdk_base}
+      ${mx_vm_installables} [graalvm-show]
+      ${mx_vm_installables} [build]
+      ${mx_vm_installables} ${maven_deploy_sdk_base}
       ${notify-nexus-deploy}
     ]
     timelimit: "1:30:00"
-    name: deploy-vm-no-fastr-java11-linux-amd64
+    name: deploy-vm-complete-java11-linux-amd64
   }
 
   # Darwin/AMD64
   ${vm_java_11} ${full_vm_build_darwin} ${darwin-deploy} ${ondemand_vm_darwin} {
     run: [
-      [set-export, VM_ENV, "${VM_ENV}-complete"]
-      ${mx_vm_common} [graalvm-show]
-      ${mx_vm_common} [build]
-      ${mx_vm_common} ${maven_deploy_sdk_base}
+      ${mx_vm_installables} [graalvm-show]
+      ${mx_vm_installables} [build]
+      ${mx_vm_installables} ${maven_deploy_sdk_base}
       ${notify-nexus-deploy}
     ]
     timelimit: "2:30:00"
-    name: deploy-vm-no-fastr-java11-darwin-amd64
+    name: deploy-vm-complete-java11-darwin-amd64
   }
 ]

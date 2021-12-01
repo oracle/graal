@@ -44,7 +44,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
  */
 public final class IsolatedCompileContext {
     private static final FastThreadLocalObject<IsolatedCompileContext> currentContext = //
-                    FastThreadLocalFactory.createObject(IsolatedCompileContext.class);
+                    FastThreadLocalFactory.createObject(IsolatedCompileContext.class, "IsolatedCompileContext.currentContext");
 
     public static IsolatedCompileContext get() {
         return currentContext.get();
@@ -88,14 +88,14 @@ public final class IsolatedCompileContext {
         }
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static ClientHandle<String> createStringInClient0(@SuppressWarnings("unused") ClientIsolateThread client, CCharPointer cstr) {
         return IsolatedCompileClient.get().hand(CTypeConversion.toJavaString(cstr));
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static ClientHandle<String[]> createStringArrayInClient0(@SuppressWarnings("unused") ClientIsolateThread client, int length, CCharPointerPointer ptrs) {
         String[] array = new String[length];
         for (int i = 0; i < length; i++) {

@@ -294,8 +294,7 @@ final class ExpansionStatistics {
 
     private static TreeNode buildMethodTree(StructuredGraph graph) {
         TreeNode root = new TreeNode(null, null, ExpansionStatistics::buildMethodTreeLabel);
-        SchedulePhase schedule = new SchedulePhase(SchedulePhase.SchedulingStrategy.LATEST_OUT_OF_LOOPS, true);
-        schedule.apply(graph);
+        SchedulePhase.runWithoutContextOptimizations(graph, SchedulePhase.SchedulingStrategy.LATEST_OUT_OF_LOOPS, true);
         ControlFlowGraph cfg = graph.getLastSchedule().getCFG();
         for (Node node : graph.getNodes()) {
             NodeSourcePosition nodeSourcePosition = node.getNodeSourcePosition();

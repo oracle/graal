@@ -474,7 +474,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     protected void initFreeGlobalBlocks(NodeFactory nodeFactory) {
         // lazily initialized, this is not necessary if there are no global blocks allocated
         if (freeGlobalBlocks == null) {
-            freeGlobalBlocks = LLVMLanguage.createCallTarget(new FreeGlobalsNode(this, nodeFactory));
+            freeGlobalBlocks = new FreeGlobalsNode(this, nodeFactory).getCallTarget();
         }
     }
 
@@ -585,7 +585,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     @Override
     protected Object getScope(LLVMContext context) {
-        return context.getGlobalScope();
+        return context.getGlobalScopeChain();
     }
 
     @Override
@@ -612,11 +612,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         singleContextAssumption.invalidate();
     }
 
-    public static RootCallTarget createCallTarget(RootNode rootNode) {
-        return Truffle.getRuntime().createCallTarget(rootNode);
-    }
-
     public RootCallTarget createCachedCallTarget(Class<?> key, Function<LLVMLanguage, RootNode> create) {
-        return cachedCallTargets.computeIfAbsent(key, k -> createCallTarget(create.apply(LLVMLanguage.this)));
+        return cachedCallTargets.computeIfAbsent(key, k -> create.apply(LLVMLanguage.this).getCallTarget());
     }
 }

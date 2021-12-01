@@ -44,6 +44,8 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.espresso.analysis.hierarchy.DefaultClassHierarchyOracle;
+import com.oracle.truffle.espresso.analysis.hierarchy.NoOpClassHierarchyOracle;
 import org.graalvm.options.OptionMap;
 import org.graalvm.polyglot.Engine;
 
@@ -66,6 +68,7 @@ import com.oracle.truffle.espresso.EspressoBindings;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.FinalizationSupport;
+import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
 import com.oracle.truffle.espresso.descriptors.Names;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -89,7 +92,8 @@ import com.oracle.truffle.espresso.perf.DebugTimer;
 import com.oracle.truffle.espresso.perf.TimerCollection;
 import com.oracle.truffle.espresso.redefinition.plugins.api.InternalRedefinitionPlugin;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
+import com.oracle.truffle.espresso.threads.EspressoThreadRegistry;
+import com.oracle.truffle.espresso.threads.ThreadsAccess;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.UnsafeAccess;
 import com.oracle.truffle.espresso.vm.VM;
@@ -129,10 +133,12 @@ public final class EspressoContext {
     private final ClassRegistries registries;
     private final Substitutions substitutions;
     private final MethodHandleIntrinsics methodHandleIntrinsics;
+    private final ClassHierarchyOracle classHierarchyOracle;
     // endregion Runtime
 
     // region Helpers
-    private final EspressoThreadManager threadManager;
+    private final EspressoThreadRegistry threadRegistry;
+    @CompilationFinal private ThreadsAccess threads;
     private final EspressoShutdownHandler shutdownManager;
     private final EspressoReferenceDrainer referenceDrainer;
     // endregion Helpers
@@ -168,6 +174,7 @@ public final class EspressoContext {
     public final boolean InlineMethodHandle;
     public final boolean SplitMethodHandles;
     public final boolean livenessAnalysis;
+    public final boolean EnableClassHierarchyAnalysis;
 
     // Behavior control
     public final boolean EnableManagement;
@@ -180,6 +187,7 @@ public final class EspressoContext {
     private final String multiThreadingDisabled;
     public final boolean NativeAccessAllowed;
     public final boolean EnableAgents;
+    public final int TrivialMethodSize;
 
     // Debug option
     public final com.oracle.truffle.espresso.jdwp.api.JDWPOptions JDWPOptions;
@@ -246,12 +254,12 @@ public final class EspressoContext {
         this.substitutions = new Substitutions(this);
         this.methodHandleIntrinsics = new MethodHandleIntrinsics(this);
 
-        this.threadManager = new EspressoThreadManager(this);
+        this.threadRegistry = new EspressoThreadRegistry(this);
         this.referenceDrainer = new EspressoReferenceDrainer(this);
 
         boolean softExit = env.getOptions().get(EspressoOptions.SoftExit);
         this.ExitHost = env.getOptions().get(EspressoOptions.ExitHost);
-        this.shutdownManager = new EspressoShutdownHandler(this, threadManager, referenceDrainer, softExit);
+        this.shutdownManager = new EspressoShutdownHandler(this, threadRegistry, referenceDrainer, softExit);
 
         this.timers = TimerCollection.create(env.getOptions().get(EspressoOptions.EnableTimers));
         this.allocationReporter = env.lookup(AllocationReporter.class);
@@ -268,8 +276,10 @@ public final class EspressoContext {
         this.EnableSignals = env.getOptions().get(EspressoOptions.EnableSignals);
         this.SpecCompliancyMode = env.getOptions().get(EspressoOptions.SpecCompliancy);
         this.livenessAnalysis = env.getOptions().get(EspressoOptions.LivenessAnalysis);
+        this.EnableClassHierarchyAnalysis = env.getOptions().get(EspressoOptions.CHA);
         this.EnableManagement = env.getOptions().get(EspressoOptions.EnableManagement);
         this.EnableAgents = getEnv().getOptions().get(EspressoOptions.EnableAgents);
+        this.TrivialMethodSize = getEnv().getOptions().get(EspressoOptions.TrivialMethodSize);
         String multiThreadingDisabledReason = null;
         if (!env.getOptions().get(EspressoOptions.MultiThreaded)) {
             multiThreadingDisabledReason = "java.MultiThreaded option is set to false";
@@ -291,6 +301,11 @@ public final class EspressoContext {
 
         this.vmArguments = buildVmArguments();
         this.jdwpContext = new JDWPContextImpl(this);
+        if (this.EnableClassHierarchyAnalysis) {
+            this.classHierarchyOracle = new DefaultClassHierarchyOracle();
+        } else {
+            this.classHierarchyOracle = new NoOpClassHierarchyOracle();
+        }
     }
 
     private static Set<String> knownSingleThreadedLanguages(TruffleLanguage.Env env) {
@@ -475,6 +490,7 @@ public final class EspressoContext {
                 this.meta = new Meta(this);
             }
             this.metaInitialized = true;
+            this.threads = new ThreadsAccess(meta);
 
             this.interpreterToVM = new InterpreterToVM(this);
 
@@ -484,6 +500,7 @@ public final class EspressoContext {
                 for (Symbol<Type> type : Arrays.asList(
                                 Type.java_lang_String,
                                 Type.java_lang_System,
+                                Type.java_lang_Class, // JDK-8069005
                                 Type.java_lang_ThreadGroup,
                                 Type.java_lang_Thread)) {
                     initializeKnownClass(type);
@@ -496,13 +513,12 @@ public final class EspressoContext {
             }
 
             // Create main thread as soon as Thread class is initialized.
-            threadManager.createMainThread(meta);
+            threadRegistry.createMainThread(meta);
 
             try (DebugCloseable knownClassInit = KNOWN_CLASS_INIT.scope(timers)) {
                 initializeKnownClass(Type.java_lang_Object);
 
                 for (Symbol<Type> type : Arrays.asList(
-                                Type.java_lang_Class,
                                 Type.java_lang_reflect_Method,
                                 Type.java_lang_ref_Finalizer)) {
                     initializeKnownClass(type);
@@ -773,15 +789,19 @@ public final class EspressoContext {
 
     // region Thread management
 
+    public ThreadsAccess getThreadAccess() {
+        return threads;
+    }
+
     /**
      * Creates a new guest thread from the host thread, and adds it to the main thread group.
      */
     public StaticObject createThread(Thread hostThread) {
-        return threadManager.createGuestThreadFromHost(hostThread, meta, vm);
+        return threadRegistry.createGuestThreadFromHost(hostThread, meta, vm);
     }
 
     public StaticObject createThread(Thread hostThread, StaticObject group, String name) {
-        return threadManager.createGuestThreadFromHost(hostThread, meta, vm, name, group);
+        return threadRegistry.createGuestThreadFromHost(hostThread, meta, vm, name, group);
     }
 
     public void disposeThread(@SuppressWarnings("unused") Thread hostThread) {
@@ -790,57 +810,57 @@ public final class EspressoContext {
             return;
         }
         if (hostThread != Thread.currentThread()) {
-            String guestName = Target_java_lang_Thread.getThreadName(meta, guestThread);
+            String guestName = threads.getThreadName(guestThread);
             getLogger().warning("unimplemented: disposeThread for non-current thread: " + hostThread + " / " + guestName);
             return;
         }
-        if (vm.DetachCurrentThread() != JNI_OK) {
+        if (vm.DetachCurrentThread(this) != JNI_OK) {
             throw new RuntimeException("Could not detach thread correctly");
         }
     }
 
     public StaticObject getGuestThreadFromHost(Thread host) {
-        return threadManager.getGuestThreadFromHost(host);
+        return threadRegistry.getGuestThreadFromHost(host);
     }
 
     public StaticObject getCurrentThread() {
-        return threadManager.getGuestThreadFromHost(Thread.currentThread());
+        return threadRegistry.getGuestThreadFromHost(Thread.currentThread());
     }
 
     /**
      * Returns the maximum number of alive (registered) threads at any point, since the VM started.
      */
     public long getPeakThreadCount() {
-        return threadManager.peakThreadCount.get();
+        return threadRegistry.peakThreadCount.get();
     }
 
     /**
      * Returns the number of created threads since the VM started.
      */
     public long getCreatedThreadCount() {
-        return threadManager.createdThreadCount.get();
+        return threadRegistry.createdThreadCount.get();
     }
 
     public StaticObject[] getActiveThreads() {
-        return threadManager.activeThreads();
+        return threadRegistry.activeThreads();
     }
 
     public void registerThread(Thread host, StaticObject self) {
-        threadManager.registerThread(host, self);
+        threadRegistry.registerThread(host, self);
         if (shouldReportVMEvents) {
             eventListener.threadStarted(self);
         }
     }
 
     public void unregisterThread(StaticObject self) {
-        threadManager.unregisterThread(self);
+        threadRegistry.unregisterThread(self);
         if (shouldReportVMEvents) {
             eventListener.threadDied(self);
         }
     }
 
     public void interruptThread(StaticObject guestThread) {
-        threadManager.interruptThread(guestThread);
+        threads.interruptThread(guestThread);
     }
 
     public void invalidateNoThreadStop(String message) {
@@ -866,15 +886,15 @@ public final class EspressoContext {
     }
 
     public boolean isMainThreadCreated() {
-        return threadManager.isMainThreadCreated();
+        return threadRegistry.isMainThreadCreated();
     }
 
     public StaticObject getMainThread() {
-        return threadManager.getMainThread();
+        return threadRegistry.getMainThread();
     }
 
     public StaticObject getMainThreadGroup() {
-        return threadManager.getMainThreadGroup();
+        return threadRegistry.getMainThreadGroup();
     }
 
     // endregion Thread management
@@ -1008,7 +1028,14 @@ public final class EspressoContext {
 
     private static final ContextReference<EspressoContext> REFERENCE = ContextReference.create(EspressoLanguage.class);
 
+    /**
+     * Returns the <em>current</em>, thread-local, context.
+     */
     public static EspressoContext get(Node node) {
         return REFERENCE.get(node);
+    }
+
+    public ClassHierarchyOracle getClassHierarchyOracle() {
+        return classHierarchyOracle;
     }
 }

@@ -181,4 +181,11 @@ public interface KlassRef {
      * @return the extension
      */
     String getSourceDebugExtension();
+
+    /**
+     * Returns the Module reference of the class.
+     *
+     * @return the module reference
+     */
+    ModuleRef getModule();
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -78,7 +78,7 @@ public final class InspectorInstrument extends TruffleInstrument {
 
     private static final int DEFAULT_PORT = 9229;
     private static final HostAndPort DEFAULT_ADDRESS = new HostAndPort(null, DEFAULT_PORT);
-    private static final String HELP_URL = "https://www.graalvm.org/docs/tools/chrome-debugger";
+    private static final String HELP_URL = "https://www.graalvm.org/tools/chrome-debugger";
 
     private Server server;
     private ConnectionWatcher connectionWatcher;
@@ -507,6 +507,7 @@ public final class InspectorInstrument extends TruffleInstrument {
             return Base64.getEncoder().withoutPadding().encodeToString(tokenRaw).replace('/', '_').replace('+', '-');
         }
 
+        @SuppressFBWarnings(value = "DMI_RANDOM_USED_ONLY_ONCE", justification = "avoiding a static field which would cache the random seed in a native image")
         private static byte[] generateSecureRawToken() {
             // 256 bits of entropy ought to be enough for everybody
             final byte[] tokenRaw = new byte[32];
@@ -543,6 +544,7 @@ public final class InspectorInstrument extends TruffleInstrument {
 
         void doFinalize() {
             if (wss != null) {
+                wss.closing(token);
                 try {
                     wss.close(token);
                 } catch (IOException ioex) {

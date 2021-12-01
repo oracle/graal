@@ -38,7 +38,6 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
@@ -49,17 +48,18 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.DebugCloseable;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodes.CompressionNode.CompressionOp;
+import org.graalvm.compiler.nodes.ComputeObjectAddressNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FieldLocationIdentity;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.GetObjectAddressNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.MergeNode;
@@ -200,10 +200,15 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         this.useCompressedOops = useCompressedOops;
     }
 
-    public void initialize(OptionValues options, Iterable<DebugHandlersFactory> factories, SnippetCounter.Group.Factory factory, Providers providers, SnippetReflectionProvider snippetReflection) {
-        boxingSnippets = new BoxingSnippets.Templates(options, factories, factory, providers, snippetReflection, target);
+    public void initialize(OptionValues options, SnippetCounter.Group.Factory factory, Providers providers) {
         replacements = providers.getReplacements();
-        providers.getReplacements().registerSnippetTemplateCache(new SnippetCounterNode.SnippetCounterSnippets.Templates(options, factories, providers, snippetReflection, target));
+        boxingSnippets = new BoxingSnippets.Templates(options, factory, providers);
+        providers.getReplacements().registerSnippetTemplateCache(new SnippetCounterNode.SnippetCounterSnippets.Templates(options, providers));
+    }
+
+    @Override
+    public boolean supportsImplicitNullChecks() {
+        return target.implicitNullCheckLimit > 0;
     }
 
     public final TargetDescription getTarget() {
@@ -298,10 +303,36 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 identityHashCodeSnippets.lower((IdentityHashCodeNode) n, tool);
             } else if (n instanceof ObjectIsArrayNode || n instanceof ClassIsArrayNode) {
                 isArraySnippets.lower((LogicNode) n, tool);
+            } else if (n instanceof ComputeObjectAddressNode) {
+                StructuredGraph graph = (StructuredGraph) n.graph();
+                if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
+                    lowerComputeObjectAddressNode((ComputeObjectAddressNode) n);
+                }
             } else {
                 throw GraalError.shouldNotReachHere("Node implementing Lowerable not handled: " + n);
             }
         }
+    }
+
+    private static void lowerComputeObjectAddressNode(ComputeObjectAddressNode n) {
+        /*
+         * Lower the node into a GetObjectAddressNode node and an Add but ensure that it's below any
+         * potential safepoints and above it's uses.
+         */
+        for (Node use : n.usages().snapshot()) {
+            if (use instanceof FixedNode) {
+                FixedNode fixed = (FixedNode) use;
+                StructuredGraph graph = n.graph();
+                GetObjectAddressNode address = graph.add(new GetObjectAddressNode(n.getObject()));
+                graph.addBeforeFixed(fixed, address);
+                AddNode add = graph.addOrUnique(new AddNode(address, n.getOffset()));
+                use.replaceFirstInput(n, add);
+            } else {
+                throw GraalError.shouldNotReachHere("Unexpected floating use of ComputeObjectAddressNode " + n);
+            }
+        }
+        GraphUtil.unlinkFixedNode(n);
+        n.safeDelete();
     }
 
     private void lowerSecondHalf(UnpackEndianHalfNode n) {
@@ -534,6 +565,10 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 LogicNode typeTest = graph.unique(InstanceOfDynamicNode.create(graph.getAssumptions(), tool.getConstantReflection(), componentHub, value, false));
                 condition = LogicNode.or(graph.unique(IsNullNode.create(value)), typeTest, BranchProbabilityNode.NOT_LIKELY_PROFILE);
             }
+            if (condition != null && condition.isTautology()) {
+                // Skip unnecessary guards
+                condition = null;
+            }
         }
         BarrierType barrierType = barrierSet.arrayStoreBarrierType(storageKind);
         ValueNode positiveIndex = createPositiveIndex(graph, storeIndexed.index(), boundsCheck);
@@ -587,6 +622,18 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         }
         if (graph.getGuardsStage().allowsFloatingGuards()) {
             return;
+        }
+        ValueNode object = loadHubOrNullNode.getValue();
+        if (object.isConstant() && !object.asJavaConstant().isNull()) {
+            /*
+             * Special case: insufficient canonicalization was run since the last lowering, if we
+             * are loading the hub from a constant we want to still fold it.
+             */
+            ValueNode synonym = LoadHubNode.findSynonym(object, loadHubOrNullNode.stamp(NodeView.DEFAULT), tool.getMetaAccess(), tool.getConstantReflection());
+            if (synonym != null) {
+                loadHubOrNullNode.replaceAtUsagesAndDelete(graph.maybeAddOrUnique(synonym));
+                return;
+            }
         }
         final FixedWithNextNode predecessor = tool.lastFixedNode();
         final ValueNode value = loadHubOrNullNode.getValue();

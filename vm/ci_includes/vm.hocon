@@ -22,26 +22,16 @@ vm_java_17: ${labsjdk-ce-17} {
 vm_common_windows_jdk8: ${svm-common-windows-openjdk8}
 
 svm_suite: /substratevm
-vm_extra_suites: "/graal-nodejs,truffleruby,graalpython,fastr,/wasm,/espresso"
-vm_extra_suites_aarch64: "/graal-nodejs,truffleruby,/wasm,/espresso"
-vm_extra_suites_windows: "/graal-nodejs,/wasm,/espresso"
-vm_extra_suites_java17: "/graal-nodejs,truffleruby,graalpython,fastr,/wasm"
-vm_extra_suites_aarch64_java17: "/graal-nodejs,truffleruby,/wasm"
-vm_extra_suites_windows_java17: "/graal-nodejs,/wasm"
 custom_vm_linux: {}
 custom_vm_darwin: {}
 vm_profiles: []
 collect_profiles: []
 
-non-product-vm-components: "nju,nic,dis,pbm,llmulrl,elau"
-non-product-vm-components-windows: ${non-product-vm-components}",llp"
-non-product-native-launchers: "RMain,polybench"
-
 vm_setup: {
   short_name: ce
   setup: [
     [set-export, VM_ENV, ce]
-    [set-export, RELEASE_CATALOG, "https://www.graalvm.org/component-catalog/v2/graal-updater-component-catalog-java${BASE_JDK_SHORT_VERSION}.properties"]
+    [set-export, RELEASE_CATALOG, "{ee=GraalVM Enterprise Edition}gds://oca.opensource.oracle.com/gds/meta-data.json|https://www.graalvm.org/component-catalog/v2/graal-updater-component-catalog-java${BASE_JDK_SHORT_VERSION}.properties"]
     [set-export, SNAPSHOT_CATALOG, [mx, urlrewrite, "http://www.graalvm.org/catalog/ce/java${BASE_JDK_SHORT_VERSION}"]]
     [cd, ${vm_subdir}]
   ]
@@ -58,8 +48,6 @@ maven_base_8_11: {
   mx_cmd_base_svm: [mx, --dynamicimports, "/tools,/compiler,/graal-js,/substratevm", "--disable-installables=true", "--force-bash-launcher=true", "--skip-libraries=true"]
   build_svm: ${maven_base_8_11.mx_cmd_base_svm} [build]
   deploy_svm: ${maven_base_8_11.mx_cmd_base_svm} [--suite, substratevm, maven-deploy, "--tags=default", --all-distribution-types, --validate, full, --licenses, "GPLv2-CPE,UPL,MIT"]
-  build_svm_plugin: ${maven_base_8_11.mx_cmd_base_svm} [maven-plugin-install, --deploy-dependencies, --suppress-output-on-success]
-  deploy_svm_plugin: ${maven_base_8_11.mx_cmd_base_svm} [maven-plugin-install, --licenses, "GPLv2-CPE,UPL,MIT", --suppress-output-on-success]
 }
 
 maven_base_native: {
@@ -81,15 +69,22 @@ maven_base_11_native: ${maven_base_native} {
   }
 }
 
+vm_unittest: {
+  environment: {
+      "MX_TEST_RESULTS_PATTERN": "es-XXX.json",
+      "MX_TEST_RESULT_TAGS": "vm"
+  }
+}
+
 builds += [
-  ${vm_java_8} ${gate_vm_linux} {
+  ${vm_java_8} ${gate_vm_linux} ${vm_unittest} {
     run: [
       [mx, build]
       [mx, unittest, --suite, vm]
     ]
     name: gate-vm-unittest-linux-amd64
   }
-  ${windows-amd64} ${oraclejdk8} ${devkits.windows-oraclejdk8} ${gate_vm_windows} {
+  ${windows-amd64} ${oraclejdk8} ${devkits.windows-oraclejdk8} ${gate_vm_windows} ${vm_unittest} {
     run: [
         [mx, build]
         [mx, unittest, --suite, vm]
@@ -114,8 +109,6 @@ builds += [
       [unset, EXTRA_JAVA_HOMES]
       ${maven_base_8_11.build_svm}
       ${maven_base_8_11.deploy_svm} [--dry-run, "lafo-maven"]
-      ${maven_base_8_11.build_svm_plugin}
-      # deploy_svm_plugin cannot dry-run
     ]
     name: gate-vm-maven-dry-run-linux-amd64
   }
@@ -141,8 +134,6 @@ builds += [
       [unset, EXTRA_JAVA_HOMES]
       ${maven_base_8_11.build_svm}
       ${maven_base_8_11.deploy_svm} ["lafo-maven"]
-      ${maven_base_8_11.build_svm_plugin}
-      ${maven_base_8_11.deploy_svm_plugin} ["lafo-maven"]
     ]
     name: deploy-vm-maven-linux-amd64
     timelimit: "45:00"
@@ -175,14 +166,14 @@ builds += [
     ]
     name: deploy-vm-maven-darwin-amd64
   }
-  ${gate_vm_windows} ${vm_common_windows_jdk8} ${maven_base_8_native} {
+  ${vm_common_windows_jdk8} ${gate_vm_windows} ${maven_base_8_native} {
     run: [
       ${maven_base_8_native.build}
       ${maven_base_8_native.deploy} [--dry-run, "lafo-maven"]
     ]
     name: gate-vm-maven-dry-run-windows-amd64
   }
-  ${deploy_daily_vm_windows} ${vm_common_windows_jdk8} ${maven_base_8_native} {
+  ${vm_common_windows_jdk8} ${deploy_daily_vm_windows} ${maven_base_8_native} {
     run: [
       ${maven_base_8_native.build}
       ${maven_base_8_native.deploy} ["lafo-maven"]

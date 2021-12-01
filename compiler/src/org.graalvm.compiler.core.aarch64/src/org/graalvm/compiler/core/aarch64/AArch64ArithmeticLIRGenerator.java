@@ -53,10 +53,9 @@ import org.graalvm.compiler.lir.aarch64.AArch64MathCopySignOp;
 import org.graalvm.compiler.lir.aarch64.AArch64MathSignumOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Move;
 import org.graalvm.compiler.lir.aarch64.AArch64Move.LoadOp;
-import org.graalvm.compiler.lir.aarch64.AArch64Move.StoreConstantOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Move.StoreOp;
+import org.graalvm.compiler.lir.aarch64.AArch64Move.StoreZeroOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ReinterpretOp;
-import org.graalvm.compiler.lir.aarch64.AArch64Unary;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGenerator;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 
@@ -117,23 +116,16 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
         }
     }
 
-    public Value emitExtendMemory(boolean isSigned, AArch64Kind memoryKind, int resultBits, AArch64AddressValue address, LIRFrameState state) {
-        // Issue a zero extending load of the proper bit size and set the result to
-        // the proper kind.
+    public Value emitExtendMemory(boolean isSigned, AArch64Kind accessKind, int resultBits, AArch64AddressValue address, LIRFrameState state) {
+        /*
+         * Issue an extending load of the proper bit size and set the result to the proper kind.
+         */
+        GraalError.guarantee(accessKind.isInteger(), "can only extend integer kinds");
         Variable result = getLIRGen().newVariable(LIRKind.value(resultBits == 32 ? AArch64Kind.DWORD : AArch64Kind.QWORD));
 
-        int targetSize = resultBits <= 32 ? 32 : 64;
-        switch (memoryKind) {
-            case BYTE:
-            case WORD:
-            case DWORD:
-            case QWORD:
-                getLIRGen().append(new AArch64Unary.MemoryOp(isSigned, targetSize,
-                                memoryKind.getSizeInBytes() * Byte.SIZE, result, address, state));
-                break;
-            default:
-                throw GraalError.shouldNotReachHere();
-        }
+        int dstBitSize = resultBits <= 32 ? 32 : 64;
+        AArch64Move.ExtendKind extend = isSigned ? AArch64Move.ExtendKind.SIGN_EXTEND : AArch64Move.ExtendKind.ZERO_EXTEND;
+        getLIRGen().append(new AArch64Move.LoadOp(accessKind, dstBitSize, extend, result, address, state));
         return result;
     }
 
@@ -427,15 +419,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     private void emitBinaryVar(AllocatableValue result, AArch64ArithmeticOp op, AllocatableValue a, AllocatableValue b) {
         AllocatableValue x = moveSp(a);
         AllocatableValue y = moveSp(b);
-        switch (op) {
-            case REM:
-            case UREM:
-                getLIRGen().append(new AArch64ArithmeticOp.BinaryCompositeOp(op, result, x, y));
-                break;
-            default:
-                getLIRGen().append(new AArch64ArithmeticOp.BinaryOp(op, result, x, y));
-                break;
-        }
+        getLIRGen().append(new AArch64ArithmeticOp.BinaryOp(op, result, x, y));
     }
 
     public void emitBinaryConst(AllocatableValue result, AArch64ArithmeticOp op, AllocatableValue a, JavaConstant b) {
@@ -601,31 +585,33 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     }
 
     @Override
-    public Variable emitLoad(LIRKind kind, Value address, LIRFrameState state) {
-        AArch64AddressValue loadAddress = getLIRGen().asAddressValue(address);
-        Variable result = getLIRGen().newVariable(getLIRGen().toRegisterKind(kind));
-        getLIRGen().append(new LoadOp((AArch64Kind) kind.getPlatformKind(), result, loadAddress, state));
+    public Variable emitLoad(LIRKind lirKind, Value address, LIRFrameState state) {
+        AArch64Kind kind = (AArch64Kind) lirKind.getPlatformKind();
+        Variable result = getLIRGen().newVariable(getLIRGen().toRegisterKind(lirKind));
+        AArch64AddressValue loadAddress = getLIRGen().asAddressValue(address, kind.getSizeInBytes() * Byte.SIZE);
+        getLIRGen().append(new LoadOp(kind, result, loadAddress, state));
         return result;
     }
 
     @Override
-    public Variable emitVolatileLoad(LIRKind kind, Value address, LIRFrameState state) {
-        AllocatableValue loadAddress = asAllocatable(address);
-        Variable result = getLIRGen().newVariable(getLIRGen().toRegisterKind(kind));
-        getLIRGen().append(new AArch64Move.VolatileLoadOp((AArch64Kind) kind.getPlatformKind(), result, loadAddress, state));
+    public Variable emitVolatileLoad(LIRKind lirKind, Value address, LIRFrameState state) {
+        AArch64Kind kind = (AArch64Kind) lirKind.getPlatformKind();
+        Variable result = getLIRGen().newVariable(getLIRGen().toRegisterKind(lirKind));
+        AArch64AddressValue loadAddress = getLIRGen().asAddressValue(address, kind.getSizeInBytes() * Byte.SIZE);
+        getLIRGen().append(new AArch64Move.VolatileLoadOp(kind, result, loadAddress, state));
         return result;
     }
 
     @Override
     public void emitStore(ValueKind<?> lirKind, Value address, Value inputVal, LIRFrameState state) {
-        AArch64AddressValue storeAddress = getLIRGen().asAddressValue(address);
         AArch64Kind kind = (AArch64Kind) lirKind.getPlatformKind();
+        AArch64AddressValue storeAddress = getLIRGen().asAddressValue(address, kind.getSizeInBytes() * Byte.SIZE);
 
-        if (isJavaConstant(inputVal) && kind.isInteger()) {
+        /* We can store 0 directly via the gp zr register. */
+        if (kind.getSizeInBytes() <= Long.BYTES && isJavaConstant(inputVal)) {
             JavaConstant c = asJavaConstant(inputVal);
             if (c.isDefaultForKind()) {
-                // We can load 0 directly into integer registers
-                getLIRGen().append(new StoreConstantOp(kind, storeAddress, c, state));
+                getLIRGen().append(new StoreZeroOp(kind, storeAddress, state));
                 return;
             }
         }
@@ -634,11 +620,11 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     }
 
     @Override
-    public void emitVolatileStore(ValueKind<?> lirKind, Value addressVal, Value inputVal, LIRFrameState state) {
+    public void emitVolatileStore(ValueKind<?> lirKind, Value address, Value inputVal, LIRFrameState state) {
         AArch64Kind kind = (AArch64Kind) lirKind.getPlatformKind();
         AllocatableValue input = asAllocatable(inputVal);
-        AllocatableValue address = asAllocatable(addressVal);
-        getLIRGen().append(new AArch64Move.VolatileStoreOp(kind, address, input, state));
+        AArch64AddressValue storeAddress = getLIRGen().asAddressValue(address, kind.getSizeInBytes() * Byte.SIZE);
+        getLIRGen().append(new AArch64Move.VolatileStoreOp(kind, storeAddress, input, state));
     }
 
     @Override

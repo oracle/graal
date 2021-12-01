@@ -67,7 +67,6 @@ import org.junit.rules.TestName;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -103,7 +102,7 @@ public class ContextInterruptStandaloneTest extends AbstractPolyglotTest {
                         new ProxyLanguage() {
                             @Override
                             protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
-                                return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+                                return new RootNode(languageInstance) {
                                     @Child InteropLibrary library = InteropLibrary.getFactory().createDispatched(1);
 
                                     @Override
@@ -122,7 +121,7 @@ public class ContextInterruptStandaloneTest extends AbstractPolyglotTest {
                                             throw new AssertionError(e);
                                         }
                                     }
-                                });
+                                }.getCallTarget();
                             }
 
                             @Override
@@ -179,7 +178,7 @@ public class ContextInterruptStandaloneTest extends AbstractPolyglotTest {
                         new ProxyLanguage() {
                             @Override
                             protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
-                                return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+                                return new RootNode(languageInstance) {
                                     @Child InteropLibrary library = InteropLibrary.getFactory().createDispatched(1);
 
                                     @Override
@@ -192,7 +191,7 @@ public class ContextInterruptStandaloneTest extends AbstractPolyglotTest {
                                         }
                                         return 0;
                                     }
-                                });
+                                }.getCallTarget();
                             }
                         });
         try {

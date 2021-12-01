@@ -1,9 +1,5 @@
 specVersion = "2"
 
-# oraclejdk* are released OracleJDK binaries
-# oraclejdk* are JDKs based on OracleJDK binaries
-# openjdk8 JDKs on Linux are built by Oracle Labs
-# openjdk8 JDKs on macOS are based on AdoptOpenJDK binaries
 include "common.json"
 include "graal-common.json"
 
@@ -43,8 +39,9 @@ labsjdk-ce-17Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk-ce-17Debug} }}
 labsjdk-ee-17Debug : { downloads : { JAVA_HOME : ${jdks.labsjdk-ee-17Debug} }}
 
 common : ${mx} ${deps.common} {
-  catch_files : [
-    "Graal diagnostic output saved in (?P<filename>.+\.zip)"
+  catch_files : ${catch_files},
+  logs : [
+    "*/es-*.json"
   ]
 }
 

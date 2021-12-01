@@ -24,29 +24,31 @@
  */
 package com.oracle.svm.hosted;
 
-import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
-import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.reports.ReportUtils;
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.hosted.c.GraalAccess;
-import com.oracle.svm.hosted.substitute.SubstitutionField;
-import com.oracle.svm.hosted.substitute.SubstitutionMethod;
-import com.oracle.svm.hosted.substitute.SubstitutionType;
-import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.nativeimage.hosted.Feature;
-
 import java.security.CodeSource;
 import java.util.Comparator;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.function.Function;
+
+import org.graalvm.compiler.options.Option;
+import org.graalvm.nativeimage.hosted.Feature;
+
+import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
+import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.reports.ReportUtils;
+import com.oracle.graal.pointsto.util.GraalAccess;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.hosted.substitute.SubstitutionField;
+import com.oracle.svm.hosted.substitute.SubstitutionMethod;
+import com.oracle.svm.hosted.substitute.SubstitutionType;
+
+import jdk.vm.ci.meta.ResolvedJavaField;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 @AutomaticFeature
 public class SubstitutionReportFeature implements Feature {

@@ -224,6 +224,7 @@ public class RuntimeState {
     }
 
     public void setFunctionInstance(int index, WasmFunctionInstance functionInstance) {
+        assert functionInstance != null;
         functionInstances[index] = functionInstance;
     }
 }

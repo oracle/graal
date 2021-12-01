@@ -34,6 +34,7 @@ import java.util.regex.Matcher;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
@@ -53,6 +54,7 @@ import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 import com.oracle.truffle.espresso.jdwp.api.JDWPSetup;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
+import com.oracle.truffle.espresso.jdwp.api.ModuleRef;
 import com.oracle.truffle.espresso.jdwp.api.MonitorStackInfo;
 import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
 import com.oracle.truffle.espresso.jdwp.api.TagConstants;
@@ -63,6 +65,7 @@ import com.oracle.truffle.espresso.jdwp.impl.JDWPInstrument;
 import com.oracle.truffle.espresso.jdwp.impl.TypeTag;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.BciProvider;
+import com.oracle.truffle.espresso.nodes.EspressoBaseMethodNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.ForeignArrayUtils;
 import com.oracle.truffle.espresso.redefinition.ChangePacket;
@@ -72,7 +75,7 @@ import com.oracle.truffle.espresso.redefinition.InnerClassRedefiner;
 import com.oracle.truffle.espresso.redefinition.RedefintionNotSupportedException;
 import com.oracle.truffle.espresso.redefinition.plugins.impl.RedefinitionPluginHandler;
 import com.oracle.truffle.espresso.runtime.dispatch.EspressoInterop;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
+import com.oracle.truffle.espresso.threads.State;
 
 public final class JDWPContextImpl implements JDWPContext {
 
@@ -126,7 +129,7 @@ public final class JDWPContextImpl implements JDWPContext {
             if (context.getMeta().java_lang_Thread.isAssignableFrom(staticObject.getKlass())) {
                 if (checkTerminated) {
                     // check if thread has been terminated
-                    return getThreadStatus(thread) != Target_java_lang_Thread.State.TERMINATED.value;
+                    return getThreadStatus(thread) != State.TERMINATED.value;
                 }
                 return true;
             }
@@ -249,7 +252,7 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public Thread asHostThread(Object thread) {
-        return Target_java_lang_Thread.getHostFromGuestThread((StaticObject) thread);
+        return context.getThreadAccess().getHost((StaticObject) thread);
     }
 
     @Override
@@ -364,7 +367,7 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public String getThreadName(Object thread) {
-        return Target_java_lang_Thread.getThreadName(context.getMeta(), (StaticObject) thread);
+        return context.getThreadAccess().getThreadName((StaticObject) thread);
     }
 
     @Override
@@ -540,7 +543,7 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public void stopThread(Object guestThread, Object guestThrowable) {
-        Target_java_lang_Thread.stop0((StaticObject) guestThread, (StaticObject) guestThrowable);
+        context.getThreadAccess().stop((StaticObject) guestThread, (StaticObject) guestThrowable);
     }
 
     @Override
@@ -696,6 +699,34 @@ public final class JDWPContextImpl implements JDWPContext {
         return bciProvider.getBci(frame);
     }
 
+    @Override
+    public Node getInstrumentableNode(RootNode rootNode) {
+        if (rootNode instanceof EspressoRootNode) {
+            EspressoBaseMethodNode baseMethodNode = ((EspressoRootNode) rootNode).getMethodNode();
+            if (baseMethodNode instanceof InstrumentableNode.WrapperNode) {
+                return ((InstrumentableNode.WrapperNode) baseMethodNode).getDelegateNode();
+            } else {
+                return baseMethodNode;
+            }
+        }
+        return rootNode;
+    }
+
+    @Override
+    public boolean isMemberOf(Object guestObject, KlassRef klass) {
+        if (guestObject instanceof StaticObject) {
+            StaticObject staticObject = (StaticObject) guestObject;
+            return klass.isAssignable(staticObject.getKlass());
+        } else {
+            return false;
+        }
+    }
+
+    @Override
+    public ModuleRef[] getAllModulesRefs() {
+        return context.getRegistries().getAllModuleRefs();
+    }
+
     public void rerunclinit(ObjectKlass oldKlass) {
         classInitializerActions.add(new ReloadingAction(oldKlass));
     }
@@ -729,16 +760,16 @@ public final class JDWPContextImpl implements JDWPContext {
                     JDWP.LOGGER.warning(() -> "exception while re-running a class initializer!");
                 }
             });
+            // run post redefinition plugins before ending the redefinition transaction
+            try {
+                classRedefinition.runPostRedefintionListeners(changedKlasses.toArray(new ObjectKlass[changedKlasses.size()]));
+            } catch (Throwable t) {
+                JDWP.LOGGER.throwing(JDWPContextImpl.class.getName(), "redefineClasses", t);
+            }
         } catch (RedefintionNotSupportedException ex) {
             return ex.getErrorCode();
         } finally {
             ClassRedefinition.end();
-        }
-        // run post redefinition plugins
-        try {
-            classRedefinition.runPostRedefintionListeners(changedKlasses.toArray(new ObjectKlass[changedKlasses.size()]));
-        } catch (Throwable t) {
-            JDWP.LOGGER.throwing(JDWPContextImpl.class.getName(), "redefineClasses", t);
         }
         return 0;
     }

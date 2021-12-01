@@ -27,7 +27,6 @@ package org.graalvm.compiler.core.gen;
 import java.util.Collection;
 import java.util.List;
 
-import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.LIRGenerationPhase;
 import org.graalvm.compiler.core.LIRGenerationPhase.LIRGenerationContext;
@@ -50,6 +49,7 @@ import org.graalvm.compiler.lir.framemap.FrameMap;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.lir.phases.AllocationPhase.AllocationContext;
+import org.graalvm.compiler.lir.phases.FinalCodeAnalysisPhase.FinalCodeAnalysisContext;
 import org.graalvm.compiler.lir.phases.LIRSuites;
 import org.graalvm.compiler.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
 import org.graalvm.compiler.lir.phases.PreAllocationOptimizationPhase.PreAllocationOptimizationContext;
@@ -66,7 +66,6 @@ import jdk.vm.ci.code.site.DataPatch;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.VMConstant;
@@ -90,7 +89,6 @@ public class LIRCompilerBackend {
                                 graph.getAssumptions(),
                                 graph.method(),
                                 graph.getMethods(),
-                                graph.getFields(),
                                 graph.getSpeculationLog(),
                                 bytecodeSize,
                                 lirGen,
@@ -186,6 +184,10 @@ public class LIRCompilerBackend {
         lirSuites.getPostAllocationOptimizationStage().apply(target, lirGenRes, postAllocOptContext);
         debug.dump(DebugContext.BASIC_LEVEL, lirGenRes.getLIR(), "After PostAllocationOptimizationStage");
 
+        FinalCodeAnalysisContext finalCodeAnalysisContext = new FinalCodeAnalysisContext(lirGen);
+        lirSuites.getFinalCodeAnalysisStage().apply(target, lirGenRes, finalCodeAnalysisContext);
+        debug.dump(DebugContext.BASIC_LEVEL, lirGenRes.getLIR(), "After FinalCodeAnalysisStage");
+
         return lirGenRes;
     }
 
@@ -194,7 +196,6 @@ public class LIRCompilerBackend {
                     Assumptions assumptions,
                     ResolvedJavaMethod rootMethod,
                     Collection<ResolvedJavaMethod> inlinedMethods,
-                    EconomicSet<ResolvedJavaField> accessedFields,
                     SpeculationLog speculationLog,
                     int bytecodeSize,
                     LIRGenerationResult lirGenRes,
@@ -213,7 +214,6 @@ public class LIRCompilerBackend {
             }
             if (rootMethod != null) {
                 compilationResult.setMethods(rootMethod, inlinedMethods);
-                compilationResult.setFields(accessedFields);
                 compilationResult.setBytecodeSize(bytecodeSize);
             }
             if (speculationLog != null) {

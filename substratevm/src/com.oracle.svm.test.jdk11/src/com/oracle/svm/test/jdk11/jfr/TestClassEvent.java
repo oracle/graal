@@ -26,18 +26,18 @@
 
 package com.oracle.svm.test.jdk11.jfr;
 
-import jdk.jfr.Recording;
-
 import static org.junit.Assert.assertNotNull;
 
-import jdk.jfr.consumer.RecordingFile;
 import org.junit.Test;
 
-public class TestClassEvent {
+import jdk.jfr.Recording;
+import jdk.jfr.consumer.RecordingFile;
+
+public class TestClassEvent extends JFRTest {
     @Test
     public void test() throws Exception {
         JFR jfr = new LocalJFR();
-        Recording recording = jfr.startRecording("TestSingleEvent");
+        Recording recording = jfr.startRecording("TestClassEvent");
 
         ClassEvent event = new ClassEvent();
         event.clazz = TestClassEvent.class;

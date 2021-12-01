@@ -76,14 +76,11 @@ public class SubstrateStrengthenGraphs extends StrengthenGraphs {
          * Uninterruptible methods might not be able to access the heap yet for the error message
          * constant, so we skip it for such methods too.
          */
-        if (SubstrateUtil.assertionsEnabled()) {
-            Uninterruptible uninterruptibleAnnotation = graph.method().getAnnotation(Uninterruptible.class);
-            if (uninterruptibleAnnotation == null || uninterruptibleAnnotation.mayBeInlined()) {
-                ConstantNode messageNode = ConstantNode.forConstant(providers.getConstantReflection().forString(message.get()), providers.getMetaAccess(), graph);
-                ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(SnippetRuntime.UNSUPPORTED_FEATURE, messageNode));
-                foreignCallNode.setNext(unreachableNode);
-                unreachableNode = foreignCallNode;
-            }
+        if (SubstrateUtil.assertionsEnabled() && !Uninterruptible.Utils.isUninterruptible(graph.method())) {
+            ConstantNode messageNode = ConstantNode.forConstant(providers.getConstantReflection().forString(message.get()), providers.getMetaAccess(), graph);
+            ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(SnippetRuntime.UNSUPPORTED_FEATURE, messageNode));
+            foreignCallNode.setNext(unreachableNode);
+            unreachableNode = foreignCallNode;
         }
 
         return unreachableNode;

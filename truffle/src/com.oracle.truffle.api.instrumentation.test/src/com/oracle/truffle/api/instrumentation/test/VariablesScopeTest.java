@@ -45,17 +45,18 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
@@ -81,9 +82,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
-
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Value;
 
 /**
  * Test of {@link Scope}.
@@ -352,7 +350,7 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
         ProxyLanguage language = new ProxyLanguage() {
             @Override
             protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
-                return Truffle.getRuntime().createCallTarget(new RootNode(ProxyLanguage.get(null)) {
+                return new RootNode(ProxyLanguage.get(null)) {
 
                     @Node.Child private DefaultRootBlockNode block = insert(new DefaultRootBlockNode());
 
@@ -365,7 +363,7 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
                     public Object execute(VirtualFrame frame) {
                         return block.execute(frame);
                     }
-                });
+                }.getCallTarget();
             }
         };
         ProxyLanguage.setDelegate(language);
@@ -376,8 +374,8 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
     static class DefaultRootBlockNode extends Node implements InstrumentableNode {
 
         @Child private DefaultStatementNode statementNode = new DefaultStatementNode();
-        @CompilationFinal private FrameSlot a;
-        @CompilationFinal private FrameSlot b;
+        @CompilationFinal private Integer a;
+        @CompilationFinal private Integer b;
 
         @Override
         public boolean isInstrumentable() {
@@ -402,12 +400,12 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
         Object execute(VirtualFrame frame) {
             if (a == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                a = frame.getFrameDescriptor().findOrAddFrameSlot("a");
-                b = frame.getFrameDescriptor().findOrAddFrameSlot("b");
+                a = frame.getFrameDescriptor().findOrAddAuxiliarySlot("a");
+                b = frame.getFrameDescriptor().findOrAddAuxiliarySlot("b");
             }
-            frame.setInt(a, 10);
+            frame.setAuxiliarySlot(a, 10);
             int ret = statementNode.execute(frame);
-            frame.setBoolean(b, true);
+            frame.setAuxiliarySlot(b, true);
             return ret;
         }
     }
@@ -415,7 +413,7 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
     @GenerateWrapper
     static class DefaultStatementNode extends Node implements InstrumentableNode {
 
-        @CompilationFinal private FrameSlot n;
+        @CompilationFinal private Integer n;
 
         @Override
         public boolean isInstrumentable() {
@@ -440,10 +438,10 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
         int execute(VirtualFrame frame) {
             if (n == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                n = frame.getFrameDescriptor().findOrAddFrameSlot("n");
+                n = frame.getFrameDescriptor().findOrAddAuxiliarySlot("n");
             }
             Object[] arguments = frame.getArguments();
-            frame.setInt(n, arguments.length);
+            frame.setAuxiliarySlot(n, arguments.length);
             int s = 0;
             for (int i = 0; i < arguments.length; i++) {
                 s += (int) arguments[i];
@@ -452,7 +450,7 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
         }
     }
 
-    @TruffleLanguage.Registration(name = "", id = "test-custom-variables-scope-language")
+    @TruffleLanguage.Registration(name = "", id = "test-custom-variables-scope-language", contextPolicy = ContextPolicy.SHARED)
     @ProvidedTags({StandardTags.StatementTag.class, StandardTags.RootTag.class})
     public static class CustomScopeLanguage extends TruffleLanguage<Env> {
 
@@ -463,7 +461,7 @@ public class VariablesScopeTest extends AbstractInstrumentationTest {
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
-            return Truffle.getRuntime().createCallTarget(new CustomRoot(this));
+            return new CustomRoot(this).getCallTarget();
         }
 
         @Override

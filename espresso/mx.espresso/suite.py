@@ -23,7 +23,7 @@
 suite = {
     "mxversion": "5.280.5",
     "name": "espresso",
-    "version" : "21.3.0",
+    "version" : "22.0.0",
     "release" : False,
     "groupId" : "org.graalvm.espresso",
     "url" : "https://www.graalvm.org/reference-manual/java-on-truffle/",
@@ -121,6 +121,20 @@ suite = {
             "checkPackagePrefix": False,  # java.lang.ref.PublicFinalReference
         },
 
+        "com.oracle.truffle.espresso.jdk17": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "overlayTarget": "com.oracle.truffle.espresso",
+            "dependencies": [
+                "com.oracle.truffle.espresso",
+            ],
+            "checkPackagePrefix": "false",
+            "multiReleaseJarVersion": "17",
+            "checkstyle": "com.oracle.truffle.espresso",
+            "javaCompliance": "17+",
+        },
+
+
         "com.oracle.truffle.espresso.processor": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -173,6 +187,7 @@ suite = {
             "use_jdk_headers": True,
             "buildDependencies": [
                 "truffle:TRUFFLE_NFI_NATIVE",
+                "com.oracle.truffle.espresso.mokapot",
             ],
             "os_arch": {
                 "windows": {

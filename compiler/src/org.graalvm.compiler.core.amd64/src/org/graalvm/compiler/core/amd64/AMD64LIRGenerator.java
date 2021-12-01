@@ -33,7 +33,6 @@ import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.DWOR
 import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.PD;
 import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.PS;
 import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.QWORD;
-import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.lir.LIRValueUtil.asConstant;
 import static org.graalvm.compiler.lir.LIRValueUtil.asConstantValue;
 import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
@@ -109,6 +108,7 @@ import org.graalvm.compiler.lir.amd64.AMD64ZeroMemoryOp;
 import org.graalvm.compiler.lir.amd64.vector.AMD64VectorCompareOp;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGenerator;
+import org.graalvm.compiler.lir.gen.MoveFactory;
 import org.graalvm.compiler.lir.hashing.IntHasher;
 import org.graalvm.compiler.phases.util.Providers;
 
@@ -134,28 +134,6 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     public AMD64LIRGenerator(LIRKindTool lirKindTool, AMD64ArithmeticLIRGenerator arithmeticLIRGen, MoveFactory moveFactory, Providers providers, LIRGenerationResult lirGenRes) {
         super(lirKindTool, arithmeticLIRGen, moveFactory, providers, lirGenRes);
-    }
-
-    /**
-     * Checks whether the supplied constant can be used without loading it into a register for store
-     * operations, i.e., on the right hand side of a memory access.
-     *
-     * @param c The constant to check.
-     * @return True if the constant can be used directly, false if the constant needs to be in a
-     *         register.
-     */
-    protected static final boolean canStoreConstant(JavaConstant c) {
-        // there is no immediate move of 64-bit constants on Intel
-        switch (c.getJavaKind()) {
-            case Long:
-                return NumUtil.isInt(c.asLong());
-            case Double:
-                return false;
-            case Object:
-                return c.isNull();
-            default:
-                return true;
-        }
     }
 
     @Override
@@ -349,7 +327,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                 return;
             } else if (c instanceof VMConstant) {
                 VMConstant vc = (VMConstant) c;
-                if (size == DWORD && !GeneratePIC.getValue(getResult().getLIR().getOptions()) && target().inlineObjects) {
+                if (size == DWORD && target().inlineObjects) {
                     append(new CmpConstBranchOp(DWORD, left, vc, null, cond, trueLabel, falseLabel, trueLabelProbability));
                 } else {
                     append(new CmpDataBranchOp(size, left, vc, cond, trueLabel, falseLabel, trueLabelProbability));
@@ -573,7 +551,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     protected void emitForeignCallOp(ForeignCallLinkage linkage, Value targetAddress, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
         long maxOffset = linkage.getMaxCallTargetOffset();
-        if (maxOffset != (int) maxOffset && !GeneratePIC.getValue(getResult().getLIR().getOptions())) {
+        if (maxOffset != (int) maxOffset) {
             append(new AMD64Call.DirectFarForeignCallOp(linkage, result, arguments, temps, info));
         } else {
             append(new AMD64Call.DirectNearForeignCallOp(linkage, result, arguments, temps, info));
@@ -763,5 +741,17 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         RegisterValue lengthReg = AMD64.rcx.asValue(length.getValueKind());
         emitMove(lengthReg, length);
         append(new AMD64ZeroMemoryOp(asAddressValue(address), lengthReg));
+    }
+
+    public boolean supportsCPUFeature(AMD64.CPUFeature feature) {
+        return ((AMD64) target().arch).getFeatures().contains(feature);
+    }
+
+    public boolean supportsCPUFeature(String feature) {
+        try {
+            return ((AMD64) target().arch).getFeatures().contains(AMD64.CPUFeature.valueOf(feature));
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 }

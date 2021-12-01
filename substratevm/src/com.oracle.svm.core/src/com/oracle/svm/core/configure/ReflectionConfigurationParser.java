@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
+
 import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.util.json.JSONParser;
 import com.oracle.svm.core.util.json.JSONParserException;
@@ -50,7 +52,8 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
     private final boolean allowIncompleteClasspath;
     private static final List<String> OPTIONAL_REFLECT_CONFIG_OBJECT_ATTRS = Arrays.asList("allDeclaredConstructors", "allPublicConstructors",
                     "allDeclaredMethods", "allPublicMethods", "allDeclaredFields", "allPublicFields",
-                    "allDeclaredClasses", "allPublicClasses", "methods", "fields");
+                    "allDeclaredClasses", "allPermittedSubclasses", "allPublicClasses", "methods", "queriedMethods", "fields", CONDITIONAL_KEY,
+                    "queryAllDeclaredConstructors", "queryAllPublicConstructors", "queryAllDeclaredMethods", "queryAllPublicMethods");
 
     public ReflectionConfigurationParser(ReflectionConfigurationParserDelegate<T> delegate) {
         this(delegate, false, true);
@@ -81,7 +84,14 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
         Object classObject = data.get("name");
         String className = asString(classObject, "name");
 
-        TypeResult<T> result = delegate.resolveTypeResult(className);
+        TypeResult<ConfigurationCondition> conditionResult = delegate.resolveCondition(parseCondition(data).getTypeName());
+        if (!conditionResult.isPresent()) {
+            handleError("Could not resolve condition " + parseCondition(data).getTypeName() + " for reflection.", conditionResult.getException());
+            return;
+        }
+        ConfigurationCondition condition = conditionResult.get();
+
+        TypeResult<T> result = delegate.resolveType(condition, className);
         if (!result.isPresent()) {
             handleError("Could not resolve " + className + " for reflection configuration.", result.getException());
             return;
@@ -96,22 +106,22 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
                 switch (name) {
                     case "allDeclaredConstructors":
                         if (asBoolean(value, "allDeclaredConstructors")) {
-                            delegate.registerDeclaredConstructors(clazz);
+                            delegate.registerDeclaredConstructors(false, clazz);
                         }
                         break;
                     case "allPublicConstructors":
                         if (asBoolean(value, "allPublicConstructors")) {
-                            delegate.registerPublicConstructors(clazz);
+                            delegate.registerPublicConstructors(false, clazz);
                         }
                         break;
                     case "allDeclaredMethods":
                         if (asBoolean(value, "allDeclaredMethods")) {
-                            delegate.registerDeclaredMethods(clazz);
+                            delegate.registerDeclaredMethods(false, clazz);
                         }
                         break;
                     case "allPublicMethods":
                         if (asBoolean(value, "allPublicMethods")) {
-                            delegate.registerPublicMethods(clazz);
+                            delegate.registerPublicMethods(false, clazz);
                         }
                         break;
                     case "allDeclaredFields":
@@ -129,13 +139,41 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
                             delegate.registerDeclaredClasses(clazz);
                         }
                         break;
+                    case "allPermittedSubclasses":
+                        if (asBoolean(value, "allPermittedSubclasses")) {
+                            delegate.registerPermittedSubclasses(clazz);
+                        }
+                        break;
                     case "allPublicClasses":
                         if (asBoolean(value, "allPublicClasses")) {
                             delegate.registerPublicClasses(clazz);
                         }
                         break;
+                    case "queryAllDeclaredConstructors":
+                        if (asBoolean(value, "queryAllDeclaredConstructors")) {
+                            delegate.registerDeclaredConstructors(true, clazz);
+                        }
+                        break;
+                    case "queryAllPublicConstructors":
+                        if (asBoolean(value, "queryAllPublicConstructors")) {
+                            delegate.registerPublicConstructors(true, clazz);
+                        }
+                        break;
+                    case "queryAllDeclaredMethods":
+                        if (asBoolean(value, "queryAllDeclaredMethods")) {
+                            delegate.registerDeclaredMethods(true, clazz);
+                        }
+                        break;
+                    case "queryAllPublicMethods":
+                        if (asBoolean(value, "queryAllPublicMethods")) {
+                            delegate.registerPublicMethods(true, clazz);
+                        }
+                        break;
                     case "methods":
-                        parseMethods(asList(value, "Attribute 'methods' must be an array of method descriptors"), clazz);
+                        parseMethods(false, asList(value, "Attribute 'methods' must be an array of method descriptors"), clazz);
+                        break;
+                    case "queriedMethods":
+                        parseMethods(true, asList(value, "Attribute 'queriedMethods' must be an array of method descriptors"), clazz);
                         break;
                     case "fields":
                         parseFields(asList(value, "Attribute 'fields' must be an array of field descriptors"), clazz);
@@ -167,20 +205,19 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
         }
     }
 
-    private void parseMethods(List<Object> methods, T clazz) {
+    private void parseMethods(boolean queriedOnly, List<Object> methods, T clazz) {
         for (Object method : methods) {
-            parseMethod(asMap(method, "Elements of 'methods' array must be method descriptor objects"), clazz);
+            parseMethod(queriedOnly, asMap(method, "Elements of 'methods' array must be method descriptor objects"), clazz);
         }
     }
 
-    private void parseMethod(Map<String, Object> data, T clazz) {
+    private void parseMethod(boolean queriedOnly, Map<String, Object> data, T clazz) {
         checkAttributes(data, "reflection method descriptor object", Collections.singleton("name"), Collections.singleton("parameterTypes"));
         String methodName = asString(data.get("name"), "name");
         List<T> methodParameterTypes = null;
         Object parameterTypes = data.get("parameterTypes");
         if (parameterTypes != null) {
-            methodParameterTypes = parseMethodParameters(clazz, methodName, asList(parameterTypes,
-                            "Attribute 'parameterTypes' must be a list of type names"));
+            methodParameterTypes = parseMethodParameters(clazz, methodName, asList(parameterTypes, "Attribute 'parameterTypes' must be a list of type names"));
             if (methodParameterTypes == null) {
                 return;
             }
@@ -190,9 +227,9 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
         if (methodParameterTypes != null) {
             try {
                 if (isConstructor) {
-                    delegate.registerConstructor(clazz, methodParameterTypes);
+                    delegate.registerConstructor(queriedOnly, clazz, methodParameterTypes);
                 } else {
-                    delegate.registerMethod(clazz, methodName, methodParameterTypes);
+                    delegate.registerMethod(queriedOnly, clazz, methodName, methodParameterTypes);
                 }
             } catch (NoSuchMethodException e) {
                 handleError("Method " + formatMethod(clazz, methodName, methodParameterTypes) + " not found.");
@@ -203,9 +240,9 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
             try {
                 boolean found;
                 if (isConstructor) {
-                    found = delegate.registerAllConstructors(clazz);
+                    found = delegate.registerAllConstructors(queriedOnly, clazz);
                 } else {
-                    found = delegate.registerAllMethodsWithName(clazz, methodName);
+                    found = delegate.registerAllMethodsWithName(queriedOnly, clazz, methodName);
                 }
                 if (!found) {
                     throw new JSONParserException("Method " + formatMethod(clazz, methodName) + " not found");
@@ -220,7 +257,7 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
         List<T> result = new ArrayList<>();
         for (Object type : types) {
             String typeName = asString(type, "types");
-            TypeResult<T> typeResult = delegate.resolveTypeResult(typeName);
+            TypeResult<T> typeResult = delegate.resolveType(ConfigurationCondition.alwaysTrue(), typeName);
             if (!typeResult.isPresent()) {
                 handleError("Could not register method " + formatMethod(clazz, methodName) + " for reflection.", typeResult.getException());
                 return null;
@@ -257,10 +294,10 @@ public final class ReflectionConfigurationParser<T> extends ConfigurationParser 
         if (cause != null) {
             message += " Reason: " + formatError(cause) + '.';
         }
-        if (this.allowIncompleteClasspath) {
-            System.out.println("Warning: " + message);
+        if (allowIncompleteClasspath) {
+            System.err.println("Warning: " + message);
         } else {
-            throw new JSONParserException(message + " To allow unresolvable reflection configuration, use option -H:+AllowIncompleteClasspath");
+            throw new JSONParserException(message + " To allow unresolvable reflection configuration, use option --allow-incomplete-classpath");
         }
         // Checkstyle: resume
     }

@@ -48,7 +48,6 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 
 @ExportLibrary(InteropLibrary.class)
-@ExportLibrary(SerializeArgumentLibrary.class)
 @SuppressWarnings("unused")
 class NativePointer implements TruffleObject {
 
@@ -82,11 +81,6 @@ class NativePointer implements TruffleObject {
     @ExportMessage
     boolean isNull() {
         return nativePointer == 0;
-    }
-
-    @ExportMessage
-    void putPointer(NativeArgumentBuffer buffer, int ptrSize) {
-        buffer.putPointer(nativePointer, ptrSize);
     }
 
     @ExportMessage

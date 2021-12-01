@@ -24,10 +24,10 @@
  */
 package org.graalvm.compiler.debug;
 
-import java.io.File;
+import java.io.BufferedReader;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -39,28 +39,32 @@ public final class Versions {
     static final Versions VERSIONS;
     static {
         String home = Services.getSavedProperties().get("java.home");
-        VERSIONS = new Versions(home == null ? null : new File(home).toPath());
+        VERSIONS = new Versions(home);
     }
 
     private final Map<Object, Object> versions;
 
-    public Versions(Path home) {
+    public Versions(String home) {
         Map<Object, Object> map = new HashMap<>();
         ASSIGN: try {
-            Path info = findReleaseInfo(home);
+            String info = findReleaseInfo(home);
             if (info == null) {
                 break ASSIGN;
             }
-            for (String line : Files.readAllLines(info)) {
-                final String prefix = "SOURCE=";
-                if (line.startsWith(prefix)) {
-                    for (String versionInfo : line.substring(prefix.length()).replace('"', ' ').split(" ")) {
-                        String[] idVersion = versionInfo.split(":");
-                        if (idVersion != null && idVersion.length == 2) {
-                            map.put("version." + idVersion[0], idVersion[1]);
+
+            try (InputStream in = PathUtilities.openInputStream(info)) {
+                BufferedReader br = new BufferedReader(new InputStreamReader(in));
+                for (String line = br.readLine(); line != null; line = br.readLine()) {
+                    final String prefix = "SOURCE=";
+                    if (line.startsWith(prefix)) {
+                        for (String versionInfo : line.substring(prefix.length()).replace('"', ' ').split(" ")) {
+                            String[] idVersion = versionInfo.split(":");
+                            if (idVersion != null && idVersion.length == 2) {
+                                map.put("version." + idVersion[0], idVersion[1]);
+                            }
                         }
+                        break ASSIGN;
                     }
-                    break ASSIGN;
                 }
             }
         } catch (IOException ex) {
@@ -78,20 +82,20 @@ public final class Versions {
         }
     }
 
-    private static Path findReleaseInfo(Path jreDir) {
+    private static String findReleaseInfo(String jreDir) {
         if (jreDir == null) {
             return null;
         }
-        Path releaseInJre = jreDir.resolve("release");
-        if (Files.exists(releaseInJre)) {
+        String releaseInJre = PathUtilities.getPath(jreDir, "release");
+        if (PathUtilities.exists(releaseInJre)) {
             return releaseInJre;
         }
-        Path jdkDir = jreDir.getParent();
+        String jdkDir = PathUtilities.getParent(jreDir);
         if (jdkDir == null) {
             return null;
         }
-        Path releaseInJdk = jdkDir.resolve("release");
-        return Files.exists(releaseInJdk) ? releaseInJdk : null;
+        String releaseInJdk = PathUtilities.getPath(jdkDir, "release");
+        return PathUtilities.exists(releaseInJdk) ? releaseInJdk : null;
     }
 
 }

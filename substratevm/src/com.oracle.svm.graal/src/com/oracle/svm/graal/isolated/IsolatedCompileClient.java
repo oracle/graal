@@ -44,7 +44,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 public final class IsolatedCompileClient {
 
     private static final FastThreadLocalObject<IsolatedCompileClient> currentClient = //
-                    FastThreadLocalFactory.createObject(IsolatedCompileClient.class);
+                    FastThreadLocalFactory.createObject(IsolatedCompileClient.class, "IsolatedCompileClient.currentClient");
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static IsolatedCompileClient get() {
@@ -87,8 +87,8 @@ public final class IsolatedCompileClient {
         }
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static CompilerHandle<String> createStringInCompiler0(@SuppressWarnings("unused") CompilerIsolateThread compiler, CCharPointer cstr) {
         return IsolatedCompileContext.get().hand(CTypeConversion.toJavaString(cstr));
     }

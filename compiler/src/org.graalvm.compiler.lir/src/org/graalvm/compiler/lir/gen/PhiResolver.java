@@ -37,7 +37,6 @@ import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.lir.LIRInsertionBuffer;
 import org.graalvm.compiler.lir.LIRInstruction;
-import org.graalvm.compiler.lir.gen.LIRGeneratorTool.MoveFactory;
 
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;

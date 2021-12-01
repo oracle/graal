@@ -43,10 +43,21 @@ package com.oracle.truffle.polyglot;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
+import com.oracle.truffle.api.instrumentation.EventBinding;
+import com.oracle.truffle.api.instrumentation.EventContext;
+import com.oracle.truffle.api.instrumentation.ExecutionEventNode;
+import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
+import com.oracle.truffle.api.instrumentation.Instrumenter;
+import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.instrumentation.Tag;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -57,10 +68,13 @@ import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractEngineDispatch;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractManagementDispatch;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.ProcessHandler;
 
 import com.oracle.truffle.api.Truffle;
+import org.graalvm.polyglot.management.ExecutionEvent;
+import org.graalvm.polyglot.management.ExecutionListener;
 
 final class PolyglotEngineDispatch extends AbstractEngineDispatch {
 
@@ -141,12 +155,12 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
                     boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter,
                     Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess,
                     ProcessHandler processHandler, EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory,
-                    ClassLoader hostClassLoader, boolean allowValueSharing) {
+                    ClassLoader hostClassLoader, boolean allowValueSharing, boolean useSystemExit) {
         PolyglotEngineImpl receiver = (PolyglotEngineImpl) oreceiver;
         PolyglotContextImpl context = receiver.createContext(out, err, in, allowHostAccess, hostAccess, polyglotAccess, allowNativeAccess, allowCreateThread, allowHostIO, allowHostClassLoading,
                         allowExperimentalOptions,
                         classFilter, options, arguments, onlyLanguages, fileSystem, logHandlerOrStream, allowCreateProcess, processHandler, environmentAccess, environment, zone, limitsImpl,
-                        currentWorkingDirectory, hostClassLoader, allowValueSharing);
+                        currentWorkingDirectory, hostClassLoader, allowValueSharing, useSystemExit);
         return polyglot.getAPIAccess().newContext(polyglot.contextDispatch, context, context.engine.api);
     }
 
@@ -178,6 +192,105 @@ final class PolyglotEngineDispatch extends AbstractEngineDispatch {
         } catch (Throwable t) {
             throw PolyglotImpl.guestToHostException(receiver, t);
         }
+    }
+
+    @Override
+    public ExecutionListener attachExecutionListener(Object engineReceiver, Consumer<ExecutionEvent> onEnter, Consumer<ExecutionEvent> onReturn, boolean expressions, boolean statements,
+                    boolean roots,
+                    Predicate<Source> sourceFilter, Predicate<String> rootFilter, boolean collectInputValues, boolean collectReturnValues, boolean collectExceptions) {
+        PolyglotEngineImpl engine = (PolyglotEngineImpl) engineReceiver;
+        Instrumenter instrumenter = (Instrumenter) EngineAccessor.INSTRUMENT.getEngineInstrumenter(engine.instrumentationHandler);
+
+        List<Class<? extends Tag>> tags = new ArrayList<>();
+        if (expressions) {
+            tags.add(StandardTags.ExpressionTag.class);
+        }
+        if (statements) {
+            tags.add(StandardTags.StatementTag.class);
+        }
+        if (roots) {
+            tags.add(StandardTags.RootTag.class);
+        }
+
+        if (tags.isEmpty()) {
+            throw new IllegalArgumentException("No elements specified to listen to for execution listener. Need to specify at least one element kind: expressions, statements or roots.");
+        }
+        if (onReturn == null && onEnter == null) {
+            throw new IllegalArgumentException("At least one event consumer must be provided for onEnter or onReturn.");
+        }
+
+        SourceSectionFilter.Builder filterBuilder = SourceSectionFilter.newBuilder().tagIs(tags.toArray(new Class<?>[0]));
+        filterBuilder.includeInternal(false);
+
+        AbstractManagementDispatch managementDispatch = polyglot.getManagementDispatch();
+        PolyglotManagementDispatch.ListenerImpl config = new PolyglotManagementDispatch.ListenerImpl(managementDispatch, engine, onEnter, onReturn, collectInputValues, collectReturnValues,
+                        collectExceptions);
+
+        filterBuilder.sourceIs(new SourceSectionFilter.SourcePredicate() {
+            public boolean test(com.oracle.truffle.api.source.Source s) {
+                String language = s.getLanguage();
+                if (language == null) {
+                    return false;
+                } else if (!engine.idToLanguage.containsKey(language)) {
+                    return false;
+                } else if (sourceFilter != null) {
+                    try {
+                        return sourceFilter.test(PolyglotImpl.getOrCreatePolyglotSource(polyglot, s));
+                    } catch (Throwable e) {
+                        if (config.closing) {
+                            // configuration is closing ignore errors.
+                            return false;
+                        }
+                        throw engine.host.toHostException(null, e);
+                    }
+                } else {
+                    return true;
+                }
+            }
+        });
+
+        if (rootFilter != null) {
+            filterBuilder.rootNameIs(new Predicate<String>() {
+                public boolean test(String s) {
+                    try {
+                        return rootFilter.test(s);
+                    } catch (Throwable e) {
+                        if (config.closing) {
+                            // configuration is closing ignore errors.
+                            return false;
+                        }
+                        throw engine.host.toHostException(null, e);
+                    }
+                }
+            });
+        }
+
+        SourceSectionFilter filter = filterBuilder.build();
+        EventBinding<?> binding;
+        try {
+            boolean mayNeedInputValues = config.collectInputValues && config.onReturn != null;
+            boolean mayNeedReturnValue = config.collectReturnValues && config.onReturn != null;
+            boolean mayNeedExceptions = config.collectExceptions;
+
+            if (mayNeedInputValues || mayNeedReturnValue || mayNeedExceptions) {
+                binding = instrumenter.attachExecutionEventFactory(filter, mayNeedInputValues ? filter : null, new ExecutionEventNodeFactory() {
+                    public ExecutionEventNode create(EventContext context) {
+                        return new PolyglotManagementDispatch.ProfilingNode(config, context);
+                    }
+                });
+            } else {
+                // fast path no collection of additional profiles
+                binding = instrumenter.attachExecutionEventFactory(filter, null, new ExecutionEventNodeFactory() {
+                    public ExecutionEventNode create(EventContext context) {
+                        return new PolyglotManagementDispatch.DefaultNode(config, context);
+                    }
+                });
+            }
+        } catch (Throwable t) {
+            throw PolyglotImpl.guestToHostException(engine, t);
+        }
+        config.binding = binding;
+        return polyglot.getManagement().newExecutionListener(managementDispatch, config);
     }
 
 }

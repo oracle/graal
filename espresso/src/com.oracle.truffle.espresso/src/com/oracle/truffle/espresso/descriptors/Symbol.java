@@ -376,6 +376,8 @@ public final class Symbol<T> extends ByteSequence {
         // j.l.ref.Reference
         public static final Symbol<Name> discovered = StaticSymbols.putName("discovered");
         public static final Symbol<Name> enqueue = StaticSymbols.putName("enqueue");
+        public static final Symbol<Name> getFromInactiveFinalReference = StaticSymbols.putName("getFromInactiveFinalReference");
+        public static final Symbol<Name> clearInactiveFinalReference = StaticSymbols.putName("clearInactiveFinalReference");
         public static final Symbol<Name> lock = StaticSymbols.putName("lock");
         public static final Symbol<Name> next = StaticSymbols.putName("next");
         public static final Symbol<Name> NULL = StaticSymbols.putName("NULL");
@@ -503,11 +505,9 @@ public final class Symbol<T> extends ByteSequence {
         // Thread
         public static final Symbol<Name> interrupted = StaticSymbols.putName("interrupted");
         public static final Symbol<Name> interrupt = StaticSymbols.putName("interrupt");
-        public static final Symbol<Name> HIDDEN_DEATH = StaticSymbols.putName("0HIDDEN_DEATH");
-        public static final Symbol<Name> HIDDEN_DEATH_THROWABLE = StaticSymbols.putName("0HIDDEN_DEATH_THROWABLE");
+        public static final Symbol<Name> HIDDEN_DEPRECATION_SUPPORT = StaticSymbols.putName("0HIDDEN_DEPRECATION_SUPPORT");
         public static final Symbol<Name> HIDDEN_HOST_THREAD = StaticSymbols.putName("0HIDDEN_HOST_THREAD");
         public static final Symbol<Name> HIDDEN_INTERRUPTED = StaticSymbols.putName("0HIDDEN_INTERRUPTED");
-        public static final Symbol<Name> HIDDEN_SUSPEND_LOCK = StaticSymbols.putName("0HIDDEN_SUSPEND_LOCK");
         public static final Symbol<Name> HIDDEN_THREAD_BLOCKED_OBJECT = StaticSymbols.putName("0HIDDEN_THREAD_BLOCKED_OBJECT");
         public static final Symbol<Name> HIDDEN_THREAD_BLOCKED_COUNT = StaticSymbols.putName("0HIDDEN_THREAD_BLOCKED_COUNT");
         public static final Symbol<Name> HIDDEN_THREAD_WAITED_COUNT = StaticSymbols.putName("0HIDDEN_THREAD_WAITED_COUNT");
@@ -593,6 +593,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> jdk_internal_loader_ClassLoaders = StaticSymbols.putType("Ljdk/internal/loader/ClassLoaders;");
         public static final Symbol<Type> jdk_internal_loader_ClassLoaders$PlatformClassLoader = StaticSymbols.putType("Ljdk/internal/loader/ClassLoaders$PlatformClassLoader;");
         public static final Symbol<Type> jdk_internal_module_ModuleLoaderMap = StaticSymbols.putType("Ljdk/internal/module/ModuleLoaderMap;");
+        public static final Symbol<Type> jdk_internal_module_ModuleLoaderMap_Modules = StaticSymbols.putType("Ljdk/internal/module/ModuleLoaderMap$Modules;");
         public static final Symbol<Type> jdk_internal_module_SystemModuleFinders = StaticSymbols.putType("Ljdk/internal/module/SystemModuleFinders;");
         public static final Symbol<Type> jdk_internal_module_SystemModules = StaticSymbols.putType("Ljdk/internal/module/SystemModules;");
         public static final Symbol<Type> java_lang_module_ModuleFinder = StaticSymbols.putType("Ljava/lang/module/ModuleFinder;");
@@ -931,10 +932,12 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> Double_double = StaticSymbols.putSignature(Type.java_lang_Double, Type._double);
         public static final Symbol<Signature> Long_long = StaticSymbols.putSignature(Type.java_lang_Long, Type._long);
 
+        public static final Symbol<Signature> Object_array_Object_array = StaticSymbols.putSignature(Type.java_lang_Object_array, Type.java_lang_Object_array);
         public static final Symbol<Signature> Object_Object_array = StaticSymbols.putSignature(Type.java_lang_Object, Type.java_lang_Object_array);
 
         public static final Symbol<Signature> java_util_Iterator = StaticSymbols.putSignature(Type.java_util_Iterator);
         public static final Symbol<Signature> java_util_Set = StaticSymbols.putSignature(Type.java_util_Set);
+        public static final Symbol<Signature> java_util_Set_Object_array = StaticSymbols.putSignature(Type.java_util_Set, Type.java_lang_Object_array);
 
         public static final Symbol<Signature> java_lang_reflect_Method_init_signature = StaticSymbols.putSignature(Type._void,
                         /* declaringClass */ Type.java_lang_Class,

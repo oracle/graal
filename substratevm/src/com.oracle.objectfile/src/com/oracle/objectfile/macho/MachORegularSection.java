@@ -50,8 +50,8 @@ public class MachORegularSection extends MachOUserDefinedSection implements Obje
     }
 
     @Override
-    public void markRelocationSite(int offset, RelocationKind k, String symbolName, boolean useImplicitAddend, Long explicitAddend) {
-        markRelocationSite(offset, ByteBuffer.wrap(getContent()).order(getOwner().getByteOrder()), k, symbolName, useImplicitAddend, explicitAddend);
+    public void markRelocationSite(int offset, RelocationKind k, String symbolName, long addend) {
+        markRelocationSite(offset, ByteBuffer.wrap(getContent()).order(getOwner().getByteOrder()), k, symbolName, addend);
     }
 
 }

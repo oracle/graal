@@ -1,0 +1,130 @@
+/*
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+package org.graalvm.compiler.truffle.test;
+
+import java.util.stream.IntStream;
+
+import org.graalvm.compiler.truffle.runtime.BytecodeOSRMetadata;
+import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.junit.Assert;
+import org.junit.Test;
+
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
+import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.LoopNode;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RepeatingNode;
+import com.oracle.truffle.api.nodes.RootNode;
+
+@SuppressWarnings("deprecation")
+public class LoopNodeOSRTest extends TestWithSynchronousCompiling {
+
+    static final Object[] ARGUMENTS = IntStream.range(21, 36).mapToObj(Integer::valueOf).toArray();
+
+    private static class TestLoopRootNode extends RootNode {
+        @Child private LoopNode loop;
+        private final com.oracle.truffle.api.frame.FrameSlot iterationSlot;
+
+        TestLoopRootNode(RepeatingNode body, FrameDescriptor frameDescriptor, com.oracle.truffle.api.frame.FrameSlot iterationSlot) {
+            super(null, frameDescriptor);
+            this.loop = Truffle.getRuntime().createLoopNode(body);
+            this.iterationSlot = iterationSlot;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            frame.setInt(iterationSlot, 0);
+            return loop.execute(frame);
+        }
+    }
+
+    private final class CheckStackWalkBody extends Node implements RepeatingNode {
+        private final int total;
+        private final com.oracle.truffle.api.frame.FrameSlot iterationSlot;
+        private final FrameDescriptor frameDescriptor;
+        boolean compiled;
+
+        private CheckStackWalkBody(int total, FrameDescriptor frameDescriptor, com.oracle.truffle.api.frame.FrameSlot iterationSlot) {
+            this.total = total;
+            this.iterationSlot = iterationSlot;
+            this.frameDescriptor = frameDescriptor;
+        }
+
+        @Override
+        public boolean executeRepeating(VirtualFrame frame) {
+            int iteration = frame.getInt(iterationSlot);
+            if (iteration < total) {
+                if (iteration % (total / 10) == 0) {
+                    checkStack();
+                }
+                iteration++;
+                frame.setInt(iterationSlot, iteration);
+                return true;
+            } else {
+                if (CompilerDirectives.inCompiledCode()) {
+                    compiled = true;
+                }
+                iteration = 0;
+                frame.setInt(iterationSlot, iteration);
+                return false;
+            }
+        }
+
+        @TruffleBoundary
+        private void checkStack() {
+            Truffle.getRuntime().iterateFrames(frameInstance -> {
+                Frame frame = frameInstance.getFrame(FrameAccess.READ_ONLY);
+                Assert.assertArrayEquals(ARGUMENTS, frame.getArguments());
+                Assert.assertSame(frameDescriptor, frame.getFrameDescriptor());
+                return null;
+            });
+        }
+    }
+
+    @Test
+    public void testOSRStackFrame() {
+        int osrThreshold = 10 * BytecodeOSRMetadata.OSR_POLL_INTERVAL;
+        setupContext("engine.MultiTier", "false",
+                        "engine.OSR", "true",
+                        "engine.OSRCompilationThreshold", String.valueOf(osrThreshold));
+
+        FrameDescriptor desc = new FrameDescriptor();
+        com.oracle.truffle.api.frame.FrameSlot iterationSlot = desc.addFrameSlot("iteration", FrameSlotKind.Int);
+        CheckStackWalkBody loop = new CheckStackWalkBody(osrThreshold * 2, desc, iterationSlot);
+        TestLoopRootNode rootNode = new TestLoopRootNode(loop, desc, iterationSlot);
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
+
+        target.call(ARGUMENTS);
+
+        Assert.assertTrue("Loop should have been OSR compiled", loop.compiled);
+    }
+
+}

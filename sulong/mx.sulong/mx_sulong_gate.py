@@ -268,7 +268,8 @@ def runLLVMUnittests(unittest_runner):
 
     test_harness_dist = mx.distribution('SULONG_TEST')
     java_run_props = [x for x in mx.get_runtime_jvm_args(test_harness_dist) if x.startswith('-D')]
-    java_run_props += get_test_distribution_path_properties(_suite)
+    # necessary because mx native-unittest ignores config participants (GR-34875)
+    java_run_props += [x for x in _unittest_config_participant(([], None, None))[0] if x.startswith('-D')]
 
     test_suite = 'SULONG_EMBEDDED_TEST_SUITES'
     mx_sulong_suite_constituents.compileTestSuite(test_suite, extra_build_args=[])

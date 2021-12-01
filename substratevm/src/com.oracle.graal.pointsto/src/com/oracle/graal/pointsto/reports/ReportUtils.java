@@ -36,11 +36,16 @@ import java.nio.file.StandardOpenOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.function.Consumer;
 
+import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.flow.AllInstantiatedTypeFlow;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
+import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.common.JVMCIError;
@@ -59,6 +64,10 @@ public class ReportUtils {
     static final Comparator<BytecodePosition> positionMethodComparator = Comparator.comparing(pos -> pos.getMethod().format("%H.%n(%p)"));
     static final Comparator<BytecodePosition> positionComparator = positionMethodComparator.thenComparing(pos -> pos.getBCI());
 
+    public static Path report(String description, String path, String name, String extension, Consumer<PrintWriter> reporter) {
+        return report(description, path, name, extension, reporter, true);
+    }
+
     /**
      * Print a report in the format: path/name_timeStamp.extension. The path is relative to the
      * working directory.
@@ -70,17 +79,21 @@ public class ReportUtils {
      * @param extension the extension of the report
      * @param reporter a consumer that writes to a PrintWriter
      */
-    public static void report(String description, String path, String name, String extension, Consumer<PrintWriter> reporter) {
+    public static Path report(String description, String path, String name, String extension, Consumer<PrintWriter> reporter, boolean enablePrint) {
         String fileName = timeStampedFileName(name, extension);
         Path reportDir = Paths.get(path);
-        reportImpl(description, reportDir, fileName, reporter);
+        return reportImpl(enablePrint, description, reportDir, fileName, reporter);
     }
 
     public static String timeStampedFileName(String name, String extension) {
+        String fileName = name + "_" + getTimeStampString();
+        return extension.isEmpty() ? fileName : fileName + "." + extension;
+    }
+
+    public static String getTimeStampString() {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
         String timeStamp = LocalDateTime.now().format(formatter);
-        String fileName = name + "_" + timeStamp;
-        return extension.isEmpty() ? fileName : fileName + "." + extension;
+        return timeStamp;
     }
 
     public static File reportFile(String path, String name, String extension) {
@@ -95,6 +108,10 @@ public class ReportUtils {
         }
     }
 
+    public static void report(String description, Path file, Consumer<PrintWriter> reporter) {
+        report(description, file, reporter, true);
+    }
+
     /**
      * Print a report in the file given by {@code file} parameter. If the {@code file} is relative
      * it's resolved to the working directory.
@@ -103,17 +120,18 @@ public class ReportUtils {
      * @param file the path (relative to the working directory if the argument represents a relative
      *            path) to file to store a report into.
      * @param reporter a consumer that writes to a PrintWriter
+     * @param enablePrint of a notice to stdout
      */
-    public static void report(String description, Path file, Consumer<PrintWriter> reporter) {
+    public static Path report(String description, Path file, Consumer<PrintWriter> reporter, boolean enablePrint) {
         Path folder = file.getParent();
         Path fileName = file.getFileName();
         if (folder == null || fileName == null) {
             throw new IllegalArgumentException("File parameter must be a file, got: " + file);
         }
-        reportImpl(description, folder, fileName.toString(), reporter);
+        return reportImpl(enablePrint, description, folder, fileName.toString(), reporter);
     }
 
-    private static void reportImpl(String description, Path folder, String fileName, Consumer<PrintWriter> reporter) {
+    private static Path reportImpl(boolean enablePrint, String description, Path folder, String fileName, Consumer<PrintWriter> reporter) {
         try {
             Path reportDir = Files.createDirectories(folder);
             Path file = reportDir.resolve(fileName);
@@ -121,11 +139,13 @@ public class ReportUtils {
 
             try (FileWriter fw = new FileWriter(Files.createFile(file).toFile())) {
                 try (PrintWriter writer = new PrintWriter(fw)) {
-                    System.out.println("# Printing " + description + " to: " + file);
+                    if (enablePrint) {
+                        System.out.println("# Printing " + description + " to: " + file);
+                    }
                     reporter.accept(writer);
                 }
             }
-
+            return file;
         } catch (IOException e) {
             throw JVMCIError.shouldNotReachHere(e);
         }
@@ -185,12 +205,23 @@ public class ReportUtils {
     }
 
     public static String parsingContext(AnalysisMethod method) {
-        return parsingContext(method, "   ");
+        return parsingContext(method, 0, "   ");
     }
 
     public static String parsingContext(AnalysisMethod method, String indent) {
+        return parsingContext(method, 0, indent);
+    }
+
+    public static String parsingContext(BytecodePosition context) {
+        return parsingContext((AnalysisMethod) context.getMethod(), context.getBCI(), "   ");
+    }
+
+    public static String parsingContext(AnalysisMethod method, int bci, String indent) {
         StringBuilder msg = new StringBuilder();
         if (method.getTypeFlow().getParsingContext().length > 0) {
+            /* Include target method first. */
+            msg.append(String.format("%n%sat %s", indent, method.asStackTraceElement(bci)));
+            /* Then add the parsing context. */
             for (StackTraceElement e : method.getTypeFlow().getParsingContext()) {
                 msg.append(String.format("%n%sat %s", indent, e));
             }
@@ -199,5 +230,34 @@ public class ReportUtils {
             msg.append(String.format(" <no parsing context available> %n"));
         }
         return msg.toString();
+    }
+
+    public static String typePropagationTrace(PointsToAnalysis bb, TypeFlow<?> flow, AnalysisType type) {
+        return typePropagationTrace(bb, flow, type, "   ");
+    }
+
+    public static String typePropagationTrace(PointsToAnalysis bb, TypeFlow<?> flow, AnalysisType type, String indent) {
+        if (bb.trackTypeFlowInputs()) {
+            StringBuilder msg = new StringBuilder(String.format("Propagation trace through type flows for type %s: %n", type.toJavaName()));
+            followInput(flow, type, indent, new HashSet<>(), msg);
+            return msg.toString();
+        } else {
+            return String.format("To print the propagation trace through type flows for type %s set the -H:+TrackInputFlows option. %n", type.toJavaName());
+        }
+    }
+
+    private static void followInput(TypeFlow<?> flow, AnalysisType type, String indent, HashSet<TypeFlow<?>> seen, StringBuilder msg) {
+        seen.add(flow);
+        if (flow instanceof AllInstantiatedTypeFlow) {
+            msg.append(String.format("AllInstantiated(%s)%n", flow.getDeclaredType().toJavaName(true)));
+        } else {
+            msg.append(String.format("%sat %s: %s%n", indent, flow.formatSource(), flow.format(false, false)));
+            for (TypeFlow<?> input : flow.getInputs()) {
+                if (!seen.contains(input) && input.getState().containsType(type)) {
+                    followInput(input, type, indent, seen, msg);
+                    break;
+                }
+            }
+        }
     }
 }

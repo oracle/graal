@@ -22,6 +22,10 @@
  */
 package com.oracle.truffle.espresso.processor;
 
+import com.oracle.truffle.espresso.processor.builders.ClassBuilder;
+import com.oracle.truffle.espresso.processor.builders.MethodBuilder;
+import com.oracle.truffle.espresso.processor.builders.ModifierBuilder;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -59,7 +63,6 @@ public final class NativeEnvProcessor extends EspressoProcessor {
     private static final String SUBSTITUTOR = "CallableFromNative";
 
     private static final String ENV_ARG_NAME = "env";
-    private static final String INVOKE = "invoke(Object " + ENV_ARG_NAME + ", Object[] " + ARGS_NAME + ") {\n";
 
     private static final String GENERATE_INTRISIFICATION = "com.oracle.truffle.espresso.substitutions.GenerateNativeEnv";
 
@@ -104,6 +107,7 @@ public final class NativeEnvProcessor extends EspressoProcessor {
         final boolean isStatic;
         final boolean prependEnv;
         final boolean needsHandlify;
+        final boolean reachableForAutoSubstitution;
 
         public IntrinsincsHelper(EspressoProcessor processor,
                         Element element,
@@ -112,13 +116,15 @@ public final class NativeEnvProcessor extends EspressoProcessor {
                         List<Boolean> referenceTypes,
                         boolean isStatic,
                         boolean prependEnv,
-                        boolean needsHandlify) {
+                        boolean needsHandlify,
+                        boolean reachableForAutoSubstitution) {
             super(processor, element, implAnnotation);
             this.jniNativeSignature = jniNativeSignature;
             this.referenceTypes = referenceTypes;
             this.isStatic = isStatic;
             this.prependEnv = prependEnv;
             this.needsHandlify = needsHandlify;
+            this.reachableForAutoSubstitution = reachableForAutoSubstitution;
         }
     }
 
@@ -180,6 +186,7 @@ public final class NativeEnvProcessor extends EspressoProcessor {
         AnnotationMirror genIntrisification = getAnnotation(declaringClass, generateIntrinsification);
         boolean prependEnvValue = getAnnotationValue(genIntrisification, "prependEnv", Boolean.class);
         boolean prependEnv = prependEnvValue || isJni(element, implAnnotation);
+        boolean reachableForAutoSubstitution = getAnnotationValue(genIntrisification, "reachableForAutoSubstitution", Boolean.class);
         String className = envClassName;
 
         // Sanity check.
@@ -203,7 +210,7 @@ public final class NativeEnvProcessor extends EspressoProcessor {
         // Check if we need to call an instance method
         boolean isStatic = element.getKind() == ElementKind.METHOD && targetMethod.getModifiers().contains(Modifier.STATIC);
         // Spawn helper
-        IntrinsincsHelper h = new IntrinsincsHelper(this, element, implAnnotation, jniNativeSignature, referenceTypes, isStatic, prependEnv, needsHandlify);
+        IntrinsincsHelper h = new IntrinsincsHelper(this, element, implAnnotation, jniNativeSignature, referenceTypes, isStatic, prependEnv, needsHandlify, reachableForAutoSubstitution);
         // Create the contents of the source file
         String classFile = spawnSubstitutor(
                         substitutorName,
@@ -358,16 +365,16 @@ public final class NativeEnvProcessor extends EspressoProcessor {
         return signature.toArray(new NativeType[0]);
     }
 
-    String extractArg(int index, String clazz, boolean isNonPrimitive, int startAt, String tabulation) {
-        String decl = tabulation + clazz + " " + ARG_NAME + index + " = ";
+    String extractArg(int index, String clazz, boolean fromHandles, int startAt) {
+        String decl = clazz + " " + ARG_NAME + index + " = ";
         String obj = ARGS_NAME + "[" + (index + startAt) + "]";
-        if (isNonPrimitive) {
+        if (fromHandles) {
             if (!clazz.equals("StaticObject")) {
-                return decl + castTo(obj, clazz) + ";\n";
+                return decl + castTo(obj, clazz) + ";";
             }
-            return decl + envName + ".getHandles().get(Math.toIntExact((long) " + obj + "))" + ";\n";
+            return decl + envName + ".getHandles().get(Math.toIntExact((long) " + obj + "));";
         }
-        return decl + castTo(obj, clazz) + ";\n";
+        return decl + castTo(obj, clazz) + ";";
     }
 
     @Override
@@ -428,46 +435,72 @@ public final class NativeEnvProcessor extends EspressoProcessor {
     }
 
     @Override
-    String generateFactoryConstructorAndBody(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
-        StringBuilder str = new StringBuilder();
+    ClassBuilder generateFactoryConstructor(ClassBuilder factoryBuilder, String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
         IntrinsincsHelper h = (IntrinsincsHelper) helper;
-        str.append(TAB_3).append("super(\n");
-        str.append(TAB_4).append(ProcessorUtils.stringify(targetMethodName)).append(",\n");
-        str.append(TAB_4).append(generateNativeSignature(h.jniNativeSignature)).append(",\n");
-        str.append(TAB_4).append(parameterTypeName.size()).append(",\n");
-        str.append(TAB_4).append(h.prependEnv).append("\n");
-        str.append(TAB_3).append(");\n");
-        str.append(TAB_2).append("}\n");
-        return str.toString();
+        MethodBuilder factoryConstructor = new MethodBuilder(FACTORY) //
+                        .asConstructor() //
+                        .withModifiers(new ModifierBuilder().asPublic()) //
+                        .addBodyLine("super(") //
+                        .addIndentedBodyLine(1, ProcessorUtils.stringify(targetMethodName), ',') //
+                        .addIndentedBodyLine(1, generateNativeSignature(h.jniNativeSignature), ',') //
+                        .addIndentedBodyLine(1, parameterTypeName.size(), ',') //
+                        .addIndentedBodyLine(1, h.prependEnv) //
+                        .addBodyLine(");");
+        factoryBuilder.withMethod(factoryConstructor);
+        return factoryBuilder;
     }
 
     @Override
-    String generateInvoke(String className, String targetMethodName, List<String> parameterTypes, SubstitutionHelper helper) {
-        StringBuilder str = new StringBuilder();
+    ClassBuilder generateInvoke(ClassBuilder classBuilder, String className, String targetMethodName, List<String> parameterTypes, SubstitutionHelper helper) {
         IntrinsincsHelper h = (IntrinsincsHelper) helper;
-        str.append(TAB_1).append(PUBLIC_FINAL_OBJECT).append(INVOKE);
+        MethodBuilder invoke = new MethodBuilder("invoke") //
+                        .withOverrideAnnotation() //
+                        .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
+                        .withReturnType("Object") //
+                        .withParams("Object " + ENV_ARG_NAME, "Object[] " + ARGS_NAME);
         if (h.needsHandlify || !h.isStatic) {
-            str.append(TAB_2).append(envClassName).append(" ").append(envName).append(" = ").append("(").append(envClassName).append(") " + ENV_ARG_NAME + ";\n");
+            invoke.addBodyLine(envClassName, ' ', envName, " = (", envClassName, ") ", ENV_ARG_NAME, ';');
         }
         int argIndex = 0;
         for (String type : parameterTypes) {
             boolean isNonPrimitive = h.referenceTypes.get(argIndex);
-            str.append(extractArg(argIndex++, type, isNonPrimitive, h.prependEnv ? 1 : 0, TAB_2));
+            invoke.addBodyLine(extractArg(argIndex++, type, isNonPrimitive, h.prependEnv ? 1 : 0));
         }
         switch (h.jniNativeSignature[0]) {
             case VOID:
-                str.append(TAB_2).append(extractInvocation(className, argIndex, h.isStatic, helper)).append(";\n");
-                str.append(TAB_2).append("return ").append(STATIC_OBJECT_NULL).append(";\n");
+                invoke.addBodyLine(extractInvocation(className, argIndex, h.isStatic, helper), ';');
+                invoke.addBodyLine("return ", STATIC_OBJECT_NULL, ';');
                 break;
             case OBJECT:
-                str.append(TAB_2).append("return ").append(
-                                "(long) " + envName + ".getHandles().createLocal(" + extractInvocation(className, argIndex, h.isStatic, helper) + ")").append(";\n");
+                invoke.addBodyLine("return (long) ", envName, ".getHandles().createLocal(", extractInvocation(className, argIndex, h.isStatic, helper), ");");
                 break;
             default:
-                str.append(TAB_2).append("return ").append(extractInvocation(className, argIndex, h.isStatic, helper)).append(";\n");
+                invoke.addBodyLine("return ", extractInvocation(className, argIndex, h.isStatic, helper), ";");
         }
-        str.append(TAB_1).append("}\n");
-        str.append("}");
-        return str.toString();
+        classBuilder.withMethod(invoke);
+
+        if (h.reachableForAutoSubstitution) {
+            MethodBuilder invokeDirect = new MethodBuilder("invokeDirect") //
+                            .withOverrideAnnotation() //
+                            .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
+                            .withReturnType("Object") //
+                            .withParams("Object " + ENV_ARG_NAME, "Object[] " + ARGS_NAME);
+            if (!h.isStatic) {
+                invokeDirect.addBodyLine(envClassName, ' ', envName, " = (", envClassName, ") ", ENV_ARG_NAME, ';');
+            }
+            argIndex = 0;
+            for (String type : parameterTypes) {
+                invokeDirect.addBodyLine(extractArg(argIndex++, type, false, 0));
+            }
+            if (h.jniNativeSignature[0] == NativeType.VOID) {
+                invokeDirect.addBodyLine(extractInvocation(className, argIndex, h.isStatic, helper), ';');
+                invokeDirect.addBodyLine("return ", STATIC_OBJECT_NULL, ';');
+            } else {
+                invokeDirect.addBodyLine("return ", extractInvocation(className, argIndex, h.isStatic, helper), ";");
+            }
+            classBuilder.withMethod(invokeDirect);
+        }
+
+        return classBuilder;
     }
 }

@@ -31,11 +31,10 @@ import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.UnreachableNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.spi.LoweringTool.LoweringStage;
 import org.graalvm.compiler.options.OptionValues;
@@ -49,7 +48,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.svm.core.deopt.DeoptimizationRuntime;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.deopt.Deoptimizer;
-import org.graalvm.compiler.nodes.UnreachableNode;
 import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.snippets.SnippetRuntime;
@@ -78,7 +76,7 @@ public final class DeoptHostedSnippets extends SubstrateTemplates implements Sni
             if (mustNotAllocate) {
                 runtimeCall(ImplicitExceptions.THROW_CACHED_OUT_OF_BOUNDS_EXCEPTION);
             } else {
-                runtimeCall(ImplicitExceptions.THROW_NEW_OUT_OF_BOUNDS_EXCEPTION);
+                runtimeCall(ImplicitExceptions.THROW_NEW_INTRINSIC_OUT_OF_BOUNDS_EXCEPTION);
             }
         } else if (reason == DeoptimizationReason.ClassCastException) {
             if (mustNotAllocate) {
@@ -120,14 +118,12 @@ public final class DeoptHostedSnippets extends SubstrateTemplates implements Sni
     }
 
     @SuppressWarnings("unused")
-    public static void registerLowerings(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
-                    Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
-        new DeoptHostedSnippets(options, factories, providers, snippetReflection, lowerings);
+    public static void registerLowerings(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
+        new DeoptHostedSnippets(options, providers, lowerings);
     }
 
-    private DeoptHostedSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
-                    Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
-        super(options, factories, providers, snippetReflection);
+    private DeoptHostedSnippets(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
+        super(options, providers);
 
         lowerings.put(DeoptimizeNode.class, new DeoptimizeLowering());
     }

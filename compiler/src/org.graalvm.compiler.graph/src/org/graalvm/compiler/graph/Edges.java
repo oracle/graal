@@ -77,6 +77,11 @@ public abstract class Edges extends Fields {
         return (NodeList<Node>) UNSAFE.getObject(node, offset);
     }
 
+    public void putNodeUnsafeChecked(Node node, long offset, Node value, int index) {
+        verifyUpdateValid(node, index, value);
+        putNodeUnsafe(node, offset, value);
+    }
+
     public static void putNodeUnsafe(Node node, long offset, Node value) {
         UNSAFE.putObject(node, offset, value);
     }
@@ -208,8 +213,7 @@ public abstract class Edges extends Fields {
      * @param value the node to be written to the edge
      */
     public void initializeNode(Node node, int index, Node value) {
-        verifyUpdateValid(node, index, value);
-        putNodeUnsafe(node, offsets[index], value);
+        putNodeUnsafeChecked(node, offsets[index], value, index);
     }
 
     public void initializeList(Node node, int index, NodeList<Node> value) {
@@ -219,7 +223,7 @@ public abstract class Edges extends Fields {
 
     private void verifyUpdateValid(Node node, int index, Object newValue) {
         if (newValue != null && !getType(index).isAssignableFrom(newValue.getClass())) {
-            throw new IllegalArgumentException("Can not assign " + newValue.getClass() + " to " + getType(index) + " in " + node);
+            throw new IllegalArgumentException("Can not assign " + newValue + " to " + getType(index) + " in " + node);
         }
     }
 

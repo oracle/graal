@@ -61,12 +61,12 @@ import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.Value;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -84,8 +84,15 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class HostExceptionTest {
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
+
     private Context context;
     private Env env;
     private Class<? extends Throwable> expectedException;
@@ -118,7 +125,7 @@ public class HostExceptionTest {
                     default:
                         throw new IllegalArgumentException();
                 }
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(new CatcherObject(Truffle.getRuntime().createCallTarget(rootNode))));
+                return RootNode.createConstantNode(new CatcherObject(rootNode.getCallTarget())).getCallTarget();
             }
         });
         context.initialize(ProxyLanguage.ID);

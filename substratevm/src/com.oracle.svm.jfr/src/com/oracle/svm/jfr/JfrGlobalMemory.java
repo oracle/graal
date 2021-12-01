@@ -57,7 +57,7 @@ public class JfrGlobalMemory {
         // Allocate all buffers eagerly.
         buffers = UnmanagedMemory.calloc(SizeOf.unsigned(JfrBuffers.class).multiply(WordFactory.unsigned(bufferCount)));
         for (int i = 0; i < bufferCount; i++) {
-            JfrBuffer buffer = JfrBufferAccess.allocate(WordFactory.unsigned(bufferSize));
+            JfrBuffer buffer = JfrBufferAccess.allocate(WordFactory.unsigned(bufferSize), JfrBufferType.GLOBAL_MEMORY);
             buffers.addressOf(i).write(buffer);
         }
     }

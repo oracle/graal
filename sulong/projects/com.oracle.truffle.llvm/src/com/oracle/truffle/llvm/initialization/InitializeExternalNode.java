@@ -29,8 +29,6 @@
  */
 package com.oracle.truffle.llvm.initialization;
 
-import java.util.ArrayList;
-
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -43,8 +41,8 @@ import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
 import com.oracle.truffle.llvm.runtime.LLVMFunctionCode;
 import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
-import com.oracle.truffle.llvm.runtime.LLVMLocalScope;
 import com.oracle.truffle.llvm.runtime.LLVMScope;
+import com.oracle.truffle.llvm.runtime.LLVMScopeChain;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.NativeContextExtension;
 import com.oracle.truffle.llvm.runtime.NodeFactory;
@@ -52,6 +50,8 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMDLOpen;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
+
+import java.util.ArrayList;
 
 /**
  *
@@ -73,7 +73,6 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
  * that of the corresponding defined global symbol in the local scope. If no global of such name
  * exists, a native global is created if it exists in the NFI context.
  *
- * @see InitializeScopeNode
  * @see InitializeSymbolsNode
  * @see InitializeGlobalNode
  * @see InitializeModuleNode
@@ -120,8 +119,8 @@ public final class InitializeExternalNode extends LLVMNode {
      * functions/globals.
      */
     @ExplodeLoop
-    public void execute(LLVMContext context, LLVMLocalScope localScope, LLVMDLOpen.RTLDFlags rtldFlags) {
-        LLVMScope globalScope = context.getGlobalScope();
+    public void execute(LLVMContext context, LLVMScopeChain localScope, LLVMDLOpen.RTLDFlags rtldFlags) {
+        LLVMScopeChain globalScope = context.getGlobalScopeChain();
         LLVMIntrinsicProvider intrinsicProvider = getLanguage().getCapability(LLVMIntrinsicProvider.class);
         NativeContextExtension nativeContextExtension = getNativeContextExtension(context);
         // functions and globals

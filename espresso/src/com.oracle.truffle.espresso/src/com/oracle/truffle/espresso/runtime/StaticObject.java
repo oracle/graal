@@ -178,6 +178,7 @@ public class StaticObject implements TruffleObject, Cloneable {
         assert foreignObject != null;
         StaticObject newObj = lang.getForeignShape().getFactory().create(klass, true);
         EspressoLanguage.getForeignProperty().setObject(newObj, foreignObject);
+        assert klass == null || klass.isInitializedOrInitializing();
         return trackAllocation(klass, newObj);
     }
 
@@ -313,15 +314,25 @@ public class StaticObject implements TruffleObject, Cloneable {
         return this == getKlass().getStatics();
     }
 
-    // Given a guest Class, get the corresponding Klass.
+    /**
+     * Given a guest Class, get the corresponding Klass. This method has the disadvantage of not
+     * being able to constant fold the {@link Meta} object that is extracted from {@code this} if
+     * {@code this} is not constant. If performance is a concern, rather use
+     * {@link #getMirrorKlass(Meta)}, passing a constant {@link Meta} object.
+     */
     public Klass getMirrorKlass() {
+        return getMirrorKlass(getKlass().getMeta());
+    }
+
+    /**
+     * Same as {@link #getMirrorKlass()}, but passing a {@code meta} argument allows some constant
+     * folding, even if {@code this} is not constant.
+     */
+    public Klass getMirrorKlass(Meta meta) {
         assert getKlass().getType() == Type.java_lang_Class;
         checkNotForeign();
-        Klass result = (Klass) getKlass().getMeta().HIDDEN_MIRROR_KLASS.getHiddenObject(this);
-        if (result == null) {
-            CompilerDirectives.transferToInterpreter();
-            throw EspressoError.shouldNotReachHere("Uninitialized mirror class");
-        }
+        Klass result = (Klass) meta.HIDDEN_MIRROR_KLASS.getHiddenObject(this);
+        assert result != null : "Uninitialized mirror class";
         return result;
     }
 

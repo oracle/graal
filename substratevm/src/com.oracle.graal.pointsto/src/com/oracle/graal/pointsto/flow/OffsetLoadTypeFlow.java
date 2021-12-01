@@ -205,7 +205,7 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
                 } else {
                     for (AnalysisField field : objectType.unsafeAccessedFields()) {
                         assert field != null;
-                        TypeFlow<?> fieldFlow = object.getInstanceFieldFlow(bb, this.method(), field, false);
+                        TypeFlow<?> fieldFlow = object.getInstanceFieldFlow(bb, objectFlow, source, field, false);
                         fieldFlow.addUse(bb, this);
                     }
                 }
@@ -280,7 +280,7 @@ public abstract class OffsetLoadTypeFlow extends TypeFlow<BytecodePosition> {
                 assert !objectType.isArray();
 
                 for (AnalysisField field : objectType.unsafeAccessedFields(partitionKind)) {
-                    TypeFlow<?> fieldFlow = object.getInstanceFieldFlow(bb, this.method(), field, false);
+                    TypeFlow<?> fieldFlow = object.getInstanceFieldFlow(bb, objectFlow, source, field, false);
                     fieldFlow.addUse(bb, this);
                 }
             }

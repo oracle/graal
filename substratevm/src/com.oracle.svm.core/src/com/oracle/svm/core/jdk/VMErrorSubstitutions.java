@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.jdk;
 
+import static com.oracle.svm.core.annotate.RestrictHeapAccess.Access.NO_ALLOCATION;
+
 import org.graalvm.compiler.nodes.UnreachableNode;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
@@ -39,7 +41,7 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.stack.ThreadStackPrinter;
-import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 
 @TargetClass(com.oracle.svm.core.util.VMError.class)
 final class Target_com_oracle_svm_core_util_VMError {
@@ -97,10 +99,13 @@ public class VMErrorSubstitutions {
      * uninterruptible
      */
     @Uninterruptible(reason = "Allow VMError to be used in uninterruptible code.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in fatal error handling.")
     static RuntimeException shouldNotReachHere(CodePointer callerIP, String msg, Throwable ex) {
         ThreadStackPrinter.printBacktrace();
-        VMThreads.StatusSupport.setStatusIgnoreSafepoints();
+
+        SafepointBehavior.preventSafepoints();
         StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
+
         VMErrorSubstitutions.shutdown(callerIP, msg, ex);
         throw UnreachableNode.unreachable();
     }
@@ -131,7 +136,7 @@ public class VMErrorSubstitutions {
                     log.newline();
                 }
 
-                SubstrateDiagnostics.print(log, KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
+                SubstrateDiagnostics.printFatalError(log, KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
 
                 /*
                  * Print the error message again, so that the most important bit of information

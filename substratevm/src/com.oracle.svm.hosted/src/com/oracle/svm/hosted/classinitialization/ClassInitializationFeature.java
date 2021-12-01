@@ -39,11 +39,10 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -61,6 +60,7 @@ import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.util.UserError;
@@ -68,7 +68,6 @@ import com.oracle.svm.hosted.ExceptionSynthesizer;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.meta.MethodPointer;
 
 @AutomaticFeature
 public class ClassInitializationFeature implements GraalFeature {
@@ -151,9 +150,9 @@ public class ClassInitializationFeature implements GraalFeature {
 
     @Override
     @SuppressWarnings("unused")
-    public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
-                    SnippetReflectionProvider snippetReflection, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
-        EnsureClassInitializedSnippets.registerLowerings(options, factories, providers, snippetReflection, lowerings);
+    public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers,
+                    Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
+        EnsureClassInitializedSnippets.registerLowerings(options, providers, lowerings);
     }
 
     @Override
@@ -324,7 +323,7 @@ public class ClassInitializationFeature implements GraalFeature {
             assert type.isInitialized();
             info = type.getClassInitializer() == null ? ClassInitializationInfo.NO_INITIALIZER_INFO_SINGLETON : ClassInitializationInfo.INITIALIZED_INFO_SINGLETON;
         }
-        hub.setClassInitializationInfo(info, type.hasDefaultMethods(), type.declaresDefaultMethods());
+        hub.setClassInitializationInfo(info);
     }
 
     private static ClassInitializationInfo buildRuntimeInitializationInfo(FeatureImpl.DuringAnalysisAccessImpl access, AnalysisType type) {
@@ -340,7 +339,7 @@ public class ClassInitializationFeature implements GraalFeature {
             /* Synthesize a VerifyError to be thrown at run time. */
             AnalysisMethod throwVerifyError = access.getMetaAccess().lookupJavaMethod(ExceptionSynthesizer.throwExceptionMethod(VerifyError.class));
             access.registerAsCompiled(throwVerifyError);
-            return new ClassInitializationInfo(MethodPointer.factory(throwVerifyError));
+            return new ClassInitializationInfo(new MethodPointer(throwVerifyError));
         } catch (Throwable t) {
             /*
              * All other linking errors will be reported as NoClassDefFoundError when initialization
@@ -354,11 +353,13 @@ public class ClassInitializationFeature implements GraalFeature {
          * information.
          */
         assert type.isLinked();
+        CFunctionPointer classInitializerFunction = null;
         AnalysisMethod classInitializer = type.getClassInitializer();
         if (classInitializer != null) {
             assert classInitializer.getCode() != null;
             access.registerAsCompiled(classInitializer);
+            classInitializerFunction = new MethodPointer(classInitializer);
         }
-        return new ClassInitializationInfo(MethodPointer.factory(classInitializer));
+        return new ClassInitializationInfo(classInitializerFunction);
     }
 }

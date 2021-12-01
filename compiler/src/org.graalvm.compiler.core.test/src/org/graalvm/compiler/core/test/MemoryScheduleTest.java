@@ -56,6 +56,7 @@ import org.graalvm.compiler.phases.common.RemoveValueProxyPhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.phases.tiers.LowTierContext;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
 import org.junit.Assert;
 import org.junit.Test;
@@ -708,17 +709,18 @@ public class MemoryScheduleTest extends GraphScheduleTest {
             new GuardLoweringPhase().apply(graph, midContext);
 
             if (mode == TestMode.WITHOUT_FRAMESTATES || mode == TestMode.INLINED_WITHOUT_FRAMESTATES) {
-                graph.clearAllStateAfter();
-                // disable stat split verification
+                graph.clearAllStateAfterForTestingOnly();
+                // disable state split verification
                 graph.setGuardsStage(GuardsStage.AFTER_FSA);
             }
             debug.dump(DebugContext.BASIC_LEVEL, graph, "after removal of framestates");
 
             new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.MID_TIER).apply(graph, midContext);
-            new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.LOW_TIER).apply(graph, midContext);
+            LowTierContext lowContext = new LowTierContext(getProviders(), getTargetProvider());
+            new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.LOW_TIER).apply(graph, lowContext);
 
             SchedulePhase schedule = new SchedulePhase(schedulingStrategy);
-            schedule.apply(graph);
+            schedule.apply(graph, getDefaultLowTierContext());
             return graph.getLastSchedule();
         } catch (Throwable e) {
             throw debug.handle(e);

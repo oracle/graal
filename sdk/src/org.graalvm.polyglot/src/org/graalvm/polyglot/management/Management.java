@@ -55,15 +55,15 @@ final class Management {
     private Management() {
     }
 
-    static final AbstractManagementDispatch IMPL = initImpl();
+    static final AbstractPolyglotImpl IMPL = initImpl();
 
-    private static AbstractManagementDispatch initImpl() {
+    private static AbstractPolyglotImpl initImpl() {
         try {
             Method method = Engine.class.getDeclaredMethod("getImpl");
             method.setAccessible(true);
             AbstractPolyglotImpl impl = (AbstractPolyglotImpl) method.invoke(null);
             impl.setMonitoring(new ManagementAccessImpl());
-            return impl.getManagementDispatch();
+            return impl;
         } catch (Exception e) {
             throw new IllegalStateException("Failed to initialize execution listener class.", e);
         }
@@ -72,10 +72,34 @@ final class Management {
     private static final class ManagementAccessImpl extends ManagementAccess {
 
         @Override
-        public ExecutionEvent newExecutionEvent(Object event) {
-            return new ExecutionEvent(event);
+        public ExecutionListener newExecutionListener(AbstractManagementDispatch dispatch, Object receiver) {
+            return new ExecutionListener(dispatch, receiver);
         }
 
+        @Override
+        public ExecutionEvent newExecutionEvent(AbstractManagementDispatch dispatch, Object event) {
+            return new ExecutionEvent(dispatch, event);
+        }
+
+        @Override
+        public Object getReceiver(ExecutionListener executionListener) {
+            return executionListener.receiver;
+        }
+
+        @Override
+        public AbstractManagementDispatch getDispatch(ExecutionListener executionListener) {
+            return executionListener.dispatch;
+        }
+
+        @Override
+        public Object getReceiver(ExecutionEvent executionEvent) {
+            return executionEvent.receiver;
+        }
+
+        @Override
+        public AbstractManagementDispatch getDispatch(ExecutionEvent executionEvent) {
+            return executionEvent.dispatch;
+        }
     }
 
 }

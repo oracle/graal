@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -64,7 +64,8 @@ public final class Suites {
     public static LIRSuites createLIRSuites(CompilerConfiguration config, OptionValues options) {
         LIRPhaseSuite<AllocationContext> allocationStage = config.createAllocationStage(options);
         assert verifyAllocationStage(allocationStage);
-        return new LIRSuites(config.createPreAllocationOptimizationStage(options), allocationStage, config.createPostAllocationOptimizationStage(options));
+        return new LIRSuites(config.createPreAllocationOptimizationStage(options), allocationStage, config.createPostAllocationOptimizationStage(options),
+                        config.createFinalCodeAnalysisStage(options));
     }
 
     private static boolean verifyAllocationStage(LIRPhaseSuite<AllocationContext> allocationStage) {

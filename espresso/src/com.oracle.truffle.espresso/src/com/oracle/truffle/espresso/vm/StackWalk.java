@@ -264,7 +264,7 @@ public final class StackWalk {
         @SuppressWarnings("fallthrough")
         @Override
         public Integer visitFrame(FrameInstance frameInstance) {
-            EspressoRootNode root = VM.getEspressoRootFromFrame(frameInstance);
+            EspressoRootNode root = VM.getEspressoRootFromFrame(frameInstance, meta.getContext());
             Method m = root == null ? null : root.getMethod();
             if (m != null) {
                 switch (state) {
@@ -357,7 +357,8 @@ public final class StackWalk {
             StaticObject memberName = meta.java_lang_StackFrameInfo_memberName.getObject(frame);
             Target_java_lang_invoke_MethodHandleNatives.plantResolvedMethod(memberName, m, m.getRefKind(), meta);
             meta.java_lang_invoke_MemberName_clazz.setObject(memberName, m.getDeclaringKlass().mirror());
-            meta.java_lang_StackFrameInfo_bci.setInt(frame, VM.getEspressoRootFromFrame(frameInstance).readBCI(frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY)));
+            EspressoRootNode rootNode = VM.getEspressoRootFromFrame(frameInstance, meta.getContext());
+            meta.java_lang_StackFrameInfo_bci.setInt(frame, rootNode.readBCI(frameInstance.getFrame(FrameInstance.FrameAccess.READ_ONLY)));
         }
     }
 }

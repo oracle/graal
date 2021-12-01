@@ -29,7 +29,6 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.function.Supplier;
 
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
@@ -45,6 +44,7 @@ import com.oracle.truffle.espresso.perf.DebugTimer;
 import com.oracle.truffle.espresso.redefinition.DefineKlassListener;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
+import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 
@@ -152,7 +152,6 @@ public abstract class ClassRegistry implements ContextAccess {
      * circularity error.
      */
     // TODO: Rework this, a thread local is certainly less than optimal.
-    static final ThreadLocal<TypeStack> stack = ThreadLocal.withInitial(TypeStack.supplier);
 
     private DefineKlassListener defineKlassListener;
 
@@ -160,14 +159,11 @@ public abstract class ClassRegistry implements ContextAccess {
         defineKlassListener = listener;
     }
 
-    static final class TypeStack {
-        static final Supplier<TypeStack> supplier = new Supplier<TypeStack>() {
-            @Override
-            public TypeStack get() {
-                return new TypeStack();
-            }
-        };
-        Node head = null;
+    public static final class TypeStack {
+        Node head;
+
+        public TypeStack() {
+        }
 
         static final class Node {
             Symbol<Type> entry;
@@ -205,9 +201,6 @@ public abstract class ClassRegistry implements ContextAccess {
 
         void push(Symbol<Type> type) {
             head = new Node(type, head);
-        }
-
-        private TypeStack() {
         }
     }
 
@@ -405,7 +398,8 @@ public abstract class ClassRegistry implements ContextAccess {
 
     @SuppressWarnings("try")
     private ObjectKlass createKlass(Meta meta, ParserKlass parserKlass, Symbol<Type> type, Symbol<Type> superKlassType, ClassDefinitionInfo info) {
-        TypeStack chain = stack.get();
+        EspressoThreadLocalState threadLocalState = meta.getContext().getLanguage().getThreadLocalState();
+        TypeStack chain = threadLocalState.getTypeStack();
 
         ObjectKlass superKlass = null;
         ObjectKlass[] superInterfaces = null;

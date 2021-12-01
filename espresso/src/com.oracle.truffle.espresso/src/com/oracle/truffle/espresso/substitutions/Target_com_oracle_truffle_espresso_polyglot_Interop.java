@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -695,9 +695,11 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
     /**
      * Returns exception exit status of the receiver. Throws {@code UnsupportedMessageException}
      * when the receiver is not an {@link InteropLibrary#isException(Object) exception} of the
-     * {@link ExceptionType#EXIT exit type}. A return value zero indicates that the execution of the
-     * application was successful, a non-zero value that it failed. The individual interpretation of
-     * non-zero values depends on the application.
+     * {@link ExceptionType#EXIT exit type}. See
+     * <a href= "https://github.com/oracle/graal/blob/master/truffle/docs/Exit.md">Context Exit</a>
+     * for further information. A return value zero indicates that the execution of the application
+     * was successful, a non-zero value that it failed. The individual interpretation of non-zero
+     * values depends on the application.
      *
      * @see InteropLibrary#getExceptionExitStatus(Object)
      * @since 20.3

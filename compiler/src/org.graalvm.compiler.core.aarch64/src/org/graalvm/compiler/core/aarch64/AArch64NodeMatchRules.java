@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ package org.graalvm.compiler.core.aarch64;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ExtendType;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.core.common.LIRKind;
@@ -55,6 +56,7 @@ import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.AndNode;
 import org.graalvm.compiler.nodes.calc.BinaryNode;
 import org.graalvm.compiler.nodes.calc.FloatConvertNode;
+import org.graalvm.compiler.nodes.calc.IntegerConvertNode;
 import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
 import org.graalvm.compiler.nodes.calc.LeftShiftNode;
 import org.graalvm.compiler.nodes.calc.MulNode;
@@ -63,6 +65,7 @@ import org.graalvm.compiler.nodes.calc.NegateNode;
 import org.graalvm.compiler.nodes.calc.NotNode;
 import org.graalvm.compiler.nodes.calc.OrNode;
 import org.graalvm.compiler.nodes.calc.RightShiftNode;
+import org.graalvm.compiler.nodes.calc.ShiftNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.SubNode;
 import org.graalvm.compiler.nodes.calc.UnaryNode;
@@ -71,6 +74,7 @@ import org.graalvm.compiler.nodes.calc.XorNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.memory.MemoryAccess;
 
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -151,6 +155,20 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
         return (AArch64Kind) gen.getLIRKind(((ValueNode) access).stamp(NodeView.DEFAULT)).getPlatformKind();
     }
 
+    private static boolean isSupportedExtendedAddSubShift(IntegerConvertNode<?, ?> node, int clampedShiftAmt) {
+        assert clampedShiftAmt >= 0;
+        if (clampedShiftAmt <= 4) {
+            switch (node.getInputBits()) {
+                case Byte.SIZE:
+                case Short.SIZE:
+                case Integer.SIZE:
+                case Long.SIZE:
+                    return true;
+            }
+        }
+        return false;
+    }
+
     private static ExtendType getZeroExtendType(int fromBits) {
         switch (fromBits) {
             case Byte.SIZE:
@@ -187,11 +205,19 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
         return getLIRGeneratorTool().moveSp(value);
     }
 
-    protected ComplexMatchResult emitBinaryShift(AArch64ArithmeticOp op, ValueNode value, BinaryNode shift) {
+    /**
+     * Clamp shift amounts into range 0 <= shiftamt < size according to JLS.
+     */
+    private static int getClampedShiftAmt(ShiftNode<?> op) {
+        int clampMask = op.getShiftAmountMask();
+        assert clampMask == 63 || clampMask == 31;
+        return op.getY().asJavaConstant().asInt() & clampMask;
+    }
+
+    protected ComplexMatchResult emitBinaryShift(AArch64ArithmeticOp op, ValueNode value, ShiftNode<?> shift) {
         AArch64MacroAssembler.ShiftType shiftType = shiftTypeMap.get(shift.getClass());
         assert shiftType != null;
         assert isNumericInteger(value, shift.getX());
-        assert shift.getY() instanceof ConstantNode;
 
         return builder -> {
             Value a = operand(value);
@@ -199,7 +225,7 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
             Variable result = gen.newVariable(LIRKind.combine(a, b));
             AllocatableValue x = moveSp(gen.asAllocatable(a));
             AllocatableValue y = moveSp(gen.asAllocatable(b));
-            int shiftAmount = shift.getY().asJavaConstant().asInt();
+            int shiftAmount = getClampedShiftAmt(shift);
             gen.append(new AArch64ArithmeticOp.BinaryShiftOp(op, result, x, y, shiftType, shiftAmount));
             return result;
         };
@@ -217,9 +243,12 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
         };
     }
 
-    private ComplexMatchResult emitBitField(JavaKind kind, AArch64BitFieldOp.BitFieldOpCode op, ValueNode value, int lsb, int width) {
-        assert op != null;
+    /**
+     * Helper used by emitBitFieldInsert and emitBitFieldExtract.
+     */
+    private ComplexMatchResult emitBitFieldHelper(JavaKind kind, AArch64BitFieldOp.BitFieldOpCode op, ValueNode value, int lsb, int width) {
         assert isNumericInteger(value);
+        assert lsb + width <= kind.getBitCount();
 
         return builder -> {
             Value a = operand(value);
@@ -231,45 +260,44 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
         };
     }
 
-    private ComplexMatchResult emitUnsignedBitField(JavaKind kind, BinaryNode shift, ValueNode value, ConstantNode scale, ConstantNode mask) {
-        assert kind.isNumericInteger();
-        BitFieldOpCode op = bitFieldOpMap.get(shift.getClass());
-        assert op != null;
-        JavaKind srcKind = shift.getStackKind();
-        // The Java(R) Language Specification CHAPTER 15.19 Shift Operators says:
-        // "If the promoted type of the left-hand operand is int(long), then only the five(six)
-        // lowest-order bits of the right-hand operand are used as the shift distance."
-        int distance = scale.asJavaConstant().asInt();
-        int lsb = distance & (srcKind == JavaKind.Int ? 0x1F : 0x3F);
-
-        long maskValue = mask.asJavaConstant().asLong();
-        // Constraint 1: Mask plus one should be a power-of-2 integer.
-        if (!CodeUtil.isPowerOf2(maskValue + 1)) {
-            return null;
-        }
-        int width = CodeUtil.log2(maskValue + 1);
-        int srcBits = srcKind.getBitCount();
-        // Constraint 2: Bit field width is less than 31(63) for int(long) as any bit field move
-        // operations can be done by a single shift instruction if the width is 31(63).
-        if (width >= srcBits - 1) {
-            return null;
-        }
-        // Constraint 3: Sum of bit field width and the shift distance is less or equal to 32(64)
-        // for int(long) as the specification of AArch64 bit field instructions.
-        if (width + distance > srcBits) {
-            return null;
-        }
-        return emitBitField(kind, op, value, lsb, width);
+    /**
+     * Copy (width) bits from the least significant bits of the source register to bit position lsb
+     * of the destination register.
+     *
+     * @param kind expected final size of the bitfield operation
+     * @param op The type of bitfield operation
+     * @param value The value to extract bits from
+     * @param lsb (least significant bit) the starting index of where the value is moved to
+     * @param width The number of bits to extract from value.
+     */
+    private ComplexMatchResult emitBitFieldInsert(JavaKind kind, AArch64BitFieldOp.BitFieldOpCode op, ValueNode value, int lsb, int width) {
+        assert op == BitFieldOpCode.SBFIZ || op == BitFieldOpCode.UBFIZ;
+        return emitBitFieldHelper(kind, op, value, lsb, width);
     }
 
-    private static boolean isNarrowingLongToInt(NarrowNode narrow) {
+    /**
+     * Copy (width) bits from the lsb bit position of the source register to the bottom of the
+     * destination register.
+     *
+     * @param kind expected final size of the bitfield operation
+     * @param op The type of bitfield operation
+     * @param value The value to extract bits from
+     * @param lsb (least significant bit) the starting index of where the value copied from
+     * @param width The number of bits to extract from value.
+     */
+    private ComplexMatchResult emitBitFieldExtract(JavaKind kind, AArch64BitFieldOp.BitFieldOpCode op, ValueNode value, int lsb, int width) {
+        assert op == BitFieldOpCode.SBFX || op == BitFieldOpCode.UBFX;
+        return emitBitFieldHelper(kind, op, value, lsb, width);
+    }
+
+    private static boolean isL2INarrow(NarrowNode narrow) {
         return narrow.getInputBits() == Long.SIZE && narrow.getResultBits() == Integer.SIZE;
     }
 
     private ComplexMatchResult emitExtendedAddSubShift(BinaryNode op, ValueNode x, ValueNode y, ExtendType extType, int shiftAmt) {
         assert op instanceof AddNode || op instanceof SubNode;
         return builder -> {
-            AllocatableValue src1 = moveSp(gen.asAllocatable(operand(x)));
+            AllocatableValue src1 = gen.asAllocatable(operand(x));
             AllocatableValue src2 = moveSp(gen.asAllocatable(operand(y)));
             Variable result = gen.newVariable(LIRKind.combine(operand(x), operand(y)));
             AArch64ArithmeticOp arithmeticOp = op instanceof AddNode ? AArch64ArithmeticOp.ADD : AArch64ArithmeticOp.SUB;
@@ -278,14 +306,18 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
         };
     }
 
-    @MatchRule("(Add=op x (LeftShift (SignExtend=ext y) Constant=lshift))")
-    @MatchRule("(Sub=op x (LeftShift (SignExtend=ext y) Constant=lshift))")
-    @MatchRule("(Add=op x (LeftShift (ZeroExtend=ext y) Constant=lshift))")
-    @MatchRule("(Sub=op x (LeftShift (ZeroExtend=ext y) Constant=lshift))")
-    public ComplexMatchResult mergeSignExtendByShiftIntoAddSub(BinaryNode op, UnaryNode ext, ValueNode x, ValueNode y, ConstantNode lshift) {
+    /**
+     * Goal: Use AArch64's add/sub (extended register) instructions to fold away extend and shift of
+     * left operand.
+     */
+    @MatchRule("(Add=op x (LeftShift=lshift (SignExtend=ext y) Constant))")
+    @MatchRule("(Sub=op x (LeftShift=lshift (SignExtend=ext y) Constant))")
+    @MatchRule("(Add=op x (LeftShift=lshift (ZeroExtend=ext y) Constant))")
+    @MatchRule("(Sub=op x (LeftShift=lshift (ZeroExtend=ext y) Constant))")
+    public ComplexMatchResult mergeSignExtendByShiftIntoAddSub(BinaryNode op, LeftShiftNode lshift, ValueNode ext, ValueNode x, ValueNode y) {
         assert isNumericInteger(lshift);
-        int shiftAmt = lshift.asJavaConstant().asInt();
-        if (shiftAmt > 4 || shiftAmt < 0) {
+        int shiftAmt = getClampedShiftAmt(lshift);
+        if (!isSupportedExtendedAddSubShift((IntegerConvertNode<?, ?>) ext, shiftAmt)) {
             return null;
         }
         ExtendType extType;
@@ -297,63 +329,86 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
         return emitExtendedAddSubShift(op, x, y, extType, shiftAmt);
     }
 
-    @MatchRule("(Add=op x (LeftShift (And y Constant=constant) Constant=lshift))")
-    @MatchRule("(Sub=op x (LeftShift (And y Constant=constant) Constant=lshift))")
-    public ComplexMatchResult mergeShiftDowncastIntoAddSub(BinaryNode op, ValueNode x, ValueNode y, ConstantNode constant, ConstantNode lshift) {
+    /**
+     * Goal: Use AArch64's add/sub (extended register) instructions to fold away the and operation
+     * (into a zero extend) and shift of left operand.
+     */
+    @MatchRule("(Add=op x (LeftShift=lshift (And y Constant=constant) Constant))")
+    @MatchRule("(Sub=op x (LeftShift=lshift (And y Constant=constant) Constant))")
+    public ComplexMatchResult mergeShiftDowncastIntoAddSub(BinaryNode op, LeftShiftNode lshift, ConstantNode constant, ValueNode x, ValueNode y) {
         assert isNumericInteger(lshift, constant);
-        int shiftAmt = lshift.asJavaConstant().asInt();
-        long mask = constant.asJavaConstant().asLong();
-        if (shiftAmt > 4 || shiftAmt < 0) {
+        int shiftAmt = getClampedShiftAmt(lshift);
+        if (shiftAmt > 4) {
             return null;
         }
-        if (mask != 0xff && mask != 0xffff && mask != 0xffffffffL) {
+        long mask = constant.asJavaConstant().asLong() & CodeUtil.mask(op.getStackKind().getBitCount());
+        if (mask != 0xFFL && mask != 0xFFFFL && mask != 0xFFFFFFFFL) {
             return null;
         }
-        ExtendType extType = getZeroExtendType(Long.toBinaryString(mask).length());
-        return emitExtendedAddSubShift(op, x, y, extType, shiftAmt);
+        int numBits = 64 - Long.numberOfLeadingZeros(mask);
+        return emitExtendedAddSubShift(op, x, y, getZeroExtendType(numBits), shiftAmt);
     }
 
-    @MatchRule("(Add=op x (RightShift (LeftShift y Constant=shiftConst) Constant=shiftConst))")
-    @MatchRule("(Sub=op x (RightShift (LeftShift y Constant=shiftConst) Constant=shiftConst))")
-    public ComplexMatchResult mergePairShiftIntoAddSub(BinaryNode op, ValueNode x, ValueNode y, ConstantNode shiftConst) {
-        assert isNumericInteger(shiftConst);
-        int shift = shiftConst.asJavaConstant().asInt();
-        if (shift != 16 && shift != 24 && shift != 32 && shift != 48 && shift != 56) {
+    /**
+     * Goal: Switch ((x << amt) >> amt) into a sign extend and fold into AArch64 add/sub (extended
+     * register) instruction.
+     */
+    @MatchRule("(Add=op x (RightShift=signExt (LeftShift y Constant=shiftConst) Constant=shiftConst))")
+    @MatchRule("(Sub=op x (RightShift=signExt (LeftShift y Constant=shiftConst) Constant=shiftConst))")
+    public ComplexMatchResult mergePairShiftIntoAddSub(BinaryNode op, RightShiftNode signExt, ValueNode x, ValueNode y) {
+        int signExtendAmt = getClampedShiftAmt(signExt);
+        int opSize = op.getStackKind().getBitCount();
+        assert opSize == 32 || opSize == 64;
+
+        int remainingBits = opSize - signExtendAmt;
+        if (remainingBits != 8 && remainingBits != 16 && remainingBits != 32) {
             return null;
         }
-        int extractBits = shift >= 32 ? Long.SIZE - shift : Integer.SIZE - shift;
-        return emitExtendedAddSubShift(op, x, y, getSignExtendType(extractBits), 0);
+        return emitExtendedAddSubShift(op, x, y, getSignExtendType(remainingBits), 0);
     }
 
-    @MatchRule("(Add=op x (LeftShift (RightShift (LeftShift y Constant=shiftConst) Constant=shiftConst) Constant=lshift))")
-    @MatchRule("(Sub=op x (LeftShift (RightShift (LeftShift y Constant=shiftConst) Constant=shiftConst) Constant=lshift))")
-    public ComplexMatchResult mergeShiftedPairShiftIntoAddSub(BinaryNode op, ValueNode x, ValueNode y, ConstantNode shiftConst, ConstantNode lshift) {
-        assert isNumericInteger(shiftConst);
-        int shift = shiftConst.asJavaConstant().asInt();
-        int shiftAmt = lshift.asJavaConstant().asInt();
-        if (shiftAmt > 4 || shiftAmt < 0) {
+    /**
+     * Goal: Fold ((x << amt) >> amt) << [0,4] into AArch64 add/sub (extended register) instruction
+     * with a sign extend and a shift.
+     */
+    @MatchRule("(Add=op x (LeftShift=outerShift (RightShift=signExt (LeftShift y Constant=shiftConst) Constant=shiftConst) Constant))")
+    @MatchRule("(Sub=op x (LeftShift=outerShift (RightShift=signExt (LeftShift y Constant=shiftConst) Constant=shiftConst) Constant))")
+    public ComplexMatchResult mergeShiftedPairShiftIntoAddSub(BinaryNode op, LeftShiftNode outerShift, RightShiftNode signExt, ValueNode x, ValueNode y) {
+        int shiftAmt = getClampedShiftAmt(outerShift);
+        if (shiftAmt > 4) {
             return null;
         }
-        if (shift != 16 && shift != 24 && shift != 32 && shift != 48 && shift != 56) {
+        int signExtendAmt = getClampedShiftAmt(signExt);
+        int opSize = op.getStackKind().getBitCount();
+        assert opSize == 32 || opSize == 64;
+
+        int remainingBits = opSize - signExtendAmt;
+        if (remainingBits != 8 && remainingBits != 16 && remainingBits != 32) {
             return null;
         }
-        int extractBits = shift >= 32 ? Long.SIZE - shift : Integer.SIZE - shift;
-        return emitExtendedAddSubShift(op, x, y, getSignExtendType(extractBits), shiftAmt);
+        return emitExtendedAddSubShift(op, x, y, getSignExtendType(remainingBits), shiftAmt);
     }
 
+    /**
+     * Goal: Fold zero extend and (optional) shift into AArch64 add/sub (extended register)
+     * instruction.
+     */
     @MatchRule("(AArch64PointerAdd=addP base ZeroExtend)")
     @MatchRule("(AArch64PointerAdd=addP base (LeftShift ZeroExtend Constant))")
     public ComplexMatchResult extendedPointerAddShift(AArch64PointerAddNode addP) {
         ValueNode offset = addP.getOffset();
         ZeroExtendNode zeroExtend;
-        int shiftNum;
+        int shiftAmt;
         if (offset instanceof ZeroExtendNode) {
             zeroExtend = (ZeroExtendNode) offset;
-            shiftNum = 0;
+            shiftAmt = 0;
         } else {
             LeftShiftNode shift = (LeftShiftNode) offset;
             zeroExtend = (ZeroExtendNode) shift.getX();
-            shiftNum = shift.getY().asJavaConstant().asInt();
+            shiftAmt = getClampedShiftAmt(shift);
+        }
+        if (!isSupportedExtendedAddSubShift(zeroExtend, shiftAmt)) {
+            return null;
         }
 
         int fromBits = zeroExtend.getInputBits();
@@ -364,113 +419,186 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
         assert fromBits <= toBits;
         ExtendType extendType = getZeroExtendType(fromBits);
 
-        if (shiftNum >= 0 && shiftNum <= 4) {
-            ValueNode base = addP.getBase();
-            return builder -> {
-                AllocatableValue x = gen.asAllocatable(operand(base));
-                AllocatableValue y = gen.asAllocatable(operand(zeroExtend.getValue()));
-                AllocatableValue baseReference = LIRKind.derivedBaseFromValue(x);
-                LIRKind kind = LIRKind.combineDerived(gen.getLIRKind(addP.stamp(NodeView.DEFAULT)),
-                                baseReference, null);
-                Variable result = gen.newVariable(kind);
-                gen.append(new AArch64ArithmeticOp.ExtendedAddSubShiftOp(AArch64ArithmeticOp.ADD, result, x, moveSp(y),
-                                extendType, shiftNum));
-                return result;
-            };
+        ValueNode base = addP.getBase();
+        return builder -> {
+            AllocatableValue x = gen.asAllocatable(operand(base));
+            AllocatableValue y = moveSp(gen.asAllocatable(operand(zeroExtend.getValue())));
+            AllocatableValue baseReference = LIRKind.derivedBaseFromValue(x);
+            LIRKind kind = LIRKind.combineDerived(gen.getLIRKind(addP.stamp(NodeView.DEFAULT)),
+                            baseReference, null);
+            Variable result = gen.newVariable(kind);
+            gen.append(new AArch64ArithmeticOp.ExtendedAddSubShiftOp(AArch64ArithmeticOp.ADD, result, x, y,
+                            extendType, shiftAmt));
+            return result;
+        };
+    }
+
+    /**
+     * This method determines, if possible, how to use AArch64's bit unsigned field insert/extract
+     * (UBFIZ/UBFX) instructions to copy over desired bits in the presence of the pattern [(X >>> #)
+     * & MASK] or [(X & MASK) << #] (with some zero extensions maybe sprinkled in).
+     *
+     * The main idea is that the mask and shift will force many bits to be zeroed and this
+     * information can be leveraged to extract the meaningful bits.
+     */
+    private ComplexMatchResult unsignedBitFieldHelper(JavaKind finalOpKind, BinaryNode shift, ValueNode value, ConstantNode maskNode, int andOpSize) {
+        long mask = maskNode.asJavaConstant().asLong() & CodeUtil.mask(andOpSize);
+        if (!CodeUtil.isPowerOf2(mask + 1)) {
+            /* MaskNode isn't a mask: initial assumption doesn't hold true */
+            return null;
         }
-        return null;
+        int maskSize = 64 - Long.numberOfLeadingZeros(mask);
+
+        int shiftSize = shift.getStackKind().getBitCount();
+        int shiftAmt = getClampedShiftAmt((ShiftNode<?>) shift);
+        /*
+         * The width of the insert/extract will be the bits which are not shifted out and/or not
+         * part of the mask.
+         */
+        int width = Math.min(maskSize, shiftSize - shiftAmt);
+        if (width == finalOpKind.getBitCount()) {
+            assert maskSize == finalOpKind.getBitCount() && shiftAmt == 0;
+            // original value is unaffected
+            return builder -> operand(value);
+        } else if (shift instanceof UnsignedRightShiftNode) {
+            // this is an extract
+            return emitBitFieldExtract(finalOpKind, BitFieldOpCode.UBFX, value, shiftAmt, width);
+        } else {
+            // is a left shift - means this is an insert
+            return emitBitFieldInsert(finalOpKind, BitFieldOpCode.UBFIZ, value, shiftAmt, width);
+        }
     }
 
-    @MatchRule("(And (UnsignedRightShift=shift value Constant=a) Constant=b)")
-    @MatchRule("(LeftShift=shift (And value Constant=b) Constant=a)")
-    public ComplexMatchResult unsignedBitField(BinaryNode shift, ValueNode value, ConstantNode a, ConstantNode b) {
-        JavaKind kind = shift.getStackKind();
-        return emitUnsignedBitField(kind, shift, value, a, b);
+    /**
+     * Goal: Use AArch64's bit unsigned field insert/extract (UBFIZ/UBFX) instructions to copy over
+     * desired bits.
+     */
+    @MatchRule("(And (UnsignedRightShift=shift value Constant) Constant=a)")
+    @MatchRule("(LeftShift=shift (And value Constant=a) Constant)")
+    public ComplexMatchResult unsignedBitField(BinaryNode shift, ValueNode value, ConstantNode a) {
+        return unsignedBitFieldHelper(shift.getStackKind(), shift, value, a, shift.getStackKind().getBitCount());
     }
 
-    @MatchRule("(LeftShift=shift (ZeroExtend=extend (And value Constant=b)) Constant=a)")
-    @MatchRule("(ZeroExtend=extend (And (UnsignedRightShift=shift value Constant=a) Constant=b))")
-    @MatchRule("(ZeroExtend=extend (LeftShift=shift (And value Constant=b) Constant=a))")
-    public ComplexMatchResult unsignedExtBitField(ZeroExtendNode extend, BinaryNode shift, ValueNode value, ConstantNode a, ConstantNode b) {
-        JavaKind kind = extend.getStackKind();
-        return emitUnsignedBitField(kind, shift, value, a, b);
+    /**
+     * Goal: Use AArch64's bit unsigned field insert/extract (UBFIZ/UBFX) instructions to copy over
+     * desired bits.
+     */
+    @MatchRule("(LeftShift=shift (ZeroExtend=extend (And value Constant=a)) Constant)")
+    @MatchRule("(ZeroExtend=extend (And (UnsignedRightShift=shift value Constant) Constant=a))")
+    @MatchRule("(ZeroExtend=extend (LeftShift=shift (And value Constant=a) Constant))")
+    public ComplexMatchResult unsignedExtBitField(ZeroExtendNode extend, BinaryNode shift, ValueNode value, ConstantNode a) {
+        return unsignedBitFieldHelper(extend.getStackKind(), shift, value, a, extend.getInputBits());
     }
 
+    /**
+     * Goal: Use AArch64's signed bitfield insert in zeros (sbfiz) instruction to extract desired
+     * bits while folding away sign extend.
+     */
     @MatchRule("(LeftShift=shift (SignExtend value) Constant)")
-    public ComplexMatchResult signedBitField(LeftShiftNode shift) {
+    public ComplexMatchResult signedBitField(LeftShiftNode shift, ValueNode value) {
         assert isNumericInteger(shift);
 
         SignExtendNode extend = (SignExtendNode) shift.getX();
-        int srcBits = extend.getInputBits();
+        int inputBits = extend.getInputBits();
         int resultBits = extend.getResultBits();
         JavaKind kind = shift.getStackKind();
         assert kind.getBitCount() == resultBits;
 
-        int lsb = shift.getY().asJavaConstant().asInt() & (resultBits - 1);
-        // Get the min value of the srcBits and (resultBits - lsb) as the bitfield width.
-        int width = Math.min(srcBits, resultBits - lsb);
+        int lsb = getClampedShiftAmt(shift);
+        /*
+         * Get the min value of the inputBits and post-shift bits (resultBits - lsb) as the bitfield
+         * width. Note if (resultBits-lsb) is smaller than inputBits, the in reality no sign
+         * extension takes place.
+         */
+        int width = Math.min(inputBits, resultBits - lsb);
         assert width >= 1 && width <= resultBits - lsb;
 
-        ValueNode value = extend.getValue();
-        return emitBitField(kind, BitFieldOpCode.SBFIZ, value, lsb, width);
+        return emitBitFieldInsert(kind, BitFieldOpCode.SBFIZ, value, lsb, width);
     }
 
+    /**
+     * Goal: Use AArch64's bit field insert/extract instructions to copy over desired bits.
+     */
     @MatchRule("(RightShift=rshift (LeftShift=lshift value Constant) Constant)")
     @MatchRule("(UnsignedRightShift=rshift (LeftShift=lshift value Constant) Constant)")
-    public ComplexMatchResult bitFieldMove(BinaryNode rshift, LeftShiftNode lshift) {
+    public ComplexMatchResult bitFieldMove(BinaryNode rshift, LeftShiftNode lshift, ValueNode value) {
         assert isNumericInteger(rshift);
-        JavaKind srcKind = rshift.getStackKind();
-        int srcBits = srcKind.getBitCount();
-        int lshiftNum = lshift.getY().asJavaConstant().asInt() & (srcBits - 1);
-        int rshiftNum = rshift.getY().asJavaConstant().asInt() & (srcBits - 1);
-        int lsb = Math.abs(lshiftNum - rshiftNum);
-        assert lsb >= 0 && lsb <= (srcBits - 1);
+        JavaKind opKind = rshift.getStackKind();
+        int opSize = opKind.getBitCount();
 
-        // Get the width of the bitField. It should be in the range 1 to 32(64)-<lsb>.
-        int width = srcBits - Math.max(lshiftNum, rshiftNum);
-        if (width > (srcBits - lsb) || width < 1) {
-            return null;
+        int lshiftAmt = getClampedShiftAmt(lshift);
+        int rshiftAmt = getClampedShiftAmt((ShiftNode<?>) rshift);
+
+        /*
+         * Get the width of the bitField. It will be in the range 1 to 32(64).
+         *
+         * Get the final width of the extract. Because the left and right shift go in opposite
+         * directions, the number of meaningful bits after performing a (x << #) >>(>) # is
+         * dependent on the maximum of the two shifts.
+         */
+        int width = opSize - Math.max(lshiftAmt, rshiftAmt);
+        assert width > 1 || width <= opSize;
+
+        if (width == opSize) {
+            // this means that no shifting was performed: can directly return value
+            return builder -> operand(value);
         }
 
-        // Use bitfield insert (SBFIZ/UBFIZ) if left shift number is larger than right shift number,
-        // otherwise use bitfield extract (SBFX/UBFX).
-        boolean bitFieldInsert = lshiftNum > rshiftNum;
-        BitFieldOpCode op;
-        if (rshift instanceof RightShiftNode) {
-            op = bitFieldInsert ? BitFieldOpCode.SBFIZ : BitFieldOpCode.SBFX;
+        /*
+         * Use bitfield insert (SBFIZ/UBFIZ) if left shift number is larger than right shift number,
+         * otherwise use bitfield extract (SBFX/UBFX).
+         *
+         * If lshiftAmt > rshiftAmt, this means that the destination value will have some of its
+         * bottom bits cleared, whereas if lshiftAmt <= rshiftAmt, then the destination value will
+         * have bits starting from index 0 copied from the input.
+         */
+        if (lshiftAmt > rshiftAmt) {
+            int lsb = lshiftAmt - rshiftAmt;
+            BitFieldOpCode op = rshift instanceof RightShiftNode ? BitFieldOpCode.SBFIZ : BitFieldOpCode.UBFIZ;
+            return emitBitFieldInsert(opKind, op, value, lsb, width);
         } else {
-            assert rshift instanceof UnsignedRightShiftNode;
-            op = bitFieldInsert ? BitFieldOpCode.UBFIZ : BitFieldOpCode.UBFX;
+            // is a bit field extract
+            int lsb = rshiftAmt - lshiftAmt;
+            BitFieldOpCode op = rshift instanceof RightShiftNode ? BitFieldOpCode.SBFX : BitFieldOpCode.UBFX;
+            return emitBitFieldExtract(opKind, op, value, lsb, width);
         }
-        return emitBitField(srcKind, op, lshift.getX(), lsb, width);
     }
 
-    @MatchRule("(Or=op (LeftShift=x src Constant=shiftAmt1) (UnsignedRightShift src Constant=shiftAmt2))")
-    @MatchRule("(Or=op (UnsignedRightShift=x src Constant=shiftAmt1) (LeftShift src Constant=shiftAmt2))")
-    @MatchRule("(Add=op (LeftShift=x src Constant=shiftAmt1) (UnsignedRightShift src Constant=shiftAmt2))")
-    @MatchRule("(Add=op (UnsignedRightShift=x src Constant=shiftAmt1) (LeftShift src Constant=shiftAmt2))")
-    public ComplexMatchResult rotationConstant(ValueNode op, ValueNode x, ValueNode src, ConstantNode shiftAmt1, ConstantNode shiftAmt2) {
+    /**
+     * Goal: Use AArch64's ror instruction for rotations.
+     */
+    @MatchRule("(Or=op (LeftShift=x src Constant) (UnsignedRightShift=y src Constant))")
+    @MatchRule("(Or=op (UnsignedRightShift=x src Constant) (LeftShift=y src Constant))")
+    @MatchRule("(Add=op (LeftShift=x src Constant) (UnsignedRightShift=y src Constant))")
+    @MatchRule("(Add=op (UnsignedRightShift=x src Constant) (LeftShift=y src Constant))")
+    public ComplexMatchResult rotationConstant(ValueNode op, ValueNode x, ValueNode y, ValueNode src) {
         assert isNumericInteger(src);
-        assert shiftAmt1.getStackKind().getBitCount() == 32;
-        assert shiftAmt2.getStackKind().getBitCount() == 32;
+        assert src.getStackKind() == op.getStackKind() && op.getStackKind() == x.getStackKind();
 
-        int shift1 = shiftAmt1.asJavaConstant().asInt();
-        int shift2 = shiftAmt2.asJavaConstant().asInt();
-        if (op instanceof AddNode && (0 == shift1 || 0 == shift2)) {
-            return null;
-        }
-        if ((0 == shift1 + shift2) || (src.getStackKind().getBitCount() == shift1 + shift2)) {
+        int shiftAmt1 = getClampedShiftAmt((ShiftNode<?>) x);
+        int shiftAmt2 = getClampedShiftAmt((ShiftNode<?>) y);
+        if (shiftAmt1 + shiftAmt2 == 0 && op instanceof OrNode) {
+            assert shiftAmt1 == 0 && shiftAmt2 == 0;
+            /* No shift performed: for or operation, this is equivalent to original value */
+            return builder -> operand(src);
+        } else if (src.getStackKind().getBitCount() == shiftAmt1 + shiftAmt2) {
+            /* Shifts are equivalent to a rotate. */
             return builder -> {
-                AllocatableValue a = gen.asAllocatable(operand(src));
-                JavaConstant b = x instanceof LeftShiftNode ? shiftAmt2.asJavaConstant() : shiftAmt1.asJavaConstant();
+                AllocatableValue a = moveSp(gen.asAllocatable(operand(src)));
+                /* Extract the right shift amount */
+                JavaConstant b = JavaConstant.forInt(x instanceof LeftShiftNode ? shiftAmt2 : shiftAmt1);
                 Variable result = gen.newVariable(LIRKind.combine(a));
                 getArithmeticLIRGenerator().emitBinaryConst(result, AArch64ArithmeticOp.ROR, a, b);
                 return result;
             };
         }
+
         return null;
     }
 
+    /**
+     * Goal: Use AArch64's ror instruction for rotations.
+     */
     @MatchRule("(Or (LeftShift=x src shiftAmount) (UnsignedRightShift src (Sub=y Constant shiftAmount)))")
     @MatchRule("(Or (UnsignedRightShift=x src shiftAmount) (LeftShift src (Sub=y Constant shiftAmount)))")
     @MatchRule("(Or (LeftShift=x src (Negate shiftAmount)) (UnsignedRightShift src (Add=y Constant shiftAmount)))")
@@ -483,8 +611,15 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
 
         if (y instanceof SubNode || y instanceof AddNode) {
             BinaryNode binary = (BinaryNode) y;
-            ConstantNode delta = (ConstantNode) (binary.getX() instanceof ConstantNode ? binary.getX() : binary.getY());
-            if (delta.asJavaConstant().asInt() != src.getStackKind().getBitCount()) {
+            ConstantNode delta = (ConstantNode) (binary.getX() != shiftAmount ? binary.getX() : binary.getY());
+            /*
+             * For this pattern to match a right rotate, then the "clamped" delta (i.e. the value of
+             * delta within a shift) must be 0.
+             */
+            int opSize = src.getStackKind().getBitCount();
+            assert opSize == 32 || opSize == 64;
+            long clampedDelta = delta.asJavaConstant().asInt() & (opSize - 1);
+            if (clampedDelta != 0) {
                 return null;
             }
         }
@@ -501,6 +636,9 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
         };
     }
 
+    /**
+     * Goal: Use AArch64 binary shift add/sub ops to fold shift.
+     */
     @MatchRule("(Add=binary a (LeftShift=shift b Constant))")
     @MatchRule("(Add=binary a (RightShift=shift b Constant))")
     @MatchRule("(Add=binary a (UnsignedRightShift=shift b Constant))")
@@ -510,9 +648,12 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
     public ComplexMatchResult addSubShift(BinaryNode binary, ValueNode a, BinaryNode shift) {
         AArch64ArithmeticOp op = binaryOpMap.get(binary.getClass());
         assert op != null;
-        return emitBinaryShift(op, a, shift);
+        return emitBinaryShift(op, a, (ShiftNode<?>) shift);
     }
 
+    /**
+     * Goal: Use AArch64 binary shift logic ops to fold shift.
+     */
     @MatchRule("(And=binary a (LeftShift=shift b Constant))")
     @MatchRule("(And=binary a (RightShift=shift b Constant))")
     @MatchRule("(And=binary a (UnsignedRightShift=shift b Constant))")
@@ -540,12 +681,33 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
             op = binaryOpMap.get(binary.getClass());
         }
         assert op != null;
-        return emitBinaryShift(op, a, shift);
+        return emitBinaryShift(op, a, (ShiftNode<?>) shift);
     }
 
+    /**
+     * Goal: fold shift into negate operation using AArch64's sub (shifted register) instruction.
+     */
+    @MatchRule("(Negate (UnsignedRightShift=shift a Constant=b))")
+    @MatchRule("(Negate (RightShift=shift a Constant=b))")
+    @MatchRule("(Negate (LeftShift=shift a Constant=b))")
+    public ComplexMatchResult negShift(BinaryNode shift, ValueNode a, ConstantNode b) {
+        assert isNumericInteger(a, b);
+        int shiftAmt = getClampedShiftAmt((ShiftNode<?>) shift);
+        AArch64Assembler.ShiftType shiftType = shiftTypeMap.get(shift.getClass());
+        return builder -> {
+            AllocatableValue src = moveSp(gen.asAllocatable(operand(a)));
+            LIRKind kind = LIRKind.combine(operand(a));
+            Variable result = gen.newVariable(kind);
+            gen.append(new AArch64ArithmeticOp.BinaryShiftOp(AArch64ArithmeticOp.SUB, result, AArch64.zr.asValue(kind), src, shiftType, shiftAmt));
+            return result;
+        };
+    }
+
+    /**
+     * Goal: use AArch64's and not (bic) & or not (orn) instructions.
+     */
     @MatchRule("(And=logic value1 (Not=not value2))")
     @MatchRule("(Or=logic value1 (Not=not value2))")
-    @MatchRule("(Xor=logic value1 (Not=not value2))")
     public final ComplexMatchResult bitwiseLogicNot(BinaryNode logic, NotNode not) {
         assert isNumericInteger(logic);
         AArch64ArithmeticOp op = logicalNotOpMap.get(logic.getClass());
@@ -560,45 +722,93 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
         };
     }
 
-    @MatchRule("(Not=not (Xor value1 value2))")
-    public ComplexMatchResult bitwiseNotXor(NotNode not) {
-        assert isNumericInteger(not);
+    /**
+     * Goal: Use AArch64's bitwise exclusive or not (eon) instruction.
+     *
+     * Note that !(A^B) == (!A)^B == A^(!B).
+     */
+    @MatchRule("(Not (Xor value1 value2))")
+    @MatchRule("(Xor value1 (Not value2))")
+    @MatchRule("(Xor (Not value1) value2)")
+    public ComplexMatchResult bitwiseNotXor(ValueNode value1, ValueNode value2) {
         return builder -> {
-            XorNode xor = (XorNode) not.getValue();
-            Value a = operand(xor.getX());
-            Value b = operand(xor.getY());
+            Value a = operand(value1);
+            Value b = operand(value2);
             LIRKind resultKind = LIRKind.combine(a, b);
-            return getArithmeticLIRGenerator().emitBinary(resultKind, AArch64ArithmeticOp.EON, false, a, b);
+            return getArithmeticLIRGenerator().emitBinary(resultKind, AArch64ArithmeticOp.EON, true, a, b);
         };
     }
 
-    @MatchRule("(Add=binary (Mul (SignExtend a) (SignExtend b)) c)")
-    @MatchRule("(Sub=binary c (Mul (SignExtend a) (SignExtend b)))")
-    public ComplexMatchResult signedMultiplyAddSubLong(BinaryNode binary, ValueNode a, ValueNode b, ValueNode c) {
-        assert a.getStackKind() == JavaKind.Int && b.getStackKind() == JavaKind.Int && c.getStackKind() == JavaKind.Long;
-        if (binary instanceof AddNode) {
-            return builder -> getArithmeticLIRGenerator().emitIntegerMAdd(operand(a), operand(b), operand(c), true);
+    /**
+     * Checks whether this multiply operation which can fold in a sign extend operation . This can
+     * happen if:
+     *
+     * <ul>
+     * <li>The multiply result is of type long</li>
+     * <li>Both inputs are sign extended from 32 bits to 64 bits</li>
+     * </ul>
+     */
+    private static boolean isI2LMultiply(MulNode mul, SignExtendNode x, SignExtendNode y) {
+        if (mul.getStackKind() == JavaKind.Long) {
+            assert x.getResultBits() == Long.SIZE && y.getResultBits() == Long.SIZE;
+            return x.getInputBits() == Integer.SIZE && y.getInputBits() == Integer.SIZE;
         }
-        return builder -> getArithmeticLIRGenerator().emitIntegerMSub(operand(a), operand(b), operand(c), true);
+        return false;
     }
 
-    @MatchRule("(Negate (Mul=mul (SignExtend a) (SignExtend b)))")
-    @MatchRule("(Mul=mul (Negate (SignExtend a)) (SignExtend b))")
-    public ComplexMatchResult signedMultiplyNegLong(MulNode mul, ValueNode a, ValueNode b) {
-        assert a.getStackKind() == JavaKind.Int && b.getStackKind() == JavaKind.Int;
-        LIRKind resultKind = LIRKind.fromJavaKind(gen.target().arch, mul.getStackKind());
-        return builder -> getArithmeticLIRGenerator().emitBinary(
-                        resultKind, AArch64ArithmeticOp.SMNEGL, true, operand(a), operand(b));
+    /**
+     * Goal: use AArch64's (i32,i32) -> i64 multiply instructions to fold away sign extensions.
+     */
+    @MatchRule("(Add=binary (Mul=mul (SignExtend a) (SignExtend b)) c)")
+    @MatchRule("(Sub=binary c (Mul=mul (SignExtend a) (SignExtend b)))")
+    public ComplexMatchResult signedMultiplyAddSubLong(BinaryNode binary, MulNode mul, ValueNode a, ValueNode b, ValueNode c) {
+        assert isNumericInteger(binary, mul, a, b, c);
+        if (isI2LMultiply(mul, (SignExtendNode) mul.getX(), (SignExtendNode) mul.getY())) {
+            if (binary instanceof AddNode) {
+                return builder -> getArithmeticLIRGenerator().emitIntegerMAdd(operand(a), operand(b), operand(c), true);
+            }
+            return builder -> getArithmeticLIRGenerator().emitIntegerMSub(operand(a), operand(b), operand(c), true);
+        } else {
+            return null;
+        }
     }
 
+    /**
+     * Goal: use AArch64's (i32,i32) -> i64 multiply instructions to fold away sign extensions.
+     */
+    @MatchRule("(Negate (Mul=mul (SignExtend=ext1 a) (SignExtend=ext2 b)))")
+    @MatchRule("(Mul=mul (Negate (SignExtend=ext1 a)) (SignExtend=ext2 b))")
+    public ComplexMatchResult signedMultiplyNegLong(MulNode mul, SignExtendNode ext1, SignExtendNode ext2, ValueNode a, ValueNode b) {
+        assert isNumericInteger(mul, ext1, ext2, a, b);
+        if (isI2LMultiply(mul, ext1, ext2)) {
+            LIRKind resultKind = LIRKind.fromJavaKind(gen.target().arch, JavaKind.Long);
+            return builder -> getArithmeticLIRGenerator().emitBinary(
+                            resultKind, AArch64ArithmeticOp.SMNEGL, true, operand(a), operand(b));
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Goal: use AArch64's (i32,i32) -> i64 multiply instructions to fold away sign extensions.
+     */
     @MatchRule("(Mul=mul (SignExtend a) (SignExtend b))")
     public ComplexMatchResult signedMultiplyLong(MulNode mul, ValueNode a, ValueNode b) {
-        assert a.getStackKind() == JavaKind.Int && b.getStackKind() == JavaKind.Int;
-        LIRKind resultKind = LIRKind.fromJavaKind(gen.target().arch, mul.getStackKind());
-        return builder -> getArithmeticLIRGenerator().emitBinary(
-                        resultKind, AArch64ArithmeticOp.SMULL, true, operand(a), operand(b));
+        assert isNumericInteger(mul, a, b);
+        if (isI2LMultiply(mul, (SignExtendNode) mul.getX(), (SignExtendNode) mul.getY())) {
+            LIRKind resultKind = LIRKind.fromJavaKind(gen.target().arch, JavaKind.Long);
+            return builder -> getArithmeticLIRGenerator().emitBinary(
+                            resultKind, AArch64ArithmeticOp.SMULL, true, operand(a), operand(b));
+        } else {
+            return null;
+        }
     }
 
+    /**
+     * Goal: Remove narrow(s) when they do not affect the binary operation.
+     *
+     * GR-33732: remove once emitNarrow changes are merged.
+     */
     @MatchRule("(Add=binary (Narrow=narrow a) (Narrow b))")
     @MatchRule("(Sub=binary (Narrow=narrow a) (Narrow b))")
     @MatchRule("(Mul=binary (Narrow=narrow a) (Narrow b))")
@@ -624,16 +834,17 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
     public ComplexMatchResult elideL2IForBinary(BinaryNode binary, NarrowNode narrow) {
         assert isNumericInteger(binary);
 
-        ValueNode a = narrow;
+        NarrowNode a = narrow;
         ValueNode b = binary.getX() == narrow ? binary.getY() : binary.getX();
-        boolean isL2Ia = isNarrowingLongToInt((NarrowNode) a);
-        boolean isL2Ib = (b instanceof NarrowNode) && isNarrowingLongToInt((NarrowNode) b);
-        if (!isL2Ia && !isL2Ib) {
+        boolean isL2INarrowA = isL2INarrow(a);
+        boolean isL2INarrowB = (b instanceof NarrowNode) && isL2INarrow((NarrowNode) b);
+        if (!isL2INarrowA && !isL2INarrowB) {
+            // no narrow to elide
             return null;
         }
         // Get the value of L2I NarrowNode as the src value.
-        ValueNode src1 = isL2Ia ? ((NarrowNode) a).getValue() : a;
-        ValueNode src2 = isL2Ib ? ((NarrowNode) b).getValue() : b;
+        ValueNode src1 = isL2INarrowA ? a.getValue() : a;
+        ValueNode src2 = isL2INarrowB ? ((NarrowNode) b).getValue() : b;
 
         AArch64ArithmeticOp op = binaryOpMap.get(binary.getClass());
         assert op != null;
@@ -649,23 +860,35 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
                         resultKind, op, commutative, operand(src2), operand(src1));
     }
 
+    /**
+     * Goal: Use AArch64's add/sub (extended register) instructions to fold in and operand.
+     */
     @MatchRule("(Add=op x (And y Constant=constant))")
     @MatchRule("(Sub=op x (And y Constant=constant))")
     public ComplexMatchResult mergeDowncastIntoAddSub(BinaryNode op, ValueNode x, ValueNode y, ConstantNode constant) {
         assert isNumericInteger(constant);
-        long mask = constant.asJavaConstant().asLong();
-        if (mask != 0xff && mask != 0xffff && mask != 0xffffffffL) {
+
+        long mask = constant.asJavaConstant().asLong() & CodeUtil.mask(op.getStackKind().getBitCount());
+        if (mask != 0xFFL && mask != 0xFFFFL && mask != 0xFFFFFFFFL) {
             return null;
         }
-        ExtendType extType = getZeroExtendType(Long.toBinaryString(mask).length());
-        return emitExtendedAddSubShift(op, x, y, extType, 0);
+
+        int numBits = 64 - Long.numberOfLeadingZeros(mask);
+        return emitExtendedAddSubShift(op, x, y, getZeroExtendType(numBits), 0);
     }
 
+    /**
+     * Goal: Use AArch64's add/sub (extended register) instruction.
+     */
     @MatchRule("(Add=op x (SignExtend=ext y))")
     @MatchRule("(Sub=op x (SignExtend=ext y))")
     @MatchRule("(Add=op x (ZeroExtend=ext y))")
     @MatchRule("(Sub=op x (ZeroExtend=ext y))")
     public ComplexMatchResult mergeSignExtendIntoAddSub(BinaryNode op, UnaryNode ext, ValueNode x, ValueNode y) {
+        if (!isSupportedExtendedAddSubShift((IntegerConvertNode<?, ?>) ext, 0)) {
+            return null;
+        }
+
         ExtendType extType;
         if (ext instanceof SignExtendNode) {
             extType = getSignExtendType(((SignExtendNode) ext).getInputBits());
@@ -675,11 +898,16 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
         return emitExtendedAddSubShift(op, x, y, extType, 0);
     }
 
+    /**
+     * Goal: Remove narrow, since it does not affect the not/negate.
+     *
+     * GR-33732: remove once emitNarrow changes are merged.
+     */
     @MatchRule("(Negate=unary (Narrow=narrow value))")
     @MatchRule("(Not=unary (Narrow=narrow value))")
     public ComplexMatchResult elideL2IForUnary(UnaryNode unary, NarrowNode narrow) {
         assert isNumericInteger(unary);
-        if (!isNarrowingLongToInt(narrow)) {
+        if (!isL2INarrow(narrow)) {
             return null;
         }
 
@@ -694,6 +922,9 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
         };
     }
 
+    /**
+     * Goal: Use AArch64's multiple-negate (mneg) instruction.
+     */
     @MatchRule("(Mul (Negate a) b)")
     @MatchRule("(Negate (Mul a b))")
     public final ComplexMatchResult multiplyNegate(ValueNode a, ValueNode b) {
@@ -703,6 +934,9 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
         return null;
     }
 
+    /**
+     * Goal: Use AArch64's multiply-add (madd) and multiply-subtract (msub) instructions.
+     */
     @MatchRule("(Add=binary (Mul a b) c)")
     @MatchRule("(Sub=binary c (Mul a b))")
     public final ComplexMatchResult multiplyAddSub(BinaryNode binary, ValueNode a, ValueNode b, ValueNode c) {
@@ -717,7 +951,7 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
     }
 
     /**
-     * ((x & (1 << n)) == 0) -> tbz/tbnz n label.
+     * Goal: Transform ((x & (1 << n)) == 0) -> (tbz/tbnz n label).
      */
     @MatchRule("(If (IntegerTest value Constant=a))")
     public ComplexMatchResult testBitAndBranch(IfNode root, ValueNode value, ConstantNode a) {
@@ -732,7 +966,7 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
     }
 
     /**
-     * if x < 0 <=> tbz x, sizeOfBits(x) - 1, label.
+     * Goal: Transform (if x < 0) -> (tbz x, sizeOfBits(x) - 1, label).
      */
     @MatchRule("(If (IntegerLessThan=lessNode x Constant=y))")
     public ComplexMatchResult checkNegativeAndBranch(IfNode root, IntegerLessThanNode lessNode, ValueNode x, ConstantNode y) {
@@ -744,6 +978,9 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
         return null;
     }
 
+    /**
+     * Goal: Use directly AArch64's single-precision fsqrt op.
+     */
     @MatchRule("(FloatConvert=a (Sqrt (FloatConvert=b c)))")
     public final ComplexMatchResult floatSqrt(FloatConvertNode a, FloatConvertNode b, ValueNode c) {
         if (isNumericFloat(a, c)) {
@@ -754,6 +991,11 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
         return null;
     }
 
+    /**
+     * Goal: Remove unneeded narrow before extension.
+     *
+     * GR-33732: remove once emitNarrow changes are merged.
+     */
     @MatchRule("(SignExtend=extend (Narrow value))")
     @MatchRule("(ZeroExtend=extend (Narrow value))")
     public ComplexMatchResult mergeNarrowExtend(UnaryNode extend, ValueNode value) {

@@ -145,7 +145,8 @@ public final class Target_java_lang_reflect_Array {
     }
 
     @Substitution
-    public static boolean getBoolean(@JavaType(Object.class) StaticObject array, int index, @Inject Meta meta,
+    public static boolean getBoolean(@JavaType(Object.class) StaticObject array, int index,
+                    @Inject Meta meta,
                     @Inject SubstitutionProfiler profiler) {
         if (StaticObject.isNull(array)) {
             profiler.profile(0);
@@ -153,7 +154,7 @@ public final class Target_java_lang_reflect_Array {
         }
         // `getBoolean` should only access boolean arrays
         Klass arrayKlass = array.getKlass();
-        if (arrayKlass != arrayKlass.getMeta()._boolean_array) {
+        if (arrayKlass != meta._boolean_array) {
             profiler.profile(1);
             throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }
@@ -293,7 +294,7 @@ public final class Target_java_lang_reflect_Array {
         // host `setByte` can write in all primitive arrays beside boolean array
         // `setBoolean` should only access boolean arrays
         Klass arrayKlass = array.getKlass();
-        if (arrayKlass != arrayKlass.getMeta()._boolean_array) {
+        if (arrayKlass != meta._boolean_array) {
             profiler.profile(1);
             throw meta.throwException(meta.java_lang_IllegalArgumentException);
         }

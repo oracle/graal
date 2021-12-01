@@ -111,11 +111,6 @@ public class LoweringPhase extends BasePhase<CoreProviders> {
             updateUsagesInterface(this.guard, guard);
             this.guard = guard;
         }
-
-        @Override
-        public ValueNode asNode() {
-            return this;
-        }
     }
 
     @Override
@@ -190,11 +185,12 @@ public class LoweringPhase extends BasePhase<CoreProviders> {
 
         @Override
         public FixedWithNextNode lastFixedNode() {
+            GraalError.guarantee(lastFixedNode.isAlive(), "The last fixed node %s was deleted by a previous lowering", lastFixedNode);
             return lastFixedNode;
         }
 
         private void setLastFixedNode(FixedWithNextNode n) {
-            assert n.isAlive() : n;
+            GraalError.guarantee(n.isAlive(), "Cannot add last fixed node %s because it is not alive", n);
             lastFixedNode = n;
         }
     }
@@ -236,8 +232,20 @@ public class LoweringPhase extends BasePhase<CoreProviders> {
     protected void run(final StructuredGraph graph, CoreProviders context) {
         lower(graph, context, LoweringMode.LOWERING);
         assert checkPostLowering(graph, context);
-        if (loweringStage == LoweringTool.StandardLoweringStage.HIGH_TIER) {
-            graph.setAfterStage(StageFlag.HIGH_TIER);
+        if (loweringStage instanceof LoweringTool.StandardLoweringStage) {
+            switch ((LoweringTool.StandardLoweringStage) loweringStage) {
+                case HIGH_TIER:
+                    graph.setAfterStage(StageFlag.HIGH_TIER_LOWERING);
+                    break;
+                case MID_TIER:
+                    graph.setAfterStage(StageFlag.MID_TIER_LOWERING);
+                    break;
+                case LOW_TIER:
+                    graph.setAfterStage(StageFlag.LOW_TIER_LOWERING);
+                    break;
+                default:
+                    GraalError.shouldNotReachHere("unexpected lowering stage");
+            }
         }
     }
 
@@ -370,7 +378,7 @@ public class LoweringPhase extends BasePhase<CoreProviders> {
 
         @Override
         public void run(StructuredGraph graph) {
-            schedulePhase.apply(graph, false);
+            schedulePhase.apply(graph, context, false);
             schedule = graph.getLastSchedule();
             schedule.getCFG().computePostdominators();
             Block startBlock = schedule.getCFG().getStartBlock();

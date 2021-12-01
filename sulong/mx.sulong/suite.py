@@ -184,8 +184,6 @@ suite = {
       "license" : "BSD-new",
       "testProject" : True,
       "jacoco" : "exclude",
-      # TODO Remove deprecated ReferenceLibrary. [GR-24632]
-      "javac.lint.overrides" : "-deprecation",
     },
     "com.oracle.truffle.llvm.tests.native" : {
       "subDir" : "tests",
@@ -335,7 +333,7 @@ suite = {
       "workingSets" : "Truffle, LLVM",
       "license" : "BSD-new",
       "jacoco" : "include",
-      # TODO Remove deprecated ReferenceLibrary. [GR-24632]
+      # Using finalizer in signals implementation. GR-7018
       "javac.lint.overrides" : "-deprecation",
     },
 
@@ -655,7 +653,7 @@ suite = {
         "SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME",
       ],
       "cmakeConfig" : {
-        "CMAKE_OSX_DEPLOYMENT_TARGET" : "10.12",
+        "CMAKE_OSX_DEPLOYMENT_TARGET" : "10.13",
         "CMAKE_C_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang>",
         "CMAKE_CXX_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang++>",
         "GRAALVM_LLVM_INCLUDE_DIR" : "<path:com.oracle.truffle.llvm.libraries.graalvm.llvm>/include",
@@ -706,7 +704,7 @@ suite = {
         "com.oracle.truffle.llvm.libraries.graalvm.llvm",
       ],
       "cmakeConfig" : {
-        "CMAKE_OSX_DEPLOYMENT_TARGET" : "10.12",
+        "CMAKE_OSX_DEPLOYMENT_TARGET" : "10.13",
         "CMAKE_C_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/<cmd:clang>",
         "GRAALVM_LLVM_INCLUDE_DIR" : "<path:com.oracle.truffle.llvm.libraries.graalvm.llvm>/include",
         "LLVM_LINK" : "<path:LLVM_TOOLCHAIN>/bin/<exe:llvm-link>",
@@ -731,7 +729,7 @@ suite = {
         "sdk:LLVM_TOOLCHAIN",
       ],
       "cmakeConfig" : {
-        "CMAKE_OSX_DEPLOYMENT_TARGET" : "10.12",
+        "CMAKE_OSX_DEPLOYMENT_TARGET" : "10.13",
         "CMAKE_C_COMPILER" : "<path:LLVM_TOOLCHAIN>/bin/<exe:clang>",
         "TRUFFLE_NFI_NATIVE_INCLUDE" : "<path:truffle:TRUFFLE_NFI_NATIVE>/include",
         "CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS" : "YES",
@@ -762,7 +760,7 @@ suite = {
       # NinjaBuildTask uses only 1 job otherwise
       "max_jobs" : "8",
       "ninja_targets" : ["<lib:c++abi>", "<lib:c++>"],
-      "ninja_install_targets" : ["install-libcxxabi", "install-libcxx"],
+      "ninja_install_targets" : ["install-cxxabi", "install-cxx"],
       "results" : ["native"],
       "cmakeConfig" : {
         "LLVM_ENABLE_PROJECTS" : "libcxx;libcxxabi",
@@ -848,7 +846,6 @@ suite = {
       ],
       "buildDependencies" : [
         "SULONG_HOME",
-        "LINUX_AMD64_SUPPORT",
       ],
       "testProject" : True,
       "defaultBuild" : False,
@@ -893,7 +890,7 @@ suite = {
     "com.oracle.truffle.llvm.tests.sulong.native" : {
       "subDir" : "tests",
       "class" : "SulongCMakeTestSuite",
-      "variants" : ["bitcode-O0", "bitcode-O0-MISC_OPTS", "bitcode-O1", "bitcode-O2", "bitcode-O3", "gcc-O0"],
+      "variants" : ["bitcode-O0", "bitcode-O1", "bitcode-O2", "bitcode-O3", "gcc-O0"],
       "cmakeConfig" : {
         "CMAKE_EXE_LINKER_FLAGS" : "-lm",
       },
@@ -948,7 +945,6 @@ suite = {
       "fileExts" : [".ll"],
       "buildRef" : False,
       "buildDependencies" : [
-        "LINUX_AMD64_SUPPORT",
       ],
       "testProject" : True,
       "defaultBuild" : False,

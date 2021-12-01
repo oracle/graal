@@ -78,8 +78,80 @@ JNIEXPORT int JNICALL JVM_GetInterfaceVersion() {
     return JVM_INTERFACE_VERSION;
 }
 
+#ifdef __linux__
+/*
+  Support for cpusets on Linux (JDK-6515172).
+
+  Ported from `os::active_processor_count` in `src/hotspot/os/linux/os_linux.cpp`,
+  omitting HotSpot specific logging statements.
+*/
+
+#include <sched.h>
+
+#define assert(p, ...)
+
+// Get the current number of available processors for this process.
+// This value can change at any time during a process's lifetime.
+// sched_getaffinity gives an accurate answer as it accounts for cpusets.
+// If it appears there may be more than 1024 processors then we do a
+// dynamic check - see 6515172 for details.
+// If anything goes wrong we fallback to returning the number of online
+// processors - which can be greater than the number available to the process.
+static int linux_active_processor_count() {
+  cpu_set_t cpus;  // can represent at most 1024 (CPU_SETSIZE) processors
+  cpu_set_t* cpus_p = &cpus;
+  int cpus_size = sizeof(cpu_set_t);
+
+  int configured_cpus = sysconf(_SC_NPROCESSORS_CONF);  // upper bound on available cpus
+  int cpu_count = 0;
+
+#if 0 /* Disabled due to GR-33678 */
+  if (configured_cpus >= CPU_SETSIZE) {
+    // kernel may use a mask bigger than cpu_set_t
+    cpus_p = CPU_ALLOC(configured_cpus);
+    if (cpus_p != NULL) {
+      cpus_size = CPU_ALLOC_SIZE(configured_cpus);
+      // zero it just to be safe
+      CPU_ZERO_S(cpus_size, cpus_p);
+    }
+    else {
+      // failed to allocate so fallback to online cpus
+      int online_cpus = sysconf(_SC_NPROCESSORS_ONLN);
+      return online_cpus;
+    }
+  }
+#endif /* GR-33678 */
+
+  // pid 0 means the current thread - which we have to assume represents the process
+  if (sched_getaffinity(0, cpus_size, cpus_p) == 0) {
+    if (cpus_p != &cpus) {
+      cpu_count = CPU_COUNT_S(cpus_size, cpus_p);
+    }
+    else {
+      cpu_count = CPU_COUNT(cpus_p);
+    }
+  }
+  else {
+    cpu_count = sysconf(_SC_NPROCESSORS_ONLN);
+  }
+
+#if 0 /* Disabled due to GR-33678 */
+  if (cpus_p != &cpus) {
+    CPU_FREE(cpus_p);
+  }
+#endif /* GR-33678 */
+
+  assert(cpu_count > 0 && cpu_count <= configured_cpus, "sanity check");
+  return cpu_count;
+}
+#endif /* __linux__ */
+
 JNIEXPORT int JNICALL JVM_ActiveProcessorCount() {
+#ifdef __linux__
+    return linux_active_processor_count();
+#else
     return sysconf(_SC_NPROCESSORS_ONLN);
+#endif
 }
 
 JNIEXPORT int JNICALL JVM_Connect(int fd, struct sockaddr* him, socklen_t len) {
@@ -185,19 +257,19 @@ JNIEXPORT jlong JNICALL JVM_NanoTime(void *env, void * ignored) {
 }
 
 JNIEXPORT jlong JNICALL JVM_GetNanoTimeAdjustment(void *env, void * ignored, jlong offset_secs) {
-    long maxDiffSecs = 0x0100000000L;
-    long minDiffSecs = -maxDiffSecs;
+    int64_t maxDiffSecs = 0x0100000000LL;
+    int64_t minDiffSecs = -maxDiffSecs;
     struct timeval time;
     int status = gettimeofday(&time, NULL);
 
-    long seconds = time.tv_sec;
-    long nanos = time.tv_usec * 1000;
+    int64_t seconds = time.tv_sec;
+    int64_t nanos = time.tv_usec * 1000;
 
-    long diff = seconds - offset_secs;
+    int64_t diff = seconds - offset_secs;
     if (diff >= maxDiffSecs || diff <= minDiffSecs) {
         return -1;
     }
-    return diff * 1000000000 + nanos;
+    return diff * 1000000000LL + nanos;
 }
 
 JNIEXPORT jlong JNICALL Java_jdk_internal_misc_VM_getNanoTimeAdjustment(void *env, void * ignored, jlong offset_secs) {

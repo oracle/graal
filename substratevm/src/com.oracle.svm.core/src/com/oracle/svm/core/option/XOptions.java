@@ -68,7 +68,7 @@ public final class XOptions {
         XFlag xFlag = findXFlag(keyAndValue);
         if (xFlag != null) {
             long value = parse(xFlag, keyAndValue, false);
-            RuntimeOptionValues.singleton().update(xFlag.optionKey, value);
+            xFlag.optionKey.update(value);
             return true;
         }
         return false;

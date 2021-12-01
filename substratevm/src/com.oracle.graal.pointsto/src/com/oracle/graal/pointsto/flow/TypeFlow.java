@@ -39,8 +39,12 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.results.StaticAnalysisResultsBuilder;
 import com.oracle.graal.pointsto.typestate.PointsToStats;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.graal.pointsto.typestate.TypeStateUtils;
 import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
+import com.oracle.svm.util.ClassUtil;
+
+import jdk.vm.ci.code.BytecodePosition;
 
 @SuppressWarnings("rawtypes")
 public abstract class TypeFlow<T> {
@@ -195,7 +199,7 @@ public abstract class TypeFlow<T> {
         return usedAsAReceiver;
     }
 
-    /** Some flow have a reciver (e.g., loads, store and invokes). */
+    /** Some flows have a receiver (e.g., loads, store and invokes). */
     public TypeFlow<?> receiver() {
         return null;
     }
@@ -236,13 +240,9 @@ public abstract class TypeFlow<T> {
         return this instanceof AllInstantiatedTypeFlow;
     }
 
-    public boolean isCloseToAllInstantiated(PointsToAnalysis bb) {
-        return this.getState().closeToAllInstantiated(bb);
-    }
-
     public void setState(PointsToAnalysis bb, TypeState state) {
         assert !bb.extendedAsserts() || this instanceof InstanceOfTypeFlow ||
-                        state.verifyDeclaredType(declaredType) : "declaredType: " + declaredType.toJavaName(true) + " state: " + state;
+                        state.verifyDeclaredType(bb, declaredType) : "declaredType: " + declaredType.toJavaName(true) + " state: " + state;
         this.state = state;
     }
 
@@ -332,13 +332,13 @@ public abstract class TypeFlow<T> {
              */
             return true;
         }
-        assert after.verifyDeclaredType(declaredType) : String.format("The type state of %s contains types that are not assignable from its declared type %s. " +
-                        "%nState before: %s. %nState after: %s", formatFlow(false), declaredType.toJavaName(true), formatState(bb, before), formatState(bb, after));
+        assert after.verifyDeclaredType(bb, declaredType) : String.format("The type state of %s contains types that are not assignable from its declared type %s. " +
+                        "%nState before: %s. %nState after: %s", format(false, true), declaredType.toJavaName(true), formatState(bb, before), formatState(bb, after));
         return true;
     }
 
     private static String formatState(PointsToAnalysis bb, TypeState typeState) {
-        if (typeState.closeToAllInstantiated(bb)) {
+        if (TypeStateUtils.closeToAllInstantiated(bb, typeState)) {
             return "close to AllInstantiated";
         }
         return typeState.toString();
@@ -692,13 +692,24 @@ public abstract class TypeFlow<T> {
          */
     }
 
-    private String formatFlow(boolean withState) {
-        return getClass().getName() + '<' + source + (withState ? ": " + getState() : "") + '>';
+    public String formatSource() {
+        if (source instanceof BytecodePosition) {
+            BytecodePosition position = (BytecodePosition) source;
+            return position.getMethod().asStackTraceElement(position.getBCI()).toString();
+        }
+        if (source == null && method() != null) {
+            return method().asStackTraceElement(-1).toString();
+        }
+        return "<unknown-position>";
+    }
+
+    public String format(boolean withState, boolean withSource) {
+        return ClassUtil.getUnqualifiedName(getClass()) + (withSource ? " at " + formatSource() : "") + (withState ? " with state <" + getState() + '>' : "");
     }
 
     @Override
     public String toString() {
-        return formatFlow(true);
+        return format(true, true);
     }
 
     @Override

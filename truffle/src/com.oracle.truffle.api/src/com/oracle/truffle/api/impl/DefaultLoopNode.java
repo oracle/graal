@@ -58,12 +58,6 @@ public final class DefaultLoopNode extends LoopNode {
         return repeatNode;
     }
 
-    @SuppressWarnings("deprecation")
-    @Override
-    public void executeLoop(VirtualFrame frame) {
-        execute(frame);
-    }
-
     @Override
     public Object execute(VirtualFrame frame) {
         Object status;

@@ -67,6 +67,7 @@ import com.oracle.truffle.espresso.impl.KeysArray;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
 import com.oracle.truffle.espresso.nodes.interop.LookupInstanceFieldNode;
@@ -595,7 +596,7 @@ public class EspressoInterop extends BaseInterop {
                 String s = interopLibrary.asString(value);
                 if (s.length() != 1) {
                     error.enter();
-                    String message = "Expected a string of length 1 as an element of char array, got " + s;
+                    String message = EspressoError.format("Expected a string of length 1 as an element of char array, got %s", s);
                     throw UnsupportedTypeException.create(new Object[]{value}, message);
                 }
                 charValue = s.charAt(0);
@@ -952,6 +953,7 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
+    @TruffleBoundary
     static Object getMembers(StaticObject receiver,
                     @SuppressWarnings("unused") boolean includeInternal) {
         receiver.checkNotForeign();

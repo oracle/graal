@@ -464,7 +464,7 @@ public final class NonmovableArrays {
             assert refSize == (1 << readElementShift(array));
             Pointer p = ((Pointer) array).add(readArrayBase(array)).add(startIndex * refSize);
             for (int i = 0; i < count; i++) {
-                if (!visitor.visitObjectReference(p, true)) {
+                if (!visitor.visitObjectReference(p, true, null)) {
                     return false;
                 }
                 p = p.add(refSize);

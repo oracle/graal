@@ -973,9 +973,12 @@ public abstract class Launcher {
 
     private void printOption(String option, String description, int indentStart, int optionWidth) {
         String indent = spaces(indentStart);
-        String desc = wrap(description != null ? description : "");
+        String desc = description != null ? description : "";
         String nl = System.lineSeparator();
         String[] descLines = desc.split(nl);
+        for (int i = 0; i < descLines.length; i++) {
+            descLines[i] = wrap(descLines[i]);
+        }
         if (option.length() >= optionWidth && description != null) {
             out.println(indent + option + nl + indent + spaces(optionWidth) + descLines[0]);
         } else {
@@ -1115,7 +1118,8 @@ public abstract class Launcher {
      *
      * @param originalArgs the original arguments from main(), unmodified.
      * @param unrecognizedArgs a subset of {@code originalArgs} that was not recognized by
-     *            {@link AbstractLanguageLauncher#preprocessArguments(List, Map)}.
+     *            {@link AbstractLanguageLauncher#preprocessArguments(List, Map)}. All arguments
+     *            recognized by maybeExec are removed from the list.
      * @param isPolyglotLauncher whether this is the {@link PolyglotLauncher} (bin/polyglot)
      * @since 20.0
      */
@@ -1123,10 +1127,10 @@ public abstract class Launcher {
         if (!IS_AOT) {
             return;
         }
-        maybeExec(originalArgs, unrecognizedArgs, isPolyglotLauncher, getDefaultVMType());
+        maybeExec(originalArgs, unrecognizedArgs, isPolyglotLauncher, getDefaultVMType(), false);
     }
 
-    void maybeExec(List<String> originalArgs, List<String> unrecognizedArgs, boolean isPolyglotLauncher, VMType defaultVmType) {
+    void maybeExec(List<String> originalArgs, List<String> unrecognizedArgs, boolean isPolyglotLauncher, VMType defaultVmType, boolean vmArgsApplied) {
         assert isAOT();
         VMType vmType = null;
         boolean polyglot = false;
@@ -1191,8 +1195,14 @@ public abstract class Launcher {
         } else {
             assert vmType == VMType.Native;
 
-            for (String vmOption : vmOptions) {
-                nativeAccess.setNativeOption(vmOption);
+            /*
+             * If the VM args have already been applied (e.g. by the native launcher), there is no
+             * need to set them again at runtime
+             */
+            if (!vmArgsApplied) {
+                for (String vmOption : vmOptions) {
+                    nativeAccess.setNativeOption(vmOption);
+                }
             }
             /*
              * All options are processed, now we can run the startup hooks that can depend on the
@@ -1620,41 +1630,47 @@ public abstract class Launcher {
         Path usedPath = path;
         Path fileNamePath = path.getFileName();
         String fileName = fileNamePath == null ? "" : fileNamePath.toString();
-        Path lockFile = null;
-        FileChannel lockFileChannel = null;
-        for (int unique = 0;; unique++) {
-            StringBuilder lockFileNameBuilder = new StringBuilder(fileName);
-            if (unique > 0) {
-                lockFileNameBuilder.append(unique);
-                usedPath = path.resolveSibling(lockFileNameBuilder.toString());
+        OutputStream outputStream;
+        if (Files.exists(path) && !Files.isRegularFile(path)) {
+            // Don't try to lock device or named pipe.
+            outputStream = new BufferedOutputStream(Files.newOutputStream(usedPath, WRITE, CREATE, APPEND));
+        } else {
+            Path lockFile = null;
+            FileChannel lockFileChannel = null;
+            for (int unique = 0;; unique++) {
+                StringBuilder lockFileNameBuilder = new StringBuilder(fileName);
+                if (unique > 0) {
+                    lockFileNameBuilder.append(unique);
+                    usedPath = path.resolveSibling(lockFileNameBuilder.toString());
+                }
+                lockFileNameBuilder.append(".lck");
+                lockFile = path.resolveSibling(lockFileNameBuilder.toString());
+                Pair<FileChannel, Boolean> openResult = openChannel(lockFile);
+                if (openResult != null) {
+                    lockFileChannel = openResult.getLeft();
+                    if (lock(lockFileChannel, openResult.getRight())) {
+                        break;
+                    } else {
+                        // Close and try next name
+                        lockFileChannel.close();
+                    }
+                }
             }
-            lockFileNameBuilder.append(".lck");
-            lockFile = path.resolveSibling(lockFileNameBuilder.toString());
-            Pair<FileChannel, Boolean> openResult = openChannel(lockFile);
-            if (openResult != null) {
-                lockFileChannel = openResult.getLeft();
-                if (lock(lockFileChannel, openResult.getRight())) {
-                    break;
-                } else {
-                    // Close and try next name
-                    lockFileChannel.close();
+            assert lockFile != null && lockFileChannel != null;
+            boolean success = false;
+            try {
+                outputStream = new LockableOutputStream(
+                                new BufferedOutputStream(Files.newOutputStream(usedPath, WRITE, CREATE, APPEND)),
+                                lockFile,
+                                lockFileChannel);
+                success = true;
+            } finally {
+                if (!success) {
+                    LockableOutputStream.unlock(lockFile, lockFileChannel);
                 }
             }
         }
-        assert lockFile != null && lockFileChannel != null;
-        boolean success = false;
-        try {
-            OutputStream stream = new LockableOutputStream(
-                            new BufferedOutputStream(Files.newOutputStream(usedPath, WRITE, CREATE, APPEND)),
-                            lockFile,
-                            lockFileChannel);
-            success = true;
-            return stream;
-        } finally {
-            if (!success) {
-                LockableOutputStream.unlock(lockFile, lockFileChannel);
-            }
-        }
+        return outputStream;
     }
 
     private static Pair<FileChannel, Boolean> openChannel(Path path) throws IOException {

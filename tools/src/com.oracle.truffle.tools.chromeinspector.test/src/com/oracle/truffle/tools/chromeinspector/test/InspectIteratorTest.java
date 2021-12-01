@@ -26,6 +26,7 @@ package com.oracle.truffle.tools.chromeinspector.test;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.Future;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
@@ -42,7 +43,7 @@ public class InspectIteratorTest extends AbstractFunctionValueTest {
     @Test
     public void testIteratorChildren() throws Exception {
         List<Integer> list = Arrays.asList(1, 2, 3);
-        runWith(new TestIteratorObject(false, true, list));
+        Future<?> run = runWith(new TestIteratorObject(false, true, list));
 
         tester.sendMessage("{\"id\":5,\"method\":\"Runtime.getProperties\",\"params\":{\"objectId\":\"1\"}}");
         assertTrue(tester.compareReceivedMessages(
@@ -56,6 +57,7 @@ public class InspectIteratorTest extends AbstractFunctionValueTest {
         assertTrue(tester.compareReceivedMessages(
                         "{\"result\":{},\"id\":20}\n" +
                         "{\"method\":\"Debugger.resumed\"}\n"));
+        run.get();
         tester.finish();
     }
 

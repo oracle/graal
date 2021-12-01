@@ -70,7 +70,6 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.java.BytecodeParser;
-import org.graalvm.compiler.java.ComputeLoopFrequenciesClosure;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.phases.LIRSuites;
@@ -266,23 +265,6 @@ public abstract class GraalCompilerTest extends GraalTest {
              */
             iter = ret.getHighTier().findPhase(CanonicalizerPhase.class);
         }
-        iter.add(new Phase() {
-
-            @Override
-            protected void run(StructuredGraph graph) {
-                ComputeLoopFrequenciesClosure.compute(graph);
-            }
-
-            @Override
-            public float codeSizeIncrease() {
-                return NodeSize.IGNORE_SIZE_CONTRACT_FACTOR;
-            }
-
-            @Override
-            protected CharSequence getName() {
-                return "ComputeLoopFrequenciesPhase";
-            }
-        });
         ret.getHighTier().appendPhase(new Phase() {
 
             @Override
@@ -496,8 +478,8 @@ public abstract class GraalCompilerTest extends GraalTest {
     }
 
     protected static String getCanonicalGraphString(StructuredGraph graph, boolean excludeVirtual, boolean checkConstants) {
-        SchedulePhase schedule = new SchedulePhase(SchedulingStrategy.EARLIEST);
-        schedule.apply(graph);
+        SchedulePhase.runWithoutContextOptimizations(graph, SchedulingStrategy.EARLIEST);
+
         ScheduleResult scheduleResult = graph.getLastSchedule();
 
         NodeMap<Integer> canonicalId = graph.createNodeMap();
@@ -575,8 +557,7 @@ public abstract class GraalCompilerTest extends GraalTest {
      * @return a scheduled textual dump of {@code graph} .
      */
     protected static String getScheduledGraphString(StructuredGraph graph) {
-        SchedulePhase schedule = new SchedulePhase(SchedulingStrategy.EARLIEST_WITH_GUARD_ORDER);
-        schedule.apply(graph);
+        SchedulePhase.runWithoutContextOptimizations(graph, SchedulingStrategy.EARLIEST_WITH_GUARD_ORDER);
         ScheduleResult scheduleResult = graph.getLastSchedule();
 
         StringBuilder result = new StringBuilder();

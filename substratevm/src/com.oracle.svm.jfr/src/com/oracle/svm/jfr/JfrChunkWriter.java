@@ -125,7 +125,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
 
     @Uninterruptible(reason = "Prevent safepoints as those could change the top pointer.")
     public boolean write(JfrBuffer buffer) {
-        assert (JfrBufferAccess.isAcquired(buffer) || VMOperation.isInProgressAtSafepoint());
+        assert JfrBufferAccess.isAcquired(buffer) || VMOperation.isInProgressAtSafepoint() || buffer.getBufferType() == JfrBufferType.C_HEAP;
         UnsignedWord unflushedSize = JfrBufferAccess.getUnflushedSize(buffer);
         if (unflushedSize.equal(0)) {
             return false;
@@ -141,19 +141,23 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     }
 
     /**
-     * We are writing all the in-memory data to the file. However, even though we are at a
-     * safepoint, further JFR events can still be triggered by the current thread at any time. This
-     * includes allocation and GC events. Therefore, it is necessary that we switch to a new epoch
-     * in uninterruptible code at a safepoint.
+     * Write all the in-memory data to the file.
      */
     public void closeFile(byte[] metadataDescriptor, JfrConstantPool[] repositories) {
         assert lock.isHeldByCurrentThread();
-        JfrCloseFileOperation op = new JfrCloseFileOperation();
+
+        /*
+         * Switch to a new epoch. This is done at a safepoint to ensure that we end up with
+         * consistent data, even if multiple threads have JFR events in progress.
+         */
+        JfrChangeEpochOperation op = new JfrChangeEpochOperation();
         op.enqueue();
 
-        // JfrCloseFileOperation will switch to a new epoch so data for the old epoch will not
-        // be modified by other threads and can be written without a safepoint
-
+        /**
+         * After changing the epoch, all subsequently triggered JFR events will be recorded into the
+         * data structures of the new epoch. This guarantees that the data in the old epoch can be
+         * persisted to a file without a safepoint.
+         */
         SignedWord constantPoolPosition = writeCheckpointEvent(repositories);
         SignedWord metadataPosition = writeMetadataEvent(metadataDescriptor);
         patchFileHeader(constantPoolPosition, metadataPosition);
@@ -164,7 +168,7 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
     }
 
     private void writeFileHeader() {
-        // Write the header - some of the data gets patched later on.
+        // Write the header - some data gets patched later on.
         getFileSupport().write(fd, FILE_MAGIC);
         getFileSupport().writeShort(fd, JFR_VERSION_MAJOR);
         getFileSupport().writeShort(fd, JFR_VERSION_MINOR);
@@ -334,8 +338,8 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         if (str.isEmpty()) {
             getFileSupport().writeByte(fd, StringEncoding.EMPTY_STRING.byteValue);
         } else {
-            getFileSupport().writeByte(fd, StringEncoding.UTF8_BYTE_ARRAY.byteValue);
             byte[] bytes = str.getBytes(StandardCharsets.UTF_8);
+            getFileSupport().writeByte(fd, StringEncoding.UTF8_BYTE_ARRAY.byteValue);
             writeCompressedInt(bytes.length);
             getFileSupport().write(fd, bytes);
         }
@@ -360,11 +364,9 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
         }
     }
 
-    private class JfrCloseFileOperation extends JavaVMOperation {
-        protected JfrCloseFileOperation() {
-            // Some of the JDK code that deals with files uses Java synchronization. So, we need to
-            // allow Java synchronization for this VM operation.
-            super("JFR close file", SystemEffect.SAFEPOINT);
+    private class JfrChangeEpochOperation extends JavaVMOperation {
+        protected JfrChangeEpochOperation() {
+            super("JFR change epoch", SystemEffect.SAFEPOINT);
         }
 
         @Override
@@ -402,6 +404,13 @@ public final class JfrChunkWriter implements JfrUnlockedChunkWriter {
                 JfrBufferAccess.reinitialize(buffer);
             }
             JfrTraceIdEpoch.getInstance().changeEpoch();
+
+            // Now that the epoch changed, re-register all running threads for the new epoch.
+            SubstrateJVM.getThreadRepo().registerRunningThreads();
         }
+    }
+
+    public long getChunkStartNanos() {
+        return chunkStartNanos;
     }
 }

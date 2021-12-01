@@ -58,7 +58,6 @@ import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
-import org.graalvm.compiler.nodes.KillingBeginNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -81,7 +80,6 @@ import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.word.WordTypes;
-import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.JavaKind;
@@ -371,7 +369,7 @@ public class GraphKit extends CoreProvidersDelegate implements GraphBuilderTool 
 
         StructuredGraph calleeGraph;
         if (IS_IN_NATIVE_IMAGE) {
-            calleeGraph = getReplacements().getSnippet(method, null, null, false, null, invokeNode.getOptions());
+            calleeGraph = getReplacements().getSnippet(method, null, null, null, false, null, invokeNode.getOptions());
         } else {
             calleeGraph = new StructuredGraph.Builder(invokeNode.getOptions(), invokeNode.getDebug()).method(method).trackNodeSourcePosition(
                             invokeNode.graph().trackNodeSourcePosition()).setIsSubstitution(true).build();
@@ -569,7 +567,7 @@ public class GraphKit extends CoreProvidersDelegate implements GraphBuilderTool 
     public InvokeWithExceptionNode startInvokeWithException(MethodCallTargetNode callTarget, FrameStateBuilder frameStateBuilder, int invokeBci) {
         ExceptionObjectNode exceptionObject = createExceptionObjectNode(frameStateBuilder, invokeBci);
         InvokeWithExceptionNode invoke = append(new InvokeWithExceptionNode(callTarget, exceptionObject, invokeBci));
-        AbstractBeginNode noExceptionEdge = graph.add(KillingBeginNode.create(LocationIdentity.any()));
+        AbstractBeginNode noExceptionEdge = graph.add(new BeginNode());
         invoke.setNext(noExceptionEdge);
         pushForStateSplit(frameStateBuilder, invokeBci, invoke);
         lastFixedNode = null;

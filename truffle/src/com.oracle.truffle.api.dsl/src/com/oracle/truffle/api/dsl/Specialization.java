@@ -262,9 +262,13 @@ public @interface Specialization {
      * <b>Example usage:</b>
      *
      * <pre>
-     * static boolean acceptOperand(int operand) { assert operand <= 42; return operand & 1 ==
-     * 1; } &#064;Specialization(guards = {"operand <= 42", "acceptOperand(operand)"}) void
-     * doSpecialization(int operand) {...}
+     * static boolean acceptOperand(int operand) {
+     *     assert operand <= 42;
+     *     return (operand & 1) == 1;
+     * }
+     *
+     * &#64;Specialization(guards = {"operand <= 42", "acceptOperand(operand)"})
+     * void doSpecialization(int operand) {...}
      * </pre>
      *
      * </p>
@@ -305,11 +309,11 @@ public @interface Specialization {
      * <b>Example usage:</b>
      *
      * <pre>
-     * abstract static class DynamicObject() { abstract Shape getShape(); ... } static
-     * abstract class Shape() { abstract Assumption getUnmodifiedAssuption(); ... }
-     * &#064;Specialization(guards = "operand.getShape() == cachedShape", assumptions =
-     * "cachedShape.getUnmodifiedAssumption()") void doAssumeUnmodifiedShape(DynamicObject
-     * operand, @Cached("operand.getShape()") Shape cachedShape) {...}
+     * abstract static class DynamicObject() { abstract Shape getShape(); ... }
+     * abstract static class Shape() { abstract Assumption getUnmodifiedAssuption(); ... }
+     *
+     * &#64;Specialization(guards = "operand.getShape() == cachedShape", assumptions = "cachedShape.getUnmodifiedAssumption()")
+     * void doAssumeUnmodifiedShape(DynamicObject operand, @Cached("operand.getShape()") Shape cachedShape) {...}
      * </pre>
      *
      * </p>
@@ -350,10 +354,12 @@ public @interface Specialization {
      * <b>Example usage:</b>
      *
      * <pre>
-     * static int getCacheLimit() { return
-     * Integer.parseInt(System.getProperty("language.cacheLimit")); } &#064;Specialization(guards =
-     * "operand == cachedOperand", limit = "getCacheLimit()") void doCached(Object
-     * operand, @Cached("operand") Object cachedOperand) {...}
+     * static int getCacheLimit() {
+     *     return Integer.parseInt(System.getProperty("language.cacheLimit"));
+     * }
+     *
+     * &#64;Specialization(guards = "operand == cachedOperand", limit = "getCacheLimit()")
+     * void doCached(Object operand, @Cached("operand") Object cachedOperand) {...}
      * </pre>
      *
      * </p>

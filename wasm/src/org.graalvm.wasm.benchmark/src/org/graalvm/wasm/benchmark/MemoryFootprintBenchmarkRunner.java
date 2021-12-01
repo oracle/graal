@@ -41,6 +41,7 @@
 package org.graalvm.wasm.benchmark;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.utils.WasmResource;
 import org.graalvm.wasm.utils.cases.WasmCase;
 
@@ -111,7 +112,7 @@ public class MemoryFootprintBenchmarkRunner {
             final WasmCase benchmarkCase = collectFileCase(BENCHCASES_TYPE, BENCHCASES_RESOURCE, caseSpec);
             assert benchmarkCase != null : String.format("Test case %s/%s not found.", BENCHCASES_RESOURCE, caseSpec);
 
-            final Context.Builder contextBuilder = Context.newBuilder("wasm");
+            final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
 
             final List<Double> results = new ArrayList<>();
 

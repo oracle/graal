@@ -44,15 +44,22 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 import org.junit.Assume;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.test.CompileImmediatelyCheck;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 /*
  * Please note that any OOME exceptions when running this test indicate memory leaks in Truffle.
  * This test requires -Xmx32M to reliably fail.
  */
 public class GR30288Test {
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     @Test
     public void test() throws Exception {

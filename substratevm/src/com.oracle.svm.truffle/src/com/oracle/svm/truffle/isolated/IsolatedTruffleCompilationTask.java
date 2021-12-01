@@ -67,32 +67,32 @@ final class IsolatedTruffleCompilationTask extends IsolatedObjectProxy<TruffleCo
         return hasNextTier0(IsolatedCompileContext.get().getClient(), handle);
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static boolean isCancelled0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<TruffleCompilationTask> taskHandle) {
         return IsolatedCompileClient.get().unhand(taskHandle).isCancelled();
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static boolean isLastTier0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<TruffleCompilationTask> taskHandle) {
         return IsolatedCompileClient.get().unhand(taskHandle).isLastTier();
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static boolean isFirstTier0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<TruffleCompilationTask> taskHandle) {
         return IsolatedCompileClient.get().unhand(taskHandle).isFirstTier();
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static boolean hasNextTier0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<TruffleCompilationTask> taskHandle) {
         return IsolatedCompileClient.get().unhand(taskHandle).hasNextTier();
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static ClientHandle<TruffleInliningData> inliningData0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<TruffleCompilationTask> taskHandle) {
         TruffleInliningData inliningData = IsolatedCompileClient.get().unhand(taskHandle).inliningData();
         return IsolatedCompileClient.get().hand(inliningData);

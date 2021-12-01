@@ -31,8 +31,8 @@ import java.util.Objects;
 import java.util.stream.Stream;
 
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -62,20 +62,20 @@ public class AnnotationTypeFeature implements Feature {
         DuringAnalysisAccessImpl accessImpl = (DuringAnalysisAccessImpl) access;
         AnalysisUniverse universe = accessImpl.getUniverse();
 
-        /*
-         * JDK implementation of repeatable annotations always instantiates an array of a requested
-         * annotation. We need to mark arrays of all reachable annotations as in heap.
-         */
         universe.getTypes().stream()
                         .filter(AnalysisType::isAnnotation)
                         .filter(AnalysisType::isReachable)
                         .map(type -> universe.lookup(type.getWrapped()).getArrayClass())
                         .filter(annotationArray -> !annotationArray.isInstantiated())
                         .forEach(annotationArray -> {
+                            /*
+                             * JDK implementation of repeatable annotations always instantiates an
+                             * array of a requested annotation. We need to mark arrays of all
+                             * reachable annotations as in heap.
+                             */
                             accessImpl.registerAsInHeap(annotationArray);
                             access.requireAnalysisIteration();
                         });
-
         Stream<AnnotatedElement> allElements = Stream.concat(Stream.concat(universe.getFields().stream(), universe.getMethods().stream()), universe.getTypes().stream());
         Stream<AnnotatedElement> newElements = allElements.filter(visitedElements::add);
         newElements.forEach(this::reportAnnotation);

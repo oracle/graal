@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -74,7 +74,7 @@ public final class LLDBSupport {
     public CallTarget getLoadFunction(Type loadType) {
         CallTarget ret = loadFunctionCache.get(loadType);
         if (ret == null) {
-            ret = LLVMLanguage.createCallTarget(new LoadRootNode(this, loadType));
+            ret = new LoadRootNode(this, loadType).getCallTarget();
             loadFunctionCache.put(loadType, ret);
         }
         return ret;

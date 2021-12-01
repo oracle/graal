@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,195 +24,154 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import static com.oracle.svm.core.genscavenge.CollectionPolicy.Options.PercentTimeInIncrementalCollection;
-import static com.oracle.svm.core.genscavenge.HeapPolicy.getMaximumHeapSize;
-import static com.oracle.svm.core.genscavenge.HeapPolicy.getMinimumHeapSize;
-
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.heap.GCCause;
+import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.option.RuntimeOptionKey;
-import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.UserError;
 
-/** A collection policy decides when to collect incrementally or completely. */
-public abstract class CollectionPolicy {
-    public static class Options {
-        @Option(help = "The initial garbage collection policy, as a fully-qualified class name (might require quotes or escaping).")//
-        public static final HostedOptionKey<String> InitialCollectionPolicy = new HostedOptionKey<>(BySpaceAndTime.class.getName());
-
-        @Option(help = "Percentage of total collection time that should be spent on young generation collections.")//
-        public static final RuntimeOptionKey<Integer> PercentTimeInIncrementalCollection = new RuntimeOptionKey<>(50);
+/** The interface for a garbage collection policy. All sizes are in bytes. */
+public interface CollectionPolicy {
+    final class Options {
+        @Option(help = "The garbage collection policy, either Adaptive (default) or BySpaceAndTime.")//
+        public static final HostedOptionKey<String> InitialCollectionPolicy = new HostedOptionKey<>("Adaptive");
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    static CollectionPolicy getInitialPolicy(FeatureAccess access) {
+    static String getInitialPolicyName() {
         if (SubstrateOptions.UseEpsilonGC.getValue()) {
-            return new NeverCollect();
+            return "NeverCollect";
         } else if (!SubstrateOptions.useRememberedSet()) {
-            return new OnlyCompletely();
-        } else {
-            // Use whatever policy the user specified.
-            return instantiatePolicy(access, CollectionPolicy.class, Options.InitialCollectionPolicy.getValue());
+            return "OnlyCompletely";
         }
+        String name = Options.InitialCollectionPolicy.getValue();
+        String legacyPrefix = "com.oracle.svm.core.genscavenge.CollectionPolicy$";
+        if (name.startsWith(legacyPrefix)) {
+            return name.substring(legacyPrefix.length());
+        }
+        return name;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private static <T> T instantiatePolicy(FeatureAccess access, Class<T> policyClass, String className) {
-        Class<?> policy = access.findClassByName(className);
-        if (policy == null) {
-            throw UserError.abort("Policy %s does not exist. It must be a fully qualified class name.", className);
+    static CollectionPolicy getInitialPolicy() {
+        String name = getInitialPolicyName();
+        switch (name) {
+            case "Adaptive":
+                return new AdaptiveCollectionPolicy();
+            case "Proportionate":
+                return new ProportionateSpacesPolicy();
+            case "BySpaceAndTime":
+                return new BasicCollectionPolicies.BySpaceAndTime();
+            case "OnlyCompletely":
+                return new BasicCollectionPolicies.OnlyCompletely();
+            case "OnlyIncrementally":
+                return new BasicCollectionPolicies.OnlyIncrementally();
+            case "NeverCollect":
+                return new BasicCollectionPolicies.NeverCollect();
         }
-        Object result;
-        try {
-            result = policy.getDeclaredConstructor().newInstance();
-        } catch (Exception ex) {
-            throw UserError.abort("Policy %s cannot be instantiated.", className);
-        }
-        if (!policyClass.isInstance(result)) {
-            throw UserError.abort("Policy %s does not extend %s.", className, policyClass.getTypeName());
-        }
-        return policyClass.cast(result);
+        throw UserError.abort("Policy %s does not exist.", name);
     }
 
-    /** Return {@code true} if the current collection should entail an incremental collection. */
-    public abstract boolean collectIncrementally();
-
-    /** Return {@code true} if the current collection should entail a complete collection. */
-    public abstract boolean collectCompletely();
-
-    CollectionPolicy() {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    static int getMaxSurvivorSpaces(Integer userValue) {
+        String name = getInitialPolicyName();
+        if ("Adaptive".equals(name) || "Proportionate".equals(name)) {
+            return AbstractCollectionPolicy.getMaxSurvivorSpaces(userValue);
+        }
+        return BasicCollectionPolicies.getMaxSurvivorSpaces(userValue);
     }
 
-    public abstract void nameToLog(Log log);
-
-    public abstract String getName();
-
-    static GCAccounting getAccounting() {
-        return GCImpl.getGCImpl().getAccounting();
+    static boolean shouldCollectYoungGenSeparately(boolean defaultValue) {
+        Boolean optionValue = HeapParameters.Options.CollectYoungGenerationSeparately.getValue();
+        return (optionValue != null) ? optionValue : defaultValue;
     }
 
-    public static class OnlyIncrementally extends CollectionPolicy {
-
-        @Override
-        public boolean collectIncrementally() {
-            return true;
-        }
-
-        @Override
-        public boolean collectCompletely() {
-            return false;
-        }
-
-        @Override
-        public void nameToLog(Log log) {
-            log.string(getName());
-        }
-
-        @Override
-        public String getName() {
-            return "only incrementally";
-        }
-    }
-
-    public static class OnlyCompletely extends CollectionPolicy {
-
-        @Override
-        public boolean collectIncrementally() {
-            return false;
-        }
-
-        @Override
-        public boolean collectCompletely() {
-            return true;
-        }
-
-        @Override
-        public void nameToLog(Log log) {
-            log.string(getName());
-        }
-
-        @Override
-        public String getName() {
-            return "only completely";
-        }
-    }
-
-    public static class NeverCollect extends CollectionPolicy {
-
-        @Override
-        public boolean collectIncrementally() {
-            return false;
-        }
-
-        @Override
-        public boolean collectCompletely() {
-            return false;
-        }
-
-        @Override
-        public void nameToLog(Log log) {
-            log.string(getName());
-        }
-
-        @Override
-        public String getName() {
-            return "never collect";
-        }
-    }
+    String getName();
 
     /**
-     * A collection policy that delays complete collections until the heap has at least `-Xms` space
-     * in it, and then tries to balance time in incremental and complete collections.
+     * Ensures that size parameters have been computed and methods like {@link #getMaximumHeapSize}
+     * provide reasonable values, but do not force a recomputation of the size parameters like
+     * {@link #updateSizeParameters}.
      */
-    public static class BySpaceAndTime extends CollectionPolicy {
-        @Override
-        public boolean collectIncrementally() {
-            return true;
-        }
+    void ensureSizeParametersInitialized();
 
-        @Override
-        public boolean collectCompletely() {
-            return estimateUsedHeapAtNextIncrementalCollection().aboveThan(getMaximumHeapSize()) ||
-                            GCImpl.getChunkBytes().aboveThan(getMinimumHeapSize()) && enoughTimeSpentOnIncrementalGCs();
-        }
+    /**
+     * (Re)computes minimum/maximum/initial sizes of space based on the available
+     * {@linkplain PhysicalMemory physical memory} and current runtime option values. This method
+     * can be called directly or after a slow-path allocation (of a TLAB or a large object) and so
+     * allocation is allowed, but may trigger a collection.
+     */
+    void updateSizeParameters();
 
-        /**
-         * Estimates the heap size at the next incremental collection assuming that the whole
-         * current young generation gets promoted.
-         */
-        private static UnsignedWord estimateUsedHeapAtNextIncrementalCollection() {
-            UnsignedWord currentYoungBytes = HeapImpl.getHeapImpl().getYoungGeneration().getChunkBytes();
-            UnsignedWord maxYoungBytes = HeapPolicy.getMaximumYoungGenerationSize();
-            UnsignedWord oldBytes = getAccounting().getOldGenerationAfterChunkBytes();
-            return currentYoungBytes.add(maxYoungBytes).add(oldBytes);
-        }
+    /**
+     * During a slow-path allocation, determines whether to trigger a collection. Returning
+     * {@code true} will initiate a safepoint during which {@link #shouldCollectCompletely} will be
+     * called followed by the collection.
+     */
+    boolean shouldCollectOnAllocation();
 
-        private static boolean enoughTimeSpentOnIncrementalGCs() {
-            int incrementalWeight = PercentTimeInIncrementalCollection.getValue();
-            assert incrementalWeight >= 0 && incrementalWeight <= 100 : "BySpaceAndTimePercentTimeInIncrementalCollection should be in the range [0..100].";
+    /**
+     * At a safepoint, decides whether to do a complete collection (returning {@code true}) or an
+     * incremental collection (returning {@code false}).
+     *
+     * @param followingIncrementalCollection whether an incremental collection has just finished in
+     *            the same safepoint. Implementations would typically decide whether to follow up
+     *            with a full collection based on whether enough memory was reclaimed.
+     */
+    boolean shouldCollectCompletely(boolean followingIncrementalCollection);
 
-            long actualIncrementalNanos = getAccounting().getIncrementalCollectionTotalNanos();
-            long completeNanos = getAccounting().getCompleteCollectionTotalNanos();
-            long totalNanos = actualIncrementalNanos + completeNanos;
-            long expectedIncrementalNanos = TimeUtils.weightedNanos(incrementalWeight, totalNanos);
-            return TimeUtils.nanoTimeLessThan(expectedIncrementalNanos, actualIncrementalNanos);
-        }
+    /**
+     * The current limit for the size of the entire heap, which is less than or equal to
+     * {@link #getMaximumHeapSize}.
+     *
+     * NOTE: this can currently be exceeded during a collection while copying objects in the old
+     * generation.
+     */
+    UnsignedWord getCurrentHeapCapacity();
 
-        @Override
-        public void nameToLog(Log log) {
-            log.string(getName()).string(": ").signed(Options.PercentTimeInIncrementalCollection.getValue()).string("% in incremental collections");
-        }
+    /**
+     * The hard limit for the size of the entire heap. Exceeding this limit triggers an
+     * {@link OutOfMemoryError}.
+     *
+     * NOTE: this can currently be exceeded during a collection while copying objects in the old
+     * generation.
+     */
+    UnsignedWord getMaximumHeapSize();
 
-        @Override
-        public String getName() {
-            return "by space and time";
-        }
-    }
+    /** The maximum capacity of the young generation, comprising eden and survivor spaces. */
+    UnsignedWord getMaximumYoungGenerationSize();
+
+    /** The minimum heap size, for inclusion in diagnostic output. */
+    UnsignedWord getMinimumHeapSize();
+
+    /**
+     * The total capacity of all survivor-from spaces of all ages, equal to the size of all
+     * survivor-to spaces of all ages. In other words, when copying during a collection, up to 2x
+     * this amount can be used for surviving objects.
+     */
+    UnsignedWord getSurvivorSpacesCapacity();
+
+    /**
+     * The maximum number of bytes that should be kept readily available for allocation or copying
+     * during collections.
+     */
+    UnsignedWord getMaximumFreeAlignedChunksSize();
+
+    /**
+     * The age at which objects should currently be promoted to the old generation, which is between
+     * 1 (straight from eden) and the {@linkplain HeapParameters#getMaxSurvivorSpaces() number of
+     * survivor spaces + 1}.
+     */
+    int getTenuringAge();
+
+    /** Called at the beginning of a collection, in the safepoint operation. */
+    void onCollectionBegin(boolean completeCollection, long requestingNanoTime);
+
+    /** Called before the end of a collection, in the safepoint operation. */
+    void onCollectionEnd(boolean completeCollection, GCCause cause);
 }

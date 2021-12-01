@@ -34,7 +34,8 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunk;
-import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunkRegister;
+import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunkRegistry;
+import com.oracle.svm.core.SubstrateDiagnostics.ErrorContext;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
@@ -61,7 +62,7 @@ public final class GreyToBlackObjectVisitor implements ObjectVisitor {
         this.objRefVisitor = greyToBlackObjRefVisitor;
         if (DiagnosticReporter.getHistoryLength() > 0) {
             this.diagnosticReporter = new DiagnosticReporter();
-            DiagnosticThunkRegister.getSingleton().register(diagnosticReporter);
+            DiagnosticThunkRegistry.singleton().register(diagnosticReporter);
         } else {
             this.diagnosticReporter = null;
         }
@@ -132,13 +133,13 @@ public final class GreyToBlackObjectVisitor implements ObjectVisitor {
         }
 
         @Override
-        public int maxInvocations() {
+        public int maxInvocationCount() {
             return 1;
         }
 
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate during printing diagnostics.")
-        public void printDiagnostics(Log log, int invocationCount) {
+        public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
             if (historyCount > 0) {
                 log.string("[GreyToBlackObjectVisitor.RealDiagnosticReporter.invoke:")
                                 .string("  history / count:  ")

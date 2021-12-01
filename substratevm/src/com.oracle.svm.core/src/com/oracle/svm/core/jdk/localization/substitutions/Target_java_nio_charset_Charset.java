@@ -42,15 +42,9 @@ import java.util.TreeMap;
 @SuppressWarnings({"unused"})
 final class Target_java_nio_charset_Charset {
 
-    @Alias private static Charset defaultCharset;
-
     @Substitute
     private static Charset defaultCharset() {
-        /*
-         * The default charset is initialized during native image generation and therefore always
-         * available without any checks.
-         */
-        return defaultCharset;
+        return ImageSingletons.lookup(LocalizationSupport.class).defaultCharset;
     }
 
     @Substitute

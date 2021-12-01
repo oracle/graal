@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.parser.nodes;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.model.SymbolImpl;
 import com.oracle.truffle.llvm.parser.model.symbols.constants.Constant;
@@ -51,27 +50,28 @@ public final class LLVMSymbolReadResolver {
     private final boolean storeSSAValueInSlot;
     private final LLVMParserRuntime runtime;
     private final NodeFactory nodeFactory;
-    private final FrameDescriptor frame;
+    private final FrameDescriptor.Builder builder;
     private final GetStackSpaceFactory getStackSpaceFactory;
     private final DataLayout dataLayout;
 
-    public LLVMSymbolReadResolver(LLVMParserRuntime runtime, FrameDescriptor frame, GetStackSpaceFactory getStackSpaceFactory, DataLayout dataLayout, boolean storeSSAValueInSlot) {
+    public LLVMSymbolReadResolver(LLVMParserRuntime runtime, FrameDescriptor.Builder builder, GetStackSpaceFactory getStackSpaceFactory, DataLayout dataLayout, boolean storeSSAValueInSlot) {
         this.runtime = runtime;
         this.storeSSAValueInSlot = storeSSAValueInSlot;
         this.nodeFactory = runtime.getNodeFactory();
-        this.frame = frame;
+        this.builder = builder;
         this.getStackSpaceFactory = getStackSpaceFactory;
         this.dataLayout = dataLayout;
     }
 
-    public FrameSlot findOrAddFrameSlot(FrameDescriptor descriptor, SSAValue value) {
-        FrameSlot slot = descriptor.findFrameSlot(value.getFrameIdentifier());
-        Object info = storeSSAValueInSlot ? value : null;
-        if (slot == null) {
-            slot = descriptor.findOrAddFrameSlot(value.getFrameIdentifier(), info, Type.getFrameSlotKind(value.getType()));
+    public int findOrAddFrameSlot(SSAValue value) {
+        if (SSAValue.isFrameSlotAllocated(value)) {
+            return SSAValue.getFrameSlot(value);
+        } else {
+            Object info = storeSSAValueInSlot ? value : null;
+            int slot = builder.addSlot(Type.getFrameSlotKind(value.getType()), null, info);
+            SSAValue.allocateFrameSlot(value, slot);
+            return slot;
         }
-        assert slot.getInfo() == info;
-        return slot;
     }
 
     public static Integer evaluateIntegerConstant(SymbolImpl constant) {
@@ -136,10 +136,7 @@ public final class LLVMSymbolReadResolver {
             return ((Constant) symbol).createNode(runtime, dataLayout, getStackSpaceFactory);
         } else if (symbol instanceof SSAValue) {
             SSAValue value = (SSAValue) symbol;
-            FrameSlot slot = frame.findFrameSlot(value.getFrameIdentifier());
-            if (slot == null) {
-                slot = findOrAddFrameSlot(frame, value);
-            }
+            int slot = findOrAddFrameSlot(value);
             return CommonNodeFactory.createFrameRead(value.getType(), slot);
         } else {
             throw new LLVMParserException("Cannot resolve symbol: " + symbol);

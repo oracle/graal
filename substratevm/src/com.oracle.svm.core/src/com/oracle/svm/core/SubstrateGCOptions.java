@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core;
 
+import com.oracle.svm.core.option.GCRuntimeOptionKey;
+import com.oracle.svm.core.option.ImmutableGCRuntimeOptionKey;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
@@ -38,11 +40,8 @@ import com.oracle.svm.core.option.RuntimeOptionKey;
  * Garbage collection-specific options that are supported by all garbage collectors.
  */
 public class SubstrateGCOptions {
-    @Option(help = "Print summary GC information after each collection", type = OptionType.Expert)//
-    public static final RuntimeOptionKey<Boolean> PrintGC = new RuntimeOptionKey<>(false);
-
     @Option(help = "Print more information about the heap before and after each collection", type = OptionType.Expert)//
-    public static final RuntimeOptionKey<Boolean> VerboseGC = new RuntimeOptionKey<>(false);
+    public static final RuntimeOptionKey<Boolean> VerboseGC = new GCRuntimeOptionKey<>(false);
 
     @Option(help = "Determines if references from runtime-compiled code to Java heap objects should be treated as strong or weak.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> TreatRuntimeCodeInfoReferencesAsWeak = new HostedOptionKey<>(true);
@@ -51,35 +50,41 @@ public class SubstrateGCOptions {
     public static final HostedOptionKey<Boolean> VerifyHeap = new HostedOptionKey<>(false);
 
     @Option(help = "Ignore calls to System.gc()", type = OptionType.Expert)//
-    public static final RuntimeOptionKey<Boolean> DisableExplicitGC = new RuntimeOptionKey<>(false);
+    public static final RuntimeOptionKey<Boolean> DisableExplicitGC = new GCRuntimeOptionKey<>(false);
+
+    @Option(help = "Print summary GC information after each collection", type = OptionType.Expert)//
+    public static final RuntimeOptionKey<Boolean> PrintGC = new GCRuntimeOptionKey<>(false);
 
     @Option(help = "The minimum heap size at run-time, in bytes.", type = OptionType.User)//
-    public static final RuntimeOptionKey<Long> MinHeapSize = new RuntimeOptionKey<Long>(0L) {
+    public static final RuntimeOptionKey<Long> MinHeapSize = new ImmutableGCRuntimeOptionKey<Long>(0L) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
             if (!SubstrateUtil.HOSTED) {
                 HeapSizeVerifier.verifyMinHeapSizeAgainstAddressSpace(WordFactory.unsigned(newValue));
             }
+            super.onValueUpdate(values, oldValue, newValue);
         }
     };
 
     @Option(help = "The maximum heap size at run-time, in bytes.", type = OptionType.User)//
-    public static final RuntimeOptionKey<Long> MaxHeapSize = new RuntimeOptionKey<Long>(0L) {
+    public static final RuntimeOptionKey<Long> MaxHeapSize = new ImmutableGCRuntimeOptionKey<Long>(0L) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
             if (!SubstrateUtil.HOSTED) {
                 HeapSizeVerifier.verifyMaxHeapSizeAgainstAddressSpace(WordFactory.unsigned(newValue));
             }
+            super.onValueUpdate(values, oldValue, newValue);
         }
     };
 
     @Option(help = "The maximum size of the young generation at run-time, in bytes", type = OptionType.User)//
-    public static final RuntimeOptionKey<Long> MaxNewSize = new RuntimeOptionKey<Long>(0L) {
+    public static final RuntimeOptionKey<Long> MaxNewSize = new ImmutableGCRuntimeOptionKey<Long>(0L) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
             if (!SubstrateUtil.HOSTED) {
                 HeapSizeVerifier.verifyMaxNewSizeAgainstAddressSpace(WordFactory.unsigned(newValue));
             }
+            super.onValueUpdate(values, oldValue, newValue);
         }
     };
 }

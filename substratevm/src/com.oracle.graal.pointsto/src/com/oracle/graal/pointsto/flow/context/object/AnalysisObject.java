@@ -34,15 +34,16 @@ import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.ArrayElementsTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldFilterTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
+import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.flow.UnsafeWriteSinkTypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.typestore.ArrayElementsTypeStore;
 import com.oracle.graal.pointsto.typestore.FieldTypeStore;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
+import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
@@ -189,44 +190,46 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
     }
 
     /** Returns the filter field flow corresponding to an unsafe accessed filed. */
-    public FieldFilterTypeFlow getInstanceFieldFilterFlow(PointsToAnalysis bb, AnalysisMethod context, AnalysisField field) {
+    public FieldFilterTypeFlow getInstanceFieldFilterFlow(PointsToAnalysis bb, TypeFlow<?> objectFlow, BytecodePosition context, AnalysisField field) {
         assert !Modifier.isStatic(field.getModifiers()) && field.isUnsafeAccessed();
 
-        FieldTypeStore fieldTypeStore = getInstanceFieldTypeStore(bb, context, field);
+        FieldTypeStore fieldTypeStore = getInstanceFieldTypeStore(bb, objectFlow, context, field);
         return fieldTypeStore.writeFlow().filterFlow(bb);
     }
 
-    public UnsafeWriteSinkTypeFlow getUnsafeWriteSinkFrozenFilterFlow(PointsToAnalysis bb, AnalysisMethod context, AnalysisField field) {
+    public UnsafeWriteSinkTypeFlow getUnsafeWriteSinkFrozenFilterFlow(PointsToAnalysis bb, TypeFlow<?> objectFlow, BytecodePosition context, AnalysisField field) {
         assert !Modifier.isStatic(field.getModifiers()) && field.hasUnsafeFrozenTypeState();
-        FieldTypeStore fieldTypeStore = getInstanceFieldTypeStore(bb, context, field);
+        FieldTypeStore fieldTypeStore = getInstanceFieldTypeStore(bb, objectFlow, context, field);
         return fieldTypeStore.unsafeWriteSinkFlow(bb);
     }
 
     /** Returns the instance field flow corresponding to a filed of the object's type. */
     public FieldTypeFlow getInstanceFieldFlow(PointsToAnalysis bb, AnalysisField field, boolean isStore) {
-        return getInstanceFieldFlow(bb, null, field, isStore);
+        return getInstanceFieldFlow(bb, null, null, field, isStore);
     }
 
-    public FieldTypeFlow getInstanceFieldFlow(PointsToAnalysis bb, AnalysisMethod context, AnalysisField field, boolean isStore) {
+    public FieldTypeFlow getInstanceFieldFlow(PointsToAnalysis bb, TypeFlow<?> objectFlow, BytecodePosition context, AnalysisField field, boolean isStore) {
         assert !Modifier.isStatic(field.getModifiers());
 
-        FieldTypeStore fieldTypeStore = getInstanceFieldTypeStore(bb, context, field);
+        FieldTypeStore fieldTypeStore = getInstanceFieldTypeStore(bb, objectFlow, context, field);
 
         return isStore ? fieldTypeStore.writeFlow() : fieldTypeStore.readFlow();
     }
 
-    final FieldTypeStore getInstanceFieldTypeStore(PointsToAnalysis bb, AnalysisMethod context, AnalysisField field) {
+    final FieldTypeStore getInstanceFieldTypeStore(PointsToAnalysis bb, TypeFlow<?> objectFlow, BytecodePosition context, AnalysisField field) {
         assert !Modifier.isStatic(field.getModifiers());
         assert bb != null && !bb.getUniverse().sealed();
+
+        if (!field.getDeclaringClass().isAssignableFrom(type)) {
+            throw AnalysisError.fieldNotPresentError(bb, objectFlow, context, field, type);
+        }
 
         if (instanceFieldsTypeStore == null) {
             AnalysisField[] fields = type.getInstanceFields(true);
             INSTANCE_FIELD_TYPE_STORE_UPDATER.compareAndSet(this, null, new AtomicReferenceArray<>(fields.length));
         }
 
-        if (field.getPosition() < 0 || field.getPosition() >= instanceFieldsTypeStore.length()) {
-            throw AnalysisError.fieldNotPresentError(context, field, type);
-        }
+        AnalysisError.guarantee(field.getPosition() >= 0 && field.getPosition() < instanceFieldsTypeStore.length());
 
         FieldTypeStore fieldStore = instanceFieldsTypeStore.get(field.getPosition());
         if (fieldStore == null) {

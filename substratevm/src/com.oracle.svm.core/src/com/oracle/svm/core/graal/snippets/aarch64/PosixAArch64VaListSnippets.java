@@ -27,8 +27,6 @@ package com.oracle.svm.core.graal.snippets.aarch64;
 import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.Snippet;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
@@ -101,8 +99,8 @@ final class PosixAArch64VaListSnippets extends SubstrateTemplates implements Sni
     private static final int GP_TOP_LOCATION = 8;
     private static final int FP_TOP_LOCATION = 16;
 
-    private PosixAArch64VaListSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection) {
-        super(options, factories, providers, snippetReflection);
+    private PosixAArch64VaListSnippets(OptionValues options, Providers providers) {
+        super(options, providers);
     }
 
     @Snippet
@@ -149,16 +147,12 @@ final class PosixAArch64VaListSnippets extends SubstrateTemplates implements Sni
     }
 
     @SuppressWarnings("unused")
-    public static void registerLowerings(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
-                    SnippetReflectionProvider snippetReflection, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
-
-        new PosixAArch64VaListSnippets(options, factories, providers, snippetReflection, lowerings);
+    public static void registerLowerings(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
+        new PosixAArch64VaListSnippets(options, providers, lowerings);
     }
 
-    private PosixAArch64VaListSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
-                    SnippetReflectionProvider snippetReflection, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
-
-        super(options, factories, providers, snippetReflection);
+    private PosixAArch64VaListSnippets(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
+        super(options, providers);
         lowerings.put(VaListNextArgNode.class, new VaListSnippetsLowering());
     }
 

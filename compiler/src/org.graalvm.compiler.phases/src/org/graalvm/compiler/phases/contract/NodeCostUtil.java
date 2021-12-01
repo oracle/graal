@@ -31,12 +31,13 @@ import java.util.function.Function;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.graph.GraalGraphError;
 import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.VerificationError;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -71,8 +72,7 @@ public class NodeCostUtil {
         Function<Block, Iterable<? extends Node>> blockToNodes;
         ControlFlowGraph cfg;
         if (fullSchedule) {
-            SchedulePhase schedule = new SchedulePhase(SchedulePhase.SchedulingStrategy.LATEST_OUT_OF_LOOPS, true);
-            schedule.apply(graph);
+            SchedulePhase.runWithoutContextOptimizations(graph, SchedulePhase.SchedulingStrategy.LATEST_OUT_OF_LOOPS, true);
             cfg = graph.getLastSchedule().getCFG();
             blockToNodes = b -> graph.getLastSchedule().getBlockToNodesMap().get(b);
         } else {
@@ -123,15 +123,24 @@ public class NodeCostUtil {
     private static final double DELTA = 0.001D;
 
     public static void phaseFulfillsSizeContract(StructuredGraph graph, int codeSizeBefore, int codeSizeAfter, PhaseSizeContract contract) {
-        sizeVerificationCount.increment(graph.getDebug());
-        final double codeSizeIncrease = contract.codeSizeIncrease();
-        final double graphSizeDelta = codeSizeBefore * DELTA;
-        if (deltaCompare(codeSizeAfter, codeSizeBefore * codeSizeIncrease, graphSizeDelta) > 0) {
-            ResolvedJavaMethod method = graph.method();
-            double increase = (double) codeSizeAfter / (double) codeSizeBefore;
-            throw new VerificationError("Phase %s expects to increase code size by at most a factor of %.2f but an increase of %.2f was seen (code size before: %d, after: %d)%s",
-                            contract.contractorName(), codeSizeIncrease, increase, codeSizeBefore, codeSizeAfter,
-                            method != null ? " when compiling method " + method.format("%H.%n(%p)") + "." : ".");
+        /*
+         * We use a minimal size in NodeSize before we start checking the node size increase of a
+         * phase. This is to avoid reporting phase size increases for small graphs which are
+         * irrelevant. The phase size checking is a means to find phases that explode graph sizes
+         * for graphs which are already of a considerable size (this is subject to change in the
+         * future).
+         */
+        if (codeSizeBefore > BasePhase.PhaseOptions.MinimalGraphNodeSizeCheckSize.getValue(graph.getOptions())) {
+            sizeVerificationCount.increment(graph.getDebug());
+            final double codeSizeIncrease = contract.codeSizeIncrease();
+            final double graphSizeDelta = codeSizeBefore * DELTA;
+            if (deltaCompare(codeSizeAfter, codeSizeBefore * codeSizeIncrease, graphSizeDelta) > 0) {
+                ResolvedJavaMethod method = graph.method();
+                double increase = codeSizeBefore == 0D ? codeSizeAfter : (double) codeSizeAfter / (double) codeSizeBefore;
+                throw new GraalGraphError("Phase %s expects to increase code size by at most a factor of %.2f but an increase of %.2f was seen (code size before: %d, after: %d)%s",
+                                contract.contractorName(), codeSizeIncrease, increase, codeSizeBefore, codeSizeAfter,
+                                method != null ? " when compiling method " + method.format("%H.%n(%p)") + "." : ".");
+            }
         }
     }
 

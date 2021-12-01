@@ -24,41 +24,73 @@
  */
 package com.oracle.truffle.tools.profiler.test;
 
-import java.util.Collection;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
-import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.tools.profiler.CPUSampler;
-import com.oracle.truffle.tools.profiler.CPUSamplerData;
-import com.oracle.truffle.tools.profiler.ProfilerNode;
+import com.oracle.truffle.tools.profiler.StackTraceEntry;
 
 public class NoTagSamplingTest {
 
+    private static final String TEST_ROOT_NAME = LILRootNode.class.getName();
+
+    private static Semaphore await;
+
     @Test
-    public void testNoTagSampling() {
-        Context context = Context.create(NoTagLanguage.ID);
-        CPUSampler sampler = CPUSampler.find(context.getEngine());
-        sampler.setCollecting(true);
-        Source source = Source.newBuilder(NoTagLanguage.ID, "", "").buildLiteral();
-        // Eval twice so that we compile on first call when running with compile immediately.
-        context.eval(source);
-        context.eval(source);
-        sampler.setCollecting(false);
-        final CPUSamplerData data = sampler.getData().values().iterator().next();
-        final Collection<ProfilerNode<CPUSampler.Payload>> profilerNodes = data.getThreadData().values().iterator().next();
-        Assert.assertEquals(1, profilerNodes.size());
+    public void testNoTagSampling() throws InterruptedException, ExecutionException {
+        ExecutorService singleThread = Executors.newSingleThreadExecutor();
+        await = new Semaphore(0);
+        try (Context context = Context.create(NoTagLanguage.ID)) {
+            CPUSampler sampler = CPUSampler.find(context.getEngine());
+            Source source = Source.newBuilder(NoTagLanguage.ID, "", "").buildLiteral();
+            Future<?> f = singleThread.submit(() -> {
+                return context.eval(source).asInt();
+            });
+
+            Map<Thread, List<StackTraceEntry>> sample = null;
+            for (int i = 0; i < 10000; i++) { // times out after 10s
+                sample = sampler.takeSample();
+                if (!sample.isEmpty()) {
+                    break;
+                }
+                try {
+                    Thread.sleep(1);
+                } catch (InterruptedException e) {
+                    throw new AssertionError(e);
+                }
+            }
+
+            // wait for future
+            await.release();
+            assertEquals(42, f.get());
+            assertTrue(!sample.isEmpty());
+            List<StackTraceEntry> entries = sample.values().iterator().next();
+            assertEquals(1, entries.size());
+            assertEquals(TEST_ROOT_NAME, entries.get(0).getRootName());
+
+            singleThread.shutdown();
+            singleThread.awaitTermination(10, TimeUnit.SECONDS);
+        }
 
     }
 
@@ -68,21 +100,14 @@ public class NoTagSamplingTest {
             super(language);
         }
 
-        @TruffleBoundary
-        private static void sleepSomeTime() {
-            try {
-                Thread.sleep(1);
-            } catch (InterruptedException e) {
-                Assert.fail();
-            }
+        @Override
+        public String getName() {
+            return TEST_ROOT_NAME;
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
-            for (int i = 0; i < 100; i++) {
-                sleepSomeTime();
-                TruffleSafepoint.poll(this);
-            }
+            TruffleSafepoint.setBlockedThreadInterruptible(this, Semaphore::acquire, await);
             return 42;
         }
     }
@@ -97,7 +122,7 @@ public class NoTagSamplingTest {
         }
 
         private RootCallTarget newTarget() {
-            return Truffle.getRuntime().createCallTarget(new LILRootNode(this));
+            return new LILRootNode(this).getCallTarget();
         }
     }
 }

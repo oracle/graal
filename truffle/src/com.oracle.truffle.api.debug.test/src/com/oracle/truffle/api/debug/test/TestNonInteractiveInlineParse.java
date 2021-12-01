@@ -41,18 +41,17 @@
 package com.oracle.truffle.api.debug.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedEvent;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -65,7 +64,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import static org.junit.Assert.fail;
 
 /**
  * Test that {@link TruffleLanguage#parse(TruffleLanguage.InlineParsingRequest)} is called for
@@ -86,7 +84,7 @@ public class TestNonInteractiveInlineParse extends AbstractDebugTest {
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
-            return Truffle.getRuntime().createCallTarget(new TestRootNode(this, request.getSource()));
+            return new TestRootNode(this, request.getSource()).getCallTarget();
         }
 
         @Override
@@ -98,7 +96,7 @@ public class TestNonInteractiveInlineParse extends AbstractDebugTest {
             String characters = request.getSource().getCharacters().toString();
             if (characters.startsWith("var+")) {
                 int i = Integer.parseInt(characters.substring(4));
-                i += request.getFrame().getInt(request.getFrame().getFrameDescriptor().findFrameSlot("var"));
+                i += (int) request.getFrame().getAuxiliarySlot(request.getFrame().getFrameDescriptor().findOrAddAuxiliarySlot("var"));
                 return new TestExecutableNode(this, i);
             } else {
                 return null;
@@ -127,14 +125,14 @@ public class TestNonInteractiveInlineParse extends AbstractDebugTest {
             @Node.Child private TestNIRootNode main;
             private final Source source;
             private final SourceSection rootSection;
-            private final FrameSlot var;
+            private final int var;
 
             TestRootNode(TruffleLanguage<?> language, Source source) {
                 super(language);
                 this.source = source;
                 this.main = new TestNIRootNode(source.createSection(1));
                 this.rootSection = source.createSection(0, source.getLength());
-                this.var = getFrameDescriptor().addFrameSlot("var", FrameSlotKind.Int);
+                this.var = getFrameDescriptor().findOrAddAuxiliarySlot("var");
             }
 
             @Override
@@ -149,7 +147,7 @@ public class TestNonInteractiveInlineParse extends AbstractDebugTest {
 
             @Override
             public Object execute(VirtualFrame frame) {
-                frame.setInt(var, 42);
+                frame.setAuxiliarySlot(var, 42);
                 return main.execute(frame);
             }
         }

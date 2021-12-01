@@ -103,10 +103,8 @@ public class ProfileCompiledMethodsPhase extends Phase {
 
     @Override
     protected void run(StructuredGraph graph) {
-        SchedulePhase schedule = new SchedulePhase(graph.getOptions());
-        schedule.apply(graph, false);
-
         ControlFlowGraph cfg = ControlFlowGraph.compute(graph, true, true, true, true);
+        SchedulePhase.runWithoutContextOptimizations(graph, SchedulePhase.getDefaultStrategy(graph.getOptions()), cfg, true);
         for (Loop<Block> loop : cfg.getLoops()) {
             double loopProbability = cfg.blockFor(loop.getHeader().getBeginNode()).getRelativeFrequency();
             if (loopProbability > (1D / Integer.MAX_VALUE)) {
@@ -124,7 +122,7 @@ public class ProfileCompiledMethodsPhase extends Phase {
             for (Node node : graph.getNodes()) {
                 if (node instanceof Invoke) {
                     Invoke invoke = (Invoke) node;
-                    DynamicCounterNode.addCounterBefore(GROUP_NAME_INVOKES, invoke.callTarget().targetName(), 1, true, invoke.asNode());
+                    DynamicCounterNode.addCounterBefore(GROUP_NAME_INVOKES, invoke.callTarget().targetName(), 1, true, invoke.asFixedNode());
 
                 }
             }

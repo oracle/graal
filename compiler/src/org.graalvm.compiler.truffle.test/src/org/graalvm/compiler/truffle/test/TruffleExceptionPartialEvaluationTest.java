@@ -78,14 +78,14 @@ public class TruffleExceptionPartialEvaluationTest extends PartialEvaluationTest
         AbstractTestNode calleeNode = factory.createThrowNode(-1, true);
         RootTestNode calleeRoot = new RootTestNode(fd, "testTruffleException", calleeNode);
         for (int i = 0; i < framesAbove; i++) {
-            AbstractTestNode call = new CallTestNode(Truffle.getRuntime().createCallTarget(calleeRoot));
+            AbstractTestNode call = new CallTestNode(calleeRoot.getCallTarget());
             calleeRoot = new RootTestNode(fd, "testTruffleException", call);
         }
-        AbstractTestNode callerNode = new CallTestNode(Truffle.getRuntime().createCallTarget(calleeRoot));
+        AbstractTestNode callerNode = new CallTestNode(calleeRoot.getCallTarget());
         AbstractTestNode catchNode = factory.createCatchNode(callerNode);
         RootTestNode callerRoot = new RootTestNode(fd, "testTruffleException", catchNode);
         for (int i = 0; i < framesBelow; i++) {
-            AbstractTestNode call = new CallTestNode(Truffle.getRuntime().createCallTarget(callerRoot));
+            AbstractTestNode call = new CallTestNode(callerRoot.getCallTarget());
             callerRoot = new RootTestNode(fd, "testTruffleException", call);
         }
         return callerRoot;

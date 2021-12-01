@@ -52,11 +52,11 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -65,8 +65,15 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.host.HostExceptionTest.CatcherObject;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class MultiClassLoaderTest {
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
+
     private Context context;
     private Env env;
 
@@ -85,7 +92,7 @@ public class MultiClassLoaderTest {
                 String req = request.getSource().getCharacters().toString();
                 if (req.startsWith("get:")) {
                     String name = req.substring(4);
-                    RootCallTarget reader = Truffle.getRuntime().createCallTarget(new RootNode(ProxyLanguage.get(null)) {
+                    RootCallTarget reader = new RootNode(ProxyLanguage.get(null)) {
                         @Override
                         public Object execute(VirtualFrame frame) {
                             Object obj = frame.getArguments()[0];
@@ -96,8 +103,8 @@ public class MultiClassLoaderTest {
                                 throw new IllegalStateException(e);
                             }
                         }
-                    });
-                    return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(new CatcherObject(reader)));
+                    }.getCallTarget();
+                    return RootNode.createConstantNode(new CatcherObject(reader)).getCallTarget();
                 }
                 throw new IllegalArgumentException();
             }

@@ -43,8 +43,8 @@ package com.oracle.truffle.api.impl;
 import static com.oracle.truffle.api.impl.DefaultTruffleRuntime.getRuntime;
 
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.TruffleSafepoint;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime.DefaultFrameInstance;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.Node;
@@ -52,7 +52,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 
 /**
  * This is an implementation-specific class. Do not use or instantiate it. Instead, use
- * {@link TruffleRuntime#createCallTarget(RootNode)} to create a {@link RootCallTarget}.
+ * {@link RootNode#getCallTarget()} to get the {@link RootCallTarget} of a root node.
  */
 public final class DefaultCallTarget implements RootCallTarget {
 
@@ -63,7 +63,6 @@ public final class DefaultCallTarget implements RootCallTarget {
     DefaultCallTarget(RootNode function) {
         this.rootNode = function;
         this.rootNode.adoptChildren();
-        DefaultRuntimeAccessor.NODES.setCallTarget(function, this);
     }
 
     @Override
@@ -79,7 +78,7 @@ public final class DefaultCallTarget implements RootCallTarget {
         if (!this.initialized) {
             initialize();
         }
-        final DefaultVirtualFrame frame = new DefaultVirtualFrame(rootNode.getFrameDescriptor(), args);
+        final VirtualFrame frame = new FrameWithoutBoxing(rootNode.getFrameDescriptor(), args);
         DefaultFrameInstance callerFrame = getRuntime().pushFrame(frame, this, callNode);
         try {
             Object toRet = rootNode.execute(frame);

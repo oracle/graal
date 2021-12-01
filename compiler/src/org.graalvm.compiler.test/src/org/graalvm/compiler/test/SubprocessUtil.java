@@ -138,15 +138,30 @@ public final class SubprocessUtil {
      * Gets the command line used to start the current Java VM, including all VM arguments, but not
      * including the main class or any Java arguments. This can be used to spawn an identical VM,
      * but running different Java code.
+     *
+     * @param removeDebuggerArguments if {@code true}, pre-process the returned list with
+     *            {@link #withoutDebuggerArguments(List)}
+     * @return {@code null} if the command line for the current process cannot be accessed
      */
-    public static List<String> getVMCommandLine() {
+    public static List<String> getVMCommandLine(boolean removeDebuggerArguments) {
         List<String> args = getProcessCommandLine();
         if (args == null) {
             return null;
         } else {
             int index = findMainClassIndex(args);
-            return args.subList(0, index);
+            args = args.subList(0, index);
+            if (removeDebuggerArguments) {
+                args = withoutDebuggerArguments(args);
+            }
+            return args;
         }
+    }
+
+    /**
+     * Shortcut for {@link #getVMCommandLine(boolean) getVMCommandLine(false)}.
+     */
+    public static List<String> getVMCommandLine() {
+        return getVMCommandLine(false);
     }
 
     /**
@@ -278,7 +293,7 @@ public final class SubprocessUtil {
      * @param mainClassAndArgs the main class and its arguments
      */
     public static Subprocess java(List<String> vmArgs, List<String> mainClassAndArgs) throws IOException, InterruptedException {
-        return javaHelper(vmArgs, null, mainClassAndArgs, null);
+        return javaHelper(vmArgs, null, null, mainClassAndArgs, null);
     }
 
     /**
@@ -289,7 +304,20 @@ public final class SubprocessUtil {
      * @param timeout the timeout duration until the process is killed
      */
     public static Subprocess java(List<String> vmArgs, List<String> mainClassAndArgs, Duration timeout) throws IOException, InterruptedException {
-        return javaHelper(vmArgs, null, mainClassAndArgs, timeout);
+        return javaHelper(vmArgs, null, null, mainClassAndArgs, timeout);
+    }
+
+    /**
+     * Executes a Java subprocess with a timeout in the specified working directory.
+     *
+     * @param vmArgs the VM arguments
+     * @param workingDir the working directory of the subprocess. If null, the working directory of
+     *            the current process is used.
+     * @param mainClassAndArgs the main class and its arguments
+     * @param timeout the timeout duration until the process is killed
+     */
+    public static Subprocess java(List<String> vmArgs, File workingDir, List<String> mainClassAndArgs, Duration timeout) throws IOException, InterruptedException {
+        return javaHelper(vmArgs, null, workingDir, mainClassAndArgs, timeout);
     }
 
     /**
@@ -311,19 +339,23 @@ public final class SubprocessUtil {
      * @param mainClassAndArgs the main class and its arguments
      */
     public static Subprocess java(List<String> vmArgs, Map<String, String> env, List<String> mainClassAndArgs) throws IOException, InterruptedException {
-        return javaHelper(vmArgs, env, mainClassAndArgs, null);
+        return javaHelper(vmArgs, env, null, mainClassAndArgs, null);
     }
 
     /**
      * Executes a Java subprocess.
      *
-     * @param vmArgs the VM arguments
+     * @param vmArgs the VM arguments. If {@code vmArgs} contains {@link #PACKAGE_OPENING_OPTIONS},
+     *            the argument is replaced with arguments to do package opening (see
+     *            {@link SubprocessUtil#getPackageOpeningOptions()}
      * @param env the environment variables
+     * @param workingDir the working directory of the subprocess. If null, the working directory of
+     *            the current process is used.
      * @param mainClassAndArgs the main class and its arguments
      * @param timeout the duration to wait for the process to finish. If null, the calling thread
      *            waits for the process indefinitely.
      */
-    private static Subprocess javaHelper(List<String> vmArgs, Map<String, String> env, List<String> mainClassAndArgs, Duration timeout) throws IOException, InterruptedException {
+    private static Subprocess javaHelper(List<String> vmArgs, Map<String, String> env, File workingDir, List<String> mainClassAndArgs, Duration timeout) throws IOException, InterruptedException {
         List<String> command = new ArrayList<>(vmArgs.size());
         Path packageOpeningOptionsArgumentsFile = null;
         for (String vmArg : vmArgs) {
@@ -341,46 +373,68 @@ public final class SubprocessUtil {
             }
         }
         command.addAll(mainClassAndArgs);
-        ProcessBuilder processBuilder = new ProcessBuilder(command);
-        if (env != null) {
-            Map<String, String> processBuilderEnv = processBuilder.environment();
-            processBuilderEnv.putAll(env);
-        }
-        processBuilder.redirectErrorStream(true);
         try {
-            Process process = processBuilder.start();
-            BufferedReader stdout = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            List<String> output = new ArrayList<>();
-            if (timeout == null) {
-                String line;
-                while ((line = stdout.readLine()) != null) {
-                    output.add(line);
-                }
-                return new Subprocess(command, env, process.waitFor(), output, false);
-            } else {
-                // The subprocess might produce output forever. We need to grab the output in a
-                // separate thread, so we can terminate the process after the timeout if necessary.
-                Thread outputReader = new Thread(() -> {
-                    try {
-                        String line;
-                        while ((line = stdout.readLine()) != null) {
-                            output.add(line);
-                        }
-                    } catch (IOException e) {
-                        // happens when the process ends
-                    }
-                });
-                outputReader.start();
-                boolean finishedOnTime = process.waitFor(timeout.getSeconds(), TimeUnit.SECONDS);
-                int exitCode = process.destroyForcibly().waitFor();
-                return new Subprocess(command, env, exitCode, output, !finishedOnTime);
-            }
+            return process(command, env, workingDir, timeout);
         } finally {
             if (packageOpeningOptionsArgumentsFile != null) {
                 if (!Boolean.getBoolean(KEEP_TEMPORARY_ARGUMENT_FILES_PROPERTY_NAME)) {
                     Files.delete(packageOpeningOptionsArgumentsFile);
                 }
             }
+        }
+    }
+
+    /**
+     * Executes a command in a subprocess.
+     *
+     * @param command the command to be executed in a separate process.
+     * @param env environment variables of the subprocess. If null, no environment variables are
+     *            passed.
+     * @param workingDir the working directory of the subprocess. If null, the working directory of
+     *            the current process is used.
+     * @param timeout the duration to wait for the process to finish. When the timeout is reached,
+     *            the subprocess is terminated forcefully. If the timeout is null, the calling
+     *            thread waits for the process indefinitely.
+     */
+    public static Subprocess process(List<String> command, Map<String, String> env, File workingDir, Duration timeout) throws IOException, InterruptedException {
+        ProcessBuilder processBuilder = new ProcessBuilder(command);
+        if (workingDir != null) {
+            processBuilder.directory(workingDir);
+        }
+        if (env != null) {
+            Map<String, String> processBuilderEnv = processBuilder.environment();
+            processBuilderEnv.putAll(env);
+        }
+        processBuilder.redirectErrorStream(true);
+        Process process = processBuilder.start();
+        BufferedReader stdout = new BufferedReader(new InputStreamReader(process.getInputStream()));
+        List<String> output = new ArrayList<>();
+        if (timeout == null) {
+            String line;
+            while ((line = stdout.readLine()) != null) {
+                output.add(line);
+            }
+            return new Subprocess(command, env, process.waitFor(), output, false);
+        } else {
+            // The subprocess might produce output forever. We need to grab the output in a
+            // separate thread, so we can terminate the process after the timeout if necessary.
+            Thread outputReader = new Thread(() -> {
+                try {
+                    String line;
+                    while ((line = stdout.readLine()) != null) {
+                        output.add(line);
+                    }
+                } catch (IOException e) {
+                    // happens when the process ends
+                }
+            });
+            outputReader.start();
+            boolean finishedOnTime = process.waitFor(timeout.getSeconds(), TimeUnit.SECONDS);
+            if (!finishedOnTime) {
+                process.destroyForcibly().waitFor();
+            }
+            outputReader.join();
+            return new Subprocess(command, env, process.exitValue(), output, !finishedOnTime);
         }
     }
 

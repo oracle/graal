@@ -54,7 +54,7 @@ final class Target_jdk_internal_loader_Loader {
 
     @Substitute
     protected URL findResource(String mn, String name) {
-        return ResourcesHelper.nameToResourceURL(name);
+        return ResourcesHelper.nameToResourceURL(mn, name);
     }
 
     @Substitute

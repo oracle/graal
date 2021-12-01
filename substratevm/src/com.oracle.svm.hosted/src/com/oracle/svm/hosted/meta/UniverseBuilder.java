@@ -44,6 +44,7 @@ import org.graalvm.collections.Pair;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -61,7 +62,8 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.results.AbstractAnalysisResultsBuilder;
-import com.oracle.svm.core.InvalidVTableEntryHandler;
+import com.oracle.svm.core.FunctionPointerHolder;
+import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
@@ -69,7 +71,6 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.ExcludeFromReferenceMap;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.c.function.CFunctionOptions;
-import com.oracle.svm.core.classinitialization.ClassInitializationInfo.ClassInitializerFunctionPointerHolder;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
@@ -82,6 +83,7 @@ import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.HostedConfiguration;
@@ -366,8 +368,22 @@ public class UniverseBuilder {
                     DynamicHub.class,
                     CEntryPointLiteral.class,
                     BoxedRelocatedPointer.class,
-                    ClassInitializerFunctionPointerHolder.class,
+                    FunctionPointerHolder.class,
                     FillerObject.class));
+
+    static {
+        try {
+            if (JavaVersionUtil.JAVA_SPEC >= 11) {
+                IMMUTABLE_TYPES.add(Class.forName("com.oracle.svm.core.jdk11.reflect.SubstrateMethodAccessorJDK11"));
+                IMMUTABLE_TYPES.add(Class.forName("com.oracle.svm.core.jdk11.reflect.SubstrateConstructorAccessorJDK11"));
+            } else {
+                IMMUTABLE_TYPES.add(Class.forName("com.oracle.svm.core.jdk8.reflect.SubstrateMethodAccessorJDK8"));
+                IMMUTABLE_TYPES.add(Class.forName("com.oracle.svm.core.jdk8.reflect.SubstrateConstructorAccessorJDK8"));
+            }
+        } catch (ClassNotFoundException ex) {
+            throw VMError.shouldNotReachHere(ex);
+        }
+    }
 
     private void collectMonitorFieldInfo(BigBang bb) {
         if (!SubstrateOptions.MultiThreaded.getValue()) {
@@ -659,7 +675,7 @@ public class UniverseBuilder {
          * To avoid segfaults when jumping to address 0, all unused vtable entries are filled with a
          * stub that reports a fatal error.
          */
-        HostedMethod invalidVTableEntryHandler = hMetaAccess.lookupJavaMethod(InvalidVTableEntryHandler.HANDLER_METHOD);
+        HostedMethod invalidVTableEntryHandler = hMetaAccess.lookupJavaMethod(InvalidMethodPointerHandler.INVALID_VTABLE_ENTRY_HANDLER_METHOD);
 
         for (HostedType type : hUniverse.getTypes()) {
             if (type.isArray()) {
@@ -910,7 +926,7 @@ public class UniverseBuilder {
                  * We install a CodePointer in the vtable; when generating relocation info, we will
                  * know these point into .text
                  */
-                vtable[idx] = MethodPointer.factory(type.vtable[idx]);
+                vtable[idx] = new MethodPointer(type.vtable[idx]);
             }
 
             // pointer maps in Dynamic Hub
@@ -984,6 +1000,6 @@ final class InvalidVTableEntryFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
-        access.registerAsCompiled(InvalidVTableEntryHandler.HANDLER_METHOD);
+        access.registerAsCompiled(InvalidMethodPointerHandler.INVALID_VTABLE_ENTRY_HANDLER_METHOD);
     }
 }

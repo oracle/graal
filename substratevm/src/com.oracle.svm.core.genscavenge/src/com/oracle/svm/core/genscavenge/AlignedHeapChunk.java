@@ -93,6 +93,7 @@ public final class AlignedHeapChunk {
         HeapChunk.initialize(chunk, AlignedHeapChunk.getObjectsStart(chunk), HeapChunk.getEndOffset(chunk));
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static Pointer getObjectsStart(AlignedHeader that) {
         return HeapChunk.asPointer(that).add(getObjectsStartOffset());
     }
@@ -124,7 +125,7 @@ public final class AlignedHeapChunk {
     }
 
     public static AlignedHeader getEnclosingChunkFromObjectPointer(Pointer ptr) {
-        return (AlignedHeader) PointerUtils.roundDown(ptr, HeapPolicy.getAlignedHeapChunkAlignment());
+        return (AlignedHeader) PointerUtils.roundDown(ptr, HeapParameters.getAlignedHeapChunkAlignment());
     }
 
     /** Return the offset of an object within the objects part of a chunk. */

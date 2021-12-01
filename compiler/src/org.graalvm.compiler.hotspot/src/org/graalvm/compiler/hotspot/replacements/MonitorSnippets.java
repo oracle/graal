@@ -95,7 +95,6 @@ import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
@@ -143,7 +142,6 @@ import org.graalvm.word.WordFactory;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.Register;
-import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaType;
@@ -451,26 +449,19 @@ public class MonitorSnippets implements Snippets {
     }
 
     private static boolean tryEnterInflated(Object object, Word lock, Word mark, Register threadRegister, boolean trace, Counters counters) {
-        // write non-zero value to lock slot
-        lock.writeWord(lockDisplacedMarkOffset(INJECTED_VMCONFIG), lock, DISPLACED_MARK_WORD_LOCATION);
+        // Set the lock slot's displaced mark to unused. Any non-0 value suffices.
+        lock.writeWord(lockDisplacedMarkOffset(INJECTED_VMCONFIG), WordFactory.unsigned(3), DISPLACED_MARK_WORD_LOCATION);
         // mark is a pointer to the ObjectMonitor + monitorMask
         Word monitor = mark.subtract(monitorMask(INJECTED_VMCONFIG));
         int ownerOffset = objectMonitorOwnerOffset(INJECTED_VMCONFIG);
-        Word owner = monitor.readWord(ownerOffset, OBJECT_MONITOR_OWNER_LOCATION);
-        if (probability(FREQUENT_PROBABILITY, owner.equal(0))) {
-            // it appears unlocked (owner == 0)
-            if (probability(FREQUENT_PROBABILITY, monitor.logicCompareAndSwapWord(ownerOffset, owner, registerAsWord(threadRegister), OBJECT_MONITOR_OWNER_LOCATION))) {
-                // success
-                traceObject(trace, "+lock{inflated:cas}", object, true);
-                counters.inflatedCas.inc();
-                return true;
-            } else {
-                traceObject(trace, "+lock{stub:inflated:failed-cas}", object, true);
-                counters.inflatedFailedCas.inc();
-            }
+        if (probability(FREQUENT_PROBABILITY, monitor.logicCompareAndSwapWord(ownerOffset, WordFactory.zero(), registerAsWord(threadRegister), OBJECT_MONITOR_OWNER_LOCATION))) {
+            // success
+            traceObject(trace, "+lock{inflated:cas}", object, true);
+            counters.inflatedCas.inc();
+            return true;
         } else {
-            traceObject(trace, "+lock{stub:inflated:owned}", object, true);
-            counters.inflatedOwned.inc();
+            traceObject(trace, "+lock{stub:inflated:failed-cas}", object, true);
+            counters.inflatedFailedCas.inc();
         }
         return false;
     }
@@ -496,7 +487,6 @@ public class MonitorSnippets implements Snippets {
     public static void monitorexit(Object object, @ConstantParameter int lockDepth, @ConstantParameter Register threadRegister, @ConstantParameter boolean trace,
                     @ConstantParameter Counters counters) {
         trace(trace, "           object: 0x%016lx\n", Word.objectToTrackedPointer(object));
-        final Word mark = loadWordFromObject(object, markOffset(INJECTED_VMCONFIG));
         if (useBiasedLocking(INJECTED_VMCONFIG)) {
             // Check for biased locking unlock case, which is a no-op
             // Note: we do not have to check the thread ID for two reasons.
@@ -504,6 +494,7 @@ public class MonitorSnippets implements Snippets {
             // a higher level. Second, if the bias was revoked while we held the
             // lock, the object could not be rebiased toward another thread, so
             // the bias bit would be clear.
+            final Word mark = loadWordFromObject(object, markOffset(INJECTED_VMCONFIG));
             trace(trace, "             mark: 0x%016lx\n", mark);
             if (probability(FREQUENT_PROBABILITY, mark.and(biasedLockMaskInPlace(INJECTED_VMCONFIG)).equal(WordFactory.unsigned(biasedLockPattern(INJECTED_VMCONFIG))))) {
                 endLockScope();
@@ -525,6 +516,7 @@ public class MonitorSnippets implements Snippets {
             traceObject(trace, "-lock{recursive}", object, false);
             counters.unlockCasRecursive.inc();
         } else {
+            final Word mark = loadWordFromObject(object, markOffset(INJECTED_VMCONFIG));
             if (!tryExitInflated(object, mark, lock, threadRegister, trace, counters)) {
                 verifyOop(object);
                 // Test if object's mark word is pointing to the displaced mark word, and if so,
@@ -565,12 +557,10 @@ public class MonitorSnippets implements Snippets {
             // mark is a pointer to the ObjectMonitor + monitorMask
             Word monitor = mark.subtract(monitorMask(INJECTED_VMCONFIG));
             int ownerOffset = objectMonitorOwnerOffset(INJECTED_VMCONFIG);
-            Word owner = monitor.readWord(ownerOffset, OBJECT_MONITOR_OWNER_LOCATION);
             int recursionsOffset = objectMonitorRecursionsOffset(INJECTED_VMCONFIG);
             Word recursions = monitor.readWord(recursionsOffset, OBJECT_MONITOR_RECURSION_LOCATION);
-            Word thread = registerAsWord(threadRegister);
-            if (probability(FAST_PATH_PROBABILITY, owner.xor(thread).or(recursions).equal(0))) {
-                // owner == thread && recursions == 0
+            if (probability(FAST_PATH_PROBABILITY, recursions.equal(0))) {
+                // recursions == 0
                 int cxqOffset = objectMonitorCxqOffset(INJECTED_VMCONFIG);
                 Word cxq = monitor.readWord(cxqOffset, OBJECT_MONITOR_CXQ_LOCATION);
                 int entryListOffset = objectMonitorEntryListOffset(INJECTED_VMCONFIG);
@@ -603,6 +593,7 @@ public class MonitorSnippets implements Snippets {
                         } else {
                             // Either the monitor is grabbed by a spinning thread, or the spinning
                             // thread parks. Now we attempt to reset the owner of the monitor.
+                            Word thread = registerAsWord(threadRegister);
                             if (probability(FREQUENT_PROBABILITY, !monitor.logicCompareAndSwapWord(ownerOffset, zero(), thread, OBJECT_MONITOR_OWNER_LOCATION))) {
                                 // The monitor is stolen.
                                 traceObject(trace, "-lock{inflated:transfer}", object, false);
@@ -771,9 +762,8 @@ public class MonitorSnippets implements Snippets {
         private final boolean useFastLocking;
         public final Counters counters;
 
-        public Templates(OptionValues options, Iterable<DebugHandlersFactory> factories, SnippetCounter.Group.Factory factory, HotSpotProviders providers, TargetDescription target,
-                        boolean useFastLocking) {
-            super(options, factories, providers, providers.getSnippetReflection(), target);
+        public Templates(OptionValues options, SnippetCounter.Group.Factory factory, HotSpotProviders providers, boolean useFastLocking) {
+            super(options, providers);
             this.useFastLocking = useFastLocking;
 
             this.counters = new Counters(factory);
@@ -871,8 +861,8 @@ public class MonitorSnippets implements Snippets {
                     invoke.setStateAfter(graph.start().stateAfter());
                     graph.addAfterFixed(graph.start(), invoke);
 
-                    StructuredGraph inlineeGraph = providers.getReplacements().getSnippet(initCounter.getMethod(), null, null, invoke.graph().trackNodeSourcePosition(), invoke.getNodeSourcePosition(),
-                                    invoke.getOptions());
+                    StructuredGraph inlineeGraph = providers.getReplacements().getSnippet(initCounter.getMethod(), null, null, null, invoke.graph().trackNodeSourcePosition(),
+                                    invoke.getNodeSourcePosition(), invoke.getOptions());
                     InliningUtil.inline(invoke, inlineeGraph, false, null);
 
                     List<ReturnNode> rets = graph.getNodes(ReturnNode.TYPE).snapshot();

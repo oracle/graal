@@ -56,8 +56,10 @@ public abstract class LLVMRunDestructorFunctions extends LLVMIntrinsic {
         RootCallTarget[] targets = context.getDestructorFunctions();
         for (int i = targets.length - 1; i >= 0; i--) {
             RootCallTarget target = targets[i];
-            LLVMStack stack = context.getThreadingStack().getStack();
-            callNode.call(target, new Object[]{stack});
+            if (target != null) {
+                LLVMStack stack = context.getThreadingStack().getStack();
+                callNode.call(target, new Object[]{stack});
+            }
         }
     }
 }

@@ -91,9 +91,10 @@ import org.graalvm.compiler.nodes.java.UnsafeCompareAndSwapNode;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
+import org.graalvm.compiler.phases.common.IterativeConditionalEliminationPhase;
 import org.graalvm.compiler.phases.graph.MergeableState;
 import org.graalvm.compiler.phases.graph.PostOrderNodeIterator;
-import org.graalvm.compiler.replacements.arraycopy.ArrayCopy;
+import org.graalvm.compiler.replacements.nodes.BasicArrayCopyNode;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.MacroInvokable;
 import org.graalvm.compiler.replacements.nodes.ObjectClone;
@@ -121,7 +122,6 @@ import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.nodes.AnalysisArraysCopyOfNode;
 import com.oracle.graal.pointsto.nodes.UnsafePartitionLoadNode;
 import com.oracle.graal.pointsto.nodes.UnsafePartitionStoreNode;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysis;
@@ -129,7 +129,6 @@ import com.oracle.graal.pointsto.typestate.TypeState;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.common.JVMCIError;
-import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaKind;
 
 public class MethodTypeFlowBuilder {
@@ -179,7 +178,17 @@ public class MethodTypeFlowBuilder {
                  */
                 registerUsedElements(false);
             }
-            CanonicalizerPhase.create().apply(graph, bb.getProviders());
+            CanonicalizerPhase canonicalizerPhase = CanonicalizerPhase.create();
+            canonicalizerPhase.apply(graph, bb.getProviders());
+            if (bb.strengthenGraalGraphs()) {
+                /*
+                 * Removing unnecessary conditions before the static analysis runs reduces the size
+                 * of the type flow graph. For example, this removes redundant null checks: the
+                 * bytecode parser emits explicit null checks before e.g., all method calls, field
+                 * access, array accesses; many of those dominate each other.
+                 */
+                new IterativeConditionalEliminationPhase(canonicalizerPhase, false).apply(graph, bb.getProviders());
+            }
 
             // Do it again after canonicalization changed type checks and field accesses.
             registerUsedElements(true);
@@ -781,10 +790,7 @@ public class MethodTypeFlowBuilder {
                 } else {
                     /*
                      * Without precise type information the dynamic new instance node has to
-                     * generate a heap object for each instantiated type. This means that the source
-                     * flow for dynamic new instance is 'close to all instantiated' and will be
-                     * reduced to abstract objects, unless
-                     * BootImageAnalysisOptions.ReduceCloseToAllInstantiatedFlows is disabled.
+                     * generate a heap object for each instantiated type.
                      */
                     instanceType = bb.getObjectType();
                     instanceTypeBuilder = TypeFlowBuilder.create(bb, instanceType, AllInstantiatedTypeFlow.class, () -> {
@@ -1123,8 +1129,8 @@ public class MethodTypeFlowBuilder {
                 AtomicReadAndWriteNode node = (AtomicReadAndWriteNode) n;
                 modelUnsafeReadAndWriteFlow(node, node.object(), node.newValue(), node.offset());
 
-            } else if (n instanceof ArrayCopy) {
-                ArrayCopy node = (ArrayCopy) n;
+            } else if (n instanceof BasicArrayCopyNode) {
+                BasicArrayCopyNode node = (BasicArrayCopyNode) n;
 
                 TypeFlowBuilder<?> srcBuilder = state.lookup(node.getSource());
                 TypeFlowBuilder<?> dstBuilder = state.lookup(node.getDestination());
@@ -1171,10 +1177,6 @@ public class MethodTypeFlowBuilder {
                     state.add(node, wordToObjectBuilder);
                 }
 
-            } else if (n instanceof AnalysisArraysCopyOfNode) {
-                AnalysisArraysCopyOfNode node = (AnalysisArraysCopyOfNode) n;
-                processArraysCopyOf(node, node.getOriginal(), node.getNewArrayType(), state);
-
             } else if (n instanceof InvokeNode || n instanceof InvokeWithExceptionNode) {
                 Invoke invoke = (Invoke) n;
                 if (invoke.callTarget() instanceof MethodCallTargetNode) {
@@ -1198,7 +1200,7 @@ public class MethodTypeFlowBuilder {
                     return cloneFlow;
                 });
                 cloneBuilder.addObserverDependency(inputBuilder);
-                state.add(node.asNode(), cloneBuilder);
+                state.add(node.asFixedNode(), cloneBuilder);
             } else if (n instanceof MonitorEnterNode) {
                 MonitorEnterNode node = (MonitorEnterNode) n;
                 BytecodeLocation monitorLocation = BytecodeLocation.create(uniqueKey(node), methodFlow.getMethod());
@@ -1324,17 +1326,36 @@ public class MethodTypeFlowBuilder {
                 /* Create the actual return builder. */
                 AnalysisType returnType = (AnalysisType) targetMethod.getSignature().getReturnType(null);
                 TypeFlowBuilder<?> actualReturnBuilder = TypeFlowBuilder.create(bb, invoke.asNode(), ActualReturnTypeFlow.class, () -> {
-                    ActualReturnTypeFlow actualReturn = new ActualReturnTypeFlow(invoke.asNode(), returnType);
+                    InvokeTypeFlow invokeFlow = invokeBuilder.get();
+                    ActualReturnTypeFlow actualReturn = new ActualReturnTypeFlow(invokeFlow.source, returnType);
                     methodFlow.addMiscEntry(actualReturn);
                     /*
                      * Only set the actual return in the invoke when it is materialized, i.e., it is
                      * used by other flows.
                      */
-                    InvokeTypeFlow invokeFlow = invokeBuilder.get();
                     invokeFlow.setActualReturn(actualReturn);
                     actualReturn.setInvokeFlow(invokeFlow);
                     return actualReturn;
                 });
+
+                ObjectStamp stamp = (ObjectStamp) invoke.stamp(NodeView.DEFAULT);
+                if (stamp.nonNull() && !returnType.equals(stamp.type()) && returnType.isAssignableFrom(stamp.type())) {
+                    /*
+                     * If the invoke stamp has a more precise type than the return type use that to
+                     * filter the returned values. This can happen for example for MacroInvokable
+                     * nodes when more concrete stamp information can be inferred for example from
+                     * parameter types. In that case the Graal graph optimizations may decide to
+                     * remove a checkcast that would normally follow the invoke, so we need to
+                     * introduce the filter to avoid loosing precision.
+                     */
+                    TypeFlowBuilder<?> filterBuilder = TypeFlowBuilder.create(bb, invoke, FilterTypeFlow.class, () -> {
+                        FilterTypeFlow filterFlow = new FilterTypeFlow(invoke, (AnalysisType) stamp.type(), stamp.isExactType(), true, true);
+                        methodFlow.addMiscEntry(filterFlow);
+                        return filterFlow;
+                    });
+                    filterBuilder.addUseDependency(actualReturnBuilder);
+                    actualReturnBuilder = filterBuilder;
+                }
 
                 if (bb.strengthenGraalGraphs()) {
                     typeFlowGraphBuilder.registerSinkBuilder(actualReturnBuilder);
@@ -1496,101 +1517,4 @@ public class MethodTypeFlowBuilder {
     protected void checkUnsafeOffset(@SuppressWarnings("unused") ValueNode base, @SuppressWarnings("unused") ValueNode offset) {
     }
 
-    protected void processArraysCopyOf(ValueNode node, ValueNode original, ValueNode newArrayType, TypeFlowsOfNodes state) {
-        TypeFlowBuilder<?> originalArrayBuilder = state.lookup(original);
-
-        Object key = uniqueKey(node);
-        BytecodeLocation newArrayLabel = bb.analysisPolicy().createAllocationSite(bb, key, methodFlow.getMethod());
-
-        /*
-         * Arrays.copyOf is essentially a dynamic new instance plus a System.arrayCopy.
-         */
-
-        /*
-         * First we determine the type of the new array and create a dynamic new instance flow to
-         * allocate it.
-         */
-        TypeFlowBuilder<?> newArrayTypeBuilder;
-        if (newArrayType == null) {
-            /*
-             * The type of the new array and that of the original are the same. The dynamic new
-             * instance flow will create a new heap object for each incoming type and for each
-             * different heap context.
-             */
-            newArrayTypeBuilder = originalArrayBuilder;
-        } else {
-            /*
-             * The type of the new array and that of the original are different. The elements are
-             * copied from the original array but the type of the resulting objects are given by the
-             * new type. Both the original 'values' and the 'new type' are needed for a proper
-             * intercept when the analysis is context sensitive.
-             */
-            newArrayTypeBuilder = getDynamicTypeFlow(node, newArrayType, true, state);
-        }
-
-        TypeFlowBuilder<?> newArrayBuilder = TypeFlowBuilder.create(bb, node, DynamicNewInstanceTypeFlow.class, () -> {
-            DynamicNewInstanceTypeFlow newArrayFlow = new DynamicNewInstanceTypeFlow(newArrayTypeBuilder.get(), bb.getObjectArrayType(), node, newArrayLabel);
-            methodFlow.addMiscEntry(newArrayFlow);
-            return newArrayFlow;
-        });
-
-        if (newArrayType != null && (newArrayType instanceof GetClassNode || newArrayType.isConstant())) {
-            newArrayBuilder.addObserverDependency(newArrayTypeBuilder);
-        }
-
-        state.add(node, newArrayBuilder);
-
-        /*
-         * Then we use an array copy type flow to propagate the elements type state from the
-         * original array into the copy.
-         */
-        TypeFlowBuilder<?> arrayCopyBuilder = TypeFlowBuilder.create(bb, node, ArrayCopyTypeFlow.class, () -> {
-            ArrayCopyTypeFlow arrayCopyFlow = new ArrayCopyTypeFlow(node, null, originalArrayBuilder.get(), newArrayBuilder.get());
-            methodFlow.addMiscEntry(arrayCopyFlow);
-            return arrayCopyFlow;
-        });
-
-        arrayCopyBuilder.addObserverDependency(originalArrayBuilder);
-        arrayCopyBuilder.addObserverDependency(newArrayBuilder);
-
-        /* Array copies must not be removed. */
-        typeFlowGraphBuilder.registerSinkBuilder(arrayCopyBuilder);
-    }
-
-    /**
-     * Get the type flow of a dynamic type. If the type results from a GetClassNode or a
-     * JavaConstant this method will return accurate type information. Otherwise it will return all
-     * instantiated types or, if it is an array, all instantiated array types.
-     */
-    protected TypeFlowBuilder<?> getDynamicTypeFlow(ValueNode node, ValueNode typeSource, boolean isArrayType, TypeFlowsOfNodes state) {
-        TypeFlowBuilder<?> dynamicTypeBuilder;
-        if (typeSource instanceof GetClassNode) {
-            GetClassNode getClassNode = (GetClassNode) typeSource;
-            dynamicTypeBuilder = state.lookup(getClassNode.getObject());
-
-        } else if (typeSource.isConstant()) {
-            assert state.lookup(typeSource).getFlowClass() == SourceTypeFlow.class;
-
-            Constant constant = typeSource.asJavaConstant();
-            AnalysisType exactType = (AnalysisType) bb.getProviders().getConstantReflection().asJavaType(constant);
-            exactType.registerAsAllocated(node);
-
-            dynamicTypeBuilder = TypeFlowBuilder.create(bb, node, SourceTypeFlow.class, () -> {
-                SourceTypeFlow dynamicTypeFlow = new SourceTypeFlow(node, TypeState.forExactType(bb, exactType, false));
-                methodFlow.addMiscEntry(dynamicTypeFlow);
-                return dynamicTypeFlow;
-            });
-        } else {
-            /*
-             * Without precise type information either the type flow corresponding to all
-             * instantiated object types or all instantiated array types will be returned.
-             */
-            AnalysisType arrayType = isArrayType ? bb.getObjectArrayType() : bb.getObjectType();
-            dynamicTypeBuilder = TypeFlowBuilder.create(bb, node, AllInstantiatedTypeFlow.class, () -> {
-                return arrayType.getTypeFlow(bb, false);
-            });
-        }
-
-        return dynamicTypeBuilder;
-    }
 }

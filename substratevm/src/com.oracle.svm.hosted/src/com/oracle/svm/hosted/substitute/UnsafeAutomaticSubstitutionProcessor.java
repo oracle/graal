@@ -74,6 +74,8 @@ import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
+import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -85,9 +87,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.classinitialization.ClassInitializerGraphBuilderPhase;
-import com.oracle.svm.hosted.phases.NoClassInitializationPlugin;
 import com.oracle.svm.hosted.snippets.ReflectionPlugins;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -214,9 +214,9 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
                 neverInlineSet.add(unsafeObjectFieldOffsetClassStringMethod);
             }
 
-            if (JavaVersionUtil.JAVA_SPEC >= 15) {
+            if (JavaVersionUtil.JAVA_SPEC >= 17) {
                 /*
-                 * JDK 15 and later add checks for hidden classes and record classes in
+                 * JDK 17 and later add checks for hidden classes and record classes in
                  * sun.misc.Unsafe before delegating to jdk.internal.misc.Unsafe. When inlined, the
                  * checks make control flow too complex to detect offset field assignments.
                  */
@@ -426,7 +426,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         }
 
         boolean valid = true;
-        if (JavaVersionUtil.JAVA_SPEC >= 15 && isInvokeTo(invoke, sunMiscUnsafeObjectFieldOffsetMethod)) {
+        if (JavaVersionUtil.JAVA_SPEC >= 17 && isInvokeTo(invoke, sunMiscUnsafeObjectFieldOffsetMethod)) {
             Class<?> declaringClass = field.getDeclaringClass();
             if (RecordSupport.singleton().isRecord(declaringClass)) {
                 unsuccessfulReasons.add("The argument to sun.misc.Unsafe.objectFieldOffset(Field) is a field of a record.");

@@ -27,14 +27,14 @@ package com.oracle.svm.core.posix.darwin;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.CErrorNumber.CErrorNumberSupport;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.headers.LibCSupport;
 
 @AutomaticFeature
 class DarwinImageSingletonsFeature implements Feature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(CErrorNumberSupport.class, new DarwinCErrorNumberSupport());
+        ImageSingletons.add(LibCSupport.class, new DarwinLibCSupport());
     }
 }

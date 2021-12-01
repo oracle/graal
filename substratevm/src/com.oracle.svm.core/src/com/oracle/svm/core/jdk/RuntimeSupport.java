@@ -35,26 +35,32 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.impl.VMRuntimeSupport;
 
+import com.oracle.svm.core.heap.HeapSizeVerifier;
+import com.oracle.svm.core.util.VMError;
+
 public final class RuntimeSupport implements VMRuntimeSupport {
+    private final AtomicReference<InitializationState> initializationState = new AtomicReference<>(InitializationState.Uninitialized);
 
     /** Hooks that run before calling Java {@code main} or in {@link VMRuntime#initialize()}. */
-    private AtomicReference<Runnable[]> startupHooks = new AtomicReference<>();
+    private final AtomicReference<Runnable[]> startupHooks = new AtomicReference<>();
 
     /**
      * Hooks that run after the Java {@code main} method or when calling {@link Runtime#exit} (or
      * {@link System#exit}).
      */
-    private AtomicReference<Runnable[]> shutdownHooks = new AtomicReference<>();
+    private final AtomicReference<Runnable[]> shutdownHooks = new AtomicReference<>();
 
     /** Hooks that run during isolate initialization. */
-    private AtomicReference<Runnable[]> initializationHooks = new AtomicReference<>();
+    private final AtomicReference<Runnable[]> initializationHooks = new AtomicReference<>();
 
     /** Hooks that run during isolate tear-down. */
-    private AtomicReference<Runnable[]> tearDownHooks = new AtomicReference<>();
+    private final AtomicReference<Runnable[]> tearDownHooks = new AtomicReference<>();
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     private RuntimeSupport() {
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
     public static void initializeRuntimeSupport() {
         assert ImageSingletons.contains(RuntimeSupport.class) == false : "Initializing RuntimeSupport again.";
         ImageSingletons.add(RuntimeSupport.class, new RuntimeSupport());
@@ -70,9 +76,22 @@ public final class RuntimeSupport implements VMRuntimeSupport {
         addHook(startupHooks, hook);
     }
 
+    public boolean isUninitialized() {
+        return initializationState.get() == InitializationState.Uninitialized;
+    }
+
     @Override
-    public void executeStartupHooks() {
-        executeHooks(startupHooks);
+    public void initialize() {
+        boolean shouldInitialize = initializationState.compareAndSet(InitializationState.Uninitialized, InitializationState.InProgress);
+        if (shouldInitialize) {
+            // GR-35186: we should verify that none of the early parsed isolate arguments changed.
+            HeapSizeVerifier.verifyHeapOptions();
+
+            executeHooks(startupHooks);
+            VMError.guarantee(initializationState.compareAndSet(InitializationState.InProgress, InitializationState.Done), "Only one thread can call the initialization");
+        } else if (initializationState.get() != InitializationState.Done) {
+            throw VMError.shouldNotReachHere("Only one thread can call the initialization");
+        }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -132,4 +151,9 @@ public final class RuntimeSupport implements VMRuntimeSupport {
         Target_java_lang_Shutdown.shutdown();
     }
 
+    private enum InitializationState {
+        Uninitialized,
+        InProgress,
+        Done
+    }
 }

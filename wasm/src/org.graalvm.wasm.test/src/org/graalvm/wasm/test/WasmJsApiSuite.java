@@ -56,6 +56,7 @@ import org.graalvm.wasm.ModuleLimits;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmInstance;
+import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmTable;
 import org.graalvm.wasm.WasmVoidResult;
@@ -77,7 +78,6 @@ import org.graalvm.wasm.predefined.testutil.TestutilModule;
 import org.graalvm.wasm.utils.Assert;
 import org.junit.Test;
 
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
@@ -202,12 +202,12 @@ public class WasmJsApiSuite {
                             }),
             });
             WebAssembly.tableWrite(table, 0, new WasmFunctionInstance(context, null,
-                            Truffle.getRuntime().createCallTarget(new RootNode(context.language()) {
+                            new RootNode(context.language()) {
                                 @Override
                                 public Object execute(VirtualFrame frame) {
                                     return 210;
                                 }
-                            })));
+                            }.getCallTarget()));
             final WasmInstance instance = moduleInstantiate(wasm, binaryWithTableImport, importObject);
             try {
                 final Object callFirst = WebAssembly.instanceExport(instance, "callFirst");
@@ -354,12 +354,12 @@ public class WasmJsApiSuite {
             final InteropLibrary lib = InteropLibrary.getUncached();
             try {
                 final Object f = new WasmFunctionInstance(context, null,
-                                Truffle.getRuntime().createCallTarget(new RootNode(context.language()) {
+                                new RootNode(context.language()) {
                                     @Override
                                     public Object execute(VirtualFrame frame) {
                                         return 42;
                                     }
-                                }));
+                                }.getCallTarget());
                 final Object writeTable = wasm.readMember("table_write");
                 final Object readTable = wasm.readMember("table_read");
                 final Object a = WebAssembly.instanceExport(instance, "a");
@@ -637,15 +637,16 @@ public class WasmJsApiSuite {
             final WasmInstance instance = moduleInstantiate(wasm, binaryWithMixedExports, null);
             final InteropLibrary lib = InteropLibrary.getUncached();
 
+            WasmContext wasmContext = WasmContext.get(null);
             final WasmFunctionInstance functionInstance = new WasmFunctionInstance(
+                            wasmContext,
                             null,
-                            null,
-                            Truffle.getRuntime().createCallTarget(new RootNode(WasmContext.get(null).language()) {
+                            new RootNode(wasmContext.language()) {
                                 @Override
                                 public Object execute(VirtualFrame frame) {
                                     return 42;
                                 }
-                            }));
+                            }.getCallTarget());
 
             // We should be able to set element 1.
             try {
@@ -1156,16 +1157,215 @@ public class WasmJsApiSuite {
         });
     }
 
+    @Test
+    public void testValidateUnsupportedInstruction() throws IOException {
+        // (module
+        // (func
+        // i32.const 0
+        // 0x06 (* reserved instruction value *)
+        // drop
+        // )
+        // )
+        byte[] data = new byte[]{
+                        (byte) 0x00, (byte) 0x61, (byte) 0x73, (byte) 0x6D, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x04, (byte) 0x01, (byte) 0x60, (byte) 0x00,
+                        (byte) 0x00, (byte) 0x03, (byte) 0x02, (byte) 0x01, (byte) 0x00, (byte) 0x0A, (byte) 0x07, (byte) 0x01, (byte) 0x05, (byte) 0x00, (byte) 0x41, (byte) 0x00, (byte) 0x06,
+                        (byte) 0x1A, (byte) 0x0B,
+        };
+        runValidationInvalid(data);
+    }
+
+    @Test
+    public void testValidateMalformedInstruction() throws IOException {
+        // (module
+        // (func
+        // i32.const (* missing int constant *)
+        // )
+        // )
+        byte[] data = new byte[]{
+                        (byte) 0x00, (byte) 0x61, (byte) 0x73, (byte) 0x6D, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x04, (byte) 0x01, (byte) 0x60, (byte) 0x00,
+                        (byte) 0x00, (byte) 0x03, (byte) 0x02, (byte) 0x01, (byte) 0x00, (byte) 0x0A, (byte) 0x06, (byte) 0x01, (byte) 0x04, (byte) 0x00, (byte) 0x41, (byte) 0x0B,
+        };
+        runValidationInvalid(data);
+    }
+
+    @Test
+    public void testSetMissingLocal() throws IOException {
+        // (module
+        // (func
+        // i32.const 0
+        // local.set 0
+        // )
+        // )
+        byte[] data = new byte[]{
+                        (byte) 0x00, (byte) 0x61, (byte) 0x73, (byte) 0x6D, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x04, (byte) 0x01, (byte) 0x60, (byte) 0x00,
+                        (byte) 0x00, (byte) 0x03, (byte) 0x02, (byte) 0x01, (byte) 0x00, (byte) 0x0A, (byte) 0x08, (byte) 0x01, (byte) 0x06, (byte) 0x00, (byte) 0x41, (byte) 0x00, (byte) 0x21,
+                        (byte) 0x00, (byte) 0x0B,
+        };
+        runValidationInvalid(data);
+    }
+
+    @Test
+    public void testMissingStackValue() throws IOException {
+        // (module
+        // (func
+        // i32.const 0
+        // i32.eq
+        // )
+        // )
+        byte[] data = new byte[]{
+                        (byte) 0x00, (byte) 0x61, (byte) 0x73, (byte) 0x6D, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x04, (byte) 0x01, (byte) 0x60, (byte) 0x00,
+                        (byte) 0x00, (byte) 0x03, (byte) 0x02, (byte) 0x01, (byte) 0x00, (byte) 0x0A, (byte) 0x07, (byte) 0x01, (byte) 0x05, (byte) 0x00, (byte) 0x41, (byte) 0x00, (byte) 0x46,
+                        (byte) 0x0B,
+        };
+        runValidationInvalid(data);
+    }
+
+    @Test
+    public void testBranchToMissingLabel() throws IOException {
+        // (module
+        // (func
+        // br 1
+        // )
+        // )
+        byte[] data = new byte[]{
+                        (byte) 0x00, (byte) 0x61, (byte) 0x73, (byte) 0x6D, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x04, (byte) 0x01, (byte) 0x60, (byte) 0x00,
+                        (byte) 0x00, (byte) 0x03, (byte) 0x02, (byte) 0x01, (byte) 0x00, (byte) 0x0A, (byte) 0x06, (byte) 0x01, (byte) 0x04, (byte) 0x00, (byte) 0x0C, (byte) 0x01, (byte) 0x0B,
+        };
+        runValidationInvalid(data);
+    }
+
+    @Test
+    public void testValidFunctionBody() throws IOException {
+        // (module
+        // (func (export "exp") (param i32 i32) (result i32)
+        // (local i32)
+        // local.get 1
+        // i32.const 0
+        // i32.eq
+        // if
+        // i32.const 1
+        // local.set 2
+        // else
+        // local.get 0
+        // local.set 2
+        // loop
+        // local.get 2
+        // local.get 0
+        // i32.mul
+        // local.set 2
+        //
+        // local.get 1
+        // i32.const 1
+        // i32.sub
+        // local.set 1
+        //
+        // local.get 1
+        // i32.const 0
+        // i32.ne
+        // br_if 0
+        // end
+        // end
+        // local.get 2
+        // return
+        // )
+        // )
+        byte[] data = new byte[]{
+                        (byte) 0x00, (byte) 0x61, (byte) 0x73, (byte) 0x6D, (byte) 0x01, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x01, (byte) 0x07, (byte) 0x01, (byte) 0x60, (byte) 0x02,
+                        (byte) 0x7F, (byte) 0x7F, (byte) 0x01, (byte) 0x7F, (byte) 0x03, (byte) 0x02, (byte) 0x01, (byte) 0x00, (byte) 0x07, (byte) 0x07, (byte) 0x01, (byte) 0x03, (byte) 0x65,
+                        (byte) 0x78, (byte) 0x70, (byte) 0x00, (byte) 0x00, (byte) 0x0A, (byte) 0x32, (byte) 0x01, (byte) 0x30, (byte) 0x01, (byte) 0x01, (byte) 0x7F, (byte) 0x20, (byte) 0x01,
+                        (byte) 0x41, (byte) 0x00, (byte) 0x46, (byte) 0x04, (byte) 0x40, (byte) 0x41, (byte) 0x01, (byte) 0x21, (byte) 0x02, (byte) 0x05, (byte) 0x20, (byte) 0x00, (byte) 0x21,
+                        (byte) 0x02, (byte) 0x03, (byte) 0x40, (byte) 0x20, (byte) 0x02, (byte) 0x20, (byte) 0x00, (byte) 0x6C, (byte) 0x21, (byte) 0x02, (byte) 0x20, (byte) 0x01, (byte) 0x41,
+                        (byte) 0x01, (byte) 0x6B, (byte) 0x21, (byte) 0x01, (byte) 0x20, (byte) 0x01, (byte) 0x41, (byte) 0x00, (byte) 0x47, (byte) 0x0D, (byte) 0x00, (byte) 0x0B, (byte) 0x0B,
+                        (byte) 0x20, (byte) 0x02, (byte) 0x0F, (byte) 0x0B,
+        };
+        runValidationValid(data);
+    }
+
+    private static void runValidationInvalid(byte[] data) throws IOException {
+        runTest(context -> {
+            WebAssembly wasm = new WebAssembly(context);
+            Assert.assertTrue("Should have failed - invalid module", !wasm.moduleValidate(data));
+        });
+    }
+
+    private static void runValidationValid(byte[] data) throws IOException {
+        runTest(context -> {
+            WebAssembly wasm = new WebAssembly(context);
+            Assert.assertTrue("Should have failed - valid module", wasm.moduleValidate(data));
+        });
+    }
+
+    @Test
+    public void testImportManyGlobals() throws IOException, InterruptedException {
+        String importManyGlobalsWat = "(module\n" +
+                        "(global $global0 (import \"globals\" \"global0\") i32)\n" +
+                        "(global $global1 (import \"globals\" \"global1\") i32)\n" +
+                        "(global $global2 (import \"globals\" \"global2\") i32)\n" +
+                        "(global $global3 (import \"globals\" \"global3\") i32)\n" +
+                        "(global $global4 (import \"globals\" \"global4\") i32)\n" +
+                        "(global $global5 (import \"globals\" \"global5\") i32)\n" +
+                        "(global $global6 (import \"globals\" \"global6\") i32)\n" +
+                        "(global $global7 (import \"globals\" \"global7\") i32)\n" +
+                        "(global $global8 (import \"globals\" \"global8\") i32)\n" +
+                        "(func (export \"sum\") (result i32)\n" +
+                        "    get_global $global0\n" +
+                        "    get_global $global1\n" +
+                        "    i32.add\n" +
+                        "    get_global $global2\n" +
+                        "    i32.add\n" +
+                        "    get_global $global3\n" +
+                        "    i32.add\n" +
+                        "    get_global $global4\n" +
+                        "    i32.add\n" +
+                        "    get_global $global5\n" +
+                        "    i32.add\n" +
+                        "    get_global $global6\n" +
+                        "    i32.add\n" +
+                        "    get_global $global7\n" +
+                        "    i32.add\n" +
+                        "    get_global $global8\n" +
+                        "    i32.add\n" +
+                        ")\n" +
+                        ")";
+        byte[] importManyGlobalsBytes = compileWat("importManyGlobals", importManyGlobalsWat);
+        runTest(context -> {
+            WebAssembly wasm = new WebAssembly(context);
+            Dictionary importObject = Dictionary.create(new Object[]{
+                            "globals", Dictionary.create(new Object[]{
+                                            "global0", WebAssembly.globalAlloc(ValueType.i32, false, 1),
+                                            "global1", WebAssembly.globalAlloc(ValueType.i32, false, 2),
+                                            "global2", WebAssembly.globalAlloc(ValueType.i32, false, 3),
+                                            "global3", WebAssembly.globalAlloc(ValueType.i32, false, 4),
+                                            "global4", WebAssembly.globalAlloc(ValueType.i32, false, 5),
+                                            "global5", WebAssembly.globalAlloc(ValueType.i32, false, 6),
+                                            "global6", WebAssembly.globalAlloc(ValueType.i32, false, 7),
+                                            "global7", WebAssembly.globalAlloc(ValueType.i32, false, 8),
+                                            "global8", WebAssembly.globalAlloc(ValueType.i32, false, 9),
+                            }),
+            });
+            WasmInstance instance = moduleInstantiate(wasm, importManyGlobalsBytes, importObject);
+            try {
+                InteropLibrary lib = InteropLibrary.getUncached();
+                Object sum = lib.execute(WebAssembly.instanceExport(instance, "sum"));
+                int intSum = lib.asInt(sum);
+                Assert.assertEquals("Incorrect sum of imported globals", 45, intSum);
+            } catch (InteropException e) {
+                throw new RuntimeException(e);
+            }
+        });
+
+    }
+
     private static void runTest(Consumer<WasmContext> testCase) throws IOException {
-        final Context.Builder contextBuilder = Context.newBuilder("wasm");
+        final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
         contextBuilder.option("wasm.Builtins", "testutil:testutil");
         final Context context = contextBuilder.build();
-        Source.Builder sourceBuilder = Source.newBuilder("wasm", ByteSequence.create(binaryWithExports), "main");
+        Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(binaryWithExports), "main");
         Source source = sourceBuilder.build();
         context.eval(source);
-        Value main = context.getBindings("wasm").getMember("main").getMember("main");
+        Value main = context.getBindings(WasmLanguage.ID).getMember("main").getMember("main");
         main.execute();
-        Value run = context.getBindings("wasm").getMember("testutil").getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
+        Value run = context.getBindings(WasmLanguage.ID).getMember("testutil").getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
         run.execute(new GuestCode(testCase));
     }
 

@@ -45,7 +45,7 @@ final class Target_java_util_concurrent_ThreadLocalRandom {
     private static AtomicLong seeder;
 
     @Alias
-    @TargetElement(onlyWith = JDK16OrEarlier.class)
+    @TargetElement(onlyWith = JDK11OrEarlier.class)
     static native long mix64(long z);
 
 }
@@ -72,7 +72,7 @@ public class ThreadLocalRandomAccessors extends RandomAccessors {
 
     @Override
     long mix64(long l) {
-        if (JavaVersionUtil.JAVA_SPEC < 17) {
+        if (JavaVersionUtil.JAVA_SPEC <= 11) {
             return Target_java_util_concurrent_ThreadLocalRandom.mix64(l);
         } else {
             return Target_jdk_internal_util_random_RandomSupport.mixMurmur64(l);

@@ -34,11 +34,11 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.oracle.svm.util.StringUtil;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.java.LambdaUtils;
 import org.graalvm.compiler.nodes.BreakpointNode;
@@ -252,9 +252,9 @@ public class SubstrateUtil {
         void invoke();
     }
 
-    /** Prints extensive diagnostic information to the given Log. */
+    /** Prints extensive diagnostic information for a fatal error to the given log. */
     public static boolean printDiagnostics(Log log, Pointer sp, CodePointer ip) {
-        return SubstrateDiagnostics.print(log, sp, ip, WordFactory.nullPointer(), false);
+        return SubstrateDiagnostics.printFatalError(log, sp, ip, WordFactory.nullPointer(), false);
     }
 
     /**
@@ -270,31 +270,7 @@ public class SubstrateUtil {
      * regular expression. This avoids making regular expression code reachable.
      */
     public static String[] split(String value, String separator, int limit) {
-        int offset = 0;
-        int next;
-        ArrayList<String> list = null;
-        while ((next = value.indexOf(separator, offset)) != -1) {
-            if (list == null) {
-                list = new ArrayList<>();
-            }
-            boolean limited = limit > 0;
-            if (!limited || list.size() < limit - 1) {
-                list.add(value.substring(offset, next));
-                offset = next + separator.length();
-            } else {
-                break;
-            }
-        }
-
-        if (offset == 0) {
-            /* No match found. */
-            return new String[]{value};
-        }
-
-        /* Add remaining segment. */
-        list.add(value.substring(offset));
-
-        return list.toArray(new String[list.size()]);
+        return StringUtil.split(value, separator, limit);
     }
 
     public static String toHex(byte[] data) {
@@ -403,10 +379,10 @@ public class SubstrateUtil {
         return mangled;
     }
 
-    private static final Method isHiddenMethod = JavaVersionUtil.JAVA_SPEC >= 15 ? ReflectionUtil.lookupMethod(Class.class, "isHidden") : null;
+    private static final Method isHiddenMethod = JavaVersionUtil.JAVA_SPEC >= 17 ? ReflectionUtil.lookupMethod(Class.class, "isHidden") : null;
 
     public static boolean isHiddenClass(Class<?> javaClass) {
-        if (JavaVersionUtil.JAVA_SPEC >= 15) {
+        if (JavaVersionUtil.JAVA_SPEC >= 17) {
             try {
                 return (boolean) isHiddenMethod.invoke(javaClass);
             } catch (IllegalAccessException | InvocationTargetException e) {

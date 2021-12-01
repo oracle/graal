@@ -55,11 +55,9 @@ import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.code.DisassemblerProvider;
 import org.graalvm.compiler.core.GraalServiceThread;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
@@ -99,17 +97,19 @@ import org.graalvm.compiler.truffle.compiler.substitutions.GraphDecoderInvocatio
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.jni.LibGraalNativeBridgeSupport;
-import org.graalvm.nativebridge.jni.JNI;
-import org.graalvm.nativebridge.jni.JNIExceptionWrapper;
-import org.graalvm.nativebridge.jni.JNIMethodScope;
-import org.graalvm.nativebridge.jni.JNIUtil;
-import org.graalvm.nativebridge.jni.NativeBridgeSupport;
+import org.graalvm.libgraal.jni.LibGraalUtil;
+import org.graalvm.jniutils.JNI;
+import org.graalvm.jniutils.JNIExceptionWrapper;
+import org.graalvm.jniutils.JNIMethodScope;
+import org.graalvm.jniutils.JNIUtil;
+import org.graalvm.jniutils.NativeBridgeSupport;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
@@ -165,6 +165,10 @@ class LibGraalOptions {
             "if a non-null pointer was passed in the _fatal option to JNI_CreateJavaVM. " +
             "This option exists for the purpose of testing fatal error handling in libgraal.")
     static final RuntimeOptionKey<Boolean> CrashAtIsFatal = new RuntimeOptionKey<>(false);
+    @Option(help = "The fully qualified name of a no-arg, void, static method to be invoked " +
+            "in HotSpot from libgraal when the libgraal isolate is being shutdown." +
+            "This option exists for the purpose of testing callbacks in this context.")
+            static final RuntimeOptionKey<String> OnShutdownCallback = new RuntimeOptionKey<>(null);
     // @formatter:on
 }
 
@@ -338,6 +342,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
     private static void registerJNIConfiguration(JNIRuntimeAccess.JNIRuntimeAccessibilitySupport registry, ImageClassLoader loader) {
         try (JNIConfigSource source = new JNIConfigSource(loader)) {
             Map<String, Class<?>> classes = new HashMap<>();
+            ConfigurationCondition condition = ConfigurationCondition.alwaysTrue();
             for (String line : source.lines) {
                 source.lineNo++;
                 String[] tokens = line.split(" ");
@@ -346,8 +351,8 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
                 Class<?> clazz = classes.get(className);
                 if (clazz == null) {
                     clazz = source.findClass(className);
-                    registry.register(clazz);
-                    registry.register(Array.newInstance(clazz, 0).getClass());
+                    registry.register(condition, clazz);
+                    registry.register(condition, Array.newInstance(clazz, 0).getClass());
                     classes.put(className, clazz);
                 }
 
@@ -356,7 +361,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
                         source.check(tokens.length == 4, "Expected 4 tokens for a field");
                         String fieldName = tokens[2];
                         try {
-                            registry.register(false, clazz.getDeclaredField(fieldName));
+                            registry.register(condition, false, clazz.getDeclaredField(fieldName));
                         } catch (NoSuchFieldException e) {
                             throw source.error("Field %s.%s not found", clazz.getTypeName(), fieldName);
                         } catch (NoClassDefFoundError e) {
@@ -375,7 +380,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
                         try {
                             if ("<init>".equals(methodName)) {
                                 Constructor<?> cons = clazz.getDeclaredConstructor(parameters);
-                                registry.register(cons);
+                                registry.register(condition, false, cons);
                                 if (Throwable.class.isAssignableFrom(clazz) && !Modifier.isAbstract(clazz.getModifiers())) {
                                     if (usedInTranslatedException(parameters)) {
                                         RuntimeReflection.register(clazz);
@@ -383,7 +388,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
                                     }
                                 }
                             } else {
-                                registry.register(clazz.getDeclaredMethod(methodName, parameters));
+                                registry.register(condition, false, clazz.getDeclaredMethod(methodName, parameters));
                             }
                         } catch (NoSuchMethodException e) {
                             throw source.error("Method %s.%s%s not found: %e", clazz.getTypeName(), methodName, descriptor, e);
@@ -413,8 +418,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
     }
 
     @Override
-    public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Iterable<DebugHandlersFactory> factories, Providers substrateProviders,
-                    SnippetReflectionProvider substrateSnippetReflection,
+    public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers substrateProviders,
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
         hotSpotSubstrateReplacements = getReplacements();
     }
@@ -643,7 +647,7 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalCompiler {
         // This scope is required to allow Graal compilations of host methods to call methods
         // on the TruffleCompilerRuntime. This is, for example, required to find out about
         // Truffle-specific method annotations.
-        try (JNIMethodScope scope = new JNIMethodScope("<called from VM>", env)) {
+        try (JNIMethodScope scope = LibGraalUtil.openScope("<called from VM>", env)) {
             return compiler.compileMethod(request, true, compiler.getGraalRuntime().getOptions());
         }
     }
@@ -676,7 +680,7 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalRuntime {
     @Substitute
     private static void shutdownLibGraal(HotSpotGraalRuntime runtime) {
         try {
-            // Unregister this isolate if it was create as a peer
+            // Unregister this isolate if it was created as a peer
             if (LibGraalEntryPoints.hasLibGraalIsolatePeer()) {
                 long offset = runtime.getVMConfig().jniEnvironmentOffset;
                 long javaThreadAddr = HotSpotJVMCIRuntime.runtime().getCurrentJavaThread();
@@ -688,6 +692,21 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalRuntime {
                 args.setLong(IsolateUtil.getIsolateID());
                 env.getFunctions().getCallStaticVoidMethodA().call(env, libGraalIsolateClass, unregisterMethod, args);
                 JNIExceptionWrapper.wrapAndThrowPendingJNIException(env);
+
+                String callback = LibGraalOptions.OnShutdownCallback.getValue();
+                if (callback != null) {
+                    int lastDot = callback.lastIndexOf('.');
+                    if (lastDot < 1 || lastDot == callback.length() - 1) {
+                        throw new IllegalArgumentException(LibGraalOptions.OnShutdownCallback.getName() + " value does not have <classname>.<method name> format: " + callback);
+                    }
+                    String cbClassName = callback.substring(0, lastDot);
+                    String cbMethodName = callback.substring(lastDot + 1);
+                    JNI.JClass cbClass = JNIUtil.findClass(env, JNIUtil.getSystemClassLoader(env),
+                                    JNIUtil.getBinaryName(cbClassName), true);
+                    JNI.JMethodID cbMethod = JNIUtil.findMethod(env, cbClass, true, cbMethodName, "()V");
+                    env.getFunctions().getCallStaticVoidMethodA().call(env, cbClass, cbMethod, StackValue.get(0));
+                    JNIExceptionWrapper.wrapAndThrowPendingJNIException(env);
+                }
             }
         } catch (Throwable t) {
             t.printStackTrace(TTY.out);

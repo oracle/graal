@@ -128,7 +128,8 @@ public final class EspressoError extends Error {
         super(cause);
     }
 
-    private static String format(String msg, Object... args) {
+    @TruffleBoundary
+    public static String format(String msg, Object... args) {
         if (args != null) {
             // expand Iterable parameters into a list representation
             for (int i = 0; i < args.length; i++) {

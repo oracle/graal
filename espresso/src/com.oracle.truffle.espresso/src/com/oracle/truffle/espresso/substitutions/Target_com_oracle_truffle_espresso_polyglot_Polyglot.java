@@ -41,17 +41,16 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.nodes.helper.TypeCheckNode;
-import com.oracle.truffle.espresso.nodes.helper.TypeCheckNodeGen;
+import com.oracle.truffle.espresso.nodes.bytecodes.InitCheck;
+import com.oracle.truffle.espresso.nodes.bytecodes.InstanceOf;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.substitutions.Target_com_oracle_truffle_espresso_polyglot_PolyglotFactory.CastImplNodeGen;
 
 @EspressoSubstitutions
 public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
-    @Substitution
+    @Substitution(isTrivial = true)
     public static boolean isForeignObject(@JavaType(Object.class) StaticObject object) {
         return object.isForeignObject();
     }
@@ -65,6 +64,10 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                         @JavaType(Class.class) StaticObject targetClass,
                         @JavaType(Object.class) StaticObject value);
 
+        protected static InstanceOf createInstanceOf(Klass superType) {
+            return InstanceOf.create(superType, true);
+        }
+
         @Specialization(guards = "targetClass.getMirrorKlass() == cachedTargetKlass", limit = "1")
         @JavaType(Object.class)
         StaticObject doCached(
@@ -73,28 +76,35 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                         @Cached("targetClass.getMirrorKlass()") Klass cachedTargetKlass,
                         @Cached BranchProfile nullTargetClassProfile,
                         @Cached BranchProfile reWrappingProfile,
-                        @Cached TypeCheckNode typeCheckNode,
+                        @Cached("createInstanceOf(cachedTargetKlass)") InstanceOf instanceOfTarget,
                         @Cached CastImpl castImpl) {
             if (StaticObject.isNull(targetClass)) {
                 nullTargetClassProfile.enter();
                 Meta meta = getMeta();
                 throw meta.throwException(meta.java_lang_NullPointerException);
             }
-            if (StaticObject.isNull(value) || typeCheckNode.executeTypeCheck(cachedTargetKlass, value.getKlass())) {
+            if (StaticObject.isNull(value) || instanceOfTarget.execute(value.getKlass())) {
                 return value;
             }
             reWrappingProfile.enter();
             return castImpl.execute(getContext(), cachedTargetKlass, value);
         }
 
-        @TruffleBoundary
         @ReportPolymorphism.Megamorphic
         @Specialization(replaces = "doCached")
         @JavaType(Object.class)
-        StaticObject doGeneric(@JavaType(Class.class) StaticObject targetClass, @JavaType(Object.class) StaticObject value) {
-            return doCached(targetClass, value, targetClass.getMirrorKlass(),
-                            BranchProfile.getUncached(), BranchProfile.getUncached(),
-                            TypeCheckNodeGen.getUncached(), CastImplNodeGen.getUncached());
+        StaticObject doGeneric(@JavaType(Class.class) StaticObject targetClass,
+                        @JavaType(Object.class) StaticObject value,
+                        @Cached InstanceOf.Dynamic instanceOfDynamic,
+                        @Cached CastImpl castImpl) {
+            if (StaticObject.isNull(targetClass)) {
+                Meta meta = getMeta();
+                throw meta.throwException(meta.java_lang_NullPointerException);
+            }
+            if (StaticObject.isNull(value) || instanceOfDynamic.execute(targetClass.getMirrorKlass(), value.getKlass())) {
+                return value;
+            }
+            return castImpl.execute(getContext(), targetClass.getMirrorKlass(), value);
         }
     }
 
@@ -133,9 +143,9 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                         EspressoContext context,
                         Klass targetKlass,
                         @JavaType(Object.class) StaticObject value,
-                        @Cached TypeCheckNode typeCheck,
+                        @Cached InstanceOf.Dynamic instanceOfDynamic,
                         @Cached BranchProfile exceptionProfile) {
-            if (isNull(value) || typeCheck.executeTypeCheck(targetKlass, value.getKlass())) {
+            if (isNull(value) || instanceOfDynamic.execute(targetKlass, value.getKlass())) {
                 return value;
             }
             exceptionProfile.enter();
@@ -160,7 +170,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
             } catch (UnsupportedMessageException e) {
                 exceptionProfile.enter();
                 throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException,
-                                "Couldn't read " + targetKlass.getTypeAsString() + " value from foreign object");
+                                "Couldn't read % value from foreign object", targetKlass.getType());
             }
         }
 
@@ -218,11 +228,13 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                         @SuppressWarnings("unused") Klass targetKlass,
                         @JavaType(Object.class) StaticObject value,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @Cached BranchProfile exceptionProfile) {
+                        @Cached BranchProfile exceptionProfile,
+                        @Cached InitCheck initCheck) {
             Meta meta = context.getMeta();
             // Casting to ForeignException skip the field checks.
             Object foreignObject = value.rawForeignObject();
             if (interop.isException(foreignObject)) {
+                initCheck.execute((ObjectKlass) targetKlass);
                 return StaticObject.createForeignException(meta, foreignObject, interop);
             }
             exceptionProfile.enter();
@@ -236,7 +248,8 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                         Klass targetKlass,
                         @JavaType(Object.class) StaticObject value,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @Cached BranchProfile exceptionProfile) {
+                        @Cached BranchProfile exceptionProfile,
+                        @Cached InitCheck initCheck) {
             Meta meta = context.getMeta();
             if (targetKlass.isAbstract()) {
                 exceptionProfile.enter();
@@ -248,6 +261,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
             try {
                 Object foreignObject = value.rawForeignObject();
                 ToEspressoNode.checkHasAllFieldsOrThrow(foreignObject, targetObjectKlass, interop, meta);
+                initCheck.execute(targetObjectKlass);
                 return StaticObject.createForeign(meta.getEspressoLanguage(), targetKlass, foreignObject, interop);
             } catch (ClassCastException e) {
                 exceptionProfile.enter();
@@ -267,7 +281,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                 if (value.length() != 1) {
                     exceptionProfile.enter();
                     throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException,
-                                    "Cannot cast string " + value + " to char");
+                                    "Cannot cast string %s to char", value);
                 }
                 return meta.boxCharacter(value.charAt(0));
             case Byte:

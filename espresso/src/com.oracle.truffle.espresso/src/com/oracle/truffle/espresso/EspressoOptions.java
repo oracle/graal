@@ -236,6 +236,10 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
     public static final OptionKey<Boolean> LivenessAnalysis = new OptionKey<>(false);
 
+    @Option(help = "Enable Class Hierarchy Analysis, which optimizes instanceof checks and virtual method calls by keeping track of descendants of a given class or interface.", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Boolean> CHA = new OptionKey<>(false);
+
     private static final OptionType<com.oracle.truffle.espresso.jdwp.api.JDWPOptions> JDWP_OPTIONS_OPTION_TYPE = new OptionType<>("JDWPOptions",
                     new Function<String, JDWPOptions>() {
 
@@ -435,6 +439,10 @@ public final class EspressoOptions {
     @Option(help = "Enables java agents. Support is currently very limited.", //
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Boolean> EnableAgents = new OptionKey<>(false);
+
+    @Option(help = "Maximum bytecode size (in bytes) for a method to be considered trivial.", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Integer> TrivialMethodSize = new OptionKey<>(18);
 
     // These are host properties e.g. use --vm.Despresso.DebugCounters=true .
     public static final boolean DebugCounters = booleanProperty("espresso.DebugCounters", false);

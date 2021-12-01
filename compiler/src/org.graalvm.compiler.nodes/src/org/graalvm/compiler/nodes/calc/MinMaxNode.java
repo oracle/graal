@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, Arm Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -27,15 +27,18 @@
 package org.graalvm.compiler.nodes.calc;
 
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.Canonicalizable;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.Value;
 
 @NodeInfo(shortName = "MinMax")
@@ -55,6 +58,17 @@ public abstract class MinMaxNode<OP> extends BinaryArithmeticNode<OP> implements
         }
 
         NodeView view = NodeView.from(tool);
+        if (forX.isConstant()) {
+            ValueNode result = tryCanonicalizeWithConstantInput(forX, forY);
+            if (result != this) {
+                return result;
+            }
+        } else if (forY.isConstant()) {
+            ValueNode result = tryCanonicalizeWithConstantInput(forY, forX);
+            if (result != this) {
+                return result;
+            }
+        }
         return reassociateMatchedValues(this, ValueNode.isConstantPredicate(), forX, forY, view);
     }
 
@@ -70,8 +84,33 @@ public abstract class MinMaxNode<OP> extends BinaryArithmeticNode<OP> implements
         }
         if (this instanceof MaxNode) {
             nodeValueMap.setResult(this, gen.emitMathMax(op1, op2));
-        } else {
+        } else if (this instanceof MinNode) {
             nodeValueMap.setResult(this, gen.emitMathMin(op1, op2));
+        } else {
+            throw GraalError.shouldNotReachHere();
         }
+    }
+
+    private ValueNode tryCanonicalizeWithConstantInput(ValueNode constantValue, ValueNode otherValue) {
+        if (constantValue.isJavaConstant()) {
+            JavaConstant constant = constantValue.asJavaConstant();
+            JavaKind kind = constant.getJavaKind();
+            assert kind == JavaKind.Float || kind == JavaKind.Double;
+            if ((kind == JavaKind.Float && Float.isNaN(constant.asFloat())) || (kind == JavaKind.Double && Double.isNaN(constant.asDouble()))) {
+                // If either value is NaN, then the result is NaN.
+                return constantValue;
+            } else if (this instanceof MaxNode) {
+                if ((kind == JavaKind.Float && constant.asFloat() == Float.NEGATIVE_INFINITY) || (kind == JavaKind.Double && constant.asDouble() == Double.NEGATIVE_INFINITY)) {
+                    // Math.max/max(-Infinity, other) == other.
+                    return otherValue;
+                }
+            } else if (this instanceof MinNode) {
+                if ((kind == JavaKind.Float && constant.asFloat() == Float.POSITIVE_INFINITY) || (kind == JavaKind.Double && constant.asDouble() == Double.POSITIVE_INFINITY)) {
+                    // Math.min/max(Infinity, other) == other.
+                    return otherValue;
+                }
+            }
+        }
+        return this;
     }
 }

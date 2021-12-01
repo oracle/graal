@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.replacements;
 
+import static jdk.vm.ci.code.BytecodeFrame.AFTER_BCI;
+
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -39,6 +41,8 @@ import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
+import org.graalvm.compiler.nodes.DeoptimizeNode;
+import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
@@ -57,13 +61,15 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
+import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.CoreProvidersDelegate;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.code.BailoutException;
-import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -83,6 +89,7 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
     protected FixedWithNextNode lastInstr;
     protected ValueNode[] arguments;
     protected ValueNode returnValue;
+    private boolean parsingIntrinsic;
 
     private FrameState createStateAfterStartOfReplacementGraph(ResolvedJavaMethod original, GraphBuilderConfiguration graphBuilderConfig) {
         FrameStateBuilder startFrameState = new FrameStateBuilder(this, code, graph, graphBuilderConfig.retainLocalVariables());
@@ -171,7 +178,7 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
 
             } else if (fixedNode instanceof WithExceptionNode) {
                 WithExceptionNode withExceptionNode = (WithExceptionNode) fixedNode;
-                AbstractBeginNode normalSuccessor = graph.add(withExceptionNode.createNextBegin());
+                AbstractBeginNode normalSuccessor = graph.add(new BeginNode());
                 ExceptionObjectNode exceptionSuccessor = graph.add(new ExceptionObjectNode(getMetaAccess()));
                 setExceptionState(exceptionSuccessor);
                 exceptionSuccessor.setNext(graph.add(new UnwindNode(exceptionSuccessor)));
@@ -211,7 +218,7 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
      * Currently unimplemented here, but implemented in subclasses that need it.
      */
     protected void mergeUnwinds() {
-        if (getGraph().getNodes().filter(UnwindNode.class).count() > 1) {
+        if (getGraph().getNodes(UnwindNode.TYPE).snapshot().size() > 1) {
             throw GraalError.shouldNotReachHere("mergeUnwinds unsupported by this IntrinsicGraphBuilder");
         }
     }
@@ -261,7 +268,7 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
     @Override
     public void setStateAfter(StateSplit sideEffect) {
         assert sideEffect.hasSideEffect();
-        FrameState stateAfter = getGraph().add(new FrameState(BytecodeFrame.AFTER_BCI));
+        FrameState stateAfter = getGraph().add(new FrameState(AFTER_BCI));
         sideEffect.setStateAfter(stateAfter);
     }
 
@@ -277,7 +284,15 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
 
     @Override
     public ResolvedJavaMethod getMethod() {
-        return method;
+        /*
+         * Invocation plugins expect to get the caller method that triggers the intrinsification.
+         * Since we are compiling the intrinsic on its own, we do not have any such caller method.
+         *
+         * In particular, returning `method` would be misleading because it is the method that is
+         * intrinsified, not the caller. The invocation plugin gets that method passed in as the
+         * `targetMethod` already.
+         */
+        return null;
     }
 
     @Override
@@ -302,7 +317,7 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
 
     @Override
     public boolean parsingIntrinsic() {
-        return true;
+        return parsingIntrinsic;
     }
 
     @Override
@@ -321,22 +336,42 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
     }
 
     @SuppressWarnings("try")
-    public StructuredGraph buildGraph(InvocationPlugin plugin) {
+    public final StructuredGraph buildGraph(InvocationPlugin plugin) {
+        parsingIntrinsic = plugin instanceof MethodSubstitutionPlugin;
         // The caller is expected to have filtered out decorator plugins since they cannot be
         // processed without special handling.
         assert !plugin.isDecorator() : plugin;
         NodeSourcePosition position = graph.trackNodeSourcePosition() ? NodeSourcePosition.placeholder(method) : null;
-        try (DebugCloseable context = graph.withNodeSourcePosition(position)) {
-            Receiver receiver = method.isStatic() ? null : this;
-            if (plugin.execute(this, method, receiver, arguments)) {
-                assert (returnValue != null) == (method.getSignature().getReturnKind() != JavaKind.Void) : method;
-                assert lastInstr != null : "ReturnNode must be linked into control flow";
-                append(new ReturnNode(returnValue));
-                mergeUnwinds();
-                return graph;
+        try (DebugContext.Scope scope = graph.getDebug().scope("BuildGraph", graph)) {
+            try (DebugCloseable context = graph.withNodeSourcePosition(position)) {
+                Receiver receiver = method.isStatic() ? null : this;
+                if (plugin.execute(this, method, receiver, arguments)) {
+                    assert (returnValue != null) == (method.getSignature().getReturnKind() != JavaKind.Void) : method;
+                    assert lastInstr != null : "ReturnNode must be linked into control flow";
+                    append(new ReturnNode(returnValue));
+                    mergeUnwinds();
+                    return graph;
+                }
+                return null;
             }
-            return null;
+        } catch (Throwable t) {
+            throw graph.getDebug().handle(t);
         }
+    }
+
+    @Override
+    public FrameState getInvocationPluginReturnState(JavaKind returnKind, ValueNode retVal) {
+        return getGraph().add(new FrameState(AFTER_BCI));
+    }
+
+    @Override
+    public FrameState getInvocationPluginBeforeState() {
+        return getGraph().start().stateAfter();
+    }
+
+    @Override
+    public boolean canMergeIntrinsicReturns() {
+        return true;
     }
 
     @Override
@@ -347,6 +382,19 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
     @Override
     public boolean intrinsify(ResolvedJavaMethod targetMethod, StructuredGraph substituteGraph, Receiver receiver, ValueNode[] argsIncludingReceiver) {
         return false;
+    }
+
+    @Override
+    public boolean isParsingInvocationPlugin() {
+        return true;
+    }
+
+    @Override
+    public Invoke invokeFallback(FixedWithNextNode predecessor, EndNode end) {
+        assert isParsingInvocationPlugin();
+        DeoptimizeNode deopt = getGraph().add(new DeoptimizeNode(DeoptimizationAction.None, DeoptimizationReason.RuntimeConstraint));
+        predecessor.setNext(deopt);
+        return null;
     }
 
     @Override

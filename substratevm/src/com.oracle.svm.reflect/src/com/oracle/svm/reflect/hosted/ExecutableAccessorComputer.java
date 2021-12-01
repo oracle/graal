@@ -27,18 +27,13 @@ package com.oracle.svm.reflect.hosted;
 // Checkstyle: allow reflection
 
 import java.lang.reflect.Executable;
-import java.lang.reflect.Proxy;
 
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.reflect.helpers.ReflectionProxyHelper;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
-import sun.misc.Unsafe;
 
 /**
  * Computes new values for the accessor fields of {@link Executable} subclasses, to be used instead
@@ -48,24 +43,8 @@ import sun.misc.Unsafe;
  */
 public final class ExecutableAccessorComputer implements RecomputeFieldValue.CustomFieldValueComputer {
 
-    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
-
     @Override
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
-        Executable member = (Executable) receiver;
-        ReflectionSubstitution subst = ImageSingletons.lookup(ReflectionSubstitution.class);
-        Class<?> proxyClass = subst.getProxyClass(member);
-        if (proxyClass == null) {
-            // should never happen, but better check for it here than segfault later
-            throw VMError.shouldNotReachHere();
-        }
-        try {
-            Proxy proxyInstance = (Proxy) UNSAFE.allocateInstance(proxyClass);
-            ReflectionProxyHelper.setDefaultInvocationHandler(proxyInstance);
-            return proxyInstance;
-
-        } catch (InstantiationException ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
+        return ImageSingletons.lookup(ReflectionFeature.class).getOrCreateAccessor((Executable) receiver);
     }
 }

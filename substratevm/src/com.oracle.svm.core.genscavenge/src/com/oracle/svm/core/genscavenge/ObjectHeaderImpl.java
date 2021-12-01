@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import com.oracle.svm.core.annotate.AlwaysInline;
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.CompressEncoding;
@@ -229,18 +230,18 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isProducedHeapChunkZapped(UnsignedWord header) {
         if (getReferenceSize() == Integer.BYTES) {
-            return header.equal(HeapPolicy.getProducedHeapChunkZapInt());
+            return header.equal(HeapParameters.getProducedHeapChunkZapInt());
         } else {
-            return header.equal(HeapPolicy.getProducedHeapChunkZapWord());
+            return header.equal(HeapParameters.getProducedHeapChunkZapWord());
         }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isConsumedHeapChunkZapped(UnsignedWord header) {
         if (getReferenceSize() == Integer.BYTES) {
-            return header.equal(HeapPolicy.getConsumedHeapChunkZapInt());
+            return header.equal(HeapParameters.getConsumedHeapChunkZapInt());
         } else {
-            return header.equal(HeapPolicy.getConsumedHeapChunkZapWord());
+            return header.equal(HeapParameters.getConsumedHeapChunkZapWord());
         }
     }
 
@@ -327,6 +328,7 @@ public final class ObjectHeaderImpl extends ObjectHeader {
     }
 
     /** In an Object, install a forwarding pointer to a different Object. */
+    @AlwaysInline("GC performance")
     static void installForwardingPointer(Object original, Object copy) {
         assert !isPointerToForwardedObject(Word.objectToUntrackedPointer(original));
         UnsignedWord forwardHeader;

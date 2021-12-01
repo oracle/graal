@@ -24,10 +24,12 @@
  */
 package org.graalvm.compiler.debug;
 
+import static org.graalvm.compiler.debug.PathUtilities.createDirectories;
+import static org.graalvm.compiler.debug.PathUtilities.exists;
+import static org.graalvm.compiler.debug.PathUtilities.getAbsolutePath;
+import static org.graalvm.compiler.debug.PathUtilities.getPath;
+
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
@@ -122,7 +124,7 @@ public class DebugOptions {
     public static final OptionKey<Boolean> DebugStubsAndSnippets = new OptionKey<>(false);
     @Option(help = "Send compiler IR to dump handlers on error.", type = OptionType.Debug)
     public static final OptionKey<Boolean> DumpOnError = new OptionKey<>(false);
-    @Option(help = "Specify the DumpLevel if CompilationFailureAction#Diagnose is used." +
+    @Option(help = "Specify the dump level if CompilationFailureAction#Diagnose is used." +
                     "See CompilationFailureAction for details. file:doc-files/CompilationFailureActionHelp.txt", type = OptionType.Debug)
     public static final OptionKey<Integer> DiagnoseDumpLevel = new OptionKey<>(DebugContext.VERBOSE_LEVEL);
     @Option(help = "Disable intercepting exceptions in debug scopes.", type = OptionType.Debug)
@@ -146,6 +148,10 @@ public class DebugOptions {
 
     @Option(help = "file:doc-files/PrintGraphHelp.txt", type = OptionType.Debug)
     public static final EnumOptionKey<PrintGraphTarget> PrintGraph = new EnumOptionKey<>(PrintGraphTarget.File);
+
+    @Option(help = "Dump a graph even if it has not changed since it was last dumped.  " +
+            "Change detection is based on adding and deleting nodes or changing inputs.", type = OptionType.Debug)
+    public static final OptionKey<Boolean> PrintUnmodifiedGraphs = new OptionKey<>(true);
 
     @Option(help = "Setting to true sets PrintGraph=file, setting to false sets PrintGraph=network", type = OptionType.Debug)
     public static final OptionKey<Boolean> PrintGraphFile = new OptionKey<Boolean>(true) {
@@ -195,6 +201,13 @@ public class DebugOptions {
     // @formatter:on
 
     /**
+     * The format of the message printed on the console by {@link #getDumpDirectory} when
+     * {@link DebugOptions#ShowDumpFiles} is true. The {@code %s} placeholder is replaced with the
+     * value returned by {@link #getDumpDirectory}.
+     */
+    private static final String DUMP_DIRECTORY_MESSAGE_FORMAT = "Dumping debug output in '%s'";
+
+    /**
      * Gets the directory in which {@link DebugDumpHandler}s can generate output. This will be the
      * directory specified by {@link #DumpPath} if it has been set otherwise it will be derived from
      * the default value of {@link #DumpPath} and {@link GraalServices#getGlobalTimeStamp()}.
@@ -203,16 +216,16 @@ public class DebugOptions {
      * it creates it.
      *
      * @return a path as described above whose directories are guaranteed to exist
-     * @throws IOException if there was an error in {@link Files#createDirectories}
+     * @throws IOException if there was an error when creating a directory
      */
-    public static Path getDumpDirectory(OptionValues options) throws IOException {
-        Path dumpDir = getDumpDirectoryName(options);
-        if (!Files.exists(dumpDir)) {
+    public static String getDumpDirectory(OptionValues options) throws IOException {
+        String dumpDir = getDumpDirectoryName(options);
+        if (!exists(dumpDir)) {
             synchronized (DebugConfigImpl.class) {
-                if (!Files.exists(dumpDir)) {
-                    Files.createDirectories(dumpDir);
+                if (!exists(dumpDir)) {
+                    createDirectories(dumpDir);
                     if (ShowDumpFiles.getValue(options)) {
-                        TTY.println("Dumping debug output in %s", dumpDir.toString());
+                        TTY.println(DUMP_DIRECTORY_MESSAGE_FORMAT, dumpDir);
                     }
                 }
             }
@@ -223,16 +236,16 @@ public class DebugOptions {
     /**
      * Returns the {@link #getDumpDirectory} without attempting to create it.
      */
-    public static Path getDumpDirectoryName(OptionValues options) {
-        Path dumpDir;
+    public static String getDumpDirectoryName(OptionValues options) {
+        String dumpDir;
         if (DumpPath.hasBeenSet(options)) {
-            dumpDir = Paths.get(DumpPath.getValue(options));
+            dumpDir = getPath(DumpPath.getValue(options));
         } else {
             Date date = new Date(GraalServices.getGlobalTimeStamp());
             SimpleDateFormat formatter = new SimpleDateFormat("YYYY.MM.dd.HH.mm.ss.SSS");
-            dumpDir = Paths.get(DumpPath.getValue(options), formatter.format(date));
+            dumpDir = getPath(DumpPath.getValue(options), formatter.format(date));
         }
-        dumpDir = dumpDir.toAbsolutePath();
+        dumpDir = getAbsolutePath(dumpDir);
         return dumpDir;
     }
 }

@@ -61,10 +61,9 @@ public class FormalReturnTypeFlow extends TypeFlow<BytecodePosition> {
     }
 
     @Override
-    public String toString() {
-        StringBuilder str = new StringBuilder();
-        str.append("FormalReturn<").append(getState()).append(">");
-        return str.toString();
+    public String format(boolean withState, boolean withSource) {
+        return "Formal return from " + method.format("%H.%n(%p)") +
+                        (withSource ? " at " + formatSource() : "") +
+                        (withState ? " with state <" + getState() + ">" : "");
     }
-
 }

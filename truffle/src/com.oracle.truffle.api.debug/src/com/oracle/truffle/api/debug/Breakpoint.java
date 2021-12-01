@@ -596,8 +596,13 @@ public class Breakpoint {
         boolean attaching = breakpointBindingAttaching.getAndSet(true);
         if (!attaching) {
             EventBinding<? extends ExecutionEventNodeFactory> newBinding = null;
+            Debugger dbg = debugger;
+            if (dbg == null) {
+                // Disposed
+                return;
+            }
             try {
-                breakpointBinding = newBinding = debugger.getInstrumenter().attachExecutionEventFactory(locationFilter, new BreakpointNodeFactory());
+                breakpointBinding = newBinding = dbg.getInstrumenter().attachExecutionEventFactory(locationFilter, new BreakpointNodeFactory());
             } finally {
                 breakpointBindingAttaching.set(false);
                 synchronized (this) {

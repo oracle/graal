@@ -41,6 +41,7 @@ import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.invoke.MethodHandleIntrinsic;
@@ -81,7 +82,6 @@ import sun.invoke.util.Wrapper;
 @SuppressWarnings("unused")
 public class MethodHandleFeature implements Feature {
 
-    private boolean analysisFinished = false;
     private Set<MethodHandle> seenMethodHandles;
     private Class<?> directMethodHandleClass;
     private Class<?> boundMethodHandleClass;
@@ -176,11 +176,6 @@ public class MethodHandleFeature implements Feature {
                         access.findClassByName("java.lang.invoke.VarHandle"));
     }
 
-    @Override
-    public void afterAnalysis(AfterAnalysisAccess access) {
-        analysisFinished = true;
-    }
-
     private static void registerMHImplFunctionsForReflection(DuringAnalysisAccess access) {
         Class<?> mhImplClazz = access.findClassByName("java.lang.invoke.MethodHandleImpl");
         RuntimeReflection.register(ReflectionUtil.lookupMethod(mhImplClazz, "checkSpreadArgument", Object.class, int.class));
@@ -194,7 +189,7 @@ public class MethodHandleFeature implements Feature {
 
     private static void registerMHImplConstantHandlesForReflection(DuringAnalysisAccess access) {
         Class<?> mhImplClazz = access.findClassByName("java.lang.invoke.MethodHandleImpl");
-        if (JavaVersionUtil.JAVA_SPEC <= 16) {
+        if (JavaVersionUtil.JAVA_SPEC <= 11) {
             RuntimeReflection.register(ReflectionUtil.lookupMethod(mhImplClazz, "copyAsPrimitiveArray", access.findClassByName("sun.invoke.util.Wrapper"), Object[].class));
             RuntimeReflection.register(ReflectionUtil.lookupMethod(mhImplClazz, "identity", Object[].class));
             RuntimeReflection.register(ReflectionUtil.lookupMethod(mhImplClazz, "fillNewArray", Integer.class, Object[].class));
@@ -283,7 +278,7 @@ public class MethodHandleFeature implements Feature {
     }
 
     private Object registerMethodHandle(Object obj) {
-        if (!analysisFinished) {
+        if (!BuildPhaseProvider.isAnalysisFinished()) {
             registerMethodHandleRecurse(obj);
         }
         return obj;

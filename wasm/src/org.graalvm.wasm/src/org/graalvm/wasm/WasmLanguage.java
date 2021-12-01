@@ -44,20 +44,28 @@ import java.io.IOException;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.wasm.api.WebAssembly;
-import org.graalvm.wasm.memory.UnsafeWasmMemory;
 import org.graalvm.wasm.memory.WasmMemory;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
 
-@TruffleLanguage.Registration(id = "wasm", name = "WebAssembly", defaultMimeType = "application/wasm", byteMimeTypes = "application/wasm", contextPolicy = TruffleLanguage.ContextPolicy.EXCLUSIVE, fileTypeDetectors = WasmFileDetector.class, //
-                interactive = false)
+@TruffleLanguage.Registration(id = WasmLanguage.ID, name = WasmLanguage.NAME, defaultMimeType = WasmLanguage.WASM_MIME_TYPE, byteMimeTypes = WasmLanguage.WASM_MIME_TYPE, contextPolicy = TruffleLanguage.ContextPolicy.EXCLUSIVE, //
+                fileTypeDetectors = WasmFileDetector.class, interactive = false)
 public final class WasmLanguage extends TruffleLanguage<WasmContext> {
+    public static final String ID = "wasm";
+    public static final String NAME = "WebAssembly";
+    public static final String WASM_MIME_TYPE = "application/wasm";
+    public static final String WASM_SOURCE_NAME_SUFFIX = ".wasm";
+
+    private static final LanguageReference<WasmLanguage> REFERENCE = LanguageReference.create(WasmLanguage.class);
+
     private boolean isFirst = true;
+    @CompilationFinal private volatile boolean isMultiContext;
 
     @Override
     protected WasmContext createContext(Env env) {
@@ -73,15 +81,16 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
         final WasmContext context = WasmContext.get(null);
         final String moduleName = isFirst ? "main" : request.getSource().getName();
         isFirst = false;
-        final byte[] data = request.getSource().getBytes().toByteArray();
-        final WasmModule module = context.readModule(moduleName, data, null);
+        final Source source = request.getSource();
+        final byte[] data = source.getBytes().toByteArray();
+        final WasmModule module = context.readModule(moduleName, data, null, source);
         final WasmInstance instance = context.readInstance(module);
-        return Truffle.getRuntime().createCallTarget(new RootNode(this) {
+        return new RootNode(this) {
             @Override
             public WasmInstance execute(VirtualFrame frame) {
                 return instance;
             }
-        });
+        }.getCallTarget();
     }
 
     @Override
@@ -99,9 +108,7 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
         super.finalizeContext(context);
         for (int i = 0; i < context.memories().count(); ++i) {
             final WasmMemory memory = context.memories().memory(i);
-            if (memory instanceof UnsafeWasmMemory) {
-                ((UnsafeWasmMemory) memory).free();
-            }
+            memory.close();
         }
         try {
             context.fdManager().close();
@@ -110,7 +117,14 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
         }
     }
 
-    private static final LanguageReference<WasmLanguage> REFERENCE = LanguageReference.create(WasmLanguage.class);
+    @Override
+    protected void initializeMultipleContexts() {
+        isMultiContext = true;
+    }
+
+    public boolean isMultiContext() {
+        return isMultiContext;
+    }
 
     public static WasmLanguage get(Node node) {
         return REFERENCE.get(node);

@@ -43,14 +43,14 @@ package com.oracle.truffle.api.test;
 import java.util.Iterator;
 
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 /**
  * <h3>Creating an Array of Children Nodes</h3>
@@ -71,13 +71,17 @@ import com.oracle.truffle.api.nodes.RootNode;
  */
 public class ChildrenNodesTest {
 
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
+
     @Test
     public void test() {
-        TruffleRuntime runtime = Truffle.getRuntime();
         TestChildNode firstChild = new TestChildNode();
         TestChildNode secondChild = new TestChildNode();
         TestRootNode rootNode = new TestRootNode(new TestChildNode[]{firstChild, secondChild});
-        CallTarget target = runtime.createCallTarget(rootNode);
+        CallTarget target = rootNode.getCallTarget();
         Assert.assertEquals(rootNode, firstChild.getParent());
         Assert.assertEquals(rootNode, secondChild.getParent());
         Iterator<Node> iterator = rootNode.getChildren().iterator();
@@ -119,13 +123,12 @@ public class ChildrenNodesTest {
 
     @Test
     public void testMultipleChildrenFields() {
-        TruffleRuntime runtime = Truffle.getRuntime();
         TestChildNode firstChild = new TestChildNode();
         TestChildNode secondChild = new TestChildNode();
         TestChildNode thirdChild = new TestChildNode();
         TestChildNode forthChild = new TestChildNode();
         TestRootNode rootNode = new TestRoot2Node(new TestChildNode[]{firstChild, secondChild}, new TestChildNode[]{thirdChild, forthChild});
-        CallTarget target = runtime.createCallTarget(rootNode);
+        CallTarget target = rootNode.getCallTarget();
         Assert.assertEquals(rootNode, firstChild.getParent());
         Assert.assertEquals(rootNode, secondChild.getParent());
         Assert.assertEquals(rootNode, thirdChild.getParent());

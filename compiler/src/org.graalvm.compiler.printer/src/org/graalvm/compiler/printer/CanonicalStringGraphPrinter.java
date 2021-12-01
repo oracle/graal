@@ -30,11 +30,10 @@ import static org.graalvm.compiler.debug.DebugOptions.CanonicalGraphStringsRemov
 import static org.graalvm.compiler.debug.DebugOptions.PrintCanonicalGraphStringFlavor;
 
 import java.io.BufferedWriter;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -260,9 +259,9 @@ public class CanonicalStringGraphPrinter implements GraphPrinter {
     }
 
     private StructuredGraph currentGraph;
-    private Path currentDirectory;
+    private String currentDirectory;
 
-    private Path getDirectory(DebugContext debug, StructuredGraph graph) {
+    private String getDirectory(DebugContext debug, StructuredGraph graph) {
         if (graph == currentGraph) {
             return currentDirectory;
         }
@@ -276,10 +275,10 @@ public class CanonicalStringGraphPrinter implements GraphPrinter {
         if (graph instanceof StructuredGraph) {
             OptionValues options = graph.getOptions();
             StructuredGraph structuredGraph = (StructuredGraph) graph;
-            Path outDirectory = getDirectory(debug, structuredGraph);
+            String outDirectory = getDirectory(debug, structuredGraph);
             String title = String.format("%03d-%s.txt", id, String.format(format, simplifyClassArgs(args)));
-            Path filePath = outDirectory.resolve(PathUtilities.sanitizeFileName(title));
-            try (PrintWriter writer = new PrintWriter(new BufferedWriter(new FileWriter(filePath.toFile())))) {
+            String filePath = PathUtilities.getPath(outDirectory, PathUtilities.sanitizeFileName(title));
+            try (PrintWriter writer = new PrintWriter(new BufferedWriter(new OutputStreamWriter(PathUtilities.openOutputStream(filePath))))) {
                 switch (PrintCanonicalGraphStringFlavor.getValue(options)) {
                     case 1:
                         writeCanonicalExpressionCFGString(structuredGraph, CanonicalGraphStringsCheckConstants.getValue(options), CanonicalGraphStringsRemoveIdentities.getValue(options), writer);

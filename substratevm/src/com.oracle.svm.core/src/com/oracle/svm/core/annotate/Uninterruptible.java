@@ -25,6 +25,7 @@
 package com.oracle.svm.core.annotate;
 
 // Checkstyle: allow reflection
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -32,6 +33,9 @@ import java.lang.annotation.Target;
 import java.lang.reflect.AnnotatedElement;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.c.function.CFunction;
+import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
+import org.graalvm.util.DirectAnnotationAccess;
 import org.graalvm.util.GuardedAnnotationAccess;
 import org.graalvm.word.WordBase;
 
@@ -115,24 +119,56 @@ public @interface Uninterruptible {
     boolean mayBeInlined() default false;
 
     class Utils {
+        /**
+         * Returns whether the method is {@link Uninterruptible}, either by explicit annotation of
+         * the method or implicitly due to other annotations.
+         */
+        public static boolean isUninterruptible(AnnotatedElement method) {
+            if (DirectAnnotationAccess.isAnnotationPresent(method, Uninterruptible.class)) {
+                /* Explicit annotated method, so definitely uninterruptible. */
+                return true;
+            }
+
+            CFunction cFunctionAnnotation = DirectAnnotationAccess.getAnnotation(method, CFunction.class);
+            InvokeCFunctionPointer cFunctionPointerAnnotation = DirectAnnotationAccess.getAnnotation(method, InvokeCFunctionPointer.class);
+            if ((cFunctionAnnotation != null && cFunctionAnnotation.transition() == CFunction.Transition.NO_TRANSITION) ||
+                            (cFunctionPointerAnnotation != null && cFunctionPointerAnnotation.transition() == CFunction.Transition.NO_TRANSITION)) {
+                /*
+                 * If a method transfers from Java to C without a transition, then it is implicitly
+                 * treated as uninterruptible. This avoids annotating many methods with multiple
+                 * annotations.
+                 */
+                return true;
+            }
+
+            return false;
+        }
+
         public static boolean inliningAllowed(AnnotatedElement caller, AnnotatedElement callee) {
-            Uninterruptible callerUninterruptible = GuardedAnnotationAccess.getAnnotation(caller, Uninterruptible.class);
-            Uninterruptible calleeUninterruptible = GuardedAnnotationAccess.getAnnotation(callee, Uninterruptible.class);
-            if (callerUninterruptible != null) {
+            boolean callerUninterruptible = isUninterruptible(caller);
+            boolean calleeUninterruptible = isUninterruptible(callee);
+            if (callerUninterruptible) {
                 /*
                  * When a caller is uninterruptible, the callee must be too. Even when the
-                 * calleeMustBe flag is set to true by the caller, inlining is now allowed: after
+                 * calleeMustBe flag is set to false by the caller, inlining is not allowed: after
                  * inlining that callee would be uninterruptible too, which would e.g. mean no
-                 * safepoints in loops of the callee. that callee
+                 * safepoints in loops of the callee.
                  */
-                return calleeUninterruptible != null;
+                return calleeUninterruptible;
             } else {
                 /*
                  * When the caller is not uninterruptible, the callee must not be either: after
                  * inlining the callee would no longer be uninterruptible. The mayBeInlined flag is
                  * specified as an explicit exception to this rule.
                  */
-                return calleeUninterruptible == null || calleeUninterruptible.mayBeInlined();
+                if (!calleeUninterruptible) {
+                    return true;
+                }
+                Uninterruptible calleeUninterruptibleAnnotation = GuardedAnnotationAccess.getAnnotation(callee, Uninterruptible.class);
+                if (calleeUninterruptibleAnnotation != null && calleeUninterruptibleAnnotation.mayBeInlined()) {
+                    return true;
+                }
+                return false;
             }
         }
     }

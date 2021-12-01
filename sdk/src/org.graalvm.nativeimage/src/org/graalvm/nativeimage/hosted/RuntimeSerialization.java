@@ -43,6 +43,7 @@ package org.graalvm.nativeimage.hosted;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
 /**
@@ -60,7 +61,7 @@ public final class RuntimeSerialization {
      * @since 21.3
      */
     public static void register(Class<?>... classes) {
-        ImageSingletons.lookup(RuntimeSerializationSupport.class).register(classes);
+        ImageSingletons.lookup(RuntimeSerializationSupport.class).register(ConfigurationCondition.alwaysTrue(), classes);
     }
 
     /**
@@ -75,7 +76,7 @@ public final class RuntimeSerialization {
      * @since 21.3
      */
     public static void registerWithTargetConstructorClass(Class<?> clazz, Class<?> customTargetConstructorClazz) {
-        ImageSingletons.lookup(RuntimeSerializationSupport.class).registerWithTargetConstructorClass(clazz, customTargetConstructorClazz);
+        ImageSingletons.lookup(RuntimeSerializationSupport.class).registerWithTargetConstructorClass(ConfigurationCondition.alwaysTrue(), clazz, customTargetConstructorClazz);
     }
 
     private RuntimeSerialization() {

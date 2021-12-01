@@ -54,10 +54,10 @@ import java.util.Map;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotAccess;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
@@ -67,6 +67,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
 
@@ -77,6 +78,11 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
     public static final String LANGUAGE3 = "ContextPolyglotAccessTestLanguage3";
 
     public static final String NOT_EXISTING_LANGUAGE = "$$$LanguageThatDoesNotExist$$$";
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     @Test
     public void testNull() {
@@ -819,7 +825,7 @@ public class ContextPolyglotAccessTest extends AbstractPolyglotTest {
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
-            return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(true));
+            return RootNode.createConstantNode(true).getCallTarget();
         }
 
         public static Env getContext(String language) {

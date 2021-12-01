@@ -291,6 +291,5 @@ class CodeInfoFeature implements Feature {
         config.registerAsImmutable(imageInfo.frameInfoObjectConstants);
         config.registerAsImmutable(imageInfo.frameInfoSourceClasses);
         config.registerAsImmutable(imageInfo.frameInfoSourceMethodNames);
-        config.registerAsImmutable(imageInfo.frameInfoNames);
     }
 }

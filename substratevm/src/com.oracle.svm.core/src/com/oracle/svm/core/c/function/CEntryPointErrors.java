@@ -120,6 +120,9 @@ public final class CEntryPointErrors {
     @Description("Releasing the isolate's image heap memory failed.") //
     public static final int FREE_IMAGE_HEAP_FAILED = 20;
 
+    @Description("The auxiliary image was built from a different primary image.") //
+    public static final int AUX_IMAGE_PRIMARY_IMAGE_MISMATCH = 21;
+
     public static String getDescription(int code) {
         String result = null;
         if (code >= 0 && code < DESCRIPTIONS.length) {

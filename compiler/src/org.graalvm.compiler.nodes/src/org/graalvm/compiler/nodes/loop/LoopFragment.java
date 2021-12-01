@@ -31,6 +31,7 @@ import java.util.Iterator;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Graph.DuplicationReplacement;
 import org.graalvm.compiler.graph.Node;
@@ -248,7 +249,7 @@ public abstract class LoopFragment {
         }
 
         final NodeBitMap nonLoopNodes = graph.createNodeBitMap();
-        Deque<WorkListEntry> worklist = new ArrayDeque<>();
+        WorkQueue worklist = new WorkQueue(graph);
         for (AbstractBeginNode b : blocks) {
             if (b.isDeleted()) {
                 continue;
@@ -307,6 +308,56 @@ public abstract class LoopFragment {
         }
     }
 
+    static class WorkQueue implements Iterable<WorkListEntry> {
+        Deque<WorkListEntry> worklist;
+        NodeBitMap contents;
+
+        WorkQueue(Graph graph) {
+            worklist = new ArrayDeque<>();
+            contents = new NodeBitMap(graph);
+        }
+
+        public void addFirst(WorkListEntry e) {
+            worklist.addFirst(e);
+            GraalError.guarantee(!contents.isMarked(e.n), "Trying to addFirst an entry that is already in the work queue!");
+            contents.mark(e.n);
+        }
+
+        public void push(WorkListEntry e) {
+            worklist.push(e);
+            GraalError.guarantee(!contents.isMarked(e.n), "Trying to push an entry that is already in the work queue!");
+            contents.mark(e.n);
+        }
+
+        public WorkListEntry peek() {
+            return worklist.peek();
+        }
+
+        public WorkListEntry pop() {
+            WorkListEntry e = worklist.pop();
+            contents.clear(e.n);
+            return e;
+        }
+
+        public boolean isEmpty() {
+            return worklist.isEmpty();
+        }
+
+        public boolean contains(WorkListEntry e) {
+            return contents.contains(e.n);
+        }
+
+        public void clear() {
+            worklist.clear();
+            contents.clearAll();
+        }
+
+        @Override
+        public Iterator<WorkListEntry> iterator() {
+            return worklist.iterator();
+        }
+    }
+
     static TriState isLoopNode(Node n, NodeBitMap loopNodes, NodeBitMap nonLoopNodes) {
         if (loopNodes.isMarked(n)) {
             return TriState.TRUE;
@@ -321,13 +372,13 @@ public abstract class LoopFragment {
         return TriState.UNKNOWN;
     }
 
-    private static void pushWorkList(Deque<WorkListEntry> workList, Node node, NodeBitMap loopNodes) {
+    private static void pushWorkList(WorkQueue workList, Node node, NodeBitMap loopNodes) {
         WorkListEntry entry = new WorkListEntry(node, loopNodes);
-        assert !workList.contains(entry) : "node " + node + " added to worklist twice";
+        GraalError.guarantee(!workList.contains(entry), "node %s added to worklist twice", node);
         workList.push(entry);
     }
 
-    private static void markFloating(Deque<WorkListEntry> workList, LoopEx loop, Node start, NodeBitMap loopNodes, NodeBitMap nonLoopNodes) {
+    private static void markFloating(WorkQueue workList, LoopEx loop, Node start, NodeBitMap loopNodes, NodeBitMap nonLoopNodes) {
         if (isLoopNode(start, loopNodes, nonLoopNodes).isKnown()) {
             return;
         }

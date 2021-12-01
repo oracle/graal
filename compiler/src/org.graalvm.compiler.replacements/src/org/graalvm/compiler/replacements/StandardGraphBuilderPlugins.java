@@ -29,6 +29,7 @@ import static jdk.vm.ci.code.MemoryBarriers.LOAD_STORE;
 import static jdk.vm.ci.code.MemoryBarriers.STORE_LOAD;
 import static jdk.vm.ci.code.MemoryBarriers.STORE_STORE;
 import static org.graalvm.compiler.nodes.NamedLocationIdentity.OFF_HEAP_LOCATION;
+import static org.graalvm.compiler.replacements.ArrayIndexOf.STUB_INDEX_OF_1_BYTE;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
@@ -37,11 +38,13 @@ import java.util.function.BiFunction;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.calc.Condition.CanonicalizedCondition;
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
+import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
 import org.graalvm.compiler.core.common.type.FloatStamp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
@@ -82,6 +85,7 @@ import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.LeftShiftNode;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
+import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
 import org.graalvm.compiler.nodes.calc.ReinterpretNode;
 import org.graalvm.compiler.nodes.calc.RightShiftNode;
 import org.graalvm.compiler.nodes.calc.RoundNode;
@@ -128,10 +132,12 @@ import org.graalvm.compiler.nodes.java.AtomicReadAndWriteNode;
 import org.graalvm.compiler.nodes.java.ClassIsAssignableFromNode;
 import org.graalvm.compiler.nodes.java.DynamicNewArrayNode;
 import org.graalvm.compiler.nodes.java.InstanceOfDynamicNode;
+import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.RegisterFinalizerNode;
 import org.graalvm.compiler.nodes.java.UnsafeCompareAndExchangeNode;
 import org.graalvm.compiler.nodes.java.UnsafeCompareAndSwapNode;
+import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess;
 import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.address.IndexAddressNode;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
@@ -140,6 +146,7 @@ import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.ConstantReflectionUtil;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.EnsureVirtualizedNode;
+import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
 import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
 import org.graalvm.compiler.replacements.nodes.ProfileBooleanNode;
 import org.graalvm.compiler.replacements.nodes.ReverseBytesNode;
@@ -214,7 +221,7 @@ public class StandardGraphBuilderPlugins {
         registerJcovCollectPlugins(plugins, replacements);
     }
 
-    private static final Field STRING_VALUE_FIELD;
+    public static final Field STRING_VALUE_FIELD;
     private static final Field STRING_CODER_FIELD;
 
     static {
@@ -260,13 +267,17 @@ public class StandardGraphBuilderPlugins {
             }
         });
 
+        if (arrayEqualsSubstitution) {
+            r.register2("equals", Receiver.class, Object.class, new StringEqualsInvocationPlugin());
+        }
         if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            if (arrayEqualsSubstitution) {
-                r.registerMethodSubstitution(StringSubstitutions.class, "equals", Receiver.class, Object.class);
-            }
-
             Registration sr = new Registration(plugins, StringSubstitutions.class);
             sr.register1("getValue", String.class, new InvocationPlugin() {
+                @Override
+                public boolean inlineOnly() {
+                    return true;
+                }
+
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                     ResolvedJavaField field = b.getMetaAccess().lookupJavaField(STRING_VALUE_FIELD);
@@ -277,9 +288,6 @@ public class StandardGraphBuilderPlugins {
                 }
             });
         } else {
-            if (arrayEqualsSubstitution) {
-                r.registerMethodSubstitution(JDK9StringSubstitutions.class, "equals", Receiver.class, Object.class);
-            }
 
             final Registration utf16r = new Registration(plugins, "java.lang.StringUTF16", replacements);
             utf16r.setAllowOverwrite(true);
@@ -306,6 +314,11 @@ public class StandardGraphBuilderPlugins {
             Registration sr = new Registration(plugins, JDK9StringSubstitutions.class);
             sr.register1("getValue", String.class, new InvocationPlugin() {
                 @Override
+                public boolean inlineOnly() {
+                    return true;
+                }
+
+                @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                     ResolvedJavaField field = b.getMetaAccess().lookupJavaField(STRING_VALUE_FIELD);
                     ValueNode object = b.nullCheckedValue(value);
@@ -316,6 +329,11 @@ public class StandardGraphBuilderPlugins {
             });
             sr.register1("getCoder", String.class, new InvocationPlugin() {
                 @Override
+                public boolean inlineOnly() {
+                    return true;
+                }
+
+                @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                     ResolvedJavaField field = b.getMetaAccess().lookupJavaField(STRING_CODER_FIELD);
                     b.addPush(JavaKind.Int, LoadFieldNode.create(b.getConstantFieldProvider(), b.getConstantReflection(), b.getMetaAccess(),
@@ -323,17 +341,114 @@ public class StandardGraphBuilderPlugins {
                     return true;
                 }
             });
+            sr.register2("getByte", byte[].class, int.class, new InvocationPlugin() {
+                @Override
+                public boolean inlineOnly() {
+                    return true;
+                }
+
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg1, ValueNode arg2) {
+                    b.addPush(JavaKind.Byte, new JavaReadNode(JavaKind.Byte,
+                                    new IndexAddressNode(arg1, arg2, JavaKind.Byte),
+                                    NamedLocationIdentity.getArrayLocation(JavaKind.Byte), OnHeapMemoryAccess.BarrierType.NONE, false));
+                    return true;
+                }
+            });
+        }
+    }
+
+    public static class ArrayEqualsInvocationPlugin implements InvocationPlugin {
+        private final JavaKind kind;
+
+        public ArrayEqualsInvocationPlugin(JavaKind kind) {
+            this.kind = kind;
+        }
+
+        @SuppressWarnings("try")
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg1, ValueNode arg2) {
+            if (!b.canMergeIntrinsicReturns()) {
+                return false;
+            }
+            try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                helper.emitReturnIf(b.add(new ObjectEqualsNode(arg1, arg2)), b.add(ConstantNode.forBoolean(true)), BranchProbabilityNode.SLOW_PATH_PROBABILITY);
+                GuardingNode nonNullArg1guard = helper.emitReturnIf(IsNullNode.create(arg1), b.add(ConstantNode.forBoolean(false)), BranchProbabilityNode.SLOW_PATH_PROBABILITY);
+                GuardingNode nonNullArg2guard = helper.emitReturnIf(IsNullNode.create(arg2), b.add(ConstantNode.forBoolean(false)), BranchProbabilityNode.SLOW_PATH_PROBABILITY);
+                Stamp stamp1 = AbstractPointerStamp.pointerNonNull(arg1.stamp(NodeView.DEFAULT));
+                ValueNode nonNullArg1 = b.add(new PiNode(arg1, stamp1, nonNullArg1guard.asNode()));
+                ValueNode arg1Length = b.add(new ArrayLengthNode(nonNullArg1));
+                Stamp stamp2 = AbstractPointerStamp.pointerNonNull(arg1.stamp(NodeView.DEFAULT));
+                ValueNode nonNullArg2 = b.add(new PiNode(arg2, stamp2, nonNullArg2guard.asNode()));
+                ValueNode arg2Length = b.add(new ArrayLengthNode(nonNullArg2));
+                helper.emitReturnIfNot(IntegerEqualsNode.create(arg1Length, arg2Length, NodeView.DEFAULT), b.add(ConstantNode.forBoolean(false)), BranchProbabilityNode.FAST_PATH_PROBABILITY);
+                helper.emitFinalReturn(JavaKind.Boolean, b.append(new ArrayEqualsNode(nonNullArg1, nonNullArg2, arg1Length, kind)));
+            }
+            return true;
+        }
+    }
+
+    static class StringEqualsInvocationPlugin implements InvocationPlugin {
+
+        StringEqualsInvocationPlugin() {
+        }
+
+        @SuppressWarnings("try")
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode other) {
+            if (!b.canMergeIntrinsicReturns()) {
+                return false;
+            }
+            try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                ConstantNode trueValue = ConstantNode.forBoolean(true);
+                ConstantNode falseValue = ConstantNode.forBoolean(false);
+
+                // if (this == other) return true
+                ValueNode thisString = receiver.get();
+                helper.emitReturnIf(b.add(new ObjectEqualsNode(thisString, other)), trueValue, BranchProbabilityNode.SLOW_PATH_PROBABILITY);
+
+                // if (!(other instanceof String)) return false
+                TypeReference stringType = TypeReference.createTrusted(b.getAssumptions(), b.getMetaAccess().lookupJavaType(String.class));
+                GuardingNode stringArg2Guard = helper.emitReturnIfNot(InstanceOfNode.create(stringType, other), b.add(falseValue),
+                                BranchProbabilityNode.SLOW_PATH_PROBABILITY);
+                Stamp stamp = StampFactory.objectNonNull(stringType);
+                ValueNode otherString = b.add(new PiNode(other, stamp, stringArg2Guard.asNode()));
+
+                if (JavaVersionUtil.JAVA_SPEC > 8) {
+                    ResolvedJavaField coderField = b.getMetaAccess().lookupJavaField(STRING_CODER_FIELD);
+                    ValueNode thisCoder = helper.loadField(thisString, coderField);
+                    ValueNode thatCoder = helper.loadField(otherString, coderField);
+                    // if (thisString.coder != otherString.coder) return false
+                    helper.emitReturnIfNot(b.add(new IntegerEqualsNode(thisCoder, thatCoder)), falseValue, BranchProbabilityNode.SLOW_PATH_PROBABILITY);
+                }
+
+                ResolvedJavaField valueField = b.getMetaAccess().lookupJavaField(STRING_VALUE_FIELD);
+                ValueNode thisValue = b.nullCheckedValue(helper.loadField(otherString, valueField));
+                ValueNode thatValue = b.nullCheckedValue(helper.loadField(thisString, valueField));
+
+                ValueNode thisLength = helper.arraylength(thisValue);
+                ValueNode thatLength = helper.arraylength(thatValue);
+                // if (thisString.value.length != otherString.value.length) return false
+                helper.emitReturnIfNot(IntegerEqualsNode.create(thisLength, thatLength, NodeView.DEFAULT), falseValue, BranchProbabilityNode.SLOW_PATH_PROBABILITY);
+                // if (length == 0) return true
+                helper.emitReturnIf(IntegerEqualsNode.create(thisLength, ConstantNode.forInt(0), NodeView.DEFAULT), trueValue,
+                                BranchProbabilityNode.SLOW_PATH_PROBABILITY);
+                // compare the array bodies
+                helper.emitFinalReturn(JavaKind.Boolean, b.append(new ArrayEqualsNode(thisValue, thatValue, thisLength.isConstant() ? thisLength : thatLength,
+                                JavaVersionUtil.JAVA_SPEC > 8 ? JavaKind.Byte : JavaKind.Char)));
+            }
+            return true;
         }
     }
 
     private static void registerArraysPlugins(InvocationPlugins plugins, Replacements replacements) {
         Registration r = new Registration(plugins, Arrays.class, replacements);
-        r.registerMethodSubstitution(ArraysSubstitutions.class, "equals", boolean[].class, boolean[].class);
-        r.registerMethodSubstitution(ArraysSubstitutions.class, "equals", byte[].class, byte[].class);
-        r.registerMethodSubstitution(ArraysSubstitutions.class, "equals", short[].class, short[].class);
-        r.registerMethodSubstitution(ArraysSubstitutions.class, "equals", char[].class, char[].class);
-        r.registerMethodSubstitution(ArraysSubstitutions.class, "equals", int[].class, int[].class);
-        r.registerMethodSubstitution(ArraysSubstitutions.class, "equals", long[].class, long[].class);
+        r.register2("equals", boolean[].class, boolean[].class, new ArrayEqualsInvocationPlugin(JavaKind.Boolean));
+        r.register2("equals", byte[].class, byte[].class, new ArrayEqualsInvocationPlugin(JavaKind.Byte));
+        r.register2("equals", short[].class, short[].class, new ArrayEqualsInvocationPlugin(JavaKind.Short));
+        r.register2("equals", char[].class, char[].class, new ArrayEqualsInvocationPlugin(JavaKind.Char));
+        r.register2("equals", int[].class, int[].class, new ArrayEqualsInvocationPlugin(JavaKind.Int));
+        r.register2("equals", long[].class, long[].class, new ArrayEqualsInvocationPlugin(JavaKind.Long));
     }
 
     private static void registerArrayPlugins(InvocationPlugins plugins, Replacements replacements) {
@@ -341,7 +456,9 @@ public class StandardGraphBuilderPlugins {
         r.register2("newInstance", Class.class, int.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode componentType, ValueNode length) {
-                b.addPush(JavaKind.Object, new DynamicNewArrayNode(componentType, length, true));
+                ValueNode componentTypeNonNull = b.nullCheckedValue(componentType);
+                ValueNode lengthPositive = b.maybeEmitExplicitNegativeArraySizeCheck(length);
+                b.addPush(JavaKind.Object, new DynamicNewArrayNode(componentTypeNonNull, lengthPositive, true));
                 return true;
             }
         });
@@ -879,7 +996,7 @@ public class StandardGraphBuilderPlugins {
                     if (RegisterFinalizerNode.mayHaveFinalizer(object, b.getMetaAccess(), b.getAssumptions())) {
                         RegisterFinalizerNode regFin = new RegisterFinalizerNode(object);
                         b.add(regFin);
-                        b.setStateAfter(regFin);
+                        assert regFin.stateAfter() != null;
                     }
                     return true;
                 }
@@ -1303,7 +1420,6 @@ public class StandardGraphBuilderPlugins {
 
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-
                 b.add(new DeoptimizeNode(DeoptimizationAction.None, DeoptimizationReason.TransferToInterpreter));
                 return true;
             }
@@ -1779,5 +1895,32 @@ public class StandardGraphBuilderPlugins {
                 return false;
             }
         });
+    }
+
+    public static class StringLatin1IndexOfCharPlugin implements InvocationPlugin {
+        @SuppressWarnings("try")
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode ch, ValueNode origFromIndex) {
+            if (!b.canMergeIntrinsicReturns()) {
+                return false;
+            }
+            try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                ConstantNode zero = ConstantNode.forInt(0);
+                // if (ch >>> 8 != 0) return -1
+                helper.emitReturnIf(helper.ushr(ch, 8), Condition.NE, zero, ConstantNode.forInt(-1), GraalDirectives.UNLIKELY_PROBABILITY);
+                ValueNode nonNullValue = b.nullCheckedValue(value);
+
+                // if (fromIndex >= value.length) return -1
+                ValueNode length = helper.arraylength(nonNullValue);
+                helper.emitReturnIf(origFromIndex, Condition.GE, length, ConstantNode.forInt(-1), GraalDirectives.UNLIKELY_PROBABILITY);
+                LogicNode condition = helper.createCompare(origFromIndex, CanonicalCondition.LT, zero);
+                // fromIndex = max(fromIndex, 0)
+                ValueNode fromIndex = ConditionalNode.create(condition, zero, origFromIndex, NodeView.DEFAULT);
+                SignExtendNode toByte = b.add(new SignExtendNode(b.add(new NarrowNode(ch, JavaKind.Byte.getBitCount())), JavaKind.Int.getBitCount()));
+                helper.emitFinalReturn(JavaKind.Int, new ArrayIndexOfDispatchNode(STUB_INDEX_OF_1_BYTE, JavaKind.Byte, JavaKind.Byte,
+                                false, nonNullValue, length, fromIndex, toByte));
+            }
+            return true;
+        }
     }
 }

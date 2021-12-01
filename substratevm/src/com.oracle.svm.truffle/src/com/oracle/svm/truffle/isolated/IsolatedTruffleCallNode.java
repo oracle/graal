@@ -57,23 +57,23 @@ final class IsolatedTruffleCallNode extends IsolatedObjectProxy<TruffleCallNode>
         return isInliningForced0(IsolatedCompileContext.get().getClient(), handle);
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static ClientHandle<SubstrateCompilableTruffleAST> getCurrentCallTarget0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<TruffleCallNode> nodeHandle) {
         TruffleCallNode node = IsolatedCompileClient.get().unhand(nodeHandle);
         CompilableTruffleAST target = node.getCurrentCallTarget();
         return IsolatedCompileClient.get().hand((SubstrateCompilableTruffleAST) target);
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static int getCallCount0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<TruffleCallNode> nodeHandle) {
         TruffleCallNode node = IsolatedCompileClient.get().unhand(nodeHandle);
         return node.getCallCount();
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static boolean isInliningForced0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<TruffleCallNode> nodeHandle) {
         TruffleCallNode node = IsolatedCompileClient.get().unhand(nodeHandle);
         return node.isInliningForced();

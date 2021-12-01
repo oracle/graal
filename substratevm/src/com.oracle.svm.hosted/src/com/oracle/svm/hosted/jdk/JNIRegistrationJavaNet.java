@@ -61,10 +61,12 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
         rerunClassInit(a, "java.net.DatagramPacket", "java.net.InetAddress", "java.net.NetworkInterface",
                         "java.net.SocketInputStream", "java.net.SocketOutputStream",
                         /* Caches networking properties. */
-                        "java.net.DefaultDatagramSocketImplFactory");
+                        "java.net.DefaultDatagramSocketImplFactory",
+                        /* Stores a default SSLContext in a static field. */
+                        "javax.net.ssl.SSLContext");
         if (isWindows()) {
             rerunClassInit(a, "java.net.DualStackPlainDatagramSocketImpl", "java.net.TwoStacksPlainDatagramSocketImpl");
-            if (JavaVersionUtil.JAVA_SPEC < 11) {
+            if (JavaVersionUtil.JAVA_SPEC <= 8) {
                 rerunClassInit(a, "java.net.DualStackPlainSocketImpl", "java.net.TwoStacksPlainSocketImpl",
                                 /* Caches networking properties. */
                                 "java.net.PlainSocketImpl");
@@ -134,7 +136,7 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
         a.registerReachabilityHandler(JNIRegistrationJavaNet::registerDatagramPacketInit,
                         method(a, "java.net.DatagramPacket", "init"));
 
-        if (JavaVersionUtil.JAVA_SPEC < 15) {
+        if (JavaVersionUtil.JAVA_SPEC <= 11) {
             a.registerReachabilityHandler(JNIRegistrationJavaNet::registerDatagramSocketCheckOldImpl,
                             method(a, "java.net.DatagramSocket", "checkOldImpl"));
         }
@@ -145,7 +147,7 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
         a.registerReachabilityHandler(JNIRegistrationJavaNet::registerPlainDatagramSocketImplSocketGetOption,
                         method(a, "java.net." + plainDatagramSocketImpl, "socketGetOption", int.class));
 
-        if (JavaVersionUtil.JAVA_SPEC < 11 || isPosix()) {
+        if (JavaVersionUtil.JAVA_SPEC <= 8 || isPosix()) {
             String plainSocketImpl = isWindows() ? "TwoStacksPlainSocketImpl" : "PlainSocketImpl";
             a.registerReachabilityHandler(JNIRegistrationJavaNet::registerPlainSocketImplInitProto,
                             method(a, "java.net." + plainSocketImpl, "initProto"));
@@ -156,7 +158,7 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
             a.registerReachabilityHandler(JNIRegistrationJavaNet::registerDualStackPlainDatagramSocketImplInitIDs,
                             method(a, "java.net.DualStackPlainDatagramSocketImpl", "initIDs"));
 
-            String dualStackPlainSocketImpl = JavaVersionUtil.JAVA_SPEC < 11 ? "DualStackPlainSocketImpl" : "PlainSocketImpl";
+            String dualStackPlainSocketImpl = JavaVersionUtil.JAVA_SPEC <= 8 ? "DualStackPlainSocketImpl" : "PlainSocketImpl";
             a.registerReachabilityHandler(JNIRegistrationJavaNet::registerDualStackPlainSocketImplInitIDs,
                             method(a, "java.net." + dualStackPlainSocketImpl, "initIDs"));
             a.registerReachabilityHandler(JNIRegistrationJavaNet::registerDualStackPlainSocketImplLocalAddress,
@@ -192,7 +194,7 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
         /* Java_java_net_Inet6Address_init */
         JNIRuntimeAccess.register(constructor(a, "java.net.Inet6Address"));
         JNIRuntimeAccess.register(fields(a, "java.net.Inet6Address", "holder6"));
-        if (JavaVersionUtil.JAVA_SPEC < 13) { // JDK-8216417
+        if (JavaVersionUtil.JAVA_SPEC <= 11) { // JDK-8216417
             Class<?> c = clazz(a, "java.net.Inet6Address");
             boolean optional = JavaVersionUtil.JAVA_SPEC == 11; // JDK-8269385
             Field f = ReflectionUtil.lookupField(optional, c, "cached_scope_id");

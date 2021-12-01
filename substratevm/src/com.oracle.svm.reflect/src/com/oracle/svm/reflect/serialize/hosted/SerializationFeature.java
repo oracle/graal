@@ -39,15 +39,13 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 
-import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
@@ -56,7 +54,8 @@ import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
 import com.oracle.svm.core.jdk.RecordSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.util.json.JSONParserException;
+import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
+import com.oracle.svm.hosted.ConfigurationTypeResolver;
 import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
@@ -66,8 +65,6 @@ import com.oracle.svm.reflect.hosted.ReflectionFeature;
 import com.oracle.svm.reflect.serialize.SerializationRegistry;
 import com.oracle.svm.reflect.serialize.SerializationSupport;
 import com.oracle.svm.util.ReflectionUtil;
-
-import jdk.vm.ci.meta.MetaUtil;
 
 @AutomaticFeature
 public class SerializationFeature implements Feature {
@@ -83,7 +80,7 @@ public class SerializationFeature implements Feature {
     public void duringSetup(DuringSetupAccess a) {
         FeatureImpl.DuringSetupAccessImpl access = (FeatureImpl.DuringSetupAccessImpl) a;
         ImageClassLoader imageClassLoader = access.getImageClassLoader();
-        SerializationTypeResolver typeResolver = new SerializationTypeResolver(imageClassLoader, NativeImageOptions.AllowIncompleteClasspath.getValue());
+        ConfigurationTypeResolver typeResolver = new ConfigurationTypeResolver("serialization configuration", imageClassLoader, NativeImageOptions.AllowIncompleteClasspath.getValue());
         SerializationDenyRegistry serializationDenyRegistry = new SerializationDenyRegistry(typeResolver);
         serializationBuilder = new SerializationBuilder(serializationDenyRegistry, access, typeResolver);
         ImageSingletons.add(RuntimeSerializationSupport.class, serializationBuilder);
@@ -100,8 +97,13 @@ public class SerializationFeature implements Feature {
     }
 
     @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        serializationBuilder.flushConditionalConfiguration(access);
+    }
+
+    @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
-        serializationBuilder.duringAnalysis(access);
+        serializationBuilder.flushConditionalConfiguration(access);
     }
 
     @Override
@@ -126,61 +128,29 @@ public class SerializationFeature implements Feature {
     }
 }
 
-final class SerializationTypeResolver {
-
-    private final ImageClassLoader classLoader;
-    private final boolean allowIncompleteClasspath;
-
-    SerializationTypeResolver(ImageClassLoader classLoader, boolean allowIncompleteClasspath) {
-        this.classLoader = classLoader;
-        this.allowIncompleteClasspath = allowIncompleteClasspath;
-    }
-
-    public Class<?> resolveType(String typeName) {
-        String name = typeName;
-        if (name.indexOf('[') != -1) {
-            /* accept "int[][]", "java.lang.String[]" */
-            name = MetaUtil.internalNameToJava(MetaUtil.toInternalName(name), true, true);
-        }
-        TypeResult<Class<?>> typeResult = classLoader.findClass(name);
-        if (!typeResult.isPresent()) {
-            handleError("Could not resolve " + name + " for serialization configuration.");
-        }
-        return typeResult.get();
-    }
-
-    private void handleError(String message) {
-        if (allowIncompleteClasspath) {
-            println("Warning: " + message);
-        } else {
-            throw new JSONParserException(message + " To allow unresolvable reflection configuration, use option -H:+AllowIncompleteClasspath");
-        }
-    }
-}
-
 final class SerializationDenyRegistry implements RuntimeSerializationSupport {
 
     private final Map<Class<?>, Boolean> deniedClasses = new HashMap<>();
-    private final SerializationTypeResolver typeResolver;
+    private final ConfigurationTypeResolver typeResolver;
 
-    SerializationDenyRegistry(SerializationTypeResolver typeResolver) {
+    SerializationDenyRegistry(ConfigurationTypeResolver typeResolver) {
         this.typeResolver = typeResolver;
     }
 
     @Override
-    public void register(Class<?>... classes) {
+    public void register(ConfigurationCondition condition, Class<?>... classes) {
         for (Class<?> clazz : classes) {
-            registerWithTargetConstructorClass(clazz, null);
+            registerWithTargetConstructorClass(condition, clazz, null);
         }
     }
 
     @Override
-    public void registerWithTargetConstructorClass(String className, String customTargetConstructorClassName) {
-        registerWithTargetConstructorClass(typeResolver.resolveType(className), null);
+    public void registerWithTargetConstructorClass(ConfigurationCondition condition, String className, String customTargetConstructorClassName) {
+        registerWithTargetConstructorClass(condition, typeResolver.resolveType(className), null);
     }
 
     @Override
-    public void registerWithTargetConstructorClass(Class<?> clazz, Class<?> customTargetConstructorClazz) {
+    public void registerWithTargetConstructorClass(ConfigurationCondition condition, Class<?> clazz, Class<?> customTargetConstructorClazz) {
         if (clazz != null) {
             deniedClasses.put(clazz, true);
         }
@@ -196,17 +166,7 @@ final class SerializationDenyRegistry implements RuntimeSerializationSupport {
     }
 }
 
-final class SerializationBuilder implements RuntimeSerializationSupport {
-
-    private static final class ClassEntry {
-        private final Class<?> clazz;
-        private final Class<?> customTargetConstructorClazz;
-
-        private ClassEntry(Class<?> clazz, Class<?> customTargetConstructorClazz) {
-            this.clazz = clazz;
-            this.customTargetConstructorClazz = customTargetConstructorClazz;
-        }
-    }
+final class SerializationBuilder extends ConditionalConfigurationRegistry implements RuntimeSerializationSupport {
 
     private final Object reflectionFactory;
     private final Method newConstructorForSerializationMethod1;
@@ -217,12 +177,11 @@ final class SerializationBuilder implements RuntimeSerializationSupport {
 
     private final SerializationSupport serializationSupport;
     private final SerializationDenyRegistry denyRegistry;
-    private final SerializationTypeResolver typeResolver;
-    private final Set<ClassEntry> newClasses;
+    private final ConfigurationTypeResolver typeResolver;
 
     private boolean sealed;
 
-    SerializationBuilder(SerializationDenyRegistry serializationDenyRegistry, FeatureImpl.DuringSetupAccessImpl access, SerializationTypeResolver typeResolver) {
+    SerializationBuilder(SerializationDenyRegistry serializationDenyRegistry, FeatureImpl.DuringSetupAccessImpl access, ConfigurationTypeResolver typeResolver) {
         try {
             Class<?> reflectionFactoryClass = access.findClassByName(Package_jdk_internal_reflect.getQualifiedName() + ".ReflectionFactory");
             Method getReflectionFactoryMethod = ReflectionUtil.lookupMethod(reflectionFactoryClass, "getReflectionFactory");
@@ -237,7 +196,6 @@ final class SerializationBuilder implements RuntimeSerializationSupport {
         stubConstructor = newConstructorForSerialization(SerializationSupport.StubForAbstractClass.class, null);
         this.denyRegistry = serializationDenyRegistry;
         this.typeResolver = typeResolver;
-        newClasses = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
         serializationSupport = new SerializationSupport(stubConstructor);
         ImageSingletons.add(SerializationRegistry.class, serializationSupport);
@@ -248,32 +206,39 @@ final class SerializationBuilder implements RuntimeSerializationSupport {
     }
 
     @Override
-    public void register(Class<?>... classes) {
+    public void register(ConfigurationCondition condition, Class<?>... classes) {
         for (Class<?> clazz : classes) {
-            registerWithTargetConstructorClass(clazz, null);
+            registerWithTargetConstructorClass(condition, clazz, null);
         }
     }
 
     @Override
-    public void registerWithTargetConstructorClass(String targetClassName, String customTargetConstructorClassName) {
+    public void registerWithTargetConstructorClass(ConfigurationCondition condition, String targetClassName, String customTargetConstructorClassName) {
         abortIfSealed();
+
+        Class<?> conditionClass = typeResolver.resolveType(condition.getTypeName());
+        if (conditionClass == null) {
+            return;
+        }
+
         Class<?> serializationTargetClass = typeResolver.resolveType(targetClassName);
-        UserError.guarantee(serializationTargetClass != null, "Cannot find serialization target class %s. The missing of this class can't be ignored even if -H:+AllowIncompleteClasspath is set." +
+        UserError.guarantee(serializationTargetClass != null, "Cannot find serialization target class %s. The missing of this class can't be ignored even if --allow-incomplete-classpath is set." +
                         " Please make sure it is in the classpath", targetClassName);
+
         if (customTargetConstructorClassName != null) {
             Class<?> customTargetConstructorClass = typeResolver.resolveType(customTargetConstructorClassName);
             UserError.guarantee(customTargetConstructorClass != null,
-                            "Cannot find targetConstructorClass %s. The missing of this class can't be ignored even if -H:+AllowIncompleteClasspath is set." +
+                            "Cannot find targetConstructorClass %s. The missing of this class can't be ignored even if --allow-incomplete-classpath is set." +
                                             " Please make sure it is in the classpath",
                             customTargetConstructorClass);
-            registerWithTargetConstructorClass(serializationTargetClass, customTargetConstructorClass);
+            registerWithTargetConstructorClass(condition, serializationTargetClass, customTargetConstructorClass);
         } else {
-            registerWithTargetConstructorClass(serializationTargetClass, null);
+            registerWithTargetConstructorClass(condition, serializationTargetClass, null);
         }
     }
 
     @Override
-    public void registerWithTargetConstructorClass(Class<?> serializationTargetClass, Class<?> customTargetConstructorClass) {
+    public void registerWithTargetConstructorClass(ConfigurationCondition condition, Class<?> serializationTargetClass, Class<?> customTargetConstructorClass) {
         abortIfSealed();
         if (!Serializable.class.isAssignableFrom(serializationTargetClass)) {
             println("Warning: Could not register " + serializationTargetClass.getName() + " for serialization as it does not implement Serializable.");
@@ -283,29 +248,15 @@ final class SerializationBuilder implements RuntimeSerializationSupport {
                                 "The given targetConstructorClass %s is not a subclass of the serialization target class %s.",
                                 customTargetConstructorClass, serializationTargetClass);
             }
-            ClassEntry entry = new ClassEntry(serializationTargetClass, customTargetConstructorClass);
-            newClasses.add(entry);
+            registerConditionalConfiguration(condition, () -> {
+                Class<?> targetConstructor = addConstructorAccessor(serializationTargetClass, customTargetConstructorClass);
+                addReflections(serializationTargetClass, targetConstructor);
+            });
         }
-    }
-
-    public void duringAnalysis(Feature.DuringAnalysisAccess a) {
-        if (newClasses.isEmpty()) {
-            return;
-        }
-        for (ClassEntry entry : newClasses) {
-            Class<?> targetConstructor = addConstructorAccessor(entry.clazz, entry.customTargetConstructorClazz);
-            addReflections(entry.clazz, targetConstructor);
-        }
-        newClasses.clear();
-
-        a.requireAnalysisIteration();
     }
 
     public void afterAnalysis() {
         sealed = true;
-        if (!newClasses.isEmpty()) {
-            abortIfSealed();
-        }
     }
 
     private static void addReflections(Class<?> serializationTargetClass, Class<?> targetConstructorClass) {

@@ -44,6 +44,7 @@ import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 import javax.tools.Diagnostic.Kind;
@@ -54,7 +55,7 @@ import javax.tools.StandardLocation;
  * {@link javax.annotation.processing.AbstractProcessor} subclass that provides extra functionality.
  */
 @SuppressFBWarnings(value = "NM_SAME_SIMPLE_NAME_AS_SUPERCLASS", //
-                reason = "We want this type to be found when someone is writing a new Graal annotation processor")
+                justification = "We want this type to be found when someone is writing a new Graal annotation processor")
 public abstract class AbstractProcessor extends javax.annotation.processing.AbstractProcessor {
 
     /**
@@ -87,6 +88,45 @@ public abstract class AbstractProcessor extends javax.annotation.processing.Abst
      */
     public TypeMirror getType(String className) {
         return getTypeElement(className).asType();
+    }
+
+    public TypeMirror getType(Class<?> element) {
+        if (element.isArray()) {
+            return processingEnv.getTypeUtils().getArrayType(getType(element.getComponentType()));
+        }
+        if (element.isPrimitive()) {
+            if (element == void.class) {
+                return processingEnv.getTypeUtils().getNoType(TypeKind.VOID);
+            }
+            TypeKind typeKind;
+            if (element == boolean.class) {
+                typeKind = TypeKind.BOOLEAN;
+            } else if (element == byte.class) {
+                typeKind = TypeKind.BYTE;
+            } else if (element == short.class) {
+                typeKind = TypeKind.SHORT;
+            } else if (element == char.class) {
+                typeKind = TypeKind.CHAR;
+            } else if (element == int.class) {
+                typeKind = TypeKind.INT;
+            } else if (element == long.class) {
+                typeKind = TypeKind.LONG;
+            } else if (element == float.class) {
+                typeKind = TypeKind.FLOAT;
+            } else if (element == double.class) {
+                typeKind = TypeKind.DOUBLE;
+            } else {
+                assert false;
+                return null;
+            }
+            return processingEnv.getTypeUtils().getPrimitiveType(typeKind);
+        } else {
+            TypeElement typeElement = getTypeElement(element.getCanonicalName());
+            if (typeElement == null) {
+                return null;
+            }
+            return processingEnv.getTypeUtils().erasure(typeElement.asType());
+        }
     }
 
     /**

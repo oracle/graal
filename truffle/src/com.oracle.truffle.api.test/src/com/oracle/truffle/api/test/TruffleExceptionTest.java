@@ -42,33 +42,6 @@ package com.oracle.truffle.api.test;
 
 import static com.oracle.truffle.api.test.RootNodeTest.verifyStackTraceElementGuestObject;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLogger;
-import com.oracle.truffle.api.TruffleStackTrace;
-import com.oracle.truffle.api.TruffleStackTraceElement;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.ExceptionType;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.exception.AbstractTruffleException;
-import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.ControlFlowException;
-import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
-import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayDeque;
@@ -82,13 +55,49 @@ import java.util.function.Consumer;
 import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 import java.util.regex.Pattern;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.TruffleStackTrace;
+import com.oracle.truffle.api.TruffleStackTraceElement;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.ControlFlowException;
+import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
+import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
+
 public class TruffleExceptionTest extends AbstractPolyglotTest {
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     private VerifyingHandler verifyingHandler;
 
@@ -129,7 +138,7 @@ public class TruffleExceptionTest extends AbstractPolyglotTest {
                 ThrowNode throwNode = new ThrowNode((n) -> {
                     return new TruffleExceptionImpl("Test exception", n);
                 });
-                return Truffle.getRuntime().createCallTarget(new TestRootNode(languageInstance, "test", null, throwNode));
+                return new TestRootNode(languageInstance, "test", null, throwNode).getCallTarget();
             }
         },
                         "<proxyLanguage> test",
@@ -144,9 +153,9 @@ public class TruffleExceptionTest extends AbstractPolyglotTest {
                 ThrowNode throwNode = new ThrowNode((n) -> {
                     return new TruffleExceptionImpl("Test exception", n);
                 });
-                CallTarget throwTarget = Truffle.getRuntime().createCallTarget(new TestRootNode(languageInstance, "test-throw", null, throwNode));
-                CallTarget innerInvokeTarget = Truffle.getRuntime().createCallTarget(new TestRootNode(languageInstance, "test-call-inner", null, new InvokeNode(throwTarget)));
-                CallTarget outerInvokeTarget = Truffle.getRuntime().createCallTarget(new TestRootNode(languageInstance, "test-call-outer", null, new InvokeNode(innerInvokeTarget)));
+                CallTarget throwTarget = new TestRootNode(languageInstance, "test-throw", null, throwNode).getCallTarget();
+                CallTarget innerInvokeTarget = new TestRootNode(languageInstance, "test-call-inner", null, new InvokeNode(throwTarget)).getCallTarget();
+                CallTarget outerInvokeTarget = new TestRootNode(languageInstance, "test-call-outer", null, new InvokeNode(innerInvokeTarget)).getCallTarget();
                 return outerInvokeTarget;
             }
         },
@@ -164,10 +173,10 @@ public class TruffleExceptionTest extends AbstractPolyglotTest {
                 ThrowNode throwNode = new ThrowNode((n) -> {
                     return new TruffleExceptionImpl("Test exception", n);
                 });
-                CallTarget throwTarget = Truffle.getRuntime().createCallTarget(new TestRootNode(languageInstance, "test-throw-internal", null, true, throwNode));
-                CallTarget innerInvokeTarget = Truffle.getRuntime().createCallTarget(new TestRootNode(languageInstance, "test-call-inner", null, new InvokeNode(throwTarget)));
-                CallTarget internalInvokeTarget = Truffle.getRuntime().createCallTarget(new TestRootNode(languageInstance, "test-call-internal", null, true, new InvokeNode(innerInvokeTarget)));
-                CallTarget outerInvokeTarget = Truffle.getRuntime().createCallTarget(new TestRootNode(languageInstance, "test-call-outer", null, new InvokeNode(internalInvokeTarget)));
+                CallTarget throwTarget = new TestRootNode(languageInstance, "test-throw-internal", null, true, throwNode).getCallTarget();
+                CallTarget innerInvokeTarget = new TestRootNode(languageInstance, "test-call-inner", null, new InvokeNode(throwTarget)).getCallTarget();
+                CallTarget internalInvokeTarget = new TestRootNode(languageInstance, "test-call-internal", null, true, new InvokeNode(innerInvokeTarget)).getCallTarget();
+                CallTarget outerInvokeTarget = new TestRootNode(languageInstance, "test-call-outer", null, new InvokeNode(internalInvokeTarget)).getCallTarget();
                 return outerInvokeTarget;
             }
         },
@@ -186,7 +195,7 @@ public class TruffleExceptionTest extends AbstractPolyglotTest {
                     TruffleStackTrace.fillIn(e);
                     return e;
                 });
-                return Truffle.getRuntime().createCallTarget(new TestRootNode(languageInstance, "test", null, throwNode));
+                return new TestRootNode(languageInstance, "test", null, throwNode).getCallTarget();
             }
         },
                         "<proxyLanguage> test",
@@ -199,7 +208,7 @@ public class TruffleExceptionTest extends AbstractPolyglotTest {
             @Override
             protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
                 ThrowNode throwNode = new ThrowNode(new InternalExceptionFactory());
-                return Truffle.getRuntime().createCallTarget(new TestRootNode(languageInstance, "test", null, throwNode));
+                return new TestRootNode(languageInstance, "test", null, throwNode).getCallTarget();
             }
         },
                         Pattern.quote("com.oracle.truffle.api.test.TruffleExceptionTest$InternalExceptionFactory.apply"),
@@ -270,7 +279,7 @@ public class TruffleExceptionTest extends AbstractPolyglotTest {
             @Override
             protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
                 ThrowNode throwNode = new ThrowNode((n) -> new TruffleExceptionImpl("test", n, type, new InjectException(failOn)));
-                return Truffle.getRuntime().createCallTarget(new TestRootNode(languageInstance, "test", "unnamed", throwNode));
+                return new TestRootNode(languageInstance, "test", "unnamed", throwNode).getCallTarget();
             }
         });
         assertFails(() -> context.eval(ProxyLanguage.ID, "Test"), PolyglotException.class, (pe) -> {
@@ -288,7 +297,7 @@ public class TruffleExceptionTest extends AbstractPolyglotTest {
         TryCatchNode tryCatch = new TryCatchNode(new BlockNode(testClass, BlockNode.Kind.TRY, throwNode),
                         new BlockNode(testClass, BlockNode.Kind.CATCH),
                         new BlockNode(testClass, BlockNode.Kind.FINALLY));
-        return Truffle.getRuntime().createCallTarget(new TestRootNode(lang, "test", customStackTraceElementGuestObject ? "unnamed" : null, tryCatch));
+        return new TestRootNode(lang, "test", customStackTraceElementGuestObject ? "unnamed" : null, tryCatch).getCallTarget();
     }
 
     @SuppressWarnings({"unchecked", "unused"})

@@ -31,6 +31,7 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -41,6 +42,7 @@ import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -79,7 +81,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
     }
 
     private final ClassLoader classLoader;
-    private final Map<ProxyCacheKey, Class<?>> proxyCache;
+    private final Map<ProxyCacheKey, Object> proxyCache;
 
     public DynamicProxySupport(ClassLoader classLoader) {
         this.classLoader = classLoader;
@@ -96,7 +98,16 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
         final Class<?>[] intfs = interfaces.clone();
         ProxyCacheKey key = new ProxyCacheKey(intfs);
         proxyCache.computeIfAbsent(key, k -> {
-            Class<?> clazz = getJdkProxyClass(classLoader, intfs);
+            Class<?> clazz;
+            try {
+                clazz = getJdkProxyClass(classLoader, intfs);
+            } catch (Throwable e) {
+                if (NativeImageOptions.AllowIncompleteClasspath.getValue()) {
+                    return e;
+                } else {
+                    throw e;
+                }
+            }
 
             /*
              * Treat the proxy as a predefined class so that we can set its class loader to the
@@ -130,13 +141,17 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
     @Override
     public Class<?> getProxyClass(ClassLoader loader, Class<?>... interfaces) {
         ProxyCacheKey key = new ProxyCacheKey(interfaces);
-        Class<?> clazz = proxyCache.get(key);
-        if (clazz == null) {
+        Object clazzOrError = proxyCache.get(key);
+        if (clazzOrError == null) {
             throw VMError.unsupportedFeature("Proxy class defined by interfaces " + Arrays.toString(interfaces) + " not found. " +
                             "Generating proxy classes at runtime is not supported. " +
                             "Proxy classes need to be defined at image build time by specifying the list of interfaces that they implement. " +
                             "To define proxy classes use " + proxyConfigFilesOption + " and " + proxyConfigResourcesOption + " options.");
         }
+        if (clazzOrError instanceof Throwable) {
+            throw new GraalError((Throwable) clazzOrError);
+        }
+        Class<?> clazz = (Class<?>) clazzOrError;
         if (!DynamicHub.fromClass(clazz).isLoaded()) {
             /*
              * NOTE: we might race with another thread in loading this proxy class.

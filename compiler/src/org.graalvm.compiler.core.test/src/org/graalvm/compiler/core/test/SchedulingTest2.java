@@ -72,7 +72,7 @@ public class SchedulingTest2 extends GraphScheduleTest {
         beginNode.setNext(returnNode);
         debug.dump(DebugContext.BASIC_LEVEL, graph, "Graph");
         SchedulePhase schedulePhase = new SchedulePhase(SchedulingStrategy.EARLIEST_WITH_GUARD_ORDER);
-        schedulePhase.apply(graph);
+        schedulePhase.apply(graph, getDefaultHighTierContext());
         ScheduleResult schedule = graph.getLastSchedule();
         BlockMap<List<Node>> blockToNodesMap = schedule.getBlockToNodesMap();
         NodeMap<Block> nodeToBlock = schedule.getNodeToBlockMap();
@@ -106,7 +106,7 @@ public class SchedulingTest2 extends GraphScheduleTest {
         FrameStateAssignmentPhase phase = new FrameStateAssignmentPhase();
         phase.apply(graph);
 
-        schedulePhase.apply(graph);
+        schedulePhase.apply(graph, midContext);
         schedule = graph.getLastSchedule();
         blockToNodesMap = schedule.getBlockToNodesMap();
         nodeToBlock = schedule.getNodeToBlockMap();

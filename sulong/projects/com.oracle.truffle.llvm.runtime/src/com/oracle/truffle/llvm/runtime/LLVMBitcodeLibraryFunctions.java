@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -42,7 +42,7 @@ public final class LLVMBitcodeLibraryFunctions {
         @Child protected DirectCallNode callNode;
 
         protected LibraryFunctionNode(LLVMContext context, String name) {
-            LLVMFunction function = context.getGlobalScope().getFunction(name);
+            LLVMFunction function = context.getGlobalScopeChain().getFunction(name);
             if (function == null) {
                 throw new LLVMLinkerException("Function not found: " + name);
             }

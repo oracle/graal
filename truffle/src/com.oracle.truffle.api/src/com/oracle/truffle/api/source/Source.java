@@ -52,7 +52,6 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.FileSystemNotFoundException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
@@ -1049,7 +1048,7 @@ public abstract class Source {
                         useContent = ByteSequence.create(useTruffleFile.readAllBytes());
                     }
                 }
-            } catch (FileSystemNotFoundException fsnf) {
+            } catch (UnsupportedOperationException uoe) {
                 if (ALLOW_IO && SourceAccessor.hasAllAccess(useFileSystemContext)) {
                     // Not a recognized by FileSystem, fall back to URLConnection only for allowed
                     // IO without a custom FileSystem
@@ -1242,7 +1241,7 @@ public abstract class Source {
             if (firstGuess != null) {
                 return firstGuess;
             }
-        } catch (URISyntaxException | IllegalArgumentException | FileSystemNotFoundException ex) {
+        } catch (URISyntaxException | IllegalArgumentException | UnsupportedOperationException ex) {
             // swallow and go on
         }
 

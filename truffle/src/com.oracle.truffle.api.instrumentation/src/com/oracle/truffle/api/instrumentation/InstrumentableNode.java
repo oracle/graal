@@ -45,7 +45,6 @@ import java.util.Set;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode.WrapperNode;
 import com.oracle.truffle.api.nodes.Node;
@@ -109,8 +108,8 @@ public interface InstrumentableNode extends NodeInterface {
      * <p>
      * The implementation of this method must ensure that its result is stable after the parent
      * {@link RootNode root node} was wrapped in a {@link CallTarget} using
-     * {@link TruffleRuntime#createCallTarget(RootNode)}. The result is stable if the result of
-     * calling this method remains always the same.
+     * {@link RootNode#getCallTarget()}. The result is stable if the result of calling this method
+     * remains always the same.
      * <p>
      * This method might be called in parallel from multiple threads even if the language is single
      * threaded. The method may be invoked without a language context currently being active.
@@ -183,8 +182,8 @@ public interface InstrumentableNode extends NodeInterface {
      * <p>
      * The implementation of hasTag method must ensure that its result is stable after the parent
      * {@link RootNode root node} was wrapped in a {@link CallTarget} using
-     * {@link TruffleRuntime#createCallTarget(RootNode)}. The result is stable if the result of
-     * calling this method for a particular tag remains always the same.
+     * {@link RootNode#getCallTarget()}. The result is stable if the result of calling this method
+     * for a particular tag remains always the same.
      * <p>
      * This method might be called in parallel from multiple threads even if the language is single
      * threaded. The method may be invoked without a language context currently being active.

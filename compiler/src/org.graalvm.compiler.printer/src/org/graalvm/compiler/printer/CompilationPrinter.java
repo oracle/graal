@@ -25,9 +25,6 @@
 package org.graalvm.compiler.printer;
 
 import java.io.Closeable;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -35,7 +32,6 @@ import java.util.Map;
 
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.LogStream;
-import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.lir.util.IndexedValueMap;
 
 import jdk.vm.ci.code.BytecodeFrame;
@@ -59,28 +55,6 @@ public class CompilationPrinter implements Closeable {
     public static final String HOVER_START = "<@";
     public static final String HOVER_SEP = "|@";
     public static final String HOVER_END = ">@";
-
-    private static OutputStream globalOut;
-
-    /**
-     * Gets a global output stream on a file in the current working directory. This stream is first
-     * opened if necessary. The name of the file is
-     * {@code "compilations-" + System.currentTimeMillis() + ".cfg"}.
-     *
-     * @return the global output stream or {@code null} if there was an error opening the file for
-     *         writing
-     */
-    public static synchronized OutputStream globalOut() {
-        if (globalOut == null) {
-            File file = new File("compilations-" + System.currentTimeMillis() + ".cfg");
-            try {
-                globalOut = new FileOutputStream(file);
-            } catch (FileNotFoundException e) {
-                TTY.println("WARNING: Could not open " + file.getAbsolutePath());
-            }
-        }
-        return globalOut;
-    }
 
     protected final LogStream out;
 

@@ -43,6 +43,7 @@ package org.graalvm.wasm.utils.cases;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
+import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.utils.Assert;
 import org.graalvm.wasm.utils.SystemProperties;
 import org.graalvm.wasm.utils.WasmResource;
@@ -89,7 +90,7 @@ public abstract class WasmCase {
     public ArrayList<Source> getSources() throws IOException, InterruptedException {
         ArrayList<Source> sources = new ArrayList<>();
         for (Map.Entry<String, byte[]> entry : createBinaries().entrySet()) {
-            Source.Builder sourceBuilder = Source.newBuilder("wasm", ByteSequence.create(entry.getValue()), entry.getKey());
+            Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(entry.getValue()), entry.getKey());
             Source source = sourceBuilder.build();
             sources.add(source);
         }

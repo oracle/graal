@@ -49,35 +49,40 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 /**
  * Test node rewriting in a tree shared across multiple threads (run with -ea).
  */
 public class ThreadSafetyTest {
 
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
+
     @Test
     @Ignore("sporadic failures with \"expected:<1000000> but was:<999999>\"")
     public void test() throws InterruptedException {
-        TruffleRuntime runtime = Truffle.getRuntime();
         TestRootNode rootNode1 = new TestRootNode(new RewritingNode(new RewritingNode(new RewritingNode(new RewritingNode(new RewritingNode(new ConstNode(42)))))));
-        final CallTarget target1 = runtime.createCallTarget(rootNode1);
+        final CallTarget target1 = rootNode1.getCallTarget();
         NodeUtil.verify(rootNode1);
 
         RecursiveCallNode callNode = new RecursiveCallNode(new ConstNode(42));
         TestRootNode rootNode2 = new TestRootNode(new RewritingNode(new RewritingNode(new RewritingNode(new RewritingNode(new RewritingNode(callNode))))));
-        final CallTarget target2 = runtime.createCallTarget(rootNode2);
-        callNode.setCallNode(runtime.createDirectCallNode(target2));
+        final CallTarget target2 = rootNode2.getCallTarget();
+        callNode.setCallNode(Truffle.getRuntime().createDirectCallNode(target2));
         NodeUtil.verify(rootNode2);
 
         testTarget(target1, 47, 1_000_000);

@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.runtime;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 
@@ -75,6 +76,7 @@ public final class StringTable {
         return value.toString();
     }
 
+    @TruffleBoundary
     public @JavaType(String.class) StaticObject intern(@JavaType(String.class) StaticObject guestString) {
         assert StaticObject.notNull(guestString);
         String hostString = context.getMeta().toHostString(guestString);

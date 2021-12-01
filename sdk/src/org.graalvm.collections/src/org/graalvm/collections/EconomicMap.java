@@ -230,4 +230,32 @@ public interface EconomicMap<K, V> extends UnmodifiableEconomicMap<K, V> {
     static <K, V> EconomicMap<K, V> wrapMap(Map<K, V> map) {
         return new EconomicMapWrap<>(map);
     }
+
+    /**
+     * Return an empty {@link MapCursor}.
+     *
+     * @since 22.0
+     */
+    static <K, V> MapCursor<K, V> emptyCursor() {
+        return new MapCursor<K, V>() {
+            @Override
+            public void remove() {
+            }
+
+            @Override
+            public boolean advance() {
+                return false;
+            }
+
+            @Override
+            public K getKey() {
+                return null;
+            }
+
+            @Override
+            public V getValue() {
+                return null;
+            }
+        };
+    }
 }

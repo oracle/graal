@@ -46,6 +46,7 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
+import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.exception.Failure;
 import org.junit.Assert;
 import org.junit.Test;
@@ -84,8 +85,8 @@ public class WasmImplementationLimitationsSuite {
 
     @Test
     public void test() throws IOException {
-        final Context context = Context.newBuilder("wasm").build();
-        final Source source = Source.newBuilder("wasm", ByteSequence.create(bytecode), "dummy_main").build();
+        final Context context = Context.newBuilder(WasmLanguage.ID).build();
+        final Source source = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(bytecode), "dummy_main").build();
         try {
             context.eval(source).getMember("_main").execute();
         } catch (final PolyglotException e) {

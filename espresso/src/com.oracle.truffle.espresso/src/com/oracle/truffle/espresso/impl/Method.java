@@ -53,10 +53,10 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.utilities.AlwaysValidAssumption;
+import com.oracle.truffle.api.utilities.NeverValidAssumption;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
@@ -260,7 +260,16 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         initRefKind();
         this.proxy = null;
-        this.isLeaf = Truffle.getRuntime().createAssumption();
+
+        if (isAbstract()) {
+            // Disabled for abstract methods to reduce footprint.
+            this.isLeaf = NeverValidAssumption.INSTANCE;
+        } else if (isStatic() || isPrivate() || isFinalFlagSet() || getDeclaringKlass().isFinalFlagSet()) {
+            // Nothing to assume, spare an assumption.
+            this.isLeaf = AlwaysValidAssumption.INSTANCE;
+        } else {
+            this.isLeaf = Truffle.getRuntime().createAssumption();
+        }
     }
 
     public int getRefKind() {
@@ -303,14 +312,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     public byte[] getOriginalCode() {
         return getCodeAttribute().getOriginalCode();
-    }
-
-    public int getMaxLocals() {
-        return getCodeAttribute().getMaxLocals();
-    }
-
-    public int getMaxStackSize() {
-        return getCodeAttribute().getMaxStack();
     }
 
     public ExceptionHandler[] getExceptionHandlers() {
@@ -413,14 +414,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
     }
 
-    public static FrameDescriptor initFrameDescriptor(int slotCount) {
-        FrameDescriptor descriptor = new FrameDescriptor();
-        for (int i = 0; i < slotCount; ++i) {
-            descriptor.addFrameSlot(i, FrameSlotKind.Long);
-        }
-        return descriptor;
-    }
-
     private void checkPoisonPill(Meta meta) {
         if (poisonPill) {
             // Conflicting Maximally-specific non-abstract interface methods.
@@ -444,7 +437,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                 // Look in libjava
                 TruffleObject nativeMethod = lookupAndBind(getVM().getJavaLibrary(), mangledName);
                 if (nativeMethod != null) {
-                    return Truffle.getRuntime().createCallTarget(EspressoRootNode.create(null, new NativeMethodNode(nativeMethod, getMethodVersion())));
+                    return EspressoRootNode.create(null, new NativeMethodNode(nativeMethod, getMethodVersion())).getCallTarget();
                 }
             }
         }
@@ -457,7 +450,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             String mangledName = Mangle.mangleMethod(this, withSignature);
             TruffleObject nativeMethod = getContext().bindToAgent(this, mangledName);
             if (nativeMethod != null) {
-                return Truffle.getRuntime().createCallTarget(EspressoRootNode.create(null, new NativeMethodNode(nativeMethod, getMethodVersion())));
+                return EspressoRootNode.create(null, new NativeMethodNode(nativeMethod, getMethodVersion())).getCallTarget();
             }
         }
         return null;
@@ -483,7 +476,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         }
         TruffleObject symbol = getVM().getFunction(handle);
         TruffleObject nativeMethod = bind(symbol);
-        return Truffle.getRuntime().createCallTarget(EspressoRootNode.create(null, new NativeMethodNode(nativeMethod, this.getMethodVersion())));
+        return EspressoRootNode.create(null, new NativeMethodNode(nativeMethod, this.getMethodVersion())).getCallTarget();
     }
 
     public boolean isConstructor() {
@@ -853,6 +846,10 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return false;
     }
 
+    public Assumption getLeafAssumption() {
+        return isLeaf;
+    }
+
     public boolean leafAssumption() {
         return isLeaf.isValid();
     }
@@ -953,9 +950,9 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     public Method forceSplit() {
         Method result = new Method(this, getCodeAttribute());
-        FrameDescriptor frameDescriptor = new FrameDescriptor();
-        EspressoRootNode root = EspressoRootNode.create(frameDescriptor, new BytecodeNode(result.getMethodVersion(), frameDescriptor));
-        result.getMethodVersion().callTarget = Truffle.getRuntime().createCallTarget(root);
+        BytecodeNode bytecodeNode = new BytecodeNode(result.getMethodVersion());
+        EspressoRootNode root = EspressoRootNode.create(bytecodeNode.getFrameDescriptor(), bytecodeNode);
+        result.getMethodVersion().callTarget = root.getCallTarget();
         return result;
     }
 
@@ -1238,7 +1235,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                         /* modifiers */ getMethodModifiers(),
                         /* slot */ getVTableIndex(),
                         /* signature */ guestGenericSignature,
-
                         /* annotations */ runtimeVisibleAnnotations,
                         /* parameterAnnotations */ runtimeVisibleParameterAnnotations,
                         /* annotationDefault */ annotationDefault);
@@ -1287,6 +1283,14 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         public CodeAttribute getCodeAttribute() {
             return codeAttribute;
+        }
+
+        public int getMaxLocals() {
+            return codeAttribute.getMaxLocals();
+        }
+
+        public int getMaxStackSize() {
+            return codeAttribute.getMaxStack();
         }
 
         public ExceptionHandler[] getExceptionHandlers() {
@@ -1343,7 +1347,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                      */
                     EspressoRootNode redirectedMethod = getSubstitutions().get(getMethod());
                     if (redirectedMethod != null) {
-                        callTarget = Truffle.getRuntime().createCallTarget(redirectedMethod);
+                        callTarget = redirectedMethod.getCallTarget();
                         return callTarget;
                     }
 
@@ -1395,9 +1399,9 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                     throw meta.throwExceptionWithMessage(meta.java_lang_AbstractMethodError,
                                     "Calling abstract method: " + getMethod().getDeclaringKlass().getType() + "." + getName() + " -> " + getRawSignature());
                 }
-                FrameDescriptor frameDescriptor = new FrameDescriptor();
-                EspressoRootNode rootNode = EspressoRootNode.create(frameDescriptor, new BytecodeNode(this, frameDescriptor));
-                target = Truffle.getRuntime().createCallTarget(rootNode);
+                BytecodeNode bytecodeNode = new BytecodeNode(this);
+                EspressoRootNode rootNode = EspressoRootNode.create(bytecodeNode.getFrameDescriptor(), bytecodeNode);
+                target = rootNode.getCallTarget();
             }
             return target;
         }

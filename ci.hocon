@@ -1,32 +1,18 @@
 include "common.hocon"
 labsjdk11: ${labsjdk-ce-11}
+labsjdk17: ${labsjdk-ce-17}
 
 builds = []
 
 binaries-repository = "lafo"
-
-#SDK
-include "sdk/ci.hocon"
-
-#Truffle
-include "truffle/ci.hocon"
 
 #Compiler
 compiler-suite-root = "./compiler"
 logPatterns = [
     "*.bgv"
     ${compiler-suite-root}"/graal_dumps/*/*"
+    "*/es-*.json"
 ]
-
-#Tools
-include "tools/ci.hocon"
-
-#Regex
-include "regex/ci.hocon"
-
-#Examples
-#Examples gate also disabled.
-#include "examples/ci.hocon"
 
 jvm-config.default = "graal-core"
 libgraal_env = "libgraal"
@@ -54,13 +40,9 @@ include "compiler/ci_includes/bench-aarch64-c2.hocon"
 # ------------------ SVM ----------------------
 include "substratevm/ci_includes/gate.hocon"
 
-# Publish Javadoc
-include "ci_includes/publish-javadoc.hocon"
-
 # ------------------- VM ----------------------
 include "vm/ci_common/common.hocon"
 include "vm/ci_common/common-bench.hocon"
 include "vm/ci_includes/vm.hocon"
 include "vm/ci_includes/vm-native.hocon"
 include "vm/ci_includes/vm-bench.hocon"
-include "vm/ci_includes/vm-bench-sulong.hocon"

@@ -168,8 +168,8 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
         Isolates.detachThread(context);
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     protected static void compilerIsolateThreadShutdown(@SuppressWarnings("unused") @CEntryPoint.IsolateThreadContext CompilerIsolateThread context) {
         VMRuntime.shutdown();
     }
@@ -179,8 +179,8 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
         Isolates.detachThread(context);
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static ClientHandle<String> doCompile0(@SuppressWarnings("unused") @CEntryPoint.IsolateThreadContext CompilerIsolateThread context,
                     ClientIsolateThread client,
                     ImageHeapRef<SubstrateTruffleCompiler> delegateRef,
@@ -232,8 +232,8 @@ public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
         return OptionsEncoder.decode(encodedOptions);
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static void copyEncodedOptions(@SuppressWarnings("unused") @CEntryPoint.IsolateThreadContext ClientIsolateThread client, ClientHandle<byte[]> encodedOptionsHandle, PointerBase buffer) {
         byte[] encodedOptions = IsolatedCompileClient.get().unhand(encodedOptionsHandle);
         CTypeConversion.asByteBuffer(buffer, encodedOptions.length).put(encodedOptions);

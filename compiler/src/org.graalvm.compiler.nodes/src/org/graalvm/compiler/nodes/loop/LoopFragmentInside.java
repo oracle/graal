@@ -64,10 +64,10 @@ import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.SafepointNode;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.ValueProxyNode;
-import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.VirtualState.NodePositionClosure;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
@@ -77,6 +77,7 @@ import org.graalvm.compiler.nodes.calc.SubNode;
 import org.graalvm.compiler.nodes.extended.AnchoringNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.OpaqueNode;
+import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.memory.MemoryPhiNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
@@ -232,7 +233,6 @@ public class LoopFragmentInside extends LoopFragment {
             }
         }
         mainLoopBegin.setUnrollFactor(mainLoopBegin.getUnrollFactor() * 2);
-        mainLoopBegin.setLoopFrequency(mainLoopBegin.profileData().scaleFrequency(1 / 2.0));
         graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "LoopPartialUnroll %s", loop);
 
         mainLoopBegin.getDebug().dump(DebugContext.VERBOSE_LEVEL, mainLoopBegin.graph(), "After insertWithinAfter %s", mainLoopBegin);
@@ -300,8 +300,18 @@ public class LoopFragmentInside extends LoopFragment {
 
                 newSegmentBegin.clearSuccessors();
                 if (newSegmentBegin.hasAnchored()) {
-                    assert lastCodeNode instanceof GuardingNode;
-                    assert lastCodeNode instanceof AnchoringNode;
+                    /*
+                     * LoopPartialUnrollPhase runs after guard lowering, thus we cannot see any
+                     * floating guards here except multi-guard nodes (pointing to abstract begins)
+                     * and other anchored nodes. We need to ensure anything anchored on the original
+                     * loop begin will be anchored on the unrolled iteration. Thus we create an
+                     * anchor point here ensuring nothing can flow above the original iteration.
+                     */
+                    if (!(lastCodeNode instanceof GuardingNode) || !(lastCodeNode instanceof AnchoringNode)) {
+                        ValueAnchorNode newAnchoringPointAfterPrevIteration = graph.add(new ValueAnchorNode(null));
+                        graph.addAfterFixed(lastCodeNode, newAnchoringPointAfterPrevIteration);
+                        lastCodeNode = newAnchoringPointAfterPrevIteration;
+                    }
                     newSegmentBegin.replaceAtUsages(lastCodeNode, InputType.Guard, InputType.Anchor);
                 }
                 lastCodeNode.replaceFirstSuccessor(loopEndNode, newSegmentFirstNode);
@@ -311,7 +321,6 @@ public class LoopFragmentInside extends LoopFragment {
                 newSegmentEnd.safeDelete();
             }
             graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "After placing segment");
-
             return (CompareNode) loopTest.condition();
         } else {
             throw GraalError.shouldNotReachHere("Cannot unroll inverted loop");
@@ -568,6 +577,12 @@ public class LoopFragmentInside extends LoopFragment {
         // Nothing to do
     }
 
+    private EconomicMap<PhiNode, PhiNode> old2NewPhi;
+
+    public EconomicMap<PhiNode, PhiNode> getOld2NewPhi() {
+        return old2NewPhi;
+    }
+
     private void patchPeeling(LoopFragmentInside peel) {
         LoopBeginNode loopBegin = loop().loopBegin();
         List<PhiNode> newPhis = new LinkedList<>();
@@ -582,8 +597,14 @@ public class LoopFragmentInside extends LoopFragment {
         markStateNodes(loopBegin, usagesToPatch);
 
         List<PhiNode> oldPhis = loopBegin.phis().snapshot();
+
+        if (peel.old2NewPhi == null) {
+            peel.old2NewPhi = EconomicMap.create();
+        }
+
         for (PhiNode phi : oldPhis) {
             if (phi.hasNoUsages()) {
+                peel.old2NewPhi.put(phi, null);
                 continue;
             }
             ValueNode first;
@@ -596,6 +617,7 @@ public class LoopFragmentInside extends LoopFragment {
             // create a new phi (we don't patch the old one since some usages of the old one may
             // still be valid)
             PhiNode newPhi = phi.duplicateOn(loopBegin);
+            peel.old2NewPhi.put(phi, newPhi);
             newPhi.addInput(first);
             for (LoopEndNode end : loopBegin.orderedLoopEnds()) {
                 newPhi.addInput(phi.valueAt(end));

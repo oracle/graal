@@ -481,7 +481,7 @@ public final class Deoptimizer {
         NoDeoptStub,
 
         /**
-         * Custom prologue: rescue all of the architecture's return registers into the
+         * Custom prologue: save all of the architecture's return registers into the
          * {@link DeoptimizedFrame}.
          */
         EntryStub,
@@ -489,7 +489,7 @@ public final class Deoptimizer {
         /**
          * Custom prologue: set the stack pointer to the first method parameter.
          *
-         * Custom epilogue:restore all of the architecture's return registers from the
+         * Custom epilogue: restore all of the architecture's return registers from the
          * {@link DeoptimizedFrame}.
          */
         ExitStub
@@ -1124,10 +1124,6 @@ public final class Deoptimizer {
             JavaConstant con = virtualFrame.getConstant(i);
             if (con.getJavaKind() != JavaKind.Illegal) {
                 log.newline().string("            slot ").signed(i);
-                String name = frameInfo.getLocalVariableName(i);
-                if (name != null) {
-                    log.string(" ").string(name);
-                }
                 log.string("  kind: ").string(con.getJavaKind().toString());
                 if (con.getJavaKind() == JavaKind.Object) {
                     Object val = SubstrateObjectConstant.asObject(con);

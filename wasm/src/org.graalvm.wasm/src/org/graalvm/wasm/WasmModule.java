@@ -41,6 +41,8 @@
 package org.graalvm.wasm;
 
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.source.Source;
+import org.graalvm.wasm.parser.ir.CodeEntry;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -57,20 +59,29 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
     private final String name;
     private final ArrayList<BiConsumer<WasmContext, WasmInstance>> linkActions;
     private final ModuleLimits limits;
+    private final Source source;
+
+    private CodeEntry[] codeEntries;
+
     @CompilationFinal(dimensions = 1) private byte[] data;
     @CompilationFinal private boolean isParsed;
 
-    public WasmModule(String name, byte[] data, ModuleLimits limits) {
+    private WasmModule(String name, byte[] data, ModuleLimits limits, Source source) {
         super();
         this.name = name;
         this.limits = limits == null ? ModuleLimits.DEFAULTS : limits;
         this.linkActions = new ArrayList<>();
         this.data = data;
         this.isParsed = false;
+        this.source = source;
     }
 
-    public WasmModule(String name, byte[] data) {
-        this(name, data, null);
+    public static WasmModule create(String name, byte[] data, ModuleLimits limits, Source source) {
+        return new WasmModule(name, data, limits, source);
+    }
+
+    public static WasmModule createBuiltin(String name) {
+        return new WasmModule(name, null, null, Source.newBuilder(WasmLanguage.ID, "", name).internal(true).build());
     }
 
     public ModuleLimits limits() {
@@ -102,6 +113,10 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
         return data;
     }
 
+    public Source source() {
+        return source;
+    }
+
     public List<BiConsumer<WasmContext, WasmInstance>> linkActions() {
         return Collections.unmodifiableList(linkActions);
     }
@@ -113,5 +128,13 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
     @Override
     public String toString() {
         return "wasm-module(" + name + ")";
+    }
+
+    public void setCodeEntries(CodeEntry[] codeEntries) {
+        this.codeEntries = codeEntries;
+    }
+
+    public CodeEntry[] getCodeEntries() {
+        return codeEntries;
     }
 }

@@ -50,6 +50,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThat;
 
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.theories.DataPoint;
 import org.junit.experimental.theories.Theories;
@@ -57,6 +58,7 @@ import org.junit.experimental.theories.Theory;
 import org.junit.runner.RunWith;
 
 import com.oracle.truffle.api.profiles.ValueProfile;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 @RunWith(Theories.class)
 public class ExactClassValueProfileTest {
@@ -73,6 +75,11 @@ public class ExactClassValueProfileTest {
     @DataPoint public static final Integer O5 = null;
     @DataPoint public static final TestBaseClass O6 = new TestBaseClass();
     @DataPoint public static final TestSubClass O7 = new TestSubClass();
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     private ValueProfile profile;
 

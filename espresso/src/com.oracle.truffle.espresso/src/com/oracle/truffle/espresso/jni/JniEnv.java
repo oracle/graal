@@ -42,6 +42,7 @@ import java.util.function.Supplier;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -65,7 +66,9 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.EspressoMethodNode;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
+import com.oracle.truffle.espresso.nodes.IntrinsifiedNativeMethodNode;
 import com.oracle.truffle.espresso.nodes.NativeMethodNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
@@ -78,7 +81,6 @@ import com.oracle.truffle.espresso.substitutions.Inject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_Class;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 @GenerateNativeEnv(target = JniImpl.class)
@@ -154,37 +156,26 @@ public final class JniEnv extends NativeEnv {
     // Prevent cleaner threads from collecting in-use native buffers.
     private final Map<Long, ByteBuffer> nativeBuffers = new ConcurrentHashMap<>();
 
-    private final JniThreadLocalPendingException threadLocalPendingException = new JniThreadLocalPendingException();
-
-    public JniThreadLocalPendingException getThreadLocalPendingException() {
-        return threadLocalPendingException;
-    }
-
-    @TruffleBoundary
     public StaticObject getPendingException() {
-        return threadLocalPendingException.get();
+        return getContext().getLanguage().getThreadLocalState().getPendingExceptionObject();
     }
 
-    @TruffleBoundary
     public EspressoException getPendingEspressoException() {
-        return threadLocalPendingException.getEspressoException();
+        return getContext().getLanguage().getThreadLocalState().getPendingException();
     }
 
-    @TruffleBoundary
     public void clearPendingException() {
-        threadLocalPendingException.clear();
+        getContext().getLanguage().getThreadLocalState().clearPendingException();
     }
 
-    @TruffleBoundary
     public void setPendingException(StaticObject ex) {
         Meta meta = getMeta();
         assert StaticObject.notNull(ex) && meta.java_lang_Throwable.isAssignableFrom(ex.getKlass());
         setPendingException(EspressoException.wrap(ex, meta));
     }
 
-    @TruffleBoundary
     public void setPendingException(EspressoException ex) {
-        threadLocalPendingException.set(ex);
+        getContext().getLanguage().getThreadLocalState().setPendingException(ex);
     }
 
     private class VarArgsImpl implements VarArgs {
@@ -386,7 +377,6 @@ public final class JniEnv extends NativeEnv {
         assert jniEnvPtr != null : "JNIEnv already disposed";
         try {
             getUncached().execute(disposeNativeContext, jniEnvPtr, RawPointer.nullInstance());
-            threadLocalPendingException.dispose();
             this.jniEnvPtr = null;
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
             throw EspressoError.shouldNotReachHere("Cannot initialize Espresso native interface");
@@ -1516,6 +1506,7 @@ public final class JniEnv extends NativeEnv {
     }
 
     @JniImpl
+    @TruffleBoundary
     public @JavaType(String.class) StaticObject NewString(@Pointer TruffleObject unicodePtr, int len) {
         // TODO(garcia) : works only for UTF16 encoded strings.
         final char[] array = new char[len];
@@ -2067,14 +2058,49 @@ public final class JniEnv extends NativeEnv {
             return JNI_ERR;
         }
 
-        NativeSignature ns = Method.buildJniNativeSignature(targetMethod.getParsedSignature());
-        final TruffleObject boundNative = getNativeAccess().bindSymbol(closure, ns);
-        Substitutions.EspressoRootNodeFactory factory = new Substitutions.EspressoRootNodeFactory() {
+        Substitutions.EspressoRootNodeFactory factory = null;
+        // Lookup known VM methods to shortcut native boudaries.
+        factory = lookupKnownVmMethods(closure, targetMethod);
+
+        if (factory == null) {
+            NativeSignature ns = Method.buildJniNativeSignature(targetMethod.getParsedSignature());
+            final TruffleObject boundNative = getNativeAccess().bindSymbol(closure, ns);
+            factory = createJniRootNodeFactory(() -> new NativeMethodNode(boundNative, targetMethod.getMethodVersion()), targetMethod);
+        }
+
+        Symbol<Type> classType = clazz.getMirrorKlass().getType();
+        getSubstitutions().registerRuntimeSubstitution(classType, name, signature, factory, true);
+        return JNI_OK;
+    }
+
+    private Substitutions.EspressoRootNodeFactory lookupKnownVmMethods(@Pointer TruffleObject closure, Method targetMethod) {
+        try {
+            long jvmMethodAddress = InteropLibrary.getUncached().asPointer(closure);
+            CallableFromNative.Factory knownVmMethod = getVM().lookupKnownVmMethod(jvmMethodAddress);
+            if (knownVmMethod != null) {
+                if (!IntrinsifiedNativeMethodNode.validParameterCount(knownVmMethod, targetMethod)) {
+                    getLogger().warning("Implicit intrinsification of VM method does not have matching parameter counts:");
+                    getLogger().warning("VM method " + knownVmMethod.methodName() + " has " + knownVmMethod.parameterCount() + " parameters,");
+                    getLogger().warning(
+                                    "Bound to " + (targetMethod.isStatic() ? "static" : "instance") + " method " + targetMethod.getNameAsString() + " which has " + targetMethod.getParameterCount() +
+                                                    " parameters");
+                    return null;
+                }
+                return createJniRootNodeFactory(() -> new IntrinsifiedNativeMethodNode(knownVmMethod, targetMethod, getVM()), targetMethod);
+            }
+        } catch (UnsupportedMessageException e) {
+            // ignore
+        }
+        return null;
+    }
+
+    private static Substitutions.EspressoRootNodeFactory createJniRootNodeFactory(Supplier<EspressoMethodNode> methodNodeSupplier, Method targetMethod) {
+        return new Substitutions.EspressoRootNodeFactory() {
             @Override
             public EspressoRootNode createNodeIfValid(Method methodToSubstitute, boolean forceValid) {
                 if (forceValid || methodToSubstitute == targetMethod) {
                     // Runtime substitutions apply only to the given method.
-                    return EspressoRootNode.create(null, new NativeMethodNode(boundNative, methodToSubstitute.getMethodVersion()));
+                    return EspressoRootNode.create(null, methodNodeSupplier.get());
                 }
 
                 Substitutions.getLogger().warning(new Supplier<String>() {
@@ -2090,9 +2116,6 @@ public final class JniEnv extends NativeEnv {
                 return null;
             }
         };
-        Symbol<Type> classType = clazz.getMirrorKlass().getType();
-        getSubstitutions().registerRuntimeSubstitution(classType, name, signature, factory, true);
-        return JNI_OK;
     }
 
     /**
@@ -2143,9 +2166,9 @@ public final class JniEnv extends NativeEnv {
 
         StaticObject methods = null;
         if (method.isConstructor()) {
-            methods = Target_java_lang_Class.getDeclaredConstructors0(method.getDeclaringKlass().mirror(), false, getMeta());
+            methods = getVM().JVM_GetClassDeclaredConstructors(method.getDeclaringKlass().mirror(), false);
         } else {
-            methods = Target_java_lang_Class.getDeclaredMethods0(method.getDeclaringKlass().mirror(), false, getMeta());
+            methods = getVM().JVM_GetClassDeclaredMethods(method.getDeclaringKlass().mirror(), false);
         }
 
         for (StaticObject declMethod : methods.<StaticObject[]> unwrap()) {
@@ -2180,7 +2203,7 @@ public final class JniEnv extends NativeEnv {
                     @SuppressWarnings("unused") boolean isStatic) {
         Field field = fieldIds.getObject(fieldId);
         assert field.getDeclaringKlass().isAssignableFrom(unused.getMirrorKlass());
-        StaticObject fields = Target_java_lang_Class.getDeclaredFields0(field.getDeclaringKlass().mirror(), false, getMeta());
+        StaticObject fields = getVM().JVM_GetClassDeclaredFields(field.getDeclaringKlass().mirror(), false);
         for (StaticObject declField : fields.<StaticObject[]> unwrap()) {
             assert InterpreterToVM.instanceOf(declField, getMeta().java_lang_reflect_Field);
             Field f = (Field) getMeta().HIDDEN_FIELD_KEY.getHiddenObject(declField);
@@ -2561,7 +2584,8 @@ public final class JniEnv extends NativeEnv {
     @JniImpl
     public static @JavaType(Class.class) StaticObject GetSuperclass(@JavaType(Class.class) StaticObject clazz) {
         Klass klass = clazz.getMirrorKlass();
-        if (klass.isInterface() || klass.isJavaLangObject()) {
+        if (klass.isInterface() || klass.getSuperClass() == null) {
+            /* also handles primitive classes */
             return StaticObject.NULL;
         }
         return klass.getSuperKlass().mirror();
@@ -2661,7 +2685,7 @@ public final class JniEnv extends NativeEnv {
             if (StaticObject.isNull(loader) && Type.java_lang_ClassLoader$NativeLibrary.equals(callerKlass.getType())) {
                 StaticObject result = (StaticObject) getMeta().java_lang_ClassLoader$NativeLibrary_getFromClass.invokeDirect(null);
                 loader = result.getMirrorKlass().getDefiningClassLoader();
-                protectionDomain = Target_java_lang_Class.getProtectionDomain0(result, getMeta());
+                protectionDomain = getVM().JVM_GetProtectionDomain(result);
             }
         } else {
             loader = (StaticObject) getMeta().java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);
@@ -2709,16 +2733,6 @@ public final class JniEnv extends NativeEnv {
     }
 
     // JavaVM **vm);
-
-    @JniImpl
-    public int GetJavaVM(@Pointer TruffleObject vmPtr) {
-        if (getUncached().isNull(vmPtr)) {
-            // Pointer should have been pre-null-checked.
-            return JNI_ERR;
-        }
-        NativeUtils.writeToPointerPointer(getUncached(), vmPtr, getVM().getJavaVM());
-        return JNI_OK;
-    }
 
     /**
      * <h3>jobject AllocObject(JNIEnv *env, jclass clazz);</h3>

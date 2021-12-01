@@ -39,13 +39,14 @@ import com.oracle.truffle.llvm.toolchain.launchers.common.Driver;
 public final class WindowsLinker extends Driver {
 
     public static final String LLD_LINK = "lld-link.exe";
+    public static final String LLD_LINK_NO_EXE = "lld-link";
 
     private WindowsLinker() {
         super(LLD_LINK);
     }
 
     public static List<String> getLinkerFlags() {
-        return Arrays.asList("-mllvm:-lto-embed-bitcode", "-opt:lldlto=0", "-debug:dwarf");
+        return Arrays.asList("-mllvm:-lto-embed-bitcode=optimized", "-opt:lldlto=0", "-debug:dwarf");
     }
 
     public static void link(String[] args) {

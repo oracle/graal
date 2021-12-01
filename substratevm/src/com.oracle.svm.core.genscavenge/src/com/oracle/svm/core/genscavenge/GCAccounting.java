@@ -29,6 +29,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.log.Log;
 
 /**
@@ -45,15 +46,14 @@ public final class GCAccounting {
     private long completeCollectionTotalNanos = 0;
     private UnsignedWord collectedTotalChunkBytes = WordFactory.zero();
     private UnsignedWord allocatedChunkBytes = WordFactory.zero();
-    private UnsignedWord promotedTotalChunkBytes = WordFactory.zero();
-    private UnsignedWord copiedTotalChunkBytes = WordFactory.zero();
+    private UnsignedWord lastIncrementalCollectionPromotedChunkBytes = WordFactory.zero();
+    private boolean lastIncrementalCollectionOverflowedSurvivors = false;
 
     /* Before and after measures. */
     private UnsignedWord youngChunkBytesBefore = WordFactory.zero();
     private UnsignedWord youngChunkBytesAfter = WordFactory.zero();
     private UnsignedWord oldChunkBytesBefore = WordFactory.zero();
     private UnsignedWord oldChunkBytesAfter = WordFactory.zero();
-    private UnsignedWord lastCollectionPromotedChunkBytes = WordFactory.zero();
 
     /*
      * Bytes allocated in Objects, as opposed to bytes of chunks. These are only maintained if
@@ -104,19 +104,23 @@ public final class GCAccounting {
         return oldChunkBytesAfter;
     }
 
+    UnsignedWord getYoungChunkBytesBefore() {
+        return youngChunkBytesBefore;
+    }
+
     UnsignedWord getYoungChunkBytesAfter() {
         return youngChunkBytesAfter;
     }
 
-    public static UnsignedWord getSurvivorSpaceAfterChunkBytes(int survivorIndex) {
-        return HeapImpl.getHeapImpl().getYoungGeneration().getSurvivorFromSpaceAt(survivorIndex).getChunkBytes();
+    UnsignedWord getLastIncrementalCollectionPromotedChunkBytes() {
+        return lastIncrementalCollectionPromotedChunkBytes;
     }
 
-    UnsignedWord getLastCollectionPromotedChunkBytes() {
-        return lastCollectionPromotedChunkBytes;
+    public boolean hasLastIncrementalCollectionOverflowedSurvivors() {
+        return lastIncrementalCollectionOverflowedSurvivors;
     }
 
-    void beforeCollection() {
+    void beforeCollection(boolean completeCollection) {
         Log trace = Log.noopLog().string("[GCImpl.Accounting.beforeCollection:").newline();
         /* Gather some space statistics. */
         HeapImpl heap = HeapImpl.getHeapImpl();
@@ -126,15 +130,25 @@ public final class GCAccounting {
         Space oldSpace = heap.getOldGeneration().getFromSpace();
         oldChunkBytesBefore = oldSpace.getChunkBytes();
         /* Objects are allocated in the young generation. */
-        allocatedChunkBytes = allocatedChunkBytes.add(youngChunkBytesBefore);
+        allocatedChunkBytes = allocatedChunkBytes.add(youngGen.getEden().getChunkBytes());
         if (HeapOptions.PrintGCSummary.getValue()) {
-            youngObjectBytesBefore = youngGen.computeObjectBytes();
+            UnsignedWord edenObjectBytesBefore = youngGen.getEden().computeObjectBytes();
+            youngObjectBytesBefore = edenObjectBytesBefore.add(youngGen.computeSurvivorObjectBytes());
             oldObjectBytesBefore = oldSpace.computeObjectBytes();
-            allocatedObjectBytes = allocatedObjectBytes.add(youngObjectBytesBefore);
+            allocatedObjectBytes = allocatedObjectBytes.add(edenObjectBytesBefore);
+        }
+        if (!completeCollection) {
+            lastIncrementalCollectionOverflowedSurvivors = false;
         }
         trace.string("  youngChunkBytesBefore: ").unsigned(youngChunkBytesBefore)
                         .string("  oldChunkBytesBefore: ").unsigned(oldChunkBytesBefore);
         trace.string("]").newline();
+    }
+
+    /** Called after an object has been promoted from the young generation to the old generation. */
+    @AlwaysInline("GC performance")
+    void onSurvivorOverflowed() {
+        lastIncrementalCollectionOverflowedSurvivors = true;
     }
 
     void afterCollection(boolean completeCollection, Timer collectionTimer) {
@@ -154,14 +168,11 @@ public final class GCAccounting {
          */
         incrementalCollectionCount += 1;
         afterCollectionCommon();
-        /* Incremental collections only promote. */
-        lastCollectionPromotedChunkBytes = oldChunkBytesAfter.subtract(oldChunkBytesBefore);
-        promotedTotalChunkBytes = promotedTotalChunkBytes.add(lastCollectionPromotedChunkBytes);
+        lastIncrementalCollectionPromotedChunkBytes = oldChunkBytesAfter.subtract(oldChunkBytesBefore);
         incrementalCollectionTotalNanos += collectionTimer.getMeasuredNanos();
         trace.string("  incrementalCollectionCount: ").signed(incrementalCollectionCount)
                         .string("  oldChunkBytesAfter: ").unsigned(oldChunkBytesAfter)
-                        .string("  oldChunkBytesBefore: ").unsigned(oldChunkBytesBefore)
-                        .string("  promotedChunkBytes: ").unsigned(lastCollectionPromotedChunkBytes);
+                        .string("  oldChunkBytesBefore: ").unsigned(oldChunkBytesBefore);
         trace.string("]").newline();
     }
 
@@ -169,15 +180,13 @@ public final class GCAccounting {
         Log trace = Log.noopLog().string("[GCImpl.Accounting.afterCompleteCollection:");
         completeCollectionCount += 1;
         afterCollectionCommon();
-        /* Complete collections only copy, and they copy everything. */
-        copiedTotalChunkBytes = copiedTotalChunkBytes.add(oldChunkBytesAfter);
         completeCollectionTotalNanos += collectionTimer.getMeasuredNanos();
         trace.string("  completeCollectionCount: ").signed(completeCollectionCount)
                         .string("  oldChunkBytesAfter: ").unsigned(oldChunkBytesAfter);
         trace.string("]").newline();
     }
 
-    void afterCollectionCommon() {
+    private void afterCollectionCommon() {
         HeapImpl heap = HeapImpl.getHeapImpl();
         // This is called after the collection, after the space flip, so OldSpace is FromSpace.
         YoungGeneration youngGen = heap.getYoungGeneration();

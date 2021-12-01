@@ -106,13 +106,13 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.OSUtils;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 @RunWith(Parameterized.class)
 public class FileSystemsTest {
@@ -147,6 +147,9 @@ public class FileSystemsTest {
 
     @Parameterized.Parameters(name = "{0}")
     public static Collection<Configuration> createParameters() throws IOException, ReflectiveOperationException {
+        if (!TruffleTestAssumptions.isWeakEncapsulation()) {
+            return Collections.emptyList();
+        }
         assert cfgs == null;
         final List<Configuration> result = new ArrayList<>();
         final FileSystem fullIO = FileSystem.newDefaultFileSystem();
@@ -2157,13 +2160,13 @@ public class FileSystemsTest {
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
             final CharSequence result = request.getSource().getCharacters();
-            return Truffle.getRuntime().createCallTarget(new RootNode(this) {
+            return new RootNode(this) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     languageAction.accept(CONTEXT_REF.get(this).env());
                     return result;
                 }
-            });
+            }.getCallTarget();
         }
 
         private static final ContextReference<LanguageContext> CONTEXT_REF = ContextReference.create(VirtualizedFileSystemTestLanguage.class);

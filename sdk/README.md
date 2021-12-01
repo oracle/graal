@@ -1,4 +1,4 @@
-# Graal Standard Development Kit
+# GraalVM Standard Development Kit
 
 The GraalVM SDK is a collection of APIs for the components of GraalVM.
 

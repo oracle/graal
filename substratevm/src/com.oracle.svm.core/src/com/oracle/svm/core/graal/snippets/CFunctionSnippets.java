@@ -30,8 +30,6 @@ import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
@@ -145,9 +143,8 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
         KillMemoryNode.killMemory(LocationIdentity.ANY_LOCATION);
     }
 
-    private CFunctionSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
-                    Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
-        super(options, factories, providers, snippetReflection);
+    private CFunctionSnippets(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
+        super(options, providers);
 
         lowerings.put(CFunctionPrologueNode.class, new CFunctionPrologueLowering());
         lowerings.put(CFunctionEpilogueNode.class, new CFunctionEpilogueLowering());
@@ -256,9 +253,9 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
 
         @Override
         @SuppressWarnings("unused")
-        public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
-                        SnippetReflectionProvider snippetReflection, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
-            new CFunctionSnippets(options, factories, providers, snippetReflection, lowerings);
+        public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers,
+                        Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
+            new CFunctionSnippets(options, providers, lowerings);
         }
     }
 }

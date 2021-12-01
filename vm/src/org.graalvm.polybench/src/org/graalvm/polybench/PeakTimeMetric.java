@@ -59,11 +59,13 @@ class PeakTimeMetric implements Metric {
     @Override
     public void parseBenchSpecificOptions(Value runner) {
         if (runner.hasMember("batchSize")) {
-            batchSize = runner.getMember("batchSize").asInt();
+            Value batchSizeMember = runner.getMember("batchSize");
+            this.batchSize = batchSizeMember.canExecute() ? batchSizeMember.execute().asInt() : batchSizeMember.asInt();
         }
         if (runner.hasMember("unit")) {
-            String u = runner.getMember("unit").asString();
-            unit = Unit.valueOf(u);
+            Value unitMember = runner.getMember("unit");
+            String u = unitMember.canExecute() ? unitMember.execute().asString() : unitMember.asString();
+            this.unit = Unit.valueOf(u);
         }
     }
 

@@ -37,7 +37,7 @@ public class Package_jdk_internal_loader_helper implements Function<TargetClass,
 
     @Override
     public String apply(TargetClass annotation) {
-        if (JavaVersionUtil.JAVA_SPEC <= 14) {
+        if (JavaVersionUtil.JAVA_SPEC <= 11) {
             return "java.lang." + annotation.className();
         } else {
             return "jdk.internal.loader." + annotation.className();

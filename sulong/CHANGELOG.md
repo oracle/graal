@@ -1,3 +1,20 @@
+# Version 22.0.0
+
+Changes:
+
+* Sulong adopted the new Frame API.
+
+# Version 21.3.0
+
+Changes:
+
+* Updated LLVM toolchain to version 12.0.0.
+
+Removals:
+
+* Removed ReferenceLibrary (deprecated since version 20.2).
+  Implement InteropLibrary.isIdenticalOrUndefined instead.
+
 # Version 21.2.0
 
 Fixes:

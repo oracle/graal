@@ -12,24 +12,16 @@ The difference lies in safety guarantees and cross-language interoperability.
 
 Note: Managed execution mode for LLVM bitcode is possible with GraalVM Enterprise only.
 
-In the default configuration, cross-language interoperability requires bitcode
-to be compiled with the debug information enabled (`-g`), and the `-mem2reg`
-optimization performed on LLVM bitcode (compiled with at least `-O1`, or
-explicitly using the `opt` tool). These requirements can be overcome in a
-managed environment of GraalVM Enterprise that allows native code to participate in the
-polyglot programs, passing and receiving the data from any other supported
-language. In terms of security, the execution of native code in a managed
-environment passes with additional safety features: catching illegal pointer
-accesses, accessing arrays outside of the bounds, etc.
+In the default configuration, cross-language interoperability requires bitcode to be compiled with the debug information enabled (`-g`), and the `-mem2reg` optimization performed on LLVM bitcode (compiled with at least `-O1`, or explicitly using the `opt` tool).
+These requirements can be overcome in a managed environment of GraalVM Enterprise that allows native code to participate in the polyglot programs, passing and receiving the data from any other supported language.
+In terms of security, the execution of native code in a managed environment passes with additional safety features: catching illegal pointer accesses, accessing arrays outside of the bounds, etc.
 
 There are certain limitations and differences to the native execution depending on the GraalVM edition.
 Consider them respectively.
 
 ### Limitations and Differences to Native Execution on Top of GraalVM Community
-The LLVM interpreter in GraalVM Community Edition environment allows executing LLVM bitcode within a
-multilingual context. Even though it aspires to be a generic LLVM runtime, there
-are certain fundamental and/or implementational limitations that users need to
-be aware of.
+The LLVM interpreter in GraalVM Community Edition environment allows executing LLVM bitcode within a multilingual context.
+Even though it aspires to be a generic LLVM runtime, there are certain fundamental and/or implementational limitations that users need to be aware of.
 
 The following restrictions and differences to native execution (i.e., bitcode compiled down to native code) exist when LLVM bitcode is executed with the LLVM interpreter on top of GraalVM Community:
 

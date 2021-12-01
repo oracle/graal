@@ -40,38 +40,6 @@
  */
 package org.graalvm.wasm;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.interop.ExceptionType;
-import com.oracle.truffle.api.nodes.LoopNode;
-import com.oracle.truffle.api.nodes.Node;
-import org.graalvm.wasm.collection.ByteArrayList;
-import org.graalvm.wasm.constants.CallIndirect;
-import org.graalvm.wasm.constants.ExportIdentifier;
-import org.graalvm.wasm.constants.GlobalModifier;
-import org.graalvm.wasm.constants.ImportIdentifier;
-import org.graalvm.wasm.constants.Instructions;
-import org.graalvm.wasm.constants.LimitsPrefix;
-import org.graalvm.wasm.constants.Section;
-import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.exception.WasmException;
-import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.nodes.WasmBlockNode;
-import org.graalvm.wasm.nodes.WasmCallStubNode;
-import org.graalvm.wasm.nodes.WasmIfNode;
-import org.graalvm.wasm.nodes.WasmIndirectCallNode;
-import org.graalvm.wasm.nodes.WasmRootNode;
-
-import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
-import java.nio.charset.CharacterCodingException;
-import java.nio.charset.CharsetDecoder;
-import java.nio.charset.CodingErrorAction;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Objects;
-
 import static org.graalvm.wasm.Assert.assertByteEqual;
 import static org.graalvm.wasm.Assert.assertIntEqual;
 import static org.graalvm.wasm.Assert.assertIntLessOrEqual;
@@ -86,38 +54,55 @@ import static org.graalvm.wasm.WasmType.I64_TYPE;
 import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_DECLARATION_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MAX_TABLE_DECLARATION_SIZE;
 
+import java.nio.ByteBuffer;
+import java.nio.CharBuffer;
+import java.nio.charset.CharacterCodingException;
+import java.nio.charset.CharsetDecoder;
+import java.nio.charset.CodingErrorAction;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Objects;
+
+import org.graalvm.wasm.collection.ByteArrayList;
+import org.graalvm.wasm.constants.CallIndirect;
+import org.graalvm.wasm.constants.ExportIdentifier;
+import org.graalvm.wasm.constants.GlobalModifier;
+import org.graalvm.wasm.constants.ImportIdentifier;
+import org.graalvm.wasm.constants.Instructions;
+import org.graalvm.wasm.constants.LimitsPrefix;
+import org.graalvm.wasm.constants.Section;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.memory.WasmMemory;
+
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.interop.ExceptionType;
+import org.graalvm.wasm.parser.ir.BlockNode;
+import org.graalvm.wasm.parser.ir.CallNode;
+import org.graalvm.wasm.parser.ir.IfNode;
+import org.graalvm.wasm.parser.ir.LoopNode;
+import org.graalvm.wasm.parser.ir.ParserNode;
+import org.graalvm.wasm.parser.ir.CodeEntry;
+import org.graalvm.wasm.parser.validation.ValidationErrors;
+import org.graalvm.wasm.parser.validation.ValidationState;
+
 /**
  * Simple recursive-descend parser for the binary WebAssembly format.
  */
 public class BinaryParser extends BinaryStreamParser {
-    private static class ParsingExceptionHandler implements Thread.UncaughtExceptionHandler {
-        private Throwable parsingException = null;
-
-        @Override
-        public void uncaughtException(Thread t, Throwable e) {
-            this.parsingException = e;
-        }
-
-        public Throwable parsingException() {
-            return parsingException;
-        }
-    }
-
-    private static final int MIN_DEFAULT_STACK_SIZE = 1_000_000;
-    private static final int MAX_DEFAULT_ASYNC_STACK_SIZE = 10_000_000;
 
     private static final int MAGIC = 0x6d736100;
     private static final int VERSION = 0x00000001;
 
-    private final WasmLanguage language;
     private final WasmModule module;
+    private final WasmContext wasmContext;
     private final int[] limitsResult;
 
     @CompilerDirectives.TruffleBoundary
-    public BinaryParser(WasmLanguage language, WasmModule module) {
+    public BinaryParser(WasmModule module, WasmContext context) {
         super(module.data());
-        this.language = language;
         this.module = module;
+        this.wasmContext = context;
         this.limitsResult = new int[2];
     }
 
@@ -128,47 +113,6 @@ public class BinaryParser extends BinaryStreamParser {
         readSymbolSections();
     }
 
-    @CompilerDirectives.TruffleBoundary
-    public void readInstance(WasmContext context, WasmInstance instance) {
-        int binarySize = instance.module().data().length;
-        final int asyncParsingBinarySize = WasmOptions.AsyncParsingBinarySize.getValue(context.environment().getOptions());
-        if (binarySize < asyncParsingBinarySize) {
-            readInstanceSynchronously(context, instance);
-        } else {
-            final Runnable parsing = new Runnable() {
-                @Override
-                public void run() {
-                    readInstanceSynchronously(context, instance);
-                }
-            };
-            final String name = "wasm-parsing-thread(" + instance.name() + ")";
-            final int requestedSize = WasmOptions.AsyncParsingStackSize.getValue(context.environment().getOptions()) * 1000;
-            final int defaultSize = Math.max(MIN_DEFAULT_STACK_SIZE, Math.min(2 * binarySize, MAX_DEFAULT_ASYNC_STACK_SIZE));
-            final int stackSize = requestedSize != 0 ? requestedSize : defaultSize;
-            final Thread parsingThread = new Thread(null, parsing, name, stackSize);
-            final ParsingExceptionHandler handler = new ParsingExceptionHandler();
-            parsingThread.setUncaughtExceptionHandler(handler);
-            parsingThread.start();
-            try {
-                parsingThread.join();
-                if (handler.parsingException() != null) {
-                    throw WasmException.create(Failure.UNSPECIFIED_INVALID, "Asynchronous parsing failed.");
-                }
-            } catch (InterruptedException e) {
-                throw WasmException.create(Failure.UNSPECIFIED_INVALID, "Asynchronous parsing interrupted.");
-            }
-        }
-    }
-
-    private void readInstanceSynchronously(WasmContext context, WasmInstance instance) {
-        if (tryJumpToSection(Section.CODE)) {
-            readCodeSection(context, instance);
-        } else {
-            final int expectedNumCodeEntries = module.numFunctions() - module.importedFunctions().size();
-            assertIntEqual(0, expectedNumCodeEntries, Failure.FUNCTIONS_CODE_INCONSISTENT_LENGTHS);
-        }
-    }
-
     private void validateMagicNumberAndVersion() {
         assertIntEqual(read4(), MAGIC, Failure.INVALID_MAGIC_NUMBER);
         assertIntEqual(read4(), VERSION, Failure.INVALID_VERSION_NUMBER);
@@ -176,6 +120,7 @@ public class BinaryParser extends BinaryStreamParser {
 
     private void readSymbolSections() {
         int lastNonCustomSection = -1;
+        boolean hasCodeSection = false;
         while (!isEOF()) {
             final byte sectionID = read1();
 
@@ -223,7 +168,8 @@ public class BinaryParser extends BinaryStreamParser {
                     readElementSection(null, null);
                     break;
                 case Section.CODE:
-                    skipCodeSection();
+                    readCodeSection();
+                    hasCodeSection = true;
                     break;
                 case Section.DATA:
                     readDataSection(null, null);
@@ -232,6 +178,9 @@ public class BinaryParser extends BinaryStreamParser {
                     fail(Failure.MALFORMED_SECTION_ID, "invalid section ID: " + sectionID);
             }
             assertIntEqual(offset - startOffset, size, String.format("Declared section (0x%02X) size is incorrect", sectionID), Failure.SECTION_SIZE_MISMATCH);
+        }
+        if (!hasCodeSection) {
+            assertIntEqual(module.numFunctions(), module.importedFunctions().size(), Failure.FUNCTIONS_CODE_INCONSISTENT_LENGTHS);
         }
     }
 
@@ -407,81 +356,45 @@ public class BinaryParser extends BinaryStreamParser {
         }
     }
 
-    private void skipCodeSection() {
+    private void readCodeSection() {
         final int numImportedFunctions = module.importedFunctions().size();
         final int numCodeEntries = readLength();
         final int expectedNumCodeEntries = module.numFunctions() - numImportedFunctions;
         assertIntEqual(numCodeEntries, expectedNumCodeEntries, Failure.FUNCTIONS_CODE_INCONSISTENT_LENGTHS);
-        for (int entryIndex = 0; entryIndex != numCodeEntries; ++entryIndex) {
-            final int codeEntrySize = readUnsignedInt32();
-            final int nextCodeEntryOffset = offset + codeEntrySize;
-            module.limits().checkFunctionSize(codeEntrySize);
-            final int localCount = readCodeEntryLocals().size() + module.function(numImportedFunctions + entryIndex).numArguments();
-            module.limits().checkLocalCount(localCount);
-            offset = nextCodeEntryOffset;
-        }
-    }
-
-    private void readCodeSection(WasmContext context, WasmInstance instance) {
-        final int numImportedFunctions = instance.module().importedFunctions().size();
-        final int numCodeEntries = readLength();
-        final int expectedNumCodeEntries = module.numFunctions() - numImportedFunctions;
-        // Already checked in skipCodeSection
-        assert numCodeEntries == expectedNumCodeEntries;
-        final WasmRootNode[] rootNodes = new WasmRootNode[numCodeEntries];
-        for (int entry = 0; entry != numCodeEntries; ++entry) {
-            rootNodes[entry] = createCodeEntry(instance, numImportedFunctions + entry);
-        }
+        final CodeEntry[] codeEntries = new CodeEntry[numCodeEntries];
         for (int entryIndex = 0; entryIndex != numCodeEntries; ++entryIndex) {
             final int codeEntrySize = readUnsignedInt32();
             final int startOffset = offset;
-            readCodeEntry(instance, numImportedFunctions + entryIndex, rootNodes[entryIndex]);
+            module.limits().checkFunctionSize(codeEntrySize);
+            final ByteArrayList locals = readCodeEntryLocals();
+            final int localCount = locals.size() + module.function(numImportedFunctions + entryIndex).numArguments();
+            module.limits().checkLocalCount(localCount);
+            codeEntries[entryIndex] = readCodeEntry(numImportedFunctions + entryIndex, locals, numImportedFunctions + entryIndex);
             assertIntEqual(offset - startOffset, codeEntrySize, String.format("Code entry %d size is incorrect", entryIndex), Failure.UNSPECIFIED_MALFORMED);
-            final int currentEntryIndex = entryIndex;
-            context.linker().resolveCodeEntry(module, currentEntryIndex);
         }
+        module.setCodeEntries(codeEntries);
     }
 
-    private WasmRootNode createCodeEntry(WasmInstance instance, int funcIndex) {
+    private CodeEntry readCodeEntry(int funcIndex, ByteArrayList locals, int functionIndex) {
         final WasmFunction function = module.symbolTable().function(funcIndex);
-        WasmCodeEntry codeEntry = new WasmCodeEntry(function, data);
-        function.setCodeEntry(codeEntry);
-
-        /*
-         * Create the root node and create and set the call target for the body. This needs to be
-         * done before reading the body block, because we need to be able to create direct call
-         * nodes {@see TruffleRuntime#createDirectCallNode} during parsing.
-         */
-        WasmRootNode rootNode = new WasmRootNode(language, instance, codeEntry);
-        RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
-        instance.setTarget(funcIndex, callTarget);
-
-        return rootNode;
-    }
-
-    private void readCodeEntry(WasmInstance instance, int funcIndex, WasmRootNode rootNode) {
-        /*
-         * Initialise the code entry local variables (which contain the parameters and the locals).
-         */
-        initCodeEntryLocals(funcIndex);
-
-        /* Read (parse) and abstractly interpret the code entry */
-        final WasmFunction function = module.symbolTable().function(funcIndex);
-        final byte returnTypeId = function.returnType();
+        int numberOfArguments = function.numArguments();
+        byte[] localTypes = new byte[function.numArguments() + locals.size()];
+        for (int i = 0; i < numberOfArguments; i++) {
+            localTypes[i] = function.argumentTypeAt(i);
+        }
+        for (int i = 0; i < locals.size(); i++) {
+            localTypes[i + numberOfArguments] = locals.get(i);
+        }
+        final byte returnType = function.returnType();
         final int returnTypeLength = function.returnTypeLength();
-        ExecutionState state = new ExecutionState();
-        WasmBlockNode bodyBlock = readBlockBody(instance, rootNode.codeEntry(), state, returnTypeId, false);
-        assertIntEqual(state.stackSize(), returnTypeLength,
-                        "Stack size must match the return type length at the function end", Failure.TYPE_MISMATCH);
-        rootNode.setBody(bodyBlock);
 
-        /* Initialize the Truffle-related components required for execution. */
-        rootNode.codeEntry().setIntConstants(state.intConstants());
-        if (state.branchTables().length > 0) {
-            rootNode.codeEntry().setBranchTables(state.branchTables());
-        }
-        rootNode.codeEntry().setProfileCount(state.profileCount());
-        rootNode.codeEntry().initStackLocals(rootNode.getFrameDescriptor(), state.maxStackSize());
+        ValidationState state = new ValidationState();
+        BlockNode functionBody = readCodeBlock(state, localTypes, returnType, Instructions.BLOCK);
+        final CodeEntry codeEntry = new CodeEntry(functionIndex, functionBody, state.currentProfileCount(), state.maxStackSize(), state.intConstants(), state.branchTables(), localTypes);
+
+        assertIntEqual(state.valueStackSize(), returnTypeLength,
+                        "Stack size must match the return type length at the function end", Failure.TYPE_MISMATCH);
+        return codeEntry;
     }
 
     private ByteArrayList readCodeEntryLocals() {
@@ -500,196 +413,179 @@ public class BinaryParser extends BinaryStreamParser {
         return localTypes;
     }
 
-    private void initCodeEntryLocals(int funcIndex) {
-        WasmCodeEntry codeEntry = module.symbolTable().function(funcIndex).codeEntry();
-        int typeIndex = module.symbolTable().function(funcIndex).typeIndex();
-        ByteArrayList argumentTypes = module.symbolTable().functionTypeArgumentTypes(typeIndex);
-        ByteArrayList localTypes = readCodeEntryLocals();
-        byte[] allLocalTypes = ByteArrayList.concat(argumentTypes, localTypes);
-        codeEntry.setLocalTypes(allLocalTypes);
-    }
-
-    private WasmBlockNode readBlock(WasmInstance instance, WasmCodeEntry codeEntry, ExecutionState state) {
-        byte blockTypeId = readBlockType();
-        final WasmBlockNode block = readBlockBody(instance, codeEntry, state, blockTypeId, false);
-        Assert.assertIntLessOrEqual(block.returnLength(), 1, "A block cannot return more than one value", Failure.INVALID_RESULT_ARITY);
-        return block;
-    }
-
-    private LoopNode readLoop(WasmInstance instance, WasmCodeEntry codeEntry, ExecutionState state) {
-        byte blockTypeId = readBlockType();
-        return readLoop(instance, codeEntry, state, blockTypeId);
-    }
-
-    private WasmBlockNode readBlockBody(WasmInstance instance, WasmCodeEntry codeEntry, ExecutionState state, byte returnTypeId, boolean isLoopBody) {
-        ArrayList<Node> children = new ArrayList<>();
-        int startStackSize = state.stackSize();
-        int startOffset = offset();
-        int startIntConstantOffset = state.intConstantOffset();
-        int startBranchTableOffset = state.branchTableOffset();
-        int startProfileCount = state.profileCount();
-        final WasmBlockNode currentBlock = new WasmBlockNode(instance, codeEntry, startOffset, returnTypeId, startStackSize, startIntConstantOffset,
-                        startBranchTableOffset, startProfileCount);
-
-        state.startBlock(currentBlock, isLoopBody);
-        state.setReachable(true);
-
+    private BlockNode readCodeBlock(ValidationState state, byte[] locals, byte returnType, int blockOpcode) {
+        final ArrayList<ParserNode> children = new ArrayList<>();
+        final int startOffset = offset;
+        final int initialStackPointer = state.valueStackSize();
+        final int initialIntConstantOffset = state.intConstantSize();
+        final int initialBranchTableOffset = state.branchTableSize();
+        final int initialProfileOffset = state.currentProfileCount();
+        state.enterBlock(blockOpcode, returnType);
         int opcode;
         do {
             opcode = read1() & 0xFF;
             switch (opcode) {
                 case Instructions.UNREACHABLE:
-                    state.setReachable(false);
+                    state.setUnreachable();
                     break;
                 case Instructions.NOP:
                     break;
                 case Instructions.BLOCK: {
-                    // Store the reachability of the current block, to restore it later.
-                    boolean reachable = state.isReachable();
-                    WasmBlockNode nestedBlock = readBlock(instance, codeEntry, state);
-                    children.add(nestedBlock);
-                    state.setReachable(reachable);
+                    final byte blockReturnType = readBlockType();
+                    BlockNode blockNode = readCodeBlock(state, locals, blockReturnType, opcode);
+                    children.add(blockNode);
                     break;
                 }
                 case Instructions.LOOP: {
-                    // Store the reachability of the current block, to restore it later.
-                    boolean reachable = state.isReachable();
-                    LoopNode loopBlock = readLoop(instance, codeEntry, state);
-                    children.add(loopBlock);
-                    state.setReachable(reachable);
+                    final byte loopReturnType = readBlockType();
+                    BlockNode blockNode = readCodeBlock(state, locals, loopReturnType, opcode);
+                    LoopNode loopNode = new LoopNode(blockNode);
+                    children.add(loopNode);
                     break;
                 }
                 case Instructions.IF: {
-                    // Pop the condition.
-                    state.popChecked(I32_TYPE);
-                    // Store the reachability of the current block, to restore it later.
-                    boolean reachable = state.isReachable();
-                    WasmIfNode ifNode = readIf(instance, codeEntry, state);
+                    int stackSizeBeforeCondition = state.valueStackSize();
+                    state.popChecked(I32_TYPE); // condition
+                    final byte ifReturnType = readBlockType();
+                    BlockNode thenNode = readCodeBlock(state, locals, ifReturnType, opcode);
+                    BlockNode elseNode = null;
+                    int nextOpcode = read1() & 0xFF;
+                    if (nextOpcode == Instructions.ELSE) {
+                        elseNode = readCodeBlock(state, locals, ifReturnType, nextOpcode);
+                    } else if (ifReturnType != WasmType.VOID_TYPE) {
+                        throw WasmException.format(Failure.TYPE_MISMATCH, "Expected else branch. If with result value requires then and else branch.");
+                    }
+                    IfNode ifNode = new IfNode(stackSizeBeforeCondition, thenNode, elseNode);
                     children.add(ifNode);
-                    state.setReachable(reachable);
                     break;
                 }
-                case Instructions.ELSE:
-                    // We handle the else instruction in the same way as the end instruction.
-                case Instructions.END:
+                case Instructions.END: {
                     break;
+                }
+                case Instructions.ELSE: {
+                    // We handle the else instruction in the same way as the end instruction.
+                    // The if instruction handles starting the else block.
+                    Assert.assertTrue(blockOpcode == Instructions.IF, "Expected then branch. Else branch requires preceding then branch.", Failure.TYPE_MISMATCH);
+                    break;
+                }
                 case Instructions.BR: {
-                    final int unwindLevel = readTargetOffset();
-                    final int targetStackSize = state.getStackSize(unwindLevel);
+                    final int branchLabel = readTargetOffset();
+                    state.checkLabelExists(branchLabel);
+                    final int targetStackSize = state.getValueStackSize(branchLabel);
                     state.useIntConstant(targetStackSize);
-                    state.useIntConstant(state.getContinuationLength(unwindLevel));
-                    state.checkContinuationType(unwindLevel);
-                    // This instruction is stack-polymorphic.
-                    state.setReachable(false);
+                    final byte[] labelTypes = state.getBlock(branchLabel).getLabelTypes();
+                    state.useIntConstant(labelTypes.length);
+                    state.popAll(labelTypes);
+
+                    // This instruction is stack-polymorphic
+                    state.setUnreachable();
                     break;
                 }
                 case Instructions.BR_IF: {
-                    state.popChecked(I32_TYPE); // condition
-                    final int unwindLevel = readTargetOffset();
-                    final int targetStackSize = state.getStackSize(unwindLevel);
+                    final int branchLabel = readTargetOffset();
+                    state.checkLabelExists(branchLabel);
+                    final int targetStackSize = state.getValueStackSize(branchLabel);
                     state.useIntConstant(targetStackSize);
-                    final int continuationReturnLength = state.getContinuationLength(unwindLevel);
-                    state.useIntConstant(continuationReturnLength);
-                    state.checkContinuationType(unwindLevel);
+                    state.popChecked(I32_TYPE); // condition
+                    final byte[] labelTypes = state.getBlock(branchLabel).getLabelTypes();
+                    state.useIntConstant(labelTypes.length);
+                    state.popAll(labelTypes);
+                    state.pushAll(labelTypes);
                     state.incrementProfileCount();
                     break;
                 }
                 case Instructions.BR_TABLE: {
                     state.popChecked(I32_TYPE); // index
-                    final int numLabels = readLength();
+                    final int length = readLength();
+
                     // We need to save three tables here, to maintain the mapping target -> state
                     // mapping:
                     // - the length of the return type
                     // - a table containing the branch targets for the instruction
                     // - a table containing the stack state for each corresponding branch target
-                    // We encode this in a single array.
-                    final int[] branchTable = new int[2 * (numLabels + 1) + 1];
-                    int continuationReturnLength = -1;
-                    for (int i = 0; i != numLabels + 1; ++i) {
-                        final int unwindLevel = readTargetOffset();
-                        branchTable[1 + 2 * i + 0] = unwindLevel;
-                        branchTable[1 + 2 * i + 1] = state.getStackSize(unwindLevel);
-                        final int targetContinuationLength = state.getContinuationLength(unwindLevel);
-                        state.checkContinuationType(unwindLevel);
-                        if (continuationReturnLength == -1) {
-                            continuationReturnLength = targetContinuationLength;
-                        } else {
-                            assertIntEqual(continuationReturnLength, targetContinuationLength,
-                                            "All target blocks in br.table must have the same return type length.", Failure.TYPE_MISMATCH);
-                        }
+                    // We encode this in a single array
+
+                    final int[] branchTable = new int[2 * (length + 1) + 1];
+                    for (int i = 0; i != length + 1; ++i) {
+                        final int branchLabel = readTargetOffset();
+                        state.checkLabelExists(branchLabel);
+                        branchTable[1 + 2 * i + 0] = branchLabel;
+                        branchTable[1 + 2 * i + 1] = state.getValueStackSize(branchLabel);
                     }
 
-                    branchTable[0] = continuationReturnLength;
-                    // The offset to the branch table.
+                    // get last branch label as type checking reference
+                    int branchLabel = branchTable[1 + 2 * length];
+
+                    byte[] branchLabelReturnType = state.getBlock(branchLabel).getLabelTypes();
+                    for (int i = 0; i != length; ++i) {
+                        int otherBranchLabel = branchTable[1 + 2 * i];
+                        // Check return type equality
+                        byte[] otherBranchLabelReturnTypes = state.getBlock(otherBranchLabel).getLabelTypes();
+                        state.checkLabelTypes(branchLabelReturnType, otherBranchLabelReturnTypes);
+
+                        state.pushAll(state.popAll(otherBranchLabelReturnTypes));
+                    }
+                    state.popAll(branchLabelReturnType);
+                    branchTable[0] = branchLabelReturnType.length;
                     state.saveBranchTable(branchTable);
-                    // This instruction is stack-polymorphic.
-                    state.setReachable(false);
+
+                    // This instruction is stack-polymorphic
+                    state.setUnreachable();
                     break;
                 }
                 case Instructions.RETURN: {
-                    // Pop the stack values used as the return values.
-                    assertIntLessOrEqual(codeEntry.function().returnTypeLength(), 1, Failure.INVALID_RESULT_ARITY);
-                    if (codeEntry.function().returnTypeLength() == 1) {
-                        state.popChecked(codeEntry.function().returnType());
-                    }
-                    state.useIntConstant(state.depth());
-                    state.useIntConstant(state.getRootBlockReturnLength());
-                    // This instruction is stack-polymorphic.
-                    state.setReachable(false);
+                    byte[] resultTypes = state.getRootBlock().getResultTypes();
+                    assertIntLessOrEqual(resultTypes.length, 1, Failure.INVALID_RESULT_ARITY);
+                    state.checkReturnTypes(state.getRootBlock());
+                    state.useIntConstant(state.controlStackSize());
+                    state.useIntConstant(resultTypes.length);
+
+                    // This instruction is stack-polymorphic
+                    state.setUnreachable();
                     break;
                 }
                 case Instructions.CALL: {
-                    final int functionIndex = readDeclaredFunctionIndex();
+                    final int callFunctionIndex = readDeclaredFunctionIndex();
 
                     // Pop arguments
-                    final WasmFunction function = module.symbolTable().function(functionIndex);
+                    final WasmFunction function = module.function(callFunctionIndex);
+                    byte[] params = new byte[function.numArguments()];
                     for (int i = function.numArguments() - 1; i >= 0; --i) {
-                        state.popChecked(function.argumentTypeAt(i));
+                        params[i] = function.argumentTypeAt(i);
                     }
+                    state.checkParameterTypes(params);
 
                     // Push return value
                     assertIntLessOrEqual(function.returnTypeLength(), 1, Failure.INVALID_RESULT_ARITY);
                     if (function.returnTypeLength() == 1) {
                         state.push(function.returnType());
                     }
-
-                    // We deliberately do not create the call node during parsing,
-                    // because the call target is only created after the code entry is parsed.
-                    // The code entry might not be yet parsed when we encounter this call.
-                    //
-                    // Furthermore, if the call target is imported from another module,
-                    // then that other module might not have been parsed yet.
-                    // Therefore, the call node will be created lazily during linking,
-                    // after the call target from the other module exists.
-                    children.add(new WasmCallStubNode(function));
-                    final int stubIndex = children.size() - 1;
-                    module.addLinkAction((context, inst) -> context.linker().resolveCallsite(inst, currentBlock, stubIndex, function));
-
+                    children.add(new CallNode(callFunctionIndex));
                     break;
                 }
                 case Instructions.CALL_INDIRECT: {
-                    assertTrue(module.symbolTable().tableExists(), Failure.UNKNOWN_TABLE);
+                    if (!module.tableExists()) {
+                        throw ValidationErrors.createMissingTable();
+                    }
 
-                    int expectedFunctionTypeIndex = readTypeIndex();
+                    int expectedFunctionTypeIndex = readUnsignedInt32();
 
                     // Pop the function index to call
                     state.popChecked(I32_TYPE);
+                    state.checkFunctionTypeExists(expectedFunctionTypeIndex, module.typeCount());
 
                     // Pop arguments
-                    for (int i = module.symbolTable().functionTypeArgumentCount(expectedFunctionTypeIndex) - 1; i >= 0; --i) {
-                        state.popChecked(module.symbolTable().functionTypeArgumentTypeAt(expectedFunctionTypeIndex, i));
+                    for (int i = module.functionTypeArgumentCount(expectedFunctionTypeIndex) - 1; i >= 0; --i) {
+                        state.popChecked(module.functionTypeArgumentTypeAt(expectedFunctionTypeIndex, i));
                     }
                     // Push return value
-                    final int returnLength = module.symbolTable().functionTypeReturnTypeLength(expectedFunctionTypeIndex);
+                    final int returnLength = module.functionTypeReturnTypeLength(expectedFunctionTypeIndex);
                     assertIntLessOrEqual(returnLength, 1, Failure.INVALID_RESULT_ARITY);
                     if (returnLength == 1) {
-                        state.push(module.symbolTable().functionTypeReturnType(expectedFunctionTypeIndex));
+                        state.push(module.functionTypeReturnType(expectedFunctionTypeIndex));
                     }
-
-                    // Function from current context profile
                     state.incrementProfileCount();
-
-                    children.add(WasmIndirectCallNode.create());
+                    children.add(new CallNode());
                     final int tableIndex = read1();
                     assertIntEqual(tableIndex, CallIndirect.ZERO_TABLE, "CALL_INDIRECT: Instruction must end with 0x00", Failure.ZERO_FLAG_EXPECTED);
                     break;
@@ -705,21 +601,21 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 case Instructions.LOCAL_GET: {
                     final int localIndex = readLocalIndex();
-                    assertUnsignedIntLess(localIndex, codeEntry.numLocals(), Failure.UNKNOWN_LOCAL);
-                    state.push(codeEntry.localType(localIndex));
+                    assertUnsignedIntLess(localIndex, locals.length, Failure.UNKNOWN_LOCAL);
+                    state.push(locals[localIndex]);
                     break;
                 }
                 case Instructions.LOCAL_SET: {
                     final int localIndex = readLocalIndex();
-                    assertUnsignedIntLess(localIndex, codeEntry.numLocals(), Failure.UNKNOWN_LOCAL);
-                    state.popChecked(codeEntry.localType(localIndex));
+                    assertUnsignedIntLess(localIndex, locals.length, Failure.UNKNOWN_LOCAL);
+                    state.popChecked(locals[localIndex]);
                     break;
                 }
                 case Instructions.LOCAL_TEE: {
                     final int localIndex = readLocalIndex();
-                    assertUnsignedIntLess(localIndex, codeEntry.numLocals(), Failure.UNKNOWN_LOCAL);
-                    state.popChecked(codeEntry.localType(localIndex));
-                    state.push(codeEntry.localType(localIndex));
+                    assertUnsignedIntLess(localIndex, locals.length, Failure.UNKNOWN_LOCAL);
+                    state.popChecked(locals[localIndex]);
+                    state.push(locals[localIndex]);
                     break;
                 }
                 case Instructions.GLOBAL_GET: {
@@ -809,259 +705,312 @@ public class BinaryParser extends BinaryStreamParser {
                     state.push(I32_TYPE);
                     break;
                 }
-                case Instructions.I32_CONST:
-                    readSignedInt32();
-                    state.push(I32_TYPE);
-                    break;
-                case Instructions.I64_CONST:
-                    readSignedInt64();
-                    state.push(I64_TYPE);
-                    break;
-                case Instructions.F32_CONST:
-                    read4();
-                    state.push(F32_TYPE);
-                    break;
-                case Instructions.F64_CONST:
-                    read8();
-                    state.push(F64_TYPE);
-                    break;
-                case Instructions.I32_EQZ:
-                    state.popChecked(I32_TYPE);
-                    state.push(I32_TYPE);
-                    break;
-                case Instructions.I32_EQ:
-                case Instructions.I32_NE:
-                case Instructions.I32_LT_S:
-                case Instructions.I32_LT_U:
-                case Instructions.I32_GT_S:
-                case Instructions.I32_GT_U:
-                case Instructions.I32_LE_S:
-                case Instructions.I32_LE_U:
-                case Instructions.I32_GE_S:
-                case Instructions.I32_GE_U:
-                    state.popChecked(I32_TYPE);
-                    state.popChecked(I32_TYPE);
-                    state.push(I32_TYPE);
-                    break;
-                case Instructions.I64_EQZ:
-                    state.popChecked(I64_TYPE);
-                    state.push(I32_TYPE);
-                    break;
-                case Instructions.I64_EQ:
-                case Instructions.I64_NE:
-                case Instructions.I64_LT_S:
-                case Instructions.I64_LT_U:
-                case Instructions.I64_GT_S:
-                case Instructions.I64_GT_U:
-                case Instructions.I64_LE_S:
-                case Instructions.I64_LE_U:
-                case Instructions.I64_GE_S:
-                case Instructions.I64_GE_U:
-                    state.popChecked(I64_TYPE);
-                    state.popChecked(I64_TYPE);
-                    state.push(I32_TYPE);
-                    break;
-                case Instructions.F32_EQ:
-                case Instructions.F32_NE:
-                case Instructions.F32_LT:
-                case Instructions.F32_GT:
-                case Instructions.F32_LE:
-                case Instructions.F32_GE:
-                    state.popChecked(F32_TYPE);
-                    state.popChecked(F32_TYPE);
-                    state.push(I32_TYPE);
-                    break;
-                case Instructions.F64_EQ:
-                case Instructions.F64_NE:
-                case Instructions.F64_LT:
-                case Instructions.F64_GT:
-                case Instructions.F64_LE:
-                case Instructions.F64_GE:
-                    state.popChecked(F64_TYPE);
-                    state.popChecked(F64_TYPE);
-                    state.push(I32_TYPE);
-                    break;
-                case Instructions.I32_CLZ:
-                case Instructions.I32_CTZ:
-                case Instructions.I32_POPCNT:
-                    state.popChecked(I32_TYPE);
-                    state.push(I32_TYPE);
-                    break;
-                case Instructions.I32_ADD:
-                case Instructions.I32_SUB:
-                case Instructions.I32_MUL:
-                case Instructions.I32_DIV_S:
-                case Instructions.I32_DIV_U:
-                case Instructions.I32_REM_S:
-                case Instructions.I32_REM_U:
-                case Instructions.I32_AND:
-                case Instructions.I32_OR:
-                case Instructions.I32_XOR:
-                case Instructions.I32_SHL:
-                case Instructions.I32_SHR_S:
-                case Instructions.I32_SHR_U:
-                case Instructions.I32_ROTL:
-                case Instructions.I32_ROTR:
-                    state.popChecked(I32_TYPE);
-                    state.popChecked(I32_TYPE);
-                    state.push(I32_TYPE);
-                    break;
-                case Instructions.I64_CLZ:
-                case Instructions.I64_CTZ:
-                case Instructions.I64_POPCNT:
-                    state.popChecked(I64_TYPE);
-                    state.push(I64_TYPE);
-                    break;
-                case Instructions.I64_ADD:
-                case Instructions.I64_SUB:
-                case Instructions.I64_MUL:
-                case Instructions.I64_DIV_S:
-                case Instructions.I64_DIV_U:
-                case Instructions.I64_REM_S:
-                case Instructions.I64_REM_U:
-                case Instructions.I64_AND:
-                case Instructions.I64_OR:
-                case Instructions.I64_XOR:
-                case Instructions.I64_SHL:
-                case Instructions.I64_SHR_S:
-                case Instructions.I64_SHR_U:
-                case Instructions.I64_ROTL:
-                case Instructions.I64_ROTR:
-                    state.popChecked(I64_TYPE);
-                    state.popChecked(I64_TYPE);
-                    state.push(I64_TYPE);
-                    break;
-                case Instructions.F32_ABS:
-                case Instructions.F32_NEG:
-                case Instructions.F32_CEIL:
-                case Instructions.F32_FLOOR:
-                case Instructions.F32_TRUNC:
-                case Instructions.F32_NEAREST:
-                case Instructions.F32_SQRT:
-                    state.popChecked(F32_TYPE);
-                    state.push(F32_TYPE);
-                    break;
-                case Instructions.F32_ADD:
-                case Instructions.F32_SUB:
-                case Instructions.F32_MUL:
-                case Instructions.F32_DIV:
-                case Instructions.F32_MIN:
-                case Instructions.F32_MAX:
-                case Instructions.F32_COPYSIGN:
-                    state.popChecked(F32_TYPE);
-                    state.popChecked(F32_TYPE);
-                    state.push(F32_TYPE);
-                    break;
-                case Instructions.F64_ABS:
-                case Instructions.F64_NEG:
-                case Instructions.F64_CEIL:
-                case Instructions.F64_FLOOR:
-                case Instructions.F64_TRUNC:
-                case Instructions.F64_NEAREST:
-                case Instructions.F64_SQRT:
-                    state.popChecked(F64_TYPE);
-                    state.push(F64_TYPE);
-                    break;
-                case Instructions.F64_ADD:
-                case Instructions.F64_SUB:
-                case Instructions.F64_MUL:
-                case Instructions.F64_DIV:
-                case Instructions.F64_MIN:
-                case Instructions.F64_MAX:
-                case Instructions.F64_COPYSIGN:
-                    state.popChecked(F64_TYPE);
-                    state.popChecked(F64_TYPE);
-                    state.push(F64_TYPE);
-                    break;
-                case Instructions.I32_WRAP_I64:
-                    state.popChecked(I64_TYPE);
-                    state.push(I32_TYPE);
-                    break;
-                case Instructions.I32_TRUNC_F32_S:
-                case Instructions.I32_TRUNC_F32_U:
-                    state.popChecked(F32_TYPE);
-                    state.push(I32_TYPE);
-                    break;
-                case Instructions.I32_TRUNC_F64_S:
-                case Instructions.I32_TRUNC_F64_U:
-                    state.popChecked(F64_TYPE);
-                    state.push(I32_TYPE);
-                    break;
-                case Instructions.I64_EXTEND_I32_S:
-                case Instructions.I64_EXTEND_I32_U:
-                    state.popChecked(I32_TYPE);
-                    state.push(I64_TYPE);
-                    break;
-                case Instructions.I64_TRUNC_F32_S:
-                case Instructions.I64_TRUNC_F32_U:
-                    state.popChecked(F32_TYPE);
-                    state.push(I64_TYPE);
-                    break;
-                case Instructions.I64_TRUNC_F64_S:
-                case Instructions.I64_TRUNC_F64_U:
-                    state.popChecked(F64_TYPE);
-                    state.push(I64_TYPE);
-                    break;
-                case Instructions.F32_CONVERT_I32_S:
-                case Instructions.F32_CONVERT_I32_U:
-                    state.popChecked(I32_TYPE);
-                    state.push(F32_TYPE);
-                    break;
-                case Instructions.F32_CONVERT_I64_S:
-                case Instructions.F32_CONVERT_I64_U:
-                    state.popChecked(I64_TYPE);
-                    state.push(F32_TYPE);
-                    break;
-                case Instructions.F32_DEMOTE_F64:
-                    state.popChecked(F64_TYPE);
-                    state.push(F32_TYPE);
-                    break;
-                case Instructions.F64_CONVERT_I32_S:
-                case Instructions.F64_CONVERT_I32_U:
-                    state.popChecked(I32_TYPE);
-                    state.push(F64_TYPE);
-                    break;
-                case Instructions.F64_CONVERT_I64_S:
-                case Instructions.F64_CONVERT_I64_U:
-                    state.popChecked(I64_TYPE);
-                    state.push(F64_TYPE);
-                    break;
-                case Instructions.F64_PROMOTE_F32:
-                    state.popChecked(F32_TYPE);
-                    state.push(F64_TYPE);
-                    break;
-                case Instructions.I32_REINTERPRET_F32:
-                    state.popChecked(F32_TYPE);
-                    state.push(I32_TYPE);
-                    break;
-                case Instructions.I64_REINTERPRET_F64:
-                    state.popChecked(F64_TYPE);
-                    state.push(I64_TYPE);
-                    break;
-                case Instructions.F32_REINTERPRET_I32:
-                    state.popChecked(I32_TYPE);
-                    state.push(F32_TYPE);
-                    break;
-                case Instructions.F64_REINTERPRET_I64:
-                    state.popChecked(I64_TYPE);
-                    state.push(F64_TYPE);
-                    break;
                 default:
-                    fail(Failure.UNSPECIFIED_MALFORMED, "Unknown opcode: 0x%02x", opcode);
+                    readNumericInstructions(state, opcode);
                     break;
+
             }
         } while (opcode != Instructions.END && opcode != Instructions.ELSE);
-        currentBlock.initialize(toArray(children),
-                        offset() - startOffset,
-                        state.intConstantOffset() - startIntConstantOffset,
-                        state.branchTableOffset() - startBranchTableOffset, state.profileCount() - startProfileCount);
 
-        state.endBlock();
-
-        return currentBlock;
+        state.exitBlock();
+        final int endOffset = offset;
+        final int endIntConstantOffset = state.intConstantSize();
+        final int endBranchTableOffset = state.branchTableSize();
+        final int endProfileOffset = state.currentProfileCount();
+        if (blockOpcode == Instructions.IF) {
+            offset--;
+        }
+        return new BlockNode(returnType, startOffset, initialStackPointer, initialIntConstantOffset, initialBranchTableOffset, initialProfileOffset, endOffset, endIntConstantOffset,
+                        endBranchTableOffset, endProfileOffset, children);
     }
 
-    private void store(ExecutionState state, byte type, int n) {
+    private void readNumericInstructions(ValidationState state, int opcode) {
+        switch (opcode) {
+            case Instructions.I32_CONST:
+                readSignedInt32();
+                state.push(I32_TYPE);
+                break;
+            case Instructions.I64_CONST:
+                readSignedInt64();
+                state.push(I64_TYPE);
+                break;
+            case Instructions.F32_CONST:
+                read4();
+                state.push(F32_TYPE);
+                break;
+            case Instructions.F64_CONST:
+                read8();
+                state.push(F64_TYPE);
+                break;
+            case Instructions.I32_EQZ:
+                state.popChecked(I32_TYPE);
+                state.push(I32_TYPE);
+                break;
+            case Instructions.I32_EQ:
+            case Instructions.I32_NE:
+            case Instructions.I32_LT_S:
+            case Instructions.I32_LT_U:
+            case Instructions.I32_GT_S:
+            case Instructions.I32_GT_U:
+            case Instructions.I32_LE_S:
+            case Instructions.I32_LE_U:
+            case Instructions.I32_GE_S:
+            case Instructions.I32_GE_U:
+                state.popChecked(I32_TYPE);
+                state.popChecked(I32_TYPE);
+                state.push(I32_TYPE);
+                break;
+            case Instructions.I64_EQZ:
+                state.popChecked(I64_TYPE);
+                state.push(I32_TYPE);
+                break;
+            case Instructions.I64_EQ:
+            case Instructions.I64_NE:
+            case Instructions.I64_LT_S:
+            case Instructions.I64_LT_U:
+            case Instructions.I64_GT_S:
+            case Instructions.I64_GT_U:
+            case Instructions.I64_LE_S:
+            case Instructions.I64_LE_U:
+            case Instructions.I64_GE_S:
+            case Instructions.I64_GE_U:
+                state.popChecked(I64_TYPE);
+                state.popChecked(I64_TYPE);
+                state.push(I32_TYPE);
+                break;
+            case Instructions.F32_EQ:
+            case Instructions.F32_NE:
+            case Instructions.F32_LT:
+            case Instructions.F32_GT:
+            case Instructions.F32_LE:
+            case Instructions.F32_GE:
+                state.popChecked(F32_TYPE);
+                state.popChecked(F32_TYPE);
+                state.push(I32_TYPE);
+                break;
+            case Instructions.F64_EQ:
+            case Instructions.F64_NE:
+            case Instructions.F64_LT:
+            case Instructions.F64_GT:
+            case Instructions.F64_LE:
+            case Instructions.F64_GE:
+                state.popChecked(F64_TYPE);
+                state.popChecked(F64_TYPE);
+                state.push(I32_TYPE);
+                break;
+            case Instructions.I32_CLZ:
+            case Instructions.I32_CTZ:
+            case Instructions.I32_POPCNT:
+                state.popChecked(I32_TYPE);
+                state.push(I32_TYPE);
+                break;
+            case Instructions.I32_ADD:
+            case Instructions.I32_SUB:
+            case Instructions.I32_MUL:
+            case Instructions.I32_DIV_S:
+            case Instructions.I32_DIV_U:
+            case Instructions.I32_REM_S:
+            case Instructions.I32_REM_U:
+            case Instructions.I32_AND:
+            case Instructions.I32_OR:
+            case Instructions.I32_XOR:
+            case Instructions.I32_SHL:
+            case Instructions.I32_SHR_S:
+            case Instructions.I32_SHR_U:
+            case Instructions.I32_ROTL:
+            case Instructions.I32_ROTR:
+                state.popChecked(I32_TYPE);
+                state.popChecked(I32_TYPE);
+                state.push(I32_TYPE);
+                break;
+            case Instructions.I64_CLZ:
+            case Instructions.I64_CTZ:
+            case Instructions.I64_POPCNT:
+                state.popChecked(I64_TYPE);
+                state.push(I64_TYPE);
+                break;
+            case Instructions.I64_ADD:
+            case Instructions.I64_SUB:
+            case Instructions.I64_MUL:
+            case Instructions.I64_DIV_S:
+            case Instructions.I64_DIV_U:
+            case Instructions.I64_REM_S:
+            case Instructions.I64_REM_U:
+            case Instructions.I64_AND:
+            case Instructions.I64_OR:
+            case Instructions.I64_XOR:
+            case Instructions.I64_SHL:
+            case Instructions.I64_SHR_S:
+            case Instructions.I64_SHR_U:
+            case Instructions.I64_ROTL:
+            case Instructions.I64_ROTR:
+                state.popChecked(I64_TYPE);
+                state.popChecked(I64_TYPE);
+                state.push(I64_TYPE);
+                break;
+            case Instructions.F32_ABS:
+            case Instructions.F32_NEG:
+            case Instructions.F32_CEIL:
+            case Instructions.F32_FLOOR:
+            case Instructions.F32_TRUNC:
+            case Instructions.F32_NEAREST:
+            case Instructions.F32_SQRT:
+                state.popChecked(F32_TYPE);
+                state.push(F32_TYPE);
+                break;
+            case Instructions.F32_ADD:
+            case Instructions.F32_SUB:
+            case Instructions.F32_MUL:
+            case Instructions.F32_DIV:
+            case Instructions.F32_MIN:
+            case Instructions.F32_MAX:
+            case Instructions.F32_COPYSIGN:
+                state.popChecked(F32_TYPE);
+                state.popChecked(F32_TYPE);
+                state.push(F32_TYPE);
+                break;
+            case Instructions.F64_ABS:
+            case Instructions.F64_NEG:
+            case Instructions.F64_CEIL:
+            case Instructions.F64_FLOOR:
+            case Instructions.F64_TRUNC:
+            case Instructions.F64_NEAREST:
+            case Instructions.F64_SQRT:
+                state.popChecked(F64_TYPE);
+                state.push(F64_TYPE);
+                break;
+            case Instructions.F64_ADD:
+            case Instructions.F64_SUB:
+            case Instructions.F64_MUL:
+            case Instructions.F64_DIV:
+            case Instructions.F64_MIN:
+            case Instructions.F64_MAX:
+            case Instructions.F64_COPYSIGN:
+                state.popChecked(F64_TYPE);
+                state.popChecked(F64_TYPE);
+                state.push(F64_TYPE);
+                break;
+            case Instructions.I32_WRAP_I64:
+                state.popChecked(I64_TYPE);
+                state.push(I32_TYPE);
+                break;
+            case Instructions.I32_TRUNC_F32_S:
+            case Instructions.I32_TRUNC_F32_U:
+                state.popChecked(F32_TYPE);
+                state.push(I32_TYPE);
+                break;
+            case Instructions.I32_TRUNC_F64_S:
+            case Instructions.I32_TRUNC_F64_U:
+                state.popChecked(F64_TYPE);
+                state.push(I32_TYPE);
+                break;
+            case Instructions.I64_EXTEND_I32_S:
+            case Instructions.I64_EXTEND_I32_U:
+                state.popChecked(I32_TYPE);
+                state.push(I64_TYPE);
+                break;
+            case Instructions.I64_TRUNC_F32_S:
+            case Instructions.I64_TRUNC_F32_U:
+                state.popChecked(F32_TYPE);
+                state.push(I64_TYPE);
+                break;
+            case Instructions.I64_TRUNC_F64_S:
+            case Instructions.I64_TRUNC_F64_U:
+                state.popChecked(F64_TYPE);
+                state.push(I64_TYPE);
+                break;
+            case Instructions.F32_CONVERT_I32_S:
+            case Instructions.F32_CONVERT_I32_U:
+                state.popChecked(I32_TYPE);
+                state.push(F32_TYPE);
+                break;
+            case Instructions.F32_CONVERT_I64_S:
+            case Instructions.F32_CONVERT_I64_U:
+                state.popChecked(I64_TYPE);
+                state.push(F32_TYPE);
+                break;
+            case Instructions.F32_DEMOTE_F64:
+                state.popChecked(F64_TYPE);
+                state.push(F32_TYPE);
+                break;
+            case Instructions.F64_CONVERT_I32_S:
+            case Instructions.F64_CONVERT_I32_U:
+                state.popChecked(I32_TYPE);
+                state.push(F64_TYPE);
+                break;
+            case Instructions.F64_CONVERT_I64_S:
+            case Instructions.F64_CONVERT_I64_U:
+                state.popChecked(I64_TYPE);
+                state.push(F64_TYPE);
+                break;
+            case Instructions.F64_PROMOTE_F32:
+                state.popChecked(F32_TYPE);
+                state.push(F64_TYPE);
+                break;
+            case Instructions.I32_REINTERPRET_F32:
+                state.popChecked(F32_TYPE);
+                state.push(I32_TYPE);
+                break;
+            case Instructions.I64_REINTERPRET_F64:
+                state.popChecked(F64_TYPE);
+                state.push(I64_TYPE);
+                break;
+            case Instructions.F32_REINTERPRET_I32:
+                state.popChecked(I32_TYPE);
+                state.push(F32_TYPE);
+                break;
+            case Instructions.F64_REINTERPRET_I64:
+                state.popChecked(I64_TYPE);
+                state.push(F64_TYPE);
+                break;
+            case Instructions.MISC:
+                int miscOpcode = read1() & 0xFF;
+                switch (miscOpcode) {
+                    case Instructions.I32_TRUNC_SAT_F32_S:
+                    case Instructions.I32_TRUNC_SAT_F32_U:
+                        checkSaturatingFloatToIntSupport(miscOpcode);
+                        state.popChecked(F32_TYPE);
+                        state.push(I32_TYPE);
+                        break;
+                    case Instructions.I32_TRUNC_SAT_F64_S:
+                    case Instructions.I32_TRUNC_SAT_F64_U:
+                        checkSaturatingFloatToIntSupport(miscOpcode);
+                        state.popChecked(F64_TYPE);
+                        state.push(I32_TYPE);
+                        break;
+                    case Instructions.I64_TRUNC_SAT_F32_S:
+                    case Instructions.I64_TRUNC_SAT_F32_U:
+                        checkSaturatingFloatToIntSupport(miscOpcode);
+                        state.popChecked(F32_TYPE);
+                        state.push(I64_TYPE);
+                        break;
+                    case Instructions.I64_TRUNC_SAT_F64_S:
+                    case Instructions.I64_TRUNC_SAT_F64_U:
+                        checkSaturatingFloatToIntSupport(miscOpcode);
+                        state.popChecked(F64_TYPE);
+                        state.push(I64_TYPE);
+                        break;
+                    default:
+                        fail(Failure.UNSPECIFIED_MALFORMED, "Unknown opcode: 0xFC 0x%02x", miscOpcode);
+                }
+                break;
+            default:
+                fail(Failure.UNSPECIFIED_MALFORMED, "Unknown opcode: 0x%02x", opcode);
+                break;
+        }
+    }
+
+    private static void checkContextOption(boolean option, String message, Object... args) {
+        if (!option) {
+            fail(Failure.UNSPECIFIED_MALFORMED, message, args);
+        }
+    }
+
+    private void checkSaturatingFloatToIntSupport(int opcode) {
+        checkContextOption(wasmContext.getContextOptions().isSaturatingFloatToInt(), "Saturating float-to-int conversion is not enabled (opcode: 0xFC 0x%02x)", opcode);
+    }
+
+    private void store(ValidationState state, byte type, int n) {
         assertTrue(module.symbolTable().memoryExists(), Failure.UNKNOWN_MEMORY);
 
         // We don't store the `align` literal, as our implementation does not make use
@@ -1073,7 +1022,7 @@ public class BinaryParser extends BinaryStreamParser {
         state.popChecked(I32_TYPE); // base address
     }
 
-    private void load(ExecutionState state, byte type, int n) {
+    private void load(ValidationState state, byte type, int n) {
         assertTrue(module.symbolTable().memoryExists(), Failure.UNKNOWN_MEMORY);
 
         // We don't store the `align` literal, as our implementation does not make use
@@ -1083,42 +1032,6 @@ public class BinaryParser extends BinaryStreamParser {
         readUnsignedInt32(); // load offset
         state.popChecked(I32_TYPE); // base address
         state.push(type); // loaded value
-    }
-
-    static Node[] toArray(ArrayList<Node> list) {
-        if (list.size() == 0) {
-            return null;
-        }
-        return list.toArray(new Node[list.size()]);
-    }
-
-    private LoopNode readLoop(WasmInstance instance, WasmCodeEntry codeEntry, ExecutionState state, byte returnTypeId) {
-        WasmBlockNode loopBlock = readBlockBody(instance, codeEntry, state, returnTypeId, true);
-        Assert.assertIntEqual(loopBlock.inputLength(), 0, "A loop should not have parameters", Failure.LOOP_INPUT);
-        return Truffle.getRuntime().createLoopNode(loopBlock);
-    }
-
-    private WasmIfNode readIf(WasmInstance instance, WasmCodeEntry codeEntry, ExecutionState state) {
-        byte blockTypeId = readBlockType();
-        // Note: the condition value was already popped at this point.
-        int stackSizeAfterCondition = state.stackSize();
-
-        // Read true branch.
-        int startOffset = offset();
-        WasmBlockNode trueBranchBlock = readBlockBody(instance, codeEntry, state, blockTypeId, false);
-
-        // Discard values returned by the then branch if any.
-        state.unwindStack(stackSizeAfterCondition);
-
-        // Read false branch, if it exists.
-        WasmBlockNode falseBranchBlock = null;
-        if (peek1(-1) == Instructions.ELSE) {
-            falseBranchBlock = readBlockBody(instance, codeEntry, state, blockTypeId, false);
-        } else if (blockTypeId != WasmType.VOID_TYPE) {
-            fail(Failure.TYPE_MISMATCH, "An if statement without an else branch block cannot return values.");
-        }
-        int stackSizeBeforeCondition = stackSizeAfterCondition + 1;
-        return new WasmIfNode(instance, codeEntry, trueBranchBlock, falseBranchBlock, offset() - startOffset, blockTypeId, stackSizeBeforeCondition);
     }
 
     private void readElementSection(WasmContext linkedContext, WasmInstance linkedInstance) {

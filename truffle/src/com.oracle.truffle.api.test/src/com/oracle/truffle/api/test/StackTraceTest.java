@@ -52,6 +52,7 @@ import java.util.concurrent.TimeoutException;
 
 import org.junit.Assert;
 import org.junit.Assume;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -62,15 +63,21 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
+@SuppressWarnings("deprecation")
 public class StackTraceTest {
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     @Test
     public void testFirstFrameIsCurrentFrame() {
@@ -177,7 +184,7 @@ public class StackTraceTest {
                     public Object visitFrame(FrameInstance frameInstance) {
 
                         Frame readOnlyFrame = frameInstance.getFrame(FrameAccess.READ_ONLY);
-                        FrameSlot slot = readOnlyFrame.getFrameDescriptor().findFrameSlot("demo");
+                        com.oracle.truffle.api.frame.FrameSlot slot = readOnlyFrame.getFrameDescriptor().findFrameSlot("demo");
                         Assert.assertEquals(42, readOnlyFrame.getValue(slot));
 
                         Frame readWriteFrame = frameInstance.getFrame(FrameAccess.READ_WRITE);
@@ -326,7 +333,7 @@ public class StackTraceTest {
     }
 
     private static CallTarget createCallTarget(TestCallNode callNode) {
-        return Truffle.getRuntime().createCallTarget(new TestRootNode(callNode));
+        return new TestRootNode(callNode).getCallTarget();
     }
 
     private static class TestCallWithCallTargetNode extends TestCallNode {

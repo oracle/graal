@@ -11,14 +11,15 @@
     legacy_and_secondary_suites:: std.set([$.renaissance_legacy, $.dacapo_size_variants, $.scala_dacapo_size_variants], keyF=uniq_key),
     jmh_micros_suites:: std.set([$.micros_graal_dist, $.micros_misc_graal_dist , $.micros_shootout_graal_dist], keyF=uniq_key),
     graal_internals_suites:: std.set([$.micros_graal_whitebox], keyF=uniq_key),
-    special_suites:: std.set([$.renaissance_0_10, $.specjbb2015_full_machine], keyF=uniq_key),
+    special_suites:: std.set([$.renaissance_0_10, $.renaissance_0_13, $.specjbb2015_full_machine], keyF=uniq_key),
     microservice_suites:: std.set([$.microservice_benchmarks], keyF=uniq_key),
 
-    main_suites:: std.set(self.open_suites + self.spec_suites + self.legacy_and_secondary_suites, keyF=uniq_key),
-    all_suites:: std.set(self.main_suites + self.jmh_micros_suites + self.special_suites + self.microservice_suites, keyF=uniq_key),
+    main_suites:: std.set([$.specjvm2008] + self.open_suites + self.legacy_and_secondary_suites, keyF=uniq_key),
+    all_suites:: std.set(self.main_suites + self.spec_suites + self.jmh_micros_suites + self.special_suites + self.microservice_suites, keyF=uniq_key),
 
-    weekly_forks_suites:: self.main_suites,
+    weekly_forks_suites:: std.set([$.renaissance_0_13] + self.main_suites, keyF=uniq_key),
     profiled_suites::     std.setDiff(self.main_suites, [$.specjbb2015], keyF=uniq_key),
+    all_but_main_suites::     std.setDiff(self.all_suites, self.main_suites, keyF=uniq_key),
   },
 
   // suite definitions
@@ -29,8 +30,8 @@
       self.benchmark_cmd + ["awfy:*", "--"] + self.extra_vm_args
     ],
     timelimit: "30:00",
-    forks_batches:: null, // disables it for now (GR-30956)
-    forks_timelimit:: "3:00:00",
+    forks_batches:: 1,
+    forks_timelimit:: "2:00:00",
     min_jdk_version:: 8,
     max_jdk_version:: null
   },
@@ -42,7 +43,7 @@
     ],
     timelimit: "45:00",
     forks_batches:: 1,
-    forks_timelimit:: "02:45:00",
+    forks_timelimit:: "04:00:00",
     min_jdk_version:: 8,
     max_jdk_version:: null
   },
@@ -56,7 +57,7 @@
       self._bench_upload(),
       self.benchmark_cmd + ["dacapo-huge:*", "--"] + self.extra_vm_args
     ],
-    timelimit: "05:30:00",
+    timelimit: "07:00:00",
     forks_batches:: null, # weekly forks disabled
     forks_timelimit:: null,
     min_jdk_version:: 8,
@@ -78,7 +79,7 @@
     run+: [
       self.benchmark_cmd + ["scala-dacapo:*", "--"] + self.extra_vm_args
     ],
-    timelimit: "45:00",
+    timelimit: "01:30:00",
     forks_batches:: 1,
     forks_timelimit:: "03:30:00",
     min_jdk_version:: 8,
@@ -98,7 +99,7 @@
       self._bench_upload(),
       self.benchmark_cmd + ["scala-dacapo-gargantuan:*", "--"] + self.extra_vm_args
     ],
-    timelimit: "05:00:00",
+    timelimit: "08:00:00",
     forks_batches:: null, # weekly forks disabled
     forks_timelimit:: null,
     min_jdk_version:: 8,
@@ -121,10 +122,7 @@
       "SPARK_LOCAL_IP": "127.0.0.1"
     },
     run+: [
-      if self.arch == "aarch64" then
-        self.benchmark_cmd + ["renaissance:~db-shootout", "--bench-suite-version=$RENAISSANCE_VERSION", "--"] + self.extra_vm_args
-      else
-        self.benchmark_cmd + ["renaissance:*", "--bench-suite-version=$RENAISSANCE_VERSION", "--"] + self.extra_vm_args
+      self.benchmark_cmd + ["renaissance:*", "--bench-suite-version=$RENAISSANCE_VERSION", "--"] + self.extra_vm_args
     ],
     timelimit: "3:00:00",
     forks_batches:: 4,
@@ -140,6 +138,15 @@
     },
     min_jdk_version:: 8,
     max_jdk_version:: 11
+  },
+
+  renaissance_0_13: self.renaissance + {
+    suite:: "renaissance-0-13",
+    environment+: {
+      "RENAISSANCE_VERSION": "0.13.0"
+    },
+    min_jdk_version:: 8,
+    max_jdk_version:: null
   },
 
   renaissance_legacy: cc.compiler_benchmark + c.heap.default + {
@@ -305,7 +312,7 @@
     run+: [
       self.benchmark_cmd + ["jmh-dist:GRAAL_COMPILER_MICRO_BENCHMARKS", "--"] + self.extra_vm_args
     ],
-    timelimit: "3:00:00",
+    timelimit: "5:00:00",
     min_jdk_version:: 8,
     max_jdk_version:: null
   },

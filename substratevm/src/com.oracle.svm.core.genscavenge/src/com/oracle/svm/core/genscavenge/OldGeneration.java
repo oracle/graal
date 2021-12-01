@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.EXTREMELY_SLOW_PATH_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
+
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;
@@ -32,8 +35,11 @@ import com.oracle.svm.core.MemoryWalker;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.genscavenge.GCImpl.ChunkReleaser;
+import com.oracle.svm.core.genscavenge.remset.RememberedSet;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.util.VMError;
 
 /**
  * An OldGeneration has two Spaces, {@link #fromSpace} for existing objects, and {@link #toSpace}
@@ -49,7 +55,7 @@ public final class OldGeneration extends Generation {
     @Platforms(Platform.HOSTED_ONLY.class)
     OldGeneration(String name) {
         super(name);
-        int age = HeapPolicy.getMaxSurvivorSpaces() + 1;
+        int age = HeapParameters.getMaxSurvivorSpaces() + 1;
         this.fromSpace = new Space("oldFromSpace", true, age);
         this.toSpace = new Space("oldToSpace", false, age);
     }
@@ -68,36 +74,28 @@ public final class OldGeneration extends Generation {
     /** Promote an Object to ToSpace if it is not already in ToSpace. */
     @AlwaysInline("GC performance")
     @Override
-    public Object promoteObject(Object original, UnsignedWord header) {
-        if (ObjectHeaderImpl.isAlignedHeader(header)) {
-            AlignedHeapChunk.AlignedHeader chunk = AlignedHeapChunk.getEnclosingChunk(original);
-            Space originalSpace = HeapChunk.getSpace(chunk);
-            if (originalSpace.isFromSpace()) {
-                return promoteAlignedObject(original, originalSpace);
-            }
-        } else {
-            assert ObjectHeaderImpl.isUnalignedHeader(header);
-            UnalignedHeapChunk.UnalignedHeader chunk = UnalignedHeapChunk.getEnclosingChunk(original);
-            Space originalSpace = HeapChunk.getSpace(chunk);
-            if (originalSpace.isFromSpace()) {
-                promoteUnalignedChunk(chunk, originalSpace);
-            }
-        }
-        return original;
-    }
-
-    @AlwaysInline("GC performance")
-    public Object promoteAlignedObject(Object original, Space originalSpace) {
+    public Object promoteAlignedObject(Object original, AlignedHeapChunk.AlignedHeader originalChunk, Space originalSpace) {
+        assert originalSpace.isFromSpace();
         return getToSpace().promoteAlignedObject(original, originalSpace);
     }
 
     @AlwaysInline("GC performance")
-    public void promoteUnalignedChunk(UnalignedHeapChunk.UnalignedHeader chunk, Space originalSpace) {
-        getToSpace().promoteUnalignedHeapChunk(chunk, originalSpace);
+    @Override
+    protected Object promoteUnalignedObject(Object original, UnalignedHeapChunk.UnalignedHeader originalChunk, Space originalSpace) {
+        assert originalSpace.isFromSpace();
+        getToSpace().promoteUnalignedHeapChunk(originalChunk, originalSpace);
+        return original;
     }
 
-    public void promoteObjectChunk(Object obj) {
-        getToSpace().promoteObjectChunk(obj);
+    @Override
+    protected boolean promoteChunk(HeapChunk.Header<?> originalChunk, boolean isAligned, Space originalSpace) {
+        assert originalSpace.isFromSpace();
+        if (isAligned) {
+            getToSpace().promoteAlignedHeapChunk((AlignedHeapChunk.AlignedHeader) originalChunk, originalSpace);
+        } else {
+            getToSpace().promoteUnalignedHeapChunk((UnalignedHeapChunk.UnalignedHeader) originalChunk, originalSpace);
+        }
+        return true;
     }
 
     void releaseSpaces(ChunkReleaser chunkReleaser) {
@@ -158,5 +156,17 @@ public final class OldGeneration extends Generation {
         UnsignedWord fromBytes = getFromSpace().getChunkBytes();
         UnsignedWord toBytes = getToSpace().getChunkBytes();
         return fromBytes.add(toBytes);
+    }
+
+    @SuppressWarnings("static-method")
+    AlignedHeapChunk.AlignedHeader requestAlignedChunk() {
+        assert VMOperation.isGCInProgress() : "Should only be called from the collector.";
+        AlignedHeapChunk.AlignedHeader chunk = HeapImpl.getChunkProvider().produceAlignedChunk();
+        if (probability(EXTREMELY_SLOW_PATH_PROBABILITY, chunk.isNull())) {
+            Log.log().string("[! OldGeneration.requestAlignedChunk: failure to allocate aligned chunk!]");
+            throw VMError.shouldNotReachHere("Promotion failure");
+        }
+        RememberedSet.get().enableRememberedSetForChunk(chunk);
+        return chunk;
     }
 }

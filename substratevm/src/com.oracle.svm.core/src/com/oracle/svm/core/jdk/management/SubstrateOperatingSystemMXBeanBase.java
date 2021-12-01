@@ -27,7 +27,7 @@ package com.oracle.svm.core.jdk.management;
 import com.oracle.svm.core.util.VMError;
 
 /**
- * Base class for defining methods introduced in JDK 14 by JDK-8226575.
+ * Base class for defining methods introduced after JDK 11 by JDK-8226575.
  *
  * Putting these in a class that does not implement {@link com.sun.management.OperatingSystemMXBean}
  * avoids javac errors related these methods being annotated by {@link Override}.
@@ -35,7 +35,6 @@ import com.oracle.svm.core.util.VMError;
 public abstract class SubstrateOperatingSystemMXBeanBase {
     static final String MSG = "OperatingSystemMXBean methods";
 
-    // Temporary fix for JDK14 added methods.
     // Will be removed after [GR-20166] is implemented.
     public double getCpuLoad() {
         throw VMError.unsupportedFeature(MSG);

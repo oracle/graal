@@ -28,6 +28,7 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IntegerConvertNode;
+import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 
 public class DerivedConvertedInductionVariable extends DerivedInductionVariable {
 
@@ -52,12 +53,12 @@ public class DerivedConvertedInductionVariable extends DerivedInductionVariable 
 
     @Override
     public ValueNode initNode() {
-        return op(base.initNode());
+        return op(base.initNode(), true);
     }
 
     @Override
     public ValueNode strideNode() {
-        return op(base.strideNode());
+        return op(base.strideNode(), false);
     }
 
     @Override
@@ -87,7 +88,7 @@ public class DerivedConvertedInductionVariable extends DerivedInductionVariable 
 
     @Override
     public ValueNode exitValueNode() {
-        return op(base.exitValueNode());
+        return op(base.exitValueNode(), true);
     }
 
     @Override
@@ -104,8 +105,13 @@ public class DerivedConvertedInductionVariable extends DerivedInductionVariable 
     public void deleteUnusedNodes() {
     }
 
-    public ValueNode op(ValueNode v) {
-        return IntegerConvertNode.convert(v, stamp, graph(), NodeView.DEFAULT);
+    private ValueNode op(ValueNode v, boolean allowZeroExtend) {
+        return op(v, allowZeroExtend, true);
+    }
+
+    private ValueNode op(ValueNode v, boolean allowZeroExtend, boolean gvn) {
+        boolean zeroExtend = allowZeroExtend && value instanceof ZeroExtendNode;
+        return IntegerConvertNode.convert(v, stamp, zeroExtend, graph(), NodeView.DEFAULT, gvn);
     }
 
     @Override
@@ -120,7 +126,11 @@ public class DerivedConvertedInductionVariable extends DerivedInductionVariable 
 
     @Override
     public ValueNode copyValue(InductionVariable newBase) {
-        return op(newBase.valueNode());
+        return op(newBase.valueNode(), true);
     }
 
+    @Override
+    public ValueNode copyValue(InductionVariable newBase, boolean gvn) {
+        return op(newBase.valueNode(), true, gvn);
+    }
 }

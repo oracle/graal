@@ -111,10 +111,10 @@ public class G1BarrierSet implements BarrierSet {
             addReadNodeBarriers((ReadNode) n);
         } else if (n instanceof WriteNode) {
             WriteNode write = (WriteNode) n;
-            addWriteBarriers(write, write.value(), null, true, write.getNullCheck());
+            addWriteBarriers(write, write.value(), null, true, write.getUsedAsNullCheck());
         } else if (n instanceof LoweredAtomicReadAndWriteNode) {
             LoweredAtomicReadAndWriteNode atomic = (LoweredAtomicReadAndWriteNode) n;
-            addWriteBarriers(atomic, atomic.getNewValue(), null, true, atomic.getNullCheck());
+            addWriteBarriers(atomic, atomic.getNewValue(), null, true, atomic.getUsedAsNullCheck());
         } else if (n instanceof AbstractCompareAndSwapNode) {
             AbstractCompareAndSwapNode cmpSwap = (AbstractCompareAndSwapNode) n;
             addWriteBarriers(cmpSwap, cmpSwap.getNewValue(), cmpSwap.getExpectedValue(), false, false);
@@ -188,7 +188,7 @@ public class G1BarrierSet implements BarrierSet {
     private static void addG1PreWriteBarrier(FixedAccessNode node, AddressNode address, ValueNode value, boolean doLoad, boolean nullCheck, StructuredGraph graph) {
         G1PreWriteBarrier preBarrier = graph.add(new G1PreWriteBarrier(address, value, doLoad, nullCheck));
         preBarrier.setStateBefore(node.stateBefore());
-        node.setNullCheck(false);
+        node.setUsedAsNullCheck(false);
         node.setStateBefore(null);
         graph.addBeforeFixed(node, preBarrier);
     }
@@ -200,5 +200,10 @@ public class G1BarrierSet implements BarrierSet {
 
     private static boolean isObjectValue(ValueNode value) {
         return value.stamp(NodeView.DEFAULT) instanceof AbstractObjectStamp;
+    }
+
+    @Override
+    public boolean mayNeedPreWriteBarrier(JavaKind storageKind) {
+        return arrayStoreBarrierType(storageKind) != BarrierType.NONE;
     }
 }

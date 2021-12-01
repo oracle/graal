@@ -47,6 +47,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerOptions;
@@ -56,7 +57,6 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.ParsingRequest;
-import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -84,13 +84,13 @@ import com.oracle.truffle.api.source.SourceSection;
  *
  * <h4>Execution</h4>
  *
- * In order to execute a root node, a call target needs to be created using
- * {@link TruffleRuntime#createCallTarget(RootNode)}. This allows the runtime system to optimize the
- * execution of the AST. The {@link CallTarget} can either be {@link CallTarget#call(Object...)
- * called} directly from runtime code or {@link DirectCallNode direct} and {@link IndirectCallNode
- * indirect} call nodes can be created, inserted in a child field and
- * {@link DirectCallNode#call(Object[]) called}. The use of direct call nodes allows the framework
- * to automatically inline and further optimize call sites based on heuristics.
+ * In order to execute a root node, its call target is lazily created and can be accessed via
+ * {@link RootNode#getCallTarget()}. This allows the runtime system to optimize the execution of the
+ * AST. The {@link CallTarget} can either be {@link CallTarget#call(Object...) called} directly from
+ * runtime code or {@link DirectCallNode direct} and {@link IndirectCallNode indirect} call nodes
+ * can be created, inserted in a child field and {@link DirectCallNode#call(Object[]) called}. The
+ * use of direct call nodes allows the framework to automatically inline and further optimize call
+ * sites based on heuristics.
  * <p>
  * After several calls to a call target or call node, the root node might get compiled using partial
  * evaluation. The details of the compilation heuristic are unspecified, therefore the Truffle
@@ -172,6 +172,8 @@ public abstract class RootNode extends ExecutableNode {
     public Node copy() {
         RootNode root = (RootNode) super.copy();
         root.frameDescriptor = frameDescriptor;
+        root.callTarget = null;
+        root.instrumentationBits = 0;
         return root;
     }
 
@@ -333,6 +335,39 @@ public abstract class RootNode extends ExecutableNode {
         throw new UnsupportedOperationException();
     }
 
+    final RootNode cloneUninitializedImpl(CallTarget sourceCallTarget, RootNode uninitializedRootNode) {
+        RootNode clonedRoot;
+        if (isCloneUninitializedSupported()) {
+            assert uninitializedRootNode == null : "uninitializedRootNode should not have been created";
+            clonedRoot = cloneUninitialized();
+
+            // if the language copied we cannot be sure
+            // that the call target is not reset (with their own means of copying)
+            // so better make sure they are reset.
+            clonedRoot.callTarget = null;
+            clonedRoot.instrumentationBits = 0;
+        } else {
+            clonedRoot = NodeUtil.cloneNode(uninitializedRootNode);
+            // regular cloning guarantees that call target and instrumentation bits
+            // are null. See #copy().
+            assert clonedRoot.callTarget == null;
+            assert clonedRoot.instrumentationBits == 0;
+        }
+
+        ReentrantLock l = getLazyLock();
+        l.lock();
+        try {
+            if (clonedRoot.callTarget != null) {
+                throw CompilerDirectives.shouldNotReachHere("callTarget not null. Was getCallTarget on the result of RootNode.cloneUninitialized called?.");
+            }
+            clonedRoot.callTarget = NodeAccessor.RUNTIME.newCallTarget(sourceCallTarget, clonedRoot);
+        } finally {
+            l.unlock();
+        }
+
+        return clonedRoot;
+    }
+
     /**
      * Executes this function using the specified frame and returns the result value.
      *
@@ -345,6 +380,24 @@ public abstract class RootNode extends ExecutableNode {
 
     /** @since 0.8 or earlier */
     public final RootCallTarget getCallTarget() {
+        RootCallTarget target = this.callTarget;
+        if (target == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            ReentrantLock l = getLazyLock();
+            l.lock();
+            try {
+                target = this.callTarget;
+                if (target == null) {
+                    this.callTarget = target = NodeAccessor.RUNTIME.newCallTarget(null, this);
+                }
+            } finally {
+                l.unlock();
+            }
+        }
+        return target;
+    }
+
+    final RootCallTarget getCallTargetWithoutInitialization() {
         return callTarget;
     }
 
@@ -353,8 +406,16 @@ public abstract class RootNode extends ExecutableNode {
         return frameDescriptor;
     }
 
-    /** @since 19.0 */
+    /**
+     * @throws UnsupportedOperationException if a call target already exists.
+     * @since 19.0
+     * @deprecated in 22.0, call targets are lazily initialized in {@link #getCallTarget()} now.
+     */
+    @Deprecated
     protected final void setCallTarget(RootCallTarget callTarget) {
+        if (this.callTarget != null) {
+            throw new UnsupportedOperationException();
+        }
         this.callTarget = callTarget;
     }
 

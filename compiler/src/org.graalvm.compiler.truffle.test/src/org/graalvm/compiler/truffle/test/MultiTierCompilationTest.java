@@ -24,14 +24,11 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.LastTierCompilationThreshold;
 import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.FirstTierCompilationThreshold;
+import static org.graalvm.compiler.truffle.options.PolyglotCompilerOptions.LastTierCompilationThreshold;
 
-import com.oracle.truffle.api.nodes.LoopNode;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RepeatingNode;
-import org.graalvm.compiler.truffle.runtime.GraalCompilerDirectives;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -40,8 +37,10 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.LoopNode;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
-import org.graalvm.polyglot.Context;
 
 public class MultiTierCompilationTest extends PartialEvaluationTest {
 
@@ -56,7 +55,7 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
                 return "callee:interpreter";
             }
             boundary();
-            if (GraalCompilerDirectives.hasNextTier()) {
+            if (CompilerDirectives.hasNextTier()) {
                 return "callee:first-tier";
             }
             if (CompilerDirectives.inCompilationRoot()) {
@@ -122,7 +121,7 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
         @Override
         public Object execute(VirtualFrame frame) {
             body.iteration = 0;
-            if (GraalCompilerDirectives.hasNextTier()) {
+            if (!CompilerDirectives.inInterpreter() && CompilerDirectives.hasNextTier()) {
                 this.firstTierCallCount += 1;
             }
             final Object result = loop.execute(frame);
@@ -161,7 +160,7 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
                 if (CompilerDirectives.inInterpreter()) {
                     return "break:interpreter";
                 }
-                if (GraalCompilerDirectives.hasNextTier()) {
+                if (CompilerDirectives.hasNextTier()) {
                     return "break:first-tier";
                 }
                 return "break:second-tier";
@@ -169,10 +168,11 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
             if (CompilerDirectives.inInterpreter()) {
                 return "continue:interpreter";
             }
-            if (GraalCompilerDirectives.hasNextTier()) {
+            if (CompilerDirectives.hasNextTier()) {
                 return "continue:first-tier";
+            } else {
+                return "continue:last-tier";
             }
-            return "continue:last-tier";
         }
     }
 
@@ -187,8 +187,8 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
                         "true").option("engine.FirstTierInliningPolicy", "None").option("engine.Splitting", "false").option("engine.FirstTierCompilationThreshold", "100").option(
                                         "engine.LastTierCompilationThreshold", "1000").build());
 
-        OptimizedCallTarget calleeTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(new MultiTierCalleeNode());
-        OptimizedCallTarget multiTierTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(new MultiTierRootNode(calleeTarget));
+        OptimizedCallTarget calleeTarget = (OptimizedCallTarget) new MultiTierCalleeNode().getCallTarget();
+        OptimizedCallTarget multiTierTarget = (OptimizedCallTarget) new MultiTierRootNode(calleeTarget).getCallTarget();
         final int firstTierCompilationThreshold = calleeTarget.getOptionValue(FirstTierCompilationThreshold);
         final int compilationThreshold = calleeTarget.getOptionValue(LastTierCompilationThreshold);
 
@@ -214,8 +214,8 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
                         "true").option("engine.FirstTierInliningPolicy", "Default").option("engine.Splitting", "false").option("engine.FirstTierCompilationThreshold", "100").option(
                                         "engine.LastTierCompilationThreshold", "1000").build());
 
-        OptimizedCallTarget calleeTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(new MultiTierCalleeNode());
-        OptimizedCallTarget multiTierTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(new MultiTierRootNode(calleeTarget));
+        OptimizedCallTarget calleeTarget = (OptimizedCallTarget) new MultiTierCalleeNode().getCallTarget();
+        OptimizedCallTarget multiTierTarget = (OptimizedCallTarget) new MultiTierRootNode(calleeTarget).getCallTarget();
         final int firstTierCompilationThreshold = calleeTarget.getOptionValue(FirstTierCompilationThreshold);
         final int compilationThreshold = calleeTarget.getOptionValue(LastTierCompilationThreshold);
 
@@ -237,10 +237,10 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
                         "true").option("engine.FirstTierInliningPolicy", "None").option("engine.Splitting", "false").option("engine.FirstTierCompilationThreshold", "100").option(
                                         "engine.LastTierCompilationThreshold", "1000").build());
 
-        OptimizedCallTarget calleeTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(new MultiTierCalleeNode());
+        OptimizedCallTarget calleeTarget = (OptimizedCallTarget) new MultiTierCalleeNode().getCallTarget();
         final int firstTierCompilationThreshold = calleeTarget.getOptionValue(FirstTierCompilationThreshold);
         final int compilationThreshold = calleeTarget.getOptionValue(LastTierCompilationThreshold);
-        OptimizedCallTarget multiTierTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(new MultiTierWithFrequentCalleeRootNode(calleeTarget, firstTierCompilationThreshold));
+        OptimizedCallTarget multiTierTarget = (OptimizedCallTarget) new MultiTierWithFrequentCalleeRootNode(calleeTarget, firstTierCompilationThreshold).getCallTarget();
 
         Assert.assertEquals("root:interpreter", multiTierTarget.call());
         for (int i = 0; i < firstTierCompilationThreshold - 2; i++) {
@@ -275,7 +275,7 @@ public class MultiTierCompilationTest extends PartialEvaluationTest {
 
         MultiTierLoopBodyNode body = new MultiTierLoopBodyNode(firstThreshold);
         final MultiTierWithLoopRootNode rootNode = new MultiTierWithLoopRootNode(body);
-        OptimizedCallTarget rootTarget = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(rootNode);
+        OptimizedCallTarget rootTarget = (OptimizedCallTarget) rootNode.getCallTarget();
 
         Assert.assertEquals("break:interpreter", rootTarget.call());
         Assert.assertEquals("break:first-tier", rootTarget.call());

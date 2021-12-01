@@ -1,4 +1,5 @@
-DYNAMIC_IMPORTS=/substratevm
-FORCE_BASH_LAUNCHERS=true
-DISABLE_LIBPOLYGLOT=true
-EXCLUDE_COMPONENTS=svmag,nju,nic,ni,nil,llp,pbm,pmh
+DYNAMIC_IMPORTS=/compiler,/sdk,/substratevm,/truffle
+COMPONENTS=cmp,dis,gu,gvm,lg,nfi,poly,polynative,sdk,svm,svml,svmnfi,tfl,tflm
+EXCLUDE_COMPONENTS=libpoly
+NATIVE_IMAGES=lib:jvmcicompiler
+DISABLE_INSTALLABLES=False

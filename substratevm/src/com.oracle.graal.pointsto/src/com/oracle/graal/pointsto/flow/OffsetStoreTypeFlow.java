@@ -210,13 +210,12 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
             for (AnalysisField field : unsafeAccessedFields) {
                 /* Write through the field filter flow. */
                 if (field.hasUnsafeFrozenTypeState()) {
-                    UnsafeWriteSinkTypeFlow unsafeWriteSink = object.getUnsafeWriteSinkFrozenFilterFlow(bb, this.method(), field);
+                    UnsafeWriteSinkTypeFlow unsafeWriteSink = object.getUnsafeWriteSinkFrozenFilterFlow(bb, objectFlow, source, field);
                     this.addUse(bb, unsafeWriteSink);
                 } else {
-                    FieldFilterTypeFlow fieldFilterFlow = object.getInstanceFieldFilterFlow(bb, this.method(), field);
+                    FieldFilterTypeFlow fieldFilterFlow = object.getInstanceFieldFilterFlow(bb, objectFlow, source, field);
                     this.addUse(bb, fieldFilterFlow);
                 }
-
             }
         }
 

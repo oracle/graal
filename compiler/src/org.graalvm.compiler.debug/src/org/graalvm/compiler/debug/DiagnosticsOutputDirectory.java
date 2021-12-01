@@ -24,21 +24,7 @@
  */
 package org.graalvm.compiler.debug;
 
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.file.FileVisitResult;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.zip.Deflater;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
 
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.GraalServices;
@@ -76,11 +62,12 @@ public class DiagnosticsOutputDirectory {
     private synchronized String getPath(boolean createIfNull) {
         if (path == null && createIfNull) {
             path = createPath();
-            File dir = new File(path).getAbsoluteFile();
-            if (!dir.exists()) {
-                dir.mkdirs();
-                if (!dir.exists()) {
-                    TTY.println("Warning: could not create Graal diagnostic directory " + dir);
+            String dir = PathUtilities.getAbsolutePath(path);
+            if (!PathUtilities.exists(dir)) {
+                try {
+                    PathUtilities.createDirectories(dir);
+                } catch (IOException e) {
+                    TTY.println("Warning: could not create Graal diagnostic directory " + dir + ": " + e);
                     return null;
                 }
             }
@@ -100,15 +87,15 @@ public class DiagnosticsOutputDirectory {
      * @return the path to be created
      */
     protected String createPath() {
-        Path baseDir;
+        String baseDir;
         try {
             baseDir = DebugOptions.getDumpDirectory(options);
         } catch (IOException e) {
             // Default to current directory if there was a problem creating the
             // directory specified by the DumpPath option.
-            baseDir = Paths.get(".");
+            baseDir = ".";
         }
-        return baseDir.resolve("graal_diagnostics_" + GraalServices.getExecutionID() + '@' + IsolateUtil.getIsolateID()).toAbsolutePath().toString();
+        return PathUtilities.getPath(baseDir, "graal_diagnostics_" + GraalServices.getExecutionID() + '@' + IsolateUtil.getIsolateID());
     }
 
     /**
@@ -128,56 +115,12 @@ public class DiagnosticsOutputDirectory {
             // This attempts to mitigate other threads writing to the directory
             // while it is being archived and deleted.
             path = CLOSED;
-
-            Path dir = Paths.get(outDir);
-            if (dir.toFile().exists()) {
-                String prefix = new File(outDir).getName() + "/";
-                File zip = new File(outDir + ".zip").getAbsoluteFile();
-                List<Path> toDelete = new ArrayList<>();
-                try (ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(zip))) {
-                    zos.setLevel(Deflater.BEST_COMPRESSION);
-                    Files.walkFileTree(dir, Collections.emptySet(), Integer.MAX_VALUE, new SimpleFileVisitor<Path>() {
-                        @Override
-                        public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                            if (attrs.isRegularFile()) {
-                                String name = prefix + dir.relativize(file).toString();
-                                ZipEntry ze = new ZipEntry(name);
-                                zos.putNextEntry(ze);
-                                Files.copy(file, zos);
-                                zos.closeEntry();
-                            }
-                            toDelete.add(file);
-                            return FileVisitResult.CONTINUE;
-                        }
-
-                        @Override
-                        public FileVisitResult postVisitDirectory(Path d, IOException exc) throws IOException {
-                            toDelete.add(d);
-                            return FileVisitResult.CONTINUE;
-                        }
-                    });
-                    // Keep this in sync with the catch_files in common.hocon
-                    TTY.println("Graal diagnostic output saved in %s", zip);
-                } catch (IOException e) {
-                    TTY.printf("IO error archiving %s:%n%s. The directory will not be deleted and must be " +
-                                    "manually removed once the VM exits.%n", dir, e);
-                    toDelete.clear();
-                }
-                if (!toDelete.isEmpty()) {
-                    IOException lastDeletionError = null;
-                    for (Path p : toDelete) {
-                        try {
-                            Files.delete(p);
-                        } catch (IOException e) {
-                            lastDeletionError = e;
-                        }
-                    }
-                    if (lastDeletionError != null) {
-                        TTY.printf("IO error deleting %s:%n%s. This is most likely due to a compilation on " +
-                                        "another thread holding a handle to a file within this directory. " +
-                                        "Please delete the directory manually once the VM exits.%n", dir, lastDeletionError);
-                    }
-                }
+            try {
+                String zip = outDir + ".zip";
+                PathUtilities.archiveAndDelete(outDir, zip);
+            } catch (IOException e) {
+                TTY.println(e.getMessage());
+                TTY.println("Cause: " + e.getCause());
             }
         }
     }

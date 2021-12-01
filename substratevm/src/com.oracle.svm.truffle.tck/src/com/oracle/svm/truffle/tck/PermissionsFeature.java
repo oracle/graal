@@ -158,7 +158,6 @@ public class PermissionsFeature implements Feature {
     /**
      * Classes for reflective accesses which are opaque for permission analysis.
      */
-    private AnalysisType reflectionProxy;
     private AnalysisType reflectionFieldAccessorFactory;
 
     @Override
@@ -195,9 +194,8 @@ public class PermissionsFeature implements Feature {
                             Options.TruffleTCKPermissionsExcludeFiles,
                             new ResourceAsOptionDecorator(getClass().getPackage().getName().replace('.', '/') + "/resources/jre.json"),
                             CONFIG);
-            reflectionProxy = bb.getMetaAccess().lookupJavaType(loadClassOrFail("com.oracle.svm.reflect.helpers.ReflectionProxy"));
             reflectionFieldAccessorFactory = bb.getMetaAccess().lookupJavaType(loadClassOrFail(Package_jdk_internal_reflect.getQualifiedName() + ".UnsafeFieldAccessorFactory"));
-            VMError.guarantee(reflectionProxy != null && reflectionFieldAccessorFactory != null, "Cannot load one or several reflection types");
+            VMError.guarantee(reflectionFieldAccessorFactory != null, "Cannot load one or several reflection types");
             whiteList = parser.getLoadedWhiteList();
             Set<AnalysisMethod> deniedMethods = new HashSet<>();
             deniedMethods.addAll(findMethods(bb, SecurityManager.class, (m) -> m.getName().startsWith("check")));
@@ -294,30 +292,32 @@ public class PermissionsFeature implements Feature {
             debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Entered method: %s.", mName);
             for (InvokeTypeFlow invoke : m.getTypeFlow().getInvokes()) {
                 for (AnalysisMethod callee : invoke.getCallees()) {
-                    Set<AnalysisMethod> parents = visited.get(callee);
-                    String calleeName = getMethodName(callee);
-                    debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Callee: %s, new: %b.", calleeName, parents == null);
-                    if (parents == null) {
-                        parents = new HashSet<>();
-                        visited.put(callee, parents);
-                        if (targets.contains(callee)) {
+                    if (callee.isInvoked()) {
+                        Set<AnalysisMethod> parents = visited.get(callee);
+                        String calleeName = getMethodName(callee);
+                        debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Callee: %s, new: %b.", calleeName, parents == null);
+                        if (parents == null) {
+                            parents = new HashSet<>();
+                            visited.put(callee, parents);
+                            if (targets.contains(callee)) {
+                                parents.add(m);
+                                callPathContainsTarget = true;
+                                continue;
+                            }
+                            boolean add = callGraphImpl(callee, targets, visited, path, debugContext);
+                            if (add) {
+                                parents.add(m);
+                                debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Added callee: %s for %s.", calleeName, mName);
+                            }
+                            callPathContainsTarget |= add;
+                        } else if (!isBacktrace(callee, path) || isBackTraceOverLanguageMethod(callee, path)) {
                             parents.add(m);
+                            debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Added backtrace callee: %s for %s.", calleeName, mName);
                             callPathContainsTarget = true;
-                            continue;
-                        }
-                        boolean add = callGraphImpl(callee, targets, visited, path, debugContext);
-                        if (add) {
-                            parents.add(m);
-                            debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Added callee: %s for %s.", calleeName, mName);
-                        }
-                        callPathContainsTarget |= add;
-                    } else if (!isBacktrace(callee, path) || isBackTraceOverLanguageMethod(callee, path)) {
-                        parents.add(m);
-                        debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Added backtrace callee: %s for %s.", calleeName, mName);
-                        callPathContainsTarget = true;
-                    } else {
-                        if (debugContext.isLogEnabled(DebugContext.VERY_DETAILED_LEVEL)) {
-                            debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Ignoring backtrace callee: %s for %s.", calleeName, mName);
+                        } else {
+                            if (debugContext.isLogEnabled(DebugContext.VERY_DETAILED_LEVEL)) {
+                                debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Ignoring backtrace callee: %s for %s.", calleeName, mName);
+                            }
                         }
                     }
                 }
@@ -416,7 +416,7 @@ public class PermissionsFeature implements Feature {
                     if (!callers.isEmpty()) {
                         useNoReports = collectViolations(report, callers.iterator().next(), maxDepth, maxReports, callGraph, contextFilters, visited, depth + 1, useNoReports);
                     }
-                } else if (!isSystemClass(m) && !isReflectionProxy(m)) {
+                } else if (!isSystemClass(m)) {
                     List<AnalysisMethod> callPath = new ArrayList<>(visited);
                     report.add(callPath);
                     useNoReports++;
@@ -435,18 +435,6 @@ public class PermissionsFeature implements Feature {
             }
         }
         return useNoReports;
-    }
-
-    /**
-     * Tests if the given {@link AnalysisMethod} comes from {@code ReflectionProxy} implementation.
-     */
-    private boolean isReflectionProxy(AnalysisMethod method) {
-        for (AnalysisType iface : method.getDeclaringClass().getInterfaces()) {
-            if (iface.equals(reflectionProxy)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     /**
@@ -893,6 +881,7 @@ final class Target_java_lang_SecurityManager {
 }
 
 final class SecurityManagerHolder {
+    @SuppressWarnings("deprecation") // SecurityManager deprecated since 17.
     static final SecurityManager SECURITY_MANAGER = new SecurityManager();
 }
 

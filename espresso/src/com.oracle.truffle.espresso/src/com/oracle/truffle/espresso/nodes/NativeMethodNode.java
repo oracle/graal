@@ -77,7 +77,7 @@ public final class NativeMethodNode extends EspressoMethodNode {
         nativeArgs[0] = env.getNativePointer(); // JNIEnv*
 
         if (getMethod().isStatic()) {
-            nativeArgs[1] = toObjectHandle(env, getMethod().getDeclaringKlass().mirror()); // class
+            nativeArgs[1] = toObjectHandle(env, getDeclaringKlass().mirror()); // class
         } else {
             nativeArgs[1] = toObjectHandle(env, args[0]); // receiver
         }

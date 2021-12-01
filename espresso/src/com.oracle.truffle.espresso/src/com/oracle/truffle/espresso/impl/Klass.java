@@ -29,8 +29,10 @@ import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
 import java.util.Comparator;
 import java.util.function.IntFunction;
 
+import com.oracle.truffle.espresso.jdwp.api.ModuleRef;
 import org.graalvm.collections.EconomicSet;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -448,7 +450,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     // endregion Interop
 
     // Threshold for using binary search instead of linear search for interface lookup.
-    private static final int LINEAR_SEARCH_THRESHOLD = 4;
+    private static final int LINEAR_SEARCH_THRESHOLD = 8;
 
     static final Comparator<Klass> KLASS_ID_COMPARATOR = new Comparator<Klass>() {
         @Override
@@ -741,7 +743,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
      * The setting of the final bit for types is a bit confusing since arrays are marked as final.
      * This method provides a semantically equivalent test that appropriate for types.
      */
-    public boolean isLeaf() {
+    public boolean hasNoSubtypes() {
         return getElementalType().isFinalFlagSet();
     }
 
@@ -763,6 +765,17 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
      */
     public final boolean isInitialized() {
         return !(this instanceof ObjectKlass) || ((ObjectKlass) this).isInitializedImpl();
+    }
+
+    public final boolean isInitializedOrInitializing() {
+        if (!(this instanceof ObjectKlass)) {
+            return true; // primitives or arrays are considered initialized.
+        }
+        int state = ((ObjectKlass) this).getState();
+        return state == ObjectKlass.INITIALIZED ||
+                        state == ObjectKlass.ERRONEOUS ||
+                        // initializing thread
+                        state == ObjectKlass.INITIALIZING && Thread.holdsLock(this);
     }
 
     /**
@@ -1241,7 +1254,22 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return true;
     }
 
+    @TruffleBoundary(allowInlining = true)
+    protected static int fastLookupBoundary(Klass target, Klass[] klasses) {
+        return fastLookupImpl(target, klasses);
+    }
+
     protected static int fastLookup(Klass target, Klass[] klasses) {
+        if (!CompilerDirectives.isPartialEvaluationConstant(klasses)) {
+            return fastLookupBoundary(target, klasses);
+        }
+        // PE-friendly.
+        CompilerAsserts.partialEvaluationConstant(klasses);
+        return fastLookupImpl(target, klasses);
+    }
+
+    @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
+    protected static int fastLookupImpl(Klass target, Klass[] klasses) {
         assert isSorted(klasses, KLASS_ID_COMPARATOR);
         if (klasses.length <= LINEAR_SEARCH_THRESHOLD) {
             for (int i = 0; i < klasses.length; i++) {
@@ -1535,6 +1563,11 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     @Override
     public String getSourceDebugExtension() {
         return null;
+    }
+
+    @Override
+    public final ModuleRef getModule() {
+        return module();
     }
 
     // endregion jdwp-specific

@@ -361,15 +361,26 @@ public final class HeapVerifier {
 
         if (!HeapImpl.getHeapImpl().isInHeap(referencedObject)) {
             Log.log().string("Object reference at ").zhex(reference).string(" points outside the Java heap: ").zhex(referencedObject).string(". ");
-            if (parentObject != null) {
-                Log.log().string("The object that contains the invalid reference is of type ").string(parentObject.getClass().getName()).newline();
-            } else {
-                Log.log().string("The invalid reference is on the stack.").newline();
-            }
+            printParentObject(parentObject);
+            return false;
+        }
+
+        if (!ObjectHeaderImpl.getObjectHeaderImpl().pointsToObjectHeader(referencedObject)) {
+            Log.log().string("Object reference at ").zhex(reference).string(" does not point to a Java object or the object header of the Java object is invalid: ").zhex(referencedObject)
+                            .string(". ");
+            printParentObject(parentObject);
             return false;
         }
 
         return true;
+    }
+
+    private static void printParentObject(Object parentObject) {
+        if (parentObject != null) {
+            Log.log().string("The object that contains the invalid reference is of type ").string(parentObject.getClass().getName()).newline();
+        } else {
+            Log.log().string("The invalid reference is on the stack.").newline();
+        }
     }
 
     private static class ImageHeapRegionVerifier implements MemoryWalker.ImageHeapRegionVisitor {
@@ -450,7 +461,7 @@ public final class HeapVerifier {
         }
 
         @Override
-        public boolean visitObjectReference(Pointer objRef, boolean compressed) {
+        public boolean visitObjectReference(Pointer objRef, boolean compressed, Object holderObject) {
             result &= verifyReference(parentObject, objRef, compressed);
             return true;
         }

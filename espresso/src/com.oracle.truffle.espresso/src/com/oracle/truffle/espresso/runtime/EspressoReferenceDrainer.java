@@ -152,7 +152,7 @@ class EspressoReferenceDrainer implements ContextAccess {
         StaticObject ref = wrapper.getGuestReference();
         // Cleaner references extends PhantomReference but are cleared.
         // See HotSpot's ReferenceProcessor::process_discovered_references in referenceProcessor.cpp
-        if (InterpreterToVM.instanceOf(ref, ref.getKlass().getMeta().sun_misc_Cleaner)) {
+        if (InterpreterToVM.instanceOf(ref, getMeta().sun_misc_Cleaner)) {
             wrapper.clear();
         }
         getMeta().java_lang_ref_Reference_next.compareAndSwapObject(ref, StaticObject.NULL, ref);
@@ -207,7 +207,7 @@ class EspressoReferenceDrainer implements ContextAccess {
                     }
                 }
             } finally {
-                Target_java_lang_Thread.terminate(context.getCurrentThread(), meta);
+                context.getThreadAccess().terminate(context.getCurrentThread());
                 if (context.isClosing()) {
                     // Ignore exceptions that arise during closing.
                     return;

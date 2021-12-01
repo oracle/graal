@@ -35,6 +35,9 @@ public abstract class EnumRuntimeData {
     }
 
     protected long convertJavaToCLong(Enum<?> javaValue) {
+        if (javaValue == null) {
+            throw new RuntimeException("null return value cannot be converted to a C enum value");
+        }
         return javaToC[javaValue.ordinal()];
     }
 

@@ -32,7 +32,6 @@ import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -40,6 +39,7 @@ import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.UnaryNode;
 import org.graalvm.compiler.nodes.spi.ArithmeticLIRLowerable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.code.CodeUtil;
@@ -109,24 +109,6 @@ public final class BitScanReverseNode extends UnaryNode implements ArithmeticLIR
     public static int scan(int v) {
         return 31 - Integer.numberOfLeadingZeros(v);
     }
-
-    /**
-     * Raw intrinsic for bsr instruction.
-     *
-     * @param v
-     * @return index of first set bit or an undefined value if {@code v} == 0.
-     */
-    @NodeIntrinsic
-    public static native int unsafeScan(int v);
-
-    /**
-     * Raw intrinsic for bsr instruction.
-     *
-     * @param v
-     * @return index of first set bit or an undefined value if {@code v} == 0.
-     */
-    @NodeIntrinsic
-    public static native int unsafeScan(long v);
 
     @Override
     public void generate(NodeLIRBuilderTool builder, ArithmeticLIRGeneratorTool gen) {

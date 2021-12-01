@@ -41,12 +41,13 @@ import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PhiNode;
+import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
+import org.graalvm.compiler.nodes.ProfileData.ProfileSource;
 import org.graalvm.compiler.nodes.ShortCircuitOrNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
-import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
-import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
 import org.graalvm.compiler.nodes.calc.IntegerConvertNode;
@@ -181,6 +182,7 @@ public class SpeculativeGuardMovementPhase extends BasePhase<MidTierContext> {
             if (node instanceof GuardNode) {
                 GuardNode guard = (GuardNode) node;
                 LogicNode condition = guard.getCondition();
+
                 Loop<Block> forcedHoisting = null;
                 if (condition instanceof IntegerLessThanNode || condition instanceof IntegerBelowNode) {
                     forcedHoisting = tryOptimizeCompare(guard, (CompareNode) condition);
@@ -252,17 +254,12 @@ public class SpeculativeGuardMovementPhase extends BasePhase<MidTierContext> {
                 bound = compare.getY();
                 mirrored = false;
             }
+
             if (tryOptimizeCompare(compare, iv, bound, mirrored, guard)) {
-                if (isInverted(iv.getLoop())) {
-                    return null;
-                }
                 return iv.getLoop().loop();
             }
             if (otherIV != null) {
                 if (tryOptimizeCompare(compare, otherIV, iv.valueNode(), !mirrored, guard)) {
-                    if (isInverted(iv.getLoop())) {
-                        return null;
-                    }
                     return otherIV.getLoop().loop();
                 }
             }
@@ -420,7 +417,6 @@ public class SpeculativeGuardMovementPhase extends BasePhase<MidTierContext> {
                 return false; // the bound must be loop invariant and schedulable above the loop.
             }
 
-            LoopBeginNode loopBeginNode = loopEx.loopBegin();
             CountedLoopInfo countedLoop = loopEx.counted();
 
             if (profilingInfo != null && !(profilingInfo instanceof DefaultProfilingInfo)) {
@@ -429,13 +425,14 @@ public class SpeculativeGuardMovementPhase extends BasePhase<MidTierContext> {
                     // additional compare and short-circuit-or introduced in optimizeCompare
                     loopFreqThreshold += 2;
                 }
-                if (!loopBeginNode.isCompilerInverted()) {
+                if (!isInverted(loopEx)) {
                     if (!(countedLoop.getBodyIVStart() instanceof ConstantNode && countedLoop.getLimit() instanceof ConstantNode)) {
                         // additional compare and short-circuit-or for loop enter check
                         loopFreqThreshold++;
                     }
                 }
-                if (loopBeginNode.loopFrequency() < loopFreqThreshold) {
+                if (ProfileSource.isTrusted(loopEx.localFrequencySource()) &&
+                                loopEx.localLoopFrequency() < loopFreqThreshold) {
                     debug.log("shouldOptimizeCompare(%s):loop frequency too low.", guard);
                     // loop frequency is too low -- the complexity introduced by hoisting this guard
                     // will not pay off.
@@ -444,7 +441,7 @@ public class SpeculativeGuardMovementPhase extends BasePhase<MidTierContext> {
             }
 
             Loop<Block> l = guardAnchorBlock.getLoop();
-            if (iv.getLoop().loopBegin().isCompilerInverted()) {
+            if (isInverted(loopEx)) {
                 // guard is anchored outside the loop but the condition might still be in the loop
                 l = iv.getLoop().loop();
             }

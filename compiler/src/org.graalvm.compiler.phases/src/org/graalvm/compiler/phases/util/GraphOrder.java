@@ -159,9 +159,8 @@ public final class GraphOrder {
     public static boolean assertSchedulableGraph(final StructuredGraph graph) {
         assert graph.getGuardsStage() != GuardsStage.AFTER_FSA : "Cannot use the BlockIteratorClosure after FrameState Assignment, HIR Loop Data Structures are no longer valid.";
         try (DebugContext.Scope s = graph.getDebug().scope("AssertSchedulableGraph")) {
-            final SchedulePhase schedulePhase = new SchedulePhase(getSchedulingPolicy(graph), true);
+            SchedulePhase.runWithoutContextOptimizations(graph, getSchedulingPolicy(graph), true);
             final EconomicMap<LoopBeginNode, NodeBitMap> loopEntryStates = EconomicMap.create(Equivalence.IDENTITY);
-            schedulePhase.apply(graph, false);
             final ScheduleResult schedule = graph.getLastSchedule();
 
             BlockIteratorClosure<NodeBitMap> closure = new BlockIteratorClosure<NodeBitMap>() {

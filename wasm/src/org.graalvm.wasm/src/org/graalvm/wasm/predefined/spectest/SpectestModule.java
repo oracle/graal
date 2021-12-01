@@ -59,7 +59,7 @@ public class SpectestModule extends BuiltinModule {
 
     @Override
     protected WasmInstance createInstance(WasmLanguage language, WasmContext context, String name) {
-        WasmInstance module = new WasmInstance(context, new WasmModule(name, null), NUMBER_OF_FUNCTIONS);
+        WasmInstance module = new WasmInstance(context, WasmModule.createBuiltin(name), NUMBER_OF_FUNCTIONS);
         defineFunction(module, "print", types(), types(), new PrintNode(language, module));
         defineFunction(module, "print_i32", types(I32_TYPE), types(), new PrintNode(language, module));
         defineFunction(module, "print_i64", types(I64_TYPE), types(), new PrintNode(language, module));

@@ -39,10 +39,10 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.common.option.CommonOptionParser.BooleanOptionFormat;
+import com.oracle.svm.common.option.CommonOptionParser.OptionParseResult;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.option.SubstrateOptionsParser.BooleanOptionFormat;
-import com.oracle.svm.core.option.SubstrateOptionsParser.OptionParseResult;
 import com.oracle.svm.core.properties.RuntimePropertyParser;
 import com.oracle.svm.core.util.ImageHeapMap;
 
@@ -75,10 +75,10 @@ public final class RuntimeOptionParser {
      * returned array contains all arguments that were not consumed, i.e., were not recognized as
      * options.
      */
-    public static String[] parseAndConsumeAllOptions(String[] initialArgs) {
+    public static String[] parseAndConsumeAllOptions(String[] initialArgs, boolean ignoreUnrecognized) {
         String[] args = initialArgs;
         if (SubstrateOptions.ParseRuntimeOptions.getValue()) {
-            args = RuntimeOptionParser.singleton().parse(args, NORMAL_OPTION_PREFIX, GRAAL_OPTION_PREFIX, X_OPTION_PREFIX, true);
+            args = RuntimeOptionParser.singleton().parse(args, NORMAL_OPTION_PREFIX, GRAAL_OPTION_PREFIX, X_OPTION_PREFIX, true, ignoreUnrecognized);
             args = RuntimePropertyParser.parse(args);
         }
         return args;
@@ -120,15 +120,15 @@ public final class RuntimeOptionParser {
      *             {@code systemExitOnError == false}. The parse error is described by
      *             {@link Throwable#getMessage()}.
      */
-    public String[] parse(String[] args, String normalOptionPrefix, String graalOptionPrefix, String xOptionPrefix, boolean systemExitOnError) {
+    public String[] parse(String[] args, String normalOptionPrefix, String graalOptionPrefix, String xOptionPrefix, boolean systemExitOnError, boolean ignoreUnrecognized) {
         int newIdx = 0;
         EconomicMap<OptionKey<?>, Object> values = OptionValues.newOptionMap();
         for (int oldIdx = 0; oldIdx < args.length; oldIdx++) {
             String arg = args[oldIdx];
             if (arg.startsWith(normalOptionPrefix)) {
-                parseOptionAtRuntime(arg, normalOptionPrefix, BooleanOptionFormat.PLUS_MINUS, values, systemExitOnError);
+                parseOptionAtRuntime(arg, normalOptionPrefix, BooleanOptionFormat.PLUS_MINUS, values, systemExitOnError, ignoreUnrecognized);
             } else if (graalOptionPrefix != null && arg.startsWith(graalOptionPrefix)) {
-                parseOptionAtRuntime(arg, graalOptionPrefix, BooleanOptionFormat.NAME_VALUE, values, systemExitOnError);
+                parseOptionAtRuntime(arg, graalOptionPrefix, BooleanOptionFormat.NAME_VALUE, values, systemExitOnError, ignoreUnrecognized);
             } else if (xOptionPrefix != null && arg.startsWith(xOptionPrefix) && XOptions.parse(arg.substring(xOptionPrefix.length()), values, systemExitOnError)) {
                 // option value was already parsed and added to the map
             } else {
@@ -159,14 +159,19 @@ public final class RuntimeOptionParser {
      *             {@code systemExitOnError == false}. The parse error is described by
      *             {@link Throwable#getMessage()}.
      */
-    private void parseOptionAtRuntime(String arg, String optionPrefix, BooleanOptionFormat booleanOptionFormat, EconomicMap<OptionKey<?>, Object> values, boolean systemExitOnError) {
+    private void parseOptionAtRuntime(String arg, String optionPrefix, BooleanOptionFormat booleanOptionFormat, EconomicMap<OptionKey<?>, Object> values, boolean systemExitOnError,
+                    boolean ignoreUnrecognized) {
         Predicate<OptionKey<?>> isHosted = optionKey -> false;
         OptionParseResult parseResult = SubstrateOptionsParser.parseOption(options, isHosted, arg.substring(optionPrefix.length()), values, optionPrefix, booleanOptionFormat);
         if (parseResult.printFlags() || parseResult.printFlagsWithExtraHelp()) {
-            SubstrateOptionsParser.printFlags(parseResult::matchesFlagsRuntime, options, optionPrefix, Log.logStream(), parseResult.printFlagsWithExtraHelp());
+            SubstrateOptionsParser.printFlags(d -> parseResult.matchesFlags(d, d.getOptionKey() instanceof RuntimeOptionKey),
+                            options, optionPrefix, Log.logStream(), parseResult.printFlagsWithExtraHelp());
             System.exit(0);
         }
         if (!parseResult.isValid()) {
+            if (parseResult.optionUnrecognized() && ignoreUnrecognized) {
+                return;
+            }
             if (systemExitOnError) {
                 Log.logStream().println("error: " + parseResult.getError());
                 System.exit(1);

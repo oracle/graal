@@ -116,11 +116,6 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
     }
 
     @Override
-    public FixedNode asFixedNode() {
-        return this;
-    }
-
-    @Override
     public CallTargetNode callTarget() {
         return callTarget;
     }

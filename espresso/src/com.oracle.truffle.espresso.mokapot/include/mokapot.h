@@ -71,7 +71,7 @@ typedef uint64_t julong;
  * ----------+----------------+---------------------+----------------+
  * reserved0 | NULL           | LibEspressoIsolate* | context handle |
  * reserved1 | MOKA_RISTRETTO | MOKA_LATTE          | MOKA_AMERICANO |
- * reserved2 | NULL           | JavaVM* (americano) | NULL           |
+ * reserved2 | NULL           | JavaVM* (americano) | JavaVM* (latte)|
  */
 
 #define VM_METHOD_LIST(V) \
@@ -348,7 +348,7 @@ typedef uint64_t julong;
 extern "C" {
 #endif
 
-JNIEXPORT MokapotEnv* JNICALL initializeMokapotContext(JNIEnv* env, void* (*fetch_by_name)(const char *));
+JNIEXPORT MokapotEnv* JNICALL initializeMokapotContext(JNIEnv* env, void* (*fetch_by_name)(const char *, void*));
 
 JNIEXPORT void JNICALL disposeMokapotContext(MokapotEnv* moka_env, void (*release_closure)(void *));
 

@@ -26,11 +26,15 @@ package com.oracle.svm.reflect.target;
 
 // Checkstyle: allow reflection
 
+import static com.oracle.svm.core.annotate.TargetElement.CONSTRUCTOR_NAME;
+
+import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Modifier;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -38,17 +42,27 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.reflect.hosted.ExecutableAccessorComputer;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
+import sun.reflect.annotation.TypeAnnotation;
 import sun.reflect.generics.repository.ConstructorRepository;
 
 @TargetClass(value = Constructor.class)
 public final class Target_java_lang_reflect_Constructor {
 
     @Alias ConstructorRepository genericInfo;
+
+    @Alias private Class<?>[] parameterTypes;
+
+    @Alias @RecomputeFieldValue(kind = Kind.Reset)//
+    private byte[] annotations;
+
+    @Alias @RecomputeFieldValue(kind = Kind.Reset)//
+    private byte[] parameterAnnotations;
 
     @Alias //
     @RecomputeFieldValue(kind = Kind.Custom, declClass = ExecutableAccessorComputer.class) //
@@ -58,22 +72,77 @@ public final class Target_java_lang_reflect_Constructor {
     AnnotatedType annotatedReceiverType;
 
     @Alias
+    @TargetElement(name = CONSTRUCTOR_NAME)
+    @SuppressWarnings("hiding")
+    public native void constructor(Class<?> declaringClass,
+                    Class<?>[] parameterTypes,
+                    Class<?>[] checkedExceptions,
+                    int modifiers,
+                    int slot,
+                    String signature,
+                    byte[] annotations,
+                    byte[] parameterAnnotations);
+
+    @Alias
     native Target_java_lang_reflect_Constructor copy();
 
     @Substitute
     Target_jdk_internal_reflect_ConstructorAccessor acquireConstructorAccessor() {
         if (constructorAccessor == null) {
-            throw VMError.unsupportedFeature("Runtime reflection is not supported.");
+            throw VMError.unsupportedFeature("Runtime reflection is not supported for " + this);
         }
         return constructorAccessor;
+    }
+
+    @Alias //
+    public native Class<?> getDeclaringClass();
+
+    @Substitute
+    public Annotation[][] getParameterAnnotations() {
+        Target_java_lang_reflect_Executable self = SubstrateUtil.cast(this, Target_java_lang_reflect_Executable.class);
+        Target_java_lang_reflect_Executable holder = ReflectionHelper.getHolder(self);
+        if (holder.parameterAnnotations != null) {
+            return holder.parameterAnnotations;
+        }
+        return self.sharedGetParameterAnnotations(parameterTypes, parameterAnnotations);
     }
 
     @Substitute
     public AnnotatedType getAnnotatedReceiverType() {
         Target_java_lang_reflect_Constructor holder = ReflectionHelper.getHolder(this);
-        return JavaVersionUtil.JAVA_SPEC == 8
-                        ? ReflectionHelper.requireNonNull(holder.annotatedReceiverType, "Annotated receiver type must be computed during native image generation")
-                        : holder.annotatedReceiverType; // can be null (JDK-8044629)
+        if (holder.annotatedReceiverType != null) {
+            return holder.annotatedReceiverType;
+        }
+        Class<?> thisDeclClass = getDeclaringClass();
+        Class<?> enclosingClass = thisDeclClass.getEnclosingClass();
+
+        if (enclosingClass == null) {
+            // A Constructor for a top-level class
+            return null;
+        }
+
+        Class<?> outerDeclaringClass = thisDeclClass.getDeclaringClass();
+        if (outerDeclaringClass == null) {
+            // A constructor for a local or anonymous class
+            return null;
+        }
+
+        // Either static nested or inner class
+        if (Modifier.isStatic(thisDeclClass.getModifiers())) {
+            // static nested
+            return null;
+        }
+
+        if (MethodMetadataDecoderImpl.hasQueriedMethods()) {
+            // A Constructor for an inner class
+            return Target_sun_reflect_annotation_TypeAnnotationParser.buildAnnotatedType(SubstrateUtil.cast(holder, Target_java_lang_reflect_Executable.class).typeAnnotations,
+                            new Target_jdk_internal_reflect_ConstantPool(),
+                            SubstrateUtil.cast(this, AnnotatedElement.class),
+                            thisDeclClass,
+                            enclosingClass,
+                            TypeAnnotation.TypeAnnotationTarget.METHOD_RECEIVER);
+        }
+        throw VMError.shouldNotReachHere();
     }
 
     /**

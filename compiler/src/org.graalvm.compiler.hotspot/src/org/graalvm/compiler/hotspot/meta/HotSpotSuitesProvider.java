@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,13 +24,6 @@
  */
 package org.graalvm.compiler.hotspot.meta;
 
-import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
-import static org.graalvm.compiler.core.common.GraalOptions.ImmutableCode;
-import static org.graalvm.compiler.core.common.GraalOptions.VerifyPhases;
-import static org.graalvm.compiler.core.phases.HighTier.Options.Inline;
-
-import java.util.ListIterator;
-
 import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotBackend;
@@ -38,12 +31,6 @@ import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.hotspot.HotSpotInstructionProfiling;
 import org.graalvm.compiler.hotspot.lir.HotSpotZapRegistersPhase;
 import org.graalvm.compiler.hotspot.lir.VerifyMaxRegisterSizePhase;
-import org.graalvm.compiler.hotspot.phases.AheadOfTimeVerificationPhase;
-import org.graalvm.compiler.hotspot.phases.LoadJavaMirrorWithKlassPhase;
-import org.graalvm.compiler.hotspot.phases.aot.AOTInliningPolicy;
-import org.graalvm.compiler.hotspot.phases.aot.EliminateRedundantInitializationPhase;
-import org.graalvm.compiler.hotspot.phases.aot.ReplaceConstantNodesPhase;
-import org.graalvm.compiler.hotspot.phases.profiling.FinalizeProfileNodesPhase;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.java.SuitesProviderBase;
 import org.graalvm.compiler.lir.phases.LIRSuites;
@@ -56,12 +43,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.PhaseSuite;
-import org.graalvm.compiler.phases.common.CanonicalizerPhase;
-import org.graalvm.compiler.phases.common.LoweringPhase;
-import org.graalvm.compiler.phases.common.inlining.InliningPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
-import org.graalvm.compiler.phases.tiers.LowTierContext;
-import org.graalvm.compiler.phases.tiers.MidTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.tiers.SuitesCreator;
 
@@ -84,42 +66,7 @@ public class HotSpotSuitesProvider extends SuitesProviderBase {
 
     @Override
     public Suites createSuites(OptionValues options) {
-        Suites ret = defaultSuitesCreator.createSuites(options);
-
-        if (ImmutableCode.getValue(options)) {
-            ListIterator<BasePhase<? super MidTierContext>> midTierLowering = ret.getMidTier().findPhase(LoweringPhase.class);
-
-            // lowering introduces class constants, therefore it must be after lowering
-            midTierLowering.add(new LoadJavaMirrorWithKlassPhase(config));
-
-            if (VerifyPhases.getValue(options)) {
-                midTierLowering.add(new AheadOfTimeVerificationPhase());
-            }
-
-            if (GeneratePIC.getValue(options)) {
-                ListIterator<BasePhase<? super HighTierContext>> highTierLowering = ret.getHighTier().findPhase(LoweringPhase.class);
-                highTierLowering.previous();
-                highTierLowering.add(new EliminateRedundantInitializationPhase());
-                if (HotSpotAOTProfilingPlugin.Options.TieredAOT.getValue(options)) {
-                    highTierLowering.add(new FinalizeProfileNodesPhase(HotSpotAOTProfilingPlugin.Options.TierAInvokeInlineeNotifyFreqLog.getValue(options)));
-                }
-                midTierLowering.add(new ReplaceConstantNodesPhase(true));
-
-                // Replace possible constants after GC barrier expansion.
-                ListIterator<BasePhase<? super LowTierContext>> lowTierLowering = ret.getLowTier().findPhase(LoweringPhase.class);
-                lowTierLowering.add(new ReplaceConstantNodesPhase(false));
-
-                // Replace inlining policy
-                if (Inline.getValue(options)) {
-                    ListIterator<BasePhase<? super HighTierContext>> iter = ret.getHighTier().findPhase(InliningPhase.class);
-                    InliningPhase inlining = (InliningPhase) iter.previous();
-                    CanonicalizerPhase canonicalizer = inlining.getCanonicalizer();
-                    iter.set(new InliningPhase(new AOTInliningPolicy(null), canonicalizer));
-                }
-            }
-        }
-
-        return ret;
+        return defaultSuitesCreator.createSuites(options);
     }
 
     protected PhaseSuite<HighTierContext> createGraphBuilderSuite() {
@@ -144,7 +91,7 @@ public class HotSpotSuitesProvider extends SuitesProviderBase {
 
                 StructuredGraph targetGraph = new StructuredGraph.Builder(graph.getOptions(), graph.getDebug(), AllowAssumptions.YES).method(graph.method()).trackNodeSourcePosition(
                                 graph.trackNodeSourcePosition()).build();
-                SimplifyingGraphDecoder graphDecoder = new SimplifyingGraphDecoder(runtime.getTarget().arch, targetGraph, context, !ImmutableCode.getValue(graph.getOptions()));
+                SimplifyingGraphDecoder graphDecoder = new SimplifyingGraphDecoder(runtime.getTarget().arch, targetGraph, context, true);
                 graphDecoder.decode(encodedGraph);
             }
 
@@ -181,7 +128,7 @@ public class HotSpotSuitesProvider extends SuitesProviderBase {
             suites.getPostAllocationOptimizationStage().appendPhase(new HotSpotInstructionProfiling(profileInstructions));
         }
         if (Assertions.assertionsEnabled()) {
-            suites.getPostAllocationOptimizationStage().appendPhase(new VerifyMaxRegisterSizePhase(config.maxVectorSize));
+            suites.getFinalCodeAnalysisStage().appendPhase(new VerifyMaxRegisterSizePhase(config.maxVectorSize));
         }
         return suites;
     }

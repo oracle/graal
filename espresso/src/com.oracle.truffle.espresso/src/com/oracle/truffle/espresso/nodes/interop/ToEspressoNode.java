@@ -41,6 +41,7 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.impl.PrimitiveKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.bytecodes.InitCheck;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -184,21 +185,27 @@ public abstract class ToEspressoNode extends Node {
 
     @Specialization(guards = {"!isStaticObject(value)", "!interop.isNull(value)", "isForeignException(klass)"})
     Object doForeignException(Object value, ObjectKlass klass,
-                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
+                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                    @Cached InitCheck initCheck) throws UnsupportedTypeException {
         if (!interop.isException(value)) {
-            throw UnsupportedTypeException.create(new Object[]{value}, "Could not cast foreign object to " + klass.getNameAsString());
+            throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.format("Could not cast foreign object to %s", klass.getNameAsString()));
         }
+        initCheck.execute(klass);
         return StaticObject.createForeignException(klass.getMeta(), value, interop);
     }
 
     @Specialization(guards = {"!isStaticObject(value)", "!interop.isNull(value)", "!isString(klass)", "!isForeignException(klass)", "!klass.isAbstract()"})
     Object doForeignClass(Object value, ObjectKlass klass,
-                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop) throws UnsupportedTypeException {
+                    @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                    @Cached BranchProfile errorProfile,
+                    @Cached InitCheck initCheck) throws UnsupportedTypeException {
         try {
             checkHasAllFieldsOrThrow(value, klass, interop, EspressoContext.get(this).getMeta());
         } catch (ClassCastException e) {
-            throw UnsupportedTypeException.create(new Object[]{value}, "Could not cast foreign object to " + klass.getNameAsString() + ": " + e.getMessage());
+            errorProfile.enter();
+            throw UnsupportedTypeException.create(new Object[]{value}, EspressoError.format("Could not cast foreign object to %s: ", klass.getNameAsString(), e.getMessage()));
         }
+        initCheck.execute(klass);
         return StaticObject.createForeign(EspressoLanguage.get(this), klass, value, interop);
     }
 

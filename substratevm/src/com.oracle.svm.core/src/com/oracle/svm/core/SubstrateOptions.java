@@ -46,12 +46,14 @@ import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.APIOptionGroup;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.ImmutableRuntimeOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.util.UserError;
@@ -124,12 +126,6 @@ public class SubstrateOptions {
     public static final String WATCHPID_PREFIX = "-watchpid";
     private static ValueUpdateHandler optimizeValueUpdateHandler;
     private static ValueUpdateHandler debugInfoValueUpdateHandler = SubstrateOptions::defaultDebugInfoValueUpdateHandler;
-
-    @Option(help = "Show available options based on comma-separated option-types (allowed categories: User, Expert, Debug).")//
-    public static final OptionKey<String> PrintFlags = new OptionKey<>(null);
-
-    @Option(help = "Print extra help, if available, based on comma-separated option names. Pass * to show all options that contain extra help.")//
-    public static final OptionKey<String> PrintFlagsWithExtraHelp = new OptionKey<>(null);
 
     @Option(help = "Control native-image code optimizations: 0 - no optimizations, 1 - basic optimizations, 2 - aggressive optimizations.", type = OptionType.User)//
     public static final HostedOptionKey<Integer> Optimize = new HostedOptionKey<Integer>(2) {
@@ -257,6 +253,9 @@ public class SubstrateOptions {
     @Option(help = "List of comma separated URL protocols to enable.")//
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> EnableURLProtocols = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
 
+    @Option(help = "List of comma separated URL protocols that must never be included.")//
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> DisableURLProtocols = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+
     @SuppressWarnings("unused") //
     @APIOption(name = "enable-all-security-services")//
     @Option(help = "Add all security service classes to the generated image.", deprecated = true)//
@@ -275,10 +274,34 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Integer> CodeAlignment = new HostedOptionKey<>(16);
 
     /*
+     * Build output options.
+     */
+    @Option(help = "Use new build output style", type = OptionType.User)//
+    public static final HostedOptionKey<Boolean> BuildOutputUseNewStyle = new HostedOptionKey<>(true);
+
+    @Option(help = "Prefix build output with '<pid>:<image name>'", type = OptionType.User)//
+    public static final HostedOptionKey<Boolean> BuildOutputPrefix = new HostedOptionKey<>(false);
+
+    @Option(help = "Colorize build output", type = OptionType.User)//
+    public static final HostedOptionKey<Boolean> BuildOutputColorful = new HostedOptionKey<>(true);
+
+    @Option(help = "Show links in build output", type = OptionType.User)//
+    public static final HostedOptionKey<Boolean> BuildOutputLinks = new HostedOptionKey<>(true);
+
+    @Option(help = "Report progress in build output", type = OptionType.User)//
+    public static final HostedOptionKey<Boolean> BuildOutputProgress = new HostedOptionKey<>(true);
+
+    @Option(help = "Show code and heap breakdowns as part of the build output", type = OptionType.User)//
+    public static final HostedOptionKey<Boolean> BuildOutputBreakdowns = new HostedOptionKey<>(true);
+
+    @Option(help = "Print GC warnings as part of build output", type = OptionType.User)//
+    public static final HostedOptionKey<Boolean> BuildOutputGCWarnings = new HostedOptionKey<>(true);
+
+    /*
      * Object and array allocation options.
      */
     @Option(help = "Number of cache lines to load after the array allocation using prefetch instructions.")//
-    public static final HostedOptionKey<Integer> AllocatePrefetchLines = new HostedOptionKey<>(3);
+    public static final HostedOptionKey<Integer> AllocatePrefetchLines = new HostedOptionKey<>(4);
 
     @Option(help = "Number of cache lines to load after the object address using prefetch instructions.")//
     public static final HostedOptionKey<Integer> AllocateInstancePrefetchLines = new HostedOptionKey<>(1);
@@ -288,6 +311,14 @@ public class SubstrateOptions {
 
     @Option(help = "Sets the prefetch instruction to prefetch ahead of the allocation pointer. Possible values are from 0 to 3. The actual instructions behind the values depend on the platform.")//
     public static final HostedOptionKey<Integer> AllocatePrefetchInstr = new HostedOptionKey<>(0);
+
+    @Option(help = "Sets the size (in bytes) of the prefetch distance for object allocation. " +
+                    "Memory about to be written with the value of new objects is prefetched up to this distance starting from the address of the last allocated object. " +
+                    "Each Java thread has its own allocation point.")//
+    public static final HostedOptionKey<Integer> AllocatePrefetchDistance = new HostedOptionKey<>(192);
+
+    @Option(help = "Sets the step size (in bytes) for sequential prefetch instructions.")//
+    public static final HostedOptionKey<Integer> AllocatePrefetchStepSize = new HostedOptionKey<>(64);
 
     /*
      * Isolate tear down options.
@@ -306,17 +337,6 @@ public class SubstrateOptions {
     public static final long getTearDownFailureNanos() {
         return TearDownFailureNanos.getValue().longValue();
     }
-
-    /*
-     * The default value is derived by taking the common value from HotSpot configs.
-     */
-    @Option(help = "Sets the size (in bytes) of the prefetch distance for object allocation. " +
-                    "Memory about to be written with the value of new objects is prefetched up to this distance starting from the address of the last allocated object. " +
-                    "Each Java thread has its own allocation point.")//
-    public static final HostedOptionKey<Integer> AllocatePrefetchDistance = new HostedOptionKey<>(256);
-
-    @Option(help = "Sets the step size (in bytes) for sequential prefetch instructions.")//
-    public static final HostedOptionKey<Integer> AllocatePrefetchStepSize = new HostedOptionKey<>(16);
 
     @Option(help = "Define the maximum number of stores for which the loop that zeroes out objects is unrolled.")//
     public static final HostedOptionKey<Integer> MaxUnrolledObjectZeroingStores = new HostedOptionKey<>(8);
@@ -354,6 +374,9 @@ public class SubstrateOptions {
     @Option(help = "Use callee saved registers to reduce spilling for low-frequency calls to stubs (if callee saved registers are supported by the architecture)")//
     public static final HostedOptionKey<Boolean> UseCalleeSavedRegisters = new HostedOptionKey<>(true);
 
+    @Option(help = "Use compressed frame encoding for frames without local values.", type = OptionType.Expert)//
+    public static final HostedOptionKey<Boolean> UseCompressedFrameEncodings = new HostedOptionKey<>(true);
+
     @Option(help = "Report error if <typename>[:<UsageKind>{,<UsageKind>}] is discovered during analysis (valid values for UsageKind: InHeap, Allocated, Reachable).", type = OptionType.Debug)//
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> ReportAnalysisForbiddenType = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
 
@@ -362,7 +385,7 @@ public class SubstrateOptions {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
             if ("llvm".equals(newValue)) {
-                if (JavaVersionUtil.JAVA_SPEC >= 9) {
+                if (JavaVersionUtil.JAVA_SPEC >= 11) {
                     /* See GR-14405, https://github.com/oracle/graal/issues/1056 */
                     GraalOptions.EmitStringSubstitutions.update(values, false);
                 }
@@ -425,7 +448,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> CheckToolchain = new HostedOptionKey<>(true);
 
     @APIOption(name = "install-exit-handlers")//
-    @Option(help = "Provide java.lang.Terminator exit handlers for executable images", type = User)//
+    @Option(help = "Provide java.lang.Terminator exit handlers", type = User)//
     public static final HostedOptionKey<Boolean> InstallExitHandlers = new HostedOptionKey<>(false);
 
     @Option(help = "When set to true, the image generator verifies that the image heap does not contain a home directory as a substring", type = User)//
@@ -539,7 +562,7 @@ public class SubstrateOptions {
     }
 
     @Option(help = "Overwrites the available number of processors provided by the OS. Any value <= 0 means using the processor count from the OS.")//
-    public static final RuntimeOptionKey<Integer> ActiveProcessorCount = new RuntimeOptionKey<>(-1);
+    public static final RuntimeOptionKey<Integer> ActiveProcessorCount = new ImmutableRuntimeOptionKey<>(-1);
 
     @Option(help = "For internal purposes only. Disables type id result verification even when running with assertions enabled.", stability = OptionStability.EXPERIMENTAL, type = Debug)//
     public static final HostedOptionKey<Boolean> DisableTypeIdResultVerification = new HostedOptionKey<>(true);
@@ -564,14 +587,30 @@ public class SubstrateOptions {
         }
     };
 
+    @Option(help = "Enables signal handling", stability = OptionStability.EXPERIMENTAL, type = Expert)//
+    public static final RuntimeOptionKey<Boolean> EnableSignalHandling = new RuntimeOptionKey<Boolean>(null) {
+        @Override
+        public Boolean getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
+            if (values.containsKey(this)) {
+                return (Boolean) values.get(this);
+            }
+            return ImageInfo.isExecutable();
+        }
+
+        @Override
+        public Boolean getValue(OptionValues values) {
+            return getValueOrDefault(values.getMap());
+        }
+    };
+
     @Option(help = "Enable Java Flight Recorder.")//
-    public static final RuntimeOptionKey<Boolean> FlightRecorder = new RuntimeOptionKey<>(false);
+    public static final RuntimeOptionKey<Boolean> FlightRecorder = new ImmutableRuntimeOptionKey<>(false);
 
     @Option(help = "Start flight recording with options.")//
-    public static final RuntimeOptionKey<String> StartFlightRecording = new RuntimeOptionKey<>("");
+    public static final RuntimeOptionKey<String> StartFlightRecording = new ImmutableRuntimeOptionKey<>("");
 
     @Option(help = "file:doc-files/FlightRecorderLoggingHelp.txt")//
-    public static final RuntimeOptionKey<String> FlightRecorderLogging = new RuntimeOptionKey<>("all=warning");
+    public static final RuntimeOptionKey<String> FlightRecorderLogging = new ImmutableRuntimeOptionKey<>("all=warning");
 
     public static String reportsPath() {
         return Paths.get(Paths.get(Path.getValue()).toString(), ImageSingletons.lookup(ReportingSupport.class).reportsPath).toAbsolutePath().toString();
@@ -605,4 +644,25 @@ public class SubstrateOptions {
             return 4096;
         }
     }
+
+    @Option(help = "Specifies how many details are printed for certain diagnostic thunks, e.g.: 'DumpThreads:1,DumpRegisters:2'. " +
+                    "A value of 1 will result in the maximum amount of information, higher values will print less information. " +
+                    "By default, the most detailed output is enabled for all diagnostic thunks. Wildcards (*) are supported in the name of the diagnostic thunk.", type = Expert)//
+    public static final RuntimeOptionKey<String> DiagnosticDetails = new RuntimeOptionKey<String>("") {
+        @Override
+        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
+            super.onValueUpdate(values, oldValue, newValue);
+            SubstrateDiagnostics.updateInitialInvocationCounts(newValue);
+        }
+    };
+
+    @APIOption(name = "configure-reflection-metadata")//
+    @Option(help = "Enable runtime instantiation of reflection objects for non-invoked methods.", type = OptionType.Expert)//
+    public static final HostedOptionKey<Boolean> ConfigureReflectionMetadata = new HostedOptionKey<>(true);
+
+    @Option(help = "Include a list of methods included in the image for runtime inspection.", type = OptionType.Expert)//
+    public static final HostedOptionKey<Boolean> IncludeMethodData = new HostedOptionKey<>(true);
+
+    @Option(help = "Verify type states computed by the static analysis at run time. This is useful when diagnosing problems in the static analysis, but reduces peak performance significantly.", type = Debug)//
+    public static final HostedOptionKey<Boolean> VerifyTypes = new HostedOptionKey<>(false);
 }

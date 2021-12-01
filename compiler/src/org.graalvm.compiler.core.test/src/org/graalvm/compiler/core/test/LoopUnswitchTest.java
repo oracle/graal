@@ -129,8 +129,8 @@ public class LoopUnswitchTest extends GraalCompilerTest {
         new LoopUnswitchingPhase(new DefaultLoopPolicies()).apply(graph, getDefaultHighTierContext());
 
         // Framestates create comparison problems
-        graph.clearAllStateAfter();
-        referenceGraph.clearAllStateAfter();
+        graph.clearAllStateAfterForTestingOnly();
+        referenceGraph.clearAllStateAfterForTestingOnly();
 
         createCanonicalizerPhase().apply(graph, getProviders());
         createCanonicalizerPhase().apply(referenceGraph, getProviders());

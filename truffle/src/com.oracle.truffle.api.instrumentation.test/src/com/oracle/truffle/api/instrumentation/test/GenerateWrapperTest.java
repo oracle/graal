@@ -87,6 +87,10 @@ public class GenerateWrapperTest extends AbstractPolyglotTest {
         }
     }
 
+    public GenerateWrapperTest() {
+        needsInstrumentEnv = true;
+    }
+
     @Test
     public void testDefaultWrapper() {
         setupEnv();

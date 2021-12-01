@@ -293,7 +293,7 @@ public final class PathExhibitor {
         }
 
         @Override
-        public boolean visitObjectReference(Pointer stackSlot, boolean compressed) {
+        public boolean visitObjectReference(Pointer stackSlot, boolean compressed, Object holderObject) {
             Log trace = Log.noopLog();
             if (stackSlot.isNull()) {
                 return true;
@@ -320,7 +320,7 @@ public final class PathExhibitor {
         }
 
         @Override
-        public boolean visitObjectReference(Pointer objRef, boolean compressed) {
+        public boolean visitObjectReference(Pointer objRef, boolean compressed, Object holderObject) {
             if (objRef.isNull()) {
                 return true;
             }
@@ -363,7 +363,7 @@ public final class PathExhibitor {
         }
 
         @Override
-        public boolean visitObjectReference(Pointer objRef, boolean compressed) {
+        public boolean visitObjectReference(Pointer objRef, boolean compressed, Object holderObject) {
             if (objRef.isNull()) {
                 return true;
             }

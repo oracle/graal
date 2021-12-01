@@ -34,7 +34,6 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;
@@ -246,16 +245,17 @@ public class RuntimeCodeInfoMemory {
         return (index + 1 < length) ? (index + 1) : 0;
     }
 
-    public void printTable(Log log, boolean allowJavaHeapAccess) {
-        assert VMOperation.isInProgressAtSafepoint() ||
-                        SubstrateDiagnostics.isInProgressByCurrentThread() : "outside of a safepoint, this may only be used for printing diagnostics as the table could be freed at any time";
-        log.string("RuntimeCodeInfoMemory contains ").signed(count).string(" methods:").indent(true);
-        if (table.isNonNull()) {
-            for (int i = 0; i < NonmovableArrays.lengthOf(table); i++) {
-                printCodeInfo(log, i, allowJavaHeapAccess);
+    public void printTable(Log log, boolean allowJavaHeapAccess, boolean allowUnsafeOperations) {
+        if (allowUnsafeOperations || VMOperation.isInProgressAtSafepoint()) {
+            // If we are not at a safepoint, then the table could be freed at any time.
+            log.string("RuntimeCodeInfoMemory contains ").signed(count).string(" methods:").indent(true);
+            if (table.isNonNull()) {
+                for (int i = 0; i < NonmovableArrays.lengthOf(table); i++) {
+                    printCodeInfo(log, i, allowJavaHeapAccess);
+                }
             }
+            log.indent(false);
         }
-        log.indent(false);
     }
 
     @Uninterruptible(reason = "Must prevent the GC from freeing the CodeInfo object.")
@@ -300,31 +300,33 @@ public class RuntimeCodeInfoMemory {
     }
 
     @Uninterruptible(reason = "Must prevent the GC from freeing the CodeInfo object.")
-    public boolean printLocationInfo(Log log, UnsignedWord value, boolean allowJavaHeapAccess) {
-        assert SubstrateDiagnostics.isInProgressByCurrentThread() : "may only be used for printing diagnostics as the table could be freed at any time";
-        if (table.isNonNull()) {
-            for (int i = 0; i < NonmovableArrays.lengthOf(table); i++) {
-                UntetheredCodeInfo info = NonmovableArrays.getWord(table, i);
-                if (info.isNonNull()) {
-                    if (info.equal(value)) {
-                        String name = allowJavaHeapAccess ? UntetheredCodeInfoAccess.getName(info) : null;
-                        printIsCodeInfoObject(log, name);
-                        return true;
-                    }
+    public boolean printLocationInfo(Log log, UnsignedWord value, boolean allowJavaHeapAccess, boolean allowUnsafeOperations) {
+        if (allowUnsafeOperations || VMOperation.isInProgressAtSafepoint()) {
+            // If we are not at a safepoint, then the table could be freed at any time.
+            if (table.isNonNull()) {
+                for (int i = 0; i < NonmovableArrays.lengthOf(table); i++) {
+                    UntetheredCodeInfo info = NonmovableArrays.getWord(table, i);
+                    if (info.isNonNull()) {
+                        if (info.equal(value)) {
+                            String name = allowJavaHeapAccess ? UntetheredCodeInfoAccess.getName(info) : null;
+                            printIsCodeInfoObject(log, name);
+                            return true;
+                        }
 
-                    UnsignedWord codeInfoEnd = ((UnsignedWord) info).add(RuntimeCodeInfoAccess.getSizeOfCodeInfo());
-                    if (value.aboveOrEqual((UnsignedWord) info) && value.belowThan(codeInfoEnd)) {
-                        String name = allowJavaHeapAccess ? UntetheredCodeInfoAccess.getName(info) : null;
-                        printInsideCodeInfo(log, info, name);
-                        return true;
-                    }
+                        UnsignedWord codeInfoEnd = ((UnsignedWord) info).add(RuntimeCodeInfoAccess.getSizeOfCodeInfo());
+                        if (value.aboveOrEqual((UnsignedWord) info) && value.belowThan(codeInfoEnd)) {
+                            String name = allowJavaHeapAccess ? UntetheredCodeInfoAccess.getName(info) : null;
+                            printInsideCodeInfo(log, info, name);
+                            return true;
+                        }
 
-                    UnsignedWord codeStart = (UnsignedWord) UntetheredCodeInfoAccess.getCodeStart(info);
-                    UnsignedWord codeEnd = (UnsignedWord) UntetheredCodeInfoAccess.getCodeEnd(info);
-                    if (value.aboveOrEqual(codeStart) && value.belowOrEqual(codeEnd)) {
-                        String name = allowJavaHeapAccess ? UntetheredCodeInfoAccess.getName(info) : null;
-                        printInsideInstructions(log, value, info, codeStart, name);
-                        return true;
+                        UnsignedWord codeStart = (UnsignedWord) UntetheredCodeInfoAccess.getCodeStart(info);
+                        UnsignedWord codeEnd = (UnsignedWord) UntetheredCodeInfoAccess.getCodeEnd(info);
+                        if (value.aboveOrEqual(codeStart) && value.belowOrEqual(codeEnd)) {
+                            String name = allowJavaHeapAccess ? UntetheredCodeInfoAccess.getName(info) : null;
+                            printInsideInstructions(log, value, info, codeStart, name);
+                            return true;
+                        }
                     }
                 }
             }

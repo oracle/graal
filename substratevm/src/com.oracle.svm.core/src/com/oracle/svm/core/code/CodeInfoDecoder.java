@@ -24,9 +24,10 @@
  */
 package com.oracle.svm.core.code;
 
+// Checkstyle: allow reflection
+
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
-import com.oracle.svm.core.heap.ReferenceMapIndex;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.options.Option;
@@ -34,6 +35,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.heap.ReferenceMapIndex;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.ByteArrayReader;
 import com.oracle.svm.core.util.Counter;
@@ -355,7 +357,7 @@ public final class CodeInfoDecoder {
         }
         int frameInfoIndex = NonmovableByteArrayReader.getS4(CodeInfoAccess.getCodeInfoEncodings(info), offsetFI(entryOffset, entryFlags));
         return FrameInfoDecoder.decodeFrameInfo(isDeoptEntry, new ReusableTypeReader(CodeInfoAccess.getFrameInfoEncodings(info), frameInfoIndex), info,
-                        FrameInfoDecoder.HeapBasedFrameInfoQueryResultAllocator, FrameInfoDecoder.HeapBasedValueInfoAllocator, true);
+                        FrameInfoDecoder.HeapBasedFrameInfoQueryResultAllocator, FrameInfoDecoder.HeapBasedValueInfoAllocator);
     }
 
     @AlwaysInline("Make IP-lookup loop call free")

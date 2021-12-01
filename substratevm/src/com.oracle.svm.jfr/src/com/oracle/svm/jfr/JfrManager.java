@@ -24,7 +24,15 @@
  */
 package com.oracle.svm.jfr;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.text.ParseException;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -36,18 +44,19 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.jfr.events.ClassLoadingStatistics;
-import com.oracle.svm.jfr.events.InitialEnvironmentVariable;
-import com.oracle.svm.jfr.events.InitialSystemProperty;
-import com.oracle.svm.jfr.events.JVMInformation;
-import com.oracle.svm.jfr.events.JavaThreadStatistics;
-import com.oracle.svm.jfr.events.OSInformation;
-import com.oracle.svm.jfr.events.PhysicalMemory;
+import com.oracle.svm.jfr.events.EndChunkNativePeriodicEvents;
+import com.oracle.svm.jfr.events.EveryChunkNativePeriodicEvents;
 
 import jdk.jfr.FlightRecorder;
+import jdk.jfr.Recording;
 import jdk.jfr.internal.LogLevel;
 import jdk.jfr.internal.LogTag;
 import jdk.jfr.internal.Logger;
+import jdk.jfr.internal.OldObjectSample;
+import jdk.jfr.internal.PrivateAccess;
+import jdk.jfr.internal.SecuritySupport;
+import jdk.jfr.internal.Utils;
+import jdk.jfr.internal.jfc.JFC;
 
 /**
  * Called during VM startup and teardown. Also triggers the JFR argument parsing.
@@ -64,20 +73,26 @@ public class JfrManager {
         return ImageSingletons.lookup(JfrManager.class);
     }
 
-    void setup() {
-        parseFlightRecorderLogging(SubstrateOptions.FlightRecorderLogging.getValue());
-        if (SubstrateOptions.FlightRecorder.getValue()) {
-            periodicEventSetup();
-            initRecording();
-        }
+    Runnable startupHook() {
+        return () -> {
+            parseFlightRecorderLogging(SubstrateOptions.FlightRecorderLogging.getValue());
+            if (SubstrateOptions.FlightRecorder.getValue()) {
+                periodicEventSetup();
+                initRecording();
+            }
+        };
     }
 
-    void teardown() {
-        if (SubstrateOptions.FlightRecorder.getValue()) {
-            // Everything should already have been torn down by JVM.destroyJFR(), which is called in
-            // a shutdown hook.
-            assert !SubstrateJVM.isInitialized();
-        }
+    Runnable shutdownHook() {
+        return () -> {
+            if (SubstrateOptions.FlightRecorder.getValue()) {
+                // Everything should already have been torn down by JVM.destroyJFR(), which is
+                // called in a shutdown hook. So in this method we should only unregister periodic
+                // events.
+                FlightRecorder.removePeriodicEvent(EveryChunkNativePeriodicEvents::emit);
+                FlightRecorder.removePeriodicEvent(EndChunkNativePeriodicEvents::emit);
+            }
+        };
     }
 
     private static void parseFlightRecorderLogging(String option) {
@@ -85,13 +100,10 @@ public class JfrManager {
     }
 
     private static void periodicEventSetup() throws SecurityException {
-        FlightRecorder.addPeriodicEvent(InitialSystemProperty.class, InitialSystemProperty::emitSystemProperties);
-        FlightRecorder.addPeriodicEvent(InitialEnvironmentVariable.class, InitialEnvironmentVariable::emitEnvironmentVariables);
-        FlightRecorder.addPeriodicEvent(JVMInformation.class, JVMInformation::emitJVMInformation);
-        FlightRecorder.addPeriodicEvent(OSInformation.class, OSInformation::emitOSInformation);
-        FlightRecorder.addPeriodicEvent(PhysicalMemory.class, PhysicalMemory::emitPhysicalMemory);
-        FlightRecorder.addPeriodicEvent(JavaThreadStatistics.class, JavaThreadStatistics::emitJavaThreadStats);
-        FlightRecorder.addPeriodicEvent(ClassLoadingStatistics.class, ClassLoadingStatistics::emitClassLoadingStats);
+        // The callbacks that are registered below, are invoked regularly to emit periodic native
+        // events such as OSInformation or JVMInformation.
+        FlightRecorder.addPeriodicEvent(EveryChunkNativePeriodicEvents.class, EveryChunkNativePeriodicEvents::emit);
+        FlightRecorder.addPeriodicEvent(EndChunkNativePeriodicEvents.class, EndChunkNativePeriodicEvents::emit);
     }
 
     private static void initRecording() {
@@ -107,13 +119,173 @@ public class JfrManager {
         Boolean dumpOnExit = parseBoolean(args, JfrStartArgument.DumpOnExit);
         Boolean pathToGcRoots = parseBoolean(args, JfrStartArgument.PathToGCRoots);
 
-        Target_jdk_jfr_internal_dcmd_DCmdStart dcmdStart = new Target_jdk_jfr_internal_dcmd_DCmdStart();
         try {
-            String msg = dcmdStart.execute(name, settings, delay, duration, disk, path, maxAge, maxSize,
-                            dumpOnExit, pathToGcRoots);
-            Logger.log(LogTag.JFR_SYSTEM, LogLevel.INFO, msg);
+            if (Logger.shouldLog(LogTag.JFR_DCMD, LogLevel.DEBUG)) {
+                Logger.log(LogTag.JFR_DCMD, LogLevel.DEBUG, "Executing DCmdStart: name=" + name +
+                                ", settings=" + Arrays.asList(settings) +
+                                ", delay=" + delay +
+                                ", duration=" + duration +
+                                ", disk=" + disk +
+                                ", filename=" + path +
+                                ", maxage=" + maxAge +
+                                ", maxsize=" + maxSize +
+                                ", dumponexit =" + dumpOnExit +
+                                ", path-to-gc-roots=" + pathToGcRoots);
+            }
+            if (name != null) {
+                try {
+                    Integer.parseInt(name);
+                    throw new Exception("Name of recording can't be numeric");
+                } catch (NumberFormatException nfe) {
+                    // ok, can't be mixed up with name
+                }
+            }
+
+            if (duration == null && Boolean.FALSE.equals(dumpOnExit) && path != null) {
+                throw new Exception("Filename can only be set for a time bound recording or if dumponexit=true. Set duration/dumponexit or omit filename.");
+            }
+            if (settings.length == 1 && settings[0].length() == 0) {
+                throw new Exception("No settings specified. Use settings=none to start without any settings");
+            }
+            Map<String, String> s = new HashMap<>();
+            for (String configName : settings) {
+                try {
+                    s.putAll(JFC.createKnown(configName).getSettings());
+                } catch (FileNotFoundException e) {
+                    throw new Exception("Could not find settings file'" + configName + "'", e);
+                } catch (IOException | ParseException e) {
+                    throw new Exception("Could not parse settings file '" + settings[0] + "'", e);
+                }
+            }
+
+            OldObjectSample.updateSettingPathToGcRoots(s, pathToGcRoots);
+
+            if (duration != null) {
+                if (duration < 1000L * 1000L * 1000L) {
+                    // to avoid typo, duration below 1s makes no sense
+                    throw new Exception("Could not start recording, duration must be at least 1 second.");
+                }
+            }
+
+            if (delay != null) {
+                if (delay < 1000L * 1000L * 1000) {
+                    // to avoid typo, delay shorter than 1s makes no sense.
+                    throw new Exception("Could not start recording, delay must be at least 1 second.");
+                }
+            }
+
+            Recording recording = new Recording();
+            if (name != null) {
+                recording.setName(name);
+            }
+
+            if (disk != null) {
+                recording.setToDisk(disk.booleanValue());
+            }
+            recording.setSettings(s);
+            SecuritySupport.SafePath safePath = null;
+
+            if (path != null) {
+                try {
+                    if (dumpOnExit == null) {
+                        // default to dumponexit=true if user specified filename
+                        dumpOnExit = Boolean.TRUE;
+                    }
+                    Path p = Paths.get(path);
+                    if (Files.isDirectory(p) && Boolean.TRUE.equals(dumpOnExit)) {
+                        // Decide destination filename at dump time
+                        // Purposely avoid generating filename in Recording#setDestination due to
+                        // security concerns
+                        PrivateAccess.getInstance().getPlatformRecording(recording).setDumpOnExitDirectory(new SecuritySupport.SafePath(p));
+                    } else {
+                        safePath = resolvePath(recording, path);
+                        recording.setDestination(safePath.toPath());
+                    }
+                } catch (IOException | InvalidPathException e) {
+                    recording.close();
+                    throw new Exception("Could not start recording, not able to write to file: " + path, e);
+                }
+            }
+
+            if (maxAge != null) {
+                recording.setMaxAge(Duration.ofNanos(maxAge));
+            }
+
+            if (maxSize != null) {
+                recording.setMaxSize(maxSize);
+            }
+
+            if (duration != null) {
+                recording.setDuration(Duration.ofNanos(duration));
+            }
+
+            if (dumpOnExit != null) {
+                recording.setDumpOnExit(dumpOnExit);
+            }
+
+            StringBuilder msg = new StringBuilder();
+
+            if (delay != null) {
+                Duration dDelay = Duration.ofNanos(delay);
+                recording.scheduleStart(dDelay);
+
+                msg.append("Recording " + recording.getId() + " scheduled to start in ");
+                msg.append(Utils.formatTimespan(dDelay, " "));
+                msg.append(".");
+            } else {
+                recording.start();
+                msg.append("Started recording " + recording.getId() + ".");
+            }
+
+            if (recording.isToDisk() && duration == null && maxAge == null && maxSize == null) {
+                msg.append(" No limit specified, using maxsize=250MB as default.");
+                recording.setMaxSize(250 * 1024L * 1024L);
+            }
+
+            if (safePath != null && duration != null) {
+                msg.append(" The result will be written to:");
+                msg.append(System.getProperty("line.separator"));
+                msg.append(getPath(safePath));
+                msg.append(System.getProperty("line.separator"));
+            }
+            Logger.log(LogTag.JFR_SYSTEM, LogLevel.INFO, msg.toString());
         } catch (Throwable e) {
             VMError.shouldNotReachHere(e);
+        }
+    }
+
+    private static SecuritySupport.SafePath resolvePath(Recording recording, String filename) throws InvalidPathException {
+        if (filename == null) {
+            return makeGenerated(recording, Paths.get("."));
+        }
+        Path path = Paths.get(filename);
+        if (Files.isDirectory(path)) {
+            return makeGenerated(recording, path);
+        }
+        return new SecuritySupport.SafePath(path.toAbsolutePath().normalize());
+    }
+
+    private static SecuritySupport.SafePath makeGenerated(Recording recording, Path directory) {
+        return new SecuritySupport.SafePath(directory.toAbsolutePath().resolve(Utils.makeFilename(recording)).normalize());
+    }
+
+    private static String getPath(SecuritySupport.SafePath path) {
+        if (path == null) {
+            return "N/A";
+        }
+        try {
+            return getPath(SecuritySupport.getAbsolutePath(path).toPath());
+        } catch (IOException ioe) {
+            return getPath(path.toPath());
+        }
+    }
+
+    private static String getPath(Path path) {
+        try {
+            return path.toAbsolutePath().toString();
+        } catch (SecurityException e) {
+            // fall back on filename
+            return path.toString();
         }
     }
 

@@ -35,10 +35,13 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.svm.configure.config.ConfigurationMemberKind;
+import com.oracle.svm.configure.config.ConfigurationMemberInfo;
+import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberAccessibility;
+import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberDeclaration;
 import com.oracle.svm.configure.config.ConfigurationMethod;
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.config.ConfigurationType;
@@ -124,13 +127,13 @@ public class OmitPreviousConfigTests {
     }
 
     private static void doTestGeneratedTypeConfig() {
-        TypeMethodsWithFlagsTest typeMethodsWithFlagsTestDeclared = new TypeMethodsWithFlagsTest(ConfigurationMemberKind.DECLARED);
+        TypeMethodsWithFlagsTest typeMethodsWithFlagsTestDeclared = new TypeMethodsWithFlagsTest(ConfigurationMemberDeclaration.DECLARED);
         typeMethodsWithFlagsTestDeclared.doTest();
 
-        TypeMethodsWithFlagsTest typeMethodsWithFlagsTestPublic = new TypeMethodsWithFlagsTest(ConfigurationMemberKind.PUBLIC);
+        TypeMethodsWithFlagsTest typeMethodsWithFlagsTestPublic = new TypeMethodsWithFlagsTest(ConfigurationMemberDeclaration.PUBLIC);
         typeMethodsWithFlagsTestPublic.doTest();
 
-        TypeMethodsWithFlagsTest typeMethodsWithFlagsTestDeclaredPublic = new TypeMethodsWithFlagsTest(ConfigurationMemberKind.DECLARED_AND_PUBLIC);
+        TypeMethodsWithFlagsTest typeMethodsWithFlagsTestDeclaredPublic = new TypeMethodsWithFlagsTest(ConfigurationMemberDeclaration.DECLARED_AND_PUBLIC);
         typeMethodsWithFlagsTestDeclaredPublic.doTest();
     }
 
@@ -145,25 +148,27 @@ public class OmitPreviousConfigTests {
     }
 
     private static void doTestExpectedMissingTypes(TypeConfiguration typeConfig) {
-        Assert.assertNull(typeConfig.get("FlagTestA"));
-        Assert.assertNull(typeConfig.get("FlagTestB"));
+        Assert.assertNull(typeConfig.get(ConfigurationCondition.alwaysTrue(), "FlagTestA"));
+        Assert.assertNull(typeConfig.get(ConfigurationCondition.alwaysTrue(), "FlagTestB"));
     }
 
     private static void doTestTypeFlags(TypeConfiguration typeConfig) {
         ConfigurationType flagTestHasDeclaredType = getConfigTypeOrFail(typeConfig, "FlagTestC");
-        Assert.assertTrue(flagTestHasDeclaredType.haveAllDeclaredClasses() || flagTestHasDeclaredType.haveAllDeclaredFields() || flagTestHasDeclaredType.haveAllDeclaredConstructors());
+        Assert.assertTrue(ConfigurationType.TestBackdoor.haveAllDeclaredClasses(flagTestHasDeclaredType) || ConfigurationType.TestBackdoor.haveAllDeclaredFields(flagTestHasDeclaredType) ||
+                        ConfigurationType.TestBackdoor.getAllDeclaredConstructors(flagTestHasDeclaredType) == ConfigurationMemberAccessibility.ACCESSED);
 
         ConfigurationType flagTestHasPublicType = getConfigTypeOrFail(typeConfig, "FlagTestD");
-        Assert.assertTrue(flagTestHasPublicType.haveAllPublicClasses() || flagTestHasPublicType.haveAllPublicFields() || flagTestHasPublicType.haveAllPublicConstructors());
+        Assert.assertTrue(ConfigurationType.TestBackdoor.haveAllPublicClasses(flagTestHasPublicType) || ConfigurationType.TestBackdoor.haveAllPublicFields(flagTestHasPublicType) ||
+                        ConfigurationType.TestBackdoor.getAllPublicConstructors(flagTestHasPublicType) == ConfigurationMemberAccessibility.ACCESSED);
     }
 
     private static void doTestFields(TypeConfiguration typeConfig) {
         ConfigurationType fieldTestType = getConfigTypeOrFail(typeConfig, "MethodAndFieldTest");
 
-        Assert.assertNull(fieldTestType.getFieldInfoIfPresent("SimpleField"));
-        Assert.assertNull(fieldTestType.getFieldInfoIfPresent("AllowWriteField"));
+        Assert.assertNull(ConfigurationType.TestBackdoor.getFieldInfoIfPresent(fieldTestType, "SimpleField"));
+        Assert.assertNull(ConfigurationType.TestBackdoor.getFieldInfoIfPresent(fieldTestType, "AllowWriteField"));
 
-        FieldInfo newField = fieldTestType.getFieldInfoIfPresent("NewField");
+        FieldInfo newField = ConfigurationType.TestBackdoor.getFieldInfoIfPresent(fieldTestType, "NewField");
         Assert.assertFalse(newField.isFinalButWritable());
 
         FieldInfo newWritableField = getFieldInfoOrFail(fieldTestType, "NewAllowWriteField");
@@ -176,36 +181,39 @@ public class OmitPreviousConfigTests {
     private static void doTestMethods(TypeConfiguration typeConfig) {
         ConfigurationType methodTestType = getConfigTypeOrFail(typeConfig, "MethodAndFieldTest");
 
-        Assert.assertNull(methodTestType.getMethodKindIfPresent(new ConfigurationMethod("<init>", "(I)V")));
-        Assert.assertNotNull(methodTestType.getMethodKindIfPresent(new ConfigurationMethod("method", "()V")));
+        Assert.assertNull(ConfigurationType.TestBackdoor.getMethodInfoIfPresent(methodTestType, new ConfigurationMethod("<init>", "(I)V")));
+        Assert.assertNotNull(ConfigurationType.TestBackdoor.getMethodInfoIfPresent(methodTestType, new ConfigurationMethod("method", "()V")));
     }
 
     private static void doTestProxyConfig(ProxyConfiguration proxyConfig) {
-        Assert.assertFalse(proxyConfig.contains("testProxySeenA", "testProxySeenB", "testProxySeenC"));
-        Assert.assertTrue(proxyConfig.contains("testProxyUnseen"));
+        ConfigurationCondition condition = ConfigurationCondition.alwaysTrue();
+        Assert.assertFalse(proxyConfig.contains(condition, "testProxySeenA", "testProxySeenB", "testProxySeenC"));
+        Assert.assertTrue(proxyConfig.contains(condition, "testProxyUnseen"));
     }
 
     private static void doTestResourceConfig(ResourceConfiguration resourceConfig) {
         Assert.assertFalse(resourceConfig.anyResourceMatches("seenResource.txt"));
         Assert.assertTrue(resourceConfig.anyResourceMatches("unseenResource.txt"));
 
-        Assert.assertFalse(resourceConfig.anyBundleMatches("seenBundle"));
-        Assert.assertTrue(resourceConfig.anyBundleMatches("unseenBundle"));
+        ConfigurationCondition condition = ConfigurationCondition.alwaysTrue();
+        Assert.assertFalse(resourceConfig.anyBundleMatches(condition, "seenBundle"));
+        Assert.assertTrue(resourceConfig.anyBundleMatches(condition, "unseenBundle"));
     }
 
     private static void doTestSerializationConfig(SerializationConfiguration serializationConfig) {
-        Assert.assertFalse(serializationConfig.contains("seenType", null));
-        Assert.assertTrue(serializationConfig.contains("unseenType", null));
+        ConfigurationCondition condition = ConfigurationCondition.alwaysTrue();
+        Assert.assertFalse(serializationConfig.contains(condition, "seenType", null));
+        Assert.assertTrue(serializationConfig.contains(condition, "unseenType", null));
     }
 
     private static ConfigurationType getConfigTypeOrFail(TypeConfiguration typeConfig, String typeName) {
-        ConfigurationType type = typeConfig.get(typeName);
+        ConfigurationType type = typeConfig.get(ConfigurationCondition.alwaysTrue(), typeName);
         Assert.assertNotNull(type);
         return type;
     }
 
     private static FieldInfo getFieldInfoOrFail(ConfigurationType type, String field) {
-        FieldInfo fieldInfo = type.getFieldInfoIfPresent(field);
+        FieldInfo fieldInfo = ConfigurationType.TestBackdoor.getFieldInfoIfPresent(type, field);
         Assert.assertNotNull(fieldInfo);
         return fieldInfo;
     }
@@ -222,68 +230,67 @@ class TypeMethodsWithFlagsTest {
     static final String INTERNAL_SIGNATURE_ONE = "([Ljava/lang/String;)V";
     static final String INTERNAL_SIGNATURE_TWO = "([Ljava/lang/String;Ljava/lang/String;)V";
 
-    final ConfigurationMemberKind methodKind;
+    final ConfigurationMemberDeclaration methodKind;
 
-    final Map<ConfigurationMethod, ConfigurationMemberKind> methodsThatMustExist = new HashMap<>();
-    final Map<ConfigurationMethod, ConfigurationMemberKind> methodsThatMustNotExist = new HashMap<>();
+    final Map<ConfigurationMethod, ConfigurationMemberDeclaration> methodsThatMustExist = new HashMap<>();
+    final Map<ConfigurationMethod, ConfigurationMemberDeclaration> methodsThatMustNotExist = new HashMap<>();
 
     final TypeConfiguration previousConfig = new TypeConfiguration();
     final TypeConfiguration currentConfig = new TypeConfiguration();
 
-    TypeMethodsWithFlagsTest(ConfigurationMemberKind methodKind) {
+    TypeMethodsWithFlagsTest(ConfigurationMemberDeclaration methodKind) {
         this.methodKind = methodKind;
         generateTestMethods();
         populateConfig();
-        currentConfig.removeAll(previousConfig);
     }
 
     void generateTestMethods() {
-        Map<ConfigurationMethod, ConfigurationMemberKind> targetMap;
+        Map<ConfigurationMethod, ConfigurationMemberDeclaration> targetMap;
 
-        targetMap = getMethodsMap(ConfigurationMemberKind.DECLARED);
-        targetMap.put(new ConfigurationMethod("<init>", INTERNAL_SIGNATURE_ONE), ConfigurationMemberKind.DECLARED);
-        targetMap.put(new ConfigurationMethod("testMethodDeclaredSpecificSignature", INTERNAL_SIGNATURE_ONE), ConfigurationMemberKind.DECLARED);
-        targetMap.put(new ConfigurationMethod("testMethodDeclaredMatchesAllSignature", null), ConfigurationMemberKind.DECLARED);
+        targetMap = getMethodsMap(ConfigurationMemberDeclaration.DECLARED);
+        targetMap.put(new ConfigurationMethod("<init>", INTERNAL_SIGNATURE_ONE), ConfigurationMemberDeclaration.DECLARED);
+        targetMap.put(new ConfigurationMethod("testMethodDeclaredSpecificSignature", INTERNAL_SIGNATURE_ONE), ConfigurationMemberDeclaration.DECLARED);
+        targetMap.put(new ConfigurationMethod("testMethodDeclaredMatchesAllSignature", null), ConfigurationMemberDeclaration.DECLARED);
 
-        targetMap = getMethodsMap(ConfigurationMemberKind.PUBLIC);
-        targetMap.put(new ConfigurationMethod("<init>", INTERNAL_SIGNATURE_TWO), ConfigurationMemberKind.PUBLIC);
-        targetMap.put(new ConfigurationMethod("testMethodPublicSpecificSignature", INTERNAL_SIGNATURE_ONE), ConfigurationMemberKind.PUBLIC);
-        targetMap.put(new ConfigurationMethod("testMethodPublicMatchesAllSignature", null), ConfigurationMemberKind.PUBLIC);
+        targetMap = getMethodsMap(ConfigurationMemberDeclaration.PUBLIC);
+        targetMap.put(new ConfigurationMethod("<init>", INTERNAL_SIGNATURE_TWO), ConfigurationMemberDeclaration.PUBLIC);
+        targetMap.put(new ConfigurationMethod("testMethodPublicSpecificSignature", INTERNAL_SIGNATURE_ONE), ConfigurationMemberDeclaration.PUBLIC);
+        targetMap.put(new ConfigurationMethod("testMethodPublicMatchesAllSignature", null), ConfigurationMemberDeclaration.PUBLIC);
     }
 
-    Map<ConfigurationMethod, ConfigurationMemberKind> getMethodsMap(ConfigurationMemberKind otherKind) {
-        if (methodKind.equals(otherKind) || methodKind.equals(ConfigurationMemberKind.DECLARED_AND_PUBLIC)) {
+    Map<ConfigurationMethod, ConfigurationMemberDeclaration> getMethodsMap(ConfigurationMemberDeclaration otherKind) {
+        if (methodKind.equals(otherKind) || methodKind.equals(ConfigurationMemberDeclaration.DECLARED_AND_PUBLIC)) {
             return methodsThatMustNotExist;
         }
         return methodsThatMustExist;
     }
 
     void populateConfig() {
-        ConfigurationType oldType = new ConfigurationType(getTypeName());
+        ConfigurationType oldType = new ConfigurationType(ConfigurationCondition.alwaysTrue(), getTypeName());
         setFlags(oldType);
         previousConfig.add(oldType);
 
-        ConfigurationType newType = new ConfigurationType(getTypeName());
-        for (Map.Entry<ConfigurationMethod, ConfigurationMemberKind> methodEntry : methodsThatMustExist.entrySet()) {
+        ConfigurationType newType = new ConfigurationType(ConfigurationCondition.alwaysTrue(), getTypeName());
+        for (Map.Entry<ConfigurationMethod, ConfigurationMemberDeclaration> methodEntry : methodsThatMustExist.entrySet()) {
             newType.addMethod(methodEntry.getKey().getName(), methodEntry.getKey().getInternalSignature(), methodEntry.getValue());
         }
-        for (Map.Entry<ConfigurationMethod, ConfigurationMemberKind> methodEntry : methodsThatMustNotExist.entrySet()) {
+        for (Map.Entry<ConfigurationMethod, ConfigurationMemberDeclaration> methodEntry : methodsThatMustNotExist.entrySet()) {
             newType.addMethod(methodEntry.getKey().getName(), methodEntry.getKey().getInternalSignature(), methodEntry.getValue());
         }
         currentConfig.add(newType);
     }
 
     void setFlags(ConfigurationType config) {
-        if (methodKind.equals(ConfigurationMemberKind.DECLARED) || methodKind.equals(ConfigurationMemberKind.DECLARED_AND_PUBLIC)) {
+        if (methodKind.equals(ConfigurationMemberDeclaration.DECLARED) || methodKind.equals(ConfigurationMemberDeclaration.DECLARED_AND_PUBLIC)) {
             config.setAllDeclaredClasses();
-            config.setAllDeclaredConstructors();
-            config.setAllDeclaredMethods();
+            config.setAllDeclaredConstructors(ConfigurationMemberAccessibility.ACCESSED);
+            config.setAllDeclaredMethods(ConfigurationMemberAccessibility.ACCESSED);
             config.setAllDeclaredFields();
         }
-        if (methodKind.equals(ConfigurationMemberKind.PUBLIC) || methodKind.equals(ConfigurationMemberKind.DECLARED_AND_PUBLIC)) {
+        if (methodKind.equals(ConfigurationMemberDeclaration.PUBLIC) || methodKind.equals(ConfigurationMemberDeclaration.DECLARED_AND_PUBLIC)) {
             config.setAllPublicClasses();
-            config.setAllPublicConstructors();
-            config.setAllPublicMethods();
+            config.setAllPublicConstructors(ConfigurationMemberAccessibility.ACCESSED);
+            config.setAllPublicMethods(ConfigurationMemberAccessibility.ACCESSED);
             config.setAllPublicFields();
         }
     }
@@ -293,20 +300,22 @@ class TypeMethodsWithFlagsTest {
     }
 
     void doTest() {
+        TypeConfiguration currentConfigWithoutPrevious = TypeConfiguration.copyAndSubtract(currentConfig, previousConfig);
+
         String name = getTypeName();
-        ConfigurationType configurationType = currentConfig.get(name);
+        ConfigurationType configurationType = currentConfigWithoutPrevious.get(ConfigurationCondition.alwaysTrue(), name);
         if (methodsThatMustExist.size() == 0) {
             Assert.assertNull("Generated configuration type " + name + " exists. Expected it to be cleared as it is empty.", configurationType);
         } else {
             Assert.assertNotNull("Generated configuration type " + name + " does not exist. Has the test code changed?", configurationType);
 
-            for (Map.Entry<ConfigurationMethod, ConfigurationMemberKind> methodEntry : methodsThatMustExist.entrySet()) {
-                ConfigurationMemberKind kind = configurationType.getMethodKindIfPresent(methodEntry.getKey());
+            for (Map.Entry<ConfigurationMethod, ConfigurationMemberDeclaration> methodEntry : methodsThatMustExist.entrySet()) {
+                ConfigurationMemberDeclaration kind = ConfigurationType.TestBackdoor.getMethodInfoIfPresent(configurationType, methodEntry.getKey()).getDeclaration();
                 Assert.assertNotNull("Method " + methodEntry.getKey() + " unexpectedly NOT found in the new configuration.", kind);
                 Assert.assertEquals("Method " + methodEntry.getKey() + " contains a different kind than expected in the new configuration.", kind, methodEntry.getValue());
             }
-            for (Map.Entry<ConfigurationMethod, ConfigurationMemberKind> methodEntry : methodsThatMustNotExist.entrySet()) {
-                ConfigurationMemberKind kind = configurationType.getMethodKindIfPresent(methodEntry.getKey());
+            for (Map.Entry<ConfigurationMethod, ConfigurationMemberDeclaration> methodEntry : methodsThatMustNotExist.entrySet()) {
+                ConfigurationMemberInfo kind = ConfigurationType.TestBackdoor.getMethodInfoIfPresent(configurationType, methodEntry.getKey());
                 Assert.assertNull("Method " + methodEntry.getKey() + " unexpectedly found in the new configuration.", kind);
             }
         }

@@ -316,6 +316,15 @@ public final class AArch64Address extends AbstractAddress {
     }
 
     /**
+     * @param bitMemoryTransferSize Memory operation size.
+     * @param base May not be null or the zero register.
+     * @return an address specifying the address pointed to by base.
+     */
+    public static AArch64Address createPairBaseRegisterOnlyAddress(int bitMemoryTransferSize, Register base) {
+        return createImmediateAddress(bitMemoryTransferSize, AddressingMode.IMMEDIATE_PAIR_SIGNED_SCALED, base, 0);
+    }
+
+    /**
      * AArch64Address specifying a structure memory access of the form "[Xn|SP]".
      */
     public static AArch64Address createStructureNoOffsetAddress(Register base) {
@@ -418,12 +427,14 @@ public final class AArch64Address extends AbstractAddress {
             case REGISTER_OFFSET:
                 assert !(registerOffsetScaled && bitMemoryTransferSize == ANY_SIZE);
                 assert !base.equals(zr);
+                assert !base.equals(offset);
                 assert extendType == null;
                 assert immediate == 0;
                 break;
             case EXTENDED_REGISTER_OFFSET:
                 assert !(registerOffsetScaled && bitMemoryTransferSize == ANY_SIZE);
                 assert !base.equals(zr);
+                assert !base.equals(offset);
                 assert (extendType == AArch64Assembler.ExtendType.SXTW || extendType == AArch64Assembler.ExtendType.UXTW);
                 assert immediate == 0;
                 break;

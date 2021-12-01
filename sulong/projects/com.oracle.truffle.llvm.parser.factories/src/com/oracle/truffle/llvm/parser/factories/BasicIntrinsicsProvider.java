@@ -29,15 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
-import static com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType.POINTER;
-
-import java.util.AbstractList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.UnaryOperator;
-
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
@@ -133,6 +124,7 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsicRootNo
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.LLVMCallocNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.LLVMFreeNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.LLVMMallocNodeGen;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.LLVMPosixMemalignNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMMemoryIntrinsicFactory.LLVMReallocNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMComplex80BitFloatDivNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMComplex80BitFloatMulNodeGen;
@@ -143,13 +135,20 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.arith.LLVMComplexFl
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading.LLVMPThreadKeyIntrinsicsFactory;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.multithreading.LLVMPThreadThreadIntrinsicsFactory;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.rust.LLVMPanicNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.rust.LLVMStartFactory.LLVMLangStartInternalNodeGen;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.rust.LLVMStartFactory.LLVMLangStartNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.sulong.LLVMPrintStackTraceNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.sulong.LLVMRunDestructorFunctionsNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.sulong.LLVMShouldPrintStackTraceOnAbortNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.sulong.LLVMToolchainNodeFactory;
 import com.oracle.truffle.llvm.runtime.types.Type;
+
+import java.util.AbstractList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.UnaryOperator;
+
+import static com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType.POINTER;
 
 /**
  * If an intrinsic is defined for a function, then the intrinsic is used instead of doing a call to
@@ -213,7 +212,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
     }
 
     private RootCallTarget wrap(String functionName, LLVMExpressionNode node) {
-        return LLVMLanguage.createCallTarget(LLVMIntrinsicExpressionNodeGen.create(language, functionName, node));
+        return LLVMIntrinsicExpressionNodeGen.create(language, functionName, node).getCallTarget();
     }
 
     protected final LLVMLanguage language;
@@ -483,8 +482,6 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
     }
 
     private static void registerRustIntrinsics() {
-        add("std::rt::lang_start", (args, nodeFactory) -> LLVMLangStartNodeGen.create(args.get(0), args.get(1), args.get(2), args.get(3)));
-        add("std::rt::lang_start_internal", (args, nodeFactory) -> LLVMLangStartInternalNodeGen.create(args.get(0), args.get(1), args.get(2), args.get(3), args.get(4)));
         add("std::process::exit", (args, nodeFactory) -> LLVMExitNodeGen.create(args.get(1)));
         add("core::panicking::panic", (args, nodeFactory) -> LLVMPanicNodeGen.create(args.get(1)));
     }
@@ -544,6 +541,7 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
         add("malloc", (args, nodeFactory) -> LLVMMallocNodeGen.create(args.get(1)));
         add("calloc", (args, nodeFactory) -> LLVMCallocNodeGen.create(nodeFactory.createMemSet(), args.get(1), args.get(2)));
         add("realloc", (args, nodeFactory) -> LLVMReallocNodeGen.create(args.get(1), args.get(2)));
+        add("posix_memalign", (args, nodeFactory) -> LLVMPosixMemalignNodeGen.create(args.get(1), args.get(2), args.get(3)));
         add("free", (args, nodeFactory) -> LLVMFreeNodeGen.create(args.get(1)));
         add("memset", "__memset_chk", (args, nodeFactory) -> LLVMLibcMemsetNodeGen.create(nodeFactory.createMemSet(), args.get(1), args.get(2), args.get(3)));
 

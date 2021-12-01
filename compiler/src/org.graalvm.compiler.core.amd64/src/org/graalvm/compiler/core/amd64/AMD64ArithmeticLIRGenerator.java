@@ -71,6 +71,9 @@ import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VSUBSD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VSUBSS;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VXORPD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VXORPS;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMROp.VBLENDVPD;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMROp.VBLENDVPS;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMROp.VPBLENDVB;
 import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.BYTE;
 import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.DWORD;
 import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.PD;
@@ -79,7 +82,6 @@ import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.QWOR
 import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.SD;
 import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.SS;
 import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.WORD;
-import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.lir.LIRValueUtil.asConstantValue;
 import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
 import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
@@ -95,9 +97,11 @@ import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMIOp;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64Shift;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.SSEOp;
+import org.graalvm.compiler.asm.amd64.AMD64Assembler.VexFloatCompareOp;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.VexGeneralPurposeRMOp;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.VexGeneralPurposeRVMOp;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp;
+import org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMROp;
 import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize;
 import org.graalvm.compiler.asm.amd64.AVXKind;
 import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
@@ -133,6 +137,8 @@ import org.graalvm.compiler.lir.amd64.AMD64Unary;
 import org.graalvm.compiler.lir.amd64.vector.AMD64VectorBinary;
 import org.graalvm.compiler.lir.amd64.vector.AMD64VectorBinary.AVXBinaryConstFloatOp;
 import org.graalvm.compiler.lir.amd64.vector.AMD64VectorBinary.AVXBinaryOp;
+import org.graalvm.compiler.lir.amd64.vector.AMD64VectorBlend;
+import org.graalvm.compiler.lir.amd64.vector.AMD64VectorFloatCompareOp;
 import org.graalvm.compiler.lir.amd64.vector.AMD64VectorUnary;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGenerator;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
@@ -1370,7 +1376,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                 return;
             } else if (c instanceof VMConstant) {
                 VMConstant vc = (VMConstant) c;
-                if (size == DWORD && !GeneratePIC.getValue(getOptions()) && getLIRGen().target().inlineObjects) {
+                if (size == DWORD && getLIRGen().target().inlineObjects) {
                     getLIRGen().append(new AMD64BinaryConsumer.VMConstOp(CMP.getMIOpcode(DWORD, false), left, vc));
                 } else {
                     getLIRGen().append(new AMD64BinaryConsumer.DataOp(CMP.getRMOpcode(size), size, left, vc));
@@ -1426,6 +1432,184 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
         } else {
             getLIRGen().append(new AVXBinaryOp(op, getRegisterSize(result), result, asAllocatable(a), asAllocatable(b)));
         }
+        return result;
+    }
+
+    protected Variable emitVectorBlend(Value zeroValue, Value oneValue, Value mask) {
+        AVXSize size = getRegisterSize(zeroValue);
+        assert size == AVXSize.XMM || size == AVXSize.YMM : size;
+        AMD64Kind inputKind = ((AMD64Kind) zeroValue.getPlatformKind()).getScalar();
+        Variable result = getLIRGen().newVariable(zeroValue.getValueKind());
+        // AVX/AVX2 blend
+        VexRVMROp blend;
+        switch (inputKind) {
+            case SINGLE:
+                blend = VBLENDVPS;
+                break;
+            case DOUBLE:
+                blend = VBLENDVPD;
+                break;
+            default:
+                blend = VPBLENDVB;
+                break;
+        }
+
+        getLIRGen().append(new AMD64VectorBlend.VexBlendOp(blend, size, getLIRGen().asAllocatable(result), getLIRGen().asAllocatable(zeroValue), getLIRGen().asAllocatable(oneValue),
+                        getLIRGen().asAllocatable(mask)));
+        return result;
+    }
+
+    @Override
+    public Value emitMathMax(Value x, Value y) {
+        return emitMathMinMax(x, y, AMD64MathMinMaxFloatOp.Max);
+    }
+
+    @Override
+    public Value emitMathMin(Value x, Value y) {
+        return emitMathMinMax(x, y, AMD64MathMinMaxFloatOp.Min);
+    }
+
+    protected enum AMD64MathMinMaxFloatOp {
+        Min(VexRVMOp.VMINSS, VexRVMOp.VMINSD, VexRVMOp.VMINPS, VexRVMOp.VMINPD),
+        Max(VexRVMOp.VMAXSS, VexRVMOp.VMAXSD, VexRVMOp.VMAXPS, VexRVMOp.VMAXPD);
+
+        private final VexRVMOp scalarSingleOp;
+        private final VexRVMOp scalarDoubleOp;
+        private final VexRVMOp vectorSingleOp;
+        private final VexRVMOp vectorDoubleOp;
+
+        AMD64MathMinMaxFloatOp(VexRVMOp scalarSingleOp, VexRVMOp scalarDoubleOp, VexRVMOp vectorSingleOp, VexRVMOp vectorDoubleOp) {
+            this.scalarSingleOp = scalarSingleOp;
+            this.scalarDoubleOp = scalarDoubleOp;
+            this.vectorSingleOp = vectorSingleOp;
+            this.vectorDoubleOp = vectorDoubleOp;
+        }
+
+        public VexRVMOp getAVXOp(AMD64Kind kind) {
+            switch (kind.getScalar()) {
+                case SINGLE:
+                    return kind.getVectorLength() > 1 ? vectorSingleOp : scalarSingleOp;
+                case DOUBLE:
+                    return kind.getVectorLength() > 1 ? vectorDoubleOp : scalarDoubleOp;
+                default:
+                    throw GraalError.shouldNotReachHere();
+            }
+        }
+
+        /**
+         * Returns true if the constant is 0.0 of the sign that is preferred in case of ambiguity
+         * (i.e., if one of the inputs is -0.0 and the other is +0.0).
+         */
+        public boolean isPreferredZeroConst(JavaConstant constant) {
+            JavaKind kind = constant.getJavaKind();
+            assert kind == JavaKind.Double || kind == JavaKind.Float : kind;
+            switch (this) {
+                case Max:
+                    if ((kind == JavaKind.Double && Double.doubleToRawLongBits(constant.asDouble()) == Double.doubleToRawLongBits(0.0)) ||
+                                    (kind == JavaKind.Float && Float.floatToRawIntBits(constant.asFloat()) == Float.floatToRawIntBits(0.0f))) {
+                        return true;
+                    }
+                    break;
+                case Min:
+                    if ((kind == JavaKind.Double && Double.doubleToRawLongBits(constant.asDouble()) == Double.doubleToRawLongBits(-0.0)) ||
+                                    (kind == JavaKind.Float && Float.floatToRawIntBits(constant.asFloat()) == Float.floatToRawIntBits(-0.0f))) {
+                        return true;
+                    }
+                    break;
+            }
+            return false;
+        }
+    }
+
+    /**
+     * Emits code for a branchless floating-point Math.min/Math.max operation. Requires AVX.
+     *
+     * Supports (scalarReg, scalarReg) and (scalarReg, scalarConst) operands.
+     *
+     * @see Math#max(double, double)
+     * @see Math#max(float, float)
+     * @see Math#min(double, double)
+     * @see Math#min(float, float)
+     */
+    protected Value emitMathMinMax(Value a, Value b, AMD64MathMinMaxFloatOp minmaxop) {
+        assert supportAVX();
+        AMD64Kind kind = (AMD64Kind) a.getPlatformKind();
+
+        // vmin*/vmax*: if the values being compared are both 0.0 (of either sign), dst = src2.
+        // hence, if one argument is +0.0 and the other is -0.0, to get the correct result, we
+        // have to reorder the source registers such that -0.0 (min) / +0.0 (max) is in src2.
+        // Therefore, if a (min) / b (max) is negative (most significant bit is 1), swap a and b,
+        // so that if one is -0.0 and the other is +0.0, the correct result is in b', i.e.:
+        // min: a' = +0.0, b' = -0.0 (negative values in a are moved to b').
+        // max: a' = -0.0, b' = +0.0 (negative values in b are moved to a').
+        AllocatableValue atmp;
+        AllocatableValue btmp;
+        boolean checkAndMergeNaN = true;
+        if (kind.getVectorLength() == 1 && isJavaConstant(b)) {
+            // Optimized case for scalar constants (only).
+            JavaConstant bConst = asJavaConstant(b);
+            if (kind == AMD64Kind.DOUBLE && Double.isNaN(bConst.asDouble()) ||
+                            kind == AMD64Kind.SINGLE && Float.isNaN(bConst.asFloat())) {
+                // The result is always NaN.
+                return b;
+            }
+
+            // Order registers so that if bConst is -0.0 (min) / +0.0 (max) and a is +/-0.0,
+            // the correct result is always in src2.
+            if (minmaxop.isPreferredZeroConst(bConst)) {
+                atmp = asAllocatable(a);
+                btmp = asAllocatable(b);
+            } else {
+                atmp = asAllocatable(b);
+                btmp = asAllocatable(a);
+                // Because a is in src2, and src1 (b) is known to not be NaN, the result is already
+                // correct (NaN) if a is NaN, so we can skip the NaN check.
+                checkAndMergeNaN = false;
+            }
+        } else {
+            AllocatableValue signMask = asAllocatable(minmaxop == AMD64MathMinMaxFloatOp.Min ? a : b);
+            atmp = emitVectorBlend(a, b, signMask);
+            btmp = emitVectorBlend(b, a, signMask);
+        }
+
+        // vmaxps/vmaxpd/vminps/vminpd result, a', b'
+        LIRKind resultKind = LIRKind.combine(atmp, btmp);
+        AllocatableValue result = emitBinary(resultKind, minmaxop.getAVXOp(kind), atmp, btmp);
+
+        if (checkAndMergeNaN) {
+            // move NaN elements in a to result (result' = isNaN(a) ? a : result)
+            // maskNaN = vcmpunordps/vcmpunordpd a', a'
+            AllocatableValue maskNaN = emitVectorFloatCompare(atmp, atmp, VexFloatCompareOp.Predicate.UNORD_Q);
+            // vblendvps/vblendvpd result', result, atmp, maskNaN
+            result = emitVectorBlend(result, atmp, maskNaN);
+        }
+        return result;
+    }
+
+    protected AllocatableValue emitVectorFloatCompare(AllocatableValue a, AllocatableValue b, VexFloatCompareOp.Predicate predicate) {
+        AMD64Kind kind = (AMD64Kind) a.getPlatformKind();
+        AVXSize size = AVXKind.getRegisterSize(kind);
+        VexFloatCompareOp vcmpp;
+        switch (kind.getScalar()) {
+            case SINGLE:
+                if (kind.getVectorLength() > 1) {
+                    vcmpp = VexFloatCompareOp.VCMPPS;
+                } else {
+                    vcmpp = VexFloatCompareOp.VCMPSS;
+                }
+                break;
+            case DOUBLE:
+                if (kind.getVectorLength() > 1) {
+                    vcmpp = VexFloatCompareOp.VCMPPD;
+                } else {
+                    vcmpp = VexFloatCompareOp.VCMPSD;
+                }
+                break;
+            default:
+                throw GraalError.shouldNotReachHere();
+        }
+        AllocatableValue result = getLIRGen().newVariable(LIRKind.combine(a, b));
+        getLIRGen().append(new AMD64VectorFloatCompareOp(vcmpp, size, result, a, b, predicate));
         return result;
     }
 

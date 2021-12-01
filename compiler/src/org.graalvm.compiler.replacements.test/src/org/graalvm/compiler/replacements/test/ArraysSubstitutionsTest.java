@@ -181,6 +181,7 @@ public class ArraysSubstitutionsTest extends ArraysSubstitutionsTestBase {
         createInliningPhase().apply(graph, context);
         createCanonicalizerPhase().apply(graph, getProviders());
         new PartialEscapePhase(false, this.createCanonicalizerPhase(), graph.getOptions()).apply(graph, context);
+        new PartialEscapePhase(false, this.createCanonicalizerPhase(), graph.getOptions()).apply(graph, context);
         createCanonicalizerPhase().apply(graph, getProviders());
 
         Assert.assertTrue(graph.getNodes(ReturnNode.TYPE).first().result().asJavaConstant().asLong() == 0);

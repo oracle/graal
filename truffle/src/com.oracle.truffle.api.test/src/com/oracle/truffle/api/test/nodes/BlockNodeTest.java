@@ -47,6 +47,7 @@ import static org.junit.Assert.fail;
 
 import java.util.concurrent.Callable;
 
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -56,13 +57,13 @@ import org.junit.runners.Parameterized.Parameters;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 @RunWith(Parameterized.class)
 public class BlockNodeTest {
@@ -70,6 +71,11 @@ public class BlockNodeTest {
     @Parameters(name = "{0}")
     public static Mode[] data() {
         return Mode.values();
+    }
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
     }
 
     @Parameter(0) public Mode mode;
@@ -309,7 +315,7 @@ public class BlockNodeTest {
         DummyRootNode root = new DummyRootNode();
         BlockNode<TestBlockElement> block = BlockNode.create(elements, executor);
         root.block = block;
-        Truffle.getRuntime().createCallTarget(root);
+        root.getCallTarget();
         assertNotNull(root.block.getParent());
         return block;
     }

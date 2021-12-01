@@ -24,20 +24,17 @@
  */
 package com.oracle.svm.core.graal.snippets;
 
-import static org.graalvm.compiler.nodes.UnreachableNode.unreachable;
 import static com.oracle.svm.core.graal.snippets.SubstrateIntrinsics.runtimeCall;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
+import static org.graalvm.compiler.nodes.UnreachableNode.unreachable;
 
 import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.java.LoadExceptionObjectNode;
@@ -51,7 +48,6 @@ import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.annotate.NeverInline;
-import com.oracle.svm.core.graal.nodes.ExceptionStateNode;
 import com.oracle.svm.core.graal.nodes.ReadExceptionObjectNode;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.snippets.ExceptionUnwind;
@@ -73,14 +69,12 @@ public final class ExceptionSnippets extends SubstrateTemplates implements Snipp
     }
 
     @SuppressWarnings("unused")
-    public static void registerLowerings(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
-                    Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
-        new ExceptionSnippets(options, factories, providers, snippetReflection, lowerings);
+    public static void registerLowerings(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
+        new ExceptionSnippets(options, providers, lowerings);
     }
 
-    private ExceptionSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
-                    Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
-        super(options, factories, providers, snippetReflection);
+    private ExceptionSnippets(OptionValues options, Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
+        super(options, providers);
 
         lowerings.put(UnwindNode.class, new UnwindLowering());
     }
@@ -91,6 +85,13 @@ public final class ExceptionSnippets extends SubstrateTemplates implements Snipp
 
         @Override
         public void lower(UnwindNode node, LoweringTool tool) {
+            if (node.graph().isSubstitution()) {
+                /*
+                 * Unwind nodes in substitution graph will never survive. They are used as markers,
+                 * though, so we should not replace them.
+                 */
+                return;
+            }
             Arguments args = new Arguments(unwind, node.graph().getGuardsStage(), tool.getLoweringStage());
             args.add("exception", node.exception());
             args.addConst("fromMethodWithCalleeSavedRegisters", ((SharedMethod) node.graph().method()).hasCalleeSavedRegisters());
@@ -102,14 +103,9 @@ public final class ExceptionSnippets extends SubstrateTemplates implements Snipp
 
         @Override
         public void lower(LoadExceptionObjectNode node, LoweringTool tool) {
-            FrameState exceptionState = node.stateAfter();
-            assert exceptionState != null;
-
             StructuredGraph graph = node.graph();
             FixedWithNextNode readRegNode = graph.add(new ReadExceptionObjectNode(StampFactory.objectNonNull()));
             graph.replaceFixedWithFixed(node, readRegNode);
-
-            graph.addAfterFixed(readRegNode, graph.add(new ExceptionStateNode(exceptionState)));
         }
     }
 }

@@ -57,7 +57,6 @@ import org.graalvm.polyglot.io.ByteSequence;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.ExpectError;
@@ -163,7 +162,7 @@ public class MIMETypeTest {
     public static class MIMETypeLanguage5 extends ProxyLanguage {
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
-            return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+            return RootNode.createConstantNode(42).getCallTarget();
         }
     }
 
@@ -215,7 +214,7 @@ public class MIMETypeTest {
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
-            return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+            return RootNode.createConstantNode(42).getCallTarget();
         }
     }
 
@@ -242,7 +241,7 @@ public class MIMETypeTest {
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
-            return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+            return RootNode.createConstantNode(42).getCallTarget();
         }
     }
 
@@ -269,7 +268,7 @@ public class MIMETypeTest {
 
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
-            return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+            return RootNode.createConstantNode(42).getCallTarget();
         }
     }
 

@@ -186,7 +186,7 @@ public abstract class GeneratedNodeIntrinsicPlugin extends GeneratedPlugin {
             out.printf("        }\n");
             if (needsReplacement(processor) && !inReplacement) {
                 out.printf("        if (b.canDeferPlugin(this)) {\n");
-                out.printf("            b.replacePlugin(this, targetMethod, args, %s.FUNCTION);\n", getReplacementName());
+                out.printf("            b.replacePlugin%s(this, targetMethod, args, %s.FUNCTION);\n", getReplacementFunctionSuffix(processor), getReplacementName());
                 out.printf("            return true;\n");
                 out.printf("        }\n");
                 out.printf("        throw GraalError.shouldNotReachHere(\"Can't inline plugin \" + b.getClass().toString());\n");
@@ -206,7 +206,23 @@ public abstract class GeneratedNodeIntrinsicPlugin extends GeneratedPlugin {
     @Override
     protected void createOtherClasses(AbstractProcessor processor, PrintWriter out) {
         if (needsReplacement(processor)) {
-            super.createOtherClasses(processor, out);
+            if (isWithExceptionReplacement(processor)) {
+                /*
+                 * We need a WithExceptionNode replacement.
+                 */
+                String name = getReplacementName();
+                out.printf("//        class: %s\n", intrinsicMethod.getEnclosingElement());
+                out.printf("//       method: %s\n", intrinsicMethod);
+                out.printf("// generated-by: %s\n", getClass().getName());
+                out.printf("@JacocoIgnoreGenerated(\"deferred plugin support that is only called in libgraal\")\n");
+                out.printf("final class %s implements PluginReplacementWithExceptionNode.ReplacementWithExceptionFunction {\n", name);
+                out.printf("    static PluginReplacementWithExceptionNode.ReplacementWithExceptionFunction FUNCTION = new %s();\n", name);
+                InjectedDependencies deps = new InjectedDependencies(false, intrinsicMethod);
+                createHelpers(processor, out, deps);
+                out.printf("}\n");
+            } else {
+                super.createOtherClasses(processor, out);
+            }
         }
     }
 

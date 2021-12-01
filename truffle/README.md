@@ -9,7 +9,7 @@ forward in programming language implementation technology in the current era of 
 A growing  body of shared implementation code and services
 reduces language implementation effort significantly, but leads to competitive runtime
 performance that matches or exceeds the competition.  The value of the platform is further
-increased by support for low-overhead language interoperation, as well as a general instrumentation
+increased by support for low-overhead language interoperability, as well as a general instrumentation
 framework that supports multi-language debugging and other external developer tools.
 
 Truffle is developed and maintained by Oracle Labs and the Institute for System
@@ -17,7 +17,7 @@ Software of the Johannes Kepler University Linz.
 
 ## Using Truffle
 
-If you are looking for documentation on how to use Truffle, please consult the documentation [here](../docs/truffle-framework/README.md) or [on the website](https://www.graalvm.org/graalvm-as-a-platform/language-implementation-framework/).
+If you are looking for documentation on how to use Truffle, please consult the documentation [here](docs/README.md) or [on the website](https://www.graalvm.org/graalvm-as-a-platform/language-implementation-framework/).
 
 ## Hacking Truffle
 

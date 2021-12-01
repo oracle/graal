@@ -32,7 +32,6 @@ import static jdk.vm.ci.aarch64.AArch64.zr;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig.fp;
 import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED;
-import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.core.common.GraalOptions.ZapStackOnMethodEntry;
 
 import org.graalvm.compiler.asm.Assembler;
@@ -44,7 +43,6 @@ import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.aarch64.AArch64NodeMatchRules;
-import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.gen.LIRGenerationProvider;
@@ -55,7 +53,6 @@ import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.hotspot.HotSpotHostBackend;
 import org.graalvm.compiler.hotspot.HotSpotLIRGenerationResult;
 import org.graalvm.compiler.hotspot.HotSpotMarkId;
-import org.graalvm.compiler.hotspot.meta.HotSpotConstantLoadAction;
 import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallsProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.stubs.Stub;
@@ -83,7 +80,6 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
-import jdk.vm.ci.hotspot.HotSpotSentinelConstant;
 import jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -136,8 +132,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
                     boolean isDefault,
                     Object[] context) {
         boolean isStub = (method == null);
-        boolean isAOT = compilationResult.isImmutablePIC();
-        if (!isStub && !isAOT) {
+        if (!isStub) {
             // Non-stub compilation results are installed into HotSpot as nmethods. As AArch64 has
             // a constraint that the instruction at nmethod verified entry point should be a nop or
             // jump, AArch64HotSpotBackend always generate a nop placeholder before the code body
@@ -188,6 +183,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
             }
             crb.blockComment("[method prologue]");
 
+            // based on HotSpot's macroAssembler_aarch64.cpp MacroAssembler::build_frame
             try (ScratchRegister sc = masm.getScratchRegister()) {
                 Register scratch = sc.getRegister();
                 assert totalFrameSize > 0;
@@ -236,6 +232,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
             final int totalFrameSize = frameMap.totalFrameSize();
 
             crb.blockComment("[method epilogue]");
+            // based on HotSpot's macroAssembler_aarch64.cpp MacroAssembler::leave_frame
             try (ScratchRegister sc = masm.getScratchRegister()) {
                 int wordSize = 8;
                 Register scratch = sc.getRegister();
@@ -334,7 +331,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
             Register klass = r10;
             if (config.useCompressedClassPointers) {
                 masm.ldr(32, klass, klassAddress);
-                AArch64HotSpotMove.decodeKlassPointer(crb, masm, klass, klass, config.getKlassEncoding());
+                AArch64HotSpotMove.decodeKlassPointer(masm, klass, klass, config.getKlassEncoding());
             } else {
                 masm.ldr(64, klass, klassAddress);
             }
@@ -349,23 +346,6 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
         masm.align(config.codeEntryAlignment);
         masm.bind(verifiedStub);
         crb.recordMark(crb.compilationResult.getEntryBCI() != -1 ? HotSpotMarkId.OSR_ENTRY : HotSpotMarkId.VERIFIED_ENTRY);
-
-        if (GeneratePIC.getValue(crb.getOptions())) {
-            // Check for method state
-            HotSpotFrameContext frameContext = (HotSpotFrameContext) crb.frameContext;
-            if (!frameContext.isStub) {
-                crb.recordInlineDataInCodeWithNote(new HotSpotSentinelConstant(LIRKind.value(AArch64Kind.QWORD), JavaKind.Long), HotSpotConstantLoadAction.MAKE_NOT_ENTRANT);
-                try (ScratchRegister sc = masm.getScratchRegister()) {
-                    Register scratch = sc.getRegister();
-                    masm.adrpAdd(scratch);
-                    masm.ldr(64, scratch, AArch64Address.createBaseRegisterOnlyAddress(64, scratch));
-                    Label noCall = new Label();
-                    masm.cbz(64, scratch, noCall);
-                    AArch64Call.directJmp(crb, masm, getForeignCalls().lookupForeignCall(WRONG_METHOD_HANDLER));
-                    masm.bind(noCall);
-                }
-            }
-        }
     }
 
     private static void emitCodeBody(CompilationResultBuilder crb, LIR lir, AArch64MacroAssembler masm) {
@@ -380,10 +360,8 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
      * @see "http://mail.openjdk.java.net/pipermail/aarch64-port-dev/2013-September/000273.html"
      */
     public static void emitInvalidatePlaceholder(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-        if (!GeneratePIC.getValue(crb.getOptions())) {
-            crb.blockComment("[nop for method invalidation]");
-            masm.nop();
-        }
+        crb.blockComment("[nop for method invalidation]");
+        masm.nop();
     }
 
     private void emitCodeSuffix(CompilationResultBuilder crb, AArch64MacroAssembler masm, FrameMap frameMap) {

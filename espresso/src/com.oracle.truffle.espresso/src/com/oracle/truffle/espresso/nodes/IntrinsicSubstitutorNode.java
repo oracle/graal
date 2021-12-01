@@ -30,6 +30,7 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
 
@@ -45,6 +46,10 @@ public final class IntrinsicSubstitutorNode extends EspressoMethodNode {
     public IntrinsicSubstitutorNode(JavaSubstitution.Factory factory, Method method) {
         super(method.getMethodVersion());
         this.substitution = factory.create(getContext().getMeta());
+
+        EspressoError.guarantee(!substitution.isTrivial() || !method.isSynchronized(),
+                        "Substitution for synchronized method '%s' cannot be marked as trivial", method);
+
         if (substitution.shouldSplit()) {
             this.nbSplits = DebugCounter.create("Splits for: " + Arrays.toString(factory.getMethodNames()));
         } else {
@@ -97,5 +102,10 @@ public final class IntrinsicSubstitutorNode extends EspressoMethodNode {
     @Override
     public int getBci(@SuppressWarnings("unused") Frame frame) {
         return -2;
+    }
+
+    @Override
+    protected boolean isTrivial() {
+        return substitution.isTrivial();
     }
 }

@@ -139,12 +139,21 @@ def build_jvmci_vm_variants(raw_name, raw_config_name, extra_args, variants, inc
             if len(variant) == 2:
                 var_name, var_args = variant
                 var_priority = priority
-            else:
+                compiler_config = 'community'
+            elif len(variant) == 3:
                 var_name, var_args, var_priority = variant
+                compiler_config = 'community'
+            elif len(variant) == 4:
+                var_name, var_args, var_priority, compiler_config = variant
+            else:
+                raise TypeError("unexpected tuple size for jvmci variant {} (size must be <= 4)".format(variant))
+
+            variant_args = extended_extra_args + var_args + ['-Dgraal.CompilerConfiguration=' + compiler_config]
             mx_benchmark.add_java_vm(
-                JvmciJdkVm(raw_name, extended_raw_config_name + '-' + var_name, extended_extra_args + var_args), suite, var_priority)
+                JvmciJdkVm(raw_name, extended_raw_config_name + '-' + var_name, variant_args), suite, var_priority)
 
 _graal_variants = [
+    ('economy', [], 0, 'economy'),
     ('g1gc', ['-XX:+UseG1GC'], 12),
     ('no-comp-oops', ['-XX:-UseCompressedOops'], 0),
     ('no-splitting', ['-Dpolyglot.engine.Splitting=false'], 0),
@@ -154,9 +163,9 @@ _graal_variants = [
     ('avx0', ['-XX:UseAVX=0'], 11),
     ('avx1', ['-XX:UseAVX=1'], 11),
     ('avx2', ['-XX:UseAVX=2'], 11),
-    ('avx3', ['-XX:UseAVX=3'], 11)
+    ('avx3', ['-XX:UseAVX=3'], 11),
 ]
-build_jvmci_vm_variants('server', 'graal-core', ['-server', '-XX:+EnableJVMCI', '-Dgraal.CompilerConfiguration=community', '-Djvmci.Compiler=graal'], _graal_variants, suite=_suite, priority=15)
+build_jvmci_vm_variants('server', 'graal-core', ['-server', '-XX:+EnableJVMCI', '-Djvmci.Compiler=graal'], _graal_variants, suite=_suite, priority=15)
 
 # On 64 bit systems -client is not supported. Nevertheless, when running with -server, we can
 # force the VM to just compile code with C1 but not with C2 by adding option -XX:TieredStopAtLevel=1.
@@ -488,7 +497,8 @@ class JMHDistGraalCoreBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite, JMHNati
 
     def filter_distribution(self, dist):
         return super(JMHDistGraalCoreBenchmarkSuite, self).filter_distribution(dist) and \
-               not any(JMHDistWhiteboxBenchmarkSuite.whitebox_dependency(dist))
+               not any(JMHDistWhiteboxBenchmarkSuite.whitebox_dependency(dist)) and \
+               not any(dep.name.startswith('com.oracle.truffle.enterprise.dispatch.jmh') for dep in dist.deps)
 
 
 mx_benchmark.add_bm_suite(JMHDistGraalCoreBenchmarkSuite())
@@ -514,7 +524,9 @@ class JMHDistWhiteboxBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite, JMHNativ
 
     def filter_distribution(self, dist):
         return super(JMHDistWhiteboxBenchmarkSuite, self).filter_distribution(dist) and \
-               any(JMHDistWhiteboxBenchmarkSuite.whitebox_dependency(dist))
+               any(JMHDistWhiteboxBenchmarkSuite.whitebox_dependency(dist)) and \
+               not any(dep.name.startswith('com.oracle.truffle.enterprise.dispatch.jmh') for dep in dist.deps)
+
 
     def extraVmArgs(self):
         if mx_compiler.isJDK8:

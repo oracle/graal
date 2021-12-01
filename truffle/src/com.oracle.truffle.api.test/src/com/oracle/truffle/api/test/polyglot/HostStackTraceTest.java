@@ -52,10 +52,10 @@ import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
@@ -70,6 +70,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class HostStackTraceTest extends AbstractPolyglotTest {
 
@@ -79,7 +80,7 @@ public class HostStackTraceTest extends AbstractPolyglotTest {
         final CallTarget callTarget;
 
         HostStackTraceExecutable(String name, SourceSection rootSection, SourceSection callSection) {
-            this.callTarget = Truffle.getRuntime().createCallTarget(new ExecuteRootNode(name, rootSection, callSection));
+            this.callTarget = new ExecuteRootNode(name, rootSection, callSection).getCallTarget();
         }
 
         @ExportMessage
@@ -162,6 +163,15 @@ public class HostStackTraceTest extends AbstractPolyglotTest {
             }
         }
 
+    }
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
+
+    public HostStackTraceTest() {
+        needsLanguageEnv = true;
     }
 
     @Before

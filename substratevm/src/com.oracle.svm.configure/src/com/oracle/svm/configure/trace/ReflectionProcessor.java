@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,8 +33,10 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 import org.graalvm.compiler.phases.common.LazyValue;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
-import com.oracle.svm.configure.config.ConfigurationMemberKind;
+import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberAccessibility;
+import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberDeclaration;
 import com.oracle.svm.configure.config.ConfigurationMethod;
 import com.oracle.svm.configure.config.ProxyConfiguration;
 import com.oracle.svm.configure.config.ResourceConfiguration;
@@ -72,6 +74,7 @@ class ReflectionProcessor extends AbstractProcessor {
     @SuppressWarnings("fallthrough")
     public void processEntry(Map<String, ?> entry) {
         boolean invalidResult = Boolean.FALSE.equals(entry.get("result"));
+        ConfigurationCondition condition = ConfigurationCondition.alwaysTrue();
         if (invalidResult) {
             return;
         }
@@ -88,7 +91,7 @@ class ReflectionProcessor extends AbstractProcessor {
             case "getSystemResources":
                 String literal = singleElement(args);
                 String regex = Pattern.quote(literal);
-                resourceConfiguration.addResourcePattern(regex);
+                resourceConfiguration.addResourcePattern(condition, regex);
                 return;
         }
         String callerClass = (String) entry.get("caller_class");
@@ -100,14 +103,14 @@ class ReflectionProcessor extends AbstractProcessor {
             }
             if (!advisor.shouldIgnore(lazyValue(name), lazyValue(callerClass)) &&
                             !(isLoadClass && advisor.shouldIgnoreLoadClass(lazyValue(name), lazyValue(callerClass)))) {
-                configuration.getOrCreateType(name);
+                configuration.getOrCreateType(condition, name);
             }
             return;
         } else if (function.equals("methodTypeDescriptor")) {
             List<String> typeNames = singleElement(args);
             for (String type : typeNames) {
                 if (!advisor.shouldIgnore(lazyValue(type), lazyValue(callerClass))) {
-                    configuration.getOrCreateType(type);
+                    configuration.getOrCreateType(condition, type);
                 }
             }
         }
@@ -115,43 +118,50 @@ class ReflectionProcessor extends AbstractProcessor {
         if (advisor.shouldIgnore(lazyValue(clazz), lazyValue(callerClass))) {
             return;
         }
-        ConfigurationMemberKind memberKind = ConfigurationMemberKind.PUBLIC;
+        ConfigurationMemberDeclaration declaration = ConfigurationMemberDeclaration.PUBLIC;
+        ConfigurationMemberAccessibility accessibility = ConfigurationMemberAccessibility.QUERIED;
         String clazzOrDeclaringClass = entry.containsKey("declaring_class") ? (String) entry.get("declaring_class") : clazz;
         switch (function) {
             case "getDeclaredFields": {
-                configuration.getOrCreateType(clazz).setAllDeclaredFields();
+                configuration.getOrCreateType(condition, clazz).setAllDeclaredFields();
                 break;
             }
             case "getFields": {
-                configuration.getOrCreateType(clazz).setAllPublicFields();
+                configuration.getOrCreateType(condition, clazz).setAllPublicFields();
                 break;
             }
 
             case "getDeclaredMethods": {
-                configuration.getOrCreateType(clazz).setAllDeclaredMethods();
+                configuration.getOrCreateType(condition, clazz).setAllDeclaredMethods(accessibility);
                 break;
             }
             case "asInterfaceInstance":
+                accessibility = ConfigurationMemberAccessibility.ACCESSED;
+                // fallthrough
             case "getMethods": {
-                configuration.getOrCreateType(clazz).setAllPublicMethods();
+                configuration.getOrCreateType(condition, clazz).setAllPublicMethods(accessibility);
                 break;
             }
 
             case "getDeclaredConstructors": {
-                configuration.getOrCreateType(clazz).setAllDeclaredConstructors();
+                configuration.getOrCreateType(condition, clazz).setAllDeclaredConstructors(accessibility);
                 break;
             }
             case "getConstructors": {
-                configuration.getOrCreateType(clazz).setAllPublicConstructors();
+                configuration.getOrCreateType(condition, clazz).setAllPublicConstructors(accessibility);
                 break;
             }
 
             case "getDeclaredClasses": {
-                configuration.getOrCreateType(clazz).setAllDeclaredClasses();
+                configuration.getOrCreateType(condition, clazz).setAllDeclaredClasses();
+                break;
+            }
+            case "getPermittedSubclasses": {
+                configuration.getOrCreateType(condition, clazz).setAllPermittedSubclasses();
                 break;
             }
             case "getClasses": {
-                configuration.getOrCreateType(clazz).setAllPublicClasses();
+                configuration.getOrCreateType(condition, clazz).setAllPublicClasses();
                 break;
             }
 
@@ -159,46 +169,51 @@ class ReflectionProcessor extends AbstractProcessor {
             case "findFieldHandle":
             case "unreflectField":
             case "getDeclaredField":
-                memberKind = "findFieldHandle".equals(function) ? ConfigurationMemberKind.PRESENT : ConfigurationMemberKind.DECLARED;
+                declaration = "findFieldHandle".equals(function) ? ConfigurationMemberDeclaration.PRESENT : ConfigurationMemberDeclaration.DECLARED;
                 // fall through
             case "getField": {
-                configuration.getOrCreateType(clazzOrDeclaringClass).addField(singleElement(args), memberKind, false);
+                configuration.getOrCreateType(condition, clazzOrDeclaringClass).addField(singleElement(args), declaration, false);
                 if (!clazzOrDeclaringClass.equals(clazz)) {
-                    configuration.getOrCreateType(clazz);
+                    configuration.getOrCreateType(condition, clazz);
                 }
                 break;
             }
 
             case "getDeclaredMethod":
             case "findMethodHandle":
-                memberKind = "findMethodHandle".equals(function) ? ConfigurationMemberKind.PRESENT : ConfigurationMemberKind.DECLARED;
+            case "invokeMethod":
+                declaration = "getDeclaredMethod".equals(function) ? ConfigurationMemberDeclaration.DECLARED : ConfigurationMemberDeclaration.PRESENT;
                 // fall through
             case "getMethod": {
+                accessibility = (function.equals("invokeMethod") || function.equals("findMethodHandle")) ? ConfigurationMemberAccessibility.ACCESSED : ConfigurationMemberAccessibility.QUERIED;
                 expectSize(args, 2);
                 String name = (String) args.get(0);
                 List<?> parameterTypes = (List<?>) args.get(1);
                 if (parameterTypes == null) { // tolerated and equivalent to no parameter types
                     parameterTypes = Collections.emptyList();
                 }
-                configuration.getOrCreateType(clazzOrDeclaringClass).addMethod(name, SignatureUtil.toInternalSignature(parameterTypes), memberKind);
+                configuration.getOrCreateType(condition, clazzOrDeclaringClass).addMethod(name, SignatureUtil.toInternalSignature(parameterTypes), declaration, accessibility);
                 if (!clazzOrDeclaringClass.equals(clazz)) {
-                    configuration.getOrCreateType(clazz);
+                    configuration.getOrCreateType(condition, clazz);
                 }
                 break;
             }
 
             case "getDeclaredConstructor":
             case "findConstructorHandle":
-                memberKind = "findConstructorHandle".equals(function) ? ConfigurationMemberKind.PRESENT : ConfigurationMemberKind.DECLARED;
+            case "invokeConstructor":
+                declaration = "getDeclaredConstructor".equals(function) ? ConfigurationMemberDeclaration.DECLARED : ConfigurationMemberDeclaration.PRESENT;
                 // fall through
             case "getConstructor": {
+                accessibility = (function.equals("invokeConstructor") || function.equals("findConstructorHandle")) ? ConfigurationMemberAccessibility.ACCESSED
+                                : ConfigurationMemberAccessibility.QUERIED;
                 List<String> parameterTypes = singleElement(args);
                 if (parameterTypes == null) { // tolerated and equivalent to no parameter types
                     parameterTypes = Collections.emptyList();
                 }
                 String signature = SignatureUtil.toInternalSignature(parameterTypes);
                 assert clazz.equals(clazzOrDeclaringClass) : "Constructor can only be accessed via declaring class";
-                configuration.getOrCreateType(clazzOrDeclaringClass).addMethod(ConfigurationMethod.CONSTRUCTOR_NAME, signature, memberKind);
+                configuration.getOrCreateType(condition, clazzOrDeclaringClass).addMethod(ConfigurationMethod.CONSTRUCTOR_NAME, signature, declaration, accessibility);
                 break;
             }
 
@@ -227,21 +242,32 @@ class ReflectionProcessor extends AbstractProcessor {
 
             case "newInstance": {
                 if (clazz.equals("java.lang.reflect.Array")) { // reflective array instantiation
-                    configuration.getOrCreateType((String) args.get(0));
+                    configuration.getOrCreateType(condition, (String) args.get(0));
                 } else {
-                    configuration.getOrCreateType(clazz).addMethod(ConfigurationMethod.CONSTRUCTOR_NAME, "()V", ConfigurationMemberKind.DECLARED);
+                    configuration.getOrCreateType(condition, clazz).addMethod(ConfigurationMethod.CONSTRUCTOR_NAME, "()V", ConfigurationMemberDeclaration.DECLARED,
+                                    ConfigurationMemberAccessibility.ACCESSED);
                 }
                 break;
             }
 
             case "getBundleImplJDK8OrEarlier": {
-                expectSize(args, 4);
-                resourceConfiguration.addBundle((String) args.get(0));
+                expectSize(args, 6);
+                String baseName = (String) args.get(0);
+                @SuppressWarnings("unchecked")
+                List<String> classNames = (List<String>) args.get(4);
+                @SuppressWarnings("unchecked")
+                List<String> locales = (List<String>) args.get(5);
+                resourceConfiguration.addBundle(condition, classNames, locales, baseName);
                 break;
             }
             case "getBundleImplJDK11OrLater": {
-                expectSize(args, 5);
-                resourceConfiguration.addBundle((String) args.get(2));
+                expectSize(args, 7);
+                String baseName = (String) args.get(2);
+                @SuppressWarnings("unchecked")
+                List<String> classNames = (List<String>) args.get(5);
+                @SuppressWarnings("unchecked")
+                List<String> locales = (List<String>) args.get(6);
+                resourceConfiguration.addBundle(condition, classNames, locales, baseName);
                 break;
             }
             default:
@@ -255,7 +281,7 @@ class ReflectionProcessor extends AbstractProcessor {
         String qualifiedClass = descriptor.substring(0, classend);
         String methodName = descriptor.substring(classend + 1, sigbegin);
         String signature = descriptor.substring(sigbegin);
-        configuration.getOrCreateType(qualifiedClass).addMethod(methodName, signature, ConfigurationMemberKind.DECLARED);
+        configuration.getOrCreateType(ConfigurationCondition.alwaysTrue(), qualifiedClass).addMethod(methodName, signature, ConfigurationMemberDeclaration.DECLARED);
     }
 
     private void addDynamicProxy(List<?> interfaceList, LazyValue<String> callerClass) {
@@ -266,7 +292,7 @@ class ReflectionProcessor extends AbstractProcessor {
                 return;
             }
         }
-        proxyConfiguration.add(interfaces);
+        proxyConfiguration.add(ConfigurationCondition.alwaysTrue(), interfaces);
     }
 
     private void addDynamicProxyUnchecked(List<?> checkedInterfaceList, List<?> uncheckedInterfaceList, LazyValue<String> callerClass) {
@@ -283,6 +309,6 @@ class ReflectionProcessor extends AbstractProcessor {
         List<String> interfaces = new ArrayList<>();
         interfaces.addAll(checkedInterfaces);
         interfaces.addAll(uncheckedInterfaces);
-        proxyConfiguration.add(interfaces);
+        proxyConfiguration.add(ConfigurationCondition.alwaysTrue(), interfaces);
     }
 }

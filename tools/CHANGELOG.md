@@ -2,6 +2,11 @@
 
 This changelog summarizes major changes between Truffle Tools versions.
 
+## Version 22.0.0
+* GR-33316 Remove deprecated cpusampler APIs and CLIs
+* GR-34745 Allow short-hand usage of the `--cpusampler` flag to enable and specify output. For example, `--cpusampler=calltree` is equivalent to `--cpusampler --cpusampler.Output=calltree`. NOTE: Since the flame graph output is unreadable in the terminal `--cpusampler=flamegraph` is equivalent to `--cpusampler --cpusampler.Output=flamegraph -cpusampler.OutputFile=flamegraph.svg`.
+* GR-34209 Added overload of `CPUSampler.takeSample` with a timeout. By default samples time out when the configured period is exceeded.
+
 ## Version 21.3.0
 * Reimplemented CPUSampler to use the Truffle language safepoints thus deprecating several API functions.
 * Added new option `--cpusampler.SampleContextInitialization` which includes code executed during context initialization in the general sampling profile instead of grouping it into a single entry.
@@ -10,6 +15,7 @@ This changelog summarizes major changes between Truffle Tools versions.
 * Added the --cpusampler.ShowTiers option that shows time spend in each optimization tier.
 * Support for hash interoperability in Insight - no need to use `Truffle::Interop.hash_keys_as_members` anymore
 * [Cooperative heap dumping](https://www.graalvm.org/tools/javadoc/org/graalvm/tools/insight/heap/package-summary.html) when embedding Insight into Java applications
+* Add an SVG flamegraph output format to the CPUSampler, use option `--cpusampler.OutputFormat=flamegraph`.
 
 
 ## Version 21.1.0

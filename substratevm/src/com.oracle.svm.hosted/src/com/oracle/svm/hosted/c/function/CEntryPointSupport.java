@@ -42,7 +42,6 @@ import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.ParsingReason;
@@ -55,7 +54,6 @@ import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode.LeaveAction;
-import com.oracle.svm.core.graal.nodes.CEntryPointPrologueBailoutNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode.UtilityAction;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
@@ -109,24 +107,6 @@ public class CEntryPointSupport implements GraalFeature {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode isolate) {
                 b.addPush(JavaKind.Int, CEntryPointEnterNode.attachThread(isolate, false, true));
-                return true;
-            }
-        });
-        InvocationPlugin bailoutPlugin = new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                b.add(new CEntryPointPrologueBailoutNode(value));
-                return true;
-            }
-        };
-        r.register1("bailoutInPrologue", WordBase.class, bailoutPlugin);
-        r.register1("bailoutInPrologue", long.class, bailoutPlugin);
-        r.register1("bailoutInPrologue", double.class, bailoutPlugin);
-        r.register1("bailoutInPrologue", boolean.class, bailoutPlugin);
-        r.register0("bailoutInPrologue", new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.add(new CEntryPointPrologueBailoutNode(null));
                 return true;
             }
         });

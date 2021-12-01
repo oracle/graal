@@ -376,6 +376,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements PolyglotWrapper {
 
     static final class Cache {
 
+        final PolyglotLanguageInstance languageInstance;
         final Class<?> receiverClass;
         final Class<?> keyClass;
         final Type keyType;
@@ -394,7 +395,8 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements PolyglotWrapper {
         final CallTarget hashSize;
         final CallTarget apply;
 
-        Cache(Class<?> receiverClass, Class<?> keyClass, Type keyType, Class<?> valueClass, Type valueType) {
+        Cache(PolyglotLanguageInstance languageInstance, Class<?> receiverClass, Class<?> keyClass, Type keyType, Class<?> valueClass, Type valueType) {
+            this.languageInstance = languageInstance;
             this.receiverClass = receiverClass;
             this.keyClass = keyClass;
             this.keyType = keyType;
@@ -402,26 +404,23 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements PolyglotWrapper {
             this.valueType = valueType;
             this.memberKey = keyClass == Object.class || keyClass == String.class || keyClass == CharSequence.class;
             this.numberKey = keyClass == Object.class || keyClass == Number.class || keyClass == Integer.class || keyClass == Long.class || keyClass == Short.class || keyClass == Byte.class;
-            this.get = initializeCall(PolyglotMapFactory.CacheFactory.GetNodeGen.create(this));
-            this.containsKey = initializeCall(PolyglotMapFactory.CacheFactory.ContainsKeyNodeGen.create(this));
-            this.entrySet = initializeCall(EntrySetNodeGen.create(this));
-            this.put = initializeCall(PutNodeGen.create(this));
-            this.remove = initializeCall(PolyglotMapFactory.CacheFactory.RemoveNodeGen.create(this));
-            this.removeBoolean = initializeCall(RemoveBooleanNodeGen.create(this));
-            this.hashEntriesIterator = initializeCall(HashEntriesIteratorNodeGen.create(this));
-            this.hashSize = initializeCall(HashSizeNodeGen.create(this));
-            this.apply = initializeCall(new Apply(this));
-        }
-
-        private static CallTarget initializeCall(PolyglotMapNode node) {
-            return HostToGuestRootNode.createTarget(node);
+            this.get = PolyglotMapFactory.CacheFactory.GetNodeGen.create(this).getCallTarget();
+            this.containsKey = PolyglotMapFactory.CacheFactory.ContainsKeyNodeGen.create(this).getCallTarget();
+            this.entrySet = EntrySetNodeGen.create(this).getCallTarget();
+            this.put = PutNodeGen.create(this).getCallTarget();
+            this.remove = PolyglotMapFactory.CacheFactory.RemoveNodeGen.create(this).getCallTarget();
+            this.removeBoolean = RemoveBooleanNodeGen.create(this).getCallTarget();
+            this.hashEntriesIterator = HashEntriesIteratorNodeGen.create(this).getCallTarget();
+            this.hashSize = HashSizeNodeGen.create(this).getCallTarget();
+            this.apply = new Apply(this).getCallTarget();
         }
 
         static Cache lookup(PolyglotLanguageContext languageContext, Class<?> receiverClass, Class<?> keyClass, Type keyType, Class<?> valueClass, Type valueType) {
             Key cacheKey = new Key(receiverClass, keyClass, keyType, valueClass, valueType);
             Cache cache = HostToGuestRootNode.lookupHostCodeCache(languageContext, cacheKey, Cache.class);
             if (cache == null) {
-                cache = HostToGuestRootNode.installHostCodeCache(languageContext, cacheKey, new Cache(receiverClass, keyClass, keyType, valueClass, valueType), Cache.class);
+                cache = HostToGuestRootNode.installHostCodeCache(languageContext, cacheKey, new Cache(languageContext.getLanguageInstance(), receiverClass, keyClass, keyType, valueClass, valueType),
+                                Cache.class);
             }
             assert cache.receiverClass == receiverClass;
             assert cache.keyClass == keyClass;
@@ -480,6 +479,7 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements PolyglotWrapper {
             final Cache cache;
 
             PolyglotMapNode(Cache cache) {
+                super(cache.languageInstance);
                 this.cache = cache;
             }
 

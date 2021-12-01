@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.config;
 
-import static com.oracle.svm.core.SubstrateOptions.PrintFlags;
+import static com.oracle.svm.common.option.CommonOptions.PrintFlags;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -45,6 +45,7 @@ import org.graalvm.nativeimage.impl.ReflectionRegistry;
 
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.ConfigurationParser;
+import com.oracle.svm.core.configure.ConditionalElement;
 import com.oracle.svm.core.configure.ReflectionConfigurationParser;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
@@ -57,7 +58,7 @@ import com.oracle.svm.hosted.NativeImageOptions;
 
 public final class ConfigurationParserUtils {
 
-    public static ReflectionConfigurationParser<Class<?>> create(ReflectionRegistry registry, ImageClassLoader imageClassLoader) {
+    public static ReflectionConfigurationParser<ConditionalElement<Class<?>>> create(ReflectionRegistry registry, ImageClassLoader imageClassLoader) {
         return new ReflectionConfigurationParser<>(new ReflectionRegistryAdapter(registry, imageClassLoader),
                         NativeImageOptions.AllowIncompleteClasspath.getValue(), ConfigurationFiles.Options.StrictConfiguration.getValue());
     }

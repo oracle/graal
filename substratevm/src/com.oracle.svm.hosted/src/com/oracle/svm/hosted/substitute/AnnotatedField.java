@@ -29,10 +29,10 @@ import java.lang.reflect.Field;
 import java.util.Arrays;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
+import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.meta.ReadableJavaField;
-import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.util.ClassUtil;
 
 import jdk.vm.ci.meta.JavaConstant;

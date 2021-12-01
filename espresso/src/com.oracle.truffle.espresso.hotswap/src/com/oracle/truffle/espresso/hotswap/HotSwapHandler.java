@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.espresso.hotswap;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -106,8 +107,12 @@ final class HotSwapHandler {
         }
     }
 
-    public synchronized void registerMetaInfServicesListener(Class<?> service, ClassLoader loader, HotSwapAction callback) {
+    public synchronized void registerMetaInfServicesListener(Class<?> service, ClassLoader loader, HotSwapAction callback) throws IOException {
         serviceWatcher.addServiceWatcher(service, loader, callback);
+    }
+
+    public synchronized boolean registerResourceListener(ClassLoader loader, String resource, HotSwapAction callback) throws IOException {
+        return serviceWatcher.addResourceWatcher(loader, resource, callback);
     }
 
     @SuppressWarnings("unused")

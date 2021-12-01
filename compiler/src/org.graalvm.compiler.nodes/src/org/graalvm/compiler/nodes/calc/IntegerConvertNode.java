@@ -28,11 +28,11 @@ import static org.graalvm.compiler.nodes.calc.BinaryArithmeticNode.getArithmetic
 
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.IntegerConvertOp;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ArithmeticOperation;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -40,6 +40,7 @@ import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.ArithmeticLIRLowerable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.StampInverter;
 
 import jdk.vm.ci.meta.Constant;
@@ -119,10 +120,24 @@ public abstract class IntegerConvertNode<OP, REV> extends UnaryNode implements A
     }
 
     public static ValueNode convert(ValueNode input, Stamp stamp, StructuredGraph graph, NodeView view) {
-        ValueNode convert = convert(input, stamp, false, view);
-        if (!convert.isAlive()) {
-            assert !convert.isDeleted();
-            convert = graph.addOrUniqueWithInputs(convert);
+        return convert(input, stamp, false, graph, view, true);
+    }
+
+    public static ValueNode convert(ValueNode input, Stamp stamp, boolean zeroExtend, StructuredGraph graph, NodeView view) {
+        return convert(input, stamp, zeroExtend, graph, view, true);
+    }
+
+    public static ValueNode convert(ValueNode input, Stamp stamp, boolean zeroExtend, StructuredGraph graph, NodeView view, boolean gvn) {
+        ValueNode convert = convert(input, stamp, zeroExtend, view, gvn);
+        if (gvn) {
+            if (!convert.isAlive()) {
+                assert !convert.isDeleted();
+                convert = graph.addOrUniqueWithInputs(convert);
+            }
+        } else {
+            GraalError.guarantee(!convert.isAlive(), "Convert must not GVN");
+            GraalError.guarantee(!convert.isDeleted(), "Convert must not GVN");
+            convert = graph.addWithoutUniqueWithInputs(convert);
         }
         return convert;
     }
@@ -141,20 +156,32 @@ public abstract class IntegerConvertNode<OP, REV> extends UnaryNode implements A
     }
 
     public static ValueNode convert(ValueNode input, Stamp stamp, boolean zeroExtend, NodeView view) {
+        return convert(input, stamp, zeroExtend, view, true);
+    }
+
+    private static ValueNode convert(ValueNode input, Stamp stamp, boolean zeroExtend, NodeView view, boolean gvn) {
         IntegerStamp fromStamp = (IntegerStamp) input.stamp(view);
         IntegerStamp toStamp = (IntegerStamp) stamp;
 
         ValueNode result;
-        if (toStamp.getBits() == fromStamp.getBits()) {
+        if (gvn && toStamp.getBits() == fromStamp.getBits()) {
             result = input;
         } else if (toStamp.getBits() < fromStamp.getBits()) {
             result = new NarrowNode(input, fromStamp.getBits(), toStamp.getBits());
         } else if (zeroExtend) {
             // toStamp.getBits() > fromStamp.getBits()
-            result = ZeroExtendNode.create(input, toStamp.getBits(), view);
+            if (gvn) {
+                result = ZeroExtendNode.create(input, toStamp.getBits(), view);
+            } else {
+                result = new ZeroExtendNode(input, toStamp.getBits());
+            }
         } else {
             // toStamp.getBits() > fromStamp.getBits()
-            result = SignExtendNode.create(input, toStamp.getBits(), view);
+            if (gvn) {
+                result = SignExtendNode.create(input, toStamp.getBits(), view);
+            } else {
+                result = new SignExtendNode(input, toStamp.getBits());
+            }
         }
 
         IntegerStamp resultStamp = (IntegerStamp) result.stamp(view);

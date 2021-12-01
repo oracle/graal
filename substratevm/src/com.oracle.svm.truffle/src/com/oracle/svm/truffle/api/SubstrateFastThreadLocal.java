@@ -36,7 +36,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 final class SubstrateFastThreadLocal extends GraalFastThreadLocal {
 
     static final SubstrateFastThreadLocal SINGLETON = new SubstrateFastThreadLocal();
-    private static final FastThreadLocalObject<Object[]> CONTEXT = FastThreadLocalFactory.createObject(Object[].class)
+    private static final FastThreadLocalObject<Object[]> CONTEXT = FastThreadLocalFactory.createObject(Object[].class, "SubstrateFastThreadLocal.CONTEXT")
                     .setAllowFloatingReads(true)
                     .setMaxOffset(FastThreadLocal.FIRST_CACHE_LINE);
 

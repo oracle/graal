@@ -124,7 +124,7 @@ class NativeImageVM(GraalVm):
             self.bmSuite = bm_suite
             self.benchmark_suite_name = bm_suite.benchSuiteName(args) if len(inspect.getargspec(bm_suite.benchSuiteName).args) > 1 else bm_suite.benchSuiteName() # pylint: disable=deprecated-method
             self.benchmark_name = bm_suite.benchmarkName()
-            self.executable, self.classpath_arguments, self.system_properties, cmd_line_image_run_args = NativeImageVM.extract_benchmark_arguments(args)
+            self.executable, self.classpath_arguments, self.system_properties, self.vm_args, cmd_line_image_run_args = NativeImageVM.extract_benchmark_arguments(args)
             self.extra_image_build_arguments = bm_suite.extra_image_build_argument(self.benchmark_name, args)
             # use list() to create fresh copies to safeguard against accidental modification
             self.image_run_args = bm_suite.extra_run_arg(self.benchmark_name, args, list(cmd_line_image_run_args))
@@ -161,6 +161,7 @@ class NativeImageVM(GraalVm):
             self.base_image_build_args += ['-H:Path=' + self.output_dir]
             self.base_image_build_args += ['-H:ConfigurationFileDirectories=' + self.config_dir]
             self.base_image_build_args += ['-H:+PrintAnalysisStatistics', '-H:AnalysisStatisticsFile=' + self.analysis_report_path]
+            self.base_image_build_args += ['-H:+PrintCallEdges']
             self.base_image_build_args += ['-H:+CollectImageBuildStatistics', '-H:ImageBuildStatisticsFile=' + self.image_build_report_path]
             if vm.is_llvm:
                 self.base_image_build_args += ['-H:CompilerBackend=llvm', '-H:Features=org.graalvm.home.HomeFinderFeature', '-H:DeadlockWatchdogInterval=0']
@@ -176,6 +177,7 @@ class NativeImageVM(GraalVm):
             mx.log_deprecation("Ignoring NativeImageVM custom configuration! Use named configuration instead.")
             mx.warn("Ignoring: {}".format(kwargs))
 
+        self.vm_args = None
         self.pgo_aot_inline = False
         self.pgo_instrumented_iterations = 0
         self.pgo_context_sensitive = True
@@ -275,11 +277,12 @@ class NativeImageVM(GraalVm):
             basis. In the future we can convert this from a failure into a warning.
             :return: a list of args supported by native image.
         """
-        return ['-D', '-Xmx', '-Xmn', '-XX:-PrintGC', '-XX:+PrintGC']
+        return ['-D', '-Xmx', '-Xmn', '-XX:-PrintGC', '-XX:+PrintGC', '--add-opens', '--add-modules', '--add-exports',
+                '--add-reads']
 
     _VM_OPTS_SPACE_SEPARATED_ARG = ['-mp', '-modulepath', '-limitmods', '-addmods', '-upgrademodulepath', '-m',
                                     '--module-path', '--limit-modules', '--add-modules', '--upgrade-module-path',
-                                    '--module', '--module-source-path', '--add-exports', '--add-reads',
+                                    '--module', '--module-source-path', '--add-exports', '--add-opens', '--add-reads',
                                     '--patch-module', '--boot-class-path', '--source-path', '-cp', '-classpath']
 
     @staticmethod
@@ -327,10 +330,15 @@ class NativeImageVM(GraalVm):
                 if not any(vm_arg.startswith(elem) for elem in NativeImageVM.supported_vm_arg_prefixes()):
                     mx.abort('Unsupported argument ' + vm_arg + '.' +
                              ' Currently supported argument prefixes are: ' + str(NativeImageVM.supported_vm_arg_prefixes()))
-                image_vm_args.append(vm_arg)
-                i += 1
+                if vm_arg in NativeImageVM._VM_OPTS_SPACE_SEPARATED_ARG:
+                    image_vm_args.append(vm_args[i])
+                    image_vm_args.append(vm_args[i + 1])
+                    i += 2
+                else:
+                    image_vm_args.append(vm_arg)
+                    i += 1
 
-        return executable, classpath_arguments, system_properties, image_vm_args + image_run_args
+        return executable, classpath_arguments, system_properties, image_vm_args, image_run_args
 
     class Stages:
         def __init__(self, config, bench_out, bench_err, is_gate, non_zero_is_fatal, cwd):
@@ -585,6 +593,17 @@ class NativeImageVM(GraalVm):
                 "metric.name": "analysis-stats",
                 "metric.type": "numeric",
                 "metric.unit": "#",
+                "metric.value": ("<total_call_edges>", int),
+                "metric.score-function": "id",
+                "metric.better": "lower",
+                "metric.iteration": 0,
+                "metric.object": "call-edges",
+            }, ['total_call_edges']),
+            mx_benchmark.JsonStdOutFileRule(r'^# Printing analysis results stats to: (?P<path>\S+?)$', 'path', {
+                "benchmark": benchmarks[0],
+                "metric.name": "analysis-stats",
+                "metric.type": "numeric",
+                "metric.unit": "#",
                 "metric.value": ("<total_reachable_types>", int),
                 "metric.score-function": "id",
                 "metric.better": "lower",
@@ -631,6 +650,9 @@ class NativeImageVM(GraalVm):
         hotspot_vm_args = ['-ea', '-esa'] if self.is_gate and not config.skip_agent_assertions else []
         hotspot_run_args = []
         hotspot_vm_args += ['-agentlib:native-image-agent=config-output-dir=' + str(config.config_dir), '-XX:-UseJVMCINativeLibrary']
+
+        if config.vm_args is not None:
+            hotspot_vm_args += config.vm_args
 
         if self.hotspot_pgo:
             hotspot_vm_args += ['-Dgraal.PGOInstrument=' + profile_path]
@@ -820,7 +842,7 @@ class NativeImageBuildBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         ]
 
 
-class AgentScriptJsBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
+class AgentScriptJsBenchmarkSuite(mx_benchmark.VmBenchmarkSuite, mx_benchmark.AveragingBenchmarkMixin):
     def __init__(self):
         super(AgentScriptJsBenchmarkSuite, self).__init__()
         self._benchmarks = {
@@ -862,10 +884,10 @@ class AgentScriptJsBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
     def rules(self, out, benchmarks, bmSuiteArgs):
         assert len(benchmarks) == 1
         return [
-            mx_benchmark.StdOutRule(r'^Hundred thousand prime numbers in (?P<time>[0-9]+) ms\n$', {
+            mx_benchmark.StdOutRule(r'^Hundred thousand prime numbers in (?P<time>[0-9]+) ms$', {
                 "bench-suite": self.name(),
                 "benchmark": (benchmarks[0], str),
-                "metric.name": "time",
+                "metric.name": "warmup",
                 "metric.type": "numeric",
                 "metric.unit": "ms",
                 "metric.value": ("<time>", int),
@@ -890,6 +912,11 @@ class AgentScriptJsBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
 
     def get_vm_registry(self):
         return mx_benchmark.js_vm_registry
+
+    def run(self, benchmarks, bmSuiteArgs):
+        results = super(AgentScriptJsBenchmarkSuite, self).run(benchmarks, bmSuiteArgs)
+        self.addAverageAcrossLatestResults(results)
+        return results
 
 
 class ExcludeWarmupRule(mx_benchmark.StdOutRule):
@@ -990,6 +1017,19 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
                     "metric.iteration": ("<iteration>", int),
                 }, startPattern=r"::: Running :::")
             ]
+        elif metric_name == "allocated-memory":
+            rules += [
+                ExcludeWarmupRule(r"\[(?P<name>.*)\] iteration (?P<iteration>[0-9]*): (?P<value>.*) (?P<unit>.*)", {
+                    "benchmark": ("<name>", str),
+                    "metric.better": "lower",
+                    "metric.name": "allocated-memory",
+                    "metric.unit": ("<unit>", str),
+                    "metric.value": ("<value>", float),
+                    "metric.type": "numeric",
+                    "metric.score-function": "id",
+                    "metric.iteration": ("<iteration>", int),
+                }, startPattern=r"::: Running :::")
+            ]
         else:
             rules += [
                 mx_benchmark.StdOutRule(r"\[(?P<name>.*)\] after run: (?P<value>.*) (?P<unit>.*)", {
@@ -1029,8 +1069,98 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
             return "pe-time"
         elif metric == "one-shot":
             return "one-shot"
+        elif metric == "allocated-bytes":
+            return "allocated-memory"
         else:
             return "time"
+
+
+class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
+    SZ_MSG_PATTERN = "== binary size == {} is {} bytes, path = {}"
+    SZ_RGX_PATTERN = r"== binary size == (?P<interpreter>[a-zA-Z0-9_\-]+) is (?P<value>[0-9]+) bytes, path = (?P<path>.*)"
+
+
+    def group(self):
+        return "Graal"
+
+    def subgroup(self):
+        return "truffle"
+
+    def name(self):
+        return "file-size"
+
+    def version(self):
+        return "0.0.1"
+
+    def benchmarkList(self, bmSuiteArgs):
+        return ["default"]
+
+    def get_vm_registry(self):
+        return _polybench_vm_registry
+
+    def runAndReturnStdOut(self, benchmarks, bmSuiteArgs):
+        from mx_sdk_vm import graalvm_components, GraalVmLanguage, GraalVmJreComponent
+        from mx_sdk_vm_impl import get_native_image_locations, has_component
+
+        vm = self.get_vm_registry().get_vm_from_suite_args(bmSuiteArgs)
+        vm.extract_vm_info(self.vmArgs(bmSuiteArgs))
+        host_vm = None
+        if isinstance(vm, mx_benchmark.GuestVm):
+            host_vm = vm.host_vm()
+            assert host_vm
+        name = 'graalvm-ee' if has_component('svmee') else 'graalvm-ce'
+        dims = {
+            # the vm and host-vm fields are hardcoded to one of the accepted names of the field
+            "vm": name,
+            "host-vm": name,
+            "host-vm-config": self.host_vm_config_name(host_vm, vm),
+            "guest-vm": name if host_vm else "none",
+            "guest-vm-config": self.guest_vm_config_name(host_vm, vm),
+        }
+
+        out = ""
+        for gcomponent in graalvm_components():
+            sz_msg = None
+            if isinstance(gcomponent, GraalVmLanguage):
+                mx.log("checking GraalVMLanguage: {}".format(gcomponent))
+                for cfg in gcomponent.launcher_configs:
+                    binary_dst = cfg.destination
+                    binary_name = os.path.split(binary_dst)[-1]
+                    pth = get_native_image_locations(gcomponent, binary_name, fatal_if_missing=False)
+                    if pth and os.path.exists(pth):
+                        sz_msg = FileSizeBenchmarkSuite.SZ_MSG_PATTERN.format(binary_name, os.path.getsize(pth), pth)
+            elif isinstance(gcomponent, GraalVmJreComponent):
+                mx.log("checking GraalVmJreComponent: {}".format(gcomponent))
+                if gcomponent.name == "LibGraal":
+                    pth = get_native_image_locations(gcomponent, 'jvmcicompiler', fatal_if_missing=False)
+                    if pth and os.path.exists(pth):
+                        sz_msg = FileSizeBenchmarkSuite.SZ_MSG_PATTERN.format(gcomponent.name, os.path.getsize(pth), pth)
+
+            if sz_msg:
+                mx.log(sz_msg)
+                out += sz_msg + "\n"
+
+        return 0, out, dims
+
+    def rules(self, output, benchmarks, bmSuiteArgs):
+        return [
+            mx_benchmark.StdOutRule(
+                FileSizeBenchmarkSuite.SZ_RGX_PATTERN,
+                {
+                    "bench-suite": self.name(),
+                    "benchmark": ("<interpreter>", str),
+                    "benchmark-configuration": ("<path>", str),
+                    "vm": "svm",
+                    "metric.name": "binary-size",
+                    "metric.value": ("<value>", int),
+                    "metric.unit": "B",
+                    "metric.type": "numeric",
+                    "metric.score-function": "id",
+                    "metric.better": "lower",
+                    "metric.iteration": 0,
+                })
+        ]
+
 
 class PolyBenchVm(GraalVm):
     def run(self, cwd, args):
@@ -1041,6 +1171,8 @@ mx_benchmark.add_bm_suite(NativeImageBuildBenchmarkSuite(name='native-image', be
 mx_benchmark.add_bm_suite(NativeImageBuildBenchmarkSuite(name='gu', benchmarks={'js': ['js'], 'libpolyglot': ['libpolyglot']}, registry=_gu_vm_registry))
 mx_benchmark.add_bm_suite(AgentScriptJsBenchmarkSuite())
 mx_benchmark.add_bm_suite(PolyBenchBenchmarkSuite())
+mx_benchmark.add_bm_suite(FileSizeBenchmarkSuite())
+
 
 def register_graalvm_vms():
     default_host_vm_name = mx_sdk_vm_impl.graalvm_dist_name().lower().replace('_', '-')
@@ -1072,5 +1204,5 @@ def register_graalvm_vms():
         if libgraal_location is not None:
             import mx_graal_benchmark
             mx_graal_benchmark.build_jvmci_vm_variants('server', 'graal-core-libgraal',
-                                                       ['-server', '-XX:+EnableJVMCI', '-Dgraal.CompilerConfiguration=community', '-Djvmci.Compiler=graal', '-XX:+UseJVMCINativeLibrary', '-XX:JVMCILibPath=' + dirname(libgraal_location)],
+                                                       ['-server', '-XX:+EnableJVMCI', '-Djvmci.Compiler=graal', '-XX:+UseJVMCINativeLibrary', '-XX:JVMCILibPath=' + dirname(libgraal_location)],
                                                        mx_graal_benchmark._graal_variants, suite=_suite, priority=15, hosted=False)

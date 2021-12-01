@@ -322,7 +322,6 @@ public final class DebuggerController implements ContextsListener {
                                     break;
                                 case SUBMIT_EXCEPTION_BREAKPOINT:
                                 case SUBMIT_LINE_BREAKPOINT:
-                                case SUBMIT_METHOD_ENTRY_BREAKPOINT:
                                 case SPECIAL_STEP:
                                     break;
                                 default:
@@ -465,13 +464,20 @@ public final class DebuggerController implements ContextsListener {
     }
 
     public void disposeDebugger(boolean prepareReconnect) {
+        if (!prepareReconnect) {
+            // OK, we're closing down the context which is equivalent
+            // to a dead VM from a JDWP client point of view
+            if (eventListener.vmDied()) {
+                // we're asked to suspend
+                suspend(null, context.asGuestThread(Thread.currentThread()), SuspendStrategy.EVENT_THREAD, Collections.emptyList(), null, false);
+            }
+        }
         // Creating a new thread, because the reset method
         // will interrupt all active jdwp threads, which might
         // include the current one if we received a DISPOSE command.
         new Thread(new Runnable() {
             @Override
             public void run() {
-                eventListener.vmDied();
                 instrument.reset(prepareReconnect);
             }
         }).start();
@@ -720,6 +726,9 @@ public final class DebuggerController implements ContextsListener {
                     if (callTarget instanceof RootCallTarget) {
                         currentNode = ((RootCallTarget) callTarget).getRootNode();
                     }
+                }
+                if (currentNode instanceof RootNode) {
+                    currentNode = context.getInstrumentableNode((RootNode) currentNode);
                 }
                 callFrames.add(new CallFrame(context.getIds().getIdAsLong(guestThread), typeTag, klassId, method, methodId, codeIndex, frame, currentNode, root, null, context));
                 return null;

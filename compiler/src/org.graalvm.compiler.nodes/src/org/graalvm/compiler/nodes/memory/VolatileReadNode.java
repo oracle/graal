@@ -70,9 +70,4 @@ public class VolatileReadNode extends ReadNode implements SingleMemoryKill, Lowe
         return LocationIdentity.any();
     }
 
-    @Override
-    public boolean canNullCheck() {
-        return false;
-    }
-
 }

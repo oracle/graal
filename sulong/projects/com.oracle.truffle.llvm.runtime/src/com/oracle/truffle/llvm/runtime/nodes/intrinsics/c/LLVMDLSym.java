@@ -91,17 +91,18 @@ public abstract class LLVMDLSym extends LLVMIntrinsic {
     protected Object doDefaultHandle(@SuppressWarnings("unused") LLVMNativePointer libraryHandle,
                     @SuppressWarnings("unused") LLVMPointer symbolName,
                     @SuppressWarnings("unused") @Cached() LLVMReadStringNode readStr,
+                    @Cached WrappedFunctionNode wrapper,
                     @Cached BranchProfile exception) {
         LLVMContext ctx = LLVMContext.get(this);
         String name = readStr.executeWithTarget(symbolName);
-        LLVMSymbol symbol = ctx.getGlobalScope().get(name);
+        LLVMSymbol symbol = ctx.getGlobalScopeChain().get(name);
         if (symbol == null) {
             Object nativeSymbol = getNativeSymbol(name, ctx);
             if (nativeSymbol == null) {
                 ctx.setDLError(2);
                 return LLVMNativePointer.createNull();
             }
-            return nativeSymbol;
+            return wrapper.execute(nativeSymbol);
         }
         return ctx.getSymbol(symbol, exception);
     }

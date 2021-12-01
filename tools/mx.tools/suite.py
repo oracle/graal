@@ -26,7 +26,7 @@ suite = {
     "defaultLicense" : "GPLv2-CPE",
 
     "groupId" : "org.graalvm.tools",
-    "version" : "21.3.0",
+    "version" : "22.0.0",
     "release" : False,
     "url" : "http://openjdk.java.net/projects/graal",
     "developer" : {
@@ -315,31 +315,31 @@ suite = {
           "sourceSha1" : "298db2b3c573f9e76a5a7a60a49c7ceb5ddd35f7",
         },
         "VISUALVM_COMMON" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-1071.tar.gz"],
-            "sha1" : "2a351659ef8604351ad212c16e24918357338fc3",
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-1072.tar.gz"],
+            "sha1" : "4e5b87aab697b2961b25c1a6eaaa30a5952bde58",
         },
         "VISUALVM_PLATFORM_SPECIFIC" : {
             "os_arch" : {
                 "linux" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-1071-linux-amd64.tar.gz"],
-                        "sha1" : "215cb6990ce88ebf6b2891fc9ca249ec358ed54c",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-1072-linux-amd64.tar.gz"],
+                        "sha1" : "d93d9d0cc752f9acf2ae0a93741078a41e74450c",
                     },
                     "aarch64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-1071-linux-aarch64.tar.gz"],
-                        "sha1" : "de59d5a642fe861ca4a9a475fa17dcd7f18137ab",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-1072-linux-aarch64.tar.gz"],
+                        "sha1" : "2a676fca5e4bec1afa8eeef83a6cd27e53e4835e",
                     }
                 },
                 "darwin" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-1071-macosx-x86_64.tar.gz"],
-                        "sha1" : "0191b79501cba23771257c7e988a8dda0771af17",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-1072-macosx-x86_64.tar.gz"],
+                        "sha1" : "6bd0c10ba7128bbc9903a1dee089bbe572971cc9",
                     }
                 },
                 "windows" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-1071-windows-amd64.tar.gz"],
-                        "sha1" : "656dfd0e813d2d82eff934084aeceac23027a47b",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-1072-windows-amd64.tar.gz"],
+                        "sha1" : "7fa3b6581f7ba0bf8a28635f95271ecb2c1c4adb",
                     }
                 },
             }
@@ -586,38 +586,6 @@ suite = {
             "description" : "Truffle Debug Protocol Server distribution for the GraalVM",
             "layout" : {
                 "native-image.properties" : "file:mx.tools/tools-dap.properties",
-            },
-        },
-        "TRUFFLE_WARMUP_ESTIMATOR": {
-            "subDir": "src",
-            "dependencies": [
-                "com.oracle.truffle.tools.warmup",
-            ],
-            "distDependencies" : [
-                "truffle:TRUFFLE_API",
-            ],
-            "maven" : {
-              "artifactId" : "warmup",
-            },
-            "description" : "Truffle warmup estimation tool.",
-        },
-        "TRUFFLE_WARMUP_ESTIMATOR_TEST": {
-            "subDir": "src",
-            "dependencies": [
-                "com.oracle.truffle.tools.warmup.test",
-            ],
-            "distDependencies" : [
-                "truffle:TRUFFLE_TEST",
-                "TRUFFLE_WARMUP_ESTIMATOR",
-            ],
-            "description" : "Tests for the truffle warmup estimator tool.",
-            "maven" : False,
-        },
-        "TRUFFLE_WARMUP_ESTIMATOR_GRAALVM_SUPPORT" : {
-            "native" : True,
-            "description" : "Truffle Profiler support distribution for the GraalVM",
-            "layout" : {
-                "native-image.properties" : "file:mx.tools/tools-profiler.properties",
             },
         },
         "VISUALVM_GRAALVM_SUPPORT": {

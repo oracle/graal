@@ -262,4 +262,8 @@ public abstract class CommonTestUtils {
             return super.describeChild(method);
         }
     }
+
+    public static void disableBitcodeVerification(Context.Builder builder) {
+        builder.option("llvm.verifyBitcode", "false").option("log.llvm.BitcodeVerifier.level", "OFF");
+    }
 }

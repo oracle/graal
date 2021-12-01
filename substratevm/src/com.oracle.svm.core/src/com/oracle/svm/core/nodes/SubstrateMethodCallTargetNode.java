@@ -47,7 +47,7 @@ public final class SubstrateMethodCallTargetNode extends MethodCallTargetNode {
     }
 
     public void setProfiles(JavaTypeProfile typeProfile, JavaMethodProfile methodProfile) {
-        this.profile = typeProfile;
+        this.typeProfile = typeProfile;
         this.methodProfile = methodProfile;
     }
 

@@ -41,14 +41,13 @@
 package com.oracle.truffle.api.test;
 
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleRuntime;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 /**
  * <h3>Using Final Fields in Node Classes</h3>
@@ -73,12 +72,15 @@ import com.oracle.truffle.api.nodes.RootNode;
  */
 public class FinalFieldTest {
 
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
+
     @Test
     public void test() {
-        TruffleRuntime runtime = Truffle.getRuntime();
         TestRootNode rootNode = new TestRootNode(new TestChildNode[]{new TestChildNode(20), new TestChildNode(22)});
-        CallTarget target = runtime.createCallTarget(rootNode);
-        Object result = target.call();
+        Object result = rootNode.getCallTarget().call();
         Assert.assertEquals(42, result);
     }
 

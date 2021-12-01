@@ -104,7 +104,7 @@ class PolyglotInstrument implements com.oracle.truffle.polyglot.PolyglotImpl.VMO
         if (optionValues == null) {
             synchronized (instrumentLock) {
                 if (optionValues == null) {
-                    optionValues = new OptionValuesImpl(engine, getAllOptionsInternal(), false);
+                    optionValues = new OptionValuesImpl(getAllOptionsInternal(), false);
                 }
             }
         }
@@ -184,20 +184,7 @@ class PolyglotInstrument implements com.oracle.truffle.polyglot.PolyglotImpl.VMO
             }
             if (contexts != null) {
                 for (PolyglotContextImpl context : contexts) {
-                    synchronized (context) {
-                        if (context.localsCleared) {
-                            continue;
-                        }
-                        /*
-                         * contextLocals might not be initialized yet, in which case the context
-                         * local factory for this instrument will be invoked during contextLocals
-                         * initialization.
-                         */
-                        if (context.contextLocals != null) {
-                            context.invokeContextLocalsFactory(context.contextLocals, contextLocalLocations);
-                            context.invokeContextThreadLocalFactory(contextThreadLocalLocations);
-                        }
-                    }
+                    context.invokeLocalsFactories(contextLocalLocations, contextThreadLocalLocations);
                 }
             }
         }

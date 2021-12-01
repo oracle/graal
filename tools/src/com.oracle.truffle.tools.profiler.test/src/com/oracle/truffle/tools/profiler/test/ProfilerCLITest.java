@@ -32,10 +32,13 @@ import java.util.List;
 import java.util.Map;
 
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.tools.profiler.CPUSamplerData;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
 import org.junit.Assume;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
@@ -47,7 +50,7 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
 
 public class ProfilerCLITest {
 
-    public static final String SAMPLING_HISTOGRAM_REGEX = "Sampling Histogram. Recorded [0-9]* samples with period [0-9]*ms.";
+    public static final String SAMPLING_HISTOGRAM_REGEX = "Sampling Histogram. Recorded [0-9]* samples with period [0-9]*ms. Missed [0-9]* samples.";
     public static final int EXEC_COUNT = 10;
     public static final String NAME_REGEX = " [a-z]* +";
     public static final String SEPARATOR_REGEX = "\\|";
@@ -292,6 +295,7 @@ public class ProfilerCLITest {
     }
 
     @Test
+    @Ignore("GR-33497")
     public void testDefaultHistogramMultiThreadedNoSummary() {
         Assume.assumeTrue(checkRuntime());
         HashMap<String, String> options = new HashMap<>();
@@ -360,9 +364,11 @@ public class ProfilerCLITest {
         final long sampleCount;
         final boolean gatherSelfHitTimes;
         synchronized (sampler) {
-            threadToNodesMap = sampler.getThreadToNodesMap();
+            Map<TruffleContext, CPUSamplerData> data = sampler.getData();
+            CPUSamplerData samplerData = data.values().iterator().next();
+            threadToNodesMap = samplerData.getThreadData();
             period = sampler.getPeriod();
-            sampleCount = sampler.getSampleCount();
+            sampleCount = samplerData.getSamples();
             gatherSelfHitTimes = sampler.isGatherSelfHitTimes();
             context.close();
         }
@@ -418,5 +424,14 @@ public class ProfilerCLITest {
             }
         }
         return null;
+    }
+
+    @Test
+    public void testSamplerFlameGraph() {
+        HashMap<String, String> options = new HashMap<>();
+        options.put("cpusampler", "true");
+        options.put("cpusampler.Output", "flamegraph");
+        String[] output = runSampler(options);
+        Assert.assertTrue(output[0].startsWith("<?xml"));
     }
 }

@@ -42,9 +42,10 @@ package org.graalvm.nativeimage.impl;
 
 public interface RuntimeSerializationSupport {
 
-    void register(Class<?>... classes);
+    void register(ConfigurationCondition condition, Class<?>... classes);
 
-    void registerWithTargetConstructorClass(Class<?> clazz, Class<?> customTargetConstructorClazz);
+    void registerWithTargetConstructorClass(ConfigurationCondition condition, Class<?> clazz, Class<?> customTargetConstructorClazz);
 
-    void registerWithTargetConstructorClass(String className, String customTargetConstructorClassName);
+    void registerWithTargetConstructorClass(ConfigurationCondition condition, String className, String customTargetConstructorClassName);
+
 }

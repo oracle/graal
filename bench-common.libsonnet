@@ -49,6 +49,13 @@
       default_numa_node:: 0,
       num_threads:: 72
     },
+    x82:: common.linux + common.amd64 + self._bench_machine + {
+      machine_name:: "x82",
+      capabilities+: ["no_frequency_scaling", "tmpfs25g"],
+      numa_nodes:: [0, 1],
+      default_numa_node:: 0,
+      num_threads:: 96
+    },
     xgene3:: common.linux + common.aarch64 + self._bench_machine + {
       machine_name:: "xgene3",
       capabilities+: [],
@@ -76,5 +83,45 @@
       $.hwlocIfNuma(true, cmd_node0, node=0) + ["&"],
       $.hwlocIfNuma(true, cmd_node1, node=1) + ["&"],
       ["wait"]
+    ],
+
+  many_forks_benchmarking:: common.build_base + {
+    // building block used to generate fork builds
+    local benchmarking_config_repo = self.ci_resources.infra.benchmarking_config_repo,
+    environment+: {
+      BENCHMARKING_CONFIG_REPO: "$BUILD_DIR/benchmarking-config",
+      FORK_COUNTS_DIRECTORY: "$BENCHMARKING_CONFIG_REPO/fork-counts",
+      FORK_COUNT_FILE: error "FORK_COUNT_FILE env var must be set to use the many forks execution!"
+    },
+    setup+: [
+      ["set-export", "CURRENT_BRANCH", ["git", "rev-parse", "--abbrev-ref", "HEAD"]],
+      ["echo", "[BENCH-FORKS-CONFIG] Using configuration files from branch ${CURRENT_BRANCH} if it exists remotely."],
+      ["git", "clone", benchmarking_config_repo, "${BENCHMARKING_CONFIG_REPO}"],
+      ["test", "${CURRENT_BRANCH}", "=", "master", "||", "git", "-C", "${BENCHMARKING_CONFIG_REPO}", "checkout", "--track", "origin/${CURRENT_BRANCH}", "||", "echo", "Using default fork counts since there is no branch named '${CURRENT_BRANCH}' in the benchmarking-config repo."]
     ]
+  },
+
+  generate_fork_builds(suite_obj, subdir='compiler', forks_file_base_name=null)::
+    /* based on a benchmark suite definition, generates the many forks version based on the hidden fields
+     * 'forks_batches' that specifies the number of batches this job should be split into and the corresponding
+     * 'forks_timelimit' that applies to those long-running jobs.
+     *
+     * The generated builder will set the 'FORK_COUNT_FILE' to the corresponding json file. So, make sure that the
+     * mx benchmark command sets --fork-count-file=${FORK_COUNT_FILE}
+     */
+
+    if std.objectHasAll(suite_obj, "forks_batches") && std.objectHasAll(suite_obj, "forks_timelimit") && suite_obj.forks_batches != null then
+      [ $.many_forks_benchmarking + suite_obj + {
+        local batch_str = if suite_obj.forks_batches > 1 then "batch"+i else null,
+        "job_prefix":: "bench-forks-" + subdir,
+        "job_suffix":: batch_str,
+        "timelimit": suite_obj.forks_timelimit,
+        local base_name = if forks_file_base_name != null then forks_file_base_name else suite_obj.suite,
+        "environment" +: {
+          FORK_COUNT_FILE: "${FORK_COUNTS_DIRECTORY}/" + subdir + "/" + base_name + "_forks" + (if batch_str != null then "_"+batch_str else "") + ".json"
+        }
+      }
+      for i in std.range(0, suite_obj.forks_batches - 1)]
+    else
+      [],
 }

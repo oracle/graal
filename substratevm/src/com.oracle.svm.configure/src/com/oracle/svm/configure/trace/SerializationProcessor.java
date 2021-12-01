@@ -28,6 +28,8 @@ package com.oracle.svm.configure.trace;
 import java.util.List;
 import java.util.Map;
 
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
+
 import com.oracle.svm.configure.config.SerializationConfiguration;
 
 public class SerializationProcessor extends AbstractProcessor {
@@ -46,6 +48,7 @@ public class SerializationProcessor extends AbstractProcessor {
     @Override
     void processEntry(Map<String, ?> entry) {
         boolean invalidResult = Boolean.FALSE.equals(entry.get("result"));
+        ConfigurationCondition condition = ConfigurationCondition.alwaysTrue();
         if (invalidResult) {
             return;
         }
@@ -58,7 +61,7 @@ public class SerializationProcessor extends AbstractProcessor {
                 return;
             }
 
-            serializationConfiguration.registerWithTargetConstructorClass((String) args.get(0), (String) args.get(1));
+            serializationConfiguration.registerWithTargetConstructorClass(condition, (String) args.get(0), (String) args.get(1));
         }
     }
 }

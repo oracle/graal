@@ -33,8 +33,6 @@ import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.Canonicalizable;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
@@ -46,6 +44,8 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValueNodeUtil;
 import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
@@ -64,7 +64,7 @@ import jdk.vm.ci.meta.Value;
 /**
  * Compares two arrays with the same length.
  */
-@NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_128, allowedUsageTypes = {Memory})
+@NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_128)
 public class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, Canonicalizable, Virtualizable, MemoryAccess {
 
     public static final NodeClass<ArrayEqualsNode> TYPE = NodeClass.create(ArrayEqualsNode.class);
@@ -198,38 +198,6 @@ public class ArrayEqualsNode extends FixedWithNextNode implements LIRLowerable, 
 
     @NodeIntrinsic
     public static native boolean equals(Object array1, Object array2, int length, @ConstantNodeParameter JavaKind kind);
-
-    public static boolean equals(boolean[] array1, boolean[] array2, int length) {
-        return equals(array1, array2, length, JavaKind.Boolean);
-    }
-
-    public static boolean equals(byte[] array1, byte[] array2, int length) {
-        return equals(array1, array2, length, JavaKind.Byte);
-    }
-
-    public static boolean equals(char[] array1, char[] array2, int length) {
-        return equals(array1, array2, length, JavaKind.Char);
-    }
-
-    public static boolean equals(short[] array1, short[] array2, int length) {
-        return equals(array1, array2, length, JavaKind.Short);
-    }
-
-    public static boolean equals(int[] array1, int[] array2, int length) {
-        return equals(array1, array2, length, JavaKind.Int);
-    }
-
-    public static boolean equals(long[] array1, long[] array2, int length) {
-        return equals(array1, array2, length, JavaKind.Long);
-    }
-
-    public static boolean equals(float[] array1, float[] array2, int length) {
-        return equals(array1, array2, length, JavaKind.Float);
-    }
-
-    public static boolean equals(double[] array1, double[] array2, int length) {
-        return equals(array1, array2, length, JavaKind.Double);
-    }
 
     public ValueNode getArray1() {
         return array1;

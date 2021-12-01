@@ -60,6 +60,7 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
     private final long id;
     private final Consumer<CompilationTask> action;
     private final EngineData engineData;
+    private final TruffleInlining inliningData = new TruffleInlining();
     private volatile Future<?> future;
     private volatile boolean cancelled;
     private volatile boolean started;
@@ -67,8 +68,11 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
     private int lastCount;
     private long lastTime;
     private double lastWeight;
+    private boolean isOSR;
 
-    private final TruffleInlining inliningData = new TruffleInlining();
+    private double lastRate;
+    private long time;
+    private int queueChange;
 
     private CompilationTask(BackgroundCompileQueue.Priority priority, WeakReference<OptimizedCallTarget> targetRef, Consumer<CompilationTask> action, long id) {
         this.priority = priority;
@@ -80,7 +84,7 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
         lastTime = System.nanoTime();
         lastWeight = target != null ? target.getCallAndLoopCount() : -1;
         engineData = target != null ? target.engine : null;
-
+        isOSR = target != null ? target.isOSR() : false;
     }
 
     static CompilationTask createInitializationTask(WeakReference<OptimizedCallTarget> targetRef, Consumer<CompilationTask> action) {
@@ -186,7 +190,7 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
 
     @Override
     public String toString() {
-        return "Task[id=" + id + ", p=(" + priority.tier + "," + priority.value + ")]";
+        return "Task[id=" + id + ", tier=" + priority.tier + ", weight=" + lastWeight + "]";
     }
 
     /**
@@ -232,13 +236,16 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
             // Any non-compilation action (e.g. compiler init) is higher priority.
             return true;
         }
+        if (this.isOSR && !other.isOSR) {
+            return true;
+        }
         int tier = tier();
         if (engineData.traversingFirstTierPriority && tier != other.tier()) {
             return tier < other.tier();
         }
         int otherCompileTier = other.targetHighestCompiledTier();
         int compiledTier = targetHighestCompiledTier();
-        if (compiledTier != otherCompileTier) {
+        if (tier == other.tier() && compiledTier != otherCompileTier) {
             // tasks previously compiled with higher tier are better
             return compiledTier > otherCompileTier;
         }
@@ -261,17 +268,35 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
             return true;
         }
         int count = target.getCallAndLoopCount();
-        double weight = rate(count, elapsed) * count;
+        lastRate = rate(count, elapsed);
         lastTime = currentTime;
         lastCount = count;
-        lastWeight = weight;
+        double weight = (1 + lastRate) * lastCount;
+        if (engineData.traversingFirstTierPriority) {
+            lastWeight = weight;
+        } else {
+            // @formatter:off
+            // We multiply first tier compilations with this bonus to bring first and last tier
+            // compilation weights to roughly the same order of magnitude and give first tier compilations some priority.
+            // The bonus is calculated as TraversingQueueFirstTierBonus * LastTierCompilationThreshold / FirstTierCompilationThreshold
+            //                                    ^                        \________________________________________________________/
+            //  This controls for the fact that second tier                             |
+            //  compilations are already compiled in the first                          |
+            //  tier and are thus faster and for the fact that                          |
+            //  we wish to prioritize first tier compilations.                          |
+            //                                                                          |
+            //                                   This controls for the fact that weight is a multiple of the callAndLoopCount and this
+            //                                   count is on the order of the thresholds which is much smaller for first tier compilations
+            // @formatter:on
+            lastWeight = weight * (isFirstTier() ? engineData.traversingFirstTierBonus : 1);
+        }
         assert weight >= 0.0 : "weight must be positive";
         return true;
     }
 
     private double rate(int count, long elapsed) {
-        double rawRate = ((double) count - lastCount) / elapsed;
-        return 1.0 + (Double.isNaN(rawRate) ? 0 : rawRate);
+        lastRate = ((double) count - lastCount) / elapsed;
+        return (Double.isNaN(lastRate) ? 0 : lastRate);
     }
 
     public int targetHighestCompiledTier() {
@@ -280,6 +305,34 @@ public final class CompilationTask implements TruffleCompilationTask, Callable<V
             return -1;
         }
         return target.highestCompiledTier();
+    }
+
+    @Override
+    public long time() {
+        return time;
+    }
+
+    @Override
+    public double weight() {
+        return lastWeight;
+    }
+
+    @Override
+    public double rate() {
+        return lastRate;
+    }
+
+    @Override
+    public int queueChange() {
+        return queueChange;
+    }
+
+    void setTime(long time) {
+        this.time = time;
+    }
+
+    void setQueueChange(int queueChange) {
+        this.queueChange = queueChange;
     }
 
     /**

@@ -25,18 +25,20 @@
 
 package com.oracle.svm.hosted.xml;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
+
 import com.oracle.svm.core.configure.ResourcesRegistry;
 import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.classinitialization.ConfigurableClassInitialization;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
-import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
-
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
 
 public abstract class XMLParsersRegistration extends JNIRegistrationUtil {
 
@@ -113,9 +115,9 @@ public abstract class XMLParsersRegistration extends JNIRegistrationUtil {
             classInitializationSupport.setConfigurationSealed(false);
 
             ResourcesRegistry resourcesRegistry = ImageSingletons.lookup(ResourcesRegistry.class);
-            resourcesRegistry.addResourceBundles("com.sun.org.apache.xml.internal.serializer.utils.SerializerMessages");
-            resourcesRegistry.addResourceBundles("com.sun.org.apache.xalan.internal.xsltc.compiler.util.ErrorMessages");
-            resourcesRegistry.addResources("com.sun.*.properties");
+            resourcesRegistry.addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xml.internal.serializer.utils.SerializerMessages");
+            resourcesRegistry.addResourceBundles(ConfigurationCondition.alwaysTrue(), "com.sun.org.apache.xalan.internal.xsltc.compiler.util.ErrorMessages");
+            resourcesRegistry.addResources(ConfigurationCondition.alwaysTrue(), "com.sun.*.properties");
 
             classInitializationSupport.setConfigurationSealed(true);
         }

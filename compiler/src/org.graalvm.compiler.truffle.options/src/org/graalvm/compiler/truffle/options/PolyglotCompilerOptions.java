@@ -71,7 +71,7 @@ public final class PolyglotCompilerOptions {
         VIRTUAL_RUNTIME_CALL("call", "Enables virtual call warnings"),
         VIRTUAL_INSTANCEOF("instanceof", "Enables virtual instanceof warnings"),
         VIRTUAL_STORE("store", "Enables virtual store warnings"),
-        FRAME_CLEAR_PHI("clear", "Enables frame clears introducing phi nodes warnings"),
+        FRAME_INCOMPATIBLE_MERGE("frame_merge", "Enables warnings about deopts inserted for incompatible frame slot merges"),
         TRIVIAL_FAIL("trivial", "Enables trivial fail warnings");
 
         private static final EconomicMap<String, PerformanceWarningKind> kindByName;
@@ -178,7 +178,7 @@ public final class PolyglotCompilerOptions {
             try {
                 return ExceptionAction.valueOf(s);
             } catch (IllegalArgumentException e) {
-                throw new IllegalArgumentException(ExceptionAction.HELP);
+                throw new IllegalArgumentException(String.format(ExceptionAction.HELP));
             }
         }
     });
@@ -365,10 +365,10 @@ public final class PolyglotCompilerOptions {
     private static final String EXPANSION_VALUES = "Accepted values are:%n" +
                     "    true - Collect data for the default tier 'truffleTier'.%n" +
                     "    false - No data will be collected.%n" +
-                    "Or one or multiple tiers separated by comma (e.g. truffleTier,lowTier) :%n" +
+                    "Or one or multiple tiers separated by comma (e.g. truffleTier,lowTier):%n" +
                     "    peTier - After partial evaluation without additional phases applied.%n" +
                     "    truffleTier - After partial evaluation with additional phases applied.%n" +
-                    "    lowTier - After low tier phases were applied.%n";
+                    "    lowTier - After low tier phases were applied.";
 
     @Option(help = "Print a tree of all expanded Java methods with statistics after each compilation. " + EXPANSION_VALUES, category = OptionCategory.INTERNAL)
     public static final OptionKey<Set<CompilationTier>> TraceMethodExpansion = new OptionKey<>(Collections.emptySet(), COMPILATION_TIERS_TYPE);
@@ -498,9 +498,9 @@ public final class PolyglotCompilerOptions {
             "On runtimes which doesn't support it the option has no effect.",
             category = OptionCategory.EXPERT)
     public static final OptionKey<Integer> EncodedGraphCachePurgeDelay = new OptionKey<>(10_000);
-    
+
     @Option(help = "Forces the frame clearing mechanism to be executed, even if Frame.clear() is not used.",
-            category = OptionCategory.EXPERT)
+            category = OptionCategory.EXPERT,deprecated = true, deprecationMessage = "The analysis is now always executed, irrespective of this option")
     public static final OptionKey<Boolean> ForceFrameLivenessAnalysis = new OptionKey<>(false);
 
     // Compilation queue
@@ -514,7 +514,10 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<Boolean> TraversingQueueWeightingBothTiers = new OptionKey<>(true);
 
     @Option(help = "Traversing queue gives first tier compilations priority.", category = OptionCategory.INTERNAL)
-    public static final OptionKey<Boolean> TraversingQueueFirstTierPriority = new OptionKey<>(true);
+    public static final OptionKey<Boolean> TraversingQueueFirstTierPriority = new OptionKey<>(false);
+
+    @Option(help = "Controls how much of a priority should be given to first tier compilations.", category = OptionCategory.INTERNAL)
+    public static final OptionKey<Double > TraversingQueueFirstTierBonus = new OptionKey<>(15.0);
 
     @Option(help = "Reduce or increase the compilation threshold depending on the size of the compilation queue.", category = OptionCategory.INTERNAL)
     public static final OptionKey<Boolean> DynamicCompilationThresholds = new OptionKey<>(true);

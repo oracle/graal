@@ -44,7 +44,6 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags.WriteVariableTag;
@@ -59,7 +58,7 @@ import com.oracle.truffle.sl.nodes.interop.NodeObjectDescriptor;
  * allows to store primitive values of all Java primitive types, and Object values.
  */
 @NodeChild("valueNode")
-@NodeField(name = "slot", type = FrameSlot.class)
+@NodeField(name = "slot", type = int.class)
 @NodeField(name = "nameNode", type = SLExpressionNode.class)
 @NodeField(name = "declaration", type = boolean.class)
 public abstract class SLWriteLocalVariableNode extends SLExpressionNode {
@@ -68,7 +67,7 @@ public abstract class SLWriteLocalVariableNode extends SLExpressionNode {
      * Returns the descriptor of the accessed local variable. The implementation of this method is
      * created by the Truffle DSL based on the {@link NodeField} annotation on the class.
      */
-    protected abstract FrameSlot getSlot();
+    protected abstract int getSlot();
 
     /**
      * Returns the child node <code>nameNode</code>. The implementation of this method is created by
@@ -78,6 +77,10 @@ public abstract class SLWriteLocalVariableNode extends SLExpressionNode {
 
     public abstract boolean isDeclaration();
 
+    public final String getSlotName() {
+        return getRootNode().getFrameDescriptor().getSlotName(getSlot()).toString();
+    }
+
     /**
      * Specialized method to write a primitive {@code long} value. This is only possible if the
      * local variable also has currently the type {@code long} or was never written before,
@@ -86,7 +89,7 @@ public abstract class SLWriteLocalVariableNode extends SLExpressionNode {
     @Specialization(guards = "isLongOrIllegal(frame)")
     protected long writeLong(VirtualFrame frame, long value) {
         /* Initialize type on first write of the local variable. No-op if kind is already Long. */
-        frame.getFrameDescriptor().setFrameSlotKind(getSlot(), FrameSlotKind.Long);
+        frame.getFrameDescriptor().setSlotKind(getSlot(), FrameSlotKind.Long);
 
         frame.setLong(getSlot(), value);
         return value;
@@ -95,7 +98,7 @@ public abstract class SLWriteLocalVariableNode extends SLExpressionNode {
     @Specialization(guards = "isBooleanOrIllegal(frame)")
     protected boolean writeBoolean(VirtualFrame frame, boolean value) {
         /* Initialize type on first write of the local variable. No-op if kind is already Long. */
-        frame.getFrameDescriptor().setFrameSlotKind(getSlot(), FrameSlotKind.Boolean);
+        frame.getFrameDescriptor().setSlotKind(getSlot(), FrameSlotKind.Boolean);
 
         frame.setBoolean(getSlot(), value);
         return value;
@@ -120,7 +123,7 @@ public abstract class SLWriteLocalVariableNode extends SLExpressionNode {
          *
          * No-op if kind is already Object.
          */
-        frame.getFrameDescriptor().setFrameSlotKind(getSlot(), FrameSlotKind.Object);
+        frame.getFrameDescriptor().setSlotKind(getSlot(), FrameSlotKind.Object);
 
         frame.setObject(getSlot(), value);
         return value;
@@ -137,12 +140,12 @@ public abstract class SLWriteLocalVariableNode extends SLExpressionNode {
      *            slot kind which can change.
      */
     protected boolean isLongOrIllegal(VirtualFrame frame) {
-        final FrameSlotKind kind = frame.getFrameDescriptor().getFrameSlotKind(getSlot());
+        final FrameSlotKind kind = frame.getFrameDescriptor().getSlotKind(getSlot());
         return kind == FrameSlotKind.Long || kind == FrameSlotKind.Illegal;
     }
 
     protected boolean isBooleanOrIllegal(VirtualFrame frame) {
-        final FrameSlotKind kind = frame.getFrameDescriptor().getFrameSlotKind(getSlot());
+        final FrameSlotKind kind = frame.getFrameDescriptor().getSlotKind(getSlot());
         return kind == FrameSlotKind.Boolean || kind == FrameSlotKind.Illegal;
     }
 
@@ -166,6 +169,6 @@ public abstract class SLWriteLocalVariableNode extends SLExpressionNode {
                 nameSourceSection = source.createSection(nameNode.getSourceCharIndex(), nameNode.getSourceLength());
             }
         }
-        return NodeObjectDescriptor.writeVariable(getSlot().getIdentifier().toString(), nameSourceSection);
+        return NodeObjectDescriptor.writeVariable(getRootNode().getFrameDescriptor().getSlotName(getSlot()).toString(), nameSourceSection);
     }
 }

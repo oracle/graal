@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
@@ -49,10 +51,12 @@ public class TruffleDirectCallNodeTest {
                 return true;
             }
         };
-        final CallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
+        final CallTarget callTarget = rootNode.getCallTarget();
         final DirectCallNode callNode = Truffle.getRuntime().createDirectCallNode(callTarget);
 
         assertTrue(callNode.isCallTargetCloningAllowed());
         assertTrue(callNode.cloneCallTarget());
+        assertSame(callNode.getCurrentCallTarget(), callNode.getClonedCallTarget());
+        assertNotSame(callTarget, callNode.getClonedCallTarget());
     }
 }

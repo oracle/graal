@@ -29,15 +29,20 @@
  */
 package com.oracle.truffle.llvm.runtime.debug.scope;
 
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
-import com.oracle.truffle.llvm.runtime.LLVMScope;
+import com.oracle.truffle.llvm.runtime.LLVMScopeChain;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.LLVMSourceContext;
@@ -51,11 +56,6 @@ import com.oracle.truffle.llvm.runtime.types.PointerType;
 import com.oracle.truffle.llvm.runtime.types.symbols.LLVMIdentifier;
 import com.oracle.truffle.llvm.runtime.types.symbols.LocalVariableDebugInfo;
 import com.oracle.truffle.llvm.runtime.types.symbols.SSAValue;
-
-import java.util.ArrayList;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 public final class LLVMDebuggerScopeFactory {
 
@@ -75,14 +75,15 @@ public final class LLVMDebuggerScopeFactory {
 
     @TruffleBoundary
     private static LLVMDebuggerScopeEntries getIRLevelEntries(Frame frame, LLVMContext context, DataLayout dataLayout) {
-        if (frame == null || frame.getFrameDescriptor().getSlots().isEmpty()) {
+        FrameDescriptor desc = frame.getFrameDescriptor();
+        if (frame == null || desc.getNumberOfSlots() == 0) {
             return LLVMDebuggerScopeEntries.EMPTY_SCOPE;
         }
 
         final LLVMDebuggerScopeEntries entries = new LLVMDebuggerScopeEntries();
-        for (final FrameSlot slot : frame.getFrameDescriptor().getSlots()) {
-            if (slot.getInfo() instanceof SSAValue) {
-                SSAValue stackValue = (SSAValue) slot.getInfo();
+        for (int slot = 0; slot < desc.getNumberOfSlots(); slot++) {
+            if (desc.getSlotInfo(slot) instanceof SSAValue) {
+                SSAValue stackValue = (SSAValue) desc.getSlotInfo(slot);
                 String identifier = stackValue.getName();
                 Object slotValue = frame.getValue(slot);
                 if (slotValue == null) { // slots are null if they are cleared by LLVMFrameNuller
@@ -97,14 +98,18 @@ public final class LLVMDebuggerScopeFactory {
     }
 
     @TruffleBoundary
-    private static LLVMDebuggerScopeEntries toDebuggerScope(LLVMScope scope, DataLayout dataLayout, LLVMContext context) {
+    private static LLVMDebuggerScopeEntries toDebuggerScope(LLVMScopeChain scope, DataLayout dataLayout, LLVMContext context) {
         final LLVMDebuggerScopeEntries entries = new LLVMDebuggerScopeEntries();
-        for (LLVMSymbol symbol : scope.values()) {
-            if (symbol.isGlobalVariable()) {
-                LLVMGlobal global = symbol.asGlobalVariable();
-                Object value = CommonNodeFactory.toGenericDebuggerValue(global.getPointeeType(), context.getSymbolUncached(global), dataLayout);
-                entries.add(LLVMIdentifier.toGlobalIdentifier(global.getName()), value);
+        LLVMScopeChain next = scope;
+        while (next != null) {
+            for (LLVMSymbol symbol : next.getScope().values()) {
+                if (symbol.isGlobalVariable()) {
+                    LLVMGlobal global = symbol.asGlobalVariable();
+                    Object value = CommonNodeFactory.toGenericDebuggerValue(global.getPointeeType(), context.getSymbolUncached(global), dataLayout);
+                    entries.add(LLVMIdentifier.toGlobalIdentifier(global.getName()), value);
+                }
             }
+            next = next.getNext();
         }
         return entries;
     }
@@ -128,7 +133,7 @@ public final class LLVMDebuggerScopeFactory {
                 return toDebuggerScope((LLVMSourceLocation.TextModule) location, dataLayout, context);
             }
         }
-        return toDebuggerScope(context.getGlobalScope(), dataLayout, context);
+        return toDebuggerScope(context.getGlobalScopeChain(), dataLayout, context);
     }
 
     @TruffleBoundary

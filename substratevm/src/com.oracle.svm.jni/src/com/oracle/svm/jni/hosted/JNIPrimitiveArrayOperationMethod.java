@@ -28,24 +28,18 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 
-import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.java.FrameStateBuilder;
-import org.graalvm.compiler.nodes.AbstractMergeNode;
-import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.ValuePhiNode;
-import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
-import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
-import org.graalvm.compiler.nodes.java.NewArrayNode;
 import org.graalvm.nativeimage.c.function.CEntryPoint.FatalExceptionHandler;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.WordPointer;
 
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.svm.core.c.function.CEntryPointOptions.AutomaticPrologueBailout;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
@@ -54,18 +48,17 @@ import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode.LeaveAction;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.CEntryPointData;
+import com.oracle.svm.hosted.code.EntryPointCallStubMethod;
 import com.oracle.svm.hosted.code.SimpleSignature;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
 
 import jdk.vm.ci.meta.ConstantPool;
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.meta.Signature;
 
 /**
  * Generated method for operations on an array with a primitive element type via JNI. An accessor is
@@ -74,14 +67,6 @@ import jdk.vm.ci.meta.Signature;
  * The generated method implements one of the following JNI Functions:
  *
  * <ul>
- * <li>{@code NewBooleanArray}</li>
- * <li>{@code NewByteArray}</li>
- * <li>{@code NewCharArray}</li>
- * <li>{@code NewShortArray}</li>
- * <li>{@code NewIntArray}</li>
- * <li>{@code NewLongArray}</li>
- * <li>{@code NewFloatArray}</li>
- * <li>{@code NewDoubleArray}</li>
  * <li>{@code GetBooleanArrayElements}</li>
  * <li>{@code GetByteArrayElements}</li>
  * <li>{@code GetCharArrayElements}</li>
@@ -120,10 +105,9 @@ import jdk.vm.ci.meta.Signature;
  *      "https://docs.oracle.com/javase/8/docs/technotes/guides/jni/spec/functions.html">JNI
  *      Functions</a>
  */
-public final class JNIPrimitiveArrayOperationMethod extends JNIGeneratedMethod {
+public final class JNIPrimitiveArrayOperationMethod extends EntryPointCallStubMethod {
 
     public enum Operation {
-        NEW,
         GET_ELEMENTS,
         RELEASE_ELEMENTS,
         GET_REGION,
@@ -132,12 +116,9 @@ public final class JNIPrimitiveArrayOperationMethod extends JNIGeneratedMethod {
 
     private final JavaKind elementKind;
     private final Operation operation;
-    private final ResolvedJavaType declaringClass;
-    private final ConstantPool constantPool;
-    private final String name;
-    private final Signature signature;
 
     public JNIPrimitiveArrayOperationMethod(JavaKind elementKind, Operation operation, ResolvedJavaType declaringClass, ConstantPool constantPool, MetaAccessProvider metaAccess) {
+        super(createName(elementKind, operation), declaringClass, createSignature(operation, metaAccess), constantPool);
         if (!EnumSet.of(JavaKind.Boolean, JavaKind.Byte, JavaKind.Char, JavaKind.Short,
                         JavaKind.Int, JavaKind.Long, JavaKind.Float, JavaKind.Double).contains(elementKind)) {
 
@@ -145,19 +126,12 @@ public final class JNIPrimitiveArrayOperationMethod extends JNIGeneratedMethod {
         }
         this.elementKind = elementKind;
         this.operation = operation;
-        this.declaringClass = declaringClass;
-        this.constantPool = constantPool;
-        this.name = createName();
-        this.signature = createSignature(metaAccess);
     }
 
-    private String createName() {
+    private static String createName(JavaKind elementKind, Operation operation) {
         StringBuilder sb = new StringBuilder(32);
         String kindName = elementKind.name();
         switch (operation) {
-            case NEW:
-                sb.append("New").append(kindName).append("Array");
-                break;
             case GET_ELEMENTS:
                 sb.append("Get").append(kindName).append("ArrayElements");
                 break;
@@ -174,32 +148,27 @@ public final class JNIPrimitiveArrayOperationMethod extends JNIGeneratedMethod {
         return sb.toString();
     }
 
-    private SimpleSignature createSignature(MetaAccessProvider metaAccess) {
+    private static SimpleSignature createSignature(Operation operation, MetaAccessProvider metaAccess) {
         ResolvedJavaType objectHandleType = metaAccess.lookupJavaType(JNIObjectHandle.class);
         ResolvedJavaType intType = metaAccess.lookupJavaType(int.class);
         ResolvedJavaType returnType;
         List<JavaType> args = new ArrayList<>();
         args.add(metaAccess.lookupJavaType(JNIEnvironment.class));
-        if (operation == Operation.NEW) {
-            args.add(intType); // jsize length;
-            returnType = objectHandleType;
+        args.add(objectHandleType); // j<PrimitiveType>Array array;
+        if (operation == Operation.GET_ELEMENTS) {
+            args.add(metaAccess.lookupJavaType(CCharPointer.class)); // jboolean *isCopy;
+            returnType = metaAccess.lookupJavaType(WordPointer.class);
+        } else if (operation == Operation.RELEASE_ELEMENTS) {
+            args.add(metaAccess.lookupJavaType(WordPointer.class)); // NativeType *elems;
+            args.add(intType); // jint mode;
+            returnType = metaAccess.lookupJavaType(Void.TYPE);
+        } else if (operation == Operation.GET_REGION || operation == Operation.SET_REGION) {
+            args.add(intType); // jsize start;
+            args.add(intType); // jsize len;
+            args.add(metaAccess.lookupJavaType(WordPointer.class)); // NativeType *buf;
+            returnType = metaAccess.lookupJavaType(Void.TYPE);
         } else {
-            args.add(objectHandleType); // j<PrimitiveType>Array array;
-            if (operation == Operation.GET_ELEMENTS) {
-                args.add(metaAccess.lookupJavaType(CCharPointer.class)); // jboolean *isCopy;
-                returnType = metaAccess.lookupJavaType(WordPointer.class);
-            } else if (operation == Operation.RELEASE_ELEMENTS) {
-                args.add(metaAccess.lookupJavaType(WordPointer.class)); // NativeType *elems;
-                args.add(intType); // jint mode;
-                returnType = metaAccess.lookupJavaType(Void.TYPE);
-            } else if (operation == Operation.GET_REGION || operation == Operation.SET_REGION) {
-                args.add(intType); // jsize start;
-                args.add(intType); // jsize len;
-                args.add(metaAccess.lookupJavaType(WordPointer.class)); // NativeType *buf;
-                returnType = metaAccess.lookupJavaType(Void.TYPE);
-            } else {
-                throw VMError.shouldNotReachHere();
-            }
+            throw VMError.shouldNotReachHere();
         }
         return new SimpleSignature(args, returnType);
     }
@@ -211,16 +180,13 @@ public final class JNIPrimitiveArrayOperationMethod extends JNIGeneratedMethod {
         FrameStateBuilder state = new FrameStateBuilder(null, method, graph);
         state.initializeForMethodStart(null, true, providers.getGraphBuilderPlugins());
 
-        ValueNode vmThread = kit.loadLocal(0, signature.getParameterKind(0));
+        ValueNode vmThread = kit.loadLocal(0, getSignature().getParameterKind(0));
         kit.append(CEntryPointEnterNode.enter(vmThread));
 
-        List<ValueNode> arguments = kit.loadArguments(signature.toParameterTypes(null));
+        List<ValueNode> arguments = kit.loadArguments(getSignature().toParameterTypes(null));
 
         ValueNode result = null;
         switch (operation) {
-            case NEW:
-                result = newArray(providers, kit, arguments);
-                break;
             case GET_ELEMENTS: {
                 ValueNode arrayHandle = arguments.get(1);
                 ValueNode array = kit.unboxHandle(arrayHandle);
@@ -263,44 +229,8 @@ public final class JNIPrimitiveArrayOperationMethod extends JNIGeneratedMethod {
         return kit.finalizeGraph();
     }
 
-    private ValueNode newArray(HostedProviders providers, JNIGraphKit kit, List<ValueNode> arguments) {
-        ResolvedJavaType elementType = providers.getMetaAccess().lookupJavaType(elementKind.toJavaClass());
-        ValueNode length = arguments.get(1);
-        ConstantNode zero = kit.createInt(0);
-        kit.startIf(new IntegerLessThanNode(length, zero), BranchProbabilityNode.VERY_SLOW_PATH_PROFILE);
-        kit.thenPart();
-        ValueNode nullHandle = kit.createConstant(JavaConstant.INT_0, providers.getWordTypes().getWordKind());
-        kit.elsePart();
-        ValueNode array = kit.append(new NewArrayNode(elementType, length, true));
-        ValueNode arrayHandle = kit.boxObjectInLocalHandle(array);
-        AbstractMergeNode merge = kit.endIf();
-        merge.setStateAfter(kit.getFrameState().create(kit.bci(), merge));
-        Stamp handleStamp = providers.getWordTypes().getWordStamp(providers.getMetaAccess().lookupJavaType(JNIObjectHandle.class));
-        return kit.unique(new ValuePhiNode(handleStamp, merge, new ValueNode[]{nullHandle, arrayHandle}));
-    }
-
-    @Override
-    public String getName() {
-        return name;
-    }
-
-    @Override
-    public Signature getSignature() {
-        return signature;
-    }
-
-    @Override
-    public ResolvedJavaType getDeclaringClass() {
-        return declaringClass;
-    }
-
-    @Override
-    public ConstantPool getConstantPool() {
-        return constantPool;
-    }
-
     public CEntryPointData createEntryPointData() {
         return CEntryPointData.create(this, CEntryPointData.DEFAULT_NAME, CEntryPointData.DEFAULT_NAME_TRANSFORMATION, "",
-                        NoPrologue.class, NoEpilogue.class, FatalExceptionHandler.class, Publish.NotPublished);
+                        NoPrologue.class, AutomaticPrologueBailout.class, NoEpilogue.class, FatalExceptionHandler.class, Publish.NotPublished);
     }
 }

@@ -1,10 +1,11 @@
 {
-  local common = (import '../../common.jsonnet'),
+  local common = import '../../common.jsonnet',
+  local utils = import '../../common-utils.libsonnet',
   local config = import '../../repo-configuration.libsonnet',
   local linux_amd64 = common["linux-amd64"],
 
-  local gateMathStubsListener = common.daily + linux_amd64 + common.oraclejdk8 + {
-    name: 'daily-hotspot-mathstubs-listener',
+  local gate_math_stubs_listener = {
+    name: 'daily-hotspot-mathstubs-listener-' + utils.prefixed_jdk(self.jdk_version),
     environment+: {
       "HOTSPOT_PORT_SYNC_CHECK" : "true"
     },
@@ -14,12 +15,11 @@
     run+: [
       ["mx", "build"]
     ],
-    notify_emails: [
-      "yudi.zheng@oracle.com"
-    ],
+    timelimit : "10:00",
+    notify_groups:: ["compiler_stubs"],
   },
 
   builds: [
-    gateMathStubsListener,
+    common.daily + linux_amd64 + common.oraclejdk11 + gate_math_stubs_listener,
   ]
 }

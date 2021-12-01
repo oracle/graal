@@ -9,6 +9,7 @@ permalink: /graalvm-as-a-platform/language-implementation-framework/Languages/
 This page is intended to keep track of the growing number of language implementations and experiments on top of Truffle.
 The following language implementations exist already:
 
+* [Espresso](https://github.com/oracle/graal/tree/master/espresso), a meta-circular Java bytecode interpreter. *
 * [FastR](https://github.com/graalvm/fastr), an implementation of GNU R. *
 * [Graal.js](https://github.com/graalvm/graaljs), an ECMAScript 2020 compliant JavaScript implementation. *
 * [Graal.Python](https://github.com/graalvm/graalpython), an early-stage implementation of Python. *

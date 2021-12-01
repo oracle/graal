@@ -60,21 +60,27 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
 import org.junit.Assume;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.ParsingRequest;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.GCUtils;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 /*
  * Please note that any OOME exceptions when running this test indicate memory leaks in Truffle.
  */
 public class PolyglotCachingTest {
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     @Test
     public void testDisableCaching() throws Exception {
@@ -83,7 +89,7 @@ public class PolyglotCachingTest {
             @Override
             protected CallTarget parse(ParsingRequest request) throws Exception {
                 parseCalled.incrementAndGet();
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(""));
+                return RootNode.createConstantNode("").getCallTarget();
             }
         });
         Context c = Context.create();
@@ -115,7 +121,7 @@ public class PolyglotCachingTest {
             @Override
             protected CallTarget parse(ParsingRequest request) throws Exception {
                 innerSource.set(request.getSource());
-                return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(""));
+                return RootNode.createConstantNode("").getCallTarget();
             }
         });
         Context c = Context.create();
@@ -246,7 +252,7 @@ public class PolyglotCachingTest {
         int index = Integer.parseInt(request.getSource().getCharacters().toString());
         parseCount++;
         lastLanguage = languageInstance;
-        lastParsedTarget = Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+        lastParsedTarget = new RootNode(languageInstance) {
             /*
              * Typical root nodes have a strong reference to source. We need to ensure that we can
              * still collect the cache if that happens.
@@ -259,7 +265,7 @@ public class PolyglotCachingTest {
             public Object execute(VirtualFrame frame) {
                 return "foobar";
             }
-        });
+        }.getCallTarget();
         return lastParsedTarget;
     }
 

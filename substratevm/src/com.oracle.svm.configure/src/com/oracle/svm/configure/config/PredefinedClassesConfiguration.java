@@ -30,6 +30,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.function.Predicate;
 
 import com.oracle.svm.configure.ConfigurationBase;
@@ -39,7 +40,7 @@ import com.oracle.svm.core.hub.PredefinedClassesSupport;
 
 public class PredefinedClassesConfiguration implements ConfigurationBase {
     private final Path[] classDestinationDirs;
-    private final ConcurrentHashMap<String, ConfigurationPredefinedClass> classes = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, ConfigurationPredefinedClass> classes = new ConcurrentHashMap<>();
     private final Predicate<String> shouldExcludeClassWithHash;
 
     public PredefinedClassesConfiguration(Path[] classDestinationDirs, Predicate<String> shouldExcludeClassWithHash) {

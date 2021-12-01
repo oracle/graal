@@ -52,7 +52,6 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventBinding;
@@ -346,7 +345,7 @@ public class InstrumentationUpdateTest {
         @Override
         protected CallTarget parse(@SuppressWarnings("hiding") com.oracle.truffle.api.TruffleLanguage.ParsingRequest request) throws Exception {
             this.request = request;
-            return Truffle.getRuntime().createCallTarget(run.apply(this));
+            return run.apply(this).getCallTarget();
         }
 
         @Override

@@ -37,9 +37,4 @@ public abstract class FloatingNode extends ValueNode implements ValueNumberable 
     public FloatingNode(NodeClass<? extends FloatingNode> c, Stamp stamp) {
         super(c, stamp);
     }
-
-    @Override
-    public FloatingNode asNode() {
-        return this;
-    }
 }

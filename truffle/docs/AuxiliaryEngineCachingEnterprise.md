@@ -19,7 +19,7 @@ This includes:
 2. Execution and profiling of the guest application in the interpreter.
 3. Compilation of the AST to machine code.
 
-Within a single OS process, the work performed during warmup can be shared by specifying an [explicit engine](https://www.graalvm.org/reference-manual/embed-languages/#code-caching-across-multiple-contexts).
+Within a single OS process, the work performed during warmup can be shared by specifying an [explicit engine](../../docs/reference-manual/embedding/embed-languages.md#code-caching-across-multiple-contexts).
 This requires language implementations to disable context-related optimizations to avoid deoptimizations between contexts that share code.
 Auxiliary engine caching builds upon the mechanism for disabling context-related optimizations and adds the capability to persist an engine with ASTs and optimized machine code to disk.
 This way, the work performed during warmup can be significantly reduced in the first application context of a new process.

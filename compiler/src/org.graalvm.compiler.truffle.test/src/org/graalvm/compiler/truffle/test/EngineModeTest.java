@@ -25,7 +25,6 @@
 package org.graalvm.compiler.truffle.test;
 
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
-import org.graalvm.compiler.truffle.runtime.GraalCompilerDirectives;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.junit.Assert;
@@ -63,15 +62,15 @@ public class EngineModeTest extends TestWithSynchronousCompiling {
     @Test
     public void testLatencyFirstTierOnly() {
         setupContext(MODE, LATENCY);
-        OptimizedCallTarget target = (OptimizedCallTarget) GraalTruffleRuntime.getRuntime().createCallTarget(new RootNode(null) {
+        OptimizedCallTarget target = (OptimizedCallTarget) new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
-                if (GraalCompilerDirectives.hasNextTier()) {
+                if (CompilerDirectives.hasNextTier()) {
                     CompilerAsserts.neverPartOfCompilation("First tier guarded code should not be evaluated in latency mode");
                 }
                 return null;
             }
-        });
+        }.getCallTarget();
         compileAndAssertLatency(target);
     }
 
@@ -82,7 +81,7 @@ public class EngineModeTest extends TestWithSynchronousCompiling {
         AbstractSplittingStrategyTest.SplitCountingListener listener = new AbstractSplittingStrategyTest.SplitCountingListener();
         try {
             runtime.addListener(listener);
-            OptimizedCallTarget inner = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
+            OptimizedCallTarget inner = (OptimizedCallTarget) new RootNode(null) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     reportPolymorphicSpecialize();
@@ -93,11 +92,11 @@ public class EngineModeTest extends TestWithSynchronousCompiling {
                 public boolean isCloningAllowed() {
                     return true;
                 }
-            });
+            }.getCallTarget();
             DirectCallNode directCallNode = runtime.createDirectCallNode(inner);
             DirectCallNode directCallNode2 = runtime.createDirectCallNode(inner);
 
-            OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
+            OptimizedCallTarget target = (OptimizedCallTarget) new RootNode(null) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     directCallNode.call();
@@ -109,7 +108,7 @@ public class EngineModeTest extends TestWithSynchronousCompiling {
                 public boolean isCloningAllowed() {
                     return true;
                 }
-            });
+            }.getCallTarget();
             compileAndAssertLatency(target);
             Assert.assertEquals("Should not be splitting in latency mode", 0, listener.splitCount);
         } finally {
@@ -121,7 +120,7 @@ public class EngineModeTest extends TestWithSynchronousCompiling {
     public void testLatencyNoInlining() {
         setupContext(MODE, LATENCY, "engine.CompileOnly", ROOT);
         GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
-        OptimizedCallTarget inner = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
+        OptimizedCallTarget inner = (OptimizedCallTarget) new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
                 if (CompilerDirectives.inCompiledCode()) {
@@ -139,11 +138,11 @@ public class EngineModeTest extends TestWithSynchronousCompiling {
             public boolean isCloningAllowed() {
                 return true;
             }
-        });
+        }.getCallTarget();
         DirectCallNode directCallNode = runtime.createDirectCallNode(inner);
         DirectCallNode directCallNode2 = runtime.createDirectCallNode(inner);
 
-        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
+        OptimizedCallTarget target = (OptimizedCallTarget) new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
                 directCallNode.call();
@@ -155,7 +154,7 @@ public class EngineModeTest extends TestWithSynchronousCompiling {
             public String getName() {
                 return ROOT;
             }
-        });
+        }.getCallTarget();
         compileAndAssertLatency(target);
         Assert.assertNull(directCallNode.getClonedCallTarget());
         Assert.assertNull(directCallNode2.getClonedCallTarget());

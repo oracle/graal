@@ -63,6 +63,8 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         // @formatter:off
         @Option(help = "Verify before - after relation of the relative, computed, code size of a graph", type = OptionType.Debug)
         public static final OptionKey<Boolean> VerifyGraalPhasesSize = new OptionKey<>(false);
+        @Option(help = "Minimal size in NodeSize to check the graph size increases of phases.", type = OptionType.Debug)
+        public static final OptionKey<Integer> MinimalGraphNodeSizeCheckSize = new OptionKey<>(1000);
         @Option(help = "Exclude certain phases from compilation, either unconditionally or with a method filter", type = OptionType.Debug)
         public static final OptionKey<String> CompilationExcludePhases = new OptionKey<>(null);
         // @formatter:on
@@ -184,7 +186,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
     }
 
     @SuppressWarnings("try")
-    protected final void apply(final StructuredGraph graph, final C context, final boolean dumpGraph) {
+    public final void apply(final StructuredGraph graph, final C context, final boolean dumpGraph) {
         if (ExcludePhaseFilter.exclude(graph.getOptions(), this, graph.asJavaMethod())) {
             return;
         }

@@ -25,7 +25,6 @@
 package com.oracle.svm.core.windows;
 
 import static com.oracle.svm.core.annotate.RestrictHeapAccess.Access.NO_ALLOCATION;
-import static com.oracle.svm.core.annotate.RestrictHeapAccess.Access.NO_HEAP_ACCESS;
 import static com.oracle.svm.core.windows.headers.ErrHandlingAPI.EXCEPTION_ACCESS_VIOLATION;
 import static com.oracle.svm.core.windows.headers.ErrHandlingAPI.EXCEPTION_IN_PAGE_ERROR;
 
@@ -44,7 +43,6 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
-import com.oracle.svm.core.c.function.CEntryPointOptions.NotIncludedAutomatically;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.VMError;
@@ -64,7 +62,7 @@ class WindowsSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
     private static final int EX_EXECUTE = 8;
 
     @Override
-    protected void install() {
+    protected void installInternal() {
         /*
          * Normally we would use SEH (Structured Exception Handling) for this. However, in order for
          * SEH to work, the OS must be able to perform stack walking. On x64, this requires the
@@ -89,10 +87,10 @@ class WindowsSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
     private static final CEntryPointLiteral<CFunctionPointer> HANDLER_LITERAL = CEntryPointLiteral.create(WindowsSubstrateSegfaultHandler.class,
                     "handler", ErrHandlingAPI.EXCEPTION_POINTERS.class);
 
-    @CEntryPoint
-    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.SymbolOnly, include = NotIncludedAutomatically.class)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class, publishAs = Publish.SymbolOnly)
     @Uninterruptible(reason = "Must be uninterruptible until we get immune to safepoints.")
-    @RestrictHeapAccess(access = NO_HEAP_ACCESS, reason = "We have yet to enter the isolate.")
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in segfault signal handler.")
     private static int handler(ErrHandlingAPI.EXCEPTION_POINTERS exceptionInfo) {
         ErrHandlingAPI.EXCEPTION_RECORD exceptionRecord = exceptionInfo.ExceptionRecord();
         if (exceptionRecord.ExceptionCode() != ErrHandlingAPI.EXCEPTION_ACCESS_VIOLATION()) {
@@ -143,7 +141,7 @@ class WindowsSubstrateSegfaultHandler extends SubstrateSegfaultHandler {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in segfault handler.", overridesCallers = true)
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in segfault handler.")
     private static RuntimeException shouldNotReachHere() {
         throw VMError.shouldNotReachHere();
     }

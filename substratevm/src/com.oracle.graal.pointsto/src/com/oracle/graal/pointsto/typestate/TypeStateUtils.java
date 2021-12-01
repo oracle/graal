@@ -384,4 +384,12 @@ public class TypeStateUtils {
         return bsr;
     }
 
+    public static boolean closeToAllInstantiated(PointsToAnalysis bb, TypeState state) {
+        if (state.typesCount() > 200) {
+            MultiTypeState allInstState = (MultiTypeState) bb.getAllInstantiatedTypes();
+            return state.typesCount() * 100L / allInstState.typesCount() > 75;
+        }
+        return false;
+    }
+
 }

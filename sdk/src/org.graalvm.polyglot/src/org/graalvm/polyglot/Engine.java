@@ -44,7 +44,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.Reader;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
@@ -72,6 +71,7 @@ import java.util.function.Predicate;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 
+import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.nativeimage.ImageInfo;
@@ -85,12 +85,12 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractEngineDispatch;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExceptionDispatch;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractInstrumentDispatch;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractLanguageDispatch;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceDispatch;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceSectionDispatch;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractStackFrameImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueDispatch;
-import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
-import org.graalvm.polyglot.management.ExecutionEvent;
 
 /**
  * An execution engine for Graal {@linkplain Language guest languages} that allows to inspect the
@@ -134,6 +134,15 @@ public final class Engine implements AutoCloseable {
 
     private static final class ImplHolder {
         private static AbstractPolyglotImpl IMPL = initEngineImpl();
+        static {
+            try {
+                // Force initialization of AbstractPolyglotImpl#management when Engine is
+                // initialized.
+                Class.forName("org.graalvm.polyglot.management.Management", true, Engine.class.getClassLoader());
+            } catch (ReflectiveOperationException e) {
+                throw new InternalError(e);
+            }
+        }
 
         /**
          * Performs context pre-initialization.
@@ -143,7 +152,7 @@ public final class Engine implements AutoCloseable {
          */
         @SuppressWarnings("unused")
         private static void preInitializeEngine() {
-            IMPL.preInitializeEngine();
+            IMPL.preInitializeEngine(IMPL.createHostLanguage(IMPL.createHostAccess()));
         }
 
         /**
@@ -162,7 +171,7 @@ public final class Engine implements AutoCloseable {
          */
         private static void debugContextPreInitialization() {
             if (!ImageInfo.inImageCode() && System.getProperty("polyglot.image-build-time.PreinitializeContexts") != null) {
-                IMPL.preInitializeEngine();
+                IMPL.preInitializeEngine(IMPL.createHostLanguage(IMPL.createHostAccess()));
             }
         }
 
@@ -271,8 +280,8 @@ public final class Engine implements AutoCloseable {
     }
 
     /**
-     * Creates a new engine instance with default configuration. The engine is constructed with the
-     * same configuration as it will be as when constructed implicitly using the context builder.
+     * Creates a new engine instance with default configuration. This method is a shortcut for
+     * {@link #newBuilder(String...) newBuilder().build()}.
      *
      * @see Context#create(String...) to create a new execution context.
      * @since 19.0
@@ -282,13 +291,40 @@ public final class Engine implements AutoCloseable {
     }
 
     /**
-     * Creates a new context builder that allows to configure an engine instance.
+     * Creates a new engine instance with default configuration with a set of permitted languages.
+     * This method is a shortcut for {@link #newBuilder(String...)
+     * newBuilder(permittedLanuages).build()}.
      *
-     * @see Context#newBuilder(String...) to construct a new execution context.
-     * @since 19.0
+     * @see Context#create(String...) to create a new execution context.
+     * @since 21.3
+     */
+    public static Engine create(String... permittedLanguages) {
+        return newBuilder(permittedLanguages).build();
+    }
+
+    /**
+     * Creates a new engine builder that allows to configure an engine instance. This method is
+     * equivalent to calling {@link #newBuilder(String...)} with an empty set of permitted
+     * languages.
+     *
+     * @since 21.3
      */
     public static Builder newBuilder() {
-        return EMPTY.new Builder();
+        return EMPTY.new Builder(new String[0]);
+    }
+
+    /**
+     * Creates a new engine builder that allows to configure an engine instance.
+     *
+     * @param permittedLanguages names of languages permitted in the engine. If no languages are
+     *            provided, then all installed languages will be permitted. All contexts created
+     *            with this engine will inherit the set of permitted languages.
+     * @return a builder that can create a context
+     * @since 21.3
+     */
+    public static Builder newBuilder(String... permittedLanguages) {
+        Objects.requireNonNull(permittedLanguages);
+        return EMPTY.new Builder(permittedLanguages);
     }
 
     /**
@@ -369,8 +405,14 @@ public final class Engine implements AutoCloseable {
         private boolean boundEngine;
         private MessageTransport messageTransport;
         private Object customLogHandler;
+        private String[] permittedLanguages;
 
-        Builder() {
+        Builder(String[] permittedLanguages) {
+            Objects.requireNonNull(permittedLanguages);
+            for (String language : permittedLanguages) {
+                Objects.requireNonNull(language);
+            }
+            this.permittedLanguages = permittedLanguages;
         }
 
         Builder setBoundEngine(boolean boundEngine) {
@@ -575,7 +617,7 @@ public final class Engine implements AutoCloseable {
             if (polyglot == null) {
                 throw new IllegalStateException("The Polyglot API implementation failed to load.");
             }
-            Engine engine = polyglot.buildEngine(out, err, in, options, useSystemProperties, allowExperimentalOptions,
+            Engine engine = polyglot.buildEngine(permittedLanguages, out, err, in, options, useSystemProperties, allowExperimentalOptions,
                             boundEngine, messageTransport, customLogHandler, polyglot.createHostLanguage(polyglot.createHostAccess()), false);
             return engine;
         }
@@ -625,13 +667,18 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public Source newSource(Object receiver) {
-            return new Source(receiver);
+        public Source newSource(AbstractSourceDispatch dispatch, Object receiver) {
+            return new Source(dispatch, receiver);
         }
 
         @Override
-        public SourceSection newSourceSection(Source source, Object receiver) {
-            return new SourceSection(source, receiver);
+        public Object getReceiver(Language language) {
+            return language.receiver;
+        }
+
+        @Override
+        public SourceSection newSourceSection(Source source, AbstractSourceSectionDispatch dispatch, Object receiver) {
+            return new SourceSection(source, dispatch, receiver);
         }
 
         @Override
@@ -655,6 +702,16 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public AbstractSourceDispatch getDispatch(Source source) {
+            return source.dispatch;
+        }
+
+        @Override
+        public AbstractSourceSectionDispatch getDispatch(SourceSection sourceSection) {
+            return sourceSection.dispatch;
+        }
+
+        @Override
         public ResourceLimitEvent newResourceLimitsEvent(Context context) {
             return new ResourceLimitEvent(context);
         }
@@ -667,6 +724,16 @@ public final class Engine implements AutoCloseable {
         @Override
         public Object getReceiver(ResourceLimits value) {
             return value.receiver;
+        }
+
+        @Override
+        public Object getReceiver(Source source) {
+            return source.receiver;
+        }
+
+        @Override
+        public Object getReceiver(SourceSection sourceSection) {
+            return sourceSection.receiver;
         }
 
         @Override
@@ -775,19 +842,24 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public UnmodifiableEconomicMap<String, UnmodifiableEconomicSet<String>> getEvalAccess(PolyglotAccess access) {
+            return access.getEvalAccess();
+        }
+
+        @Override
         public UnmodifiableEconomicSet<String> getBindingsAccess(PolyglotAccess access) {
             return access.getBindingsAccess();
         }
 
         @Override
-        public String validatePolyglotAccess(PolyglotAccess access, UnmodifiableEconomicSet<String> languages) {
+        public String validatePolyglotAccess(PolyglotAccess access, Set<String> languages) {
             return access.validate(languages);
         }
     }
 
     private static final boolean JDK8_OR_EARLIER = System.getProperty("java.specification.version").compareTo("1.9") < 0;
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "deprecation"})
     private static AbstractPolyglotImpl initEngineImpl() {
         return AccessController.doPrivileged(new PrivilegedAction<AbstractPolyglotImpl>() {
             public AbstractPolyglotImpl run() {
@@ -860,8 +932,6 @@ public final class Engine implements AutoCloseable {
 
     private static class PolyglotInvalid extends AbstractPolyglotImpl {
 
-        private final EmptySource source = new EmptySource(this);
-
         /**
          * Forces ahead-of-time initialization.
          *
@@ -870,6 +940,7 @@ public final class Engine implements AutoCloseable {
         static boolean AOT;
 
         static {
+            @SuppressWarnings("deprecation")
             Boolean aot = AccessController.doPrivileged(new PrivilegedAction<Boolean>() {
                 public Boolean run() {
                     return Boolean.getBoolean("com.oracle.graalvm.isaot");
@@ -889,7 +960,8 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public Engine buildEngine(OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, boolean useSystemProperties, boolean allowExperimentalOptions, boolean boundEngine,
+        public Engine buildEngine(String[] permittedLanguages, OutputStream out, OutputStream err, InputStream in, Map<String, String> arguments, boolean useSystemProperties,
+                        boolean allowExperimentalOptions, boolean boundEngine,
                         MessageTransport messageInterceptor, Object logHandlerOrStream, Object hostLanguage, boolean hostLanguageOnly) {
             throw noPolyglotImplementationFound();
         }
@@ -909,65 +981,6 @@ public final class Engine implements AutoCloseable {
             throw noPolyglotImplementationFound();
         }
 
-        @Override
-        public AbstractManagementDispatch getManagementDispatch() {
-            return new AbstractManagementDispatch(this) {
-
-                @Override
-                public boolean isExecutionEventStatement(Object impl) {
-                    return false;
-                }
-
-                @Override
-                public boolean isExecutionEventRoot(Object impl) {
-                    return false;
-                }
-
-                @Override
-                public boolean isExecutionEventExpression(Object impl) {
-                    return false;
-                }
-
-                @Override
-                public String getExecutionEventRootName(Object impl) {
-                    throw noPolyglotImplementationFound();
-                }
-
-                @Override
-                public PolyglotException getExecutionEventException(Object impl) {
-                    throw noPolyglotImplementationFound();
-                }
-
-                @Override
-                public Value getExecutionEventReturnValue(Object impl) {
-                    throw noPolyglotImplementationFound();
-                }
-
-                @Override
-                public SourceSection getExecutionEventLocation(Object impl) {
-                    throw noPolyglotImplementationFound();
-                }
-
-                @Override
-                public List<Value> getExecutionEventInputValues(Object impl) {
-                    throw noPolyglotImplementationFound();
-                }
-
-                @Override
-                public void closeExecutionListener(Object impl) {
-                    throw noPolyglotImplementationFound();
-                }
-
-                @Override
-                public Object attachExecutionListener(Object engine, Consumer<ExecutionEvent> onEnter, Consumer<ExecutionEvent> onReturn, boolean expressions, boolean statements,
-                                boolean roots,
-                                Predicate<Source> sourceFilter, Predicate<String> rootFilter, boolean collectInputValues, boolean collectReturnValues, boolean collectErrors) {
-                    throw noPolyglotImplementationFound();
-                }
-
-            };
-        }
-
         private static RuntimeException noPolyglotImplementationFound() {
             String suggestion;
             if (AOT) {
@@ -976,16 +989,6 @@ public final class Engine implements AutoCloseable {
                 suggestion = "Make sure the truffle-api.jar is on the classpath.";
             }
             return new IllegalStateException("No language and polyglot implementation was found on the classpath. " + suggestion);
-        }
-
-        @Override
-        public AbstractSourceDispatch getSourceDispatch() {
-            return source;
-        }
-
-        @Override
-        public AbstractSourceSectionDispatch getSourceSectionDispatch() {
-            throw new UnsupportedOperationException();
         }
 
         @Override
@@ -999,7 +1002,7 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
-        public void preInitializeEngine() {
+        public void preInitializeEngine(Object hostLanguage) {
         }
 
         @Override
@@ -1016,168 +1019,40 @@ public final class Engine implements AutoCloseable {
             throw noPolyglotImplementationFound();
         }
 
-        static class EmptySource extends AbstractSourceDispatch {
-
-            protected EmptySource(AbstractPolyglotImpl engineImpl) {
-                super(engineImpl);
-            }
-
-            @Override
-            public Source build(String language, Object origin, URI uri, String name, String mimeType, Object content, boolean interactive, boolean internal, boolean cached, Charset encoding)
-                            throws IOException {
-                throw noPolyglotImplementationFound();
-            }
-
-            @Override
-            public String getLanguage(Object impl) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public String findLanguage(File file) throws IOException {
-                return null;
-            }
-
-            @Override
-            public String findLanguage(URL url) throws IOException {
-                return null;
-            }
-
-            @Override
-            public String findMimeType(File file) throws IOException {
-                return null;
-            }
-
-            @Override
-            public String findMimeType(URL url) throws IOException {
-                return null;
-            }
-
-            @Override
-            public String getMimeType(Object impl) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public String findLanguage(String mimeType) {
-                return null;
-            }
-
-            @Override
-            public String getName(Object impl) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public String getPath(Object impl) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public boolean isInteractive(Object impl) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public URL getURL(Object impl) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public URI getURI(Object impl) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public Reader getReader(Object impl) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public InputStream getInputStream(Object impl) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public int getLength(Object impl) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public CharSequence getCharacters(Object impl) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public CharSequence getCharacters(Object impl, int lineNumber) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public int getLineCount(Object impl) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public int getLineNumber(Object impl, int offset) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public int getColumnNumber(Object impl, int offset) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public int getLineStartOffset(Object impl, int lineNumber) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public int getLineLength(Object impl, int lineNumber) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public String toString(Object impl) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public int hashCode(Object impl) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public boolean equals(Object impl, Object otherImpl) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public boolean isInternal(Object impl) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public ByteSequence getBytes(Object impl) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public boolean hasCharacters(Object impl) {
-                throw new UnsupportedOperationException();
-            }
-
-            @Override
-            public boolean hasBytes(Object impl) {
-                throw new UnsupportedOperationException();
-            }
-
-        }
-
         @Override
         public <S, T> Object newTargetTypeMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> acceptsValue, Function<S, T> convertValue, TargetMappingPrecedence precedence) {
             return new Object();
+        }
+
+        @Override
+        public Source build(String language, Object origin, URI uri, String name, String mimeType, Object content, boolean interactive, boolean internal, boolean cached, Charset encoding)
+                        throws IOException {
+            throw noPolyglotImplementationFound();
+        }
+
+        @Override
+        public String findLanguage(File file) throws IOException {
+            return null;
+        }
+
+        @Override
+        public String findLanguage(URL url) throws IOException {
+            return null;
+        }
+
+        @Override
+        public String findMimeType(File file) throws IOException {
+            return null;
+        }
+
+        @Override
+        public String findMimeType(URL url) throws IOException {
+            return null;
+        }
+
+        @Override
+        public String findLanguage(String mimeType) {
+            return null;
         }
 
     }

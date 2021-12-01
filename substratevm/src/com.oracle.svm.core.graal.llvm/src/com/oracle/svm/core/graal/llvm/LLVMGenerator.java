@@ -40,9 +40,6 @@ import static jdk.vm.ci.code.MemoryBarriers.JMM_PRE_VOLATILE_WRITE;
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
 import static org.graalvm.compiler.debug.GraalError.unimplemented;
 
-// Checkstyle: allow reflection
-import java.lang.reflect.Field;
-// Checkstyle: disallow reflection
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -63,6 +60,7 @@ import org.graalvm.compiler.core.common.spi.CodeGenProviders;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.spi.LIRKindTool;
+import org.graalvm.compiler.core.common.type.IllegalStamp;
 import org.graalvm.compiler.core.common.type.RawPointerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -75,6 +73,7 @@ import org.graalvm.compiler.lir.VirtualStackSlot;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
+import org.graalvm.compiler.lir.gen.MoveFactory;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -130,6 +129,7 @@ import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMBasicBlockRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMTypeRef;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMValueRef;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -166,6 +166,8 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     private final LIRKindTool lirKindTool;
     private final DebugInfoPrinter debugInfoPrinter;
 
+    private final ResolvedJavaType prologueType;
+
     private final String functionName;
     private final boolean isEntryPoint;
     private final boolean canModifySpecialRegisters;
@@ -189,6 +191,8 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         this.arithmetic = new ArithmeticLLVMGenerator();
         this.lirKindTool = new LLVMUtils.LLVMKindTool(builder);
         this.debugInfoPrinter = new DebugInfoPrinter(this, debugLevel);
+
+        this.prologueType = providers.getMetaAccess().lookupJavaType(CEntryPointOptions.Prologue.class);
 
         this.functionName = SubstrateUtil.uniqueShortName(method);
         this.isEntryPoint = isEntryPoint(method);
@@ -304,7 +308,8 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
 
     private boolean canModifySpecialRegisters(ResolvedJavaMethod method) {
         CEntryPointOptions entryPointOptions = GuardedAnnotationAccess.getAnnotation(method, CEntryPointOptions.class);
-        return (entryPointOptions != null) && entryPointOptions.prologue() == CEntryPointOptions.NoPrologue.class ||
+        return prologueType.isAssignableFrom(method.getDeclaringClass()) ||
+                        entryPointOptions != null && entryPointOptions.prologue() == CEntryPointOptions.NoPrologue.class ||
                         method.getDeclaringClass().equals(getMetaAccess().lookupJavaType(CEntryPointSnippets.class)) ||
                         method.getDeclaringClass().equals(getMetaAccess().lookupJavaType(CEntryPointNativeFunctions.class)) ||
                         method.getDeclaringClass().equals(getMetaAccess().lookupJavaType(CEntryPointBuiltins.class));
@@ -364,6 +369,9 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     LLVMTypeRef getLLVMType(Stamp stamp) {
         if (stamp instanceof RawPointerStamp) {
             return builder.rawPointerType();
+        }
+        if (stamp instanceof IllegalStamp) {
+            return builder.undefType();
         }
         return getLLVMType(getTypeKind(stamp.javaType(getMetaAccess()), false), stamp instanceof NarrowOopStamp);
     }
@@ -726,18 +734,18 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
 
     @Override
     public Variable emitLogicCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue, MemoryOrderMode memoryOrder) {
-        LLVMValueRef success = buildCmpxchg(getVal(address), getVal(expectedValue), getVal(newValue), false);
+        LLVMValueRef success = buildCmpxchg(getVal(address), getVal(expectedValue), getVal(newValue), memoryOrder, false);
         LLVMValueRef result = builder.buildSelect(success, getVal(trueValue), getVal(falseValue));
         return new LLVMVariable(result);
     }
 
     @Override
     public Value emitValueCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, MemoryOrderMode memoryOrder) {
-        LLVMValueRef result = buildCmpxchg(getVal(address), getVal(expectedValue), getVal(newValue), true);
+        LLVMValueRef result = buildCmpxchg(getVal(address), getVal(expectedValue), getVal(newValue), memoryOrder, true);
         return new LLVMVariable(result);
     }
 
-    private LLVMValueRef buildCmpxchg(LLVMValueRef address, LLVMValueRef expectedValue, LLVMValueRef newValue, boolean returnValue) {
+    private LLVMValueRef buildCmpxchg(LLVMValueRef address, LLVMValueRef expectedValue, LLVMValueRef newValue, MemoryOrderMode memoryOrder, boolean returnValue) {
         LLVMTypeRef expectedType = LLVMIRBuilder.typeOf(expectedValue);
         LLVMTypeRef newType = LLVMIRBuilder.typeOf(newValue);
         assert LLVMIRBuilder.compatibleTypes(expectedType, newType) : dumpValues("invalid cmpxchg arguments", expectedValue, newValue);
@@ -749,7 +757,21 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         } else {
             castedAddress = builder.buildBitcast(address, builder.pointerType(expectedType, trackedAddress, false));
         }
-        return builder.buildCmpxchg(castedAddress, expectedValue, newValue, returnValue);
+
+        boolean convertResult = LLVMIRBuilder.isFloatType(expectedType) || LLVMIRBuilder.isDoubleType(expectedType);
+        LLVMValueRef castedExpectedValue = expectedValue;
+        LLVMValueRef castedNewValue = newValue;
+        if (convertResult) {
+            LLVMTypeRef cmpxchgType = LLVMIRBuilder.isFloatType(expectedType) ? builder.intType() : builder.longType();
+            castedExpectedValue = builder.buildFPToSI(expectedValue, cmpxchgType);
+            castedNewValue = builder.buildFPToSI(newValue, cmpxchgType);
+        }
+        LLVMValueRef result = builder.buildCmpxchg(castedAddress, castedExpectedValue, castedNewValue, memoryOrder, returnValue);
+        if (returnValue && convertResult) {
+            return builder.buildSIToFP(result, expectedType);
+        } else {
+            return result;
+        }
     }
 
     @Override
@@ -1213,7 +1235,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
                  * accept this in the case of a method that doesn't do anything Java-related, and
                  * therefore doesn't need the actual value of its special registers.
                  */
-                assert GuardedAnnotationAccess.isAnnotationPresent(targetMethod, Uninterruptible.class);
+                assert Uninterruptible.Utils.isUninterruptible(targetMethod);
                 specialRegisterArg = builder.constantNull(builder.pointerType(builder.wordType()));
             }
         } else if (isEntryPoint || canModifySpecialRegisters) {
@@ -2011,25 +2033,22 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
 
     /**
      * Gets the value of {@code jdk.internal.misc.UnsafeConstants.DATA_CACHE_LINE_FLUSH_SIZE} which
-     * was introduced in JDK 14 by JEP 352.
+     * was introduced after JDK 11 by JEP 352.
      *
-     * This method uses reflection to be compatible with JDKs prior to 14.
+     * This method uses reflection to be compatible with JDK 11 and earlier.
      */
     private static int initDataCacheLineFlushSize() {
-        if (JavaVersionUtil.JAVA_SPEC >= 14) {
-            Class<?> c;
-            try {
-                // Checkstyle: stop
-                c = Class.forName("jdk.internal.misc.UnsafeConstants");
-                // Checkstyle: resume
-                Field f = c.getDeclaredField("DATA_CACHE_LINE_FLUSH_SIZE");
-                f.setAccessible(true);
-                return (int) f.get(null);
-            } catch (Exception e) {
-                throw new GraalError(e, "Expected UnsafeConstants.DATA_CACHE_LINE_FLUSH_SIZE to exist and be readable");
-            }
+        if (JavaVersionUtil.JAVA_SPEC <= 11) {
+            return 0;
         }
-        return 0;
+        try {
+            // Checkstyle: stop
+            Class<?> c = Class.forName("jdk.internal.misc.UnsafeConstants");
+            // Checkstyle: resume
+            return ReflectionUtil.readStaticField(c, "DATA_CACHE_LINE_FLUSH_SIZE");
+        } catch (ClassNotFoundException e) {
+            throw new GraalError(e, "Expected UnsafeConstants.DATA_CACHE_LINE_FLUSH_SIZE to exist and be readable");
+        }
     }
 
     private static int getDataCacheLineFlushSize() {

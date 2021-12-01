@@ -28,6 +28,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 
 import com.oracle.svm.core.SubstrateDiagnostics.DiagnosticThunk;
+import com.oracle.svm.core.SubstrateDiagnostics.ErrorContext;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.log.Log;
 
@@ -46,13 +47,13 @@ public abstract class VMLockSupport {
 
     public static class DumpVMMutexes extends DiagnosticThunk {
         @Override
-        public int maxInvocations() {
+        public int maxInvocationCount() {
             return 1;
         }
 
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
-        public void printDiagnostics(Log log, int invocationCount) {
+        public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
             log.string("VM mutexes:").indent(true);
 
             VMLockSupport support = null;

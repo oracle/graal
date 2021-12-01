@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,7 +54,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -154,7 +153,11 @@ public class InstrumentablePositionsTestLanguage extends TruffleLanguage<Context
         }
 
         public TestNode parse() {
-            NodeDescriptor sourceDescriptor = new NodeDescriptor(lang, "F", source, 0, source.getLength() - 1);
+            int rootFrom = code.indexOf('<');
+            if (rootFrom < 0) {
+                rootFrom = 0;
+            }
+            NodeDescriptor sourceDescriptor = new NodeDescriptor(lang, "F", source, rootFrom, source.getLength() - 1);
             NodeDescriptor nd;
             while ((nd = nextNode()) != null) {
                 sourceDescriptor.addChild(nd);
@@ -171,6 +174,10 @@ public class InstrumentablePositionsTestLanguage extends TruffleLanguage<Context
 
             if (current() == EOF) {
                 return null;
+            }
+            if (current() == '<') {
+                next();
+                skipWhiteSpace();
             }
             if (current() != '{' && current() != '[') {
                 throw new IllegalStateException("Expecting '{' or '[' at position " + current + " character: " + current());
@@ -287,7 +294,7 @@ public class InstrumentablePositionsTestLanguage extends TruffleLanguage<Context
                 synchronized (this) {
                     if (node == null) {
                         if (hasTag('F')) {
-                            RootCallTarget taget = Truffle.getRuntime().createCallTarget(new TestRootNode(lang, this));
+                            RootCallTarget taget = new TestRootNode(lang, this).getCallTarget();
                             node = new CallNode(taget);
                         } else {
                             node = new BaseNode(this);

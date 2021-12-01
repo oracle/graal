@@ -488,7 +488,11 @@ public class HostedMethod implements SharedMethod, WrappedJavaMethod, GraphProvi
         if (result == 0) {
             result = ((HostedType) this.getSignature().getReturnType(null)).compareTo((HostedType) other.getSignature().getReturnType(null));
         }
-        assert result != 0;
+        /*
+         * Note that the result can still be 0 at this point: with class substitutions or incomplete
+         * classpath, two separate methods can have the same signature. Not ordering such methods is
+         * fine. GR-32976 should remove the sorting altogether.
+         */
         return result;
     }
 

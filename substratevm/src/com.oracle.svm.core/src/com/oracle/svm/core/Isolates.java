@@ -73,11 +73,13 @@ public class Isolates {
         if (result != CEntryPointErrors.NO_ERROR) {
             return result;
         }
+
         result = checkSanity(isolatePointer.read());
         if (result != CEntryPointErrors.NO_ERROR) {
             isolatePointer.write(WordFactory.nullPointer());
             return result;
         }
+
         return CEntryPointErrors.NO_ERROR;
     }
 

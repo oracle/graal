@@ -68,7 +68,7 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
         this.rootName = rootName;
         this.host = isHost;
         this.stackTrace = stackTrace;
-        if (!isHostFrame()) {
+        if (!isHost) {
             this.formattedSource = formatSource(sourceLocation, language != null ? source.getFileSystemContext(language) : null);
         } else {
             this.formattedSource = null;
@@ -159,8 +159,8 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
             if (callNode != null) {
                 com.oracle.truffle.api.source.SourceSection section = callNode.getEncapsulatingSourceSection();
                 if (section != null) {
-                    Source source = engine.getAPIAccess().newSource(section.getSource());
-                    location = engine.getAPIAccess().newSourceSection(source, section);
+                    Source source = engine.getAPIAccess().newSource(exception.polyglot.getSourceDispatch(), section.getSource());
+                    location = engine.getAPIAccess().newSourceSection(source, exception.polyglot.getSourceSectionDispatch(), section);
                 } else {
                     location = null;
                 }
@@ -172,7 +172,7 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
     }
 
     static PolyglotExceptionFrame createHost(PolyglotExceptionImpl exception, StackTraceElement hostStack) {
-        PolyglotLanguage language = exception.engine != null ? exception.engine.hostLanguageInstance.language : null;
+        PolyglotLanguage language = exception.engine != null ? exception.engine.hostLanguage : null;
 
         // source section for the host language is currently null
         // we should potentially in the future create a source section for the host language
