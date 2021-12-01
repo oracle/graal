@@ -192,10 +192,11 @@ final class SourceImpl extends Source {
         final boolean internal;
         final boolean interactive;
         final boolean cached;
+        final boolean embedderSource;
         // TODO remove legacy field with deprecated Source builders.
         volatile Integer cachedHashCode;
 
-        Key(Object content, String mimeType, String languageId, String name, boolean internal, boolean interactive, boolean cached) {
+        Key(Object content, String mimeType, String languageId, String name, boolean internal, boolean interactive, boolean cached, boolean embedderSource) {
             this.content = content;
             this.mimeType = mimeType;
             this.language = languageId;
@@ -203,6 +204,7 @@ final class SourceImpl extends Source {
             this.internal = internal;
             this.interactive = interactive;
             this.cached = cached;
+            this.embedderSource = embedderSource;
         }
 
         abstract String getPath();
@@ -215,18 +217,19 @@ final class SourceImpl extends Source {
         public int hashCode() {
             Integer hashCode = cachedHashCode;
             if (hashCode == null) {
-                hashCode = hashCodeImpl(content, mimeType, language, getURL(), getURI(), name, getPath(), internal, interactive, cached);
+                hashCode = hashCodeImpl(content, mimeType, language, getURL(), getURI(), name, getPath(), internal, interactive, cached, embedderSource);
                 cachedHashCode = hashCode;
             }
             return hashCode;
         }
 
         static int hashCodeImpl(Object content, String mimeType, String language, URL url, URI uri, String name, String path, boolean internal, boolean interactive,
-                        boolean cached) {
+                        boolean cached, boolean embedderSource) {
             int result = 31 * 1 + ((content == null) ? 0 : content.hashCode());
             result = 31 * result + (interactive ? 1231 : 1237);
             result = 31 * result + (internal ? 1231 : 1237);
             result = 31 * result + (cached ? 1231 : 1237);
+            result = 31 * result + (embedderSource ? 1231 : 1237);
             result = 31 * result + ((language == null) ? 0 : language.hashCode());
             result = 31 * result + ((mimeType == null) ? 0 : mimeType.hashCode());
             result = 31 * result + ((name == null) ? 0 : name.hashCode());
@@ -257,6 +260,7 @@ final class SourceImpl extends Source {
                             interactive == other.interactive && //
                             internal == other.internal &&
                             cached == other.cached &&
+                            embedderSource == other.embedderSource &&
                             compareContent(other);
         }
 
@@ -319,13 +323,13 @@ final class SourceImpl extends Source {
          * contain absolute paths.
          */
         ImmutableKey(Object content, String mimeType, String languageId, URL url, URI uri, String name, String path, boolean internal, boolean interactive, boolean cached,
-                        String relativePathInLanguageHome) {
-            super(content, mimeType, languageId, name, internal, interactive, cached);
+                        String relativePathInLanguageHome, boolean embedderSource) {
+            super(content, mimeType, languageId, name, internal, interactive, cached, embedderSource);
             this.uri = uri;
             this.url = url;
             this.path = path;
             if (relativePathInLanguageHome != null) {
-                this.cachedHashCode = hashCodeImpl(content, mimeType, language, null, null, name, relativePathInLanguageHome, internal, interactive, cached);
+                this.cachedHashCode = hashCodeImpl(content, mimeType, language, null, null, name, relativePathInLanguageHome, internal, interactive, cached, embedderSource);
             }
         }
 
@@ -366,14 +370,14 @@ final class SourceImpl extends Source {
          * {@code uri} as they contain absolute paths.
          */
         ReinitializableKey(TruffleFile truffleFile, Object content, String mimeType, String languageId, URL url, URI uri, String name, String path, boolean internal, boolean interactive,
-                        boolean cached, String relativePathInLanguageHome) {
-            super(content, mimeType, languageId, name, internal, interactive, cached);
+                        boolean cached, String relativePathInLanguageHome, boolean embedderSource) {
+            super(content, mimeType, languageId, name, internal, interactive, cached, embedderSource);
             Objects.requireNonNull(truffleFile, "TruffleFile must be non null.");
             this.truffleFile = truffleFile;
             this.uri = uri;
             this.url = url;
             this.path = path;
-            this.cachedHashCode = hashCodeImpl(content, mimeType, language, null, null, name, relativePathInLanguageHome, internal, interactive, cached);
+            this.cachedHashCode = hashCodeImpl(content, mimeType, language, null, null, name, relativePathInLanguageHome, internal, interactive, cached, embedderSource);
         }
 
         @Override

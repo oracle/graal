@@ -200,6 +200,8 @@ public abstract class Accessor {
         public abstract void invalidateAfterPreinitialiation(Source source);
 
         public abstract void mergeLoadedSources(Source[] sources);
+
+        public abstract void setEmbedderSource(SourceBuilder builder, boolean b);
     }
 
     public abstract static class InteropSupport extends Support {
