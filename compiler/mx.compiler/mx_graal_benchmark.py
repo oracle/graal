@@ -125,14 +125,23 @@ class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
 mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default', ['-server', '-XX:-EnableJVMCI', '-XX:-UseJVMCICompiler']), _suite, 2)
 mx_benchmark.add_java_vm(JvmciJdkVm('server', 'hosted', ['-server', '-XX:+EnableJVMCI']), _suite, 3)
 
-def add_or_replace_arg(flag_name, value, args):
-    arg_string = flag_name + '=' + value
-    idx = next((idx for idx, arg in enumerate(args) if arg.startswith(flag_name)), -1)
+def add_or_replace_arg(option_key, value, vm_option_list):
+    """
+    Determines if an option with the same key as option_key is already present in vm_option_list.
+    If so, it replaces the option value with the given one. If not, it appends the option
+    to the end of the list. It then returns the modified list.
+
+    For example, if arg_list contains the argument '-Dgraal.CompilerConfig=community', and this function
+    is called with an option_key of '-Dgraal.CompilerConfig' and a value of 'economy', the resulting
+    argument list will contain one instance of '-Dgraal.CompilerConfig=economy'.
+    """
+    arg_string = option_key + '=' + value
+    idx = next((idx for idx, arg in enumerate(vm_option_list) if arg.startswith(option_key)), -1)
     if idx == -1:
         args.append(arg_string)
     else:
-        args[idx] = arg_string
-    return args
+        vm_option_list[idx] = arg_string
+    return vm_option_list
 
 def build_jvmci_vm_variants(raw_name, raw_config_name, extra_args, variants, include_default=True, suite=None, priority=0, hosted=True):
     prefixes = [('', ['-XX:+UseJVMCICompiler'])]
