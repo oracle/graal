@@ -91,7 +91,7 @@ import jdk.vm.ci.meta.JavaKind;
 @SuppressWarnings({"static-method", "serial"})
 @SuppressFBWarnings(value = "Se", justification = "DynamicHub must implement Serializable for compatibility with java.lang.Class, not because of actual serialization")
 public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedElement, java.lang.reflect.Type, GenericDeclaration, Serializable,
-                Target_java_lang_invoke_TypeDescriptor_OfField<DynamicHub>, Target_java_lang_constant_Constable {
+                Target_java_lang_invoke_TypeDescriptor_OfField, Target_java_lang_constant_Constable {
 
     /** Marker value for {@link #classLoader}. */
     static final Object NO_CLASS_LOADER = new Object();
@@ -1627,7 +1627,7 @@ interface Target_java_lang_invoke_TypeDescriptor {
 
 @Substitute
 @TargetClass(className = "java.lang.invoke.TypeDescriptor", innerClass = "OfField", onlyWith = JDK17OrLater.class)
-interface Target_java_lang_invoke_TypeDescriptor_OfField<F extends Target_java_lang_invoke_TypeDescriptor_OfField<F>> extends Target_java_lang_invoke_TypeDescriptor {
+interface Target_java_lang_invoke_TypeDescriptor_OfField extends Target_java_lang_invoke_TypeDescriptor {
     @KeepOriginal
     boolean isArray();
 
@@ -1635,10 +1635,10 @@ interface Target_java_lang_invoke_TypeDescriptor_OfField<F extends Target_java_l
     boolean isPrimitive();
 
     @KeepOriginal
-    F componentType();
+    DynamicHub componentType();
 
     @KeepOriginal
-    F arrayType();
+    DynamicHub arrayType();
 }
 
 /** FIXME: How to handle java.lang.Class.ReflectionData? */
