@@ -32,6 +32,8 @@ import java.util.Objects;
 
 public class SerializableMethodSummary implements Serializable {
 
+    private static final long serialVersionUID = 1L;
+
     public SerializableMethodSummary(MethodHash hash, MethodId[] invokedMethods, MethodId[] implementationInvokedMethods, ClassId[] accessedTypes, ClassId[] instantiatedTypes, FieldId[] readFields,
                     FieldId[] writtenFields) {
         this.hash = hash;
@@ -44,6 +46,9 @@ public class SerializableMethodSummary implements Serializable {
     }
 
     public static class ClassId implements Serializable {
+
+        private static final long serialVersionUID = 1L;
+
         public final String className;
 
         public ClassId(String className) {
@@ -76,6 +81,9 @@ public class SerializableMethodSummary implements Serializable {
     }
 
     public static class MethodId implements Serializable {
+
+        private static final long serialVersionUID = 1L;
+
         public final ClassId classId;
         public final String methodName;
 
@@ -86,10 +94,12 @@ public class SerializableMethodSummary implements Serializable {
 
         @Override
         public boolean equals(Object o) {
-            if (this == o)
+            if (this == o) {
                 return true;
-            if (o == null || getClass() != o.getClass())
+            }
+            if (o == null || getClass() != o.getClass()) {
                 return false;
+            }
             MethodId methodId = (MethodId) o;
             return Objects.equals(classId, methodId.classId) && Objects.equals(methodName, methodId.methodName);
         }
@@ -109,6 +119,8 @@ public class SerializableMethodSummary implements Serializable {
     }
 
     public static class FieldId implements Serializable {
+        private static final long serialVersionUID = 1L;
+
         public final ClassId classId;
         public final String fieldName;
 
@@ -119,10 +131,12 @@ public class SerializableMethodSummary implements Serializable {
 
         @Override
         public boolean equals(Object o) {
-            if (this == o)
+            if (this == o) {
                 return true;
-            if (o == null || getClass() != o.getClass())
+            }
+            if (o == null || getClass() != o.getClass()) {
                 return false;
+            }
             FieldId fieldId = (FieldId) o;
             return Objects.equals(classId, fieldId.classId) && Objects.equals(fieldName, fieldId.fieldName);
         }

@@ -42,7 +42,7 @@ public class DummyHashingStrategy implements HashingStrategy {
         return summary.hash.getValue() == getHash(method);
     }
 
-    private long getHash(AnalysisMethod method) {
+    private static long getHash(AnalysisMethod method) {
         return Arrays.hashCode(method.getCode());
     }
 }

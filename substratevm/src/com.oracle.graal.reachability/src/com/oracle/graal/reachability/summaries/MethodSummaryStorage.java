@@ -94,6 +94,7 @@ public class MethodSummaryStorage implements MethodSummaryProvider {
             return;
         }
         try (ObjectInputStream stream = new ObjectInputStream(new FileInputStream(summaryFileName))) {
+            @SuppressWarnings("unchecked")
             Map<SerializableMethodSummary.MethodId, SerializableMethodSummary> summaries = (Map<SerializableMethodSummary.MethodId, SerializableMethodSummary>) stream.readObject();
             processSummaryFile(summaries);
         } catch (IOException | ClassNotFoundException e) {
@@ -134,6 +135,7 @@ public class MethodSummaryStorage implements MethodSummaryProvider {
     }
 
     public <SerializedType, Type> Type[] resolveHelper(SerializedType[] inputArray, Function<SerializedType, Type> resolver, Class<Type> typeTag) {
+        @SuppressWarnings("unchecked")
         Type[] res = (Type[]) Array.newInstance(typeTag, inputArray.length);
         for (int i = 0; i < inputArray.length; i++) {
             SerializedType elem = inputArray[i];
@@ -183,7 +185,7 @@ public class MethodSummaryStorage implements MethodSummaryProvider {
         return new SerializableMethodSummary(persistedSummary.getHash(), invokedMethods, implInvokedMethods, accessedTypes, instantiatedTypes, readFields, writtenFields);
     }
 
-    private boolean canSerialize(PersistedSummary persistedSummary) {
+    private static boolean canSerialize(PersistedSummary persistedSummary) {
         MethodSummary summary = persistedSummary.getSummary();
         // todo implement
         return true;
