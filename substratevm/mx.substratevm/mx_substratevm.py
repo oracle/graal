@@ -568,7 +568,7 @@ def launcher_library_overrride_env(lib_path):
     return env
 
 def build_js_lib(native_image):
-    return mx.add_lib_suffix(native_image(['--macro:js-library']))
+    return mx.add_lib_suffix(native_image(['--macro:jsvm-library']))
 
 def get_js_launcher(jslib):
     return os.path.join(os.path.dirname(jslib), "..", "bin", "js")
