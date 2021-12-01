@@ -145,6 +145,11 @@ final class SourceAccessor extends Accessor {
         }
 
         @Override
+        public void setEmbedderSource(SourceBuilder builder, boolean enabled) {
+            builder.embedderSource(enabled);
+        }
+
+        @Override
         public void invalidateAfterPreinitialiation(Source source) {
             ((SourceImpl) source).key.invalidateAfterPreinitialiation();
         }

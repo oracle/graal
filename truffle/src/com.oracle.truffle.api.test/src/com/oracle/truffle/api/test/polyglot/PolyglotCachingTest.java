@@ -153,7 +153,7 @@ public class PolyglotCachingTest {
     @Test
     public void testParsedASTIsNotCollectedIfSourceIsAlive() {
         Assume.assumeFalse("This test is too slow in fastdebug.", System.getProperty("java.vm.version").contains("fastdebug"));
-        setupTestLang(false);
+        setupTestLang(false, false);
 
         Context context = Context.create();
         Source source = Source.create(ProxyLanguage.ID, "0"); // needs to stay alive
@@ -174,7 +174,7 @@ public class PolyglotCachingTest {
     @Test
     public void testParsedASTIsCollectedIfSourceIsNotAlive() {
         Assume.assumeFalse("This test is too slow in fastdebug.", System.getProperty("java.vm.version").contains("fastdebug"));
-        setupTestLang(false);
+        setupTestLang(false, false);
 
         Engine engine = Engine.create();
 
@@ -196,7 +196,44 @@ public class PolyglotCachingTest {
     @Test
     public void testParsedASTIsCollectedIfSourceIsNotAliveWithInstrumentation() {
         Assume.assumeFalse("This test is too slow in fastdebug.", System.getProperty("java.vm.version").contains("fastdebug"));
-        setupTestLang(false);
+        setupTestLang(false, false);
+
+        AtomicBoolean entered = new AtomicBoolean();
+        Engine engine = Engine.create();
+        ExecutionListener.newBuilder().expressions(true).onEnter((event) -> {
+            // this makes sure even some lazy initialization of some event field causes leaks
+            event.getLocation();
+            event.getInputValues();
+            event.getReturnValue();
+            event.getRootName();
+            event.getException();
+            entered.set(true);
+
+        }).collectExceptions(true).collectInputValues(true).collectReturnValue(true).attach(engine);
+
+        GCUtils.assertObjectsCollectible((iteration) -> {
+            Context context = Context.newBuilder().engine(engine).build();
+            Source source = Source.create(ProxyLanguage.ID, String.valueOf(iteration));
+            CallTarget target = assertParsedEval(context, source);
+            assertCachedEval(context, source);
+            return target;
+        });
+
+        // make sure we actually entered and event and instrumentation was successful
+        assertTrue(entered.get());
+
+        engine.close();
+    }
+
+    /*
+     * Test that CallTargets can be freed when the source is looked up again using source copying.
+     * Regression test for GR-35420.
+     */
+    @Test
+    public void testParsedASTIsCollectedIfSourceIsNotAliveWithCopySource() {
+        Assume.assumeFalse("This test is too slow in fastdebug.", System.getProperty("java.vm.version").contains("fastdebug"));
+
+        setupTestLang(false, true);
 
         AtomicBoolean entered = new AtomicBoolean();
         Engine engine = Engine.create();
@@ -232,7 +269,7 @@ public class PolyglotCachingTest {
     @Test
     public void testSourceFreeContextStrong() {
         Assume.assumeFalse("This test is too slow in fastdebug.", System.getProperty("java.vm.version").contains("fastdebug"));
-        setupTestLang(false);
+        setupTestLang(false, false);
 
         Context survivingContext = Context.create();
         GCUtils.assertObjectsCollectible((iteration) -> {
@@ -251,7 +288,7 @@ public class PolyglotCachingTest {
     @Test
     public void testSourceStrongContextFree() {
         Assume.assumeFalse("This test is too slow in fastdebug.", System.getProperty("java.vm.version").contains("fastdebug"));
-        setupTestLang(false);
+        setupTestLang(false, false);
 
         List<Source> survivingSources = new ArrayList<>();
 
@@ -273,7 +310,7 @@ public class PolyglotCachingTest {
     @Test
     public void testEngineStrongContextFree() {
         Assume.assumeFalse("This test is too slow in fastdebug.", System.getProperty("java.vm.version").contains("fastdebug"));
-        setupTestLang(true);
+        setupTestLang(true, false);
 
         Engine engine = Engine.create();
         Set<ProxyLanguage> usedInstances = new HashSet<>();
@@ -292,7 +329,7 @@ public class PolyglotCachingTest {
     CallTarget lastParsedTarget;
     ProxyLanguage lastLanguage;
 
-    private void setupTestLang(boolean reuse) {
+    private void setupTestLang(boolean reuse, boolean copySource) {
         byte[] bytes = new byte[16 * 1024 * 1024];
         byte byteValue = (byte) 'a';
         Arrays.fill(bytes, byteValue);
@@ -302,20 +339,20 @@ public class PolyglotCachingTest {
             ProxyLanguage.setDelegate(new ReuseLanguage() {
                 @Override
                 protected CallTarget parse(ParsingRequest request) throws Exception {
-                    return PolyglotCachingTest.this.parse(languageInstance, testString, request);
+                    return PolyglotCachingTest.this.parse(languageInstance, testString, request, copySource);
                 }
             });
         } else {
             ProxyLanguage.setDelegate(new ProxyLanguage() {
                 @Override
                 protected CallTarget parse(ParsingRequest request) throws Exception {
-                    return PolyglotCachingTest.this.parse(languageInstance, testString, request);
+                    return PolyglotCachingTest.this.parse(languageInstance, testString, request, copySource);
                 }
             });
         }
     }
 
-    private CallTarget parse(ProxyLanguage languageInstance, String testString, ParsingRequest request) {
+    private CallTarget parse(ProxyLanguage languageInstance, String testString, ParsingRequest request, boolean copySource) {
         int index = Integer.parseInt(request.getSource().getCharacters().toString());
         parseCount++;
         lastLanguage = languageInstance;
@@ -324,7 +361,8 @@ public class PolyglotCachingTest {
              * Typical root nodes have a strong reference to source. We need to ensure that we can
              * still collect the cache if that happens.
              */
-            @SuppressWarnings("unused") final com.oracle.truffle.api.source.Source source = request.getSource();
+            @SuppressWarnings("unused") final com.oracle.truffle.api.source.Source source = copySource ? com.oracle.truffle.api.source.Source.newBuilder(request.getSource()).build()
+                            : request.getSource();
 
             @SuppressWarnings("unused") final String bigString = testString.substring(index, testString.length());
 
