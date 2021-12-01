@@ -34,9 +34,15 @@ import org.graalvm.compiler.options.OptionKey;
  * @see com.oracle.svm.core.option
  */
 public class RuntimeOptionKey<T> extends OptionKey<T> {
+    private final boolean copyToCompilationIsolate;
 
     public RuntimeOptionKey(T defaultValue) {
+        this(defaultValue, false);
+    }
+
+    public RuntimeOptionKey(T defaultValue, boolean isRelevantForCompilationIsolate) {
         super(defaultValue);
+        this.copyToCompilationIsolate = isRelevantForCompilationIsolate;
     }
 
     /**
@@ -52,6 +58,10 @@ public class RuntimeOptionKey<T> extends OptionKey<T> {
 
     public boolean hasBeenSet() {
         return hasBeenSet(RuntimeOptionValues.singleton());
+    }
+
+    public boolean shouldCopyToCompilationIsolate() {
+        return copyToCompilationIsolate;
     }
 
     @Fold

@@ -30,18 +30,17 @@ import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probabil
 import java.lang.ref.Reference;
 import java.lang.ref.SoftReference;
 
-import com.oracle.svm.core.thread.VMOperation;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
@@ -221,7 +220,7 @@ public final class ReferenceInternals {
     @SuppressFBWarnings(value = "WA_NOT_IN_LOOP", justification = "Wait for progress, not necessarily completion.")
     public static boolean waitForReferenceProcessing() throws InterruptedException {
         assert !VMOperation.isInProgress() : "could cause a deadlock";
-        assert !ReferenceHandler.useDedicatedThread() || CurrentIsolate.getCurrentThread() != ReferenceHandlerThread.singleton().getIsolateThread() : "would cause a deadlock";
+        assert !ReferenceHandlerThread.isReferenceHandlerThread() : "would cause a deadlock";
 
         synchronized (processPendingLock) {
             if (processPendingActive || Heap.getHeap().hasReferencePendingList()) {

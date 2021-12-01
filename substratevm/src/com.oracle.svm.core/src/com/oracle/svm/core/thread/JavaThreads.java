@@ -619,7 +619,7 @@ public abstract class JavaThreads {
      * that they can check their interrupted status.
      */
     protected static void wakeUpVMConditionWaiters(Thread thread) {
-        if (ReferenceHandler.useDedicatedThread() && ReferenceHandlerThread.singleton().isReferenceHandlerThread(thread)) {
+        if (ReferenceHandler.useDedicatedThread() && ReferenceHandlerThread.isReferenceHandlerThread(thread)) {
             Heap.getHeap().wakeUpReferencePendingListWaiters();
         }
     }

@@ -40,6 +40,8 @@
  */
 package org.graalvm.nativeimage;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 import org.graalvm.nativeimage.impl.IsolateSupport;
@@ -90,7 +92,7 @@ public final class Isolates {
             private UnsignedWord reservedAddressSpaceSize;
             private String auxiliaryImagePath;
             private UnsignedWord auxiliaryImageReservedSpaceSize;
-            private boolean useReferenceHandlerThread;
+            private final List<String> arguments;
 
             /**
              * Creates a new builder with default values.
@@ -98,6 +100,7 @@ public final class Isolates {
              * @since 19.0
              */
             public Builder() {
+                arguments = new ArrayList<>();
             }
 
             /**
@@ -133,14 +136,14 @@ public final class Isolates {
             }
 
             /**
-             * Enables or disables the dedicated reference handler. Please note that this option
-             * only has an effect if the support for VM-internal threads is part of the Native
-             * Image.
+             * Adds an isolate argument. The syntax for arguments is the same as the one that is
+             * used on the command-line when starting Native Image (e.g., {@code
+             * -XX:+UseReferenceHandlerThread}).
              *
              * @since 22.1
              */
-            public Builder useReferenceHandlerThread(boolean value) {
-                this.useReferenceHandlerThread = value;
+            public Builder addArgument(String argument) {
+                this.arguments.add(argument);
                 return this;
             }
 
@@ -151,7 +154,7 @@ public final class Isolates {
              * @since 19.0
              */
             public CreateIsolateParameters build() {
-                return new CreateIsolateParameters(reservedAddressSpaceSize, auxiliaryImagePath, auxiliaryImageReservedSpaceSize, useReferenceHandlerThread);
+                return new CreateIsolateParameters(reservedAddressSpaceSize, auxiliaryImagePath, auxiliaryImageReservedSpaceSize, arguments);
             }
         }
 
@@ -169,13 +172,13 @@ public final class Isolates {
         private final UnsignedWord reservedAddressSpaceSize;
         private final String auxiliaryImagePath;
         private final UnsignedWord auxiliaryImageReservedSpaceSize;
-        private final boolean useReferenceHandlerThread;
+        private final List<String> arguments;
 
-        private CreateIsolateParameters(UnsignedWord reservedAddressSpaceSize, String auxiliaryImagePath, UnsignedWord auxiliaryImageReservedSpaceSize, boolean useReferenceHandlerThread) {
+        private CreateIsolateParameters(UnsignedWord reservedAddressSpaceSize, String auxiliaryImagePath, UnsignedWord auxiliaryImageReservedSpaceSize, List<String> arguments) {
             this.reservedAddressSpaceSize = reservedAddressSpaceSize;
             this.auxiliaryImagePath = auxiliaryImagePath;
             this.auxiliaryImageReservedSpaceSize = auxiliaryImageReservedSpaceSize;
-            this.useReferenceHandlerThread = useReferenceHandlerThread;
+            this.arguments = arguments;
         }
 
         /**
@@ -208,13 +211,12 @@ public final class Isolates {
         }
 
         /**
-         * Returns the size in bytes of an address space to reserve for loading an auxiliary image
-         * in addition to the main image, or 0 if no space should be reserved.
+         * Returns the list of additional isolate arguments.
          *
          * @since 22.1
          */
-        public boolean getUseReferenceHandlerThread() {
-            return useReferenceHandlerThread;
+        public List<String> getArguments() {
+            return arguments;
         }
     }
 

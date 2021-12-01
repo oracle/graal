@@ -29,6 +29,7 @@ import static com.oracle.svm.core.SubstrateOptions.MultiThreaded;
 import java.util.Collections;
 import java.util.List;
 
+import com.oracle.svm.core.SubstrateOptions.ConcealedOptions;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.word.Word;
@@ -68,15 +69,13 @@ import com.oracle.svm.core.util.VMError;
  * {@linkplain SubstrateOptions#MultiThreaded}), the single application thread can always directly
  * execute VM operations. Neither locking nor initiating a safepoint is necessary.</li>
  * <li>Temporary VM operation threads: if multi-threading is enabled, but no dedicated VM operation
- * thread is used (see
- * {@linkplain SubstrateOptions.ConcealedOptions#UseDedicatedVMOperationThread}), VM operations are
- * executed by the application thread that queued the VM operation. For the time of the execution,
- * the application thread holds a lock to guarantee that it is the single temporary VM operation
- * thread.</li>
- * <li>Dedicated VM operation thread: if
- * {@linkplain SubstrateOptions.ConcealedOptions#UseDedicatedVMOperationThread} is enabled, a
- * dedicated VM operation thread is spawned during isolate startup and used for the execution of all
- * VM operations.</li>
+ * thread is used (see {@linkplain ConcealedOptions#UseDedicatedVMOperationThread}), VM operations
+ * are executed by the application thread that queued the VM operation. For the time of the
+ * execution, the application thread holds a lock to guarantee that it is the single temporary VM
+ * operation thread.</li>
+ * <li>Dedicated VM operation thread: if {@linkplain ConcealedOptions#UseDedicatedVMOperationThread}
+ * is enabled, a dedicated VM operation thread is spawned during isolate startup and used for the
+ * execution of all VM operations.</li>
  * </ul>
  *
  * It is possible that the execution of a VM operation triggers another VM operation explicitly or
@@ -118,7 +117,7 @@ public final class VMOperationControl {
 
     @Fold
     public static boolean useDedicatedVMOperationThread() {
-        return MultiThreaded.getValue() && SubstrateOptions.AllowVMInternalThreads.getValue() && SubstrateOptions.ConcealedOptions.UseDedicatedVMOperationThread.getValue();
+        return MultiThreaded.getValue() && SubstrateOptions.AllowVMInternalThreads.getValue() && ConcealedOptions.UseDedicatedVMOperationThread.getValue();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -366,9 +365,8 @@ public final class VMOperationControl {
 
     /**
      * A dedicated thread that executes {@link VMOperation}s. If the option
-     * {@link SubstrateOptions.ConcealedOptions#UseDedicatedVMOperationThread} is enabled, then this
-     * thread is the only one that may initiate a safepoint. Therefore, it never gets blocked at a
-     * safepoint.
+     * {@link ConcealedOptions#UseDedicatedVMOperationThread} is enabled, then this thread is the
+     * only one that may initiate a safepoint. Therefore, it never gets blocked at a safepoint.
      */
     public static class VMOperationThread implements Runnable {
         private final Thread thread;

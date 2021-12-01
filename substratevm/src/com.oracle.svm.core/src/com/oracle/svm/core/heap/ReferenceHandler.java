@@ -28,8 +28,6 @@ import java.lang.ref.Reference;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
-import com.oracle.svm.core.IsolateArgumentParser;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.JavaThreads;
@@ -38,12 +36,7 @@ import com.oracle.svm.core.util.VMError;
 
 public final class ReferenceHandler {
     public static boolean useDedicatedThread() {
-        if (!SubstrateOptions.MultiThreaded.getValue() || !SubstrateOptions.AllowVMInternalThreads.getValue()) {
-            return false;
-        }
-
-        int optionIndex = IsolateArgumentParser.getOptionIndex(SubstrateOptions.ConcealedOptions.UseReferenceHandlerThread);
-        return IsolateArgumentParser.getBooleanOptionValue(optionIndex);
+        return ReferenceHandlerThread.isSupported() && ReferenceHandlerThread.isEnabled();
     }
 
     public static void processPendingReferences() {

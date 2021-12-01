@@ -537,7 +537,7 @@ public final class HeapImpl extends Heap {
          * everything in the reverse order here: we read the wakeup count *before* the call to
          * Thread.interrupted().
          */
-        assert ReferenceHandlerThread.singleton().isReferenceHandlerThread(Thread.currentThread());
+        assert ReferenceHandlerThread.isReferenceHandlerThread();
         long initialOffers = refListOfferCounter;
         long initialWakeUps = refListWaiterWakeUpCounter;
         if (hasReferencePendingList()) {

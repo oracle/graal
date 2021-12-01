@@ -288,7 +288,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
          * result in deadlocks if ReferenceInternals.waitForReferenceProcessing() is called.
          */
         if (ReferenceHandler.useDedicatedThread()) {
-            ReferenceHandlerThread.singleton().start();
+            ReferenceHandlerThread.start();
         }
 
         /*

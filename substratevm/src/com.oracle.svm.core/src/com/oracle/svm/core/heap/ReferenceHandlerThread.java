@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.heap;
 
+import com.oracle.svm.core.IsolateArgumentParser;
 import com.oracle.svm.core.SubstrateOptions;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -42,11 +43,6 @@ public final class ReferenceHandlerThread implements Runnable {
     private final Thread thread;
     private volatile IsolateThread isolateThread;
 
-    @Fold
-    public static ReferenceHandlerThread singleton() {
-        return ImageSingletons.lookup(ReferenceHandlerThread.class);
-    }
-
     @Platforms(Platform.HOSTED_ONLY.class)
     ReferenceHandlerThread() {
         thread = new Thread(this, "Reference Handler");
@@ -54,8 +50,24 @@ public final class ReferenceHandlerThread implements Runnable {
         thread.setDaemon(true);
     }
 
-    public void start() {
-        thread.start();
+    public static void start() {
+        if (isSupported()) {
+            singleton().thread.start();
+        }
+    }
+
+    public static boolean isReferenceHandlerThread() {
+        if (isSupported()) {
+            return CurrentIsolate.getCurrentThread() == singleton().isolateThread;
+        }
+        return false;
+    }
+
+    public static boolean isReferenceHandlerThread(Thread other) {
+        if (isSupported()) {
+            return other == singleton().thread;
+        }
+        return false;
     }
 
     @Override
@@ -82,12 +94,19 @@ public final class ReferenceHandlerThread implements Runnable {
         }
     }
 
-    public boolean isReferenceHandlerThread(Thread other) {
-        return thread == other;
+    @Fold
+    static ReferenceHandlerThread singleton() {
+        return ImageSingletons.lookup(ReferenceHandlerThread.class);
     }
 
-    public IsolateThread getIsolateThread() {
-        return isolateThread;
+    @Fold
+    static boolean isSupported() {
+        return SubstrateOptions.MultiThreaded.getValue() && SubstrateOptions.AllowVMInternalThreads.getValue();
+    }
+
+    static boolean isEnabled() {
+        int optionIndex = IsolateArgumentParser.getOptionIndex(SubstrateOptions.ConcealedOptions.UseReferenceHandlerThread);
+        return IsolateArgumentParser.getBooleanOptionValue(optionIndex);
     }
 }
 
@@ -95,7 +114,7 @@ public final class ReferenceHandlerThread implements Runnable {
 class ReferenceHandlerThreadFeature implements Feature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.AllowVMInternalThreads.getValue();
+        return ReferenceHandlerThread.isSupported();
     }
 
     @Override
