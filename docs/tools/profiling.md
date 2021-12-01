@@ -179,9 +179,7 @@ The current set of available options is as follows.
 
 ### CPU Sampler Options
 
-```shell
 {% include_relative cpu-sampler.options %}
-```
 
 ### CPU Tracer Options
 
