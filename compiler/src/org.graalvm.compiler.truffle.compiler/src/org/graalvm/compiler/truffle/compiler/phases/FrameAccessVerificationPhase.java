@@ -39,6 +39,8 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.graph.Graph;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.AbstractEndNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
@@ -75,39 +77,40 @@ import jdk.vm.ci.meta.SpeculationLog.Speculation;
  * initial, unmodified state of the frame slot. In this case, the frame will be initialized properly
  * to allow the merge to succeed.
  */
-public class FrameAccessVerificationPhase extends BasePhase<CoreProviders> {
+public final class FrameAccessVerificationPhase extends BasePhase<CoreProviders> {
 
     private static final byte[] EMPTY_BYTE_ARRAY = new byte[0];
 
     private final CompilableTruffleAST compilable;
 
     // Cached tag nodes that have already reported a performance warning.
-    private final EconomicSet<FixedNode> reported = EconomicSet.create();
+    private final EconomicSet<Node> reported = EconomicSet.create();
 
-    private final EconomicMap<NewFrameNode, HashSet<AbstractEndNode>> deoptEnds = EconomicMap.create();
+    private final EconomicMap<NewFrameNode, HashMap<AbstractEndNode, Integer>> deoptEnds = EconomicMap.create();
 
     public FrameAccessVerificationPhase(CompilableTruffleAST compilable) {
         this.compilable = compilable;
     }
 
     @SuppressWarnings("try")
-    private void logPerformanceWarningClearIntroducedPhi(FixedNode location) {
+    private void logPerformanceWarningClearIntroducedPhi(Node location, int index) {
         if (PerformanceInformationHandler.isWarningEnabled(PolyglotCompilerOptions.PerformanceWarningKind.FRAME_INCOMPATIBLE_MERGE)) {
             if (reported.contains(location)) {
                 return;
             }
-            StructuredGraph graph = location.graph();
+            Graph graph = location.graph();
             DebugContext debug = location.getDebug();
             try (DebugContext.Scope s = debug.scope("TrufflePerformanceWarnings", graph)) {
                 Map<String, Object> properties = new LinkedHashMap<>();
                 properties.put("location", location);
                 properties.put("method", compilable.getName());
+                properties.put("index", index);
                 PerformanceInformationHandler.logPerformanceWarning(PolyglotCompilerOptions.PerformanceWarningKind.FRAME_INCOMPATIBLE_MERGE, compilable,
                                 Collections.emptyList(),
                                 "Incompatible frame slot types at merge: this disables the frame intrinsics optimization and potentially causes frames to be materialized. " +
                                                 "Ensure that frame slots are cleared before a control flow merge if they don't contain the same type of value.",
                                 properties);
-                debug.dump(DebugContext.VERBOSE_LEVEL, graph, "perf warn: Incompatible frame slot types at merge: %s", location);
+                debug.dump(DebugContext.VERBOSE_LEVEL, graph, "perf warn: Incompatible frame slot types for slot %d at %s", index, location);
                 reported.add(location);
             } catch (Throwable t) {
                 debug.handle(t);
@@ -116,12 +119,13 @@ public class FrameAccessVerificationPhase extends BasePhase<CoreProviders> {
     }
 
     public void insertDeopts() {
-        MapCursor<NewFrameNode, HashSet<AbstractEndNode>> iterator = deoptEnds.getEntries();
+        MapCursor<NewFrameNode, HashMap<AbstractEndNode, Integer>> iterator = deoptEnds.getEntries();
         while (iterator.advance()) {
             NewFrameNode frame = iterator.getKey();
-            for (AbstractEndNode node : iterator.getValue()) {
+            for (Map.Entry<AbstractEndNode, Integer> entry : iterator.getValue().entrySet()) {
+                AbstractEndNode node = entry.getKey();
                 if (node.isAlive()) {
-                    logPerformanceWarningClearIntroducedPhi(node.merge());
+                    logPerformanceWarningClearIntroducedPhi(node.predecessor(), entry.getValue());
                     FixedWithNextNode predecessor = (FixedWithNextNode) node.predecessor();
                     predecessor.setNext(null);
                     GraphUtil.killCFG(node);
@@ -175,9 +179,12 @@ public class FrameAccessVerificationPhase extends BasePhase<CoreProviders> {
                 byte[] indexedEntries = indexedStates.get(frame);
                 states: for (int state = 0; state < withStates.size(); state++) {
                     State other = withStates.get(state);
-                    if (!Arrays.equals(entries, other.states.get(frame))) {
-                        deoptAt(merge, frame, state);
-                        continue states;
+                    byte[] otherEntries = other.states.get(frame);
+                    for (int i = 0; i < entries.length; i++) {
+                        if (entries[i] != otherEntries[i]) {
+                            deoptAt(merge, frame, state + 1, i);
+                            continue states;
+                        }
                     }
                     byte[] otherIndexedEntries = other.indexedStates.get(frame);
                     entries: for (int i = 0; i < indexedEntries.length; i++) {
@@ -197,7 +204,7 @@ public class FrameAccessVerificationPhase extends BasePhase<CoreProviders> {
                                     continue entries;
                                 }
                             }
-                            deoptAt(merge, frame, state);
+                            deoptAt(merge, frame, state + 1, i);
                             continue states;
                         }
                     }
@@ -210,12 +217,12 @@ public class FrameAccessVerificationPhase extends BasePhase<CoreProviders> {
             return true;
         }
 
-        private void deoptAt(AbstractMergeNode merge, NewFrameNode frame, int state) {
-            HashSet<AbstractEndNode> set = deoptEnds.get(frame);
+        private void deoptAt(AbstractMergeNode merge, NewFrameNode frame, int state, int index) {
+            HashMap<AbstractEndNode, Integer> set = deoptEnds.get(frame);
             if (set == null) {
-                deoptEnds.put(frame, set = new HashSet<>());
+                deoptEnds.put(frame, set = new HashMap<>());
             }
-            set.add(merge.phiPredecessorAt(state));
+            set.put(merge.phiPredecessorAt(state), index);
         }
 
         @Override
@@ -225,7 +232,13 @@ public class FrameAccessVerificationPhase extends BasePhase<CoreProviders> {
 
         public void add(NewFrameNode frame) {
             assert !states.containsKey(frame) && !indexedStates.containsKey(frame);
-            states.put(frame, frame.getFrameSlotKinds().clone());
+            byte[] entries = frame.getFrameSlotKinds().clone();
+            for (int i = 0; i < entries.length; i++) {
+                if (entries[i] == NewFrameNode.FrameSlotKindObjectTag || entries[i] == NewFrameNode.FrameSlotKindIllegalTag) {
+                    entries[i] = NewFrameNode.FrameSlotKindLongTag;
+                }
+            }
+            states.put(frame, entries);
             byte[] indexedEntries = frame.getIndexedFrameSize() == 0 ? EMPTY_BYTE_ARRAY : new byte[frame.getIndexedFrameSize()];
             Arrays.fill(indexedEntries, INITIAL_TYPE_MARKER);
             assert Arrays.equals(indexedEntries, frame.getIndexedFrameSlotKinds()) : "NewFrameNode doens't have expected initial state for indexed frame slots";
@@ -262,7 +275,7 @@ public class FrameAccessVerificationPhase extends BasePhase<CoreProviders> {
                      */
                     if (node instanceof VirtualFrameSetNode || node instanceof VirtualFrameClearNode) {
                         byte[] entries = state.get(accessor);
-                        if (inRange(entries, accessor.getFrameSlotIndex())) {
+                        if (inRange(entries, accessor.getFrameSlotIndex()) && accessor.getAccessTag() != NewFrameNode.FrameSlotKindObjectTag) {
                             entries[accessor.getFrameSlotIndex()] = (byte) accessor.getAccessTag();
                         }
                     } else if (node instanceof VirtualFrameCopyNode) {

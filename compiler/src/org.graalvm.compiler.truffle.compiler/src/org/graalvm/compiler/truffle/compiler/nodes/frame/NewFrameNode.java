@@ -81,14 +81,14 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
      * The compiler should not import classes from Truffle for libgraal, so we manually encode these
      * constants:
      */
-    private static final int FrameSlotKindObjectTag = 0; // FrameSlotKind.Object.tag
-    private static final int FrameSlotKindLongTag = 1; // FrameSlotKind.Long.tag
+    public static final int FrameSlotKindObjectTag = 0; // FrameSlotKind.Object.tag
+    public static final int FrameSlotKindLongTag = 1; // FrameSlotKind.Long.tag
     private static final int FrameSlotKindIntTag = 2; // FrameSlotKind.Int.tag
     private static final int FrameSlotKindDoubleTag = 3; // FrameSlotKind.Double.tag
     private static final int FrameSlotKindFloatTag = 4; // FrameSlotKind.Float.tag
     private static final int FrameSlotKindBooleanTag = 5; // FrameSlotKind.Boolean.tag
     private static final int FrameSlotKindByteTag = 6; // FrameSlotKind.Byte.tag
-    private static final int FrameSlotKindIllegalTag = 7; // FrameSlotKind.Illegal.tag
+    public static final int FrameSlotKindIllegalTag = 7; // FrameSlotKind.Illegal.tag
 
     public static final NodeClass<NewFrameNode> TYPE = NodeClass.create(NewFrameNode.class);
     @Input ValueNode descriptor;
