@@ -496,11 +496,11 @@ builds += [
 
   # Windows/AMD64
   ${vm_java_8}  ${vm_common_windows_jdk8}   ${deploy_daily_vm_windows}       ${js_windows} ${deploy_graalvm_base_windows_amd64}               {name: deploy-vm-base-java8-windows-amd64}
-  ${vm_java_8}  ${vm_common_windows_jdk8}   ${deploy_daily_vm_windows}       ${js_windows} ${deploy_graalvm_installables_windows_amd64}       {name: deploy-vm-installable-java8-windows-amd64}
+  ${vm_java_8}  ${vm_common_windows_jdk8}   ${deploy_daily_vm_windows}       ${js_windows} ${deploy_graalvm_installables_windows_amd64}{run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_windows}]] ${deploy_graalvm_installables_windows_amd64.run}, name: deploy-vm-installable-java8-windows-amd64}
   ${vm_java_11} ${svm-common-windows-jdk11} ${deploy_daily_vm_windows-jdk11} ${js_windows_jdk11} ${deploy_graalvm_base_windows_amd64}         {name: deploy-vm-base-java11-windows-amd64}
-  ${vm_java_11} ${svm-common-windows-jdk11} ${deploy_daily_vm_windows-jdk11} ${js_windows_jdk11} ${deploy_graalvm_installables_windows_amd64} {name: deploy-vm-installable-java11-windows-amd64}
+  ${vm_java_11} ${svm-common-windows-jdk11} ${deploy_daily_vm_windows-jdk11} ${js_windows_jdk11} ${deploy_graalvm_installables_windows_amd64} {run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_windows}]] ${deploy_graalvm_installables_windows_amd64.run}, name: deploy-vm-installable-java11-windows-amd64}
   ${vm_java_17} ${svm-common-windows-jdk17} ${deploy_daily_vm_windows-jdk17} ${js_windows_jdk17} ${deploy_graalvm_base_windows_amd64}         {name: deploy-vm-base-java17-windows-amd64}
-  ${vm_java_17} ${svm-common-windows-jdk17} ${deploy_daily_vm_windows-jdk17} ${js_windows_jdk17} ${deploy_graalvm_installables_windows_amd64} {name: deploy-vm-installable-java17-windows-amd64}
+  ${vm_java_17} ${svm-common-windows-jdk17} ${deploy_daily_vm_windows-jdk17} ${js_windows_jdk17} ${deploy_graalvm_installables_windows_amd64}{run: [[set-export, VM_EXTRA_SUITES, ${vm_extra_suites_windows}]] ${deploy_graalvm_installables_windows_amd64.run}, name: deploy-vm-installable-java17-windows-amd64}
 
   #
   # Deploy GraalVM+Ruby images
