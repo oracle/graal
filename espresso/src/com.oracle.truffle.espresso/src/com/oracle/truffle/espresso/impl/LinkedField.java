@@ -25,8 +25,6 @@ package com.oracle.truffle.espresso.impl;
 import static com.oracle.truffle.espresso.classfile.Constants.FIELD_ID_OBFUSCATE;
 import static com.oracle.truffle.espresso.classfile.Constants.FIELD_ID_TYPE;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.staticobject.StaticProperty;
 import com.oracle.truffle.espresso.descriptors.ByteSequence;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -44,22 +42,26 @@ final class LinkedField extends StaticProperty {
         OBFUSCATED,
     }
 
-    @CompilationFinal private ParserField parserField;
+    private final ParserField parserField;
     private final int slot;
 
     LinkedField(ParserField parserField, int slot, IdMode mode) {
-        this.parserField = maybeCorrectParserField(parserField, mode);
+        this(parserField, slot, mode, 0);
+    }
+
+    LinkedField(ParserField parserField, int slot, IdMode mode, int flagCorrection) {
+        this.parserField = maybeCorrectParserField(parserField, mode, flagCorrection);
         this.slot = slot;
     }
 
-    private static ParserField maybeCorrectParserField(ParserField parserField, IdMode mode) {
+    private static ParserField maybeCorrectParserField(ParserField parserField, IdMode mode, int flagCorrection) {
         switch (mode) {
             case REGULAR:
-                return parserField;
+                return flagCorrection != 0 ? parserField.withFlags(flagCorrection) : parserField;
             case WITH_TYPE:
-                return parserField.withFlags(FIELD_ID_TYPE);
+                return parserField.withFlags(FIELD_ID_TYPE | flagCorrection);
             case OBFUSCATED:
-                return parserField.withFlags(FIELD_ID_OBFUSCATE);
+                return parserField.withFlags(FIELD_ID_OBFUSCATE | flagCorrection);
         }
         throw EspressoError.shouldNotReachHere();
     }
@@ -160,20 +162,11 @@ final class LinkedField extends StaticProperty {
         return getParserField().isHidden();
     }
 
-    ParserField getParserField() {
-        ParserField current = parserField;
-        if (!current.getRedefineAssumption().isValid()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            do {
-                current = parserField;
-            } while (!current.getRedefineAssumption().isValid());
-        }
-        return current;
+    public boolean isRedefineAdded() {
+        return getParserField().isRedefineAdded();
     }
 
-    public void redefine(ParserField newParserField) {
-        ParserField old = parserField;
-        parserField = maybeCorrectParserField(newParserField, idMode());
-        old.getRedefineAssumption().invalidate();
+    ParserField getParserField() {
+        return parserField;
     }
 }

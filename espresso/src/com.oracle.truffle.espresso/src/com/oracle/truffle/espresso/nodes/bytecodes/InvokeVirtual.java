@@ -37,7 +37,6 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
@@ -119,7 +118,7 @@ public abstract class InvokeVirtual extends Node {
         // The implementor assumption might be invalidated right between the assumption check and
         // the value retrieval. To ensure that the single implementor value is safe to use, check
         // that it's not null.
-        @Specialization(assumptions = {"maybeSingleImplementor.hasValue()", "resolvedMethod.getAssumption()"}, guards = "implementor != null")
+        @Specialization(assumptions = {"maybeSingleImplementor.hasValue()", "resolvedMethod.getRedefineAssumption()"}, guards = "implementor != null")
         Object callSingleImplementor(Object[] args,
                         @Bind("getReceiver(args)") StaticObject receiver,
                         @SuppressWarnings("unused") @Cached("readSingleImplementor()") AssumptionGuardedValue<ObjectKlass> maybeSingleImplementor,
@@ -135,7 +134,7 @@ public abstract class InvokeVirtual extends Node {
         @Specialization(guards = {"!resolutionSeed.isAbstract()", "resolvedMethod.getMethod() == resolutionSeed"}, //
                         assumptions = { //
                                         "resolutionSeed.getLeafAssumption()",
-                                        "resolvedMethod.getAssumption()"
+                                        "resolvedMethod.getRedefineAssumption()"
                         })
         Object callLeafMethod(Object[] args,
                         @Bind("getReceiver(args)") StaticObject receiver,
@@ -152,7 +151,7 @@ public abstract class InvokeVirtual extends Node {
         @Specialization(limit = "LIMIT", //
                         replaces = {"callSingleImplementor", "callLeafMethod"}, //
                         guards = "receiver.getKlass() == cachedKlass", //
-                        assumptions = "resolvedMethod.getAssumption()")
+                        assumptions = "resolvedMethod.getRedefineAssumption()")
         Object callDirect(Object[] args,
                         @Bind("getReceiver(args)") StaticObject receiver,
                         @Cached("receiver.getKlass()") Klass cachedKlass,
@@ -184,14 +183,14 @@ public abstract class InvokeVirtual extends Node {
              * Accept a slow path once the method has been removed put method behind a boundary to
              * avoid a deopt loop.
              */
-            return ClassRedefinition.handleRemovedMethod(resolutionSeed, receiverKlass).getMethodVersion();
+            return resolutionSeed.getContext().getClassRedefinition().handleRemovedMethod(resolutionSeed, receiverKlass).getMethodVersion();
         }
         /*
          * Surprisingly, INVOKEVIRTUAL can try to invoke interface methods, even non-default ones.
          * Good thing is, miranda methods are taken care of at vtable creation !
          */
         int vtableIndex = resolutionSeed.getVTableIndex();
-        Method.MethodVersion target = null;
+        Method.MethodVersion target;
         if (receiverKlass.isArray()) {
             target = receiverKlass.getSuperKlass().vtableLookup(vtableIndex).getMethodVersion();
         } else {

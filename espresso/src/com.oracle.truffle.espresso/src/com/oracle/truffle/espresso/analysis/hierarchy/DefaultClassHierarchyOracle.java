@@ -34,14 +34,14 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
  */
 public class DefaultClassHierarchyOracle implements ClassHierarchyOracle {
     @Override
-    public ClassHierarchyAssumption createAssumptionForNewKlass(ObjectKlass newKlass) {
+    public ClassHierarchyAssumption createAssumptionForNewKlass(ObjectKlass.KlassVersion newKlass) {
         if (newKlass.isConcrete()) {
-            addImplementorToAncestors(newKlass);
+            addImplementorToAncestors(newKlass.getKlass());
         }
         if (newKlass.isFinalFlagSet()) {
             return ClassHierarchyAssumptionImpl.AlwaysValid;
         }
-        return new ClassHierarchyAssumptionImpl(newKlass);
+        return new ClassHierarchyAssumptionImpl(newKlass.getKlass());
     }
 
     @Override
@@ -83,6 +83,7 @@ public class DefaultClassHierarchyOracle implements ClassHierarchyOracle {
         while (currentKlass != null) {
             currentKlass.getNoConcreteSubclassesAssumption(ClassHierarchyAccessor.accessor).getAssumption().invalidate();
             currentKlass.getImplementor(ClassHierarchyAccessor.accessor).addImplementor(newKlass);
+
             for (ObjectKlass superInterface : currentKlass.getSuperInterfaces()) {
                 addImplementor(superInterface, newKlass);
             }
@@ -91,15 +92,15 @@ public class DefaultClassHierarchyOracle implements ClassHierarchyOracle {
     }
 
     @Override
-    public SingleImplementor initializeImplementorForNewKlass(ObjectKlass klass) {
+    public SingleImplementor initializeImplementorForNewKlass(ObjectKlass.KlassVersion klass) {
         // java.io.Serializable and java.lang.Cloneable are always implemented by all arrays
-        if (klass.getType() == Symbol.Type.java_io_Serializable || klass.getType() == Symbol.Type.java_lang_Cloneable) {
+        if (klass.getKlass().getType() == Symbol.Type.java_io_Serializable || klass.getKlass().getType() == Symbol.Type.java_lang_Cloneable) {
             return SingleImplementor.MultipleImplementors;
         }
         if (klass.isAbstract() || klass.isInterface()) {
             return new SingleImplementor();
         }
-        return new SingleImplementor(klass);
+        return new SingleImplementor(klass.getKlass());
     }
 
     @Override

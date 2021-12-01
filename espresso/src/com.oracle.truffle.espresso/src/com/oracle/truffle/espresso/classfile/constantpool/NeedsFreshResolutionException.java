@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,18 +20,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.jdwp.api;
+package com.oracle.truffle.espresso.classfile.constantpool;
 
-/**
- * Constants to mimic the status of classes in a VM.
- */
-public final class ClassStatusConstants {
-    public static final int LOADED = 0;
-    public static final int VERIFIED = 1;
-    public static final int PREPARED = 2;
-    public static final int INITIALIZED = 4;
-    public static final int ERROR = 8;
-
-    private ClassStatusConstants() {
-    }
+public class NeedsFreshResolutionException extends RuntimeException {
+    private static final long serialVersionUID = -1567457542377424585L;
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,9 +22,7 @@
  */
 package com.oracle.truffle.espresso.impl;
 
-import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
@@ -36,10 +34,9 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import java.lang.reflect.Modifier;
 
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINALIZER;
+import static com.oracle.truffle.espresso.classfile.Constants.FIELD_REDEFINE_ADDED;
 
 public final class ParserField {
-
-    private final Assumption redefineAssumption = Truffle.getRuntime().createAssumption();
 
     public static final ParserField[] EMPTY_ARRAY = new ParserField[0];
     // re-use the Constants.ACC_FINALIZER flag to mark hidden fields
@@ -70,10 +67,6 @@ public final class ParserField {
         return type;
     }
 
-    public Assumption getRedefineAssumption() {
-        return redefineAssumption;
-    }
-
     public Attribute[] getAttributes() {
         return attributes;
     }
@@ -87,6 +80,10 @@ public final class ParserField {
 
     public boolean isHidden() {
         return (flags & HIDDEN) != 0;
+    }
+
+    public boolean isRedefineAdded() {
+        return (flags & FIELD_REDEFINE_ADDED) != 0;
     }
 
     public boolean isStatic() {

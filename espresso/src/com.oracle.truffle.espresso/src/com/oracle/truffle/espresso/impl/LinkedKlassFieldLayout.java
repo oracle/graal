@@ -22,16 +22,17 @@
  */
 package com.oracle.truffle.espresso.impl;
 
+import java.lang.reflect.Modifier;
 import java.util.HashSet;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.staticobject.StaticShape;
 import com.oracle.truffle.api.staticobject.StaticShape.Builder;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
+import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.JavaVersion;
 import com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange;
 import com.oracle.truffle.espresso.runtime.StaticObject;
@@ -50,17 +51,29 @@ final class LinkedKlassFieldLayout {
 
     final int fieldTableLength;
 
-    LinkedKlassFieldLayout(EspressoLanguage language, JavaVersion version, ParserKlass parserKlass, LinkedKlass superKlass) {
-        Builder instanceBuilder = StaticShape.newBuilder(language);
-        Builder staticBuilder = StaticShape.newBuilder(language);
+    LinkedKlassFieldLayout(ContextDescription description, ParserKlass parserKlass, LinkedKlass superKlass) {
+        StaticShape.Builder instanceBuilder = StaticShape.newBuilder(description.language);
+        StaticShape.Builder staticBuilder = StaticShape.newBuilder(description.language);
 
-        FieldCounter fieldCounter = new FieldCounter(parserKlass, version);
+        FieldCounter fieldCounter = new FieldCounter(parserKlass, description.javaVersion);
         int nextInstanceFieldIndex = 0;
         int nextStaticFieldIndex = 0;
         int nextInstanceFieldSlot = superKlass == null ? 0 : superKlass.getFieldTableLength();
         int nextStaticFieldSlot = 0;
-        instanceFields = new LinkedField[fieldCounter.instanceFields];
-        staticFields = new LinkedField[fieldCounter.staticFields];
+
+        if (description.usesExtensionField) {
+            // make room for extension fields which is used when
+            // adding new fields during class redefinition
+            staticFields = new LinkedField[fieldCounter.staticFields + 1];
+            if (superKlass != null) {
+                instanceFields = new LinkedField[fieldCounter.instanceFields];
+            } else {
+                instanceFields = new LinkedField[fieldCounter.instanceFields + 1];
+            }
+        } else {
+            staticFields = new LinkedField[fieldCounter.staticFields];
+            instanceFields = new LinkedField[fieldCounter.instanceFields];
+        }
 
         LinkedField.IdMode idMode = getIdMode(parserKlass);
 
@@ -71,14 +84,31 @@ final class LinkedKlassFieldLayout {
                 createAndRegisterLinkedField(parserKlass, parserField, nextInstanceFieldSlot++, nextInstanceFieldIndex++, idMode, instanceBuilder, instanceFields);
             }
         }
+        // static extension field
+        if (description.usesExtensionField) {
+            LinkedField staticExtensionField = new LinkedField(new ParserField(ParserField.HIDDEN | Modifier.STATIC, Name.staticExtensionFieldName, Type.java_lang_Object, Attribute.EMPTY_ARRAY),
+                            nextStaticFieldSlot, LinkedField.IdMode.REGULAR);
+            staticBuilder.property(staticExtensionField, Object.class, true);
+            staticFields[nextStaticFieldIndex] = staticExtensionField;
+        }
+
         for (HiddenField hiddenField : fieldCounter.hiddenFieldNames) {
-            if (hiddenField.versionRange.contains(version)) {
+            if (hiddenField.versionRange.contains(description.javaVersion)) {
                 ParserField hiddenParserField = new ParserField(ParserField.HIDDEN, hiddenField.name, hiddenField.type, null);
                 createAndRegisterLinkedField(parserKlass, hiddenParserField, nextInstanceFieldSlot++, nextInstanceFieldIndex++, idMode, instanceBuilder, instanceFields);
             }
         }
+
         if (superKlass == null) {
+            if (description.usesExtensionField) {
+                // instance extension field
+                LinkedField extensionField = new LinkedField(new ParserField(ParserField.HIDDEN, Name.extensionFieldName, Type.java_lang_Object, Attribute.EMPTY_ARRAY), nextInstanceFieldSlot++,
+                                LinkedField.IdMode.REGULAR);
+                instanceBuilder.property(extensionField, Object.class, true);
+                instanceFields[nextInstanceFieldIndex++] = extensionField;
+            }
             instanceShape = instanceBuilder.build(StaticObject.class, StaticObjectFactory.class);
+
         } else {
             instanceShape = instanceBuilder.build(superKlass.getShape(false));
         }
@@ -89,7 +119,7 @@ final class LinkedKlassFieldLayout {
     /**
      * Makes sure that the field IDs passed to the shape builder are all unique.
      */
-    private static LinkedField.IdMode getIdMode(ParserKlass parserKlass) {
+    static LinkedField.IdMode getIdMode(ParserKlass parserKlass) {
         ParserField[] parserFields = parserKlass.getFields();
 
         boolean noDup = true;

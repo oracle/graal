@@ -22,16 +22,20 @@
  */
 package com.oracle.truffle.espresso.redefinition;
 
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.espresso.bytecode.BytecodeStream;
 import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
@@ -52,6 +56,7 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.impl.ParserField;
 import com.oracle.truffle.espresso.impl.ParserKlass;
 import com.oracle.truffle.espresso.impl.ParserMethod;
+import com.oracle.truffle.espresso.impl.RedefineAddedField;
 import com.oracle.truffle.espresso.jdwp.api.ErrorCodes;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
@@ -65,13 +70,25 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 public final class ClassRedefinition {
 
-    private static final Object redefineLock = new Object();
-    private static volatile boolean locked = false;
-    private static Thread redefineThread = null;
+    private final Object redefineLock = new Object();
+    private volatile boolean locked = false;
+    private Thread redefineThread = null;
 
     private final EspressoContext context;
     private final Ids<Object> ids;
     private final RedefineListener redefineListener;
+    private volatile Assumption missingFieldAssumption = Truffle.getRuntime().createAssumption();
+    private ArrayList<Field> currentDelegationFields;
+    private AtomicInteger nextAvailableFieldSlot = new AtomicInteger(-1);
+
+    public Assumption getMissingFieldAssumption() {
+        return missingFieldAssumption;
+    }
+
+    public void invalidateMissingFields() {
+        missingFieldAssumption.invalidate();
+        missingFieldAssumption = Truffle.getRuntime().createAssumption();
+    }
 
     enum ClassChange {
         // currently supported
@@ -82,11 +99,8 @@ public final class ClassRedefinition {
         ADD_METHOD,
         REMOVE_METHOD,
         NEW_CLASS,
-        FIELD_OBJECT_TYPE_CHANGE,
-        // currently unsupported
+        // currently supported under option
         SCHEMA_CHANGE,
-        HIERARCHY_CHANGE,
-        CLASS_MODIFIERS_CHANGE,
         INVALID;
     }
 
@@ -96,7 +110,7 @@ public final class ClassRedefinition {
         this.redefineListener = listener;
     }
 
-    public static void begin() {
+    public void begin() {
         synchronized (redefineLock) {
             while (locked) {
                 try {
@@ -111,7 +125,7 @@ public final class ClassRedefinition {
         }
     }
 
-    public static void end() {
+    public void end() {
         synchronized (redefineLock) {
             locked = false;
             redefineThread = null;
@@ -119,7 +133,7 @@ public final class ClassRedefinition {
         }
     }
 
-    public static boolean isRedefineThread() {
+    public boolean isRedefineThread() {
         return redefineThread == Thread.currentThread();
     }
 
@@ -131,7 +145,7 @@ public final class ClassRedefinition {
         redefineListener.postRedefinition(changedKlasses);
     }
 
-    public static void check() {
+    public void check() {
         CompilerAsserts.neverPartOfCompilation();
         // block until redefinition is done
         if (locked) {
@@ -151,6 +165,24 @@ public final class ClassRedefinition {
         }
     }
 
+    public synchronized Field createDelegationFrom(Field field) {
+        Field delegationField = RedefineAddedField.createDelegationField(field);
+        if (currentDelegationFields == null) {
+            currentDelegationFields = new ArrayList<>(1);
+        }
+        currentDelegationFields.add(delegationField);
+        return delegationField;
+    }
+
+    public synchronized void clearDelegationFields() {
+        if (currentDelegationFields != null) {
+            for (Field field : currentDelegationFields) {
+                field.removeByRedefintion();
+            }
+            currentDelegationFields.clear();
+        }
+    }
+
     public List<ChangePacket> detectClassChanges(HotSwapClassInfo[] classInfos) throws RedefintionNotSupportedException {
         List<ChangePacket> result = new ArrayList<>(classInfos.length);
         for (HotSwapClassInfo hotSwapInfo : classInfos) {
@@ -161,7 +193,7 @@ public final class ClassRedefinition {
                 continue;
             }
             byte[] bytes = hotSwapInfo.getBytes();
-            ParserKlass parserKlass = null;
+            ParserKlass parserKlass;
             ParserKlass newParserKlass = null;
             ClassChange classChange;
             DetectedChange detectedChange = new DetectedChange();
@@ -180,7 +212,7 @@ public final class ClassRedefinition {
         return result;
     }
 
-    public int redefineClass(ChangePacket packet, List<ObjectKlass> refreshSubClasses) {
+    public int redefineClass(ChangePacket packet, List<ObjectKlass> invalidatedClasses, List<ObjectKlass> redefinedClasses) {
         try {
             switch (packet.classChange) {
                 case METHOD_BODY_CHANGE:
@@ -188,9 +220,15 @@ public final class ClassRedefinition {
                 case CLASS_NAME_CHANGED:
                 case ADD_METHOD:
                 case REMOVE_METHOD:
-                case FIELD_OBJECT_TYPE_CHANGE:
-                    doRedefineClass(packet, refreshSubClasses);
+                    doRedefineClass(packet, invalidatedClasses, redefinedClasses);
                     return 0;
+                case SCHEMA_CHANGE:
+                    if (context.arbitraryChangesSupported()) {
+                        doRedefineClass(packet, invalidatedClasses, redefinedClasses);
+                        return 0;
+                    } else {
+                        return ErrorCodes.SCHEMA_CHANGE_NOT_IMPLEMENTED;
+                    }
                 case NEW_CLASS:
                     ClassInfo classInfo = packet.info;
 
@@ -208,12 +246,6 @@ public final class ClassRedefinition {
                         packet.info.setKlass(newKlass);
                     }
                     return 0;
-                case SCHEMA_CHANGE:
-                    return ErrorCodes.SCHEMA_CHANGE_NOT_IMPLEMENTED;
-                case CLASS_MODIFIERS_CHANGE:
-                    return ErrorCodes.CLASS_MODIFIERS_CHANGE_NOT_IMPLEMENTED;
-                case HIERARCHY_CHANGE:
-                    return ErrorCodes.HIERARCHY_CHANGE_NOT_IMPLEMENTED;
                 default:
                     return 0;
             }
@@ -232,58 +264,8 @@ public final class ClassRedefinition {
         ParserKlass oldParserKlass = oldKlass.getLinkedKlass().getParserKlass();
         boolean isPatched = finalParserKlass != null;
 
-        // detect class-level changes
-        if (newParserKlass.getFlags() != oldParserKlass.getFlags()) {
-            throw new RedefintionNotSupportedException(ErrorCodes.CLASS_MODIFIERS_CHANGE_NOT_IMPLEMENTED);
-        }
-
         if (!newParserKlass.getSuperKlass().equals(oldParserKlass.getSuperKlass()) || !Arrays.equals(newParserKlass.getSuperInterfaces(), oldParserKlass.getSuperInterfaces())) {
             throw new RedefintionNotSupportedException(ErrorCodes.HIERARCHY_CHANGE_NOT_IMPLEMENTED);
-        }
-
-        // detect field changes
-        Field[] oldFields = oldKlass.getDeclaredFields();
-        ParserField[] newFields = newParserKlass.getFields();
-
-        if (oldFields.length != newFields.length) {
-            throw new RedefintionNotSupportedException(ErrorCodes.SCHEMA_CHANGE_NOT_IMPLEMENTED);
-        }
-
-        for (int i = 0; i < oldFields.length; i++) {
-            Field oldField = oldFields[i];
-            // search for a new corresponding field
-            boolean found = false;
-            for (int j = 0; j < newFields.length; j++) {
-                ParserField newField = newFields[j];
-                // first look for a perfect match
-                if (isUnchangedField(oldField, newField)) {
-                    // A nested anonymous inner class may contain a field reference to the outer
-                    // class instance. Since we match against the patched (inner class rename rules
-                    // applied) if the current class was patched (renamed) the resulting outer
-                    // field pointer will have a changed type. Hence we should mark it as a changed
-                    // object type field.
-                    Matcher matcher = InnerClassRedefiner.ANON_INNER_CLASS_PATTERN.matcher(oldField.getType().toString());
-                    if (isPatched && matcher.matches()) {
-                        collectedChanges.addObjectTypeFieldChange(oldField, finalParserKlass.getFields()[i]);
-                        result = ClassChange.FIELD_OBJECT_TYPE_CHANGE;
-                    }
-                    found = true;
-                    break;
-                } else if (oldField.getName() == newField.getName() && oldField.getType() != newField.getType()) {
-                    // OK, field type changed
-                    if (oldField.getType().length() > 1 && newField.getType().length() > 1) {
-                        // object type field changed to another object type
-                        collectedChanges.addObjectTypeFieldChange(oldField, newField);
-                        result = ClassChange.FIELD_OBJECT_TYPE_CHANGE;
-                        found = true;
-                        break;
-                    }
-                    // all other combinations of field type changes are not currently supported
-                }
-            }
-            if (!found) {
-                throw new RedefintionNotSupportedException(ErrorCodes.SCHEMA_CHANGE_NOT_IMPLEMENTED);
-            }
         }
 
         // detect method changes (including constructors)
@@ -294,16 +276,16 @@ public final class ClassRedefinition {
         List<ParserMethod> newSpecialMethods = new ArrayList<>(1);
 
         boolean constantPoolChanged = false;
-        // check constant pool changes. If changed, we have to redefine all methods in the class
         if (!Arrays.equals(oldParserKlass.getConstantPool().getRawBytes(), newParserKlass.getConstantPool().getRawBytes())) {
             constantPoolChanged = true;
         }
         Iterator<Method> oldIt = oldMethods.iterator();
+        Iterator<ParserMethod> newIt;
         while (oldIt.hasNext()) {
             Method oldMethod = oldIt.next();
             ParserMethod oldParserMethod = oldMethod.getLinkedMethod().getParserMethod();
             // verify that there is a new corresponding method
-            Iterator<ParserMethod> newIt = newMethods.iterator();
+            newIt = newMethods.iterator();
             while (newIt.hasNext()) {
                 ParserMethod newMethod = newIt.next();
                 if (isSameMethod(oldParserMethod, newMethod)) {
@@ -313,13 +295,15 @@ public final class ClassRedefinition {
                         case NO_CHANGE:
                             if (isPatched) {
                                 checkForSpecialConstructor(collectedChanges, bodyChanges, newSpecialMethods, oldMethod, oldParserMethod, newMethod);
-                                break;
-                            }
-                            if (constantPoolChanged) {
+                            } else if (constantPoolChanged) {
                                 if (isObsolete(oldParserMethod, newMethod, oldParserKlass.getConstantPool(), newParserKlass.getConstantPool())) {
                                     result = ClassChange.CONSTANT_POOL_CHANGE;
                                     collectedChanges.addMethodBodyChange(oldMethod, newMethod);
+                                } else {
+                                    collectedChanges.addUnchangedMethod(oldMethod);
                                 }
+                            } else {
+                                collectedChanges.addUnchangedMethod(oldMethod);
                             }
                             break;
                         case METHOD_BODY_CHANGE:
@@ -368,7 +352,9 @@ public final class ClassRedefinition {
             collectedChanges.addNewMethods(newMethods);
         }
 
-        collectedChanges.addRemovedMethods(oldMethods);
+        for (Method oldMethod : oldMethods) {
+            collectedChanges.addRemovedMethod(oldMethod.getMethodVersion());
+        }
 
         if (!oldMethods.isEmpty()) {
             result = ClassChange.REMOVE_METHOD;
@@ -380,6 +366,70 @@ public final class ClassRedefinition {
             result = ClassChange.CLASS_NAME_CHANGED;
         }
 
+        // detect field changes
+        Field[] oldFields = oldKlass.getDeclaredFields();
+        ParserField[] newFields = newParserKlass.getFields();
+
+        ArrayList<Field> oldFieldsList = new ArrayList<>(Arrays.asList(oldFields));
+        ArrayList<ParserField> newFieldsList = new ArrayList<>(Arrays.asList(newFields));
+        Map<ParserField, Field> compatibleFields = new HashMap<>();
+
+        Iterator<Field> oldFieldsIt = oldFieldsList.iterator();
+        Iterator<ParserField> newFieldsIt;
+
+        while (oldFieldsIt.hasNext()) {
+            Field oldField = oldFieldsIt.next();
+            newFieldsIt = newFieldsList.iterator();
+            // search for a new corresponding field
+            while (newFieldsIt.hasNext()) {
+                ParserField newField = newFieldsIt.next();
+                // first look for a perfect match
+                if (isUnchangedField(oldField, newField, compatibleFields)) {
+                    // A nested anonymous inner class may contain a field reference to the outer
+                    // class instance. Since we match against the patched (inner class rename rules
+                    // applied) if the current class was patched (renamed) the resulting outer
+                    // field pointer will have a changed type. Hence we should mark it as a new
+                    // field.
+                    Matcher matcher = InnerClassRedefiner.ANON_INNER_CLASS_PATTERN.matcher(oldField.getType().toString());
+                    if (isPatched && matcher.matches()) {
+                        break;
+                    }
+                    oldFieldsIt.remove();
+                    newFieldsIt.remove();
+                    break;
+                }
+            }
+        }
+
+        if (!newFieldsList.isEmpty()) {
+            if (isPatched) {
+                ParserField[] finalFields = finalParserKlass.getFields();
+                // lookup the final new field based on the index in the parser field array
+                for (ParserField parserField : newFieldsList) {
+                    for (int i = 0; i < newFields.length; i++) {
+                        if (parserField == newFields[i]) {
+                            collectedChanges.addNewField(finalFields[i]);
+                            break;
+                        }
+                    }
+                }
+            } else {
+                collectedChanges.addNewFields(newFieldsList);
+            }
+            result = ClassChange.SCHEMA_CHANGE;
+        }
+
+        if (!oldFieldsList.isEmpty()) {
+            collectedChanges.addRemovedFields(oldFieldsList);
+            result = ClassChange.SCHEMA_CHANGE;
+        }
+
+        // detect class-level changes
+        if (newParserKlass.getFlags() != oldParserKlass.getFlags()) {
+            result = ClassChange.SCHEMA_CHANGE;
+        }
+
+        collectedChanges.addCompatibleFields(compatibleFields);
         return result;
     }
 
@@ -392,7 +442,9 @@ public final class ClassRedefinition {
             Matcher matcher = InnerClassRedefiner.ANON_INNER_CLASS_PATTERN.matcher(oldParserMethod.getSignature().toString());
             if (matcher.matches()) {
                 newSpecialMethods.add(newMethod);
-                collectedChanges.addRemovedMethods(oldMethod);
+                collectedChanges.addRemovedMethod(oldMethod.getMethodVersion());
+            } else {
+                bodyChanges.put(oldMethod, newMethod);
             }
         } else {
             // for class-name patched classes we have to redefine all methods
@@ -421,7 +473,16 @@ public final class ClassRedefinition {
             bci = nextBCI;
             int opcode = oldCode.currentBC(bci);
             nextBCI = oldCode.nextBCI(bci);
-            if (opcode == Bytecodes.LDC || opcode == Bytecodes.LDC2_W || opcode == Bytecodes.LDC_W || opcode == Bytecodes.NEW || opcode == Bytecodes.INVOKEDYNAMIC || Bytecodes.isInvoke(opcode)) {
+            if (opcode == Bytecodes.LDC ||
+                            opcode == Bytecodes.LDC2_W ||
+                            opcode == Bytecodes.LDC_W ||
+                            opcode == Bytecodes.NEW ||
+                            opcode == Bytecodes.INVOKEDYNAMIC ||
+                            opcode == Bytecodes.GETFIELD ||
+                            opcode == Bytecodes.GETSTATIC ||
+                            opcode == Bytecodes.PUTFIELD ||
+                            opcode == Bytecodes.PUTSTATIC ||
+                            Bytecodes.isInvoke(opcode)) {
                 int oldCPI = oldCode.readCPI(bci);
                 PoolConstant oldConstant = oldPool.at(oldCPI);
                 int newCPI = newCode.readCPI(bci);
@@ -435,24 +496,6 @@ public final class ClassRedefinition {
     }
 
     private static ClassChange detectMethodChanges(ParserMethod oldMethod, ParserMethod newMethod) {
-        // check method attributes that would constitute a higher-level
-        // class redefinition than a method body change
-        if (checkAttribute(oldMethod, newMethod, Symbol.Name.RuntimeVisibleTypeAnnotations)) {
-            return ClassChange.SCHEMA_CHANGE;
-        }
-
-        if (checkAttribute(oldMethod, newMethod, Symbol.Name.RuntimeInvisibleTypeAnnotations)) {
-            return ClassChange.SCHEMA_CHANGE;
-        }
-
-        if (checkAttribute(oldMethod, newMethod, Symbol.Name.Signature)) {
-            return ClassChange.SCHEMA_CHANGE;
-        }
-
-        if (checkAttribute(oldMethod, newMethod, Symbol.Name.Exceptions)) {
-            return ClassChange.SCHEMA_CHANGE;
-        }
-
         // check code attribute
         CodeAttribute oldCodeAttribute = (CodeAttribute) oldMethod.getAttribute(Symbol.Name.Code);
         CodeAttribute newCodeAttribute = (CodeAttribute) newMethod.getAttribute(Symbol.Name.Code);
@@ -521,55 +564,110 @@ public final class ClassRedefinition {
         return false;
     }
 
-    private static boolean checkAttribute(ParserMethod oldMethod, ParserMethod newMethod, Symbol<Symbol.Name> name) {
+    private static boolean attrChanged(ParserMethod oldMethod, ParserMethod newMethod, Symbol<Symbol.Name> name) {
         Attribute oldAttribute = oldMethod.getAttribute(name);
         Attribute newAttribute = newMethod.getAttribute(name);
         if ((oldAttribute == null || newAttribute == null)) {
             if (oldAttribute != null || newAttribute != null) {
                 return true;
             } // else both null, so no change. Move on!
-        } else if (!Arrays.equals(oldAttribute.getData(), newAttribute.getData())) {
+        } else if (!oldAttribute.sameAs(newAttribute)) {
             return true;
         }
         return false;
     }
 
     private static boolean isSameMethod(ParserMethod oldMethod, ParserMethod newMethod) {
-        return oldMethod.getName().equals(newMethod.getName()) &&
+        boolean same = oldMethod.getName().equals(newMethod.getName()) &&
                         oldMethod.getSignature().equals(newMethod.getSignature()) &&
                         oldMethod.getFlags() == newMethod.getFlags();
-    }
-
-    private static boolean isUnchangedField(Field oldField, ParserField newField) {
-        boolean same = oldField.getName() == newField.getName() && oldField.getType() == newField.getType() && oldField.getModifiers() == newField.getFlags();
-
         if (same) {
-            // check field attributes
-            Attribute[] oldAttributes = oldField.getAttributes();
-            Attribute[] newAttributes = newField.getAttributes();
-
-            if (oldAttributes.length != newAttributes.length) {
+            // check method attributes that would constitute a higher-level
+            // class redefinition than a method body change
+            if (attrChanged(oldMethod, newMethod, Symbol.Name.RuntimeVisibleTypeAnnotations)) {
                 return false;
             }
 
-            for (Attribute oldAttribute : oldAttributes) {
-                boolean found = false;
-                for (Attribute newAttribute : newAttributes) {
-                    if (oldAttribute.getName() == newAttribute.getName() && Arrays.equals(oldAttribute.getData(), newAttribute.getData())) {
-                        found = true;
-                        break;
-                    }
-                }
-                if (!found) {
+            if (attrChanged(oldMethod, newMethod, Symbol.Name.RuntimeInvisibleTypeAnnotations)) {
+                return false;
+            }
+
+            if (attrChanged(oldMethod, newMethod, Symbol.Name.RuntimeVisibleAnnotations)) {
+                return false;
+            }
+
+            if (attrChanged(oldMethod, newMethod, Symbol.Name.RuntimeInvisibleAnnotations)) {
+                return false;
+            }
+
+            if (attrChanged(oldMethod, newMethod, Symbol.Name.RuntimeInvisibleParameterAnnotations)) {
+                return false;
+            }
+
+            if (attrChanged(oldMethod, newMethod, Symbol.Name.RuntimeVisibleParameterAnnotations)) {
+                return false;
+            }
+
+            if (attrChanged(oldMethod, newMethod, Symbol.Name.Exceptions)) {
+                return false;
+            }
+
+            if (attrChanged(oldMethod, newMethod, Symbol.Name.Signature)) {
+                return false;
+            }
+
+            if (attrChanged(oldMethod, newMethod, Symbol.Name.Exceptions)) {
+                return false;
+            }
+        }
+        return same;
+    }
+
+    private static boolean isUnchangedField(Field oldField, ParserField newField, Map<ParserField, Field> compatibleFields) {
+        boolean sameName = oldField.getName() == newField.getName();
+        boolean sameType = oldField.getType() == newField.getType();
+        boolean sameFlags = oldField.getModifiers() == newField.getFlags();
+
+        if (sameName && sameType) {
+            if (sameFlags) {
+                // same name + type + flags
+
+                // check field attributes
+                Attribute[] oldAttributes = oldField.getAttributes();
+                Attribute[] newAttributes = newField.getAttributes();
+
+                if (oldAttributes.length != newAttributes.length) {
                     return false;
                 }
+
+                for (Attribute oldAttribute : oldAttributes) {
+                    boolean found = false;
+                    for (Attribute newAttribute : newAttributes) {
+                        if (oldAttribute.getName() == newAttribute.getName() && oldAttribute.sameAs(newAttribute)) {
+                            found = true;
+                            break;
+                        }
+                    }
+                    if (!found) {
+                        return false;
+                    }
+                }
+                // identical field found
+                return true;
+            } else {
+                // same name + type
+                if (Modifier.isStatic(oldField.getModifiers()) != Modifier.isStatic(newField.getFlags())) {
+                    // a change from static -> non-static or vice versa is not compatible
+                } else {
+                    compatibleFields.put(newField, oldField);
+                }
+                return false;
             }
-            return true;
         }
         return false;
     }
 
-    private void doRedefineClass(ChangePacket packet, List<ObjectKlass> refreshSubClasses) {
+    private void doRedefineClass(ChangePacket packet, List<ObjectKlass> invalidatedClasses, List<ObjectKlass> redefinedClasses) {
         ObjectKlass oldKlass = packet.info.getKlass();
         if (packet.info.isRenamed()) {
             // renaming a class is done by
@@ -588,7 +686,8 @@ public final class ClassRedefinition {
 
             InterpreterToVM.setFieldObject(StaticObject.NULL, oldKlass.mirror(), context.getMeta().java_lang_Class_name);
         }
-        oldKlass.redefineClass(packet, refreshSubClasses, ids);
+        oldKlass.redefineClass(packet, invalidatedClasses, ids);
+        redefinedClasses.add(oldKlass);
         if (redefineListener.shouldRerunClassInitializer(oldKlass, packet.detectedChange.clinitChanged())) {
             context.rerunclinit(oldKlass);
         }
@@ -599,7 +698,7 @@ public final class ClassRedefinition {
      *            declaring klass otherwise
      */
     @TruffleBoundary
-    public static Method handleRemovedMethod(Method resolutionSeed, Klass accessingKlass) {
+    public Method handleRemovedMethod(Method resolutionSeed, Klass accessingKlass) {
         // wait for potential ongoing redefinition to complete
         check();
         Method replacementMethod = accessingKlass.lookupMethod(resolutionSeed.getName(), resolutionSeed.getRawSignature(), accessingKlass);
@@ -615,5 +714,9 @@ public final class ClassRedefinition {
             // Update to the latest version of the replacement method
             return replacementMethod;
         }
+    }
+
+    public int getNextAvailableFieldSlot() {
+        return nextAvailableFieldSlot.getAndDecrement();
     }
 }

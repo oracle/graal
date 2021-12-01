@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,19 +51,19 @@ final class InterfaceTables {
     private static final Comparator<TableData> SORTER = new Comparator<TableData>() {
         @Override
         public int compare(TableData o1, TableData o2) {
-            return Integer.compare(o1.klass.getId(), o2.klass.getId());
+            return Integer.compare(o1.klass.getKlass().getId(), o2.klass.getKlass().getId());
         }
     };
 
     private static final Entry[][] EMPTY_ENTRY_DUAL_ARRAY = new Entry[0][];
-    private static final Method[][] EMPTY_METHOD_DUAL_ARRAY = new Method[0][];
+    private static final Method.MethodVersion[][] EMPTY_METHOD_DUAL_ARRAY = new Method.MethodVersion[0][];
 
     private final ObjectKlass superKlass;
     private final ObjectKlass[] superInterfaces;
-    private final Method[] declaredMethods;
+    private final Method.MethodVersion[] declaredMethods;
     private final ArrayList<Entry[]> tmpTables = new ArrayList<>();
-    private final ArrayList<ObjectKlass> tmpKlassTable = new ArrayList<>();
-    private final ArrayList<Method> mirandas = new ArrayList<>();
+    private final ArrayList<ObjectKlass.KlassVersion> tmpKlassTable = new ArrayList<>();
+    private final ArrayList<Method.MethodVersion> mirandas = new ArrayList<>();
 
     private enum Location {
         SUPERVTABLE,
@@ -73,10 +73,10 @@ final class InterfaceTables {
 
     static class CreationResult {
         Entry[][] tables;
-        ObjectKlass[] klassTable;
-        Method[] mirandas;
+        ObjectKlass.KlassVersion[] klassTable;
+        Method.MethodVersion[] mirandas;
 
-        CreationResult(Entry[][] tables, ObjectKlass[] klassTable, Method[] mirandas) {
+        CreationResult(Entry[][] tables, ObjectKlass.KlassVersion[] klassTable, Method.MethodVersion[] mirandas) {
             TableData[] data = new TableData[klassTable.length];
             for (int i = 0; i < data.length; i++) {
                 data[i] = new TableData(klassTable[i], tables[i]);
@@ -93,20 +93,20 @@ final class InterfaceTables {
     }
 
     static class InterfaceCreationResult {
-        ObjectKlass[] klassTable;
-        Method[] methodtable;
+        ObjectKlass.KlassVersion[] klassTable;
+        Method.MethodVersion[] methodtable;
 
-        InterfaceCreationResult(ObjectKlass[] klassTable, Method[] methodtable) {
+        InterfaceCreationResult(ObjectKlass.KlassVersion[] klassTable, Method.MethodVersion[] methodtable) {
             this.klassTable = klassTable;
             this.methodtable = methodtable;
         }
     }
 
     static class TableData {
-        ObjectKlass klass;
+        ObjectKlass.KlassVersion klass;
         Entry[] table;
 
-        TableData(ObjectKlass klass, Entry[] table) {
+        TableData(ObjectKlass.KlassVersion klass, Entry[] table) {
             this.klass = klass;
             this.table = table;
         }
@@ -122,7 +122,7 @@ final class InterfaceTables {
         }
     }
 
-    private InterfaceTables(ObjectKlass superKlass, ObjectKlass[] superInterfaces, Method[] declaredMethods) {
+    private InterfaceTables(ObjectKlass superKlass, ObjectKlass[] superInterfaces, Method.MethodVersion[] declaredMethods) {
         this.superKlass = superKlass;
         this.superInterfaces = superInterfaces;
         this.declaredMethods = declaredMethods;
@@ -131,16 +131,16 @@ final class InterfaceTables {
     /**
      * Constructs the complete list of interfaces an interface needs to implement. Also initializes
      * itable indexes.
-     * 
+     *
      * @param thisInterfKlass The interface in question
      * @param declared The declared methods of the interface.
      * @return the requested klass array
      */
-    public static InterfaceCreationResult constructInterfaceItable(ObjectKlass thisInterfKlass, Method[] declared) {
+    public static InterfaceCreationResult constructInterfaceItable(ObjectKlass.KlassVersion thisInterfKlass, Method.MethodVersion[] declared) {
         assert thisInterfKlass.isInterface();
         CompilerAsserts.neverPartOfCompilation();
-        ArrayList<Method> tmpMethodTable = new ArrayList<>();
-        for (Method method : declared) {
+        ArrayList<Method.MethodVersion> tmpMethodTable = new ArrayList<>();
+        for (Method.MethodVersion method : declared) {
             if (!method.isStatic() && !method.isPrivate()) {
                 method.setITableIndex(tmpMethodTable.size());
                 tmpMethodTable.add(method);
@@ -149,21 +149,21 @@ final class InterfaceTables {
                 thisInterfKlass.hasDeclaredDefaultMethods = true;
             }
         }
-        Method[] methods = tmpMethodTable.toArray(Method.EMPTY_ARRAY);
-        ArrayList<ObjectKlass> tmpKlassTable = new ArrayList<>();
+        Method.MethodVersion[] methods = tmpMethodTable.toArray(Method.EMPTY_VERSION_ARRAY);
+        ArrayList<ObjectKlass.KlassVersion> tmpKlassTable = new ArrayList<>();
         tmpKlassTable.add(thisInterfKlass);
-        for (ObjectKlass interf : thisInterfKlass.getSuperInterfaces()) {
-            for (ObjectKlass supInterf : interf.getiKlassTable()) {
+        for (ObjectKlass interf : thisInterfKlass.getKlass().getSuperInterfaces()) {
+            for (ObjectKlass.KlassVersion supInterf : interf.getVersionIKlassTable()) {
                 if (canInsert(supInterf, tmpKlassTable)) {
                     tmpKlassTable.add(supInterf);
                 }
             }
         }
-        ObjectKlass[] sortedInterfaces = tmpKlassTable.toArray(ObjectKlass.EMPTY_ARRAY);
+        ObjectKlass.KlassVersion[] sortedInterfaces = tmpKlassTable.toArray(ObjectKlass.EMPTY_KLASSVERSION_ARRAY);
         // Interfaces must be sorted, superinterfaces first.
         // The Klass.ID (class loading counter) can be used, since parent classes/interfaces are
         // always loaded first.
-        Arrays.sort(sortedInterfaces, Klass.KLASS_ID_COMPARATOR);
+        Arrays.sort(sortedInterfaces, Klass.KLASS_VERSION_ID_COMPARATOR);
         return new InterfaceCreationResult(sortedInterfaces, methods);
     }
 
@@ -182,13 +182,14 @@ final class InterfaceTables {
      */
     // checkstyle: resume
     // @formatter:on
-    public static CreationResult create(ObjectKlass superKlass, ObjectKlass[] superInterfaces, Method[] declaredMethods) {
+    public static CreationResult create(ObjectKlass superKlass, ObjectKlass[] superInterfaces, Method.MethodVersion[] declaredMethods) {
         return new InterfaceTables(superKlass, superInterfaces, declaredMethods).create();
     }
 
     /**
      * Performs second and third step of itable creation.
-     * 
+     *
+     * @param self the klass for which we are creating an itable
      * @param vtable the vtable of the klass for which we are creating an itable
      * @param mirandas the mirandas of the klass for which we are creating an itable
      * @param declaredMethods the declared methods of the klass for which we are creating an itable
@@ -196,25 +197,25 @@ final class InterfaceTables {
      * @param iklassTable the interfaces directly and indirectly implemented by thisKlass
      * @return the final itable
      */
-    public static Method[][] fixTables(Method[] vtable, Method[] mirandas, Method[] declaredMethods, Entry[][] tables, ObjectKlass[] iklassTable) {
+    public static Method.MethodVersion[][] fixTables(ObjectKlass.KlassVersion self, Method.MethodVersion[] vtable, Method.MethodVersion[] mirandas, Method.MethodVersion[] declaredMethods,
+                    Entry[][] tables, ObjectKlass.KlassVersion[] iklassTable) {
         assert tables.length == iklassTable.length;
-        ArrayList<Method[]> tmpTables = new ArrayList<>();
+        ArrayList<Method.MethodVersion[]> tmpTables = new ArrayList<>();
 
         // Second step
         // Remember here that the interfaces are sorted, most specific at the end.
         for (int i = iklassTable.length - 1; i >= 0; i--) {
-            fixVTable(tables[i], vtable, mirandas, declaredMethods, iklassTable[i].getInterfaceMethodsTable());
+            fixVTable(self, tables[i], vtable, mirandas, declaredMethods, iklassTable[i].getKlass().getInterfaceMethodsTable());
         }
         // Third step
         for (int tableIndex = 0; tableIndex < tables.length; tableIndex++) {
             Entry[] entries = tables[tableIndex];
-            Method[] itable = getITable(entries, vtable, mirandas, declaredMethods);
+            Method.MethodVersion[] itable = getITable(entries, vtable, mirandas, declaredMethods);
             tmpTables.add(itable);
 
             // Update leaf assumptions for super interfaces
-            ObjectKlass currInterface = iklassTable[tableIndex];
+            ObjectKlass currInterface = iklassTable[tableIndex].getKlass();
             updateLeafAssumptions(itable, currInterface);
-
         }
         return tmpTables.toArray(EMPTY_METHOD_DUAL_ARRAY);
     }
@@ -238,15 +239,15 @@ final class InterfaceTables {
      * Unless a concrete class that implements B is loaded, the leaf assumption for A.m() will not
      * be invalidated.
      */
-    private static void updateLeafAssumptions(Method[] itable, ObjectKlass currInterface) {
+    private static void updateLeafAssumptions(Method.MethodVersion[] itable, ObjectKlass currInterface) {
         for (int methodIndex = 0; methodIndex < itable.length; methodIndex++) {
-            Method m = itable[methodIndex];
+            Method.MethodVersion m = itable[methodIndex];
             // This class' itable entry for this method is not the interface's declared method.
-            if (m.getDeclaringKlass() != currInterface) {
-                Method intfMethod = currInterface.getInterfaceMethodsTable()[methodIndex];
+            if (m.getDeclaringKlassRef() != currInterface) {
+                Method.MethodVersion intfMethod = currInterface.getInterfaceMethodsTable()[methodIndex];
                 // sanity checks
-                assert intfMethod.getDeclaringKlass() == currInterface;
-                assert m.canOverride(intfMethod) && m.getName() == intfMethod.getName() && m.getRawSignature() == intfMethod.getRawSignature();
+                assert intfMethod.getDeclaringKlassRef() == currInterface;
+                assert m.getMethod().canOverride(intfMethod.getMethod()) && m.getName() == intfMethod.getName() && m.getRawSignature() == intfMethod.getRawSignature();
                 if (intfMethod.leafAssumption()) {
                     intfMethod.invalidateLeaf();
                 }
@@ -258,27 +259,27 @@ final class InterfaceTables {
 
     private CreationResult create() {
         for (ObjectKlass interf : superInterfaces) {
-            fillMirandas(interf);
-            for (ObjectKlass supInterf : interf.getiKlassTable()) {
+            fillMirandas(interf.getKlassVersion());
+            for (ObjectKlass.KlassVersion supInterf : interf.getiKlassTable()) {
                 fillMirandas(supInterf);
             }
         }
         // At this point, no more mirandas should be created.
         if (superKlass != null) {
-            for (ObjectKlass superKlassInterf : superKlass.getiKlassTable()) {
+            for (ObjectKlass.KlassVersion superKlassInterf : superKlass.getVersionIKlassTable()) {
                 fillMirandas(superKlassInterf);
             }
         }
 
-        return new CreationResult(tmpTables.toArray(EMPTY_ENTRY_DUAL_ARRAY), tmpKlassTable.toArray(ObjectKlass.EMPTY_ARRAY), mirandas.toArray(Method.EMPTY_ARRAY));
+        return new CreationResult(tmpTables.toArray(EMPTY_ENTRY_DUAL_ARRAY), tmpKlassTable.toArray(ObjectKlass.EMPTY_KLASSVERSION_ARRAY), mirandas.toArray(Method.EMPTY_VERSION_ARRAY));
     }
 
-    private void fillMirandas(ObjectKlass interf) {
+    private void fillMirandas(ObjectKlass.KlassVersion interf) {
         if (canInsert(interf, tmpKlassTable)) {
-            Method[] interfMethods = interf.getInterfaceMethodsTable();
+            Method.MethodVersion[] interfMethods = interf.getKlass().getInterfaceMethodsTable();
             Entry[] res = new Entry[interfMethods.length];
             for (int i = 0; i < res.length; i++) {
-                Method im = interfMethods[i];
+                Method im = interfMethods[i].getMethod();
                 Symbol<Name> mname = im.getName();
                 Symbol<Signature> sig = im.getRawSignature();
                 res[i] = lookupLocation(im, mname, sig);
@@ -288,11 +289,12 @@ final class InterfaceTables {
         }
     }
 
-    private static void fixVTable(Entry[] table, Method[] vtable, Method[] mirandas, Method[] declared, Method[] interfMethods) {
+    private static void fixVTable(ObjectKlass.KlassVersion self, Entry[] table, Method.MethodVersion[] vtable, Method.MethodVersion[] mirandas, Method.MethodVersion[] declared,
+                    Method.MethodVersion[] interfMethods) {
         for (int i = 0; i < table.length; i++) {
             Entry entry = table[i];
             int index = entry.index;
-            Method virtualMethod;
+            Method.MethodVersion virtualMethod;
             switch (entry.loc) {
                 case SUPERVTABLE:
                     virtualMethod = vtable[index];
@@ -306,29 +308,30 @@ final class InterfaceTables {
                 default:
                     throw EspressoError.shouldNotReachHere();
             }
-            if (!virtualMethod.getDeclaringKlass().isInterface()) {
+            if (!virtualMethod.getKlassVersion().isInterface()) {
                 // Current method is a class method: no need to resolve maximally-specific.
                 continue;
             }
-            Method interfMethod = interfMethods[i];
-            if (interfMethod.identity() == virtualMethod.identity()) {
+            Method.MethodVersion interfMethod = interfMethods[i];
+            if (interfMethod.getMethod().identity() == virtualMethod.getMethod().identity()) {
                 continue;
             }
-            Method result = resolveMaximallySpecific(virtualMethod, interfMethod);
-            if (result != virtualMethod) {
-                updateEntry(vtable, mirandas, entry, index, virtualMethod, virtualize(result, virtualMethod.getVTableIndex()));
+            Method.MethodVersion result = resolveMaximallySpecific(virtualMethod.getMethod(), interfMethod.getMethod());
+            if (result.getMethod() != virtualMethod.getMethod()) {
+                updateEntry(self, vtable, mirandas, entry, index, virtualMethod, virtualize(result.getMethod(), virtualMethod.getVTableIndex()));
             }
         }
     }
 
-    private static Method virtualize(Method m, int index) {
+    private static Method.MethodVersion virtualize(Method m, int index) {
         if (m.getVTableIndex() != index) {
-            return new Method(m);
+            return new Method(m).getMethodVersion();
         }
-        return m;
+        return m.getMethodVersion();
     }
 
-    private static void updateEntry(Method[] vtable, Method[] mirandas, Entry entry, int index, Method virtualMethod, Method toPut) {
+    private static void updateEntry(ObjectKlass.KlassVersion self, Method.MethodVersion[] vtable, Method.MethodVersion[] mirandas, Entry entry, int index, Method.MethodVersion virtualMethod,
+                    Method.MethodVersion toPut) {
         switch (entry.loc) {
             case SUPERVTABLE:
                 vtable[index] = toPut;
@@ -339,10 +342,15 @@ final class InterfaceTables {
                 toPut.setVTableIndex(virtualMethod.getVTableIndex());
                 break;
             case MIRANDAS:
-                Method newMiranda = new Method(toPut);
+                Method newMiranda;
+                if (toPut.getMethod().getDeclaringKlass() == self.getKlass()) {
+                    newMiranda = new Method(toPut.getMethod());
+                } else {
+                    newMiranda = new Method(toPut.getMethod());
+                }
                 int vtableIndex = virtualMethod.getVTableIndex();
-                vtable[vtableIndex] = newMiranda;
-                mirandas[index] = newMiranda;
+                vtable[vtableIndex] = newMiranda.getMethodVersion();
+                mirandas[index] = newMiranda.getMethodVersion();
                 newMiranda.setVTableIndex(vtableIndex);
                 break;
             default:
@@ -350,19 +358,22 @@ final class InterfaceTables {
         }
     }
 
-    private static Method[] getITable(Entry[] entries, Method[] vtable, Method[] mirandas, Method[] declared) {
+    private static Method.MethodVersion[] getITable(Entry[] entries, Method.MethodVersion[] vtable, Method.MethodVersion[] mirandas, Method.MethodVersion[] declared) {
         int pos = 0;
-        Method[] res = new Method[entries.length];
+        Method.MethodVersion[] res = new Method.MethodVersion[entries.length];
         for (Entry entry : entries) {
             switch (entry.loc) {
                 case SUPERVTABLE:
-                    res[pos] = new Method(vtable[entry.index]);
+                    Method.MethodVersion m = vtable[entry.index];
+                    res[pos] = new Method(m.getMethod()).getMethodVersion();
                     break;
                 case DECLARED:
-                    res[pos] = new Method(declared[entry.index]);
+                    m = declared[entry.index];
+                    res[pos] = new Method(m.getMethod()).getMethodVersion();
                     break;
                 case MIRANDAS:
-                    res[pos] = new Method(mirandas[entry.index]);
+                    m = mirandas[entry.index];
+                    res[pos] = new Method(m.getMethod()).getMethodVersion();
                     break;
             }
             res[pos].setITableIndex(pos);
@@ -374,7 +385,7 @@ final class InterfaceTables {
     // lookup helpers
 
     private Entry lookupLocation(Method im, Symbol<Name> mname, Symbol<Signature> sig) {
-        Method m = null;
+        Method m;
         int index = -1;
         // Look at VTable first. Even if this klass declares the method, it will be put in the same
         // place.
@@ -396,15 +407,15 @@ final class InterfaceTables {
         }
         // This case should only happen during exploration of direct
         // superInterfaces and their interfaces
-        mirandas.add(new Method(im)); // Proxy
+        mirandas.add(new Method(im).getMethodVersion()); // Proxy
         return new Entry(Location.MIRANDAS, mirandas.size() - 1);
 
     }
 
-    private static int getMethodTableIndex(Method[] table, Method interfMethod, Symbol<Name> mname, Symbol<Signature> sig) {
+    private static int getMethodTableIndex(Method.MethodVersion[] table, Method interfMethod, Symbol<Name> mname, Symbol<Signature> sig) {
         for (int i = 0; i < table.length; i++) {
-            Method m = table[i];
-            if (canOverride(m, interfMethod, m.getContext()) && mname == m.getName() && sig == m.getRawSignature()) {
+            Method.MethodVersion m = table[i];
+            if (canOverride(m.getMethod(), interfMethod, m.getMethod().getContext()) && mname == m.getName() && sig == m.getRawSignature()) {
                 return i;
             }
         }
@@ -413,8 +424,8 @@ final class InterfaceTables {
 
     private int lookupMirandas(Method interfMethod, Symbol<Name> mname, Symbol<Signature> sig) {
         int pos = 0;
-        for (Method m : mirandas) {
-            if (m.canOverride(interfMethod) && m.getName() == mname && sig == m.getRawSignature()) {
+        for (Method.MethodVersion m : mirandas) {
+            if (m.getMethod().canOverride(interfMethod) && m.getName() == mname && sig == m.getRawSignature()) {
                 return pos;
             }
             pos++;
@@ -441,39 +452,41 @@ final class InterfaceTables {
      * that is the case, return the method that is lower in the hierarchy. Otherwise, return a
      * freshly spawned proxy method pointing to either of them, which is set to fail on invocation.
      */
-    public static Method resolveMaximallySpecific(Method m1, Method m2) {
-        Klass k1 = m1.getDeclaringKlass();
-        Klass k2 = m2.getDeclaringKlass();
+
+    public static Method.MethodVersion resolveMaximallySpecific(Method m1, Method m2) {
+        ObjectKlass k1 = m1.getDeclaringKlass();
+        ObjectKlass k2 = m2.getDeclaringKlass();
         if (k1.isAssignableFrom(k2)) {
-            return m2;
+            return m2.getMethodVersion();
         } else if (k2.isAssignableFrom(k1)) {
-            return m1;
+            return m1.getMethodVersion();
         } else {
             boolean b1 = m1.isAbstract();
             boolean b2 = m2.isAbstract();
             if (b1 && b2) {
-                return m1;
+                return m1.getMethodVersion();
             }
             if (b1) {
-                return m2;
+                return m2.getMethodVersion();
             }
             if (b2) {
-                return m1;
+                return m1.getMethodVersion();
             }
             // JVM specs:
             // Can *declare* ambiguous default method (in bytecodes only, javac wouldn't compile
             // it). (5.4.3.3.)
             //
             // But if you try to *use* them, specs dictate to fail. (6.5.invoke{virtual,interface})
-            Method m = new Method(m2);
+            Method m;
+            m = new Method(m2);
             m.setPoisonPill();
-            return m;
+            return m.getMethodVersion();
         }
     }
 
-    private static boolean canInsert(ObjectKlass interf, ArrayList<ObjectKlass> tmpKlassTable) {
-        for (Klass k : tmpKlassTable) {
-            if (k == interf) {
+    private static boolean canInsert(ObjectKlass.KlassVersion interf, ArrayList<ObjectKlass.KlassVersion> tmpKlassTable) {
+        for (ObjectKlass.KlassVersion k : tmpKlassTable) {
+            if (k.getKlass() == interf.getKlass()) {
                 return false;
             }
         }

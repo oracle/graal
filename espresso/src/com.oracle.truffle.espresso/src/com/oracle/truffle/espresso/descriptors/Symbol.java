@@ -530,6 +530,10 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> PARSE_ERROR = StaticSymbols.putName("PARSE_ERROR");
         public static final Symbol<Name> create = StaticSymbols.putName("create");
 
+        // class redefinition extension fields
+        public static Symbol<Name> staticExtensionFieldName = StaticSymbols.putName("0STATIC_EXTENSION_FIELD_NAME");
+        public static Symbol<Name> extensionFieldName = StaticSymbols.putName("0EXTENSION_FIELD_NAME");
+
         // Class redefinition plugin helpers
         public static final Symbol<Name> flushFromCaches = StaticSymbols.putName("flushFromCaches");
         public static final Symbol<Name> generateProxyClass = StaticSymbols.putName("generateProxyClass");

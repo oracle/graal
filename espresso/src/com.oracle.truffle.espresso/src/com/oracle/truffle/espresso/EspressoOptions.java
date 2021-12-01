@@ -346,6 +346,10 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Boolean> HotSwapAPI = new OptionKey<>(false);
 
+    @Option(help = "Enable arbitrary changes support for class redefinition.", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Boolean> ArbitraryChangesSupport = new OptionKey<>(false);
+
     @Option(help = "Expose the <JavaVM> binding.", //
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Boolean> ExposeNativeJavaVM = new OptionKey<>(false);

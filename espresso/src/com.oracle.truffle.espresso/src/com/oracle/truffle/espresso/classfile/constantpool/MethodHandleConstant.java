@@ -137,7 +137,7 @@ public interface MethodHandleConstant extends PoolConstant {
                 refName = target.getName();
             } else {
                 assert refTag == Tag.FIELD_REF;
-                Field field = pool.resolvedFieldAt(accessingKlass, refIndex).getField();
+                Field field = pool.resolvedFieldAt(accessingKlass, refIndex);
                 mtype = meta.resolveSymbolAndAccessCheck(field.getType(), accessingKlass).mirror();
                 mklass = field.getDeclaringKlass();
                 refName = field.getName();

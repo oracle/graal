@@ -328,7 +328,6 @@ import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeSpecialQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeStaticQuickNode;
 import com.oracle.truffle.espresso.nodes.quick.invoke.InvokeVirtualQuickNode;
 import com.oracle.truffle.espresso.perf.DebugCounter;
-import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
@@ -1505,7 +1504,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
     private BaseQuickNode getBaseQuickNode(int curBCI, int top, int statementIndex, BaseQuickNode quickNode) {
         // block while class redefinition is ongoing
-        ClassRedefinition.check();
+        quickNode.getContext().getClassRedefinition().check();
         BaseQuickNode result = quickNode;
         synchronized (this) {
             // re-check if node was already replaced by another thread
@@ -1980,8 +1979,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
     }
 
     // region quickenForeign
-
-    public int quickenGetField(final VirtualFrame frame, int top, int curBCI, int opcode, int statementIndex, Field.FieldVersion field) {
+    public int quickenGetField(final VirtualFrame frame, int top, int curBCI, int opcode, int statementIndex, Field field) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         assert opcode == GETFIELD;
         BaseQuickNode getField = tryPatchQuick(curBCI, () -> new QuickenedGetFieldNode(top, curBCI, statementIndex, field));
@@ -2235,9 +2233,15 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         return getConstantPool().resolvedMethodAtNoCache(getDeclaringKlass(), cpi);
     }
 
-    private Field.FieldVersion resolveField(int opcode, char cpi) {
+    private Field resolveField(int opcode, char cpi) {
         assert opcode == GETFIELD || opcode == GETSTATIC || opcode == PUTFIELD || opcode == PUTSTATIC;
-        return getConstantPool().resolvedFieldAt(getDeclaringKlass(), cpi);
+        Field field = getConstantPool().resolvedFieldAt(getMethod().getDeclaringKlass(), cpi);
+        if (field.needsReResolution()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            getMethod().getContext().getClassRedefinition().check();
+            field = getConstantPool().resolveFieldAndUpdate(getMethod().getDeclaringKlass(), cpi, field);
+        }
+        return field;
     }
 
     // endregion Class/Method/Field resolution
@@ -2400,9 +2404,8 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
      *   curBCI = bs.next(curBCI);
      * </pre>
      */
-    private int putField(VirtualFrame frame, int top, Field.FieldVersion fieldVersion, int curBCI, int opcode, int statementIndex) {
+    private int putField(VirtualFrame frame, int top, Field field, int curBCI, int opcode, int statementIndex) {
         assert opcode == PUTFIELD || opcode == PUTSTATIC;
-        Field field = fieldVersion.getField();
         CompilerAsserts.partialEvaluationConstant(field);
 
         /*
@@ -2560,10 +2563,9 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
      *   curBCI = bs.next(curBCI);
      * </pre>
      */
-    private int getField(VirtualFrame frame, int top, Field.FieldVersion fieldVersion, int curBCI, int opcode, int statementIndex) {
+    private int getField(VirtualFrame frame, int top, Field field, int curBCI, int opcode, int statementIndex) {
         assert opcode == GETFIELD || opcode == GETSTATIC;
 
-        Field field = fieldVersion.getField();
         CompilerAsserts.partialEvaluationConstant(field);
         /*
          * GETFIELD: Otherwise, if the resolved field is a static field, getfield throws an
@@ -2594,7 +2596,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
             if (receiver.isForeignObject()) {
                 // Restore the receiver for quickening.
                 putObject(frame, slot, receiver);
-                return quickenGetField(frame, top, curBCI, opcode, statementIndex, fieldVersion);
+                return quickenGetField(frame, top, curBCI, opcode, statementIndex, field);
             }
         }
 
@@ -2614,7 +2616,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
             case Float   : putFloat(frame, resultAt, InterpreterToVM.getFieldFloat(receiver, field));   break;
             case Long    : putLong(frame, resultAt, InterpreterToVM.getFieldLong(receiver, field));     break;
             case Object  : {
-                StaticObject value = InterpreterToVM.getFieldObject(receiver, fieldVersion);
+                StaticObject value = InterpreterToVM.getFieldObject(receiver, field);
                 putObject(frame, resultAt, value);
                 checkNoForeignObjectAssumption(value);
                 break;

@@ -44,7 +44,8 @@ public abstract class AbstractLookupFieldNode extends Node {
         int len = table.length;
         for (int i = len - 1; i >= 0; i--) {
             Field f = table[i];
-            if ((kind == FieldLookupKind.All) ||
+            if (!f.isRemoved() &&
+                            (kind == FieldLookupKind.All) ||
                             (kind == FieldLookupKind.Static && f.isStatic()) ||
                             (kind == FieldLookupKind.Instance && !f.isStatic())) {
                 if (f.getNameAsString().equals(name) && (f.isPublic() || !publicOnly)) {
