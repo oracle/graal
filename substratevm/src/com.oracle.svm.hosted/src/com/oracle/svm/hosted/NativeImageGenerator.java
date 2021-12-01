@@ -540,6 +540,8 @@ public class NativeImageGenerator {
             HostedMetaAccess hMetaAccess;
             SharedRuntimeConfigurationBuilder runtime;
             try (ReporterClosable c = reporter.printUniverse(new Timer(imageName, "universe"))) {
+                bb.getHeartbeatCallback().run();
+
                 hUniverse = new HostedUniverse(bb);
                 hMetaAccess = new HostedMetaAccess(hUniverse, bb.getMetaAccess());
 
@@ -622,6 +624,8 @@ public class NativeImageGenerator {
             try (Indent indent = debug.logAndIndent("create native image")) {
                 try (DebugContext.Scope buildScope = debug.scope("CreateImage", codeCacheProvider)) {
                     try (StopTimer t = imageTimer.start()) {
+                        bb.getHeartbeatCallback().run();
+
                         // Start building the model of the native image heap.
                         heap.addInitialObjects();
                         // Then build the model of the code cache, which can
@@ -650,12 +654,13 @@ public class NativeImageGenerator {
                 }
             }
 
-            BeforeImageWriteAccessImpl beforeConfig = new BeforeImageWriteAccessImpl(featureHandler, loader, imageName, image,
-                            runtime.getRuntimeConfig(), aUniverse, hUniverse, optionProvider, hMetaAccess, debug);
-            featureHandler.forEachFeature(feature -> feature.beforeImageWrite(beforeConfig));
-
             Timer writeTimer = new Timer(imageName, "write");
             try (StopTimer t = writeTimer.start()) {
+                bb.getHeartbeatCallback().run();
+                BeforeImageWriteAccessImpl beforeConfig = new BeforeImageWriteAccessImpl(featureHandler, loader, imageName, image,
+                                runtime.getRuntimeConfig(), aUniverse, hUniverse, optionProvider, hMetaAccess, debug);
+                featureHandler.forEachFeature(feature -> feature.beforeImageWrite(beforeConfig));
+
                 /*
                  * This will write the debug info too -- i.e. we may be writing more than one file,
                  * if the debug info is in a separate file. We need to push writing the file to the
