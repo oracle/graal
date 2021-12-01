@@ -183,33 +183,10 @@ The current set of available options is as follows.
 
 ### CPU Tracer Options
 
-- `--cputracer`: enables the CPU tracer. Disabled by default.
-- `--cputracer.FilterFile=<Expression>`: applies a wildcard filter for source
-file paths, for example, `*program*.sl`. The default is &lowast;.
-- `--cputracer.FilterLanguage=<String>`: profiles languages only with the
-matching mime-type, for example, `+`. The default is no filter.
-- `--cputracer.FilterMimeType=<String>`: profiles languages with mime-type. There is no filter by default.
-- `--cputracer.FilterRootName=<Expression>`: applies a wildcard filter for
-program roots, for example, `Math.*`. The default is &lowast;.
-- `--cputracer.Output=<Output>` prints a `histogram` or `json` as output. The default is `histogram`.
-- `--cpusampler.OutputFile=<String>`: saves output to the given file. Output is printed to output stream by default.
-- `--cputracer.TraceCalls`: captures calls when tracing. The default is false.
-- `--cputracer.TraceRoots=<Boolean>`: captures roots when tracing. The default
-is true.
-- `--cputracer.TraceStatements`: captures statements when tracing. The default
-is false.
+{% include_relative cpu-tracer.options %}
 
 ### Memory Tracer Options
 
 The memory tracer tool is currently an experimental tool. Make sure to prepend the `--experimental-options` flag to enable `--memtracer`.
 
-- `--memtracer`: enables the memory tracer. Disabled by default.
-- `--memtracer.FilterFile=<Expression>`: applies a wildcard filter for source file paths, for example, `*program*.sl`. The default is &lowast;.
-- `--memtracer.FilterLanguage=<String>`: profiles languages only with the matching mime-type, for example, `+`. The default is no filter.
-- `--memtracer.FilterMimeType=<String>`: profiles languages with mime-type. There is no filter by default.
-- `--memtracer.FilterRootName=<Expression>`: applies a wildcard filter for program roots, for example, `Math.*`. The default is &lowast;.
-- `--memtracer.Output=<Format>`: prints a `typehistogram`, `histogram`, or `calltree` as output. The default is `histogram`.
-- `--memtracer.StackLimit=<Integer>`: sets the maximum number of maximum stack elements.
-- `--memtracer.TraceCalls`: captures calls when tracing. The default is false.
-- `--memtracer.TraceRoots=<Boolean>`: captures roots when tracing. The default is true.
-- `--memtracer.TraceStatements`: captures statements when tracing. The default is false.
+{% include_relative mem-tracer.options %}
