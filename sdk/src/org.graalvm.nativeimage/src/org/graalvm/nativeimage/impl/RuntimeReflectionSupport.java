@@ -54,4 +54,8 @@ public interface RuntimeReflectionSupport extends ReflectionRegistry {
     Set<?> getHidingMethods();
 
     int getReflectionClassesCount();
+
+    int getReflectionMethodsCount();
+
+    int getReflectionFieldsCount();
 }

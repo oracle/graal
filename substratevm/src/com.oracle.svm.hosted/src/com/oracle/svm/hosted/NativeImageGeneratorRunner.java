@@ -300,7 +300,7 @@ public class NativeImageGeneratorRunner {
         ForkJoinPool compilationExecutor = null;
 
         ProgressReporter reporter = new ProgressReporter(parsedHostedOptions);
-
+        boolean wasSuccessfulBuild = false;
         try (StopTimer ignored = totalTimer.start()) {
             Timer classlistTimer = new Timer("classlist", false);
             try (StopTimer ignored1 = classlistTimer.start()) {
@@ -423,6 +423,7 @@ public class NativeImageGeneratorRunner {
             generator = new NativeImageGenerator(classLoader, optionParser, mainEntryPointData, reporter);
             generator.run(entryPoints, javaMainSupport, imageName, classlistTimer, imageKind, SubstitutionProcessor.IDENTITY,
                             compilationExecutor, analysisExecutor, optionParser.getRuntimeOptionNames());
+            wasSuccessfulBuild = true;
         } catch (InterruptImageBuilding e) {
             if (analysisExecutor != null) {
                 analysisExecutor.shutdownNow();
@@ -472,7 +473,7 @@ public class NativeImageGeneratorRunner {
         } finally {
             totalTimer.print();
             if (imageName != null && generator != null) {
-                reporter.printEpilog(generator, imageName, totalTimer, parsedHostedOptions);
+                reporter.printEpilog(imageName, generator, wasSuccessfulBuild, totalTimer, parsedHostedOptions);
             }
             NativeImageGenerator.clearSystemPropertiesForImage();
             ImageSingletonsSupportImpl.HostedManagement.clear();

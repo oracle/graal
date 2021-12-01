@@ -764,6 +764,16 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         return reflectionClasses.size();
     }
 
+    @Override
+    public int getReflectionMethodsCount() {
+        return reflectionMethods.size();
+    }
+
+    @Override
+    public int getReflectionFieldsCount() {
+        return reflectionFields.size();
+    }
+
     static final class ReflectionDataAccessors {
         private final Method reflectionDataMethod;
         private final Field declaredFieldsField;

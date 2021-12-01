@@ -44,6 +44,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
+import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -51,6 +52,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.reports.ReportUtils;
@@ -95,22 +97,25 @@ public class ProgressReporter {
     private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
 
     private ScheduledFuture<?> periodicPrintingTask;
-    private int periodicPrintingTaskPeriodSeconds = 1;
 
     private int numStageChars = 0;
     private long lastGCCheckTimeMillis = System.currentTimeMillis();
     private GCStats lastGCStats = getCurrentGCStats();
+    private long numRuntimeCompiledMethods = -1;
     private long graphEncodingByteLength = 0;
+    private int numJNIClasses = -1;
+    private int numJNIFields = -1;
+    private int numJNIMethods = -1;
     private Timer debugInfoTimer;
 
     private enum BuildStage {
-        INITIALIZE("Initializing"),
+        INITIALIZING("Initializing"),
         ANALYSIS("Performing analysis"),
         UNIVERSE("Building universe"),
         PARSING("Parsing methods"),
         INLINING("Inlining methods"),
         COMPILING("Compiling methods"),
-        CREATION("Creating image");
+        CREATING("Creating image");
 
         private static final int NUM_STAGES = values().length;
 
@@ -139,7 +144,8 @@ public class ProgressReporter {
         if (SubstrateOptions.BuildOutputColorful.hasBeenSet(options)) {
             enableColors = SubstrateOptions.BuildOutputColorful.getValue(options);
         }
-        boolean enableProgress = !IS_CI;
+        boolean loggingDisabled = DebugOptions.Log.getValue(options) == null;
+        boolean enableProgress = !IS_CI && loggingDisabled;
         if (SubstrateOptions.BuildOutputProgress.hasBeenSet(options)) {
             enableProgress = SubstrateOptions.BuildOutputProgress.getValue(options);
         }
@@ -162,8 +168,18 @@ public class ProgressReporter {
         return linePrinter;
     }
 
+    public void setNumRuntimeCompiledMethods(int value) {
+        numRuntimeCompiledMethods = value;
+    }
+
     public void setGraphEncodingByteLength(int value) {
         graphEncodingByteLength = value;
+    }
+
+    public void setJNIInfo(int numClasses, int numFields, int numMethods) {
+        numJNIClasses = numClasses;
+        numJNIFields = numFields;
+        numJNIMethods = numMethods;
     }
 
     public void printStart(String imageName) {
@@ -175,12 +191,12 @@ public class ProgressReporter {
         l().blueBold().link("GraalVM Native Image", "https://www.graalvm.org/native-image/").reset()
                         .a(": Generating '").bold().a(imageName).reset().a("'...").flushln();
         l().printHeadlineSeparator();
-        printStageStart(BuildStage.INITIALIZE);
+        printStageStart(BuildStage.INITIALIZING);
     }
 
     public void printInitializeEnd(Timer classlistTimer, Timer setupTimer, Collection<String> libraries) {
         printStageEnd(classlistTimer.getTotalTime() + setupTimer.getTotalTime());
-        l().a(" Version info: '").a(ImageSingletons.lookup(VM.class).version).a("'").flushln();
+        l().a(" ").doclink("Version info", "#glossary-version-info").a(": '").a(ImageSingletons.lookup(VM.class).version).a("'").flushln();
         printNativeLibraries(libraries);
     }
 
@@ -213,8 +229,6 @@ public class ProgressReporter {
     }
 
     public ReporterClosable printAnalysis(BigBang bb) {
-        int numReflectionClasses = ImageSingletons.lookup(RuntimeReflectionSupport.class).getReflectionClassesCount();
-        l().a(" ").a(numReflectionClasses).a(" ").doclink("classes registered for reflection", "#glossary-reflection-classes").flushln();
         Timer timer = bb.getAnalysisTimer();
         timer.start();
         printStageStart(BuildStage.ANALYSIS);
@@ -226,19 +240,33 @@ public class ProgressReporter {
                 printProgressEnd();
                 int analysisMillis = (int) bb.getAnalysisTimer().getTotalTime();
                 printStageEnd(analysisMillis);
-                if (analysisMillis > 30_000) {
-                    // Adjust period for printing task according to duration of analysis.
-                    periodicPrintingTaskPeriodSeconds = analysisMillis / 30_000;
-                }
-                Collection<AnalysisMethod> methods = bb.getUniverse().getMethods();
-                long reachableMethod = methods.stream().filter(m -> m.isReachable()).count();
-                int totalMethods = methods.size();
-                l().a("  %,6d (%2.2f%%) of %,6d methods ", reachableMethod, reachableMethod / (double) totalMethods * 100, totalMethods)
-                                .doclink("reachable", "#glossary-reachability").flushln();
+                String actualVsTotalFormat = "%,8d (%5.2f%%) of %,6d";
                 long reachableClasses = bb.getUniverse().getTypes().stream().filter(t -> t.isReachable()).count();
                 long totalClasses = bb.getUniverse().getTypes().size();
-                l().a("  %,6d (%2.2f%%) of %,6d classes ", reachableClasses, reachableClasses / (double) totalClasses * 100, totalClasses)
-                                .doclink("reachable", "#glossary-reachability").flushln();
+                l().a(actualVsTotalFormat, reachableClasses, reachableClasses / (double) totalClasses * 100, totalClasses)
+                                .a(" classes ").doclink("reachable", "#glossary-reachability").flushln();
+                Collection<AnalysisField> fields = bb.getUniverse().getFields();
+                long reachableFields = fields.stream().filter(f -> f.isAccessed()).count();
+                int totalFields = fields.size();
+                l().a(actualVsTotalFormat, reachableFields, reachableFields / (double) totalFields * 100, totalFields)
+                                .a(" fields ").doclink("reachable", "#glossary-reachability").flushln();
+                Collection<AnalysisMethod> methods = bb.getUniverse().getMethods();
+                long reachableMethods = methods.stream().filter(m -> m.isReachable()).count();
+                int totalMethods = methods.size();
+                l().a(actualVsTotalFormat, reachableMethods, reachableMethods / (double) totalMethods * 100, totalMethods)
+                                .a(" methods ").doclink("reachable", "#glossary-reachability").flushln();
+                if (numRuntimeCompiledMethods >= 0) {
+                    l().a(actualVsTotalFormat, numRuntimeCompiledMethods, numRuntimeCompiledMethods / (double) totalMethods * 100, totalMethods)
+                                    .a(" methods included for ").doclink("runtime compilation", "#glossary-runtime-methods").flushln();
+                }
+                String classesFieldsMethodFormat = "%,8d classes, %,5d fields, and %,5d methods ";
+                RuntimeReflectionSupport rs = ImageSingletons.lookup(RuntimeReflectionSupport.class);
+                l().a(classesFieldsMethodFormat, rs.getReflectionClassesCount(), rs.getReflectionFieldsCount(), rs.getReflectionMethodsCount())
+                                .doclink("registered for reflection", "#glossary-reflection-registrations").flushln();
+                if (numJNIClasses > 0) {
+                    l().a(classesFieldsMethodFormat, numJNIClasses, numJNIFields, numJNIMethods)
+                                    .doclink("registered for JNI access", "#glossary-jni-access-registrations").flushln();
+                }
             }
         };
 
@@ -254,11 +282,6 @@ public class ProgressReporter {
                 printStageEnd(timer);
             }
         };
-    }
-
-    public void printRuntimeCompileMethods(int numRuntimeCompileMethods, int numTotalMethods) {
-        l().a("  %,6d (%2.2f%%) of %,6d methods included for ", numRuntimeCompileMethods, numRuntimeCompileMethods / (double) numTotalMethods * 100, numTotalMethods)
-                        .doclink("runtime compilation", "#glossary-runtime-methods").flushln();
     }
 
     public ReporterClosable printParsing(Timer timer) {
@@ -293,7 +316,7 @@ public class ProgressReporter {
 
     public void printInliningSkipped() {
         printStageStart(BuildStage.INLINING);
-        linePrinter.dim().a(" (skipped)").reset().flushln(false);
+        linePrinter.a(progressBarStartPadding()).dim().a("(skipped)").reset().flushln(false);
         numStageChars = 0;
     }
 
@@ -315,7 +338,7 @@ public class ProgressReporter {
 
     // TODO: merge printCreationStart and printCreationEnd at some point (GR-35238).
     public void printCreationStart() {
-        printStageStart(BuildStage.CREATION);
+        printStageStart(BuildStage.CREATING);
     }
 
     public void setDebugInfoTimer(Timer timer) {
@@ -326,11 +349,14 @@ public class ProgressReporter {
                     int numCompilations) {
         printStageEnd(creationTimer.getTotalTime() + writeTimer.getTotalTime());
         String total = bytesToHuman("%4.2f", imageSize);
-        l().a("%9s in total (%2.2f%% for ", total, codeCacheSize / (double) imageSize * 100).doclink("code area", "#glossary-code-area")
-                        .a(" and %2.2f%% for ", imageHeapSize / (double) imageSize * 100).doclink("image heap", "#glossary-image-heap").a(")").flushln();
-        l().a("%9s in code size: %,8d compilation units", bytesToHuman("%4.2f", codeCacheSize), numCompilations).flushln();
+        long otherBytes = imageSize - codeCacheSize - imageHeapSize;
+        l().a("%9s in total (%.1f%% ", total, codeCacheSize / (double) imageSize * 100).doclink("code area", "#glossary-code-area")
+                        .a(", %.1f%% ", imageHeapSize / (double) imageSize * 100).doclink("image heap", "#glossary-image-heap")
+                        .a(", and %.1f%% ", otherBytes / (double) imageSize * 100).doclink("other data", "#glossary-other-data").a(")").flushln();
+        l().a("%9s for code area:%,9d compilation units", bytesToHuman("%4.2f", codeCacheSize), numCompilations).flushln();
         long numInstantiatedClasses = universe.getTypes().stream().filter(t -> t.isInstantiated()).count();
-        l().a("%9s in heap size: %,8d classes and %,d objects", bytesToHuman("%4.2f", imageHeapSize), numInstantiatedClasses, numHeapObjects).flushln();
+        l().a("%9s for image heap:%,8d classes and %,d objects", bytesToHuman("%4.2f", imageHeapSize), numInstantiatedClasses, numHeapObjects).flushln();
+        l().a("%9s for other data", bytesToHuman("%4.2f", otherBytes)).a(debugInfoTimer != null ? " including debug info" : "").flushln();
         if (debugInfoTimer != null) {
             String debugInfoTime = String.format("%.1fs", millisToSeconds(debugInfoTimer.getTotalTime()));
             l().dim().a("%9s for generating debug info", debugInfoTime).reset().flushln();
@@ -356,7 +382,7 @@ public class ProgressReporter {
             String codeSizePart = "";
             if (packagesBySize.hasNext()) {
                 Entry<String, Long> e = packagesBySize.next();
-                String className = truncateClassName(e.getKey());
+                String className = truncateClassOrPackageName(e.getKey());
                 codeSizePart = String.format("%9s %s", bytesToHuman("%4.2f", e.getValue()), className);
                 printedCodeSizeEntries.add(e);
             }
@@ -367,7 +393,7 @@ public class ProgressReporter {
                 String className = e.getKey();
                 // Do not truncate special breakdown items, they can contain links.
                 if (!className.startsWith(BREAKDOWN_BYTE_ARRAY_PREFIX)) {
-                    className = truncateClassName(className);
+                    className = truncateClassOrPackageName(className);
                 }
                 heapSizePart = String.format("%9s %s", bytesToHuman(e.getValue()), className);
                 printedHeapSizeEntries.add(e);
@@ -388,8 +414,12 @@ public class ProgressReporter {
     private static Map<String, Long> calculateCodeBreakdown(Collection<CompileTask> compilationTasks) {
         Map<String, Long> classNameToCodeSize = new HashMap<>();
         for (CompileTask task : compilationTasks) {
-            String className = task.method.format("%H");
-            classNameToCodeSize.merge(className, (long) task.result.getTargetCodeSize(), (a, b) -> a + b);
+            String classOrPackageName = task.method.format("%H");
+            int lastDotIndex = classOrPackageName.lastIndexOf('.');
+            if (lastDotIndex > 0) {
+                classOrPackageName = classOrPackageName.substring(0, lastDotIndex);
+            }
+            classNameToCodeSize.merge(classOrPackageName, (long) task.result.getTargetCodeSize(), Long::sum);
         }
         return classNameToCodeSize;
     }
@@ -398,7 +428,7 @@ public class ProgressReporter {
         Map<String, Long> classNameToSize = new HashMap<>();
         long stringByteLength = 0;
         for (ObjectInfo o : heapObjects) {
-            classNameToSize.merge(o.getClazz().toJavaName(true), o.getSize(), (a, b) -> a + b);
+            classNameToSize.merge(o.getClazz().toJavaName(true), o.getSize(), Long::sum);
             Object javaObject = o.getObject();
             if (javaObject instanceof String) {
                 stringByteLength += StringAccess.getInternalByteArrayLength((String) javaObject);
@@ -407,47 +437,51 @@ public class ProgressReporter {
 
         Long byteArraySize = classNameToSize.remove("byte[]");
         if (byteArraySize != null) {
-            classNameToSize.put(BREAKDOWN_BYTE_ARRAY_PREFIX + "java.lang.String[]", stringByteLength);
+            long remainingBytes = byteArraySize;
+            classNameToSize.put(BREAKDOWN_BYTE_ARRAY_PREFIX + "java.lang.String", stringByteLength);
+            remainingBytes -= stringByteLength;
             long metadataByteLength = ImageSingletons.lookup(MethodMetadataDecoder.class).getMetadataByteLength();
             if (metadataByteLength > 0) {
-                classNameToSize.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linePrinter.asDocLink("method metadata", "#heapbreakdown-method-metadata"), metadataByteLength);
+                classNameToSize.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linePrinter.asDocLink("method metadata", "#glossary-method-metadata"), metadataByteLength);
+                remainingBytes -= metadataByteLength;
             }
             if (graphEncodingByteLength > 0) {
-                classNameToSize.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linePrinter.asDocLink("graph encodings", "#heapbreakdown-graph-encodings"), graphEncodingByteLength);
+                classNameToSize.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linePrinter.asDocLink("graph encodings", "#glossary-graph-encodings"), graphEncodingByteLength);
+                remainingBytes -= graphEncodingByteLength;
             }
-            long remaining = byteArraySize - stringByteLength - metadataByteLength - graphEncodingByteLength;
-            assert remaining >= 0;
-            classNameToSize.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linePrinter.asDocLink("assorted data", "#heapbreakdown-assorted-data"), remaining);
+            assert remainingBytes >= 0;
+            classNameToSize.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linePrinter.asDocLink("general heap data", "#glossary-general-heap-data"), remainingBytes);
         }
         return classNameToSize;
     }
 
-    public void printEpilog(NativeImageGenerator generator, String imageName, Timer totalTimer, OptionValues parsedHostedOptions) {
+    public void printEpilog(String imageName, NativeImageGenerator generator, boolean wasSuccessfulBuild, Timer totalTimer, OptionValues parsedHostedOptions) {
         l().printLineSeparator();
-        printStats(millisToSeconds(totalTimer.getTotalTime()));
+        printResourceStats(millisToSeconds(totalTimer.getTotalTime()));
         l().printLineSeparator();
 
         l().yellowBold().a("Produced artifacts:").reset().flushln();
         generator.getBuildArtifacts().forEach((artifactType, paths) -> {
             for (Path p : paths) {
-                l().a(" ").a(p.toString()).dim().a(" (").a(artifactType.name()).a(")").reset().flushln();
+                l().a(" ").link(p).dim().a(" (").a(artifactType.name().toLowerCase()).a(")").reset().flushln();
             }
         });
         if (ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(parsedHostedOptions)) {
-            l().a(" ").a(reportImageBuildStatistics(imageName, generator.getBigbang()).toString()).flushln();
+            l().a(" ").link(reportImageBuildStatistics(imageName, generator.getBigbang())).flushln();
         }
-        l().a(" ").a(reportBuildArtifacts(imageName, generator.getBuildArtifacts()).toString()).flushln();
+        l().a(" ").link(reportBuildArtifacts(imageName, generator.getBuildArtifacts())).flushln();
 
         l().printHeadlineSeparator();
 
         double totalSeconds = millisToSeconds(totalTimer.getTotalTime());
         String timeStats;
-        if (totalSeconds <= 60) {
+        if (totalSeconds < 60) {
             timeStats = String.format("%.1fs", totalSeconds);
         } else {
             timeStats = String.format("%.0fm %.0fs", totalSeconds / 60, totalSeconds % 60);
         }
-        l().a("Finished generating '").bold().a(imageName).reset().a("' in ").a(timeStats).a(".").flushln();
+        l().a(wasSuccessfulBuild ? "Finished" : "Failed").a(" generating '").bold().a(imageName).reset().a("' ")
+                        .a(wasSuccessfulBuild ? "in" : "after").a(" ").a(timeStats).a(".").flushln();
         executor.shutdown();
     }
 
@@ -480,16 +514,19 @@ public class ProgressReporter {
         return ReportUtils.report("build artifacts", buildDir.resolve(imageName + ".build_artifacts.txt"), writerConsumer, !isEnabled);
     }
 
-    private void printStats(double totalSeconds) {
+    private void printResourceStats(double totalSeconds) {
         GCStats gcStats = getCurrentGCStats();
-        LinePrinter l = l().a("%.1fs", millisToSeconds(gcStats.totalTimeMillis)).a(" spent in ").a(gcStats.totalCount).a(" GCs | ");
+        LinePrinter l = l().a("%.1fs", millisToSeconds(gcStats.totalTimeMillis)).a(" spent in ").a(gcStats.totalCount).a(" ").doclink("GCs", "#glossary-garbage-collections");
         long peakRSS = ProgressReporterCHelper.getPeakRSS();
         if (peakRSS >= 0) {
-            l.doclink("Peak RSS", "#glossary-peak-rss").a(": ").a("%.2fGB", bytesToGiB(peakRSS)).a(" | ");
+            l.a(" | ").doclink("Peak RSS", "#glossary-peak-rss").a(": ").a("%.2fGB", bytesToGiB(peakRSS));
         }
         OperatingSystemMXBean osMXBean = ManagementFactory.getOperatingSystemMXBean();
-        double processCPUTime = nanosToSeconds(((com.sun.management.OperatingSystemMXBean) osMXBean).getProcessCpuTime());
-        l.doclink("CPU load", "#glossary-cpu-load").a(": ").a("~%.2f%%", processCPUTime / totalSeconds * 100).flushCenteredln();
+        long processCPUTime = ((com.sun.management.OperatingSystemMXBean) osMXBean).getProcessCpuTime();
+        if (processCPUTime > 0) {
+            l.a(" | ").doclink("CPU load", "#glossary-cpu-load").a(": ").a("~%.2f%%", nanosToSeconds(processCPUTime) / totalSeconds * 100);
+        }
+        l.flushCenteredln();
     }
 
     private void printStageStart(BuildStage stage) {
@@ -497,15 +534,19 @@ public class ProgressReporter {
         l().appendPrefix().flush();
         linePrinter.blue()
                         .a("[").a(1 + stage.ordinal()).a("/").a(BuildStage.NUM_STAGES).a("] ").reset().blueBold()
-                        .doclink(stage.message, "#step-" + stage.name().toLowerCase()).a("...").reset();
+                        .doclink(stage.message, "#stage-" + stage.name().toLowerCase()).a("...").reset();
         numStageChars = linePrinter.getCurrentTextLength();
         linePrinter.flush();
     }
 
     private void printProgressStart() {
-        linePrinter.a(stringFilledWith(PROGRESS_BAR_START - numStageChars, " ")).dim().a("[");
+        linePrinter.a(progressBarStartPadding()).dim().a("[");
         numStageChars = PROGRESS_BAR_START + 1; /* +1 for [ */
         linePrinter.flush();
+    }
+
+    private String progressBarStartPadding() {
+        return stringFilledWith(PROGRESS_BAR_START - numStageChars, " ");
     }
 
     private void printProgressEnd() {
@@ -518,14 +559,19 @@ public class ProgressReporter {
         numStageChars++; // for *
     }
 
-    private ScheduledFuture<?> startPeriodicPrinting() {
+    private void startPeriodicPrinting() {
         periodicPrintingTask = executor.scheduleAtFixedRate(new Runnable() {
+            int countdown;
+            int numPrints;
+
             @Override
             public void run() {
-                printStageProgress();
+                if (--countdown < 0) {
+                    printStageProgress();
+                    countdown = ++numPrints > 2 ? numPrints * 2 : numPrints;
+                }
             }
-        }, 0, periodicPrintingTaskPeriodSeconds, TimeUnit.SECONDS);
-        return periodicPrintingTask;
+        }, 0, 1, TimeUnit.SECONDS);
     }
 
     private void stopPeriodicPrinting() {
@@ -556,7 +602,7 @@ public class ProgressReporter {
         double ratio = gcTimeDeltaMillis / (double) timeDeltaMillis;
         if (gcTimeDeltaMillis > EXCESSIVE_GC_MIN_THRESHOLD_MILLIS && ratio > EXCESSIVE_GC_RATIO) {
             l().redBold().a("GC warning").reset()
-                            .a(": %.1fs spent in %d GCs during the last stage, taking up %2.2f%% of the time.",
+                            .a(": %.1fs spent in %d GCs during the last stage, taking up %.2f%% of the time.",
                                             millisToSeconds(gcTimeDeltaMillis), currentGCStats.totalCount - lastGCStats.totalCount, ratio * 100)
                             .flushln();
             l().a("            Please ensure more than %.2fGB of memory is available for Native Image", bytesToGiB(ProgressReporterCHelper.getPeakRSS())).flushln();
@@ -565,30 +611,30 @@ public class ProgressReporter {
         lastGCStats = currentGCStats;
     }
 
-    private static void resetANSIMode() {
-        System.out.print(ANSIColors.RESET);
-    }
-
     /*
      * HELPERS
      */
+
+    private static void resetANSIMode() {
+        System.out.print(ANSIColors.RESET);
+    }
 
     private static String stringFilledWith(int size, String fill) {
         return new String(new char[size]).replace("\0", fill);
     }
 
-    protected static String truncateClassName(String className) {
-        int classNameLength = className.length();
+    protected static String truncateClassOrPackageName(String classOrPackageName) {
+        int classNameLength = classOrPackageName.length();
         int maxLength = CHARACTERS_PER_LINE / 2 - 10;
         if (classNameLength <= maxLength) {
-            return className;
+            return classOrPackageName;
         }
         StringBuilder sb = new StringBuilder();
         int currentDot = -1;
         while (true) {
-            int nextDot = className.indexOf('.', currentDot + 1);
+            int nextDot = classOrPackageName.indexOf('.', currentDot + 1);
             if (nextDot < 0) { // Not more dots, handle the rest and return.
-                String rest = className.substring(currentDot + 1);
+                String rest = classOrPackageName.substring(currentDot + 1);
                 int sbLength = sb.length();
                 int restLength = rest.length();
                 if (sbLength + restLength <= maxLength) {
@@ -599,10 +645,10 @@ public class ProgressReporter {
                 }
                 break;
             }
-            sb.append(className.charAt(currentDot + 1)).append('.');
+            sb.append(classOrPackageName.charAt(currentDot + 1)).append('.');
             if (sb.length() + (classNameLength - nextDot) <= maxLength) {
                 // Rest fits maxLength, append and return.
-                sb.append(className.substring(nextDot + 1));
+                sb.append(classOrPackageName.substring(nextDot + 1));
                 break;
             }
             currentDot = nextDot;
@@ -757,6 +803,8 @@ public class ProgressReporter {
 
         protected abstract LinePrinter link(String text, String url);
 
+        protected abstract LinePrinter link(Path path);
+
         protected abstract LinePrinter doclink(String text, String htmlAnchor);
 
         protected abstract String asDocLink(String text, String htmlAnchor);
@@ -885,6 +933,12 @@ public class ProgressReporter {
         }
 
         @Override
+        protected LinePrinter link(Path path) {
+            Path normalized = path.normalize();
+            return link(normalized.toString(), normalized.toUri().toString());
+        }
+
+        @Override
         protected LinePrinter doclink(String text, String htmlAnchor) {
             return link(text, STAGE_DOCS_URL + htmlAnchor);
         }
@@ -943,6 +997,11 @@ public class ProgressReporter {
         @Override
         protected LinePrinter link(String text, String url) {
             return a(text);
+        }
+
+        @Override
+        protected LinePrinter link(Path path) {
+            return a(path.normalize().toString());
         }
 
         @Override
