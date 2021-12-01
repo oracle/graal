@@ -19,9 +19,6 @@ regexWeekly: ${regex-weekly-notifications} {
 builds += [
   ${linux-amd64} ${oraclejdk8}   ${regexCommon} ${eclipse} ${jdt} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-regex-8"},
   ${linux-amd64} ${oraclejdk11}  ${regexCommon} ${eclipse} {run : [["mx", "--strict-compliance", "gate", "--strict-mode"]], targets : [gate], name: "gate-regex-oraclejdk-11"},
-  ${solaris-sparcv9} ${oraclejdk8Only} ${gateLite} ${regexWeekly} {
-    name: "gate-regex-solaris-lite-8"
-  }
   ${darwin-amd64} ${oraclejdk8} ${gateLite} ${regexWeekly} {
     name: "gate-regex-mac-lite-8"
   }
