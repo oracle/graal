@@ -1,0 +1,19 @@
+- `--cpusampler`: enables CPU Sampler. Disabled by default.
+- `--cpusampler.Delay=<Long>`: delays the sampling for the given number of milliseconds (default: 0).
+- `--cpusampler.FilterFile=<Expression>`: applies a wildcard filter for source
+file paths, for example, `*program*.sl`. The default is &lowast;.
+- `--cpusampler.FilterLanguage=<String>`: profiles languages only with the
+matching mime-type, for example, `+`. The default is no filter.
+- `--cpusampler.FilterMimeType=<String>`: profiles languages with mime-type. There is no filter by default.
+- `--cpusampler.FilterRootName=<Expression>`: applies a wildcard filter for
+program roots, for example, `Math.*`. The default is &lowast;.
+- `--cpusampler.GatherHitTimes`: saves a timestamp for each taken sample. The default is false.
+- `--cpusampler.MinSamples=<Integer>`: removes elements from output if they have less samples than this value (default is `0`).
+- `--cpusampler.Output=<Output>`: prints a `histogram`, `calltree`, `json`, or `flamegraph` as output.
+The default is `histogram`.
+- `--cpusampler.OutputFile=<String>`: saves output to the given file. Output is printed to output stream by default.
+- `--cpusampler.Period=<Long>`: specifies the period, in milliseconds, to
+sample the stack.
+- `--cpusampler.StackLimit=<Integer>`: specifies the maximum number of stack
+elements.
+- `--cpusampler.SummariseThreads `: prints sampling output as a summary of all `per thread` profiles. The default is false.
