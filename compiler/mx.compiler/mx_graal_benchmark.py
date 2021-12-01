@@ -125,6 +125,15 @@ class JvmciJdkVm(mx_benchmark.OutputCapturingJavaVm):
 mx_benchmark.add_java_vm(JvmciJdkVm('server', 'default', ['-server', '-XX:-EnableJVMCI', '-XX:-UseJVMCICompiler']), _suite, 2)
 mx_benchmark.add_java_vm(JvmciJdkVm('server', 'hosted', ['-server', '-XX:+EnableJVMCI']), _suite, 3)
 
+def add_or_replace_arg(flag_name, value, args):
+    arg_string = flag_name + '=' + value
+    idx = next((idx for idx, arg in enumerate(args) if arg.startswith(flag_name)), -1)
+    if idx == -1:
+        args.append(arg_string)
+    else:
+        args[idx] = arg_string
+    return args
+
 def build_jvmci_vm_variants(raw_name, raw_config_name, extra_args, variants, include_default=True, suite=None, priority=0, hosted=True):
     prefixes = [('', ['-XX:+UseJVMCICompiler'])]
     if hosted:
@@ -136,19 +145,26 @@ def build_jvmci_vm_variants(raw_name, raw_config_name, extra_args, variants, inc
             mx_benchmark.add_java_vm(
                 JvmciJdkVm(raw_name, extended_raw_config_name, extended_extra_args), suite, priority)
         for variant in variants:
+            compiler_config = None
             if len(variant) == 2:
                 var_name, var_args = variant
                 var_priority = priority
             elif len(variant) == 3:
                 var_name, var_args, var_priority = variant
+            elif len(variant) == 4:
+                var_name, var_args, var_priority, compiler_config = variant
             else:
-                raise TypeError("unexpected tuple size for jvmci variant {} (size must be <= 3)".format(variant))
+                raise TypeError("unexpected tuple size for jvmci variant {} (size must be <= 4)".format(variant))
+
+            variant_args = extended_extra_args + var_args
+            if compiler_config is not None:
+                variant_args = add_or_replace_arg('-Dgraal.CompilerConfiguration', compiler_config, variant_args)
 
             mx_benchmark.add_java_vm(
-                JvmciJdkVm(raw_name, extended_raw_config_name + '-' + var_name, extended_extra_args + var_args), suite, var_priority)
+                JvmciJdkVm(raw_name, extended_raw_config_name + '-' + var_name, variant_args), suite, var_priority)
 
 _graal_variants = [
-    ('economy', ['-Dgraal.CompilerConfiguration=economy'], 0),
+    ('economy', [], 0, 'economy'),
     ('g1gc', ['-XX:+UseG1GC'], 12),
     ('no-comp-oops', ['-XX:-UseCompressedOops'], 0),
     ('no-splitting', ['-Dpolyglot.engine.Splitting=false'], 0),
