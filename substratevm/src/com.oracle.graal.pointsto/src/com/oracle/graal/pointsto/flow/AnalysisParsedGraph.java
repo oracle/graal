@@ -153,6 +153,10 @@ public final class AnalysisParsedGraph {
              */
             bb.getHostVM().methodAfterParsingHook(bb, method, graph);
 
+            if(CollectImageBuildStatistics.getValue(bb.getOptions())) {
+                BytecodeExceptionNodeSourceCollection.create().run(graph);
+            }
+
             EncodedGraph encodedGraph = GraphEncoder.encodeSingleGraph(graph, HOST_ARCHITECTURE);
             return new AnalysisParsedGraph(encodedGraph, isIntrinsic);
         } catch (Throwable e) {
