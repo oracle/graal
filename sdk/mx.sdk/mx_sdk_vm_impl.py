@@ -1335,7 +1335,8 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                 for language, path in sorted(image_config.relative_home_paths.items()):
                     build_args += ['-Dorg.graalvm.launcher.relative.' + language + '.home=' + path]
 
-            build_args += [graalvm_dist.string_substitutions.substitute(arg) for arg in image_config.build_args]
+            image_config_build_args = image_config.build_args + (image_config.build_args_enterprise if has_component('svmee', stage1=True) else [])
+            build_args += [graalvm_dist.string_substitutions.substitute(arg) for arg in image_config_build_args]
 
             name = basename(image_config.destination)
             if suffix:
@@ -1360,7 +1361,7 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
             build_args = [arg for arg in build_args if not (arg.startswith('--language:') or arg.startswith('--tool:') or arg.startswith('--macro:'))]
 
             if any((' ' in arg for arg in build_args)):
-                mx.abort("Unsupported space in launcher build argument: {} in config for {}".format(image_config.build_args, image_config.destination))
+                mx.abort("Unsupported space in launcher build argument: {} in config for {}".format(image_config_build_args, image_config.destination))
 
             self._contents = u""
 
