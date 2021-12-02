@@ -138,7 +138,7 @@ def add_or_replace_arg(option_key, value, vm_option_list):
     arg_string = option_key + '=' + value
     idx = next((idx for idx, arg in enumerate(vm_option_list) if arg.startswith(option_key)), -1)
     if idx == -1:
-        args.append(arg_string)
+        vm_option_list.append(arg_string)
     else:
         vm_option_list[idx] = arg_string
     return vm_option_list
