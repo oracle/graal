@@ -455,6 +455,10 @@ public class MonitorSnippets implements Snippets {
         Word monitor = mark.subtract(monitorMask(INJECTED_VMCONFIG));
         int ownerOffset = objectMonitorOwnerOffset(INJECTED_VMCONFIG);
         Word owner = monitor.readWord(ownerOffset, OBJECT_MONITOR_OWNER_LOCATION);
+        // The following owner null check is essential. In the case where the null check fails, it
+        // avoids the subsequent bound-to-fail CAS operation, which would have caused the
+        // invalidation of the L1 cache of the core that runs the lock owner thread, and thus causes
+        // the lock to be held slightly longer.
         if (probability(FREQUENT_PROBABILITY, owner.equal(0))) {
             // it appears unlocked (owner == 0)
             if (probability(FREQUENT_PROBABILITY, monitor.logicCompareAndSwapWord(ownerOffset, owner, registerAsWord(threadRegister), OBJECT_MONITOR_OWNER_LOCATION))) {
