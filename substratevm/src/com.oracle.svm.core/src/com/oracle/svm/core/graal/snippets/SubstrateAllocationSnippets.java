@@ -655,6 +655,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
      * {@link MetaAccessExtensionProvider#canConstantFoldDynamicAllocation} returns false.
      */
     public static DynamicHub ensureMarkedAsInstantiated(DynamicHub hub) {
+        System.out.println("here here here " + hub);
         if (!hub.isInstantiated()) {
             throw VMError.shouldNotReachHere("Cannot allocate type that is not marked as instantiated: " + hub.getName());
         }
