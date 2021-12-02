@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,6 +56,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.tools.profiler.impl.HeapMonitorInstrument;
+import com.oracle.truffle.tools.profiler.impl.ProfilerToolFactory;
 
 /**
  * Implementation of a heap allocation monitor for
@@ -438,8 +439,13 @@ public final class HeapMonitor implements Closeable {
 
     }
 
-    static {
-        HeapMonitorInstrument.setFactory(HeapMonitor::new);
+    static ProfilerToolFactory<HeapMonitor> createFactory() {
+        return new ProfilerToolFactory<HeapMonitor>() {
+            @Override
+            public HeapMonitor create(TruffleInstrument.Env env) {
+                return new HeapMonitor(env);
+            }
+        };
     }
 
 }
