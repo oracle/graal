@@ -61,16 +61,18 @@ public class ImageBuildStatisticsCounterPhase extends Phase {
      * We are in the hosted part, and need to compare current node source positions
      * with those present after bytecode parser is done, so we unwrap information.
      */
-    private NodeSourcePosition makeNonHostedSourcePosition(NodeSourcePosition hosted) {
-        NodeSourcePosition newNodeSourcePosition = unWrapped(hosted);
-        while (hosted.getCaller() != null) {
-            newNodeSourcePosition =  newNodeSourcePosition.addCaller(unWrapped(hosted.getCaller()));
-            hosted = hosted.getCaller();
+    private static NodeSourcePosition makeNonHostedSourcePosition(NodeSourcePosition hosted) {
+        NodeSourcePosition hostedNodeSourcePosition = hosted;
+        NodeSourcePosition nonHostedNodeSourcePosition = unWrapped(hostedNodeSourcePosition);
+
+        while (hostedNodeSourcePosition.getCaller() != null) {
+            nonHostedNodeSourcePosition =  nonHostedNodeSourcePosition.addCaller(unWrapped(hostedNodeSourcePosition.getCaller()));
+            hostedNodeSourcePosition = hostedNodeSourcePosition.getCaller();
         }
-        return newNodeSourcePosition;
+        return nonHostedNodeSourcePosition;
     }
 
-    private NodeSourcePosition unWrapped(NodeSourcePosition hosted) {
+    private static NodeSourcePosition unWrapped(NodeSourcePosition hosted) {
         HostedMethod hostedMethod = (HostedMethod) hosted.getMethod();
         ResolvedJavaMethod resolvedJavaMethod = hostedMethod.getWrapped();
         return new NodeSourcePosition(hosted.getSourceLanguage(), null, resolvedJavaMethod, hosted.getBCI());
