@@ -75,6 +75,7 @@ import com.oracle.truffle.espresso.nodes.interop.LookupInstanceFieldNode;
 import com.oracle.truffle.espresso.nodes.interop.LookupVirtualMethodNode;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.InvocableMethod;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
@@ -806,12 +807,21 @@ public class EspressoInterop extends BaseInterop {
 
     @ExportMessage
     static Object readMember(StaticObject receiver, String member,
-                    @Cached @Exclusive LookupInstanceFieldNode lookupField) throws UnknownIdentifierException {
+                    @Cached @Exclusive LookupInstanceFieldNode lookupField,
+                    @Cached @Exclusive LookupVirtualMethodNode lookupMethod) throws UnknownIdentifierException {
         receiver.checkNotForeign();
         if (notNull(receiver)) {
             Field f = lookupField.execute(getInteropKlass(receiver), member);
             if (f != null) {
                 return unwrapForeign(EspressoLanguage.get(lookupField), f.get(receiver));
+            }
+            try {
+                Method m = lookupMethod.execute(getInteropKlass(receiver), member, -1);
+                if (m != null) {
+                    return InvocableMethod.createInstanceInvocable(m, receiver);
+                }
+            } catch (ArityException e) {
+                /* Ignore */
             }
             // Class<T>.static == Klass<T>
             if (CLASS_TO_STATIC.equals(member)) {
@@ -839,10 +849,14 @@ public class EspressoInterop extends BaseInterop {
 
     @ExportMessage
     static boolean isMemberReadable(StaticObject receiver, String member,
-                    @Cached @Exclusive LookupInstanceFieldNode lookupField) {
+                    @Cached @Exclusive LookupInstanceFieldNode lookupField,
+                    @Cached @Exclusive LookupVirtualMethodNode lookupMethod) {
         receiver.checkNotForeign();
         Field f = lookupField.execute(getInteropKlass(receiver), member);
         if (f != null) {
+            return true;
+        }
+        if (lookupMethod.isInvocable(getInteropKlass(receiver), member)) {
             return true;
         }
         return notNull(receiver) && receiver.getKlass() == receiver.getKlass().getMeta().java_lang_Class //
