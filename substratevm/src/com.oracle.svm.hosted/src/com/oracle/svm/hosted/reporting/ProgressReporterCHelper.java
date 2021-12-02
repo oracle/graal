@@ -29,6 +29,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
+import org.graalvm.compiler.hotspot.HotSpotGraalCompiler;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
@@ -45,7 +48,10 @@ public final class ProgressReporterCHelper {
         if (JavaVersionUtil.JAVA_SPEC <= 8) {
             return; // TODO: remove as part of JDK8 removal (GR-35238).
         }
-        Path libRSSHelperPath = Paths.get(System.getProperty("java.home"), "lib", "svm", "builder", "lib", "libreporterchelper" + NativeImageKind.SHARED_LIBRARY.getFilenameSuffix());
+        HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) HotSpotJVMCIRuntime.runtime().getCompiler();
+        GraalHotSpotVMConfig vmConfig = compiler.getGraalRuntime().getVMConfig();
+        Path libRSSHelperPath = Paths.get(System.getProperty("java.home"), "lib", "builder", "clibraries", vmConfig.osName + "-" + vmConfig.osArch,
+                        "libreporterchelper" + NativeImageKind.SHARED_LIBRARY.getFilenameSuffix());
         if (Files.exists(libRSSHelperPath)) {
             System.load(libRSSHelperPath.toString());
         }

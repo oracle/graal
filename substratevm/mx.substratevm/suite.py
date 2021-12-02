@@ -1556,8 +1556,13 @@ suite = {
             "native" : True,
             "platformDependent" : True,
             "description" : "SubstrateVM support libraries for the GraalVM",
+            "platforms" : [
+                "linux-amd64",
+                "darwin-amd64",
+                "windows-amd64",
+            ],
             "layout" : {
-                "svm/builder/lib/" : ["dependency:com.oracle.svm.native.reporterchelper"],
+                "builder/clibraries/<os>-<arch>/" : ["dependency:com.oracle.svm.native.reporterchelper"],
             },
             "maven" : False,
         },
