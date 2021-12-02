@@ -1393,6 +1393,12 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         return companion.get().getProtectionDomain();
     }
 
+    @TargetElement(onlyWith = JDK17OrLater.class)
+    @Substitute
+    private ProtectionDomain protectionDomain() {
+        return getProtectionDomain();
+    }
+
     void setProtectionDomainAtRuntime(ProtectionDomain protectionDomain) {
         companion.get().setProtectionDomain(protectionDomain);
     }
