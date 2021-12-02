@@ -346,7 +346,7 @@ final class TruffleLockImpl extends ReentrantLock implements TruffleLock {
         private static final long serialVersionUID = 8504030520147416891L;
         private final Throwable safepointThrown;
 
-        public Signaled(Throwable t) {
+        Signaled(Throwable t) {
             this.safepointThrown = t;
         }
 
@@ -374,6 +374,7 @@ final class TruffleLockImpl extends ReentrantLock implements TruffleLock {
         boolean result = true;
 
         @Override
+        @SuppressFBWarnings(value = "WA_AWAIT_NOT_IN_LOOP", justification = "TruffleLock runtime method.")
         public void apply(TruffleLockImpl lock) throws InterruptedException {
             if (nanoTimeout == 0L) {
                 lock.getWaitCondition().await();

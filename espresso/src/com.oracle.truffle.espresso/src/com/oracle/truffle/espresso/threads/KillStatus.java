@@ -40,7 +40,7 @@ public enum KillStatus {
      * Thread is uncooperative: needs to be killed with a host exception. Unrecoverable state.
      */
     KILL(true, false);
-    
+
     private final boolean asyncThrows;
     private final boolean canStop;
 
@@ -48,7 +48,7 @@ public enum KillStatus {
         this.asyncThrows = asyncThrows;
         this.canStop = canStop;
     }
-    
+
     public boolean asyncThrows() {
         return asyncThrows;
     }
