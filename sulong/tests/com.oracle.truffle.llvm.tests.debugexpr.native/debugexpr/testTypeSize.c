@@ -32,12 +32,11 @@
 __attribute__((constructor)) int main() {
     float a = 1.0f;
     double b = 2.0f;
-    long double c = 4e4;
-    char d = 1;
-    short e = 2;
-    int f = 3;
-    long g = 4;
-    long double sum = a + b + c + d + e + f + g;
+    char c = 1;
+    short d = 2;
+    int e = 3;
+    long f = 4;
+    double sum = a + b + c + d + e + f;
     __builtin_debugtrap();
     int res = (int) sum;
     printf("%d\n", res);

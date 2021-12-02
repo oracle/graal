@@ -28,7 +28,7 @@
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-BREAK 41 CONTINUE "main"
+BREAK 40 CONTINUE "main"
 	"sizeof(char)" "1"
 	"sizeof(short)" "2"
 	"sizeof(int)" "4"
@@ -43,7 +43,6 @@ BREAK 41 CONTINUE "main"
 	"sizeof(unsigned long)" "8"
 	"sizeof(float)" "4"
 	"sizeof(double)" "8"
-	"sizeof(long double)" "16"
 	"sizeof(void)" "0"
 	END
 
