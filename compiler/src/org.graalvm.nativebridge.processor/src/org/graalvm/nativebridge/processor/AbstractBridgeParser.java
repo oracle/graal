@@ -303,7 +303,7 @@ abstract class AbstractBridgeParser {
                 }
             }
             if (!validParameterTypes) {
-                throw new ParseException(res, annotation, "Annotated method must have either %s signature.", getSignature(requiredTypes));
+                throw new ParseException(res, annotation, "Annotated method must have %s signature.", getSignature(requiredTypes));
             }
         }
         return res;

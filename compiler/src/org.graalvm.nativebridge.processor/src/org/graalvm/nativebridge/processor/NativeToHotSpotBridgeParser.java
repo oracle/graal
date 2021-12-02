@@ -57,7 +57,7 @@ public final class NativeToHotSpotBridgeParser extends AbstractBridgeParser {
 
     @Override
     List<TypeMirror> getExceptionHandlerTypes() {
-        return Collections.emptyList();
+        return Collections.singletonList(typeCache.jNIExceptionHandlerContext);
     }
 
     @Override
@@ -71,22 +71,28 @@ public final class NativeToHotSpotBridgeParser extends AbstractBridgeParser {
 
     static final class TypeCache extends AbstractTypeCache {
 
+        final DeclaredType jNIExceptionHandler;
+        final DeclaredType jNIExceptionHandlerContext;
         final DeclaredType generateNativeToHSBridge;
         final DeclaredType hotSpotCalls;
         final DeclaredType hSObject;
-        final DeclaredType jNICache;
+        final DeclaredType jNIClassCache;
         final DeclaredType jNIMethod;
         final DeclaredType jValue;
+        final DeclaredType runtimeException;
         final DeclaredType stackValue;
 
         TypeCache(NativeBridgeProcessor processor) {
             super(processor);
+            this.jNIExceptionHandler = (DeclaredType) processor.getType("org.graalvm.jniutils.JNIExceptionWrapper.ExceptionHandler");
+            this.jNIExceptionHandlerContext = (DeclaredType) processor.getType("org.graalvm.jniutils.JNIExceptionWrapper.ExceptionHandlerContext");
             this.generateNativeToHSBridge = (DeclaredType) processor.getType(GENERATE_NATIVE_TO_HOTSPOT_ANNOTATION);
             this.hotSpotCalls = (DeclaredType) processor.getType("org.graalvm.jniutils.HotSpotCalls");
             this.hSObject = (DeclaredType) processor.getType("org.graalvm.jniutils.HSObject");
-            this.jNICache = (DeclaredType) processor.getType("org.graalvm.nativebridge.JNICache");
+            this.jNIClassCache = (DeclaredType) processor.getType("org.graalvm.nativebridge.JNIClassCache");
             this.jNIMethod = (DeclaredType) processor.getType("org.graalvm.jniutils.HotSpotCalls.JNIMethod");
             this.jValue = (DeclaredType) processor.getType("org.graalvm.jniutils.JNI.JValue");
+            this.runtimeException = (DeclaredType) processor.getType("java.lang.RuntimeException");
             this.stackValue = (DeclaredType) processor.getType("org.graalvm.nativeimage.StackValue");
         }
     }
