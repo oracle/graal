@@ -279,15 +279,18 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
         universe.setAnalysisDataValid(false);
 
         int numTypes;
-        do {
-            runReachability();
+        for (int i = 0; i < 10; i++) {
+            do {
+                runReachability();
 
-            assert executor.getPostedOperations() == 0;
-            numTypes = universe.getTypes().size();
+                assert executor.getPostedOperations() == 0;
+                numTypes = universe.getTypes().size();
 
-            checkObjectGraph();
+                checkObjectGraph();
 
-        } while (executor.getPostedOperations() != 0 || numTypes != universe.getTypes().size());
+            } while (executor.getPostedOperations() != 0 || numTypes != universe.getTypes().size());
+
+        }
 
         universe.setAnalysisDataValid(true);
 
@@ -365,7 +368,7 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
                 objectScanner.scanBootImageHeapRoots(null, null);
                 executor.complete();
                 executor.shutdown();
-                executor.init(null);
+                executor.init(timing);
             } else {
                 objectScanner.scanBootImageHeapRoots(null, null);
             }
