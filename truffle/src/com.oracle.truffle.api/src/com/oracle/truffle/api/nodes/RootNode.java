@@ -354,13 +354,15 @@ public abstract class RootNode extends ExecutableNode {
             assert clonedRoot.instrumentationBits == 0;
         }
 
-        ReentrantLock l = getLazyLock();
+        RootCallTarget clonedTarget = NodeAccessor.RUNTIME.newCallTarget(sourceCallTarget, clonedRoot);
+
+        ReentrantLock l = clonedRoot.getLazyLock();
         l.lock();
         try {
             if (clonedRoot.callTarget != null) {
-                throw CompilerDirectives.shouldNotReachHere("callTarget not null. Was getCallTarget on the result of RootNode.cloneUninitialized called?.");
+                throw CompilerDirectives.shouldNotReachHere("callTarget not null. Was getCallTarget on the result of RootNode.cloneUninitialized called?");
             }
-            clonedRoot.callTarget = NodeAccessor.RUNTIME.newCallTarget(sourceCallTarget, clonedRoot);
+            clonedRoot.callTarget = clonedTarget;
         } finally {
             l.unlock();
         }
@@ -388,7 +390,11 @@ public abstract class RootNode extends ExecutableNode {
             try {
                 target = this.callTarget;
                 if (target == null) {
-                    this.callTarget = target = NodeAccessor.RUNTIME.newCallTarget(null, this);
+                    target = NodeAccessor.RUNTIME.newCallTarget(null, this);
+                    if (callTarget != null) {
+                        throw CompilerDirectives.shouldNotReachHere("callTarget was set by newCallTarget but should not");
+                    }
+                    this.callTarget = target;
                 }
             } finally {
                 l.unlock();
