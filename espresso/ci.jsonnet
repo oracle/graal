@@ -30,17 +30,9 @@
     },
   },
 
-  windows_8 : devkits["windows-openjdk8"] + common.common + {
-    capabilities : ['windows', 'amd64']
-  },
-
-  windows_11 : devkits["windows-jdk11"] + common.common + {
-    capabilities : ['windows', 'amd64']
-  },
-
-  windows_17 : devkits["windows-jdk17"] + common.common + {
-    capabilities : ['windows', 'amd64']
-  },
+  windows_8 : devkits["windows-openjdk8"] + common.windows,
+  windows_11 : devkits["windows-jdk11"] + common.windows,
+  windows_17 : devkits["windows-jdk17"] + common.windows,
 
   builds: common.builds + [
     // Benchmarks

@@ -1,5 +1,8 @@
 local base = import '../ci.jsonnet';
 
+local composable = (import "../../common-utils.libsonnet").composable;
+local sulong_deps = composable((import "../../common.json").sulong.deps);
+
 local _host_jvm(env) = 'graalvm-espresso-' + env;
 local _host_jvm_config(env) = if std.startsWith(env, 'jvm') then 'jvm' else 'native';
 
@@ -31,7 +34,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
     ],
   },
 
-  linux: self.common + {
+  linux: self.common + sulong_deps.linux + {
     packages+: {
       '00:devtoolset': '==7', # GCC 7.3.1, make 4.2.1, binutils 2.28, valgrind 3.13.0
       '01:binutils': '>=2.34',
@@ -50,12 +53,16 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
     capabilities+: ['no_frequency_scaling', 'tmpfs25g', 'x52'],
   },
 
-  darwin: self.common + {
+  darwin: self.common + sulong_deps.darwin + {
     environment+: {
       // for compatibility with macOS High Sierra
       MACOSX_DEPLOYMENT_TARGET: '10.13',
     },
     capabilities: ['darwin_mojave', 'amd64'],
+  },
+
+  windows: self.common + sulong_deps.windows + {
+    capabilities : ['windows', 'amd64']
   },
 
   // generic targets
