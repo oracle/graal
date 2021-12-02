@@ -2663,27 +2663,33 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
     @property
     def cflags(self):
         _dist = get_final_graalvm_distribution()
-        _exe_path = _dist.find_single_source_location('dependency:' + NativeLibraryLauncherProject.library_launcher_project_name(self.language_library_config))
+        _exe_paths = _dist.find_source_location('dependency:' + NativeLibraryLauncherProject.library_launcher_project_name(self.language_library_config))
+        _exe_dirs = set([dirname(p) for p in _exe_paths])
+        if len(_exe_dirs) > 1:
+            mx.abort("If multiple launcher targets are specified they need to be in the same directory: {}".format(_exe_dirs))
+        _exe_dir = _exe_dirs.pop()
         _dynamic_cflags = [
             '-DCP_SEP=' + os.pathsep,
             '-DDIR_SEP=' + ('\\\\' if mx.is_windows() else '/'),
         ]
+        if not mx.is_windows():
+            _dynamic_cflags += ['-pthread']
         if self.jvm_launcher:
             _graalvm_home = _get_graalvm_archive_path("")
             _cp = NativePropertiesBuildTask.get_launcher_classpath(_dist, _graalvm_home, self.language_library_config, self.component, exclude_implicit=True)
             _cp = [join(_dist.path_substitutions.substitute('<jdk_base>'), x) for x in _cp]
             # path from langauge launcher to jars
-            _cp = [relpath(x, start=dirname(_exe_path)) for x in _cp]
+            _cp = [relpath(x, start=_exe_dir) for x in _cp]
             if mx.is_windows():
                 _libjvm_path = join(_dist.path_substitutions.substitute('<jre_base>'), 'bin', 'server', 'jvm.dll')
-                _libjvm_path = relpath(_libjvm_path, start=dirname(_exe_path)).replace('\\', '\\\\')
+                _libjvm_path = relpath(_libjvm_path, start=_exe_dir).replace('\\', '\\\\')
                 _cp = [x.replace('\\', '\\\\') for x in _cp]
             else:
                 if _src_jdk_version < 9 and mx.is_linux():
                     _libjvm_path = join(_dist.path_substitutions.substitute('<jre_base>'), 'lib', mx.get_arch(), 'server', mx.add_lib_suffix("libjvm"))
                 else:
                     _libjvm_path = join(_dist.path_substitutions.substitute('<jre_base>'), 'lib', 'server', mx.add_lib_suffix("libjvm"))
-                _libjvm_path = relpath(_libjvm_path, start=dirname(_exe_path))
+                _libjvm_path = relpath(_libjvm_path, start=_exe_dir)
             _dynamic_cflags += [
                 '-DJVM',
                 '-DLAUNCHER_CLASS=' + self.language_library_config.main_class,
@@ -2696,7 +2702,7 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
         else:
             _lib_path = _dist.find_single_source_location('dependency:' + GraalVmLibrary.project_name(self.language_library_config))
             # path from language launcher to library
-            _liblang_relpath = relpath(_lib_path, start=dirname(_exe_path))
+            _liblang_relpath = relpath(_lib_path, start=_exe_dir)
             _dynamic_cflags += [
                 '-DLIBLANG_RELPATH=' + (_liblang_relpath.replace('\\', '\\\\') if mx.is_windows() else _liblang_relpath)
             ]
