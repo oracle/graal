@@ -560,6 +560,8 @@ public class NativeImageGenerator {
                 return;
             }
 
+            dump(imageName, aUniverse);
+
 // dumpAnalysisStats();
 
             NativeImageHeap heap;
@@ -718,6 +720,14 @@ public class NativeImageGenerator {
         }
     }
 
+    private void dump(String bigbang, AnalysisUniverse aUniverse) {
+        long types = aUniverse.getTypes().stream().filter(AnalysisType::isReachable).count();
+        long instantiatedTypes = aUniverse.getTypes().stream().filter(AnalysisType::isInstantiated).count();
+        long invokedMethods = aUniverse.getMethods().stream().filter(AnalysisMethod::isInvoked).count();
+        long implInvokedMethods = aUniverse.getMethods().stream().filter(AnalysisMethod::isImplementationInvoked).count();
+        System.out.println("!!!!!" + bigbang + " types:" + instantiatedTypes + " / " + types + ", methods: " + invokedMethods + " / " + implInvokedMethods);
+    }
+
     private static final String DUMP_FOLDER = "/Users/dkozak/tmp/hello-dir/stats/";
     private static final String METHOD_FORMAT = "%H.%n(%P)";
 
@@ -733,7 +743,7 @@ public class NativeImageGenerator {
         String prefix = analysisPrefix();
 
         List<Pair<List<String>, String>> pairs = Arrays.asList(Pair.create(reachableTypes, "types"), Pair.create(invokedMethods, "invokedMethods"),
-                Pair.create(implInvokedMethods, "implInvokedMethods"));
+                        Pair.create(implInvokedMethods, "implInvokedMethods"));
 
         for (Pair<List<String>, String> pair : pairs) {
             try (FileWriter writer = new FileWriter(DUMP_FOLDER + prefix + pair.getRight())) {
