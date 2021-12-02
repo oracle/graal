@@ -118,7 +118,7 @@ class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
         self.dir_jars = dir_jars
         self.home_finder = home_finder
         self.build_time = build_time
-        self.build_args_enterprise = [] if build_args_enterprise is None else build_args_enterprise
+        self.build_args_enterprise = build_args_enterprise or []
         self.relative_home_paths = {}
 
         assert isinstance(self.jar_distributions, list)
