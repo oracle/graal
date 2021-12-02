@@ -46,7 +46,6 @@ import org.graalvm.compiler.phases.Phase;
 import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.snippets.ExceptionUnwind;
-import com.oracle.svm.util.ImageBuildStatistics;
 
 /**
  * The {@link ExceptionUnwind exception handling mechanism} of Substrate VM is capable of jumping
