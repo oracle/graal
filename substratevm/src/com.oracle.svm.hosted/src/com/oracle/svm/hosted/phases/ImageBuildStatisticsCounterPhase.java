@@ -52,7 +52,7 @@ public class ImageBuildStatisticsCounterPhase extends Phase {
                 assert node.isAlive() : "ImageBuildStatisticsCounterPhase must be run after proper canonicalization to get the right numbers. Found not alive node: " + node;
                 BytecodeExceptionNode.BytecodeExceptionKind bytecodeExceptionKind = node instanceof BytecodeExceptionNode ? ((BytecodeExceptionNode) node).getExceptionKind()
                                 : ((ThrowBytecodeExceptionNode) node).getExceptionKind();
-                singleton().incByteCodeException(bytecodeExceptionKind, location, makeNonHostedSourcePosition(node.getNodeSourcePosition()));
+                singleton().incByteCodeException(bytecodeExceptionKind, location, makeNonHostedSourcePosition(node.getNodeSourcePosition()), graph.method());
             }
         }
     }

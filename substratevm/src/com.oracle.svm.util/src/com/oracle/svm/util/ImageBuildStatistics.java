@@ -33,13 +33,11 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
-import org.graalvm.collections.EconomicMap;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeSourcePosition;
+import org.graalvm.compiler.java.BytecodeExceptionNodeSourceCollection;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.phases.common.BytecodeExceptionNodeSourceCollection;
 import org.graalvm.nativeimage.ImageSingletons;
 
 public class ImageBuildStatistics {
@@ -56,8 +54,8 @@ public class ImageBuildStatistics {
         counters.get(devirtualizedInvokes()).incCounter();
     }
 
-    public void incByteCodeException(BytecodeExceptionNode.BytecodeExceptionKind kind, CheckCountLocation location, NodeSourcePosition nodeSourcePosition) {
-        counters.get(getName(kind.name(), location)).incCounter(nodeSourcePosition);
+    public void incByteCodeException(BytecodeExceptionNode.BytecodeExceptionKind kind, CheckCountLocation location, NodeSourcePosition nodeSourcePosition, ResolvedJavaMethod method) {
+        counters.get(getName(kind.name(), location)).incCounter(nodeSourcePosition, method);
     }
 
     public Consumer<PrintWriter> getReporter() {
@@ -100,7 +98,7 @@ public class ImageBuildStatistics {
             originalCounter.incrementAndGet();
         }
 
-        private void incCounter(NodeSourcePosition nodeSourcePosition) {
+        private void incCounter(NodeSourcePosition nodeSourcePosition, ResolvedJavaMethod method) {
             if (original.contains(nodeSourcePosition)) {
                 /*
                  * We have already seen this exception at the given source location, duplication
@@ -125,7 +123,7 @@ public class ImageBuildStatistics {
                          * This node source position is coming from a virtual call.
                          */
                     } else {
-                        throw GraalError.shouldNotReachHere("Found new node " + nodeSourcePosition + " after bytecode parsing.");
+                        throw GraalError.shouldNotReachHere("Found new node " + nodeSourcePosition + " after bytecode parsing in graph for " + method.format("%h.%n(%p)"));
                     }
                 }
             }

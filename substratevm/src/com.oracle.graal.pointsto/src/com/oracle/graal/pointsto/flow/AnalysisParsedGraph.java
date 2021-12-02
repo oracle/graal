@@ -32,6 +32,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.debug.DebugContext.Description;
 import org.graalvm.compiler.debug.Indent;
+import org.graalvm.compiler.java.BytecodeExceptionNodeSourceCollection;
 import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.GraphEncoder;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -40,7 +41,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Byt
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
-import org.graalvm.compiler.phases.common.BytecodeExceptionNodeSourceCollection;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 
@@ -154,7 +154,7 @@ public final class AnalysisParsedGraph {
             bb.getHostVM().methodAfterParsingHook(bb, method, graph);
 
             if(CollectImageBuildStatistics.getValue(bb.getOptions())) {
-                BytecodeExceptionNodeSourceCollection.create().run(graph);
+                BytecodeExceptionNodeSourceCollection.create().collect(graph);
             }
 
             EncodedGraph encodedGraph = GraphEncoder.encodeSingleGraph(graph, HOST_ARCHITECTURE);
