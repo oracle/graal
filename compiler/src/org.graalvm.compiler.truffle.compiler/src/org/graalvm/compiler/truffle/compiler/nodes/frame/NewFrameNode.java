@@ -198,7 +198,6 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
                 JavaConstant slotKind = constantReflection.readFieldValue(types.fieldFrameSlotKind, slot);
                 JavaConstant slotIndex = constantReflection.readFieldValue(types.fieldFrameSlotIndex, slot);
                 if (slotKind.isNonNull() && slotIndex.isNonNull()) {
-                    byte kind = (byte) constantReflection.readFieldValue(types.fieldFrameSlotKindTag, slotKind).asInt();
                     int index = slotIndex.asInt();
                     if (index >= frameSlotKindsCandidate.length) {
                         /*
@@ -211,7 +210,7 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
                         Arrays.fill(newArray, frameSlotKindsCandidate.length, newArray.length, NO_TYPE_MARKER);
                         frameSlotKindsCandidate = newArray;
                     }
-                    frameSlotKindsCandidate[index] = kind;
+                    frameSlotKindsCandidate[index] = INITIAL_TYPE_MARKER;
                 }
             }
         }

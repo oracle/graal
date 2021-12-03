@@ -27,7 +27,6 @@ package org.graalvm.compiler.truffle.compiler.phases;
 
 import static org.graalvm.compiler.truffle.compiler.nodes.frame.NewFrameNode.INITIAL_TYPE_MARKER;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -177,37 +176,13 @@ public final class FrameAccessVerificationPhase extends BasePhase<CoreProviders>
             for (NewFrameNode frame : frames) {
                 byte[] entries = states.get(frame);
                 byte[] indexedEntries = indexedStates.get(frame);
-                states: for (int state = 0; state < withStates.size(); state++) {
-                    State other = withStates.get(state);
-                    byte[] otherEntries = other.states.get(frame);
-                    for (int i = 0; i < entries.length; i++) {
-                        if (entries[i] != otherEntries[i]) {
-                            deoptAt(merge, frame, state + 1, i);
-                            continue states;
-                        }
-                    }
-                    byte[] otherIndexedEntries = other.indexedStates.get(frame);
-                    entries: for (int i = 0; i < indexedEntries.length; i++) {
-                        if (indexedEntries[i] != otherIndexedEntries[i]) {
-                            if (indexedEntries[i] == INITIAL_TYPE_MARKER) {
-                                if (frame.getIndexedFrameSlotKinds()[i] == INITIAL_TYPE_MARKER) {
-                                    frame.getIndexedFrameSlotKinds()[i] = otherIndexedEntries[i];
-                                    continue entries;
-                                } else if (frame.getIndexedFrameSlotKinds()[i] == otherIndexedEntries[i]) {
-                                    continue entries;
-                                }
-                            } else if (otherIndexedEntries[i] == INITIAL_TYPE_MARKER) {
-                                if (frame.getIndexedFrameSlotKinds()[i] == INITIAL_TYPE_MARKER) {
-                                    frame.getIndexedFrameSlotKinds()[i] = indexedEntries[i];
-                                    continue entries;
-                                } else if (frame.getIndexedFrameSlotKinds()[i] == indexedEntries[i]) {
-                                    continue entries;
-                                }
-                            }
-                            deoptAt(merge, frame, state + 1, i);
-                            continue states;
-                        }
-                    }
+                byte[] frameEntries = frame.getFrameSlotKinds();
+                byte[] frameIndexedEntries = frame.getIndexedFrameSlotKinds();
+                int state = 1;
+                for (State other : withStates) {
+                    mergeEntries(merge, frame, entries, other.states.get(frame), frameEntries, state);
+                    mergeEntries(merge, frame, indexedEntries, other.indexedStates.get(frame), frameIndexedEntries, state);
+                    state++;
                 }
             }
 
@@ -215,6 +190,34 @@ public final class FrameAccessVerificationPhase extends BasePhase<CoreProviders>
             indexedStates.keySet().retainAll(frames);
 
             return true;
+        }
+
+        /*
+         * Compares "entries" and "otherEntries", taking into account that entries might be
+         * uninitialized (in which case it is taken from the frame itself).
+         */
+        private void mergeEntries(AbstractMergeNode merge, NewFrameNode frame, byte[] entries, byte[] otherEntries, byte[] frameEntries, int state) {
+            for (int i = 0; i < entries.length; i++) {
+                if (entries[i] != otherEntries[i]) {
+                    if (entries[i] == INITIAL_TYPE_MARKER) {
+                        if (frameEntries[i] == INITIAL_TYPE_MARKER) {
+                            frameEntries[i] = otherEntries[i];
+                            continue;
+                        } else if (frameEntries[i] == otherEntries[i]) {
+                            continue;
+                        }
+                    } else if (otherEntries[i] == INITIAL_TYPE_MARKER) {
+                        if (frameEntries[i] == INITIAL_TYPE_MARKER) {
+                            frameEntries[i] = entries[i];
+                            continue;
+                        } else if (frameEntries[i] == entries[i]) {
+                            continue;
+                        }
+                    }
+                    deoptAt(merge, frame, state, i);
+                    break;
+                }
+            }
         }
 
         private void deoptAt(AbstractMergeNode merge, NewFrameNode frame, int state, int index) {
@@ -232,16 +235,9 @@ public final class FrameAccessVerificationPhase extends BasePhase<CoreProviders>
 
         public void add(NewFrameNode frame) {
             assert !states.containsKey(frame) && !indexedStates.containsKey(frame);
-            byte[] entries = frame.getFrameSlotKinds().clone();
-            for (int i = 0; i < entries.length; i++) {
-                if (entries[i] == NewFrameNode.FrameSlotKindObjectTag || entries[i] == NewFrameNode.FrameSlotKindIllegalTag) {
-                    entries[i] = NewFrameNode.FrameSlotKindLongTag;
-                }
-            }
+            byte[] entries = frame.getFrameSize() == 0 ? EMPTY_BYTE_ARRAY : frame.getFrameSlotKinds().clone();
             states.put(frame, entries);
-            byte[] indexedEntries = frame.getIndexedFrameSize() == 0 ? EMPTY_BYTE_ARRAY : new byte[frame.getIndexedFrameSize()];
-            Arrays.fill(indexedEntries, INITIAL_TYPE_MARKER);
-            assert Arrays.equals(indexedEntries, frame.getIndexedFrameSlotKinds()) : "NewFrameNode doens't have expected initial state for indexed frame slots";
+            byte[] indexedEntries = frame.getIndexedFrameSize() == 0 ? EMPTY_BYTE_ARRAY : frame.getIndexedFrameSlotKinds().clone();
             indexedStates.put(frame, indexedEntries);
         }
 
@@ -273,10 +269,15 @@ public final class FrameAccessVerificationPhase extends BasePhase<CoreProviders>
                     /*
                      * Ignore operations with invalid indexes - these will be handled during PEA.
                      */
-                    if (node instanceof VirtualFrameSetNode || node instanceof VirtualFrameClearNode) {
+                    if (node instanceof VirtualFrameSetNode) {
                         byte[] entries = state.get(accessor);
                         if (inRange(entries, accessor.getFrameSlotIndex()) && accessor.getAccessTag() != NewFrameNode.FrameSlotKindObjectTag) {
                             entries[accessor.getFrameSlotIndex()] = (byte) accessor.getAccessTag();
+                        }
+                    } else if (node instanceof VirtualFrameClearNode) {
+                        byte[] entries = state.get(accessor);
+                        if (inRange(entries, accessor.getFrameSlotIndex())) {
+                            entries[accessor.getFrameSlotIndex()] = NewFrameNode.FrameSlotKindLongTag;
                         }
                     } else if (node instanceof VirtualFrameCopyNode) {
                         VirtualFrameCopyNode copy = (VirtualFrameCopyNode) node;

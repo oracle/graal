@@ -455,7 +455,8 @@ public class FrameAccessVerificationTest extends PartialEvaluationTest {
             }
         };
         Consumer<StructuredGraph> graphChecker = graph -> {
-            assertDeoptCount(graph, 1);
+            assertDeoptCount(graph, 0);
+            assertReturn(graph);
             assertAllocations(graph);
         };
         doTest(root, graphChecker, result(0, 1), result(16, 2), result(FrameSlotTypeException.class, 0));
@@ -560,7 +561,7 @@ public class FrameAccessVerificationTest extends PartialEvaluationTest {
             }
         };
         Consumer<StructuredGraph> graphChecker = graph -> {
-            assertDeoptCount(graph, 1);
+            assertDeoptCount(graph, 0);
             assertReturn(graph);
             assertAllocations(graph);
         };
@@ -740,7 +741,7 @@ public class FrameAccessVerificationTest extends PartialEvaluationTest {
             }
         };
         Consumer<StructuredGraph> graphChecker = graph -> {
-            assertDeoptCount(graph, 1);
+            assertDeoptCount(graph, 0);
             assertReturn(graph);
             assertAllocations(graph);
         };
