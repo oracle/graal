@@ -253,9 +253,7 @@ public final class LLVMContext {
         assert this.threadingStack == null;
         this.contextExtensions = contextExtens;
 
-        String opt = env.getOptions().get(SulongEngineOption.LD_DEBUG);
-        this.loaderTraceStream = SulongEngineOption.optionEnabled(opt) ? new TargetStream(env, opt) : null;
-        opt = env.getOptions().get(SulongEngineOption.DEBUG_SYSCALLS);
+        String opt = env.getOptions().get(SulongEngineOption.DEBUG_SYSCALLS);
         this.syscallTraceStream = SulongEngineOption.optionEnabled(opt) ? new TargetStream(env, opt) : null;
         opt = env.getOptions().get(SulongEngineOption.NATIVE_CALL_STATS);
         this.nativeCallStatsStream = SulongEngineOption.optionEnabled(opt) ? new TargetStream(env, opt) : null;
@@ -551,10 +549,6 @@ public final class LLVMContext {
 
         if (tracer != null) {
             tracer.dispose();
-        }
-
-        if (loaderTraceStream != null) {
-            loaderTraceStream.dispose();
         }
 
         if (syscallTraceStream != null) {
@@ -1111,10 +1105,10 @@ public final class LLVMContext {
         }
     }
 
-    @CompilationFinal private TargetStream loaderTraceStream;
+    private static final TruffleLogger loaderLogger = TruffleLogger.getLogger("llvm", "Loader");
 
-    public TargetStream loaderTraceStream() {
-        return loaderTraceStream;
+    public static TruffleLogger loaderLogger() {
+        return loaderLogger;
     }
 
     @CompilationFinal private TargetStream syscallTraceStream;
