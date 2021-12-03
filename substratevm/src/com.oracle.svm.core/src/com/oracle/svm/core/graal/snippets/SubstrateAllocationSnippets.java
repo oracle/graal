@@ -656,7 +656,9 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
      */
     public static DynamicHub ensureMarkedAsInstantiated(DynamicHub hub) {
         if (!hub.isInstantiated()) {
-            throw VMError.shouldNotReachHere("Cannot allocate type that is not marked as instantiated: " + hub.getName());
+            System.err.println("Cannot allocate type that is not marked as instantiated: " + hub.getName());
+// throw VMError.shouldNotReachHere("Cannot allocate type that is not marked as instantiated: " +
+// hub.getName());
         }
         return hub;
     }
