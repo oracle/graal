@@ -39,7 +39,6 @@ import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.hub.AnnotatedSuperInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.GenericInfo;
@@ -53,7 +52,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class DynamicHubInitializer {
 
     private final SVMHost hostVM;
-    private final AnalysisUniverse universe;
     private final AnalysisMetaAccess metaAccess;
     private final UnsupportedFeatures unsupportedFeatures;
     private final ConstantReflectionProvider constantReflection;
@@ -62,11 +60,9 @@ public class DynamicHubInitializer {
     private final Map<AnnotatedInterfacesEncodingKey, AnnotatedType[]> annotatedInterfacesMap;
     private final Map<InterfacesEncodingKey, DynamicHub[]> interfacesEncodings;
 
-    public DynamicHubInitializer(AnalysisUniverse universe, AnalysisMetaAccess metaAccess,
-                    UnsupportedFeatures unsupportedFeatures, ConstantReflectionProvider constantReflection) {
-        this.hostVM = (SVMHost) universe.hostVM();
-        this.universe = universe;
+    public DynamicHubInitializer(AnalysisMetaAccess metaAccess, UnsupportedFeatures unsupportedFeatures, ConstantReflectionProvider constantReflection) {
         this.metaAccess = metaAccess;
+        this.hostVM = (SVMHost) metaAccess.getUniverse().hostVM();
         this.unsupportedFeatures = unsupportedFeatures;
         this.constantReflection = constantReflection;
 
@@ -76,7 +72,7 @@ public class DynamicHubInitializer {
     }
 
     public void initializeMetaData(AnalysisType type) {
-        assert type.isReachable();
+        assert type.isReachable() : "Type " + type.toJavaName(true) + " is not marked as reachable.";
         DynamicHub hub = hostVM.dynamicHub(type);
         if (hub.getGenericInfo() == null) {
             fillGenericInfo(type, hub);
@@ -105,6 +101,9 @@ public class DynamicHubInitializer {
 
             /*
              * Support for Java annotations.
+             * 
+             * The annotation encodings must be updated after each analysis iteration since only the
+             * annotation types marked as reachable are included.
              */
             try {
                 /*
@@ -330,7 +329,7 @@ public class DynamicHubInitializer {
     private boolean isTypeAllowed(Type t) {
         if (t instanceof Class) {
             Optional<? extends ResolvedJavaType> resolved = metaAccess.optionalLookupJavaType((Class<?>) t);
-            return resolved.isPresent() && hostVM.platformSupported(universe, resolved.get());
+            return resolved.isPresent() && hostVM.platformSupported(resolved.get());
         }
         return true;
     }
