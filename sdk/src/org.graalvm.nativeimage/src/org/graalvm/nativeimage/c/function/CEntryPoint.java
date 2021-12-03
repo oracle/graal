@@ -111,7 +111,7 @@ public @interface CEntryPoint {
      *
      * @since 19.0
      */
-    Class<?> exceptionHandler() default FatalExceptionHandler.class;
+    Class<? extends ExceptionHandler> exceptionHandler() default FatalExceptionHandler.class;
 
     /**
      * Special placeholder value for {@link #exceptionHandler()} to print the caught exception and
