@@ -30,6 +30,7 @@ import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.function.Function;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.common.FieldIntrospection;
 import org.graalvm.compiler.core.common.Fields;
 import org.graalvm.compiler.graph.Edges;
@@ -168,8 +169,8 @@ public class FieldsOffsetsFeature implements Feature {
         }
     }
 
-    private static <R extends FieldIntrospection<?>> void registerClass(Class<?> clazz, Map<Class<?>, R> registry, Function<Class<?>, R> lookup, boolean excludeAbstract,
-                    DuringAnalysisAccessImpl access) {
+    private static <R extends FieldIntrospection<?>> void registerClass(Class<?> clazz, EconomicMap<Class<?>, R> registry,
+                    Function<Class<?>, R> lookup, boolean excludeAbstract, DuringAnalysisAccessImpl access) {
         assert !registry.containsKey(clazz);
 
         if (!excludeAbstract || !Modifier.isAbstract(clazz.getModifiers())) {
@@ -247,7 +248,7 @@ public class FieldsOffsetsFeature implements Feature {
 
     @Override
     public void afterCompilation(AfterCompilationAccess access) {
-        access.registerAsImmutable(GraalSupport.get().nodeClasses.values(), o -> true);
-        access.registerAsImmutable(GraalSupport.get().instructionClasses.values(), o -> true);
+        access.registerAsImmutable(GraalSupport.get().nodeClasses.getValues(), o -> true);
+        access.registerAsImmutable(GraalSupport.get().instructionClasses.getValues(), o -> true);
     }
 }
