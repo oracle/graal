@@ -79,6 +79,7 @@ import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
 import com.oracle.svm.core.option.RuntimeOptionValues;
+import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 
@@ -100,13 +101,13 @@ public class GraalSupport {
     private Object[] graphObjects;
     private NodeClass<?>[] graphNodeTypes;
 
-    public final Map<Class<?>, NodeClass<?>> nodeClasses = new HashMap<>();
-    public final Map<Class<?>, LIRInstructionClass<?>> instructionClasses = new HashMap<>();
-    public final Map<Class<?>, CompositeValueClass<?>> compositeValueClasses = new HashMap<>();
+    public final EconomicMap<Class<?>, NodeClass<?>> nodeClasses = ImageHeapMap.create();
+    public final EconomicMap<Class<?>, LIRInstructionClass<?>> instructionClasses = ImageHeapMap.create();
+    public final EconomicMap<Class<?>, CompositeValueClass<?>> compositeValueClasses = ImageHeapMap.create();
     public HashMap<Class<? extends NodeMatchRules>, EconomicMap<Class<? extends Node>, List<MatchStatement>>> matchRuleRegistry;
 
-    protected Map<Class<?>, BasePhase.BasePhaseStatistics> basePhaseStatistics;
-    protected Map<Class<?>, LIRPhase.LIRPhaseStatistics> lirPhaseStatistics;
+    protected EconomicMap<Class<?>, BasePhase.BasePhaseStatistics> basePhaseStatistics;
+    protected EconomicMap<Class<?>, LIRPhase.LIRPhaseStatistics> lirPhaseStatistics;
     protected Function<Providers, SubstrateBackend> runtimeBackendProvider;
 
     protected final GlobalMetrics metricValues = new GlobalMetrics();
@@ -229,8 +230,8 @@ public class GraalSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void allocatePhaseStatisticsCache() {
-        GraalSupport.get().basePhaseStatistics = new HashMap<>();
-        GraalSupport.get().lirPhaseStatistics = new HashMap<>();
+        GraalSupport.get().basePhaseStatistics = ImageHeapMap.create();
+        GraalSupport.get().lirPhaseStatistics = ImageHeapMap.create();
     }
 
     /* Invoked once for every class that is reachable in the native image. */
@@ -249,7 +250,7 @@ public class GraalSupport {
         }
     }
 
-    private static <S> void registerStatistics(Class<?> phaseSubClass, Map<Class<?>, S> cache, S newStatistics, DuringAnalysisAccessImpl access) {
+    private static <S> void registerStatistics(Class<?> phaseSubClass, EconomicMap<Class<?>, S> cache, S newStatistics, DuringAnalysisAccessImpl access) {
         assert !cache.containsKey(phaseSubClass);
 
         cache.put(phaseSubClass, newStatistics);
