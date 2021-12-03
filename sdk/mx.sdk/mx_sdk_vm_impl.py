@@ -2709,6 +2709,13 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
         return super(NativeLibraryLauncherProject, self).cflags + _dynamic_cflags
 
     @property
+    def ldflags(self):
+        _dynamic_ldflags = []
+        if not mx.is_windows():
+            _dynamic_ldflags += ['-pthread']
+        return super(NativeLibraryLauncherProject, self).ldflags + _dynamic_ldflags
+
+    @property
     def ldlibs(self):
         _dynamic_ldlibs = []
         if not mx.is_windows():
