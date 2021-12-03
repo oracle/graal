@@ -328,7 +328,7 @@ public class ProgressReporter {
     }
 
     public void printCreationEnd(Timer creationTimer, Timer writeTimer, int imageSize, AnalysisUniverse universe, int numHeapObjects, long imageHeapSize, int codeCacheSize,
-                    int numCompilations) {
+                    int numCompilations, int debugInfoSize) {
         printStageEnd(creationTimer.getTotalTime() + writeTimer.getTotalTime());
         String total = bytesToHuman("%4.2f", imageSize);
         l().a("%9s in total (%2.2f%% for ", total, codeCacheSize / (double) imageSize * 100).doclink("code area", "#glossary-code-area")
@@ -336,6 +336,10 @@ public class ProgressReporter {
         l().a("%9s in code size: %,8d compilation units", bytesToHuman("%4.2f", codeCacheSize), numCompilations).flushln();
         long numInstantiatedClasses = universe.getTypes().stream().filter(t -> t.isInstantiated()).count();
         l().a("%9s in heap size: %,8d classes and %,d objects", bytesToHuman("%4.2f", imageHeapSize), numInstantiatedClasses, numHeapObjects).flushln();
+        if (debugInfoSize > 0) {
+            // TODO print number of DIEs etc.
+            l().a("%9s in debugInfo size", bytesToHuman("%4.2f", debugInfoSize)).flushln();
+        }
         if (debugInfoTimer != null) {
             String debugInfoTime = String.format("%.1fs", millisToSeconds(debugInfoTimer.getTotalTime()));
             l().dim().a("%9s for generating debug info", debugInfoTime).reset().flushln();
