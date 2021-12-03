@@ -179,6 +179,12 @@ public abstract class NativeImage extends AbstractImage {
             throw shouldNotReachHere(ex);
         }
         resultingImageSize = (int) outputFile.toFile().length();
+        debugInfoSize = 0;
+        for (Element e : objectFile.getElements()) {
+            if (e.getName().contains(".debug")) {
+                debugInfoSize += e.getMemSize(objectFile.getDecisionsByElement());
+            }
+        }
         if (NativeImageOptions.PrintImageElementSizes.getValue()) {
             for (Element e : objectFile.getElements()) {
                 System.out.printf("PrintImageElementSizes:  size: %15d  name: %s\n", e.getMemSize(objectFile.getDecisionsByElement()), e.getElementName());
