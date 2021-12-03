@@ -62,7 +62,7 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
         super(options, universe, providers, universe.hostVM(), executor, heartbeatCallback, new SubstrateUnsupportedFeatures(), SubstrateOptions.parseOnce());
         this.annotationSubstitutionProcessor = annotationSubstitutionProcessor;
 
-        dynamicHubInitializer = new DynamicHubInitializer(universe, metaAccess, unsupportedFeatures, providers.getConstantReflection());
+        dynamicHubInitializer = new DynamicHubInitializer(metaAccess, unsupportedFeatures, providers.getConstantReflection());
         unknownFieldHandler = new PointsToUnknownFieldHandler(metaAccess);
         callChecker = new CallChecker();
     }

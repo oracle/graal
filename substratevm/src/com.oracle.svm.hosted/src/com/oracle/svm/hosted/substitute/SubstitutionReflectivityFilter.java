@@ -46,7 +46,7 @@ public class SubstitutionReflectivityFilter {
     public static boolean shouldExclude(Class<?> classObj, AnalysisMetaAccess metaAccess, AnalysisUniverse universe) {
         try {
             ResolvedJavaType analysisClass = metaAccess.lookupJavaType(classObj);
-            if (!universe.hostVM().platformSupported(universe, analysisClass)) {
+            if (!universe.hostVM().platformSupported(analysisClass)) {
                 return true;
             } else if (analysisClass.isAnnotationPresent(Delete.class)) {
                 return true; // accesses would fail at runtime
@@ -60,7 +60,7 @@ public class SubstitutionReflectivityFilter {
     public static boolean shouldExclude(Executable method, AnalysisMetaAccess metaAccess, AnalysisUniverse universe) {
         try {
             AnalysisMethod aMethod = metaAccess.lookupJavaMethod(method);
-            if (!universe.hostVM().platformSupported(universe, aMethod)) {
+            if (!universe.hostVM().platformSupported(aMethod)) {
                 return true;
             } else if (aMethod.isAnnotationPresent(Delete.class)) {
                 return true; // accesses would fail at runtime
@@ -83,7 +83,7 @@ public class SubstitutionReflectivityFilter {
     public static boolean shouldExclude(Field field, AnalysisMetaAccess metaAccess, AnalysisUniverse universe) {
         try {
             AnalysisField aField = metaAccess.lookupJavaField(field);
-            if (!universe.hostVM().platformSupported(universe, aField)) {
+            if (!universe.hostVM().platformSupported(aField)) {
                 return true;
             }
             if (aField.isAnnotationPresent(Delete.class)) {

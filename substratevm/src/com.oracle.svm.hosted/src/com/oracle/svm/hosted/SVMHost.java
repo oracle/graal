@@ -45,7 +45,7 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiConsumer;
 
-import com.oracle.svm.core.jdk.SealedClassSupport;
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.debug.MethodFilter;
@@ -103,6 +103,7 @@ import com.oracle.svm.core.hub.HubType;
 import com.oracle.svm.core.hub.ReferenceType;
 import com.oracle.svm.core.jdk.ClassLoaderSupport;
 import com.oracle.svm.core.jdk.RecordSupport;
+import com.oracle.svm.core.jdk.SealedClassSupport;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.HostedStringDeduplication;
@@ -133,6 +134,7 @@ public class SVMHost implements HostVM {
     private final HostedStringDeduplication stringTable;
     private final UnsafeAutomaticSubstitutionProcessor automaticSubstitutions;
     private final List<BiConsumer<DuringAnalysisAccess, Class<?>>> classReachabilityListeners;
+    private final SnippetReflectionProvider originalSnippetReflection;
 
     /**
      * Optionally keep the Graal graphs alive during analysis. This increases the memory footprint
@@ -152,10 +154,11 @@ public class SVMHost implements HostVM {
     private static final Method getNestHostMethod = JavaVersionUtil.JAVA_SPEC >= 11 ? ReflectionUtil.lookupMethod(Class.class, "getNestHost") : null;
 
     public SVMHost(OptionValues options, ClassLoader classLoader, ClassInitializationSupport classInitializationSupport,
-                    UnsafeAutomaticSubstitutionProcessor automaticSubstitutions, Platform platform) {
+                    UnsafeAutomaticSubstitutionProcessor automaticSubstitutions, Platform platform, SnippetReflectionProvider originalSnippetReflection) {
         this.options = options;
         this.classLoader = classLoader;
         this.classInitializationSupport = classInitializationSupport;
+        this.originalSnippetReflection = originalSnippetReflection;
         this.stringTable = HostedStringDeduplication.singleton();
         this.classReachabilityListeners = new ArrayList<>();
         this.forbiddenTypes = setupForbiddenTypes(options);
@@ -531,7 +534,7 @@ public class SVMHost implements HostVM {
 
     @Override
     public void checkType(ResolvedJavaType type, AnalysisUniverse universe) {
-        Class<?> originalClass = OriginalClassProvider.getJavaClass(universe.getOriginalSnippetReflection(), type);
+        Class<?> originalClass = OriginalClassProvider.getJavaClass(originalSnippetReflection, type);
         ClassLoader originalClassLoader = originalClass.getClassLoader();
         if (NativeImageSystemClassLoader.singleton().isDisallowedClassLoader(originalClassLoader)) {
             String message = "Class " + originalClass.getName() + " was loaded by " + originalClassLoader + " and not by the current image class loader " + classLoader + ". ";
@@ -732,7 +735,7 @@ public class SVMHost implements HostVM {
 
     @Override
     public boolean skipInterface(AnalysisUniverse universe, ResolvedJavaType interfaceType, ResolvedJavaType implementingType) {
-        if (!platformSupported(universe, interfaceType)) {
+        if (!platformSupported(interfaceType)) {
             String message = "The interface " + interfaceType.toJavaName(true) + " is not available in the current platform, but used by " + implementingType.toJavaName(true) + ". " +
                             "GraalVM before version 21.2 ignored such interfaces, but this was an oversight.";
 
@@ -750,16 +753,16 @@ public class SVMHost implements HostVM {
     }
 
     @Override
-    public boolean platformSupported(AnalysisUniverse universe, AnnotatedElement element) {
+    public boolean platformSupported(AnnotatedElement element) {
         if (element instanceof ResolvedJavaType) {
-            Package p = OriginalClassProvider.getJavaClass(universe.getOriginalSnippetReflection(), (ResolvedJavaType) element).getPackage();
-            if (p != null && !platformSupported(universe, p)) {
+            Package p = OriginalClassProvider.getJavaClass(originalSnippetReflection, (ResolvedJavaType) element).getPackage();
+            if (p != null && !platformSupported(p)) {
                 return false;
             }
         }
         if (element instanceof Class) {
             Package p = ((Class<?>) element).getPackage();
-            if (p != null && !platformSupported(universe, p)) {
+            if (p != null && !platformSupported(p)) {
                 return false;
             }
         }
