@@ -412,7 +412,9 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
     }
 
     private void dumpSummary(AnalysisMethod method, MethodSummary summary) {
-        System.out.println("summary: " + method.getQualifiedName() + " " + summary.textSummary());
+        if (method.getQualifiedName().equals("java.util.Collections.newSetFromMap(java.util.Map)")) {
+            System.out.println("summary: " + method.getQualifiedName() + " " + summary.textSummary());
+        }
     }
 
     private void registerForeignCalls(StructuredGraph graph) {
