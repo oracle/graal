@@ -41,6 +41,7 @@
 package org.graalvm.nativeimage;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -136,13 +137,14 @@ public final class Isolates {
             }
 
             /**
-             * Adds an isolate argument. The syntax for arguments is the same as the one that is
+             * Appends an isolate argument. The syntax for arguments is the same as the one that is
              * used on the command-line when starting Native Image (e.g., {@code
-             * -XX:+UseReferenceHandlerThread}).
+             * -XX:+UseReferenceHandlerThread}). If the same argument is added multiple times, the
+             * last specified value will be used.
              *
              * @since 22.1
              */
-            public Builder addArgument(String argument) {
+            public Builder appendArgument(String argument) {
                 this.arguments.add(argument);
                 return this;
             }
@@ -216,7 +218,7 @@ public final class Isolates {
          * @since 22.1
          */
         public List<String> getArguments() {
-            return arguments;
+            return Collections.unmodifiableList(arguments);
         }
     }
 

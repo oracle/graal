@@ -39,7 +39,7 @@ public final class ReferenceHandler {
         return ReferenceHandlerThread.isSupported() && ReferenceHandlerThread.isEnabled();
     }
 
-    public static void processPendingReferences() {
+    public static void processPendingReferencesInRegularThread() {
         assert !useDedicatedThread() && isReferenceHandlingAllowed();
 
         /*

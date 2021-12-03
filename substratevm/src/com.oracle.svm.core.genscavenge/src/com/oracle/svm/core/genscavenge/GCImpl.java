@@ -1096,7 +1096,7 @@ public final class GCImpl implements GC {
         /* Most of the time, we won't have a pending reference list. So, we do that check first. */
         if (HeapImpl.getHeapImpl().hasReferencePendingListUnsafe() && ReferenceHandler.isReferenceHandlingAllowed()) {
             long startTime = System.nanoTime();
-            ReferenceHandler.processPendingReferences();
+            ReferenceHandler.processPendingReferencesInRegularThread();
 
             if (SubstrateGCOptions.VerboseGC.getValue() && HeapOptions.PrintGCTimes.getValue()) {
                 long executionTime = System.nanoTime() - startTime;

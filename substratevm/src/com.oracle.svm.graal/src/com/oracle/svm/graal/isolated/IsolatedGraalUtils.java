@@ -65,7 +65,7 @@ public final class IsolatedGraalUtils {
             builder.reservedAddressSpaceSize(WordFactory.signed(addressSpaceSize));
         }
         // Compilation isolates never need a dedicated reference handler thread.
-        builder.addArgument(getOptionString(SubstrateOptions.ConcealedOptions.UseReferenceHandlerThread, false));
+        builder.appendArgument(getOptionString(SubstrateOptions.ConcealedOptions.UseReferenceHandlerThread, false));
         CreateIsolateParameters params = builder.build();
         return (CompilerIsolateThread) Isolates.createIsolate(params);
     }

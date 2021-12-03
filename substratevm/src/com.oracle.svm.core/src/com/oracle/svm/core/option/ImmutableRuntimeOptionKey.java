@@ -41,6 +41,10 @@ public class ImmutableRuntimeOptionKey<T> extends RuntimeOptionKey<T> {
         super(defaultValue);
     }
 
+    public ImmutableRuntimeOptionKey(T defaultValue, boolean isRelevantForCompilationIsolate) {
+        super(defaultValue, isRelevantForCompilationIsolate);
+    }
+
     @Override
     @SuppressWarnings("unchecked")
     public void update(EconomicMap<OptionKey<?>, Object> values, Object newValue) {

@@ -34,6 +34,8 @@ import org.graalvm.compiler.options.OptionKey;
  * @see com.oracle.svm.core.option
  */
 public class RuntimeOptionKey<T> extends OptionKey<T> {
+    public static final boolean RelevantForCompilationIsolates = true;
+
     private final boolean copyToCompilationIsolate;
 
     public RuntimeOptionKey(T defaultValue) {
