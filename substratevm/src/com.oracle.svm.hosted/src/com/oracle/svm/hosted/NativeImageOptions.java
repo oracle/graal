@@ -147,7 +147,7 @@ public class NativeImageOptions {
      * Configures the number of threads used by the {@link CompletionExecutor}.
      */
     @Option(help = "The maximum number of threads to use concurrently during native image generation.")//
-    public static final HostedOptionKey<Integer> NumberOfThreads = new HostedOptionKey<>(Math.min(Runtime.getRuntime().availableProcessors(), 4));
+    public static final HostedOptionKey<Integer> NumberOfThreads = new HostedOptionKey<>(Math.min(Runtime.getRuntime().availableProcessors(), 1));
 
     /*
      * Analysis scales well up to 12 cores and gives slight improvements until 18 cores. We set the
