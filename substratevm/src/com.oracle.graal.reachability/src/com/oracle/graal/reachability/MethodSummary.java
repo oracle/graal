@@ -77,6 +77,29 @@ public class MethodSummary {
         this.foreignCallSignatures = new ForeignCallSignature[0];
     }
 
+    public String textSummary() {
+        StringBuilder builder = new StringBuilder();
+        return builder.append("invoked: ")
+                        .append(invokedMethods.length)
+                        .append(", impl invoked: ")
+                        .append(implementationInvokedMethods.length)
+                        .append(", accessed: ")
+                        .append(accessedTypes.length)
+                        .append(", instantiated: ")
+                        .append(instantiatedTypes.length)
+                        .append(", read: ")
+                        .append(readFields.length)
+                        .append(", written: ")
+                        .append(writtenFields.length)
+                        .append(", embedded: ")
+                        .append(embeddedConstants.length)
+                        .append(", desc: ")
+                        .append(foreignCallDescriptors.length)
+                        .append(", sign: ")
+                        .append(foreignCallSignatures.length)
+                        .toString();
+    }
+
     public static MethodSummary accessed(List<AnalysisType> accessedTypes) {
         return new MethodSummary(new AnalysisMethod[0], new AnalysisMethod[0], accessedTypes.toArray(new AnalysisType[0]), new AnalysisType[0], new AnalysisField[0], new AnalysisField[0]);
     }

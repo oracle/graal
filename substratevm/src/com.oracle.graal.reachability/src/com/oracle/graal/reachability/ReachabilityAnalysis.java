@@ -149,6 +149,7 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
             try (Timer.StopTimer t = summaryTimer.start()) {
                 summary = methodSummaryProvider.getSummary(this, method);
             }
+            dumpSummary(method, summary);
             processSummary(method, summary);
             summaries.put(method, summary);
         } catch (Throwable ex) {
@@ -279,15 +280,15 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
         universe.setAnalysisDataValid(false);
 
         int numTypes;
-            do {
-                runReachability();
+        do {
+            runReachability();
 
-                assert executor.getPostedOperations() == 0;
-                numTypes = universe.getTypes().size();
+            assert executor.getPostedOperations() == 0;
+            numTypes = universe.getTypes().size();
 
-                checkObjectGraph();
+            checkObjectGraph();
 
-            } while (executor.getPostedOperations() != 0 || numTypes != universe.getTypes().size());
+        } while (executor.getPostedOperations() != 0 || numTypes != universe.getTypes().size());
 
         universe.setAnalysisDataValid(true);
 
@@ -402,11 +403,16 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
             summary = methodSummaryProvider.getSummary(this, graph);
         }
         AnalysisMethod method = analysisMethod(graph.method());
+        dumpSummary(method, summary);
         method.registerAsInvoked(null);
         method.registerAsImplementationInvoked(null);
         processSummary(method, summary.withoutMethods());
 
         registerForeignCalls(graph);
+    }
+
+    private void dumpSummary(AnalysisMethod method, MethodSummary summary) {
+        System.out.println("summary: " + method.getQualifiedName() + " " + summary.textSummary());
     }
 
     private void registerForeignCalls(StructuredGraph graph) {
