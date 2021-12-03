@@ -52,7 +52,7 @@ public class UniverseMetaAccess implements WrappedMetaAccess {
             return universe.lookup(wrapped.lookupJavaType(clazz));
         }
     };
-    private final Universe universe;
+    protected final Universe universe;
     private final MetaAccessProvider wrapped;
 
     public UniverseMetaAccess(Universe universe, MetaAccessProvider wrapped) {

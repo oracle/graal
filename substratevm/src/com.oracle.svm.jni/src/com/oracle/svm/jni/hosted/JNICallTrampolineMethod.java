@@ -139,7 +139,7 @@ public class JNICallTrampolineMethod extends CustomSubstitutionMethod {
 
     private int getFieldOffset(HostedProviders providers) {
         HostedMetaAccess metaAccess = (HostedMetaAccess) providers.getMetaAccess();
-        HostedUniverse universe = (HostedUniverse) metaAccess.getUniverse();
+        HostedUniverse universe = metaAccess.getUniverse();
         AnalysisUniverse analysisUniverse = universe.getBigBang().getUniverse();
         HostedField hostedField = universe.lookup(analysisUniverse.lookup(callWrapperField));
         assert hostedField.hasLocation();
