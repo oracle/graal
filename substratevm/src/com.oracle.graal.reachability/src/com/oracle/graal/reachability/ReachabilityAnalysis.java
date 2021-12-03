@@ -279,7 +279,6 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
         universe.setAnalysisDataValid(false);
 
         int numTypes;
-        for (int i = 0; i < 10; i++) {
             do {
                 runReachability();
 
@@ -289,8 +288,6 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
                 checkObjectGraph();
 
             } while (executor.getPostedOperations() != 0 || numTypes != universe.getTypes().size());
-
-        }
 
         universe.setAnalysisDataValid(true);
 
