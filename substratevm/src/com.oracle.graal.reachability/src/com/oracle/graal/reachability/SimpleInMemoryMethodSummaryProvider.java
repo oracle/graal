@@ -62,7 +62,6 @@ import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Random;
 import java.util.stream.Collectors;
 
 public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvider {
@@ -135,8 +134,6 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
         public final List<ForeignCallSignature> foreignCallSignatures = new ArrayList<>();
 
         private MethodSummary createSummaryFromGraph(StructuredGraph graph) {
-            dump(graph);
-
             for (Node n : graph.getNodes()) {
                 if (n instanceof NewInstanceNode) {
                     NewInstanceNode node = (NewInstanceNode) n;
@@ -226,19 +223,6 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
                             accessedTypes.toArray(new AnalysisType[0]),
                             instantiatedTypes.toArray(new AnalysisType[0]), readFields.toArray(new AnalysisField[0]), writtenFields.toArray(new AnalysisField[0]),
                             embeddedConstants.toArray(new JavaConstant[0]), foreignCallDescriptors.toArray(new ForeignCallDescriptor[0]), foreignCallSignatures.toArray(new ForeignCallSignature[0]));
-        }
-
-        private void dump(StructuredGraph graph) {
-            if (!((AnalysisMethod) graph.method()).getQualifiedName().equals("java.util.Collections.newSetFromMap(java.util.Map)")) {
-                return;
-            }
-            Random rnd = new Random();
-            int id = rnd.nextInt();
-            System.out.println("=====");
-            for (Node node : graph.getNodes()) {
-                System.out.println(id + " " + node);
-            }
-            System.out.println("=====");
         }
     }
 }
