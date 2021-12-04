@@ -355,6 +355,7 @@ public abstract class RootNode extends ExecutableNode {
         }
 
         RootCallTarget clonedTarget = NodeAccessor.RUNTIME.newCallTarget(sourceCallTarget, clonedRoot);
+        NodeAccessor.RUNTIME.notifyOnLoad(clonedTarget);
 
         ReentrantLock l = clonedRoot.getLazyLock();
         l.lock();
@@ -383,7 +384,7 @@ public abstract class RootNode extends ExecutableNode {
     /** @since 0.8 or earlier */
     public final RootCallTarget getCallTarget() {
         RootCallTarget target = this.callTarget;
-        if (target == null) {
+        if (target == null || !NodeAccessor.RUNTIME.isLoaded(target)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             ReentrantLock l = getLazyLock();
             l.lock();
@@ -391,6 +392,7 @@ public abstract class RootNode extends ExecutableNode {
                 target = this.callTarget;
                 if (target == null) {
                     target = NodeAccessor.RUNTIME.newCallTarget(null, this);
+                    NodeAccessor.RUNTIME.notifyOnLoad(target);
                     if (callTarget != null) {
                         throw CompilerDirectives.shouldNotReachHere("callTarget was set by newCallTarget but should not");
                     }

@@ -989,6 +989,10 @@ public abstract class Accessor {
 
         public abstract RootCallTarget newCallTarget(CallTarget source, RootNode rootNode);
 
+        public abstract boolean isLoaded(CallTarget callTarget);
+
+        public abstract void notifyOnLoad(CallTarget callTarget);
+
         public ThreadLocalHandshake getThreadLocalHandshake() {
             return DefaultThreadLocalHandshake.SINGLETON;
         }

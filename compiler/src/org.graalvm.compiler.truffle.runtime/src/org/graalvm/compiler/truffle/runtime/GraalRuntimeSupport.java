@@ -62,7 +62,18 @@ final class GraalRuntimeSupport extends RuntimeSupport {
         assert GraalRuntimeAccessor.NODES.getCallTargetWithoutInitialization(rootNode) == null : "CallTarget for root node already initialized.";
 
         CompilerAsserts.neverPartOfCompilation();
-        OptimizedCallTarget target = GraalTruffleRuntime.getRuntime().createOptimizedCallTarget((OptimizedCallTarget) source, rootNode);
+        return GraalTruffleRuntime.getRuntime().createOptimizedCallTarget((OptimizedCallTarget) source, rootNode);
+    }
+
+    @Override
+    public boolean isLoaded(CallTarget callTarget) {
+        return ((OptimizedCallTarget) callTarget).isLoaded();
+    }
+
+    @Override
+    public void notifyOnLoad(CallTarget callTarget) {
+        CompilerAsserts.neverPartOfCompilation();
+        OptimizedCallTarget target = (OptimizedCallTarget) callTarget;
         GraalRuntimeAccessor.INSTRUMENT.onLoad(target.getRootNode());
         if (target.engine.compileAOTOnCreate) {
             if (target.prepareForAOT()) {
@@ -70,7 +81,7 @@ final class GraalRuntimeSupport extends RuntimeSupport {
             }
         }
         TruffleSplittingStrategy.newTargetCreated(target);
-        return target;
+        target.setLoaded();
     }
 
     @ExplodeLoop
