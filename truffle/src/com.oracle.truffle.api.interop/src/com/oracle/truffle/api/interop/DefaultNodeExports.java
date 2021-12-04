@@ -96,55 +96,30 @@ final class DefaultNodeExports {
     @SuppressWarnings("deprecation")
     @TruffleBoundary
     private static Object createDefaultScope(RootNode root, Frame frame, Class<? extends TruffleLanguage<?>> language) {
-        LinkedHashMap<String, Slot> slotsMap = new LinkedHashMap<>();
+        LinkedHashMap<String, Object> slotsMap = new LinkedHashMap<>();
         FrameDescriptor descriptor = frame == null ? root.getFrameDescriptor() : frame.getFrameDescriptor();
         for (com.oracle.truffle.api.frame.FrameSlot slot : descriptor.getSlots()) {
             if (!isInternal(slot.getIdentifier()) && (frame == null || InteropLibrary.isValidValue(frame.getValue(slot)))) {
-                slotsMap.put(Objects.toString(slot.getIdentifier()), new Slot(slot));
-            }
-        }
-        for (int slot = 0; slot < descriptor.getNumberOfSlots(); slot++) {
-            Object identifier = descriptor.getSlotName(slot);
-            if (!isInternal(identifier) && (frame == null || InteropLibrary.isValidValue(frame.getValue(slot)))) {
-                slotsMap.put(Objects.toString(identifier), new Slot(slot, false));
+                slotsMap.put(Objects.toString(slot.getIdentifier()), slot);
             }
         }
         for (Map.Entry<Object, Integer> entry : descriptor.getAuxiliarySlots().entrySet()) {
             if (!isInternal(entry.getKey()) && (frame == null || InteropLibrary.isValidValue(frame.getAuxiliarySlot(entry.getValue())))) {
-                slotsMap.put(Objects.toString(entry.getKey()), new Slot(entry.getValue(), true));
+                slotsMap.put(Objects.toString(entry.getKey()), entry.getValue());
             }
         }
         return new DefaultScope(slotsMap, root, frame, language);
     }
 
-    @SuppressWarnings("deprecation")
-    private static final class Slot {
-        final int index;
-        final boolean auxiliary;
-        final com.oracle.truffle.api.frame.FrameSlot frameSlot;
-
-        Slot(int index, boolean auxiliary) {
-            this.index = index;
-            this.auxiliary = auxiliary;
-            this.frameSlot = null;
-        }
-
-        Slot(com.oracle.truffle.api.frame.FrameSlot frameSlot) {
-            this.index = -1;
-            this.auxiliary = false;
-            this.frameSlot = frameSlot;
-        }
-    }
-
     @ExportLibrary(InteropLibrary.class)
     static final class DefaultScope implements TruffleObject {
 
-        private final Map<String, Slot> slots;
+        private final Map<String, Object> slots;
         private final RootNode root;
         private final Frame frame;
         private final Class<? extends TruffleLanguage<?>> language;
 
-        private DefaultScope(Map<String, Slot> slots, RootNode root, Frame frame, Class<? extends TruffleLanguage<?>> language) {
+        private DefaultScope(Map<String, Object> slots, RootNode root, Frame frame, Class<? extends TruffleLanguage<?>> language) {
             this.slots = slots;
             this.root = root;
             this.frame = frame;
@@ -185,16 +160,14 @@ final class DefaultNodeExports {
             if (frame == null) {
                 return DefaultScopeNull.INSTANCE;
             }
-            Slot slot = slots.get(member);
+            Object slot = slots.get(member);
             if (slot == null) {
                 throw UnknownIdentifierException.create(member);
             } else {
-                if (slot.frameSlot != null) {
-                    return frame.getValue(slot.frameSlot);
-                } else if (slot.auxiliary) {
-                    return frame.getAuxiliarySlot(slot.index);
+                if (slot instanceof com.oracle.truffle.api.frame.FrameSlot) {
+                    return frame.getValue((com.oracle.truffle.api.frame.FrameSlot) slot);
                 } else {
-                    return frame.getValue(slot.index);
+                    return frame.getAuxiliarySlot((int) slot);
                 }
             }
         }
@@ -214,7 +187,7 @@ final class DefaultNodeExports {
         @ExportMessage
         @TruffleBoundary
         boolean isMemberModifiable(String member) {
-            return frame != null && slots.containsKey(member);
+            return slots.containsKey(member) && frame != null;
         }
 
         @SuppressWarnings("deprecation")
@@ -224,16 +197,14 @@ final class DefaultNodeExports {
             if (frame == null) {
                 throw UnsupportedMessageException.create();
             }
-            Slot slot = slots.get(member);
+            Object slot = slots.get(member);
             if (slot == null) {
                 throw UnknownIdentifierException.create(member);
             } else {
-                if (slot.frameSlot != null) {
-                    frame.setObject(slot.frameSlot, value);
-                } else if (slot.auxiliary) {
-                    frame.setAuxiliarySlot(slot.index, value);
+                if (slot instanceof com.oracle.truffle.api.frame.FrameSlot) {
+                    frame.setObject((com.oracle.truffle.api.frame.FrameSlot) slot, value);
                 } else {
-                    frame.setObject(slot.index, value);
+                    frame.setAuxiliarySlot((int) slot, value);
                 }
             }
         }
