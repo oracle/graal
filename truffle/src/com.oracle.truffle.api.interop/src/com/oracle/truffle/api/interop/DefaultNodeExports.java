@@ -66,25 +66,19 @@ final class DefaultNodeExports {
     @ExportMessage
     @SuppressWarnings("unused")
     static boolean hasScope(Node node, Frame frame) {
-        if (InteropAccessor.ACCESSOR.instrumentSupport().isInstrumentable(node)) {
-            RootNode root = node.getRootNode();
-            TruffleLanguage<?> language = InteropAccessor.NODES.getLanguage(root);
-            return language != null;
-        } else {
-            return false;
-        }
+        RootNode root = node.getRootNode();
+        TruffleLanguage<?> language = InteropAccessor.NODES.getLanguage(root);
+        return language != null && (node == root || InteropAccessor.ACCESSOR.instrumentSupport().isInstrumentable(node));
     }
 
     @TruffleBoundary
     @ExportMessage
     @SuppressWarnings({"unchecked", "unused"})
     static Object getScope(Node node, Frame frame, boolean nodeEnter) throws UnsupportedMessageException {
-        if (InteropAccessor.ACCESSOR.instrumentSupport().isInstrumentable(node)) {
-            RootNode root = node.getRootNode();
-            TruffleLanguage<?> language = InteropAccessor.NODES.getLanguage(root);
-            if (language != null) {
-                return createDefaultScope(root, frame, (Class<? extends TruffleLanguage<?>>) language.getClass());
-            }
+        RootNode root = node.getRootNode();
+        TruffleLanguage<?> language = InteropAccessor.NODES.getLanguage(root);
+        if (language != null && (node == root || InteropAccessor.ACCESSOR.instrumentSupport().isInstrumentable(node))) {
+            return createDefaultScope(root, frame, (Class<? extends TruffleLanguage<?>>) language.getClass());
         }
         throw UnsupportedMessageException.create();
     }
