@@ -1731,7 +1731,8 @@ public class NativeImageGenerator {
          * they are JDK internal types.
          */
         String lname = name.toLowerCase();
-        if (lname.contains("hosted")) {
+        // todo resolve (d-kozak)
+        if (lname.contains("hosted") && !lname.startsWith("com.oracle.svm.core.graal.snippets.deopthostedsnippets")) {
             bb.getUnsupportedFeatures().addMessage(name, method, "Hosted element used at run time: " + name);
         } else if (SubstrateUtil.isBuildingLibgraal() && (!name.startsWith("jdk.internal")) && (lname.contains("hotspot"))) {
             bb.getUnsupportedFeatures().addMessage(name, method, "HotSpot element used at run time: " + name);
