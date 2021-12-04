@@ -53,6 +53,8 @@ import org.graalvm.compiler.nodes.java.NewArrayNode;
 import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.nodes.java.NewMultiArrayNode;
 import org.graalvm.compiler.nodes.java.StoreFieldNode;
+import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
+import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.MacroInvokable;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
@@ -149,6 +151,16 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
                         instantiatedTypes.add(analysisType(type));
                         type = type.getComponentType();
                     }
+                } else if (n instanceof VirtualInstanceNode) {
+                    VirtualInstanceNode node = (VirtualInstanceNode) n;
+                    instantiatedTypes.add(analysisType(node.type()));
+                    for (ResolvedJavaField field : node.getFields()) {
+                        readFields.add(analysisField(field));
+                        writtenFields.add(analysisField(field));
+                    }
+                } else if (n instanceof VirtualArrayNode) {
+                    VirtualArrayNode node = (VirtualArrayNode) n;
+                    instantiatedTypes.add(analysisType(node.componentType()).getArrayClass());
                 } else if (n instanceof ConstantNode) {
                     ConstantNode node = (ConstantNode) n;
                     if (!(node.getValue() instanceof JavaConstant)) {
