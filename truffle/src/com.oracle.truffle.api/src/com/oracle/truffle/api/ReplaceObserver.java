@@ -43,7 +43,8 @@ package com.oracle.truffle.api;
 import com.oracle.truffle.api.nodes.Node;
 
 /**
- * An observer that is notified whenever a child node is replaced.
+ * An observer that is notified whenever a child node is replaced. Note this is <b>not</b> called if
+ * the RootNode does not have a CallTarget yet.
  * 
  * @since 0.8 or earlier
  */
