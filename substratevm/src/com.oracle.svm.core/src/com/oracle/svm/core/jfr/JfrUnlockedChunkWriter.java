@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.jfr;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
+
 /**
  * An interface that collects all {@link JfrChunkWriter} methods that may be called without holding
  * a lock.
@@ -44,5 +46,6 @@ public interface JfrUnlockedChunkWriter {
      * It is valid to call this method without locking but be aware that the result will be racy in
      * that case.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     boolean hasOpenFile();
 }
