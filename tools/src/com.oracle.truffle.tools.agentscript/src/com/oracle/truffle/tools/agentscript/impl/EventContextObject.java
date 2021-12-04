@@ -29,6 +29,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.instrumentation.EventContext;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -128,9 +129,10 @@ final class EventContextObject extends AbstractContextObject {
                 return null;
             }
             final Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_WRITE);
-            if (lib.hasScope(n, frame)) {
+            Node instrumentableNode = InstrumentableNode.findInstrumentableParent(n);
+            if (instrumentableNode != null && lib.hasScope(instrumentableNode, frame)) {
                 try {
-                    Object frameVars = lib.getScope(n, frame, false);
+                    Object frameVars = lib.getScope(instrumentableNode, frame, false);
                     Object ret = iop.execute(callback, location, frameVars);
                     return iop.isNull(ret) ? null : ret;
                 } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException ex) {
