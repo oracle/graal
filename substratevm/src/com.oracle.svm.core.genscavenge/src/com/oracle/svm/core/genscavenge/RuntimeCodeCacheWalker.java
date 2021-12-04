@@ -113,10 +113,12 @@ final class RuntimeCodeCacheWalker implements CodeInfoVisitor {
         return true;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.")
     private static boolean isReachable(Object possiblyForwardedObject) {
         return RuntimeCodeCacheReachabilityAnalyzer.isReachable(Word.objectToUntrackedPointer(possiblyForwardedObject));
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.")
     private boolean hasWeakReferenceToUnreachableObject(CodeInfo codeInfo) {
         checkForUnreachableObjectsVisitor.initialize();
         RuntimeCodeInfoAccess.walkWeakReferences(codeInfo, checkForUnreachableObjectsVisitor);

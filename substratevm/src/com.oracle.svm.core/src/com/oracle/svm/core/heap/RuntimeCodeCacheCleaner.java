@@ -81,6 +81,7 @@ public final class RuntimeCodeCacheCleaner implements CodeInfoVisitor {
         return true;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.")
     private static void freeMemory(CodeInfo codeInfo) {
         boolean removed = RuntimeCodeInfoMemory.singleton().removeDuringGC(codeInfo);
         assert removed : "must have been present";
