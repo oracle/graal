@@ -96,14 +96,18 @@ _base_jdk = None
 
 
 class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
-    def __init__(self, destination, jar_distributions, build_args, use_modules=None, links=None, is_polyglot=False, dir_jars=False, home_finder=False, build_time=1):  # pylint: disable=super-init-not-called
+    def __init__(self, destination, jar_distributions, build_args, use_modules=None, links=None, is_polyglot=False, dir_jars=False, home_finder=False, build_time=1, build_args_enterprise=None):  # pylint: disable=super-init-not-called
         """
         :type destination: str
         :type jar_distributions: list[str]
         :type build_args: list[str]
-        :type links: list[str]
-        :param str use_modules: Run (with 'laucher') or run and build image with module support (with 'image').
+        :param str | None use_modules: Run (with 'launcher') or run and build image with module support (with 'image').
+        :type links: list[str] | None
+        :type is_polyglot: bool
         :param bool dir_jars: If true, all jars in the component directory are added to the classpath.
+        :type home_finder: bool
+        :type build_time: int
+        :type build_args_enterprise: list[str] | None
         """
         self.destination = mx_subst.path_substitutions.substitute(destination)
         self.jar_distributions = jar_distributions
@@ -114,10 +118,12 @@ class AbstractNativeImageConfig(_with_metaclass(ABCMeta, object)):
         self.dir_jars = dir_jars
         self.home_finder = home_finder
         self.build_time = build_time
+        self.build_args_enterprise = build_args_enterprise or []
         self.relative_home_paths = {}
 
         assert isinstance(self.jar_distributions, list)
         assert isinstance(self.build_args, (list, types.GeneratorType))
+        assert isinstance(self.build_args_enterprise, list)
 
     def __str__(self):
         return self.destination
@@ -159,11 +165,12 @@ class LauncherConfig(AbstractNativeImageConfig):
         :param bool is_main_launcher
         :param bool default_symlinks
         :param bool is_sdk_launcher: Whether it uses org.graalvm.launcher.Launcher
-        :param str use_modules: Run (with 'laucher') or run and build image with module support (with 'image').
-        :param str main_module: Specifies the main module. Mandatory if use_modules is not None
         :param str custom_launcher_script: Custom launcher script, to be used when not compiled as a native image
+        :param list[str] | None extra_jvm_args
+        :param str main_module: Specifies the main module. Mandatory if use_modules is not None
+        :param list[str] | None option_vars
         """
-        super(LauncherConfig, self).__init__(destination, jar_distributions, build_args, use_modules, home_finder=home_finder, **kwargs)
+        super(LauncherConfig, self).__init__(destination, jar_distributions, build_args, use_modules=use_modules, home_finder=home_finder, **kwargs)
         self.main_module = main_module
         assert self.use_modules is None or self.main_module
         self.main_class = main_class
@@ -194,7 +201,7 @@ class LibraryConfig(AbstractNativeImageConfig):
         """
         :param bool jvm_library
         """
-        super(LibraryConfig, self).__init__(destination, jar_distributions, build_args, use_modules, home_finder=home_finder, **kwargs)
+        super(LibraryConfig, self).__init__(destination, jar_distributions, build_args, use_modules=use_modules, home_finder=home_finder, **kwargs)
         self.jvm_library = jvm_library
 
 
