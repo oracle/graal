@@ -62,23 +62,31 @@ import com.oracle.truffle.api.source.SourceSection;
 @SuppressWarnings("static-method")
 final class DefaultNodeExports {
 
+    @TruffleBoundary
     @ExportMessage
     @SuppressWarnings("unused")
     static boolean hasScope(Node node, Frame frame) {
-        RootNode root = node.getRootNode();
-        TruffleLanguage<?> language = InteropAccessor.NODES.getLanguage(root);
-        return language != null;
+        if (InteropAccessor.ACCESSOR.instrumentSupport().isInstrumentable(node)) {
+            RootNode root = node.getRootNode();
+            TruffleLanguage<?> language = InteropAccessor.NODES.getLanguage(root);
+            return language != null;
+        } else {
+            return false;
+        }
     }
 
+    @TruffleBoundary
     @ExportMessage
     @SuppressWarnings({"unchecked", "unused"})
     static Object getScope(Node node, Frame frame, boolean nodeEnter) throws UnsupportedMessageException {
-        RootNode root = node.getRootNode();
-        TruffleLanguage<?> language = InteropAccessor.NODES.getLanguage(root);
-        if (language == null) {
-            throw UnsupportedMessageException.create();
+        if (InteropAccessor.ACCESSOR.instrumentSupport().isInstrumentable(node)) {
+            RootNode root = node.getRootNode();
+            TruffleLanguage<?> language = InteropAccessor.NODES.getLanguage(root);
+            if (language != null) {
+                return createDefaultScope(root, frame, (Class<? extends TruffleLanguage<?>>) language.getClass());
+            }
         }
-        return createDefaultScope(root, frame, (Class<? extends TruffleLanguage<?>>) language.getClass());
+        throw UnsupportedMessageException.create();
     }
 
     private static boolean isInternal(Object identifier) {
