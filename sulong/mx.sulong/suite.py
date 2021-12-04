@@ -991,6 +991,7 @@ suite = {
       "variants" : ["bitcode-O0"],
       "cmakeConfig" : {
         "CMAKE_C_FLAGS" : "-pthread",
+        "CMAKE_C_LINK_FLAGS" : "-pthread",
       },
       "dependencies" : [
         "SULONG_TEST",
