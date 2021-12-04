@@ -154,10 +154,10 @@ public class SimpleInMemoryMethodSummaryProvider implements MethodSummaryProvide
                 } else if (n instanceof VirtualInstanceNode) {
                     VirtualInstanceNode node = (VirtualInstanceNode) n;
                     instantiatedTypes.add(analysisType(node.type()));
-                    for (ResolvedJavaField field : node.getFields()) {
-                        readFields.add(analysisField(field));
-                        writtenFields.add(analysisField(field));
-                    }
+// for (ResolvedJavaField field : node.getFields()) {
+// readFields.add(analysisField(field));
+// writtenFields.add(analysisField(field));
+// }
                 } else if (n instanceof VirtualArrayNode) {
                     VirtualArrayNode node = (VirtualArrayNode) n;
                     instantiatedTypes.add(analysisType(node.componentType()).getArrayClass());
