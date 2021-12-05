@@ -121,7 +121,7 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
         if (!method.isStatic()) {
             markTypeInstantiated(method.getDeclaringClass());
         }
-        method.registerAsInvoked(null);
+        method.registerAsInvoked();
         markMethodImplementationInvoked(method, new RuntimeException().getStackTrace());
         return method;
     }
@@ -134,7 +134,7 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
             new RuntimeException().printStackTrace();
             return;
         }
-        if (!method.registerAsImplementationInvoked(null)) {
+        if (!method.registerAsImplementationInvoked()) {
             return;
         }
         schedule(() -> onMethodImplementationInvoked(method));
@@ -250,7 +250,7 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
     }
 
     private void markMethodInvoked(AnalysisMethod method) {
-        if (!method.registerAsInvoked(null)) {
+        if (!method.registerAsInvoked()) {
             return;
         }
         schedule(() -> onMethodInvoked(method));
@@ -402,8 +402,8 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
             summary = methodSummaryProvider.getSummary(this, graph);
         }
         AnalysisMethod method = analysisMethod(graph.method());
-        method.registerAsInvoked(null);
-        method.registerAsImplementationInvoked(null);
+        method.registerAsInvoked();
+        method.registerAsImplementationInvoked();
         processSummary(method, summary.withoutMethods());
 
         registerForeignCalls(graph);

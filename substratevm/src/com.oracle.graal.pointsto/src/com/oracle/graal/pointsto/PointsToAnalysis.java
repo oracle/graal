@@ -654,7 +654,7 @@ public abstract class PointsToAnalysis implements BigBang {
 
     @Override
     public void markMethodImplementationInvoked(AnalysisMethod method, Object reason) {
-        addRootMethod(method).registerAsImplementationInvoked(null);
+        addRootMethod(method).registerAsImplementationInvoked();
 
     }
 

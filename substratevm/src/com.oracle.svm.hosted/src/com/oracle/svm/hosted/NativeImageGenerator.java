@@ -63,7 +63,6 @@ import java.util.stream.Collectors;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisFactory;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
-import com.oracle.graal.pointsto.infrastructure.WrappedElement;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.reachability.MethodSummary;
 import com.oracle.graal.reachability.SimpleInMemoryMethodSummaryProvider;
@@ -802,7 +801,7 @@ public class NativeImageGenerator {
 
     @SuppressWarnings("unused")
     private static List<AnalysisMethod> getCalleesP(NativeImagePointsToAnalysis bb, AnalysisMethod method) {
-        return method.getTypeFlow().getInvokes().stream().flatMap(it -> it.getCallees().stream()).collect(Collectors.toList());
+        return ((PointsToAnalysisMethod) method).getTypeFlow().getInvokes().stream().flatMap(it -> it.getCallees().stream()).collect(Collectors.toList());
     }
 
     private static List<AnalysisMethod> getCalleesR(NativeImageReachabilityAnalysis bb, AnalysisMethod method) {
