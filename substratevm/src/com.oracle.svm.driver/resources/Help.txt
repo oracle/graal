@@ -7,6 +7,9 @@ Usage: native-image [options] class [imagename] [options]
            (to build an image for a class)
    or  native-image [options] -jar jarfile [imagename] [options]
            (to build an image for a jar file)
+   or  native-image [options] -m <module>[/<mainclass>] [options]
+       native-image [options] --module <module>[/<mainclass>] [options]
+           (to build an image for a module)
 
 where options include:
 
@@ -16,6 +19,14 @@ where options include:
     --class-path <class search path of directories and zip/jar files>
                           A %pathsep% separated list of directories, JAR archives,
                           and ZIP archives to search for class files.
+    -p <module path>
+    --module-path <module path>...
+                          A %pathsep% separated list of directories, each directory
+                          is a directory of modules.
+    --add-modules <module name>[,<module name>...]
+                          root modules to resolve in addition to the initial module.
+                          <module name> can also be ALL-DEFAULT, ALL-SYSTEM,
+                          ALL-MODULE-PATH.
     -D<name>=<value>      set a system property
     -J<flag>              pass <flag> directly to the JVM running the image generator
     -O<level>             0 - no optimizations, 1 - basic optimizations (default).
