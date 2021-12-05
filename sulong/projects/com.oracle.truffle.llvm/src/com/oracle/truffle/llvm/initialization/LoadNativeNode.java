@@ -41,6 +41,8 @@ import com.oracle.truffle.llvm.runtime.NativeContextExtension;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.c.LLVMDLOpen;
 
+import java.util.ArrayList;
+
 public final class LoadNativeNode extends RootNode {
 
     private final String path;
@@ -55,6 +57,7 @@ public final class LoadNativeNode extends RootNode {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public Object execute(VirtualFrame frame) {
         Object[] arguments = frame.getArguments();
         Object library = null;
@@ -74,6 +77,12 @@ public final class LoadNativeNode extends RootNode {
             LLVMContext context = LLVMContext.get(this);
             library = parseAndInitialiseNativeLib(context);
         }
+
+        if (LLVMLoadingPhase.BUILD_DEPENDENCY.isActive(phase)) {
+            ArrayList<CallTarget> dependencies = (ArrayList<CallTarget>) frame.getArguments()[2];
+            dependencies.add(this.getCallTarget());
+        }
+
         return library;
     }
 

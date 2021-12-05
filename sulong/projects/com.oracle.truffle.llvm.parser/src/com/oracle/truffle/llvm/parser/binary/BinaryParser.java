@@ -60,6 +60,7 @@ import com.oracle.truffle.llvm.runtime.Magic;
 public final class BinaryParser {
 
     private ArrayList<String> libraries = new ArrayList<>();
+    private String libraryName = null;
     private ArrayList<String> paths = new ArrayList<>();
     private LibraryLocator locator = DefaultLibraryLocator.INSTANCE;
 
@@ -90,7 +91,7 @@ public final class BinaryParser {
         if (bcSource != null) {
             LibraryLocator.traceParseBitcode(context, bcSource.getPath());
         }
-        return new BinaryParserResult(libraries, paths, bitcode, locator, bcSource);
+        return new BinaryParserResult(libraries, paths, bitcode, locator, bcSource, libraryName);
     }
 
     public static String getOrigin(Source source) {
@@ -111,6 +112,9 @@ public final class BinaryParser {
     private ByteSequence parseBitcode(ByteSequence bytes, Source source) {
         BitStream b = BitStream.create(bytes);
         Magic magicWord = getMagic(b);
+        if (source != null) {
+            libraryName = source.getName();
+        }
         switch (magicWord) {
             case BC_MAGIC_WORD:
                 return bytes;
@@ -133,6 +137,10 @@ public final class BinaryParser {
                 if (dynamicSection != null) {
                     List<String> elfLibraries = dynamicSection.getDTNeeded();
                     libraries.addAll(elfLibraries);
+                    String soName = dynamicSection.getDTSOName();
+                    if (soName != null) {
+                        libraryName = soName;
+                    }
                     locator = new ElfLibraryLocator(elfFile, source);
                 }
                 long elfOffset = llvmbc.getOffset();
