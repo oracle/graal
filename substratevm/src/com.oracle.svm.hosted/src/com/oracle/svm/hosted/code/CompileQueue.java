@@ -402,11 +402,12 @@ public class CompileQueue {
             try (ProgressReporter.ReporterClosable ac = reporter.printParsing(new Timer(imageName, "(parse)"))) {
                 parseAll();
             }
+            // todo re-enable
             // Checking @Uninterruptible annotations does not take long enough to justify a timer.
-            new UninterruptibleAnnotationChecker(universe.getMethods()).check();
+// new UninterruptibleAnnotationChecker(universe.getMethods()).check();
             // Checking @RestrictHeapAccess annotations does not take long enough to justify a
             // timer.
-            RestrictHeapAccessAnnotationChecker.check(debug, universe, universe.getMethods());
+// RestrictHeapAccessAnnotationChecker.check(debug, universe, universe.getMethods());
 
             /*
              * The graph in the analysis universe is no longer necessary. This clears the graph for
