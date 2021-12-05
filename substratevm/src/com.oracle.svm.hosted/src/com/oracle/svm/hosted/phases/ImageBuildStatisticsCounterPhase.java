@@ -58,15 +58,15 @@ public class ImageBuildStatisticsCounterPhase extends Phase {
     }
 
     /*
-     * We are in the hosted part, and need to compare current node source positions
-     * with those present after bytecode parser is done, so we unwrap information.
+     * We are in the hosted part, and need to compare current node source positions with those
+     * present after bytecode parser is done, so we unwrap information.
      */
     private static NodeSourcePosition makeNonHostedSourcePosition(NodeSourcePosition hosted) {
         NodeSourcePosition hostedNodeSourcePosition = hosted;
         NodeSourcePosition nonHostedNodeSourcePosition = unWrapped(hostedNodeSourcePosition);
 
         while (hostedNodeSourcePosition.getCaller() != null) {
-            nonHostedNodeSourcePosition =  nonHostedNodeSourcePosition.addCaller(unWrapped(hostedNodeSourcePosition.getCaller()));
+            nonHostedNodeSourcePosition = nonHostedNodeSourcePosition.addCaller(unWrapped(hostedNodeSourcePosition.getCaller()));
             hostedNodeSourcePosition = hostedNodeSourcePosition.getCaller();
         }
         return nonHostedNodeSourcePosition;

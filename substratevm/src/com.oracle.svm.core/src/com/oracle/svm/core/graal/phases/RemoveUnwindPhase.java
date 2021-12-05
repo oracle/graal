@@ -142,8 +142,8 @@ public class RemoveUnwindPhase extends Phase {
         throwNode.setStateBefore(bytecodeExceptionNode.createStateDuring());
 
         /*
-         * BytecodeExceptionNode instance is replaced with ThrowBytecodeExceptionNode instance,
-         * so we copy its node source position to not lose information.
+         * BytecodeExceptionNode instance is replaced with ThrowBytecodeExceptionNode instance, so
+         * we copy its node source position to not lose information.
          */
         throwNode.setNodeSourcePosition(bytecodeExceptionNode.getNodeSourcePosition());
 

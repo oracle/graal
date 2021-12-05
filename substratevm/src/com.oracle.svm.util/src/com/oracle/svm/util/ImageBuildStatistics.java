@@ -110,8 +110,8 @@ public class ImageBuildStatistics {
                     original.add(nodeSourcePosition);
                 } else if (BytecodeExceptionNodeSourceCollection.hasOriginalPrefix(nodeSourcePosition)) {
                     /*
-                     * This node source position is from inlining, maybe new one
-                     * or duplication occurred after something inlined.
+                     * This node source position is from inlining, maybe new one or duplication
+                     * occurred after something inlined.
                      */
                 } else {
                     if (BytecodeExceptionNodeSourceCollection.hasRootFromExceptionObject(nodeSourcePosition)) {

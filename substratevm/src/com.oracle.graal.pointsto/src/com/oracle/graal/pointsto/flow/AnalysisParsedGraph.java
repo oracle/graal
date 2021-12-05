@@ -153,7 +153,7 @@ public final class AnalysisParsedGraph {
              */
             bb.getHostVM().methodAfterParsingHook(bb, method, graph);
 
-            if(CollectImageBuildStatistics.getValue(bb.getOptions())) {
+            if (CollectImageBuildStatistics.getValue(bb.getOptions())) {
                 BytecodeExceptionNodeSourceCollection.create().collect(graph);
             }
 

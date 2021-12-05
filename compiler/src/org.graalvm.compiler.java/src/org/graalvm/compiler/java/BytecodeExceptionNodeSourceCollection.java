@@ -45,8 +45,8 @@ public class BytecodeExceptionNodeSourceCollection {
                 originals.add(node.getNodeSourcePosition());
             } else if (node instanceof ExceptionObjectNode) {
                 /*
-                 * These source positions are also important because ExceptionObjectNode is
-                 * the entry to an exception handler with the exception coming from a call.
+                 * These source positions are also important because ExceptionObjectNode is the
+                 * entry to an exception handler with the exception coming from a call.
                  */
                 exceptionObjectsSourcePosition.add(node.getNodeSourcePosition());
             }
@@ -80,7 +80,7 @@ public class BytecodeExceptionNodeSourceCollection {
 
     private static boolean equals(NodeSourcePosition position1, NodeSourcePosition position2) {
         return position1.getBCI() == position2.getBCI() && Objects.equals(position1.getMethod(), position2.getMethod()) &&
-                Objects.equals(position1.getSourceLanguage(), position2.getSourceLanguage());
+                        Objects.equals(position1.getSourceLanguage(), position2.getSourceLanguage());
     }
 
     private static boolean foundPrefix(NodeSourcePosition original, NodeSourcePosition newNodeSourcePosition) {
@@ -102,7 +102,7 @@ public class BytecodeExceptionNodeSourceCollection {
     }
 
     public static boolean hasOriginalPrefix(NodeSourcePosition nodeSourcePosition) {
-        for (NodeSourcePosition org: originals) {
+        for (NodeSourcePosition org : originals) {
             if (foundPrefix(org, nodeSourcePosition)) {
                 return true;
             }
