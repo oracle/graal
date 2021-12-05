@@ -314,7 +314,12 @@ public class SubstrateGraphBuilderPlugins {
      * will not change.
      */
     static Class<?>[] extractClassArray(SnippetReflectionProvider snippetReflection, AnnotationSubstitutionProcessor annotationSubstitutions, ValueNode arrayNode) {
-        return extractClassArray(annotationSubstitutions, snippetReflection, arrayNode, false);
+        Class<?>[] classes = extractClassArray(annotationSubstitutions, snippetReflection, arrayNode, false);
+        /*
+         * If any of the element is null just bailout, this is probably a situation where the array
+         * will be filled in later and we don't track that.
+         */
+        return classes == null ? null : Stream.of(classes).allMatch(Objects::nonNull) ? classes : null;
     }
 
     /**
@@ -336,13 +341,7 @@ public class SubstrateGraphBuilderPlugins {
              * The array is a constant, however that doesn't make the array immutable, i.e., its
              * elements can still be changed. We assume that will not happen.
              */
-            Class<?>[] classes = snippetReflection.asObject(Class[].class, originalArrayNode.asJavaConstant());
-
-            /*
-             * If any of the element is null just bailout, this is probably a situation where the
-             * array will be filled in later and we don't track that.
-             */
-            return classes == null ? null : Stream.of(classes).allMatch(Objects::nonNull) ? classes : null;
+            return snippetReflection.asObject(Class[].class, originalArrayNode.asJavaConstant());
 
         } else if (originalArrayNode instanceof AllocatedObjectNode && StampTool.isAlwaysArray(originalArrayNode)) {
             AllocatedObjectNode allocatedObjectNode = (AllocatedObjectNode) originalArrayNode;
@@ -424,7 +423,7 @@ public class SubstrateGraphBuilderPlugins {
                 successor = unwrapNode(store.next());
             }
 
-            if (successor != null) {
+            if (successor != null && exact) {
                 /* Nodes after the array store could interfere with the array. */
                 return null;
             }
