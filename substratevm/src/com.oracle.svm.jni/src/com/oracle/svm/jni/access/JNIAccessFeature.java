@@ -64,6 +64,7 @@ import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.meta.MaterializedConstantFields;
+import com.oracle.svm.hosted.reporting.ProgressReporter;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.jni.JNIJavaCallWrappers;
 import com.oracle.svm.jni.JNISupport;
@@ -338,11 +339,26 @@ public class JNIAccessFeature implements Feature {
     }
 
     @Override
+    @SuppressWarnings("unused")
     public void afterAnalysis(AfterAnalysisAccess access) {
         sealed = true;
         if (wereElementsAdded()) {
             abortIfSealed();
         }
+
+        int numClasses = 0;
+        int numFields = 0;
+        int numMethods = 0;
+        for (JNIAccessibleClass clazz : JNIReflectionDictionary.singleton().getClasses()) {
+            numClasses++;
+            for (JNIAccessibleField f : clazz.getFields()) {
+                numFields++;
+            }
+            for (JNIAccessibleMethod m : clazz.getMethods()) {
+                numMethods++;
+            }
+        }
+        ProgressReporter.singleton().setJNIInfo(numClasses, numFields, numMethods);
     }
 
     @Override

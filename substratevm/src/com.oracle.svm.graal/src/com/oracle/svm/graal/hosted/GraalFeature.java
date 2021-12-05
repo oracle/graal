@@ -641,6 +641,11 @@ public final class GraalFeature implements Feature {
     }
 
     @Override
+    public void afterAnalysis(AfterAnalysisAccess access) {
+        ProgressReporter.singleton().setNumRuntimeCompiledMethods(methods.size());
+    }
+
+    @Override
     @SuppressWarnings("try")
     public void beforeCompilation(BeforeCompilationAccess c) {
         CompilationAccessImpl config = (CompilationAccessImpl) c;
@@ -648,8 +653,6 @@ public final class GraalFeature implements Feature {
         if (Options.PrintRuntimeCompileMethods.getValue()) {
             printCallTree();
         }
-
-        ProgressReporter.singleton().printRuntimeCompileMethods(methods.size(), config.getMethods().size());
 
         if (Options.PrintStaticTruffleBoundaries.getValue()) {
             printStaticTruffleBoundaries();
