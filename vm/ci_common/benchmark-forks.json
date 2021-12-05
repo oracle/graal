@@ -1,6 +1,8 @@
 {
-    "warmup/specjbb2005.js": 3, 
-    "interpreter/jsinit.js": 5, 
-    "interpreter/rbinit.rb": 5, 
+    "warmup/specjbb2005.js": 3,
+    "warmup/acorn-polybench.js": 3,
+    "warmup/typescript-polybench.js": 3,
+    "interpreter/jsinit.js": 5,
+    "interpreter/rbinit.rb": 5,
     "interpreter/pyinit.py": 5
 }
