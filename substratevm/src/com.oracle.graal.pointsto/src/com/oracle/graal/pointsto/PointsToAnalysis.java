@@ -45,6 +45,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.function.Function;
 
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
@@ -437,7 +438,7 @@ public abstract class PointsToAnalysis implements BigBang {
         }
         aMethod.registerAsRootMethod();
 
-        final MethodTypeFlow methodFlow = aMethod.getTypeFlow();
+        final MethodTypeFlow methodFlow = assertPointsToAnalysisMethod(aMethod).getTypeFlow();
         try (Indent indent = debug.logAndIndent("add root method %s", aMethod.getName())) {
             boolean isStatic = Modifier.isStatic(aMethod.getModifiers());
             int paramCount = aMethod.getSignature().getParameterCount(!isStatic);
@@ -468,6 +469,11 @@ public abstract class PointsToAnalysis implements BigBang {
         });
 
         return aMethod;
+    }
+
+    public static PointsToAnalysisMethod assertPointsToAnalysisMethod(AnalysisMethod aMethod) {
+        assert aMethod instanceof PointsToAnalysisMethod : "Only points-to analysis methods are supported";
+        return ((PointsToAnalysisMethod) aMethod);
     }
 
     @Override

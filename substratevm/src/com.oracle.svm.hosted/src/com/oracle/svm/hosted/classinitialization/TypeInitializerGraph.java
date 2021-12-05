@@ -33,10 +33,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
@@ -159,7 +159,7 @@ public class TypeInitializerGraph {
      * types unknown to points-to analysis (which sees only the substituted version.
      */
     private Safety initialMethodSafety(AnalysisMethod m) {
-        return m.getTypeFlow().getInvokes().stream().anyMatch(this::isInvokeInitiallyUnsafe) ||
+        return m.getInvokes().stream().anyMatch(this::isInvokeInitiallyUnsafe) ||
                         hostVM.hasClassInitializerSideEffect(m) ||
                         isSubstitutedMethod(m) ? Safety.UNSAFE : Safety.SAFE;
     }
@@ -171,7 +171,7 @@ public class TypeInitializerGraph {
     /**
      * Unsafe invokes (1) call native methods, and/or (2) can't be statically bound.
      */
-    private boolean isInvokeInitiallyUnsafe(InvokeTypeFlow i) {
+    private boolean isInvokeInitiallyUnsafe(InvokeInfo i) {
         return i.getTargetMethod().isNative() ||
                         !i.canBeStaticallyBound();
     }
@@ -201,8 +201,7 @@ public class TypeInitializerGraph {
      */
     private boolean updateMethodSafety(AnalysisMethod m) {
         assert methodSafety.get(m) == Safety.SAFE;
-        Collection<InvokeTypeFlow> invokes = m.getTypeFlow().getInvokes();
-        if (invokes.stream().anyMatch(this::isInvokeUnsafeIterative)) {
+        if (m.getInvokes().stream().anyMatch(this::isInvokeUnsafeIterative)) {
             methodSafety.put(m, Safety.UNSAFE);
             return true;
         }
@@ -216,7 +215,7 @@ public class TypeInitializerGraph {
     /**
      * Invoke becomes unsafe if it calls other unsafe methods.
      */
-    private boolean isInvokeUnsafeIterative(InvokeTypeFlow i) {
+    private boolean isInvokeUnsafeIterative(InvokeInfo i) {
         /*
          * Note that even though (for now) we only process invokes that can be statically bound, we
          * cannot just take the target method of the type flow: the static analysis can

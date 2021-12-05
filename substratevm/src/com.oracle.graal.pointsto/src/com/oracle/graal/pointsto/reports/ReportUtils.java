@@ -41,12 +41,12 @@ import java.util.function.Consumer;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.AllInstantiatedTypeFlow;
-import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 
+import com.oracle.graal.pointsto.meta.InvokeInfo;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -60,7 +60,7 @@ public class ReportUtils {
 
     public static final Comparator<ResolvedJavaMethod> methodComparator = Comparator.comparing(m -> m.format("%H.%n(%p)"));
     static final Comparator<AnalysisField> fieldComparator = Comparator.comparing(f -> f.format("%H.%n"));
-    static final Comparator<InvokeTypeFlow> invokeComparator = Comparator.comparing(i -> i.getTargetMethod().format("%H.%n(%p)"));
+    static final Comparator<InvokeInfo> invokeInfoComparator = Comparator.comparing(i -> i.getTargetMethod().format("%H.%n(%p)"));
     static final Comparator<BytecodePosition> positionMethodComparator = Comparator.comparing(pos -> pos.getMethod().format("%H.%n(%p)"));
     static final Comparator<BytecodePosition> positionComparator = positionMethodComparator.thenComparing(pos -> pos.getBCI());
 
@@ -218,11 +218,12 @@ public class ReportUtils {
 
     public static String parsingContext(AnalysisMethod method, int bci, String indent) {
         StringBuilder msg = new StringBuilder();
-        if (method.getTypeFlow().getParsingContext().length > 0) {
+        StackTraceElement[] parsingContext = method.getParsingContext();
+        if (parsingContext.length > 0) {
             /* Include target method first. */
             msg.append(String.format("%n%sat %s", indent, method.asStackTraceElement(bci)));
             /* Then add the parsing context. */
-            for (StackTraceElement e : method.getTypeFlow().getParsingContext()) {
+            for (StackTraceElement e : parsingContext) {
                 msg.append(String.format("%n%sat %s", indent, e));
             }
             msg.append(String.format("%n"));

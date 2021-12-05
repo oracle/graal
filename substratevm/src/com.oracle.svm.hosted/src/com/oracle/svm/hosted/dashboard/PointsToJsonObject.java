@@ -36,6 +36,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import org.graalvm.graphio.GraphOutput;
 import org.graalvm.graphio.GraphStructure;
 import org.graalvm.nativeimage.hosted.Feature.OnAnalysisExitAccess;
@@ -519,7 +520,7 @@ class PointsToJsonObject extends JsonObject {
 
         private static final String METHOD_FLOW = "method";
 
-        AnalysisWrapper(Class<?> clazz, AnalysisMethod method) {
+        AnalysisWrapper(Class<?> clazz, PointsToAnalysisMethod method) {
             this(clazz, method.getTypeFlow().id());
             this.flowType = METHOD_FLOW;
             this.qualifiedName = method.format("%H.%n(%P)");
@@ -596,7 +597,7 @@ class PointsToJsonObject extends JsonObject {
      */
     private void serializeMethods(BigBang bb) {
         for (AnalysisMethod method : bb.getUniverse().getMethods()) {
-            serializeMethod(bb, new AnalysisWrapper(method.getClass(), method));
+            serializeMethod(bb, new AnalysisWrapper(method.getClass(), PointsToAnalysis.assertPointsToAnalysisMethod(method)));
         }
     }
 
@@ -656,7 +657,7 @@ class PointsToJsonObject extends JsonObject {
             Collection<AnalysisMethod> callees = ((InvokeTypeFlow) flow).getCallees();
             flowWrapper.calleeNames = new ArrayList<>();
             for (AnalysisMethod callee : callees) {
-                int calleeId = callee.getTypeFlow().id();
+                int calleeId = PointsToAnalysis.assertPointsToAnalysisMethod(callee).getTypeFlow().id();
                 addUnique(flowWrapper.uses, calleeId);
                 flowWrapper.calleeNames.add(callee.getQualifiedName());
             }
@@ -702,7 +703,7 @@ class PointsToJsonObject extends JsonObject {
      */
     private void connectFlowsToEnclosingMethods(BigBang bb) {
         for (AnalysisMethod method : bb.getUniverse().getMethods()) {
-            AnalysisWrapper methodWrapper = new AnalysisWrapper(method.getClass(), method);
+            AnalysisWrapper methodWrapper = new AnalysisWrapper(method.getClass(), PointsToAnalysis.assertPointsToAnalysisMethod(method));
             if (methodWrapper.flowsGraph == null) {
                 // Some methods (such as interface methods) don't have any flows. This
                 // field is null in that case. Can skip them.

@@ -56,6 +56,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
+import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisFactory;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.Fold;
@@ -877,7 +880,7 @@ public class NativeImageGenerator {
         AnalysisPolicy analysisPolicy = PointstoOptions.AllocationSiteSensitiveHeap.getValue(options) ? new BytecodeSensitiveAnalysisPolicy(options)
                         : new DefaultAnalysisPolicy(options);
         return new AnalysisUniverse(hostVM, target.wordJavaKind, analysisPolicy, aSubstitutions, originalMetaAccess, originalSnippetReflection,
-                        new SubstrateSnippetReflectionProvider(new SubstrateWordTypes(originalMetaAccess, FrameAccess.getWordKind())));
+                        new SubstrateSnippetReflectionProvider(new SubstrateWordTypes(originalMetaAccess, FrameAccess.getWordKind())), new PointsToAnalysisFactory());
     }
 
     public static AnnotationSubstitutionProcessor createAnnotationSubstitutionProcessor(MetaAccessProvider originalMetaAccess, ImageClassLoader loader,
@@ -1405,7 +1408,8 @@ public class NativeImageGenerator {
              *
              * TODO Enable checks for non-interface types too.
              */
-            for (AnalysisMethod method : aUniverse.getMethods()) {
+            for (AnalysisMethod m : aUniverse.getMethods()) {
+                PointsToAnalysisMethod method = PointsToAnalysis.assertPointsToAnalysisMethod(m);
                 for (int i = 0; i < method.getTypeFlow().getOriginalMethodFlows().getParameters().length; i++) {
                     TypeState parameterState = method.getTypeFlow().getParameterTypeState(bigbang, i);
                     if (parameterState != null) {

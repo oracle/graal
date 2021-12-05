@@ -48,6 +48,7 @@ import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 
+import com.oracle.graal.pointsto.meta.InvokeInfo;
 import jdk.vm.ci.common.JVMCIError;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeInputList;
@@ -63,7 +64,6 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.polyglot.io.FileSystem;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.SubstrateOptions;
@@ -290,7 +290,7 @@ public class PermissionsFeature implements Feature {
         try {
             boolean callPathContainsTarget = false;
             debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Entered method: %s.", mName);
-            for (InvokeTypeFlow invoke : m.getTypeFlow().getInvokes()) {
+            for (InvokeInfo invoke : m.getInvokes()) {
                 for (AnalysisMethod callee : invoke.getCallees()) {
                     if (callee.isInvoked()) {
                         Set<AnalysisMethod> parents = visited.get(callee);

@@ -53,6 +53,7 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import com.oracle.graal.pointsto.meta.InvokeInfo;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.code.DisassemblerProvider;
@@ -113,7 +114,6 @@ import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.OS;
@@ -558,7 +558,7 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
             if (!isAllowedType(className)) {
                 disallowedTypes.add(className);
             }
-            for (InvokeTypeFlow invoke : m.getTypeFlow().getInvokes()) {
+            for (InvokeInfo invoke : m.getInvokes()) {
                 for (AnalysisMethod callee : invoke.getCallees()) {
                     if (seen.add(callee)) {
                         todo.add(callee);
