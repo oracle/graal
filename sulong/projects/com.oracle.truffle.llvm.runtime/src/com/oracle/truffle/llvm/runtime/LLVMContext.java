@@ -29,6 +29,21 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.security.SecureRandom;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Level;
+import java.util.stream.Collectors;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -38,9 +53,9 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -59,27 +74,12 @@ import com.oracle.truffle.llvm.runtime.memory.LLVMMemory.HandleContainer;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack;
 import com.oracle.truffle.llvm.runtime.memory.LLVMThreadingStack;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
-import com.oracle.truffle.llvm.runtime.options.TargetStream;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.pthread.LLVMPThreadContext;
-import org.graalvm.collections.EconomicMap;
 
-import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.security.SecureRandom;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.logging.Level;
-import java.util.stream.Collectors;
+import org.graalvm.collections.EconomicMap;
 
 public final class LLVMContext {
     public static final String SULONG_INIT_CONTEXT = "__sulong_init_context";
@@ -91,6 +91,7 @@ public final class LLVMContext {
     private static final Level SYSCALLS_LOGGING_LEVEL = Level.FINER;
     private static final Level LL_DEBUG_VERBOSE_LOGGER_LEVEL = Level.FINER;
     private static final Level LL_DEBUG_WARNING_LOGGER_LEVEL = Level.WARNING;
+    private static final Level TRACE_IR_LOGGER_LEVEL = Level.FINER;
 
     private final List<Path> libraryPaths = new ArrayList<>();
     private final Object libraryPathsLock = new Object();
@@ -176,8 +177,6 @@ public final class LLVMContext {
     protected boolean cleanupNecessary;
     private State contextState;
     private final LLVMLanguage language;
-
-    private LLVMTracerInstrument tracer;    // effectively final after initialization
 
     private final class LLVMFunctionPointerRegistry {
         private final HashMap<LLVMNativePointer, LLVMFunctionDescriptor> functionDescriptors = new HashMap<>();
@@ -273,12 +272,11 @@ public final class LLVMContext {
         assert this.threadingStack == null;
         this.contextExtensions = contextExtens;
 
-        String opt = env.getOptions().get(SulongEngineOption.TRACE_IR);
-        if (SulongEngineOption.optionEnabled(opt)) {
+        if (traceIREnabled()) {
             if (!env.getOptions().get(SulongEngineOption.LL_DEBUG)) {
-                throw new IllegalStateException("\'--llvm.traceIR\' requires \'--llvm.llDebug=true\'");
+                traceIRLog("Trace IR logging is enabled, but \'--llvm.llDebug=true\' is not set");
             }
-            tracer = new LLVMTracerInstrument(env, opt);
+            LLVMTracerInstrument.attach(env);
         }
 
         this.threadingStack = new LLVMThreadingStack(Thread.currentThread(), parseStackSize(env.getOptions().get(SulongEngineOption.STACK_SIZE)));
@@ -559,10 +557,6 @@ public final class LLVMContext {
                     ((LLVMGlobalContainer) object).dispose();
                 }
             }
-        }
-
-        if (tracer != null) {
-            tracer.dispose();
         }
     }
 
@@ -1162,6 +1156,20 @@ public final class LLVMContext {
 
     public static TruffleLogger llDebugLogger() {
         return llDebugLogger;
+    }
+
+    public static TruffleLogger traceIRLogger = TruffleLogger.getLogger("llvm", "TraceIR");
+
+    public static TruffleLogger traceIRLogger() {
+        return traceIRLogger;
+    }
+
+    public static boolean traceIREnabled() {
+        return traceIRLogger.isLoggable(TRACE_IR_LOGGER_LEVEL);
+    }
+
+    public static void traceIRLog(String message) {
+        traceIRLogger.log(TRACE_IR_LOGGER_LEVEL, message);
     }
 
     /**
