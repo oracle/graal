@@ -96,8 +96,9 @@
       self.benchmark_cmd + ["scala-dacapo-large:*", "--"] + self.extra_vm_args,
       self._bench_upload(),
       self.benchmark_cmd + ["scala-dacapo-huge:*", "--"] + self.extra_vm_args,
-      self._bench_upload(),
-      self.benchmark_cmd + ["scala-dacapo-gargantuan:*", "--"] + self.extra_vm_args
+      // Disabling the 'gargantuan' sizes since they require a lot of compute time for little added value
+      //self._bench_upload(),
+      //self.benchmark_cmd + ["scala-dacapo-gargantuan:*", "--"] + self.extra_vm_args
     ],
     timelimit: "08:00:00",
     forks_batches:: null, # weekly forks disabled
