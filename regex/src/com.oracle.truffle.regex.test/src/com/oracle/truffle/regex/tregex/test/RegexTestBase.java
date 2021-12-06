@@ -108,6 +108,13 @@ public abstract class RegexTestBase {
         validateResult(result, compiledRegex.getMember("groupCount").asInt(), isMatch, captureGroupBounds);
     }
 
+    protected void testLastGroup(String pattern, String flags, Object input, int fromIndex, int lastGroup) {
+        Value compiledRegex = compileRegex(pattern, flags);
+        Value result = execRegex(compiledRegex, input, fromIndex);
+        assertEquals(true, result.getMember("isMatch").asBoolean());
+        assertEquals(lastGroup, result.getMember("lastGroup").asInt());
+    }
+
     private static void validateResult(Value result, int groupCount, boolean isMatch, int... captureGroupBounds) {
         assert captureGroupBounds.length % 2 == 0;
         assertEquals(isMatch, result.getMember("isMatch").asBoolean());

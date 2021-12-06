@@ -55,13 +55,6 @@ public class PythonTests extends RegexTestBase {
         return "Flavor=PythonStr";
     }
 
-    protected void testLastGroup(String pattern, String flags, Object input, int fromIndex, int lastGroup) {
-        Value compiledRegex = compileRegex(pattern, flags);
-        Value result = execRegex(compiledRegex, input, fromIndex);
-        assertEquals(true, result.getMember("isMatch").asBoolean());
-        assertEquals(lastGroup, result.getMember("lastGroup").asInt());
-    }
-
     @Test
     public void gr14950() {
         test("[\\^\\\\\\]]", "", "p", 0, false);

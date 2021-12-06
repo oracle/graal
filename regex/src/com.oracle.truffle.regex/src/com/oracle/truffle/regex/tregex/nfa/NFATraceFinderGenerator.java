@@ -89,6 +89,8 @@ public final class NFATraceFinderGenerator {
      */
     private final EconomicMap<PreCalculatedResultFactory, PreCalculatedResultFactory> resultDeDuplicationMap = EconomicMap.create();
 
+    private final boolean returnsLastGroup;
+
     private final Counter.ThresholdCounter stateID = new Counter.ThresholdCounter(TRegexOptions.TRegexMaxNFASize, "TraceFinder NFA explosion");
     private final Counter.ThresholdCounter transitionID = new Counter.ThresholdCounter(TRegexOptions.TRegexMaxNFASize, "TraceFinder NFA transition explosion");
 
@@ -97,6 +99,7 @@ public final class NFATraceFinderGenerator {
         this.originalNFA = originalNFA;
         this.states = new ArrayList<>(originalNFA.getStates().length * 2);
         this.duplicatedStatesMap = new ArrayList[originalNFA.getStates().length];
+        this.returnsLastGroup = originalNFA.getAst().getOptions().getFlavor().usesLastGroupResultField();
     }
 
     /**
@@ -247,7 +250,11 @@ public final class NFATraceFinderGenerator {
                             iResult += getEncodedSize(treeNode);
                             assert treeNode.getSuccessors().length == 1;
                             treeNode.addPossibleResult(resultID);
-                            treeNode.getSuccessors()[0].getGroupBoundaries().applyToResultFactory(result, iResult);
+                            GroupBoundaries groupBoundaries = treeNode.getSuccessors()[0].getGroupBoundaries();
+                            groupBoundaries.applyToResultFactory(result, iResult);
+                            if (returnsLastGroup && groupBoundaries.hasLastGroup()) {
+                                result.setLastGroup(groupBoundaries.getLastGroup());
+                            }
                             treeNode = treeNode.getSuccessors()[0].getTarget();
                         }
                         treeNode.addPossibleResult(resultID);
@@ -289,6 +296,9 @@ public final class NFATraceFinderGenerator {
     private NFAStateTransition createTransition(NFAState source, NFAState target, NFAStateTransition originalTransition,
                     PreCalculatedResultFactory preCalcResult, int preCalcResultIndex) {
         originalTransition.getGroupBoundaries().applyToResultFactory(preCalcResult, preCalcResultIndex);
+        if (returnsLastGroup && originalTransition.getGroupBoundaries().hasLastGroup()) {
+            preCalcResult.setLastGroup(originalTransition.getGroupBoundaries().getLastGroup());
+        }
         NFAStateTransition copy = new NFAStateTransition((short) transitionID.inc(), source, target, originalTransition.getCodePointSet(), originalTransition.getGroupBoundaries());
         source.setSuccessors(new NFAStateTransition[]{copy}, true);
         return copy;

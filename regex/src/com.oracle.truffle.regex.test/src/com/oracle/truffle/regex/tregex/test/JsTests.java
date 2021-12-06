@@ -105,4 +105,36 @@ public class JsTests extends RegexTestBase {
         test("\\B", "y", "abc", 0, false);
         test("(?<=[a-z])[A-Z]", "y", "aA", 0, false);
     }
+
+    @Test
+    public void lastGroupNotSet() {
+        // IndexOf
+        testLastGroup("(a)", "", "a", 0, -1);
+        // StartsWith
+        testLastGroup("^(a)", "", "a", 0, -1);
+        // EndsWith
+        testLastGroup("(a)$", "", "a", 0, -1);
+        // Equals
+        testLastGroup("^(a)$", "", "a", 0, -1);
+        // RegionMatches
+        testLastGroup("(a)", "y", "a", 0, -1);
+        // EmptyIndexOf
+        testLastGroup("()", "", "", 0, -1);
+        // EmptyStartsWith
+        testLastGroup("^()", "", "", 0, -1);
+        // EmptyEndsWith
+        testLastGroup("()$", "", "", 0, -1);
+        // EmptyEquals
+        testLastGroup("^()$", "", "", 0, -1);
+
+        // Single possible CG result: exercises NFA, DFA and backtracker.
+        testLastGroup("([a0-9])", "", "a", 0, -1);
+        // TraceFinder: exercises NFA, DFA and backtracker.
+        testLastGroup("x?([a0-9])", "", "a", 0, -1);
+        // Unbounded length of match, unambiguous: exercises NFA, lazy DFA, simpleCG DFA and
+        // backtracker.
+        testLastGroup("x*([a0-9])", "", "a", 0, -1);
+        // Unbounded length of match, ambiguous: exercises NFA, lazy DFA, eager DFA and backtracker.
+        testLastGroup(".*([a0-9])", "", "a", 0, -1);
+    }
 }

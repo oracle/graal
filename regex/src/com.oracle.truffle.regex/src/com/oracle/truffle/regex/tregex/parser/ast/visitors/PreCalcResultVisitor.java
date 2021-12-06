@@ -94,7 +94,9 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
         PreCalcResultVisitor visitor = new PreCalcResultVisitor(ast, extractLiteral);
         visitor.run(ast.getRoot());
         visitor.result.setLength(visitor.index);
-        visitor.result.setLastGroup(visitor.lastGroup);
+        if (ast.getOptions().getFlavor().usesLastGroupResultField()) {
+            visitor.result.setLastGroup(visitor.lastGroup);
+        }
         return visitor;
     }
 
@@ -102,7 +104,9 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
         PreCalcResultVisitor visitor = new PreCalcResultVisitor(ast, false);
         visitor.run(ast.getRoot());
         visitor.result.setLength(visitor.index);
-        visitor.result.setLastGroup(visitor.lastGroup);
+        if (ast.getOptions().getFlavor().usesLastGroupResultField()) {
+            visitor.result.setLastGroup(visitor.lastGroup);
+        }
         return visitor.result;
     }
 
