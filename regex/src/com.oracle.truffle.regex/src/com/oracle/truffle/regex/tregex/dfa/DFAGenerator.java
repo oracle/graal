@@ -460,6 +460,9 @@ public final class DFAGenerator implements JsonConvertible {
     }
 
     private TransitionSet<NFA, NFAState, NFAStateTransition> createNFATransitionSet(NFAStateTransition t1, NFAStateTransition t2) {
+        if (t1 == t2) {
+            return createNFATransitionSet(t1);
+        }
         StateSet<NFA, NFAState> targetStateSet = StateSet.create(nfa, t1.getTarget(isForward()));
         targetStateSet.add(t2.getTarget(isForward()));
         return new TransitionSet<>(new NFAStateTransition[]{t1, t2}, targetStateSet);
