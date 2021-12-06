@@ -51,14 +51,12 @@ public abstract class TRegexExecutorLocals {
     private final int maxIndex;
     private int index;
     private int nextIndex;
-    private int lastGroup;
 
     public TRegexExecutorLocals(Object input, int fromIndex, int maxIndex, int index) {
         this.input = input;
         this.fromIndex = fromIndex;
         this.maxIndex = maxIndex;
         this.index = index;
-        this.lastGroup = -1;
     }
 
     /**
@@ -107,17 +105,5 @@ public abstract class TRegexExecutorLocals {
 
     public void setNextIndex(int nextIndex) {
         this.nextIndex = nextIndex;
-    }
-
-    /**
-     * The index of the last capture group that was matched. -1 if no capture group was matched.
-     */
-    public int getLastGroup() {
-        return lastGroup;
-    }
-
-    public void setLastGroup(int lastGroup) {
-        // TODO: Update this in the DFA and NFA executors.
-        this.lastGroup = lastGroup;
     }
 }

@@ -120,7 +120,7 @@ public class GroupBoundaries implements JsonConvertible {
     }
 
     public boolean isEmpty() {
-        return updateIndices.isEmpty() && clearIndices.isEmpty();
+        return updateIndices.isEmpty() && clearIndices.isEmpty() && !hasLastGroup();
     }
 
     public byte[] updatesToByteArray() {
@@ -200,6 +200,10 @@ public class GroupBoundaries implements JsonConvertible {
         return !clearIndices.isEmpty();
     }
 
+    public boolean hasLastGroup() {
+        return lastGroup != -1;
+    }
+
     /**
      * Updates the given {@link TBitSet}s with the values contained in this {@link GroupBoundaries}
      * object.
@@ -223,7 +227,7 @@ public class GroupBoundaries implements JsonConvertible {
             return false;
         }
         GroupBoundaries o = (GroupBoundaries) obj;
-        return Objects.equals(updateIndices, o.updateIndices) && Objects.equals(clearIndices, o.clearIndices);
+        return Objects.equals(updateIndices, o.updateIndices) && Objects.equals(clearIndices, o.clearIndices) && lastGroup == o.lastGroup;
     }
 
     @Override
@@ -265,7 +269,14 @@ public class GroupBoundaries implements JsonConvertible {
         }
     }
 
-    public void apply(int[] array, int offset, int index) {
+    public void applyToStackFrame(int[] array, int cgOffset, int index, int lgOffset) {
+        applyToResultArray(array, cgOffset, index);
+        if (lastGroup != -1) {
+            array[lgOffset] = lastGroup;
+        }
+    }
+
+    public void applyToResultArray(int[] array, int offset, int index) {
         for (int i = 0; i < clearArray.length; i++) {
             array[offset + Short.toUnsignedInt(clearArray[i])] = -1;
         }

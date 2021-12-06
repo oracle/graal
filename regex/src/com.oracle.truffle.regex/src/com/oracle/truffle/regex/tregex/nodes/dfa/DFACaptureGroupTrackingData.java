@@ -46,20 +46,36 @@ public final class DFACaptureGroupTrackingData {
     public final int[] results;
     public final int[] currentResultOrder;
     public final int[] currentResult;
+    public int lastGroup;
+    public final int[] lastGroups;
 
     public DFACaptureGroupTrackingData(int maxNumberOfNFAStates, int getNumberOfCaptureGroups, TRegexDFAExecutorProperties props) {
         if (props.isSimpleCG()) {
             results = new int[getNumberOfCaptureGroups * 2];
             currentResultOrder = null;
             currentResult = props.isSimpleCGMustCopy() ? new int[getNumberOfCaptureGroups * 2] : null;
+            lastGroup = -1;
+            lastGroups = new int[1];
         } else {
             results = new int[maxNumberOfNFAStates * getNumberOfCaptureGroups * 2];
             currentResultOrder = new int[maxNumberOfNFAStates];
             currentResult = new int[getNumberOfCaptureGroups * 2];
+            lastGroup = -1;
+            lastGroups = new int[maxNumberOfNFAStates];
         }
     }
 
     public void exportResult(byte index) {
         System.arraycopy(results, currentResultOrder[Byte.toUnsignedInt(index)], currentResult, 0, currentResult.length);
+        lastGroup = getLastGroup(index);
+    }
+
+    public int getLastGroup(byte index) {
+        if (currentResultOrder == null) {
+            assert index == 0;
+            return lastGroups[0];
+        } else {
+            return lastGroups[currentResultOrder[Byte.toUnsignedInt(index)] / results.length];
+        }
     }
 }

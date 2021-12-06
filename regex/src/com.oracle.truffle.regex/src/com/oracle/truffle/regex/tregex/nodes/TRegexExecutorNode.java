@@ -363,9 +363,9 @@ public abstract class TRegexExecutorNode extends Node {
         return returnsLastGroup;
     }
 
-    protected Object addLastGroup(Object result, TRegexExecutorLocals locals) {
+    protected Object addLastGroup(Object result, int lastGroup) {
         if (result != null && returnsLastGroup()) {
-            return new WithLastGroup(result, locals.getLastGroup());
+            return new WithLastGroup(result, lastGroup);
         } else {
             return result;
         }

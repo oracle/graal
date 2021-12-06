@@ -56,6 +56,7 @@ import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
 import com.oracle.truffle.regex.tregex.nodes.dfa.DFACaptureGroupLazyTransition;
 import com.oracle.truffle.regex.tregex.nodes.dfa.DFACaptureGroupPartialTransition;
 import com.oracle.truffle.regex.tregex.nodes.dfa.DFACaptureGroupPartialTransition.IndexOperation;
+import com.oracle.truffle.regex.tregex.nodes.dfa.DFACaptureGroupPartialTransition.LastGroupUpdate;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonObject;
@@ -125,6 +126,7 @@ public class DFACaptureGroupTransitionBuilder extends DFAStateTransitionBuilder 
         IntArrayBuffer copySource = compilationBuffer.getIntRangesBuffer2().asFixedSizeArray(numberOfNFAStates, -1);
         ObjectArrayBuffer<IndexOperation> indexUpdates = compilationBuffer.getObjectBuffer1();
         ObjectArrayBuffer<IndexOperation> indexClears = compilationBuffer.getObjectBuffer2();
+        ObjectArrayBuffer<LastGroupUpdate> lastGroupUpdates = new ObjectArrayBuffer<>();
         ByteArrayBuffer arrayCopies = compilationBuffer.getByteArrayBuffer();
 
         for (NFAStateTransition nfaTransition : getTransitionSet().getTransitions()) {
@@ -148,6 +150,9 @@ public class DFACaptureGroupTransitionBuilder extends DFAStateTransitionBuilder 
                 if (nfaTransition.getGroupBoundaries().hasIndexClears()) {
                     indexClears.add(new IndexOperation(targetIndex, nfaTransition.getGroupBoundaries().clearsToByteArray()));
                 }
+                if (nfaTransition.getGroupBoundaries().hasLastGroup()) {
+                    lastGroupUpdates.add(new LastGroupUpdate(targetIndex, nfaTransition.getGroupBoundaries().getLastGroup()));
+                }
             }
         }
         int order = 0;
@@ -170,6 +175,7 @@ public class DFACaptureGroupTransitionBuilder extends DFAStateTransitionBuilder 
                         byteArrayCopies,
                         indexUpdates.toArray(DFACaptureGroupPartialTransition.EMPTY_INDEX_UPDATES),
                         indexClears.toArray(DFACaptureGroupPartialTransition.EMPTY_INDEX_CLEARS),
+                        lastGroupUpdates.toArray(DFACaptureGroupPartialTransition.EMPTY_LAST_GROUP_UPDATES),
                         preReorderFinalStateResultIndex);
         if (dfaGen.getOptions().isDumpAutomata()) {
             partialTransitionDebugInfo.node = dfaCaptureGroupPartialTransitionNode;

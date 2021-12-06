@@ -254,8 +254,8 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
 
     public void pushResult(PureNFATransition t, int index) {
         t.getGroupBoundaries().applyExploded(result, 0, index);
-        if (t.getGroupBoundaries().getLastGroup() != -1) {
-            setLastGroup(t.getGroupBoundaries().getLastGroup());
+        if (t.getGroupBoundaries().hasLastGroup()) {
+            lastGroup = t.getGroupBoundaries().getLastGroup();
         }
         pushResult();
     }
@@ -272,7 +272,7 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
      */
     public void setResult() {
         System.arraycopy(stack(), offsetCaptureGroups(), result, 0, result.length);
-        setLastGroup(stack()[offsetLastGroup()]);
+        lastGroup = stack()[offsetLastGroup()];
     }
 
     public boolean canPopResult() {
@@ -281,6 +281,10 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
 
     public int[] popResult() {
         return lastResultSp < 0 ? null : result;
+    }
+
+    public int getLastGroup() {
+        return lastGroup;
     }
 
     public boolean canPop() {
@@ -331,8 +335,8 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
         System.arraycopy(captureGroups, 0, stack(), offsetCaptureGroups(), captureGroups.length);
     }
 
-    public void saveLastGroup(int lastGroup) {
-        stack()[offsetLastGroup()] = lastGroup;
+    public void saveLastGroup(int newLastGroup) {
+        stack()[offsetLastGroup()] = newLastGroup;
     }
 
     public int getQuantifierCount(Quantifier q) {

@@ -204,11 +204,13 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
 
     @Override
     public Object execute(TRegexExecutorLocals abstractLocals, boolean compactString) {
-        return addLastGroup(executeInner(abstractLocals, compactString), abstractLocals);
+        TRegexBacktrackingNFAExecutorLocals locals = (TRegexBacktrackingNFAExecutorLocals) abstractLocals;
+        Object innerResult = executeInner(locals, compactString);
+        int lastGroup = locals.getLastGroup();
+        return addLastGroup(innerResult, lastGroup);
     }
 
-    public Object executeInner(TRegexExecutorLocals abstractLocals, boolean compactString) {
-        TRegexBacktrackingNFAExecutorLocals locals = (TRegexBacktrackingNFAExecutorLocals) abstractLocals;
+    public Object executeInner(TRegexBacktrackingNFAExecutorLocals locals, boolean compactString) {
         CompilerDirectives.ensureVirtualized(locals);
         if (innerLiteral != null) {
             locals.setIndex(locals.getFromIndex());

@@ -179,15 +179,24 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
 
     @Override
     public Object execute(final TRegexExecutorLocals abstractLocals, final boolean compactString) {
-        return addLastGroup(executeInner(abstractLocals, compactString), abstractLocals);
+        TRegexDFAExecutorLocals locals = (TRegexDFAExecutorLocals) abstractLocals;
+        Object innerResult = executeInner(locals, compactString);
+        int lastGroup = -1;
+        if (returnsLastGroup()) {
+            if (isSimpleCG() && !props.isSimpleCGMustCopy()) {
+                lastGroup = locals.getCGData().lastGroups[0];
+            } else {
+                lastGroup = locals.getCGData().lastGroup;
+            }
+        }
+        return addLastGroup(innerResult, lastGroup);
     }
 
     /**
      * records position of the END of the match found, or -1 if no match exists.
      */
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
-    public Object executeInner(final TRegexExecutorLocals abstractLocals, final boolean compactString) {
-        TRegexDFAExecutorLocals locals = (TRegexDFAExecutorLocals) abstractLocals;
+    public Object executeInner(final TRegexDFAExecutorLocals locals, final boolean compactString) {
         CompilerDirectives.ensureVirtualized(locals);
         CompilerAsserts.compilationConstant(states);
         CompilerAsserts.compilationConstant(states.length);
@@ -200,9 +209,11 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
             initResultOrder(locals);
             locals.setLastTransition((short) -1);
             Arrays.fill(locals.getCGData().results, -1);
+            Arrays.fill(locals.getCGData().lastGroups, -1);
         } else if (isSimpleCG()) {
             CompilerDirectives.ensureVirtualized(locals.getCGData());
             Arrays.fill(locals.getCGData().results, -1);
+            locals.getCGData().lastGroups[0] = -1;
         }
         // check if input is long enough for a match
         if (props.getMinResultLength() > 0 &&

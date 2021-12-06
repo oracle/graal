@@ -101,11 +101,13 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
 
     @Override
     public Object execute(TRegexExecutorLocals abstractLocals, boolean compactString) {
-        return addLastGroup(executeInner(abstractLocals), abstractLocals);
+        TRegexNFAExecutorLocals locals = (TRegexNFAExecutorLocals) abstractLocals;
+        Object innerResult = executeInner(locals);
+        int lastGroup = locals.getLastGroup();
+        return addLastGroup(innerResult, lastGroup);
     }
 
-    public Object executeInner(TRegexExecutorLocals abstractLocals) {
-        TRegexNFAExecutorLocals locals = (TRegexNFAExecutorLocals) abstractLocals;
+    public Object executeInner(TRegexNFAExecutorLocals locals) {
         CompilerDirectives.ensureVirtualized(locals);
 
         final int offset = rewindUpTo(locals, 0, nfa.getAnchoredEntry().length - 1);

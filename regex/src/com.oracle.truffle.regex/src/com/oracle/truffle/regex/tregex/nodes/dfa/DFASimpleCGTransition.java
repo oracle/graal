@@ -56,14 +56,16 @@ public final class DFASimpleCGTransition implements JsonConvertible {
     private static final byte[] EMPTY_ARRAY = {};
     private static final byte[] FULL_CLEAR_ARRAY = {};
 
-    private static final DFASimpleCGTransition EMPTY_INSTANCE = new DFASimpleCGTransition(EMPTY_ARRAY, EMPTY_ARRAY);
+    private static final DFASimpleCGTransition EMPTY_INSTANCE = new DFASimpleCGTransition(EMPTY_ARRAY, EMPTY_ARRAY, -1);
 
     @CompilationFinal(dimensions = 1) private final byte[] indexUpdates;
     @CompilationFinal(dimensions = 1) private final byte[] indexClears;
+    private final int lastGroup;
 
-    private DFASimpleCGTransition(byte[] indexUpdates, byte[] indexClears) {
+    private DFASimpleCGTransition(byte[] indexUpdates, byte[] indexClears, int lastGroup) {
         this.indexUpdates = indexUpdates;
         this.indexClears = indexClears;
+        this.lastGroup = lastGroup;
     }
 
     public static DFASimpleCGTransition create(NFAStateTransition t, boolean fullClear) {
@@ -72,14 +74,14 @@ public final class DFASimpleCGTransition implements JsonConvertible {
         }
         t.getGroupBoundaries().materializeArrays();
         return new DFASimpleCGTransition(t.getGroupBoundaries().isEmpty() ? EMPTY_ARRAY : t.getGroupBoundaries().updatesToByteArray(),
-                        fullClear ? FULL_CLEAR_ARRAY : t.getGroupBoundaries().clearsToByteArray());
+                        fullClear ? FULL_CLEAR_ARRAY : t.getGroupBoundaries().clearsToByteArray(), t.getGroupBoundaries().getLastGroup());
     }
 
     public static DFASimpleCGTransition getEmptyInstance() {
         return EMPTY_INSTANCE;
     }
 
-    public void apply(int[] result, int currentIndex) {
+    public void apply(int[] result, int[] lastGroups, int currentIndex) {
         CompilerAsserts.partialEvaluationConstant(this);
         if (indexClears == FULL_CLEAR_ARRAY) {
             Arrays.fill(result, -1);
@@ -87,6 +89,27 @@ public final class DFASimpleCGTransition implements JsonConvertible {
             applyIndexClear(result);
         }
         applyIndexUpdate(result, currentIndex);
+        if (lastGroup != -1) {
+            lastGroups[0] = lastGroup;
+        }
+    }
+
+    public void applyFinal(DFACaptureGroupTrackingData cgData, int currentIndex, boolean simpleCGMustCopy) {
+        CompilerAsserts.partialEvaluationConstant(this);
+        int[] result = simpleCGMustCopy ? cgData.currentResult : cgData.results;
+        if (indexClears == FULL_CLEAR_ARRAY) {
+            Arrays.fill(result, -1);
+        } else {
+            applyIndexClear(result);
+        }
+        applyIndexUpdate(result, currentIndex);
+        if (lastGroup != -1) {
+            if (simpleCGMustCopy) {
+                cgData.lastGroup = lastGroup;
+            } else {
+                cgData.lastGroups[0] = lastGroup;
+            }
+        }
     }
 
     @ExplodeLoop

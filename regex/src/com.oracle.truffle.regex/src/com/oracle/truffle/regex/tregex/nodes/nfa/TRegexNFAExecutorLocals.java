@@ -49,9 +49,10 @@ import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
 public final class TRegexNFAExecutorLocals extends TRegexExecutorLocals {
 
     /**
-     * Frame size = 1 (state ID) + 2 * nCaptureGroups (start and end indices).
+     * Frame size = 1 (state ID) + 2 * nCaptureGroups (start and end indices) + 1 (last group).
      */
     private final int frameSize;
+    private final int nCaptureGroups;
     private final int maxSize;
     /**
      * A record of the paths that we are considering for our optimal match. Every path is
@@ -76,6 +77,7 @@ public final class TRegexNFAExecutorLocals extends TRegexExecutorLocals {
      * found later is guaranteed to be of higher priority and can be used to overwrite this result.
      */
     private int[] result;
+    private int lastGroup = -1;
     /**
      * Indicates whether a path to a final state has been completed in this step. If true, then no
      * further paths should be considered, as they would have a lower priority than this completed
@@ -85,11 +87,20 @@ public final class TRegexNFAExecutorLocals extends TRegexExecutorLocals {
 
     public TRegexNFAExecutorLocals(Object input, int fromIndex, int index, int maxIndex, int nCaptureGroups, int nStates) {
         super(input, fromIndex, maxIndex, index);
-        this.frameSize = 1 + nCaptureGroups * 2;
+        this.frameSize = 1 + nCaptureGroups * 2 + 1;
+        this.nCaptureGroups = nCaptureGroups;
         this.maxSize = nStates * frameSize;
         this.curStates = new int[frameSize * 8];
         this.nextStates = new int[frameSize * 8];
         this.marks = new long[((nStates - 1) >> 6) + 1];
+    }
+
+    private static int offsetCaptureGroups(int recordOffset) {
+        return recordOffset + 1;
+    }
+
+    private int offsetLastGroup(int recordOffset) {
+        return recordOffset + 1 + nCaptureGroups * 2;
     }
 
     public void addInitialState(int stateId) {
@@ -125,11 +136,11 @@ public final class TRegexNFAExecutorLocals extends TRegexExecutorLocals {
         }
         nextStates[nextStatesLength] = t.getTarget().getId();
         if (copy) {
-            System.arraycopy(curStates, iCurStates - frameSize + 1, nextStates, nextStatesLength + 1, frameSize - 1);
+            System.arraycopy(curStates, offsetCaptureGroups(iCurStates - frameSize), nextStates, offsetCaptureGroups(nextStatesLength), frameSize - 1);
         } else {
-            Arrays.fill(nextStates, nextStatesLength + 1, nextStatesLength + frameSize, -1);
+            Arrays.fill(nextStates, offsetCaptureGroups(nextStatesLength), nextStatesLength + frameSize, -1);
         }
-        t.getGroupBoundaries().apply(nextStates, nextStatesLength + 1, getIndex());
+        t.getGroupBoundaries().applyToStackFrame(nextStates, offsetCaptureGroups(nextStatesLength), getIndex(), offsetLastGroup(nextStatesLength));
         nextStatesLength += frameSize;
     }
 
@@ -147,14 +158,19 @@ public final class TRegexNFAExecutorLocals extends TRegexExecutorLocals {
     public void pushResult(NFAStateTransition t, boolean copy) {
         resultPushed = true;
         if (result == null) {
-            result = new int[frameSize - 1];
+            result = new int[nCaptureGroups * 2];
         }
         if (copy) {
-            System.arraycopy(curStates, iCurStates + 1 - frameSize, result, 0, frameSize - 1);
+            System.arraycopy(curStates, offsetCaptureGroups(iCurStates - frameSize), result, 0, result.length);
+            lastGroup = curStates[offsetLastGroup(iCurStates - frameSize)];
         } else {
             Arrays.fill(result, -1);
+            lastGroup = -1;
         }
-        t.getGroupBoundaries().apply(result, 0, getIndex());
+        t.getGroupBoundaries().applyToResultArray(result, 0, getIndex());
+        if (t.getGroupBoundaries().hasLastGroup()) {
+            lastGroup = t.getGroupBoundaries().getLastGroup();
+        }
     }
 
     public boolean hasResult() {
@@ -167,6 +183,10 @@ public final class TRegexNFAExecutorLocals extends TRegexExecutorLocals {
 
     public int[] getResult() {
         return result;
+    }
+
+    public int getLastGroup() {
+        return lastGroup;
     }
 
     @TruffleBoundary
