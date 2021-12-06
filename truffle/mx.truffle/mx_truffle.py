@@ -741,11 +741,11 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
                                                   'include/ffitarget.h'],
                                                  mx.join(self.out_dir, 'libffi-build'),
                                                  mx.join(self.out_dir, 'libffi-3.3'))
-            configure_args = [ '--disable-dependency-tracking',
-                               '--disable-shared',
-                               '--with-pic',
-                               ' CFLAGS="{}"'.format(' '.join( ['-g', '-O3'] + (['-m64'] if mx.get_os() == 'solaris' else []))),
-                               'CPPFLAGS="-DNO_JAVA_RAW_API"',
+            configure_args = ['--disable-dependency-tracking',
+                              '--disable-shared',
+                              '--with-pic',
+                              ' CFLAGS="{}"'.format(' '.join(['-g', '-O3'] + (['-m64'] if mx.get_os() == 'solaris' else []))),
+                              'CPPFLAGS="-DNO_JAVA_RAW_API"',
                              ]
             if mx.get_os() == 'darwin' and mx.get_arch() == 'aarch64':
                 # configure wrongly autodetects as 'arm-apple-darwin20.0.0', see https://github.com/libffi/libffi/issues/571
