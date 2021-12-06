@@ -38,6 +38,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.ControlFlowException;
@@ -255,8 +256,6 @@ public final class LLVMContext {
         this.syscallTraceStream = SulongEngineOption.optionEnabled(opt) ? new TargetStream(env, opt) : null;
         opt = env.getOptions().get(SulongEngineOption.NATIVE_CALL_STATS);
         this.nativeCallStatsStream = SulongEngineOption.optionEnabled(opt) ? new TargetStream(env, opt) : null;
-        opt = env.getOptions().get(SulongEngineOption.PRINT_LIFE_TIME_ANALYSIS_STATS);
-        this.lifetimeAnalysisStream = SulongEngineOption.optionEnabled(opt) ? new TargetStream(env, opt) : null;
         opt = env.getOptions().get(SulongEngineOption.LL_DEBUG_VERBOSE);
         this.llDebugVerboseStream = (SulongEngineOption.optionEnabled(opt) && env.getOptions().get(SulongEngineOption.LL_DEBUG)) ? new TargetStream(env, opt) : null;
         opt = env.getOptions().get(SulongEngineOption.TRACE_IR);
@@ -562,10 +561,6 @@ public final class LLVMContext {
         if (nativeCallStatsStream != null) {
             assert nativeCallStatistics != null;
             nativeCallStatsStream.dispose();
-        }
-
-        if (lifetimeAnalysisStream != null) {
-            lifetimeAnalysisStream.dispose();
         }
     }
 
@@ -1121,10 +1116,10 @@ public final class LLVMContext {
         return nativeCallStatsStream;
     }
 
-    @CompilationFinal private TargetStream lifetimeAnalysisStream;
+    private static final TruffleLogger lifetimeAnalysisLogger = TruffleLogger.getLogger("llvm", "LifetimeAnalysis");
 
-    public TargetStream lifetimeAnalysisStream() {
-        return lifetimeAnalysisStream;
+    public static TruffleLogger lifetimeAnalysisLogger() {
+        return lifetimeAnalysisLogger;
     }
 
     @CompilationFinal private TargetStream llDebugVerboseStream;
