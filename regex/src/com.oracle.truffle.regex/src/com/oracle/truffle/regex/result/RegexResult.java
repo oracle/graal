@@ -84,9 +84,8 @@ import java.util.Arrays;
  * found for a particular capture group, the returned value is {@code -1}.</li>
  * <li>{@code int lastGroup}: The index of the last capture group that was matched. -1 if no capture
  * group was matched. This property is only tracked for Python regular expressions. For other
- * flavors of regular expressions, this always has the value -1.
- * TODO: Do we need to ensure that the value is always -1 (i.e. we only track this if necessary)?
- * </li>
+ * flavors of regular expressions, this always has the value -1. TODO: Do we need to ensure that the
+ * value is always -1 (i.e. we only track this if necessary)?</li>
  * </ol>
  * </li>
  */
@@ -542,7 +541,12 @@ public final class RegexResult extends AbstractConstantKeysObject {
         if (indices == null) {
             return "[ _lazy_ ]";
         }
-        return Arrays.toString(indices);
+        String indicesStr = Arrays.toString(indices);
+        if (lastGroup != -1) {
+            return String.format("%s(%d)", indicesStr, lastGroup);
+        } else {
+            return indicesStr;
+        }
     }
 
     @TruffleBoundary

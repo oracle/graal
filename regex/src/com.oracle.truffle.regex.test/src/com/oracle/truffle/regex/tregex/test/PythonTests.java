@@ -181,10 +181,40 @@ public class PythonTests extends RegexTestBase {
         testLastGroup("(a)()", "", "ab", 0, 2);
         testLastGroup("(a())", "", "ab", 0, 1);
 
-        // Tests for the backtracking executor.
-        testLastGroup("(a)(b)\\1", "", "aba", 0, 2);
-        testLastGroup("(a(b))\\1", "", "abab", 0, 1);
-        testLastGroup("(a)()\\1", "", "aa", 0, 2);
-        testLastGroup("(a())\\1", "", "aa", 0, 1);
+        // Modified tests that use the NFA, TraceFinder, lazy DFA, eager DFA, simpleCG DFA
+        // and backtracking engines in regression test mode.
+
+        // Single possible CG result: exercises NFA, DFA and backtracker.
+        // NB: Using [X0-9] instead of X precludes the use of the specializations in
+        // LiteralRegexEngine.
+        testLastGroup("([a0-9])([b0-9])", "", "ab", 0, 2);
+        testLastGroup("([a0-9]([b0-9]))", "", "ab", 0, 1);
+        testLastGroup("([a0-9])()", "", "ab", 0, 2);
+        testLastGroup("([a0-9]())", "", "ab", 0, 1);
+
+        // TraceFinder: exercises NFA, DFA, and backtracker.
+        // NB: Introducing x? leads to multiple different lengths of capture group 0 matches. This
+        // means we end up having to use TraceFinder to track down the correct capture groups.
+        // x? is
+        testLastGroup("x?([a0-9])([b0-9])", "", "ab", 0, 2);
+        testLastGroup("x?([a0-9]([b0-9]))", "", "ab", 0, 1);
+        testLastGroup("x?([a0-9])()", "", "ab", 0, 2);
+        testLastGroup("x?([a0-9]())", "", "ab", 0, 1);
+
+        // Unbounded length of match, unambiguous: exercises NFA, lazy DFA, simpleCG DFA and
+        // backtracker.
+        // NB: x* as a prefix leads to unambiguous states in the NFA (allowing the use of the
+        // simpleCG DFA) and it can also lead to an unbounded length of the match, which precludes
+        // the use of TraceFinder.
+        testLastGroup("x*([a0-9])([b0-9])", "", "ab", 0, 2);
+        testLastGroup("x*([a0-9]([b0-9]))", "", "ab", 0, 1);
+        testLastGroup("x*([a0-9])()", "", "ab", 0, 2);
+        testLastGroup("x*([a0-9]())", "", "ab", 0, 1);
+
+        // Unbounded length of match, ambiguous: exercises NFA, lazy DFA, eager DFA and backtracker.
+        testLastGroup(".*([a0-9])([b0-9])", "", "ab", 0, 2);
+        testLastGroup(".*([a0-9]([b0-9]))", "", "ab", 0, 1);
+        testLastGroup(".*([a0-9])()", "", "ab", 0, 2);
+        testLastGroup(".*([a0-9]())", "", "ab", 0, 1);
     }
 }

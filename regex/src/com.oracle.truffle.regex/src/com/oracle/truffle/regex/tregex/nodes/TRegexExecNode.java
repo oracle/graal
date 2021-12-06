@@ -264,6 +264,9 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
                 return false;
             }
         }
+        if (a.getLastGroup() != b.getLastGroup()) {
+            return false;
+        }
         return true;
     }
 
