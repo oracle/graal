@@ -183,7 +183,7 @@ public final class ClassRedefinition {
         }
     }
 
-    public List<ChangePacket> detectClassChanges(HotSwapClassInfo[] classInfos) throws RedefintionNotSupportedException {
+    public List<ChangePacket> detectClassChanges(HotSwapClassInfo[] classInfos) {
         List<ChangePacket> result = new ArrayList<>(classInfos.length);
         for (HotSwapClassInfo hotSwapInfo : classInfos) {
             ObjectKlass klass = hotSwapInfo.getKlass();
@@ -258,14 +258,41 @@ public final class ClassRedefinition {
 
     // detect all types of class changes, but return early when a change that require arbitrary
     // changes
-    private static ClassChange detectClassChanges(ParserKlass newParserKlass, ObjectKlass oldKlass, DetectedChange collectedChanges, ParserKlass finalParserKlass)
-                    throws RedefintionNotSupportedException {
+    private static ClassChange detectClassChanges(ParserKlass newParserKlass, ObjectKlass oldKlass, DetectedChange collectedChanges, ParserKlass finalParserKlass) {
         ClassChange result = ClassChange.NO_CHANGE;
         ParserKlass oldParserKlass = oldKlass.getLinkedKlass().getParserKlass();
         boolean isPatched = finalParserKlass != null;
 
-        if (!newParserKlass.getSuperKlass().equals(oldParserKlass.getSuperKlass()) || !Arrays.equals(newParserKlass.getSuperInterfaces(), oldParserKlass.getSuperInterfaces())) {
-            throw new RedefintionNotSupportedException(ErrorCodes.HIERARCHY_CHANGE_NOT_IMPLEMENTED);
+        // detect changes to superclass and implemented interfaces
+        if (!newParserKlass.getSuperKlass().equals(oldParserKlass.getSuperKlass())) {
+            Klass loadedKlass = oldKlass.getContext().getRegistries().findLoadedClass(newParserKlass.getSuperKlass(), oldKlass.getDefiningClassLoader());
+            if (loadedKlass != null) {
+                collectedChanges.addSuperKlass((ObjectKlass) loadedKlass);
+            } else {
+                throw new RuntimeException("Not yet implemented!");
+            }
+        } else {
+            collectedChanges.addSuperKlass(oldKlass.getSuperKlass());
+        }
+        if (!Arrays.equals(newParserKlass.getSuperInterfaces(), oldParserKlass.getSuperInterfaces())) {
+            ObjectKlass[] newSuperInterfaces = new ObjectKlass[newParserKlass.getSuperInterfaces().length];
+            for (int i = 0; i < newParserKlass.getSuperInterfaces().length; i++) {
+                Symbol<Symbol.Type> superInterfaceType = newParserKlass.getSuperInterfaces()[i];
+                Klass loadedInterface = oldKlass.getContext().getRegistries().findLoadedClass(superInterfaceType, oldKlass.getDefiningClassLoader());
+                if (loadedInterface != null) {
+                    newSuperInterfaces[i] = (ObjectKlass) loadedInterface;
+                } else {
+                    throw new RuntimeException("Not yet implemented!");
+                }
+            }
+            collectedChanges.addSuperInterfaces(newSuperInterfaces);
+        } else {
+            collectedChanges.addSuperInterfaces(oldKlass.getSuperInterfaces());
+        }
+
+        if (!oldKlass.isInitialized() && oldKlass.isInterface() && !Modifier.isInterface(newParserKlass.getFlags())) {
+            // interface changed to concrete or abstract class
+            //oldKlass.initialize();
         }
 
         // detect method changes (including constructors)

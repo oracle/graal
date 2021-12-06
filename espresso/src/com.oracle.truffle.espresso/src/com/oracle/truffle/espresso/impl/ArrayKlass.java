@@ -54,14 +54,22 @@ public final class ArrayKlass extends Klass {
         super(componentType.getContext(),
                         null, // TODO(peterssen): Internal, , or / name?
                         componentType.getTypes().arrayOf(componentType.getType()),
-                        componentType.getMeta().java_lang_Object,
-                        componentType.getMeta().ARRAY_SUPERINTERFACES,
                         // Arrays (of static inner class) may have protected access.
                         (componentType.getElementalType().getModifiers() & (ACC_PUBLIC | ACC_PRIVATE | ACC_PROTECTED)) | ACC_FINAL | ACC_ABSTRACT);
         EspressoError.guarantee(componentType.getJavaKind() != JavaKind.Void, "Invalid void[] class.");
         this.componentType = componentType;
         this.elementalType = componentType.getElementalType();
         this.dimension = Types.getArrayDimensions(getType());
+    }
+
+    @Override
+    public ObjectKlass getSuperKlass() {
+        return getMeta().java_lang_Object;
+    }
+
+    @Override
+    public ObjectKlass[] getSuperInterfaces() {
+        return getMeta().ARRAY_SUPERINTERFACES;
     }
 
     @Override

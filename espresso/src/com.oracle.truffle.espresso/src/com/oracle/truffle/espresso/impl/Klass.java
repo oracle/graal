@@ -476,12 +476,8 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     protected Symbol<Name> name;
     protected Symbol<Type> type;
     private final EspressoContext context;
-    private final ObjectKlass superKlass;
 
     private final int id;
-
-    @CompilationFinal(dimensions = 1) //
-    private final ObjectKlass[] superInterfaces;
 
     @CompilationFinal //
     private volatile ArrayKlass arrayClass;
@@ -591,20 +587,18 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return packageTo.isQualifiedExportTo(moduleFrom);
     }
 
-    public final ObjectKlass[] getSuperInterfaces() {
-        return superInterfaces;
+    public ObjectKlass[] getSuperInterfaces() {
+        return ObjectKlass.EMPTY_ARRAY;
     }
 
-    Klass(EspressoContext context, Symbol<Name> name, Symbol<Type> type, ObjectKlass superKlass, ObjectKlass[] superInterfaces, int modifiers) {
-        this(context, name, type, superKlass, superInterfaces, modifiers, -1);
+    Klass(EspressoContext context, Symbol<Name> name, Symbol<Type> type, int modifiers) {
+        this(context, name, type, modifiers, -1);
     }
 
-    Klass(EspressoContext context, Symbol<Name> name, Symbol<Type> type, ObjectKlass superKlass, ObjectKlass[] superInterfaces, int modifiers, int possibleID) {
+    Klass(EspressoContext context, Symbol<Name> name, Symbol<Type> type, int modifiers, int possibleID) {
         this.context = context;
         this.name = name;
         this.type = type;
-        this.superKlass = superKlass;
-        this.superInterfaces = superInterfaces;
         this.id = (possibleID >= 0) ? possibleID : context.getNewKlassId();
         this.modifiers = modifiers;
         this.runtimePackage = initRuntimePackage();
@@ -911,8 +905,8 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
      * an interface, a primitive type, or void, then null is returned. If this object represents an
      * array class then the type object representing the {@code Object} class is returned.
      */
-    public final ObjectKlass getSuperKlass() {
-        return superKlass;
+    public ObjectKlass getSuperKlass() {
+        return null;
     }
 
     /**
@@ -921,8 +915,8 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
      * or extended by this type.
      */
     @Override
-    public final Klass[] getImplementedInterfaces() {
-        return superInterfaces;
+    public Klass[] getImplementedInterfaces() {
+        return getSuperInterfaces();
     }
 
     public abstract Klass getElementalType();

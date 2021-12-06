@@ -75,6 +75,12 @@ public abstract class InvokeSpecial extends Node {
              */
             return method.getContext().getClassRedefinition().handleRemovedMethod(method, receiver.getKlass()).getMethodVersion();
         }
+        if (method.getContext().advancedRedefinitionEnabled()) {
+            // a change from interface -> concrete class can lead to an uninitialized class here
+            if (!method.getDeclaringKlass().isInitialized()) {
+                method.getDeclaringKlass().initialize();
+            }
+        }
         return method.getMethodVersion();
     }
 

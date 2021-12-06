@@ -200,6 +200,12 @@ public abstract class InvokeVirtual extends Node {
             Meta meta = receiverKlass.getMeta();
             throw meta.throwException(meta.java_lang_AbstractMethodError);
         }
+        if (receiverKlass.getContext().advancedRedefinitionEnabled()) {
+            // a change from interface -> concrete class can lead to an uninitialized class
+            if (!target.getMethod().getDeclaringKlass().isInitialized()) {
+                target.getMethod().getDeclaringKlass().initialize();
+            }
+        }
         return target;
     }
 

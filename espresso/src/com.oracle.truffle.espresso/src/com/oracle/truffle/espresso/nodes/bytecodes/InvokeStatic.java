@@ -105,6 +105,12 @@ public abstract class InvokeStatic extends Node {
              */
             return staticMethod.getContext().getClassRedefinition().handleRemovedMethod(staticMethod, staticMethod.getDeclaringKlass()).getMethodVersion();
         }
+        if (staticMethod.getContext().advancedRedefinitionEnabled()) {
+            // a change from interface -> concrete class can lead to an uninitialized class here
+            if (!staticMethod.getDeclaringKlass().isInitialized()) {
+                staticMethod.getDeclaringKlass().initialize();
+            }
+        }
         return staticMethod.getMethodVersion();
     }
 
