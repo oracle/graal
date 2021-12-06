@@ -54,6 +54,7 @@ public abstract class RegexFlavor {
     protected static final int NESTED_CAPTURE_GROUPS_KEPT_ON_LOOP_REENTRY = 1 << 2;
     protected static final int FAILING_EMPTY_CHECKS_DONT_BACKTRACK = 1 << 3;
     protected static final int USES_LAST_GROUP_RESULT_FIELD = 1 << 4;
+    protected static final int LOOKBEHINDS_RUN_LEFT_TO_RIGHT = 1 << 4;
 
     private final int traits;
 
@@ -93,5 +94,9 @@ public abstract class RegexFlavor {
 
     public boolean usesLastGroupResultField() {
         return hasTrait(USES_LAST_GROUP_RESULT_FIELD);
+    }
+
+    public boolean lookBehindsRunLeftToRight() {
+        return hasTrait(LOOKBEHINDS_RUN_LEFT_TO_RIGHT);
     }
 }

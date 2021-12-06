@@ -227,7 +227,6 @@ public final class NFAGenerator {
                     }
                     containsPrefixStates |= target.isPrefix();
                     astTransition.getGroupBoundaries().updateBitSets(transitionGBUpdateIndices, transitionGBClearIndices);
-                    // TODO: Handle lastGroup updates from lookaround assertions.
                     if (!target.isInLookAheadAssertion() && !target.isInLookBehindAssertion()) {
                         lastGroup = astTransition.getGroupBoundaries().getLastGroup();
                     }

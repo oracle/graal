@@ -249,9 +249,9 @@ public class GroupBoundaries implements JsonConvertible {
         resultFactory.setLastGroup(lastGroup);
     }
 
-    public void applyToStackFrameExploded(int[] stack, int cgOffset, int index, int lgOffset) {
+    public void applyToStackFrameExploded(int[] stack, int cgOffset, int index, int lgOffset, boolean dontOverwriteLastGroup) {
         applyExploded(stack, cgOffset, index);
-        if (lastGroup != -1) {
+        if (lastGroup != -1 && (!dontOverwriteLastGroup || stack[lgOffset] == -1)) {
             stack[lgOffset] = lastGroup;
         }
     }

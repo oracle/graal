@@ -105,6 +105,13 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
      * detailed handling of the quantifiers is to be used or not.
      */
     private final boolean transitionMatchesStepByStep;
+    /**
+     * Should the reported lastGroup point to the first group that *begins* instead of the last
+     * group that *ends*? This is needed when executing Python lookbehind expressions. The semantics
+     * of the lastGroup field should correspond to the left-to-right evaluation of lookbehind
+     * assertions in Python, but we run lookbehinds in the right-to-left direction.
+     */
+    private final boolean returnsFirstGroup;
     private final boolean loneSurrogates;
     private final boolean loopbackInitialState;
     private final InnerLiteral innerLiteral;
@@ -128,6 +135,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
         this.backrefWithNullTargetFails = nfaMap.getAst().getOptions().getFlavor().backreferencesToUnmatchedGroupsFail();
         this.monitorCaptureGroupsInEmptyCheck = nfaMap.getAst().getOptions().getFlavor().emptyChecksMonitorCaptureGroups();
         this.transitionMatchesStepByStep = nfaMap.getAst().getOptions().getFlavor().emptyChecksMonitorCaptureGroups();
+        this.returnsFirstGroup = !this.forward && nfaMap.getAst().getOptions().getFlavor().lookBehindsRunLeftToRight();
         this.loneSurrogates = nfaMap.getAst().getProperties().hasLoneSurrogates();
         this.nQuantifiers = nfaMap.getAst().getQuantifierCount().getCount();
         this.nZeroWidthQuantifiers = nfaMap.getAst().getZeroWidthQuantifiables().size();
@@ -195,7 +203,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
     @Override
     public TRegexExecutorLocals createLocals(Object input, int fromIndex, int index, int maxIndex) {
         return new TRegexBacktrackingNFAExecutorLocals(input, fromIndex, index, maxIndex, getNumberOfCaptureGroups(), nQuantifiers, nZeroWidthQuantifiers, zeroWidthTermEnclosedCGLow,
-                        zeroWidthQuantifierCGOffsets, transitionMatchesStepByStep, maxNTransitions);
+                        zeroWidthQuantifierCGOffsets, transitionMatchesStepByStep, maxNTransitions, returnsFirstGroup);
     }
 
     private static final int IP_BEGIN = -1;
@@ -359,7 +367,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
          * will always be pushed to the stack.
          */
         if (curState.isLookAround() && !canInlineLookAroundIntoTransition(curState)) {
-            Object subMatchResult = runSubMatcher(locals.createSubNFALocals(), compactString, curState);
+            Object subMatchResult = runSubMatcher(locals.createSubNFALocals(lookAroundExecutorReturnsFirstGroup(curState)), compactString, curState);
             if (subMatchFailed(curState, subMatchResult)) {
                 return IP_BACKTRACK;
             } else if (!curState.isLookAroundNegated() && getLookAroundExecutor(curState).writesCaptureGroups()) {
@@ -566,12 +574,25 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
         }
     }
 
+    public boolean returnsFirstGroup() {
+        return returnsFirstGroup;
+    }
+
     private TRegexExecutorNode getLookAroundExecutor(PureNFAState lookAroundState) {
         return lookAroundExecutors[lookAroundState.getLookAroundId()];
     }
 
     protected boolean lookAroundExecutorIsLiteral(PureNFAState s) {
         return getLookAroundExecutor(s) instanceof TRegexLiteralLookAroundExecutorNode;
+    }
+
+    private boolean lookAroundExecutorReturnsFirstGroup(PureNFAState s) {
+        TRegexExecutorNode executor = getLookAroundExecutor(s);
+        if (executor instanceof TRegexBacktrackingNFAExecutorNode) {
+            return ((TRegexBacktrackingNFAExecutorNode) executor).returnsFirstGroup();
+        } else {
+            return false;
+        }
     }
 
     private boolean canInlineLookAroundIntoTransition(PureNFAState s) {
@@ -588,7 +609,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
             locals.setNextIndex(saveNextIndex);
             return result;
         } else {
-            return !subMatchFailed(target, runSubMatcher(locals.createSubNFALocals(transition), compactString, target));
+            return !subMatchFailed(target, runSubMatcher(locals.createSubNFALocals(transition, lookAroundExecutorReturnsFirstGroup(target)), compactString, target));
         }
     }
 

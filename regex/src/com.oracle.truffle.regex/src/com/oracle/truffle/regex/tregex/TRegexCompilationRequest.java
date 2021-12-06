@@ -251,6 +251,7 @@ public final class TRegexCompilationRequest {
 
     private static boolean canTransformToDFA(RegexAST ast) throws UnsupportedRegexException {
         RegexProperties p = ast.getProperties();
+        boolean couldCalculateLastGroup = !ast.getOptions().getFlavor().usesLastGroupResultField() || !p.hasCaptureGroupsInLookAroundAssertions();
         return ast.getNumberOfNodes() <= TRegexOptions.TRegexMaxParseTreeSizeForDFA &&
                         ast.getNumberOfCaptureGroups() <= TRegexOptions.TRegexMaxNumberOfCaptureGroupsForDFA &&
                         !(ast.getRoot().hasBackReferences() ||
@@ -258,7 +259,8 @@ public final class TRegexCompilationRequest {
                                         p.hasNegativeLookAheadAssertions() ||
                                         p.hasNonLiteralLookBehindAssertions() ||
                                         p.hasNegativeLookBehindAssertions() ||
-                                        ast.getRoot().hasQuantifiers());
+                                        ast.getRoot().hasQuantifiers()) &&
+                        couldCalculateLastGroup;
     }
 
     private void createAST() {

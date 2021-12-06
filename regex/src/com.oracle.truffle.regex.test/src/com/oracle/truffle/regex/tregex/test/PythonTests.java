@@ -217,4 +217,27 @@ public class PythonTests extends RegexTestBase {
         testLastGroup(".*([a0-9])()", "", "ab", 0, 2);
         testLastGroup(".*([a0-9]())", "", "ab", 0, 1);
     }
+
+    @Test
+    public void testLastGroupInLookbehind() {
+        // Here we test whether we get the correct order of lastGroup updates inside lookbehinds.
+        testLastGroup("(?<=(a)(b))", "", "ab", 0, 2);
+        testLastGroup("(?<=(a(b)))", "", "ab", 0, 1);
+        testLastGroup("(?<=(a)())", "", "ab", 0, 2);
+        testLastGroup("(?<=(a()))", "", "ab", 0, 1);
+    }
+
+    @Test
+    public void testLastGroupInLookaround() {
+        // Here we test the interaction of lastGroup updates across lookaround assertions.
+        testLastGroup("(?=(a)b)(a)b", "", "ab", 0, 2);
+        testLastGroup("(?=(a)b)a(b)", "", "ab", 0, 2);
+        testLastGroup("(?=a(b))(a)b", "", "ab", 0, 2);
+        testLastGroup("(?=a(b))a(b)", "", "ab", 0, 2);
+
+        testLastGroup("(a)b(?<=(a)b)", "", "ab", 0, 2);
+        testLastGroup("(a)b(?<=a(b))", "", "ab", 0, 2);
+        testLastGroup("a(b)(?<=(a)b)", "", "ab", 0, 2);
+        testLastGroup("a(b)(?<=a(b))", "", "ab", 0, 2);
+    }
 }
