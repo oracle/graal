@@ -43,6 +43,7 @@ import org.graalvm.options.OptionStability;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.llvm.runtime.LLVMContext;
 
 public final class SulongEngineOption {
 
@@ -117,13 +118,6 @@ public final class SulongEngineOption {
             help = "Enable IR-level debugging of LLVM bitcode files.")
     public static final OptionKey<Boolean> LL_DEBUG = new OptionKey<>(false);
 
-    public static final String LL_DEBUG_VERBOSE_NAME = "llvm.llDebug.verbose";
-    @Option(name = LL_DEBUG_VERBOSE_NAME,
-            category = OptionCategory.EXPERT,
-            help = "Enables diagnostics for IR-level debugging (e.g., report missing .ll files). Requires \'--llvm.llDebug=true\'. " +
-                   "Set value to \'stdout\', \'stderr\' or \'file://<path to writable file>\' to enable.")
-    public static final OptionKey<String> LL_DEBUG_VERBOSE = new OptionKey<>("stderr");
-
     @Option(name = "llvm.llDebug.sources",
             category = OptionCategory.EXPERT,
             help = "Provide the locations of *.ll files for debugging. " +
@@ -197,6 +191,6 @@ public final class SulongEngineOption {
     }
 
     public static boolean shouldVerifyCompileUnitChecksums(TruffleLanguage.Env env) {
-        return env.getOptions().get(LL_DEBUG) && optionEnabled(env.getOptions().get(LL_DEBUG_VERBOSE));
+        return env.getOptions().get(LL_DEBUG) && LLVMContext.llDebugVerboseEnabled();
     }
 }

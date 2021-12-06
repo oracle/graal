@@ -82,7 +82,6 @@ import java.util.logging.Level;
 import java.util.stream.Collectors;
 
 public final class LLVMContext {
-
     public static final String SULONG_INIT_CONTEXT = "__sulong_init_context";
     public static final String SULONG_DISPOSE_CONTEXT = "__sulong_dispose_context";
 
@@ -90,6 +89,7 @@ public final class LLVMContext {
 
     private static final Level NATIVE_CALL_STATISTICS_LEVEL = Level.FINER;
     private static final Level SYSCALLS_LOGGING_LEVEL = Level.FINER;
+    private static final Level LL_DEBUG_VERBOSE_LOGGER_LEVEL = Level.FINER;
 
     private final List<Path> libraryPaths = new ArrayList<>();
     private final Object libraryPathsLock = new Object();
@@ -272,9 +272,10 @@ public final class LLVMContext {
         assert this.threadingStack == null;
         this.contextExtensions = contextExtens;
 
-        String opt = env.getOptions().get(SulongEngineOption.LL_DEBUG_VERBOSE);
-        this.llDebugVerboseStream = (SulongEngineOption.optionEnabled(opt) && env.getOptions().get(SulongEngineOption.LL_DEBUG)) ? new TargetStream(env, opt) : null;
-        opt = env.getOptions().get(SulongEngineOption.TRACE_IR);
+        if (llDebugVerboseEnabled() && !env.getOptions().get(SulongEngineOption.LL_DEBUG)) {
+            llDebugVerboseLog("LL debug verbose logging is enabled, but \'--llvm.llDebug=true\' is not set");
+        }
+        String opt = env.getOptions().get(SulongEngineOption.TRACE_IR);
         if (SulongEngineOption.optionEnabled(opt)) {
             if (!env.getOptions().get(SulongEngineOption.LL_DEBUG)) {
                 throw new IllegalStateException("\'--llvm.traceIR\' requires \'--llvm.llDebug=true\'");
@@ -1143,10 +1144,18 @@ public final class LLVMContext {
         return lifetimeAnalysisLogger;
     }
 
-    @CompilationFinal private TargetStream llDebugVerboseStream;
+    private static final TruffleLogger llDebugLogger = TruffleLogger.getLogger("llvm", "LLDebug");
 
-    public TargetStream llDebugVerboseStream() {
-        return llDebugVerboseStream;
+    public static boolean llDebugVerboseEnabled() {
+        return llDebugLogger.isLoggable(LL_DEBUG_VERBOSE_LOGGER_LEVEL);
+    }
+
+    public static void llDebugVerboseLog(String message) {
+        llDebugLogger.log(LL_DEBUG_VERBOSE_LOGGER_LEVEL, message);
+    }
+
+    public static TruffleLogger llDebugLogger() {
+        return llDebugLogger;
     }
 
     /**

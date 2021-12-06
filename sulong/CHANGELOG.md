@@ -6,6 +6,7 @@ Changes:
 * Option `--llvm.debugLoader` is replaced by `--log.llvm.Loader.level=FINER`.
 * Option `--llvm.printNativeCallStats` is replaced by `--log.llvm.NativeCallStats.level=FINER`.
 * Option `--llvm.sysCalls` is replaced by `--log.llvm.SysCalls.level=FINER`.
+* Option `--llvm.llDebugVerbose` is replaced by `--log.llvm.LLDebug.level=FINER`.
 
 # Version 22.0.0
 
