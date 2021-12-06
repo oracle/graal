@@ -59,6 +59,7 @@ public final class DefaultCallTarget implements RootCallTarget {
     public static final String CALL_BOUNDARY_METHOD = "callDirectOrIndirect";
     private final RootNode rootNode;
     private volatile boolean initialized;
+    private volatile boolean loaded;
 
     DefaultCallTarget(RootNode function) {
         this.rootNode = function;
@@ -111,5 +112,13 @@ public final class DefaultCallTarget implements RootCallTarget {
                 this.initialized = true;
             }
         }
+    }
+
+    boolean isLoaded() {
+        return loaded;
+    }
+
+    void setLoaded() {
+        this.loaded = true;
     }
 }

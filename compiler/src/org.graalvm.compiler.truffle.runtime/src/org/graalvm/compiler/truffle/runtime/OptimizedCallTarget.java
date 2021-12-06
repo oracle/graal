@@ -134,6 +134,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     /** Whether this call target was cloned, compiled or called. */
     @CompilationFinal protected volatile boolean initialized;
+    @CompilationFinal private volatile boolean loaded;
 
     /**
      * The call threshold is counted up for each real call until it reaches a
@@ -1628,6 +1629,15 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     final void setNonTrivialNodeCount(int nonTrivialNodeCount) {
         this.cachedNonTrivialNodeCount = nonTrivialNodeCount;
+    }
+
+    final boolean isLoaded() {
+        return loaded;
+    }
+
+    final void setLoaded() {
+        CompilerAsserts.neverPartOfCompilation();
+        this.loaded = true;
     }
 
     public final boolean prepareForAOT() {
