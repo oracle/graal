@@ -65,8 +65,8 @@ public final class CEntryPointActions {
      * @param ensureJavaThread when set to true, the method ensures that the
      *            {@link java.lang.Thread} object for the newly attached thread is created. If the
      *            parameter is set to false, a later call to one of the
-     *            {@link JavaThreads#ensureJavaThread} methods early after the prologue must be used
-     *            to do the initialization manually.
+     *            {@link JavaThreads#ensurePlatformThread} methods early after the prologue must be
+     *            used to do the initialization manually.
      * @return 0 on success, otherwise non-zero.
      */
     public static native int enterAttachThread(Isolate isolate, boolean ensureJavaThread);

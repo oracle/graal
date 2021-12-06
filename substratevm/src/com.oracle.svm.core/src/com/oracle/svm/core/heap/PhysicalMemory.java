@@ -137,7 +137,7 @@ public class PhysicalMemory {
     }
 
     private static boolean isInitializationDisallowed() {
-        return Heap.getHeap().isAllocationDisallowed() || VMOperation.isInProgress() || !JavaThreads.currentJavaThreadInitialized() ||
+        return Heap.getHeap().isAllocationDisallowed() || VMOperation.isInProgress() || !JavaThreads.currentPlatformThreadInitialized() ||
                         !CEntryPointSnippets.isIsolateInitialized() || StackOverflowCheck.singleton().isYellowZoneAvailable();
     }
 

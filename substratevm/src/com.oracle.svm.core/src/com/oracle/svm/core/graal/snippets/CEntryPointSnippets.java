@@ -407,7 +407,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     private static void ensureJavaThread() {
-        JavaThreads.ensureJavaThread();
+        JavaThreads.ensurePlatformThread();
     }
 
     @Snippet

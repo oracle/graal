@@ -112,7 +112,7 @@ public class DeoptTester {
                             ThreadingSupportImpl.isRecurringCallbackPaused() ||
                             VMOperation.isInProgress() ||
                             SafepointBehavior.ignoresSafepoints() ||
-                            !JavaThreads.currentJavaThreadInitialized()) {
+                            !JavaThreads.currentPlatformThreadInitialized()) {
                 return; // Thread or VM is not in a safe (or sane) state for deoptimization
             }
             Pointer startSp = KnownIntrinsics.readCallerStackPointer();

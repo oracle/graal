@@ -355,7 +355,7 @@ final class JNIInvocationInterface {
                  * thread. In this case neither AttachCurrentThread nor this routine have any effect
                  * on the daemon status of the thread."
                  */
-                JavaThreads.ensureJavaThread(name, group, asDaemon);
+                JavaThreads.ensurePlatformThread(name, group, asDaemon);
 
                 return JNIErrors.JNI_OK();
             }
