@@ -203,8 +203,9 @@ public abstract class JavaThreads {
 
     /* End of accessor functions. */
 
-    public static Thread fromVMThread(IsolateThread vmThread) {
-        return currentThread.get(vmThread);
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static Thread fromVMThread(IsolateThread thread) {
+        return currentThread.get(thread);
     }
 
     @SuppressFBWarnings(value = "BC", justification = "Cast for @TargetClass")
