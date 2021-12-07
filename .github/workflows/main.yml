@@ -146,15 +146,6 @@ jobs:
     - name: Build GraalVM and run gate
       env: ${{ matrix.env }}
       run: |
-        if [[ "${PRIMARY}" == "vm" || "${PRIMARY}" == "sulong" ]]
-        then
-          # workaround issue in cmake 3.22: downgrade to 3.21.4
-          wget --no-verbose https://github.com/Kitware/CMake/releases/download/v3.21.4/cmake-3.21.4-linux-x86_64.tar.gz
-          tar -xzf cmake-3.21.4-linux-x86_64.tar.gz
-          export PATH=$(pwd)/cmake-3.21.4-linux-x86_64/bin:$PATH
-          cmake --version
-        fi
-
         if [[ ${GATE} == *style* ]]
         then
           export ECLIPSE_TAR=eclipse.tar.gz
