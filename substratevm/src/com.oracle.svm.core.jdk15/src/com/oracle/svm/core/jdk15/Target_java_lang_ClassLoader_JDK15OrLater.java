@@ -88,7 +88,7 @@ final class Target_jdk_internal_loader_NativeLibraries_JDK15OrLater {
      */
 
     @Delete
-    private static native boolean load(Target_jdk_internal_loader_NativeLibraries_NativeLibraryImpl_JDK15OrLater impl, String name, boolean isBuiltin, boolean isJNI);
+    private static native boolean load(Target_jdk_internal_loader_NativeLibraries_NativeLibraryImpl_JDK15OrLater impl, String name, boolean isBuiltin, boolean isJNI, boolean throwExceptionIfFail);
 
     @Delete
     private static native void unload(String name, boolean isBuiltin, boolean isJNI, long handle);
