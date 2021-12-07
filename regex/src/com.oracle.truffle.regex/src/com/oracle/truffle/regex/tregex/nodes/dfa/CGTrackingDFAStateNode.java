@@ -178,7 +178,7 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
     private void storeResult(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
         CompilerAsserts.partialEvaluationConstant(this);
         if (!executor.isSearching()) {
-            locals.getCGData().exportResult((byte) DFACaptureGroupPartialTransition.FINAL_STATE_RESULT_INDEX);
+            locals.getCGData().exportResult((byte) DFACaptureGroupPartialTransition.FINAL_STATE_RESULT_INDEX, executor.returnsLastGroup());
         }
         locals.setResultInt(0);
     }

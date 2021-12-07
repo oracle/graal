@@ -246,14 +246,6 @@ public class GroupBoundaries implements JsonConvertible {
         if (hasIndexUpdates()) {
             resultFactory.updateIndices(updateIndices, index);
         }
-        resultFactory.setLastGroup(lastGroup);
-    }
-
-    public void applyToStackFrameExploded(int[] stack, int cgOffset, int index, int lgOffset, boolean dontOverwriteLastGroup) {
-        applyExploded(stack, cgOffset, index);
-        if (lastGroup != -1 && (!dontOverwriteLastGroup || stack[lgOffset] == -1)) {
-            stack[lgOffset] = lastGroup;
-        }
     }
 
     @ExplodeLoop
@@ -266,13 +258,6 @@ public class GroupBoundaries implements JsonConvertible {
         }
         for (int i = 0; i < updateArray.length; i++) {
             array[offset + Short.toUnsignedInt(updateArray[i])] = index;
-        }
-    }
-
-    public void applyToStackFrame(int[] array, int cgOffset, int index, int lgOffset) {
-        applyToResultArray(array, cgOffset, index);
-        if (lastGroup != -1) {
-            array[lgOffset] = lastGroup;
         }
     }
 

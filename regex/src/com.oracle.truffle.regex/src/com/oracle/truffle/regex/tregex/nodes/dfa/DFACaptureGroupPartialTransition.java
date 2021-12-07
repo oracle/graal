@@ -204,7 +204,9 @@ public final class DFACaptureGroupPartialTransition implements JsonConvertible {
         applyArrayCopy(d.results, d.currentResultOrder, d.currentResult.length);
         applyIndexUpdate(d.results, d.currentResultOrder, currentIndex);
         applyIndexClear(d.results, d.currentResultOrder);
-        applyLastGroupUpdate(d.lastGroups, d.currentResultOrder, d.results.length);
+        if (executor.returnsLastGroup()) {
+            applyLastGroupUpdate(d.lastGroups, d.currentResultOrder, d.results.length);
+        }
     }
 
     public void applyPreFinalStateTransition(TRegexDFAExecutorNode executor, DFACaptureGroupTrackingData d, final int currentIndex) {
@@ -216,7 +218,7 @@ public final class DFACaptureGroupPartialTransition implements JsonConvertible {
         if (executor.recordExecution()) {
             executor.getDebugRecorder().recordCGPartialTransition(currentIndex, id);
         }
-        d.exportResult(preReorderFinalStateResultIndex);
+        d.exportResult(preReorderFinalStateResultIndex, executor.returnsLastGroup());
         applyFinalStateTransition(executor, d, currentIndex);
     }
 
@@ -241,9 +243,11 @@ public final class DFACaptureGroupPartialTransition implements JsonConvertible {
             assert indexClears[0].targetArray == 0;
             applyFinalStateTransitionIndexClears(d);
         }
-        if (lastGroupUpdates.length == 1) {
-            assert lastGroupUpdates[0].targetState == 0;
-            applyFinalStateTransitionLastGroupUpdates(d);
+        if (executor.returnsLastGroup()) {
+            if (lastGroupUpdates.length == 1) {
+                assert lastGroupUpdates[0].targetState == 0;
+                applyFinalStateTransitionLastGroupUpdates(d);
+            }
         }
     }
 

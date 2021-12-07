@@ -96,7 +96,7 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
 
     @Override
     public TRegexExecutorLocals createLocals(Object input, int fromIndex, int index, int maxIndex) {
-        return new TRegexNFAExecutorLocals(input, fromIndex, index, maxIndex, getNumberOfCaptureGroups(), nfa.getNumberOfStates());
+        return new TRegexNFAExecutorLocals(input, fromIndex, index, maxIndex, getNumberOfCaptureGroups(), nfa.getNumberOfStates(), returnsLastGroup());
     }
 
     @Override

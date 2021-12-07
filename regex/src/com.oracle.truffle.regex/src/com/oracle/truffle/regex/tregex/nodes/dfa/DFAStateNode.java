@@ -312,7 +312,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
         if (simpleCG != null && locals.getIndex() > preLoopIndex) {
             int curIndex = locals.getIndex();
             executor.inputSkipReverse(locals);
-            applySimpleCGTransition(simpleCG.getTransitions()[getLoopToSelf()], locals);
+            applySimpleCGTransition(simpleCG.getTransitions()[getLoopToSelf()], executor, locals);
             locals.setIndex(curIndex);
         }
         checkFinalState(locals, executor);
@@ -364,7 +364,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
      */
     void successorFound(TRegexDFAExecutorLocals locals, @SuppressWarnings("unused") TRegexDFAExecutorNode executor, int i) {
         if (simpleCG != null) {
-            applySimpleCGTransition(simpleCG.getTransitions()[i], locals);
+            applySimpleCGTransition(simpleCG.getTransitions()[i], executor, locals);
         }
     }
 
@@ -376,7 +376,9 @@ public class DFAStateNode extends DFAAbstractStateNode {
         if (executor.isSimpleCG()) {
             if (executor.getProperties().isSimpleCGMustCopy()) {
                 System.arraycopy(locals.getCGData().results, 0, locals.getCGData().currentResult, 0, locals.getCGData().currentResult.length);
-                locals.getCGData().lastGroup = locals.getCGData().lastGroups[0];
+                if (executor.returnsLastGroup()) {
+                    locals.getCGData().lastGroup = locals.getCGData().lastGroups[0];
+                }
             }
             locals.setResultInt(0);
         } else {
@@ -384,12 +386,12 @@ public class DFAStateNode extends DFAAbstractStateNode {
         }
     }
 
-    void applySimpleCGTransition(DFASimpleCGTransition transition, TRegexDFAExecutorLocals locals) {
-        transition.apply(locals.getCGData().results, locals.getCGData().lastGroups, locals.getIndex());
+    void applySimpleCGTransition(DFASimpleCGTransition transition, TRegexDFAExecutorNode executor, TRegexDFAExecutorLocals locals) {
+        transition.apply(locals.getCGData().results, locals.getCGData().lastGroups, locals.getIndex(), executor.returnsLastGroup());
     }
 
     void applySimpleCGFinalTransition(DFASimpleCGTransition transition, TRegexDFAExecutorNode executor, TRegexDFAExecutorLocals locals) {
-        transition.applyFinal(locals.getCGData(), locals.getIndex(), executor.getProperties().isSimpleCGMustCopy());
+        transition.applyFinal(locals.getCGData(), locals.getIndex(), executor.getProperties().isSimpleCGMustCopy(), executor.returnsLastGroup());
     }
 
     @TruffleBoundary

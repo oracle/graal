@@ -171,7 +171,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
 
     private DFACaptureGroupTrackingData createCGData() {
         if (isGenericCG() || isSimpleCG()) {
-            return new DFACaptureGroupTrackingData(getMaxNumberOfNFAStates(), getNumberOfCaptureGroups(), props);
+            return new DFACaptureGroupTrackingData(getMaxNumberOfNFAStates(), getNumberOfCaptureGroups(), props, returnsLastGroup());
         } else {
             return null;
         }
@@ -209,11 +209,15 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
             initResultOrder(locals);
             locals.setLastTransition((short) -1);
             Arrays.fill(locals.getCGData().results, -1);
-            Arrays.fill(locals.getCGData().lastGroups, -1);
+            if (returnsLastGroup()) {
+                Arrays.fill(locals.getCGData().lastGroups, -1);
+            }
         } else if (isSimpleCG()) {
             CompilerDirectives.ensureVirtualized(locals.getCGData());
             Arrays.fill(locals.getCGData().results, -1);
-            locals.getCGData().lastGroups[0] = -1;
+            if (returnsLastGroup()) {
+                locals.getCGData().lastGroups[0] = -1;
+            }
         }
         // check if input is long enough for a match
         if (props.getMinResultLength() > 0 &&

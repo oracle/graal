@@ -203,7 +203,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
     @Override
     public TRegexExecutorLocals createLocals(Object input, int fromIndex, int index, int maxIndex) {
         return new TRegexBacktrackingNFAExecutorLocals(input, fromIndex, index, maxIndex, getNumberOfCaptureGroups(), nQuantifiers, nZeroWidthQuantifiers, zeroWidthTermEnclosedCGLow,
-                        zeroWidthQuantifierCGOffsets, transitionMatchesStepByStep, maxNTransitions, returnsFirstGroup);
+                        zeroWidthQuantifierCGOffsets, transitionMatchesStepByStep, maxNTransitions, returnsLastGroup(), returnsFirstGroup);
     }
 
     private static final int IP_BEGIN = -1;
@@ -373,9 +373,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
             } else if (!curState.isLookAroundNegated() && getLookAroundExecutor(curState).writesCaptureGroups()) {
                 if (getLookAroundExecutor(curState).returnsLastGroup()) {
                     WithLastGroup lastGroupWrapper = (WithLastGroup) subMatchResult;
-                    if (lastGroupWrapper.getLastGroup() != -1) {
-                        locals.saveLastGroup(lastGroupWrapper.getLastGroup());
-                    }
+                    locals.setLastGroup(lastGroupWrapper.getLastGroup());
                     subMatchResult = lastGroupWrapper.getResult();
                 }
                 locals.overwriteCaptureGroups((int[]) subMatchResult);

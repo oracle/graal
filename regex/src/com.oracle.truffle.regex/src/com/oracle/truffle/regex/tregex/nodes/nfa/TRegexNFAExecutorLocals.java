@@ -84,8 +84,9 @@ public final class TRegexNFAExecutorLocals extends TRegexExecutorLocals {
      * path.
      */
     private boolean resultPushed = false;
+    private final boolean trackLastGroup;
 
-    public TRegexNFAExecutorLocals(Object input, int fromIndex, int index, int maxIndex, int nCaptureGroups, int nStates) {
+    public TRegexNFAExecutorLocals(Object input, int fromIndex, int index, int maxIndex, int nCaptureGroups, int nStates, boolean trackLastGroup) {
         super(input, fromIndex, maxIndex, index);
         this.frameSize = 1 + nCaptureGroups * 2 + 1;
         this.nCaptureGroups = nCaptureGroups;
@@ -93,6 +94,7 @@ public final class TRegexNFAExecutorLocals extends TRegexExecutorLocals {
         this.curStates = new int[frameSize * 8];
         this.nextStates = new int[frameSize * 8];
         this.marks = new long[((nStates - 1) >> 6) + 1];
+        this.trackLastGroup = trackLastGroup;
     }
 
     private static int offsetCaptureGroups(int recordOffset) {
@@ -140,7 +142,10 @@ public final class TRegexNFAExecutorLocals extends TRegexExecutorLocals {
         } else {
             Arrays.fill(nextStates, offsetCaptureGroups(nextStatesLength), nextStatesLength + frameSize, -1);
         }
-        t.getGroupBoundaries().applyToStackFrame(nextStates, offsetCaptureGroups(nextStatesLength), getIndex(), offsetLastGroup(nextStatesLength));
+        t.getGroupBoundaries().applyToResultArray(nextStates, offsetCaptureGroups(nextStatesLength), getIndex());
+        if (trackLastGroup && t.getGroupBoundaries().hasLastGroup()) {
+            nextStates[offsetLastGroup(nextStatesLength)] = t.getGroupBoundaries().getLastGroup();
+        }
         nextStatesLength += frameSize;
     }
 
@@ -162,14 +167,20 @@ public final class TRegexNFAExecutorLocals extends TRegexExecutorLocals {
         }
         if (copy) {
             System.arraycopy(curStates, offsetCaptureGroups(iCurStates - frameSize), result, 0, result.length);
-            lastGroup = curStates[offsetLastGroup(iCurStates - frameSize)];
+            if (trackLastGroup) {
+                lastGroup = curStates[offsetLastGroup(iCurStates - frameSize)];
+            }
         } else {
             Arrays.fill(result, -1);
-            lastGroup = -1;
+            if (trackLastGroup) {
+                lastGroup = -1;
+            }
         }
         t.getGroupBoundaries().applyToResultArray(result, 0, getIndex());
         if (t.getGroupBoundaries().hasLastGroup()) {
-            lastGroup = t.getGroupBoundaries().getLastGroup();
+            if (trackLastGroup) {
+                lastGroup = t.getGroupBoundaries().getLastGroup();
+            }
         }
     }
 
