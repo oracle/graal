@@ -79,10 +79,12 @@ jobs:
               JDK: "labsjdk-ce-17"
               GATE: "build,debuginfotest"
               PRIMARY: "substratevm"
+              GHA_EXPECTED_FAILURE: true # temporarily marked as expected failure due to #4018 / GR-35118
           - env:
               JDK: "labsjdk-ce-11"
               GATE: "build,debuginfotest"
               PRIMARY: "substratevm"
+              GHA_EXPECTED_FAILURE: true # temporarily marked as expected failure due to #4018 / GR-35118
           - env:
               JDK: "labsjdk-ce-11"
               GATE: "hellomodule"
@@ -164,4 +166,16 @@ jobs:
           rm -rf .git
         fi
 
-        ${MX_PATH}/mx --primary-suite-path ${PRIMARY} --J @"-Xmx2g" --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE}
+        exit_code=0
+        ${MX_PATH}/mx --primary-suite-path ${PRIMARY} --J @"-Xmx2g" --java-home=${JAVA_HOME} gate --strict-mode --tags ${GATE} || exit_code=$?
+
+        if [[ -n "${GHA_EXPECTED_FAILURE}" ]]
+        then
+          if [[ ${exit_code} -eq 0 ]]
+          then
+            echo "Gate passed but was marked as expected failure."
+            exit 25
+          fi
+        else
+          exit ${exit_code}
+        fi
