@@ -563,7 +563,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     // We set 0x10 as default value to disable DC ZVA if this field is not present in HotSpot.
     public final int psrInfoDczidValue = access.getFieldValue("VM_Version::_psr_info.dczid_el0", Integer.class, "uint32_t", 0x10);
-    // psrInfoDczidValue has been removed in a JDK11 update and >=JDK16, zvaLength should be used if available
+    // psrInfoDczidValue has been removed in a JDK11 update and >=JDK16, zvaLength should be used if
+    // available
     public final int zvaLength = getFieldValue("VM_Version::_zva_length", Integer.class, "int", Integer.MAX_VALUE, JDK >= 16 && osArch.equals("aarch64"));
 
     public final long inlineCacheMissStub = getFieldValue("CompilerToVM::Data::SharedRuntime_ic_miss_stub", Long.class, "address");
