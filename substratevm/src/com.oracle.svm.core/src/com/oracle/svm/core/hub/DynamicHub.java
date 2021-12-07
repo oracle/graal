@@ -1232,6 +1232,13 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @Substitute
+    @TargetElement(onlyWith = JDK11OrLater.class)
+    @SuppressWarnings({"deprecation", "unused"})
+    private void checkPackageAccess(SecurityManager sm, ClassLoader ccl, boolean checkProxyInterfaces) {
+        /* No runtime access checks. */
+    }
+
+    @Substitute
     private static Target_jdk_internal_reflect_ReflectionFactory getReflectionFactory() {
         return Target_jdk_internal_reflect_ReflectionFactory.getReflectionFactory();
     }
