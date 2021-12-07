@@ -2138,6 +2138,22 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         }
     }
 
+    public final void emit(VexRMOp op, Register dst, Register src, AVXSize size) {
+        op.emit(this, size, dst, src);
+    }
+
+    public final void emit(VexRMIOp op, Register dst, Register src, int imm8, AVXSize size) {
+        op.emit(this, size, dst, src, imm8);
+    }
+
+    public final void emit(VexRVMOp op, Register dst, Register src1, Register src2, AVXSize size) {
+        op.emit(this, size, dst, src1, src2);
+    }
+
+    public final void emit(VexGeneralPurposeRMVOp op, Register dst, Register src1, Register src2, AVXSize size) {
+        op.emit(this, size, dst, src1, src2);
+    }
+
     public final void addl(AMD64Address dst, int imm32) {
         ADD.getMIOpcode(DWORD, isByte(imm32)).emit(this, DWORD, dst, imm32);
     }
@@ -4953,6 +4969,17 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         emitModRM(src1, src2);
     }
 
+    // Insn: KTESTQ k1, k2
+
+    public final void ktestq(Register src1, Register src2) {
+        assert supports(CPUFeature.AVX512BW);
+        assert inRC(MASK, src1) && inRC(MASK, src2);
+        // Code: VEX.L0.0F.W1 99 /r
+        vexPrefix(src1, Register.None, src2, AVXSize.XMM, P_, M_0F, W1, W1, true);
+        emitByte(0x99);
+        emitModRM(src1, src2);
+    }
+
     public final void evmovdqu64(Register dst, AMD64Address src) {
         assert supports(CPUFeature.AVX512F);
         assert inRC(XMM, dst);
@@ -5076,6 +5103,34 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         emitByte(0x3E);
         emitModRM(kdst, src);
         emitByte(vcc);
+    }
+
+    // Insn: VPCMPQTB k1 {k2}, zmm2, zmm3/m512
+    // -----
+    // Insn: VPCMPQTB k1, zmm2, m512
+
+    public final void evpcmpgtb(Register kdst, Register nds, AMD64Address src) {
+        assert supports(CPUFeature.AVX512BW);
+        assert inRC(MASK, kdst);
+        assert inRC(XMM, nds);
+        // Code: EVEX.NDS.512.66.0F.WIG 64 /r
+        evexPrefix(kdst, Register.None, nds, src, AVXSize.ZMM, P_66, M_0F, WIG, Z0, B0);
+        emitByte(0x64);
+        emitOperandHelper(kdst, src, 0, EVEXTuple.FVM.getDisp8ScalingFactor(AVXSize.ZMM));
+    }
+
+    // Insn: VPCMPQTB k1 {k2}, zmm2, zmm3/m512
+    // -----
+    // Insn: VPCMPQTB k1, k2, zmm2, m512
+
+    public final void evpcmpgtb(Register kdst, Register mask, Register nds, AMD64Address src) {
+        assert supports(CPUFeature.AVX512BW);
+        assert inRC(MASK, kdst) && inRC(MASK, mask);
+        assert inRC(XMM, nds);
+        // Code: EVEX.NDS.512.66.0F.WIG 64 /r
+        evexPrefix(kdst, mask, nds, src, AVXSize.ZMM, P_66, M_0F, WIG, Z0, B0);
+        emitByte(0x64);
+        emitOperandHelper(kdst, src, 0, EVEXTuple.FVM.getDisp8ScalingFactor(AVXSize.ZMM));
     }
 
     // Insn: VPMOVWB ymm1/m256 {k1}{z}, zmm2

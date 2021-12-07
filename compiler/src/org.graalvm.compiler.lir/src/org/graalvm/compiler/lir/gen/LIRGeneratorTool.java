@@ -267,6 +267,16 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
         throw GraalError.unimplemented("StringUTF16.compress substitution is not implemented on this architecture");
     }
 
+    @SuppressWarnings("unused")
+    default Variable emitEncodeISOArray(Value src, Value dst, Value length, boolean ascii) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default Variable emitHasNegatives(Value array, Value length) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
     void emitBlackhole(Value operand);
 
     LIRKind getLIRKind(Stamp stamp);
