@@ -42,6 +42,8 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.jdk.ContinuationsNotSupported;
+import com.oracle.svm.core.jdk.ContinuationsSupported;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrLater;
 import com.oracle.svm.core.jdk.LoomJDK;
@@ -224,14 +226,14 @@ public final class Target_java_lang_Thread {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Substitute
-    @TargetElement(onlyWith = NotLoomJDK.class)
+    @TargetElement(onlyWith = ContinuationsNotSupported.class)
     static Thread currentThread() {
         Thread thread = JavaThreads.platformThread.get();
         assert thread != null : "Thread has not been set yet";
         return thread;
     }
 
-    @Uninterruptible(reason = "called from uninterruptible code", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Substitute
     @TargetElement(onlyWith = LoomJDK.class)
     private static Thread currentThread0() {
@@ -240,40 +242,24 @@ public final class Target_java_lang_Thread {
         return thread;
     }
 
-    @Inject @TargetElement(onlyWith = LoomJDK.class)//
+    @Inject @TargetElement(onlyWith = ContinuationsSupported.class)//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     Thread vthread = null;
 
-    /**
-     * `do_vthread` intrinsic.
-     *
-     * Ref: "Intrinsify currentThread()"
-     * https://github.com/openjdk/loom/commit/457195f6460f6bb713a4a3c02879143073bed0c7
-     */
-    @Uninterruptible(reason = "called from uninterruptible code", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Substitute
-    @TargetElement(name = "currentThread", onlyWith = LoomJDK.class)
+    @TargetElement(name = "currentThread", onlyWith = ContinuationsSupported.class)
     static Thread currentVThread() {
-        Target_java_lang_Thread thread = SubstrateUtil.cast(currentThread0(),
-                        Target_java_lang_Thread.class);
-        if (thread.vthread != null) {
-            return thread.vthread;
-        } else {
-            return SubstrateUtil.cast(thread, Thread.class);
-        }
+        Thread thread = JavaThreads.platformThread.get();
+        Target_java_lang_Thread tjlt = SubstrateUtil.cast(thread, Target_java_lang_Thread.class);
+        return (tjlt.vthread != null) ? tjlt.vthread : thread;
     }
 
     @SuppressWarnings("static-method")
     @Substitute
     @TargetElement(onlyWith = LoomJDK.class)
     void setCurrentThread(Thread thread) {
-        Thread currentCarrierThread = currentThread0();
-        assert SubstrateUtil.cast(currentCarrierThread, Target_java_lang_Thread.class) == this;
-        if (thread == currentCarrierThread) {
-            vthread = null;
-        } else {
-            vthread = thread;
-        }
+        JavaThreads.setCurrentThread(JavaThreads.fromTarget(this), thread);
     }
 
     @Alias

@@ -453,6 +453,12 @@ public abstract class JavaThreads {
         ThreadListenerSupport.get().beforeThreadStart(CurrentIsolate.getCurrentThread(), thread);
     }
 
+    static void setCurrentThread(Thread carrier, Thread thread) {
+        Thread currentCarrierThread = platformThread.get();
+        assert currentCarrierThread == carrier;
+        toTarget(carrier).vthread = (thread != currentCarrierThread) ? thread : null;
+    }
+
     @Uninterruptible(reason = "Called during isolate initialization")
     public void initializeIsolate() {
         /* The thread that creates the isolate is considered the "main" thread. */
