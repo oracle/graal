@@ -46,7 +46,8 @@ public class CharsetEncodeDecodeBenchmark extends BenchmarkBase {
     private CharsetEncoder encoder;
     private CharsetDecoder decoder;
 
-    @Param({"UTF-8", "BIG5", "ISO-8859-15", "ASCII", "UTF-16"}) private String type;
+    // @Param({"UTF-8", "BIG5", "ISO-8859-15", "ASCII", "UTF-16"}) private String type;
+    @Param({"ISO-8859-15"}) private String type;
 
     @Param("16384") private int size;
 
@@ -70,7 +71,7 @@ public class CharsetEncodeDecodeBenchmark extends BenchmarkBase {
         return encoder.encode(charBuffer);
     }
 
-    @Benchmark
+    // @Benchmark
     public CharBuffer decode() throws CharacterCodingException {
         ByteBuffer byteBuffer = ByteBuffer.wrap(BYTES);
         return decoder.decode(byteBuffer);
