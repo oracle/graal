@@ -1355,14 +1355,15 @@ public final class ObjectKlass extends Klass {
     private void checkSuperMethods(ObjectKlass superKlass, int flags, Symbol<Name> methodName, Symbol<Signature> signature, List<ObjectKlass> invalidatedClasses) {
         if (!Modifier.isStatic(flags) && !Modifier.isPrivate(flags) && !Name._init_.equals(methodName)) {
             ObjectKlass currentKlass = this;
-            while (superKlass != null) {
+            ObjectKlass currentSuper = superKlass;
+            while (currentSuper != null) {
                 // look for the method
-                int vtableIndex = superKlass.findVirtualMethodIndex(methodName, signature, currentKlass);
+                int vtableIndex = currentSuper.findVirtualMethodIndex(methodName, signature, currentKlass);
                 if (vtableIndex != -1) {
-                    invalidatedClasses.add(superKlass);
+                    invalidatedClasses.add(currentSuper);
                 }
-                currentKlass = superKlass;
-                superKlass = superKlass.getSuperKlass();
+                currentKlass = currentSuper;
+                currentSuper = currentSuper.getSuperKlass();
             }
         }
     }
