@@ -36,7 +36,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import com.oracle.svm.core.SubstrateDiagnostics;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -54,6 +53,7 @@ import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.NeverInline;
@@ -63,7 +63,6 @@ import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.heap.ReferenceHandlerThreadSupport;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
-import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.monitor.MonitorSupport;
@@ -181,16 +180,6 @@ public abstract class JavaThreads {
             return toTarget(thread).interruptedJDK17OrLater;
         }
         return toTarget(thread).interruptedJDK11OrEarlier;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected static AtomicReference<ParkEvent> getUnsafeParkEvent(Thread thread) {
-        return toTarget(thread).unsafeParkEvent;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected static AtomicReference<ParkEvent> getSleepParkEvent(Thread thread) {
-        return toTarget(thread).sleepParkEvent;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -430,8 +419,7 @@ public abstract class JavaThreads {
         VMThreads.THREAD_MUTEX.assertIsOwner("Must hold the THREAD_MUTEX.");
 
         Thread thread = currentThread.get(vmThread);
-        ParkEvent.detach(getUnsafeParkEvent(thread));
-        ParkEvent.detach(getSleepParkEvent(thread));
+        toTarget(thread).threadData.detach();
         toTarget(thread).isolateThread = WordFactory.nullPointer();
         if (!thread.isDaemon()) {
             nonDaemonThreads.decrementAndGet();
@@ -747,7 +735,7 @@ public abstract class JavaThreads {
     /** Interruptibly park the current thread. */
     static void park() {
         VMOperationControl.guaranteeOkayToBlock("[JavaThreads.park(): Should not park when it is not okay to block.]");
-        final Thread thread = Thread.currentThread();
+        Thread thread = Thread.currentThread();
         if (isInterrupted(thread)) { // avoid state changes and synchronization
             return;
         }
@@ -755,9 +743,9 @@ public abstract class JavaThreads {
          * We can defer assigning a ParkEvent to here because Thread.interrupt() is guaranteed to
          * assign and unpark one if it doesn't yet exist, otherwise we could lose a wakeup.
          */
-        final ParkEvent parkEvent = ensureUnsafeParkEvent(thread);
+        ParkEvent parkEvent = getCurrentThreadData().ensureUnsafeParkEvent();
         // Change the Java thread state while parking.
-        final int oldStatus = JavaThreads.getThreadStatus(thread);
+        int oldStatus = JavaThreads.getThreadStatus(thread);
         int newStatus = MonitorSupport.singleton().maybeAdjustNewParkStatus(ThreadStatus.PARKED);
         JavaThreads.setThreadStatus(thread, newStatus);
         try {
@@ -770,7 +758,7 @@ public abstract class JavaThreads {
     /** Interruptibly park the current thread for the given number of nanoseconds. */
     static void park(long delayNanos) {
         VMOperationControl.guaranteeOkayToBlock("[JavaThreads.park(long): Should not park when it is not okay to block.]");
-        final Thread thread = Thread.currentThread();
+        Thread thread = Thread.currentThread();
         if (isInterrupted(thread)) { // avoid state changes and synchronization
             return;
         }
@@ -778,8 +766,8 @@ public abstract class JavaThreads {
          * We can defer assigning a ParkEvent to here because Thread.interrupt() is guaranteed to
          * assign and unpark one if it doesn't yet exist, otherwise we could lose a wakeup.
          */
-        final ParkEvent parkEvent = ensureUnsafeParkEvent(thread);
-        final int oldStatus = JavaThreads.getThreadStatus(thread);
+        ParkEvent parkEvent = getCurrentThreadData().ensureUnsafeParkEvent();
+        int oldStatus = JavaThreads.getThreadStatus(thread);
         int newStatus = MonitorSupport.singleton().maybeAdjustNewParkStatus(ThreadStatus.PARKED_TIMED);
         JavaThreads.setThreadStatus(thread, newStatus);
         try {
@@ -796,12 +784,14 @@ public abstract class JavaThreads {
      * @see #park(long)
      */
     static void unpark(Thread thread) {
-        ensureUnsafeParkEvent(thread).unpark();
-    }
-
-    /** Get the Park event for a thread, initializing it if necessary. */
-    private static ParkEvent ensureUnsafeParkEvent(Thread thread) {
-        return ParkEvent.initializeOnce(JavaThreads.getUnsafeParkEvent(thread), false);
+        ThreadData threadData = acquireThreadData(thread);
+        if (threadData != null) {
+            try {
+                threadData.ensureUnsafeParkEvent().unpark();
+            } finally {
+                threadData.release();
+            }
+        }
     }
 
     /** Sleep for the given number of nanoseconds, dealing with early wakeups and interruptions. */
@@ -817,8 +807,8 @@ public abstract class JavaThreads {
 
     static void sleep0(long delayNanos) {
         VMOperationControl.guaranteeOkayToBlock("[JavaThreads.sleep(long): Should not sleep when it is not okay to block.]");
-        final Thread thread = Thread.currentThread();
-        final ParkEvent sleepEvent = ParkEvent.initializeOnce(JavaThreads.getSleepParkEvent(thread), true);
+        Thread thread = Thread.currentThread();
+        ParkEvent sleepEvent = getCurrentThreadData().ensureSleepParkEvent();
         sleepEvent.reset();
         /*
          * It is critical to reset the event *before* checking for an interrupt to avoid losing a
@@ -846,14 +836,30 @@ public abstract class JavaThreads {
      * @see #sleep(long)
      */
     static void interrupt(Thread thread) {
-        final ParkEvent sleepEvent = JavaThreads.getSleepParkEvent(thread).get();
-        if (sleepEvent != null) {
-            sleepEvent.unpark();
+        ThreadData threadData = acquireThreadData(thread);
+        if (threadData != null) {
+            try {
+                ParkEvent sleepEvent = threadData.getSleepParkEvent();
+                if (sleepEvent != null) {
+                    sleepEvent.unpark();
+                }
+            } finally {
+                threadData.release();
+            }
         }
     }
 
     static boolean isAlive(int threadStatus) {
         return !(threadStatus == ThreadStatus.NEW || threadStatus == ThreadStatus.TERMINATED);
+    }
+
+    private static ThreadData acquireThreadData(Thread thread) {
+        return toTarget(thread).threadData.acquire();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    static ThreadData getCurrentThreadData() {
+        return (ThreadData) toTarget(Thread.currentThread()).threadData;
     }
 
     /**

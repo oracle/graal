@@ -804,7 +804,7 @@ public final class Safepoint {
                 }
 
                 // Wait for requested threads to come to a safepoint.
-                if (VMThreads.singleton().supportsPatientSafepoints()) {
+                if (VMThreads.singleton().supportsNativeYieldAndSleep()) {
                     if (nanosSinceStart < TimeUtils.nanosPerMilli) {
                         VMThreads.singleton().yield();
                     } else {

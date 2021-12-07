@@ -523,7 +523,8 @@ public abstract class VMThreads {
     }
 
     // Should not be implemented and will be removed with GR-34388.
-    public boolean supportsPatientSafepoints() {
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean supportsNativeYieldAndSleep() {
         return false;
     }
 
