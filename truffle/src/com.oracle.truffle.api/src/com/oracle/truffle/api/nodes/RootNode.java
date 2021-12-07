@@ -174,6 +174,7 @@ public abstract class RootNode extends ExecutableNode {
         root.frameDescriptor = frameDescriptor;
         root.callTarget = null;
         root.instrumentationBits = 0;
+        root.lock = null;
         return root;
     }
 
@@ -346,6 +347,7 @@ public abstract class RootNode extends ExecutableNode {
             // so better make sure they are reset.
             clonedRoot.callTarget = null;
             clonedRoot.instrumentationBits = 0;
+            clonedRoot.lock = null;
         } else {
             clonedRoot = NodeUtil.cloneNode(uninitializedRootNode);
             // regular cloning guarantees that call target and instrumentation bits
