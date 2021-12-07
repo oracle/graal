@@ -174,7 +174,7 @@ public final class PosixJavaThreads extends JavaThreads {
     }
 
     @Override
-    protected void yield() {
+    protected void platformYield() {
         Sched.sched_yield();
     }
 

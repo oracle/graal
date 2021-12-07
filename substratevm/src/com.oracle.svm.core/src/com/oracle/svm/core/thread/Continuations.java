@@ -66,6 +66,11 @@ final class VirtualThread extends Thread {
         submit();
     }
 
+    boolean tryYield() {
+        assert Thread.currentThread() == this;
+        return yieldContinuation();
+    }
+
     private void submit() {
         Continuations.SCHEDULER.execute(runContinuation);
     }
@@ -77,6 +82,15 @@ final class VirtualThread extends Thread {
             if (!cont.isDone()) {
                 afterYield();
             }
+        }
+    }
+
+    private boolean yieldContinuation() {
+        unmount();
+        try {
+            return cont.yield() == JavaContinuations.YIELD_SUCCESS;
+        } finally {
+            mount();
         }
     }
 

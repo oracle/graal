@@ -710,7 +710,15 @@ public abstract class JavaThreads {
      */
     protected abstract void setNativeName(Thread thread, String name);
 
-    protected abstract void yield();
+    protected abstract void platformYield();
+
+    void yield() {
+        if (JavaContinuations.isSupported() && Thread.currentThread() instanceof VirtualThread) {
+            ((VirtualThread) Thread.currentThread()).tryYield();
+        } else {
+            platformYield();
+        }
+    }
 
     /**
      * Wake a thread which is waiting by other means, such as VM-internal condition variables, so

@@ -487,12 +487,10 @@ public final class Target_java_lang_Thread {
         JavaThreads.singleton().yield();
     }
 
-    /**
-     * copy of {@link Target_java_lang_Thread#yield()}.
-     */
     @Substitute
     @TargetElement(onlyWith = LoomJDK.class)
     private static void yield0() {
+        // Loom virtual threads are handled in yield()
         JavaThreads.singleton().yield();
     }
 

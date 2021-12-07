@@ -103,7 +103,7 @@ public final class WindowsJavaThreads extends JavaThreads {
     }
 
     @Override
-    protected void yield() {
+    protected void platformYield() {
         Process.SwitchToThread();
     }
 
