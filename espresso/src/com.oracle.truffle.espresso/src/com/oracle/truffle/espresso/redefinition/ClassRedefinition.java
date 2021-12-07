@@ -258,49 +258,27 @@ public final class ClassRedefinition {
 
     // detect all types of class changes, but return early when a change that require arbitrary
     // changes
-    private static ClassChange detectClassChanges(ParserKlass newParserKlass, ObjectKlass oldKlass, DetectedChange collectedChanges, ParserKlass finalParserKlass) throws RedefintionNotSupportedException {
+    private static ClassChange detectClassChanges(ParserKlass newParserKlass, ObjectKlass oldKlass, DetectedChange collectedChanges, ParserKlass finalParserKlass)
+                    throws RedefintionNotSupportedException {
         ClassChange result = ClassChange.NO_CHANGE;
         ParserKlass oldParserKlass = oldKlass.getLinkedKlass().getParserKlass();
         boolean isPatched = finalParserKlass != null;
 
         // detect changes to superclass and implemented interfaces
+        Klass superKlass = oldKlass.getSuperKlass();
         if (!newParserKlass.getSuperKlass().equals(oldParserKlass.getSuperKlass())) {
-            Klass loadedSuperKlass = oldKlass.getContext().getRegistries().findLoadedClass(newParserKlass.getSuperKlass(), oldKlass.getDefiningClassLoader());
-            if (loadedSuperKlass == null) {
-                // new super interface must be loaded eagerly then
-                StaticObject resourceGuestString = oldKlass.getMeta().toGuestString(Types.binaryName(newParserKlass.getSuperKlass()));
-                try {
-                    StaticObject loadedClass = (StaticObject) oldKlass.getMeta().java_lang_ClassLoader_loadClass.invokeDirect(oldKlass.getDefiningClassLoader(), resourceGuestString);
-                    loadedSuperKlass = loadedClass.getMirrorKlass();
-                } catch (Throwable t) {
-                    throw new RedefintionNotSupportedException(ErrorCodes.ABSENT_INFORMATION);
-                }
-            }
-            collectedChanges.addSuperKlass((ObjectKlass) loadedSuperKlass);
-        } else {
-            collectedChanges.addSuperKlass(oldKlass.getSuperKlass());
+            superKlass = getLoadedKlass(newParserKlass.getSuperKlass(), oldKlass);
         }
+        collectedChanges.addSuperKlass((ObjectKlass) superKlass);
+
+        ObjectKlass[] newSuperInterfaces = oldKlass.getSuperInterfaces();
         if (!Arrays.equals(newParserKlass.getSuperInterfaces(), oldParserKlass.getSuperInterfaces())) {
-            ObjectKlass[] newSuperInterfaces = new ObjectKlass[newParserKlass.getSuperInterfaces().length];
+            newSuperInterfaces = new ObjectKlass[newParserKlass.getSuperInterfaces().length];
             for (int i = 0; i < newParserKlass.getSuperInterfaces().length; i++) {
-                Symbol<Symbol.Type> superInterfaceType = newParserKlass.getSuperInterfaces()[i];
-                Klass loadedInterface = oldKlass.getContext().getRegistries().findLoadedClass(superInterfaceType, oldKlass.getDefiningClassLoader());
-                if (loadedInterface == null) {
-                    // new super interface must be loaded eagerly then
-                    StaticObject resourceGuestString = oldKlass.getMeta().toGuestString(Types.binaryName(superInterfaceType));
-                    try {
-                        StaticObject loadedSuperInterface = (StaticObject) oldKlass.getMeta().java_lang_ClassLoader_loadClass.invokeDirect(oldKlass.getDefiningClassLoader(), resourceGuestString);
-                        loadedInterface = loadedSuperInterface.getMirrorKlass();
-                    } catch (Throwable t) {
-                        throw new RedefintionNotSupportedException(ErrorCodes.ABSENT_INFORMATION);
-                    }
-                }
-                newSuperInterfaces[i] = (ObjectKlass) loadedInterface;
+                newSuperInterfaces[i] = (ObjectKlass) getLoadedKlass(newParserKlass.getSuperInterfaces()[i], oldKlass);
             }
-            collectedChanges.addSuperInterfaces(newSuperInterfaces);
-        } else {
-            collectedChanges.addSuperInterfaces(oldKlass.getSuperInterfaces());
         }
+        collectedChanges.addSuperInterfaces(newSuperInterfaces);
 
         // detect method changes (including constructors)
         ParserMethod[] newParserMethods = newParserKlass.getMethods();
@@ -465,6 +443,22 @@ public final class ClassRedefinition {
 
         collectedChanges.addCompatibleFields(compatibleFields);
         return result;
+    }
+
+    private static Klass getLoadedKlass(Symbol<Symbol.Type> klassType, ObjectKlass oldKlass) throws RedefintionNotSupportedException {
+        Klass klass;
+        klass = oldKlass.getContext().getRegistries().findLoadedClass(klassType, oldKlass.getDefiningClassLoader());
+        if (klass == null) {
+            // new super interface must be loaded eagerly then
+            StaticObject resourceGuestString = oldKlass.getMeta().toGuestString(Types.binaryName(klassType));
+            try {
+                StaticObject loadedClass = (StaticObject) oldKlass.getMeta().java_lang_ClassLoader_loadClass.invokeDirect(oldKlass.getDefiningClassLoader(), resourceGuestString);
+                klass = loadedClass.getMirrorKlass();
+            } catch (Throwable t) {
+                throw new RedefintionNotSupportedException(ErrorCodes.ABSENT_INFORMATION);
+            }
+        }
+        return klass;
     }
 
     private static void checkForSpecialConstructor(DetectedChange collectedChanges, Map<Method, ParserMethod> bodyChanges, List<ParserMethod> newSpecialMethods,
