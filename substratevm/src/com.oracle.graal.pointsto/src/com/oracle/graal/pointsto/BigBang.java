@@ -38,6 +38,8 @@ import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.AnalysisType.UsageKind;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.util.Timer;
@@ -114,6 +116,10 @@ public interface BigBang extends ReachabilityAnalysis, HeapScanning {
      */
     @SuppressWarnings("unused")
     default void onFieldAccessed(AnalysisField field) {
+    }
+
+    @SuppressWarnings("unused")
+    default void onTypeInstantiated(AnalysisType type, UsageKind usageKind) {
     }
 
 }

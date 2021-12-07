@@ -52,6 +52,7 @@ import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.infrastructure.WrappedConstantPool;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
+import com.oracle.graal.pointsto.meta.AnalysisType.UsageKind;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
 import jdk.vm.ci.code.BytecodePosition;
@@ -678,6 +679,10 @@ public class AnalysisUniverse implements Universe {
         bb.onFieldAccessed(field);
     }
 
+    public void onTypeInstantiated(AnalysisType type, UsageKind usage) {
+        bb.onTypeInstantiated(type, usage);
+    }
+
     public SubstitutionProcessor getSubstitutions() {
         return substitutions;
     }
@@ -694,7 +699,4 @@ public class AnalysisUniverse implements Universe {
         this.bb = bb;
     }
 
-    public BigBang getBigbang() {
-        return bb;
-    }
 }
