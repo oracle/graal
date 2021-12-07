@@ -1352,9 +1352,8 @@ public final class ObjectKlass extends Klass {
     // if an added/removed method is an override of a super method
     // we need to invalidate the super class method, to allow
     // for new method dispatch lookup
-    private void checkSuperMethods(int flags, Symbol<Name> methodName, Symbol<Signature> signature, List<ObjectKlass> invalidatedClasses) {
+    private void checkSuperMethods(ObjectKlass superKlass, int flags, Symbol<Name> methodName, Symbol<Signature> signature, List<ObjectKlass> invalidatedClasses) {
         if (!Modifier.isStatic(flags) && !Modifier.isPrivate(flags) && !Name._init_.equals(methodName)) {
-            ObjectKlass superKlass = getSuperKlass();
             ObjectKlass currentKlass = this;
             while (superKlass != null) {
                 // look for the method
@@ -1536,7 +1535,7 @@ public final class ObjectKlass extends Klass {
             for (Method.MethodVersion removedMethod : removedMethods) {
                 virtualMethodsModified |= isVirtual(removedMethod.getLinkedMethod().getParserMethod());
                 ParserMethod parserMethod = removedMethod.getLinkedMethod().getParserMethod();
-                checkSuperMethods(parserMethod.getFlags(), parserMethod.getName(), parserMethod.getSignature(), invalidatedClasses);
+                checkSuperMethods(superKlass, parserMethod.getFlags(), parserMethod.getName(), parserMethod.getSignature(), invalidatedClasses);
                 removedMethod.getMethod().removedByRedefinition();
                 JDWP.LOGGER.fine(() -> "Removed method " + removedMethod.getMethod().getDeclaringKlass().getName() + "." + removedMethod.getLinkedMethod().getName());
             }
@@ -1546,7 +1545,7 @@ public final class ObjectKlass extends Klass {
                 Method.MethodVersion added = new Method(this, linkedMethod, pool).getMethodVersion();
                 newDeclaredMethods.addLast(added);
                 virtualMethodsModified |= isVirtual(addedMethod);
-                checkSuperMethods(addedMethod.getFlags(), addedMethod.getName(), addedMethod.getSignature(), invalidatedClasses);
+                checkSuperMethods(superKlass, addedMethod.getFlags(), addedMethod.getName(), addedMethod.getSignature(), invalidatedClasses);
                 JDWP.LOGGER.fine(() -> "Added method " + added.getMethod().getDeclaringKlass().getName() + "." + added.getName());
             }
 
