@@ -41,15 +41,15 @@ final class Target_jdk_internal_misc_Unsafe_JavaThreads {
      * strange to place it elsewhere.
      */
     @Substitute
-    private void park(boolean isAbsolute, long time) {
+    void park(boolean isAbsolute, long time) {
         /* Decide what kind of park I am doing. */
         if (!isAbsolute && time == 0L) {
             /* Park without deadline. */
-            JavaThreads.park();
+            JavaThreads.platformPark();
         } else {
             /* Park with deadline. */
             final long delayNanos = TimeUtils.delayNanos(isAbsolute, time);
-            JavaThreads.park(delayNanos);
+            JavaThreads.platformPark(delayNanos);
         }
         /*
          * Unsafe.park does not distinguish between timing out, being unparked, and being
@@ -68,13 +68,13 @@ final class Target_jdk_internal_misc_Unsafe_JavaThreads {
      * @param threadObj the thread to unpark.
      */
     @Substitute
-    private void unpark(Object threadObj) {
+    void unpark(Object threadObj) {
         if (threadObj == null) {
             throw new NullPointerException("Unsafe.unpark(thread == null)");
         } else if (!(threadObj instanceof Thread)) {
             throw new IllegalArgumentException("Unsafe.unpark(!(thread instanceof Thread))");
         }
         Thread thread = (Thread) threadObj;
-        JavaThreads.unpark(thread);
+        JavaThreads.platformUnpark(thread);
     }
 }

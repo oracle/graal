@@ -149,6 +149,9 @@ public final class Target_java_lang_Thread {
     @Alias @TargetElement(onlyWith = LoomJDK.class) //
     Object interruptLock;
 
+    @Alias @TargetElement(onlyWith = NotLoomJDK.class) //
+    volatile Target_sun_nio_ch_Interruptible blocker;
+
     @Alias
     native void setPriority(int newPriority);
 
@@ -371,32 +374,26 @@ public final class Target_java_lang_Thread {
      * code that does locking or performs other actions that can be unsafe in a specific context.
      * Use {@link JavaThreads#isInterrupted} instead.
      */
-    @Alias
-    public native boolean isInterrupted();
+    @Substitute
+    @SuppressWarnings("static-method")
+    public boolean isInterrupted() {
+        return JavaThreads.isInterrupted(JavaThreads.fromTarget(this));
+    }
 
     @Substitute
-    @TargetElement(onlyWith = JDK11OrEarlier.class)
-    private boolean isInterrupted(boolean clearInterrupted) {
-        final boolean result = interruptedJDK11OrEarlier;
-        if (result && clearInterrupted) {
-            /*
-             * As we don't use a lock, it is possible to observe any kinds of races with other
-             * threads that try to set interrupted to true. However, those races don't cause any
-             * correctness issues as we only reset interrupted to false if we observed that it was
-             * true earlier. There also can't be any problematic races with other calls to
-             * isInterrupted as clearInterrupted may only be true if this method is being executed
-             * by the current thread.
-             */
-            interruptedJDK11OrEarlier = false;
-        }
-        return result;
+    public static boolean interrupted() {
+        return JavaThreads.getAndClearInterrupt(Thread.currentThread());
     }
+
+    @Delete
+    @TargetElement(onlyWith = JDK11OrEarlier.class)
+    private native boolean isInterrupted(boolean clearInterrupted);
 
     /**
      * Marks the thread as interrupted and wakes it up.
      *
-     * See {@link JavaThreads#park()}, {@link JavaThreads#park(long)} and {@link JavaThreads#sleep}
-     * for vital aspects of the underlying mechanisms.
+     * See {@link JavaThreads#platformPark()}, {@link JavaThreads#platformUnpark} and
+     * {@link JavaThreads#sleep} for vital aspects of the underlying mechanisms.
      */
     @Substitute
     void interrupt0() {
@@ -415,13 +412,13 @@ public final class Target_java_lang_Thread {
         }
 
         Thread thread = JavaThreads.fromTarget(this);
-        JavaThreads.interrupt(thread);
+        JavaThreads.platformInterrupt(thread);
         /*
          * This may unpark the thread unnecessarily (e.g., the interrupt above could have already
          * resumed the thread execution, so the thread could now be parked for some other reason).
          * However, this is not a correctness issue as the unpark will only be a spurious wakeup.
          */
-        JavaThreads.unpark(thread);
+        JavaThreads.platformUnpark(thread);
         /*
          * Must be executed after setting interrupted to true, see
          * HeapImpl.waitForReferencePendingList().
@@ -471,14 +468,13 @@ public final class Target_java_lang_Thread {
     @Substitute
     @TargetElement(onlyWith = NotLoomJDK.class)
     private boolean isAlive() {
-        // There are fewer cases that are not-alive.
-        return JavaThreads.isAlive(threadStatus);
+        return JavaThreads.isAlive(JavaThreads.fromTarget(this));
     }
 
     @Substitute
     @TargetElement(onlyWith = LoomJDK.class)
     private boolean isAlive0() {
-        return JavaThreads.isAlive(holder.threadStatus);
+        return JavaThreads.platformIsAlive(JavaThreads.fromTarget(this));
     }
 
     @Substitute
@@ -500,13 +496,17 @@ public final class Target_java_lang_Thread {
         JavaThreads.sleep(millis);
     }
 
-    /**
-     * copy of {@link Target_java_lang_Thread#sleep(long)}.
-     */
     @Substitute
     @TargetElement(onlyWith = LoomJDK.class)
     private static void sleep0(long millis) throws InterruptedException {
+        // Loom virtual threads are handled in sleep()
         JavaThreads.sleep(millis);
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = NotLoomJDK.class)
+    public void join(long millis) throws InterruptedException {
+        JavaThreads.join(JavaThreads.fromTarget(this), millis);
     }
 
     /**
@@ -539,15 +539,14 @@ public final class Target_java_lang_Thread {
         return JavaThreads.getAllStackTraces();
     }
 
-    @Substitute
+    /**
+     * In the JDK, this is a no-op except on Windows. The JDK resets the interrupt event used by
+     * Process.waitFor ResetEvent((HANDLE) JVM_GetThreadInterruptEvent()); Our implementation in
+     * WindowsJavaThreads.java takes care of this ResetEvent.
+     */
+    @Delete
     @TargetElement(onlyWith = JDK17OrLater.class)
-    private static void clearInterruptEvent() {
-        /*
-         * In the JDK, this is a no-op except on Windows. The JDK resets the interrupt event used by
-         * Process.waitFor ResetEvent((HANDLE) JVM_GetThreadInterruptEvent()); Our implementation in
-         * WindowsJavaThreads.java takes care of this ResetEvent.
-         */
-    }
+    private static native void clearInterruptEvent();
 
     @Substitute
     @TargetElement(onlyWith = LoomJDK.class)
@@ -615,4 +614,10 @@ final class Target_java_lang_Thread_ThreadIdentifiers {
 
 @TargetClass(value = Thread.class, innerClass = "VirtualThreads", onlyWith = LoomJDK.class)
 final class Target_java_lang_Thread_VirtualThreads {
+}
+
+@TargetClass(className = "sun.nio.ch.Interruptible")
+interface Target_sun_nio_ch_Interruptible {
+    @Alias
+    void interrupt(Thread t);
 }

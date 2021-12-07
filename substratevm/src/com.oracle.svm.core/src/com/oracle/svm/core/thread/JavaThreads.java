@@ -26,6 +26,7 @@ package com.oracle.svm.core.thread;
 
 import static com.oracle.svm.core.SubstrateOptions.MultiThreaded;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.security.AccessControlContext;
@@ -34,6 +35,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -66,6 +68,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.heap.ReferenceHandlerThread;
 import com.oracle.svm.core.jdk.StackTraceUtils;
+import com.oracle.svm.core.jdk.Target_jdk_internal_misc_VM;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
@@ -163,7 +166,7 @@ public abstract class JavaThreads {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @SuppressFBWarnings(value = "BC", justification = "Cast for @TargetClass")
-    private static Target_java_lang_Thread toTarget(Thread thread) {
+    static Target_java_lang_Thread toTarget(Thread thread) {
         return Target_java_lang_Thread.class.cast(thread);
     }
 
@@ -178,7 +181,7 @@ public abstract class JavaThreads {
     @Uninterruptible(reason = "Thread locks/holds the THREAD_MUTEX.")
     public static long getThreadAllocatedBytes(long javaThreadId) {
         // Accessing the value for the current thread is fast.
-        Thread curThread = JavaThreads.currentThread.get();
+        Thread curThread = JavaThreads.platformThread.get();
         if (curThread != null && curThread.getId() == javaThreadId) {
             return Heap.getHeap().getThreadAllocatedMemory(CurrentIsolate.getCurrentThread());
         }
@@ -188,7 +191,7 @@ public abstract class JavaThreads {
         try {
             IsolateThread isolateThread = VMThreads.firstThread();
             while (isolateThread.isNonNull()) {
-                Thread javaThread = JavaThreads.currentThread.get(isolateThread);
+                Thread javaThread = JavaThreads.platformThread.get(isolateThread);
                 if (javaThread != null && javaThread.getId() == javaThreadId) {
                     return Heap.getHeap().getThreadAllocatedMemory(isolateThread);
                 }
@@ -206,7 +209,7 @@ public abstract class JavaThreads {
         try {
             IsolateThread isolateThread = VMThreads.firstThread();
             while (isolateThread.isNonNull()) {
-                Thread javaThread = JavaThreads.currentThread.get(isolateThread);
+                Thread javaThread = JavaThreads.platformThread.get(isolateThread);
                 if (javaThread != null) {
                     for (int i = 0; i < javaThreadIds.length; i++) {
                         if (javaThread.getId() == javaThreadIds[i]) {
@@ -222,6 +225,11 @@ public abstract class JavaThreads {
         }
     }
 
+    /** Safe method to get a thread's internal state since {@link Thread#getState} is not final. */
+    static Thread.State getThreadState(Thread thread) {
+        return Target_jdk_internal_misc_VM.toThreadState(getThreadStatus(thread));
+    }
+
     /**
      * Safe method to check whether a thread has been interrupted.
      *
@@ -229,11 +237,55 @@ public abstract class JavaThreads {
      * overridden with code that does locking or performs other actions that are unsafe especially
      * in VM-internal contexts.
      */
-    public static boolean isInterrupted(Thread thread) {
+    static boolean isInterrupted(Thread thread) {
         if (JavaVersionUtil.JAVA_SPEC >= 17) {
             return toTarget(thread).interruptedJDK17OrLater;
         }
         return toTarget(thread).interruptedJDK11OrEarlier;
+    }
+
+    static boolean getAndClearInterrupt(Thread thread) {
+        if (JavaContinuations.isSupported() && thread instanceof VirtualThread) {
+            return ((VirtualThread) thread).getAndClearInterrupt();
+        }
+        return platformGetAndClearInterrupt(thread);
+    }
+
+    static boolean platformGetAndClearInterrupt(Thread thread) {
+        /*
+         * As we don't use a lock, it is possible to observe any kinds of races with other threads
+         * that try to set interrupted to true. However, those races don't cause any correctness
+         * issues as we only reset interrupted to false if we observed that it was true earlier.
+         * There also can't be any problematic races with other calls to isInterrupted as
+         * clearInterrupted may only be true if this method is being executed by the current thread.
+         */
+        assert !JavaContinuations.isSupported() || !(thread instanceof VirtualThread);
+        return getAndWriteInterruptedFlag(thread, false);
+    }
+
+    static void platformSetInterrupt(Thread thread) {
+        assert !JavaContinuations.isSupported() || !(thread instanceof VirtualThread);
+        boolean oldValue = getAndWriteInterruptedFlag(thread, true);
+        if (!oldValue) {
+            toTarget(thread).interrupt0();
+        }
+    }
+
+    static boolean getAndWriteInterruptedFlag(Thread thread, boolean newValue) {
+        Target_java_lang_Thread tjlt = toTarget(thread);
+        boolean oldValue;
+        if (JavaVersionUtil.JAVA_SPEC <= 11) {
+            oldValue = tjlt.interruptedJDK11OrEarlier;
+            if (oldValue != newValue) {
+                tjlt.interruptedJDK11OrEarlier = newValue;
+            }
+        } else {
+            oldValue = tjlt.interruptedJDK17OrLater;
+            if (oldValue != newValue) {
+                tjlt.interruptedJDK17OrLater = newValue;
+            }
+        }
+        return oldValue;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -300,6 +352,37 @@ public abstract class JavaThreads {
         Target_java_lang_Thread javaThread = SubstrateUtil.cast(platformThread.get(thread), Target_java_lang_Thread.class);
         javaThread.exit();
         ThreadListenerSupport.get().afterThreadExit(CurrentIsolate.getCurrentThread(), platformThread.get(thread));
+    }
+
+    static void join(Thread thread, long millis) throws InterruptedException {
+        if (millis < 0) {
+            throw new IllegalArgumentException("timeout value is negative");
+        }
+        if (JavaContinuations.isSupported() && thread instanceof VirtualThread) {
+            if (thread.isAlive()) {
+                long nanos = MILLISECONDS.toNanos(millis);
+                ((VirtualThread) thread).joinNanos(nanos);
+            }
+            return;
+        }
+
+        // Checkstyle: allow synchronization
+        synchronized (thread) {
+            if (millis > 0) {
+                if (thread.isAlive()) {
+                    final long startTime = System.nanoTime();
+                    long delay = millis;
+                    do {
+                        thread.wait(delay);
+                    } while (thread.isAlive() && (delay = millis - TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime)) > 0);
+                }
+            } else {
+                while (thread.isAlive()) {
+                    thread.wait(0);
+                }
+            }
+        }
+        // Checkstyle: disallow synchronization
     }
 
     /**
@@ -856,9 +939,10 @@ public abstract class JavaThreads {
     }
 
     /** Interruptibly park the current thread. */
-    static void park() {
+    static void platformPark() {
         VMOperationControl.guaranteeOkayToBlock("[JavaThreads.park(): Should not park when it is not okay to block.]");
         Thread thread = Thread.currentThread();
+        assert !JavaContinuations.isSupported() || !(thread instanceof VirtualThread);
         if (isInterrupted(thread)) { // avoid state changes and synchronization
             return;
         }
@@ -880,9 +964,10 @@ public abstract class JavaThreads {
     }
 
     /** Interruptibly park the current thread for the given number of nanoseconds. */
-    static void park(long delayNanos) {
+    static void platformPark(long delayNanos) {
         VMOperationControl.guaranteeOkayToBlock("[JavaThreads.park(long): Should not park when it is not okay to block.]");
         Thread thread = Thread.currentThread();
+        assert !JavaContinuations.isSupported() || !(thread instanceof VirtualThread);
         if (isInterrupted(thread)) { // avoid state changes and synchronization
             return;
         }
@@ -905,10 +990,10 @@ public abstract class JavaThreads {
     /**
      * Unpark a Thread.
      *
-     * @see #park()
-     * @see #park(long)
+     * @see #platformPark()
+     * @see #platformPark(long)
      */
-    static void unpark(Thread thread) {
+    static void platformUnpark(Thread thread) {
         ThreadData threadData = acquireThreadData(thread);
         if (threadData != null) {
             try {
@@ -919,19 +1004,28 @@ public abstract class JavaThreads {
         }
     }
 
-    /** Sleep for the given number of nanoseconds, dealing with early wakeups and interruptions. */
     static void sleep(long millis) throws InterruptedException {
+        if (JavaContinuations.isSupported() && Thread.currentThread() instanceof VirtualThread) {
+            long nanos = TimeUnit.NANOSECONDS.convert(millis, TimeUnit.MILLISECONDS);
+            ((VirtualThread) Thread.currentThread()).sleepNanos(nanos);
+        } else {
+            platformSleep(millis);
+        }
+    }
+
+    /** Sleep for the given number of nanoseconds, dealing with early wakeups and interruptions. */
+    private static void platformSleep(long millis) throws InterruptedException {
         if (millis < 0) {
             throw new IllegalArgumentException("timeout value is negative");
         }
-        JavaThreads.sleep0(TimeUtils.millisToNanos(millis));
+        platformSleep0(TimeUtils.millisToNanos(millis));
         if (Thread.interrupted()) { // clears the interrupted flag as required of Thread.sleep()
             throw new InterruptedException();
         }
     }
 
-    static void sleep0(long delayNanos) {
-        VMOperationControl.guaranteeOkayToBlock("[JavaThreads.sleep(long): Should not sleep when it is not okay to block.]");
+    private static void platformSleep0(long delayNanos) {
+        VMOperationControl.guaranteeOkayToBlock("[JavaThreads.platformSleep(long): Should not sleep when it is not okay to block.]");
         Thread thread = Thread.currentThread();
         ParkEvent sleepEvent = getCurrentThreadData().ensureSleepParkEvent();
         sleepEvent.reset();
@@ -966,9 +1060,10 @@ public abstract class JavaThreads {
     /**
      * Interrupt a sleeping thread.
      *
-     * @see #sleep(long)
+     * @see #platformSleep(long)
      */
-    static void interrupt(Thread thread) {
+    static void platformInterrupt(Thread thread) {
+        assert !JavaContinuations.isSupported() || !(thread instanceof VirtualThread);
         ThreadData threadData = acquireThreadData(thread);
         if (threadData != null) {
             try {
@@ -982,7 +1077,17 @@ public abstract class JavaThreads {
         }
     }
 
-    static boolean isAlive(int threadStatus) {
+    static boolean isAlive(Thread thread) {
+        if (JavaContinuations.isSupported() && thread instanceof VirtualThread) {
+            Thread.State state = thread.getState();
+            return !(state == Thread.State.NEW || state == Thread.State.TERMINATED);
+        }
+        return platformIsAlive(thread);
+    }
+
+    static boolean platformIsAlive(Thread thread) {
+        assert !JavaContinuations.isSupported() || !(thread instanceof VirtualThread);
+        int threadStatus = LoomSupport.CompatibilityUtil.getThreadStatus(toTarget(thread));
         return !(threadStatus == ThreadStatus.NEW || threadStatus == ThreadStatus.TERMINATED);
     }
 

@@ -28,8 +28,6 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.concurrent.ThreadFactory;
 
-import com.oracle.svm.core.util.VMError;
-
 /** Continuation implementation <em>independent of</em> Project Loom. */
 public final class Continuations {
     private static final Thread.UncaughtExceptionHandler UNCAUGHT_EXCEPTION_HANDLER = (t, e) -> {
@@ -45,96 +43,12 @@ public final class Continuations {
         return VirtualThread::new;
     }
 
+    private static final class CarrierThread extends ForkJoinWorkerThread {
+        CarrierThread(ForkJoinPool pool) {
+            super(pool);
+        }
+    }
+
     private Continuations() {
-    }
-}
-
-final class VirtualThread extends Thread {
-    private final Continuation cont;
-    private final Runnable runContinuation;
-
-    private volatile Thread carrierThread;
-
-    VirtualThread(Runnable task) {
-        super(task);
-        this.cont = new Continuation(() -> run(task));
-        this.runContinuation = this::runContinuation;
-    }
-
-    @Override
-    public void start() {
-        submit();
-    }
-
-    boolean tryYield() {
-        assert Thread.currentThread() == this;
-        return yieldContinuation();
-    }
-
-    private void submit() {
-        Continuations.SCHEDULER.execute(runContinuation);
-    }
-
-    private void runContinuation() {
-        try {
-            cont.enter();
-        } finally {
-            if (!cont.isDone()) {
-                afterYield();
-            }
-        }
-    }
-
-    private boolean yieldContinuation() {
-        unmount();
-        try {
-            return cont.yield() == JavaContinuations.YIELD_SUCCESS;
-        } finally {
-            mount();
-        }
-    }
-
-    private void afterYield() {
-        submit();
-    }
-
-    private void run(Runnable task) {
-        mount();
-        try {
-            task.run();
-        } catch (Throwable e) {
-            dispatchUncaughtException(e);
-        } finally {
-            unmount();
-        }
-    }
-
-    private void mount() {
-        Thread carrier = JavaThreads.platformThread.get();
-        this.carrierThread = carrier; // can be a weaker write with release semantics
-
-        JavaThreads.setCurrentThread(carrier, this);
-    }
-
-    private void dispatchUncaughtException(Throwable e) {
-        getUncaughtExceptionHandler().uncaughtException(this, e);
-    }
-
-    private void unmount() {
-        Thread carrier = this.carrierThread;
-        JavaThreads.setCurrentThread(carrier, carrier);
-
-        this.carrierThread = null; // can be a weaker write with release semantics
-    }
-
-    @Override
-    public void run() {
-        throw VMError.shouldNotReachHere();
-    }
-}
-
-final class CarrierThread extends ForkJoinWorkerThread {
-    CarrierThread(ForkJoinPool pool) {
-        super(pool);
     }
 }
