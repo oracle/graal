@@ -708,13 +708,9 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final boolean tlabStats = getFlag("TLABStats", Boolean.class);
 
     // We set 0x10 as default value to disable DC ZVA if this field is not present in HotSpot.
-    // ARMv8-A architecture reference manual D12.2.35 Data Cache Zero ID register says:
-    // * BS, bits [3:0] indicate log2 of the DC ZVA block size in (4-byte) words.
-    // * DZP, bit [4] of indicates whether use of DC ZVA instruction is prohibited.
-    public final int psrInfoDczidValue = getFieldValue("VM_Version::_psr_info.dczid_el0", Integer.class, "uint32_t", 0x10,
-                    osArch.equals("aarch64") && JDK == 11 ? JVMCI && jvmciGE(JVMCI_19_3_b04) : (JDK == 14 || JDK == 15));
-
-    public final int zvaLength = getFieldValue("VM_Version::_zva_length", Integer.class, "int", 0, JDK >= 16 && osArch.equals("aarch64"));
+    public final int psrInfoDczidValue = access.getFieldValue("VM_Version::_psr_info.dczid_el0", Integer.class, "uint32_t", 0x10);
+    // psrInfoDczidValue has been removed in a JDK11 update and >=JDK16, zvaLength should be used if available
+    public final int zvaLength = getFieldValue("VM_Version::_zva_length", Integer.class, "int", Integer.MAX_VALUE, JDK >= 16 && osArch.equals("aarch64"));
 
     // FIXME This is only temporary until the GC code is changed.
     public final boolean inlineContiguousAllocationSupported = getFieldValue("CompilerToVM::Data::_supports_inline_contig_alloc", Boolean.class);
