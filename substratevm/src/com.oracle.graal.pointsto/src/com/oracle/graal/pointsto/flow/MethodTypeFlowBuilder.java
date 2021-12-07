@@ -134,6 +134,7 @@ import com.oracle.graal.pointsto.typestate.TypeState;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
 public class MethodTypeFlowBuilder {
@@ -316,12 +317,13 @@ public class MethodTypeFlowBuilder {
     }
 
     private void registerEmbeddedRoot(ConstantNode cn) {
-        if (bb.scanningPolicy().trackConstant(bb, cn.asJavaConstant())) {
+        JavaConstant root = cn.asJavaConstant();
+        if (bb.scanningPolicy().trackConstant(bb, root)) {
             BytecodePosition position = cn.getNodeSourcePosition();
             if (position == null) {
                 position = new BytecodePosition(null, method, 0);
             }
-            bb.getUniverse().registerEmbeddedRoot(cn.asJavaConstant(), position);
+            bb.getUniverse().registerEmbeddedRoot(root, position);
         }
     }
 
