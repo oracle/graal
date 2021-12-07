@@ -84,7 +84,9 @@ public class EngineModeTest extends TestWithSynchronousCompiling {
             OptimizedCallTarget inner = (OptimizedCallTarget) new RootNode(null) {
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    reportPolymorphicSpecialize();
+                    if (CompilerDirectives.inInterpreter()) {
+                        reportPolymorphicSpecialize();
+                    }
                     return null;
                 }
 
