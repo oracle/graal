@@ -1034,7 +1034,7 @@ public class CompileQueue {
                     graph.setGuardsStage(GuardsStage.FIXED_DEOPTS);
                 }
 
-                method.compilationInfo.graph = graph;
+                method.compilationInfo.setGraph(graph);
                 afterParse(method);
                 PhaseSuite<HighTierContext> afterParseSuite = afterParseCanonicalization();
                 afterParseSuite.apply(method.compilationInfo.graph, new HighTierContext(providers, afterParseSuite, getOptimisticOpts()));
