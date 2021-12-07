@@ -665,7 +665,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
     // endregion Local accessors
 
     @Override
-    void initializeBody(VirtualFrame frame) {
+    public void initializeFrame(VirtualFrame frame) {
         initArguments(frame);
         // initialize the bci slot
         setBCI(frame, 0);
@@ -757,7 +757,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
     }
 
     @Override
-    Object executeBody(VirtualFrame frame) {
+    public Object execute(VirtualFrame frame) {
         int startTop = EspressoFrame.VALUES_START + getMethodVersion().getMaxLocals();
         return executeBodyFromBCI(frame, 0, startTop, 0, false);
     }
@@ -777,7 +777,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         // pop frame cause initializeBody to be skipped on re-entry
         // so force the initialization here
         if (!frame.isInt(EspressoFrame.BCI_SLOT)) {
-            initializeBody(frame);
+            initializeFrame(frame);
         }
 
         final Counter loopCount = new Counter();
