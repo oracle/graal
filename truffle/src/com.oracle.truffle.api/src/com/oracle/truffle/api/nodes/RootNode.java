@@ -350,10 +350,11 @@ public abstract class RootNode extends ExecutableNode {
             clonedRoot.lock = null;
         } else {
             clonedRoot = NodeUtil.cloneNode(uninitializedRootNode);
-            // regular cloning guarantees that call target and instrumentation bits
-            // are null. See #copy().
+            // regular cloning guarantees that call target, instrumentation bits,
+            // and lock are null. See #copy().
             assert clonedRoot.callTarget == null;
             assert clonedRoot.instrumentationBits == 0;
+            assert clonedRoot.lock == null;
         }
 
         RootCallTarget clonedTarget = NodeAccessor.RUNTIME.newCallTarget(sourceCallTarget, clonedRoot);
