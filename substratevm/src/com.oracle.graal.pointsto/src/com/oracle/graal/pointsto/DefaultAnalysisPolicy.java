@@ -30,9 +30,9 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
-import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import org.graalvm.compiler.options.OptionValues;
 
+import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.AbstractSpecialInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;
@@ -47,6 +47,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.typestore.ArrayElementsTypeStore;
 import com.oracle.graal.pointsto.typestore.FieldTypeStore;
@@ -208,7 +209,14 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
                     continue;
                 }
 
-                AnalysisMethod method = type.resolveConcreteMethod(getTargetMethod());
+                AnalysisMethod method = null;
+                try {
+                    method = type.resolveConcreteMethod(targetMethod);
+                } catch (UnsupportedFeatureException ex) {
+                    /* Register the ex with UnsupportedFeatures and allow analysis to continue. */
+                    bb.getUnsupportedFeatures().addMessage("resolve_" + targetMethod.format("%H.%n(%p)"), targetMethod, ex.getMessage());
+                }
+
                 if (method == null || Modifier.isAbstract(method.getModifiers())) {
                     /*
                      * Type states can be conservative, i.e., we can have receiver types that do not
