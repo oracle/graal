@@ -338,7 +338,7 @@ public final class LoadModulesNode extends LLVMRootNode {
                     for (LoadDependencyNode libraryDependency : libraryDependencies) {
                         callDependencies.call(libraryDependency.execute(), LLVMLoadingPhase.BUILD_DEPENDENCY, visited, dependencies);
                     }
-                    //Individual dependency can be null
+                    // Individual dependency can be null
                     dependencies.add(this.getCallTarget());
                 }
             }
