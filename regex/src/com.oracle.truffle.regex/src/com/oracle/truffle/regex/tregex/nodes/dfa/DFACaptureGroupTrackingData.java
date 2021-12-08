@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,29 +46,41 @@ public final class DFACaptureGroupTrackingData {
     public final int[] results;
     public final int[] currentResultOrder;
     public final int[] currentResult;
-    public int lastGroup;
+    /**
+     * This array holds the last group value for every set of capture group results in
+     * {@link #results}.
+     * <p>
+     * {@link #lastGroups} is to {@link #currentLastGroup} what {@link #results} is to
+     * {@link #currentResult}.
+     * </p>
+     */
     public final int[] lastGroups;
+    /**
+     * This field holds the number of the last matched capture group that corresponds to the state
+     * exported in {@code currentResult}. It should be updated in sync with {@code currentResult}.
+     */
+    public int currentLastGroup;
 
     public DFACaptureGroupTrackingData(int maxNumberOfNFAStates, int getNumberOfCaptureGroups, TRegexDFAExecutorProperties props, boolean trackLastGroup) {
         if (props.isSimpleCG()) {
             results = new int[getNumberOfCaptureGroups * 2];
             currentResultOrder = null;
             currentResult = props.isSimpleCGMustCopy() ? new int[getNumberOfCaptureGroups * 2] : null;
-            lastGroup = -1;
-            lastGroups = trackLastGroup ? new int[1]: null;
+            lastGroups = trackLastGroup ? new int[1] : null;
+            currentLastGroup = -1;
         } else {
             results = new int[maxNumberOfNFAStates * getNumberOfCaptureGroups * 2];
             currentResultOrder = new int[maxNumberOfNFAStates];
             currentResult = new int[getNumberOfCaptureGroups * 2];
-            lastGroup = -1;
             lastGroups = trackLastGroup ? new int[maxNumberOfNFAStates] : null;
+            currentLastGroup = -1;
         }
     }
 
     public void exportResult(byte index, boolean trackLastGroup) {
         System.arraycopy(results, currentResultOrder[Byte.toUnsignedInt(index)], currentResult, 0, currentResult.length);
         if (trackLastGroup) {
-            lastGroup = getLastGroup(index);
+            currentLastGroup = getLastGroup(index);
         }
     }
 

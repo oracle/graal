@@ -85,6 +85,10 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
     private final Stack stack;
     private int sp;
     private final int[] result;
+    /**
+     * lastGroup stores the last group matched for the currently pushed result. It should always be
+     * set in sync with {@code result}.
+     */
     private int lastGroup = -1;
     private final long[] transitionBitSet;
     private final boolean trackLastGroup;

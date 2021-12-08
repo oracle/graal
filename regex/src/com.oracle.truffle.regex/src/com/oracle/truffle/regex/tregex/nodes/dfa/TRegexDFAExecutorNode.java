@@ -186,7 +186,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
             if (isSimpleCG() && !props.isSimpleCGMustCopy()) {
                 lastGroup = locals.getCGData().lastGroups[0];
             } else {
-                lastGroup = locals.getCGData().lastGroup;
+                lastGroup = locals.getCGData().currentLastGroup;
             }
         }
         return addLastGroup(innerResult, lastGroup);

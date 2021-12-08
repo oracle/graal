@@ -77,6 +77,10 @@ public final class TRegexNFAExecutorLocals extends TRegexExecutorLocals {
      * found later is guaranteed to be of higher priority and can be used to overwrite this result.
      */
     private int[] result;
+    /**
+     * This field stores the last group matched by the best match found so far. It should be updated
+     * in sync with {@code result}.
+     */
     private int lastGroup = -1;
     /**
      * Indicates whether a path to a final state has been completed in this step. If true, then no
@@ -142,7 +146,7 @@ public final class TRegexNFAExecutorLocals extends TRegexExecutorLocals {
         } else {
             Arrays.fill(nextStates, offsetCaptureGroups(nextStatesLength), nextStatesLength + frameSize, -1);
         }
-        t.getGroupBoundaries().applyToResultArray(nextStates, offsetCaptureGroups(nextStatesLength), getIndex());
+        t.getGroupBoundaries().apply(nextStates, offsetCaptureGroups(nextStatesLength), getIndex());
         if (trackLastGroup && t.getGroupBoundaries().hasLastGroup()) {
             nextStates[offsetLastGroup(nextStatesLength)] = t.getGroupBoundaries().getLastGroup();
         }
@@ -176,7 +180,7 @@ public final class TRegexNFAExecutorLocals extends TRegexExecutorLocals {
                 lastGroup = -1;
             }
         }
-        t.getGroupBoundaries().applyToResultArray(result, 0, getIndex());
+        t.getGroupBoundaries().apply(result, 0, getIndex());
         if (t.getGroupBoundaries().hasLastGroup()) {
             if (trackLastGroup) {
                 lastGroup = t.getGroupBoundaries().getLastGroup();

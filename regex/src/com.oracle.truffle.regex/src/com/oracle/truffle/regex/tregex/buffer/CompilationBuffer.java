@@ -68,6 +68,7 @@ public class CompilationBuffer {
     private final Encoding encoding;
     private ObjectArrayBuffer<Object> objectBuffer1;
     private ObjectArrayBuffer<Object> objectBuffer2;
+    private ObjectArrayBuffer<Object> objectBuffer3;
     private ByteArrayBuffer byteArrayBuffer;
     private ShortArrayBuffer shortArrayBuffer1;
     private ShortArrayBuffer shortArrayBuffer2;
@@ -103,6 +104,15 @@ public class CompilationBuffer {
         }
         objectBuffer2.clear();
         return (ObjectArrayBuffer<T>) objectBuffer2;
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T> ObjectArrayBuffer<T> getObjectBuffer3() {
+        if (objectBuffer3 == null) {
+            objectBuffer3 = new ObjectArrayBuffer<>();
+        }
+        objectBuffer3.clear();
+        return (ObjectArrayBuffer<T>) objectBuffer3;
     }
 
     public ByteArrayBuffer getByteArrayBuffer() {

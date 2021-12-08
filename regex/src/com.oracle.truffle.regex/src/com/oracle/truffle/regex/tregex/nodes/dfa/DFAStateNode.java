@@ -377,7 +377,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
             if (executor.getProperties().isSimpleCGMustCopy()) {
                 System.arraycopy(locals.getCGData().results, 0, locals.getCGData().currentResult, 0, locals.getCGData().currentResult.length);
                 if (executor.returnsLastGroup()) {
-                    locals.getCGData().lastGroup = locals.getCGData().lastGroups[0];
+                    locals.getCGData().currentLastGroup = locals.getCGData().lastGroups[0];
                 }
             }
             locals.setResultInt(0);

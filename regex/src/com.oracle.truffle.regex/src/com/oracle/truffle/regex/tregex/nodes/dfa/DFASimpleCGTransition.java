@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -105,7 +105,7 @@ public final class DFASimpleCGTransition implements JsonConvertible {
         applyIndexUpdate(result, currentIndex);
         if (trackLastGroup && lastGroup != -1) {
             if (simpleCGMustCopy) {
-                cgData.lastGroup = lastGroup;
+                cgData.currentLastGroup = lastGroup;
             } else {
                 cgData.lastGroups[0] = lastGroup;
             }

@@ -42,11 +42,8 @@ package com.oracle.truffle.regex.tregex.test;
 
 import com.oracle.truffle.regex.errors.PyErrorMessages;
 import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Test;
-
-import static org.junit.Assert.assertEquals;
 
 public class PythonTests extends RegexTestBase {
 
