@@ -73,6 +73,11 @@ public class FieldsOffsetsFeature implements Feature {
 
     abstract static class IterationMaskRecomputation implements RecomputeFieldValue.CustomFieldValueComputer {
         @Override
+        public RecomputeFieldValue.ValueAvailability valueAvailability() {
+            return RecomputeFieldValue.ValueAvailability.AfterAnalysis;
+        }
+
+        @Override
         public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
             Edges edges = getEdges((NodeClass<?>) receiver);
             FieldsOffsetsReplacement replacement = FieldsOffsetsFeature.getReplacements().get(edges.getOffsets());

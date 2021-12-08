@@ -727,6 +727,11 @@ final class Target_com_oracle_truffle_api_staticobject_ArrayBasedShapeGenerator 
         }
 
         @Override
+        public RecomputeFieldValue.ValueAvailability valueAvailability() {
+            return RecomputeFieldValue.ValueAvailability.AfterAnalysis;
+        }
+
+        @Override
         public Object transform(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated,
                         Object receiver, Object originalValue) {
             Class<?> generatedStorageClass = ReflectionUtil.readField(SHAPE_GENERATOR, "generatedStorageClass",

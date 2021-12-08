@@ -864,7 +864,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             targetName = recomputeAnnotation.name();
             isFinal = recomputeAnnotation.isFinal();
             disableCaching = recomputeAnnotation.disableCaching();
-            guarantee(!isFinal || ComputedValueField.isFinalValid(kind), "@%s with %s can never be final during analysis: unset isFinal in the annotation on %s",
+            guarantee(!isFinal || !ComputedValueField.isOffsetRecomputation(kind), "@%s with %s can never be final during analysis: unset isFinal in the annotation on %s",
                             RecomputeFieldValue.class.getSimpleName(), kind, annotated);
             guarantee(!isFinal || !disableCaching, "@%s can not be final if caching is disabled: unset isFinal in the annotation on %s",
                             RecomputeFieldValue.class.getSimpleName(), kind, annotated);

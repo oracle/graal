@@ -28,6 +28,7 @@ package com.oracle.svm.reflect.hosted;
 
 import java.lang.reflect.Field;
 
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.meta.HostedField;
@@ -37,6 +38,11 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 public class FieldOffsetComputer implements CustomFieldValueComputer {
+
+    @Override
+    public RecomputeFieldValue.ValueAvailability valueAvailability() {
+        return RecomputeFieldValue.ValueAvailability.AfterAnalysis;
+    }
 
     @Override
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
