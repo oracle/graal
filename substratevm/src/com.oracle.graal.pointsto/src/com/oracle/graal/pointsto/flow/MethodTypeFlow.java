@@ -87,7 +87,10 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
         List<StackTraceElement> parsingContext = new ArrayList<>();
         InvokeTypeFlow invokeFlow = parsingReason;
 
-        while (invokeFlow != null) {
+        /* Defend against cycles in the parsing context. GR-35744 should fix this properly. */
+        int maxSize = 100;
+
+        while (invokeFlow != null && parsingContext.size() < maxSize) {
             parsingContext.add(invokeFlow.getSource().getMethod().asStackTraceElement(invokeFlow.getSource().getBCI()));
             invokeFlow = ((PointsToAnalysisMethod) invokeFlow.getSource().getMethod()).getTypeFlow().parsingReason;
         }
