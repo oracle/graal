@@ -148,15 +148,12 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
         if (Options.WarnMissingIntrinsic.getValue(options)) {
             String method = String.format("%s.%s%s", targetMethod.getDeclaringClass().toJavaName().replace('.', '/'), targetMethod.getName(), targetMethod.getSignature().toMethodDescriptor());
             if (unimplementedIntrinsics.isMissing(method)) {
-                if (missingIntrinsicMetrics.containsKey(method)) {
-                    synchronized (missingIntrinsicMetrics) {
-                        missingIntrinsicMetrics.compute(method, (key, cnt) -> cnt + 1);
-                    }
-                } else {
+                int currentCount;
+                synchronized (missingIntrinsicMetrics) {
+                    currentCount = missingIntrinsicMetrics.compute(method, (key, cnt) -> cnt == null ? 1 : Math.addExact(cnt, 1));
+                }
+                if (currentCount == 1) {
                     TTY.println("[Warning] Missing intrinsic %s found during parsing.", method);
-                    synchronized (missingIntrinsicMetrics) {
-                        missingIntrinsicMetrics.compute(method, (key, cnt) -> cnt == null ? 1 : cnt + 1);
-                    }
                 }
             }
         }
