@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,19 +38,23 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.test.polyglot;
+package com.oracle.truffle.api.test;
 
 import com.oracle.truffle.api.impl.Accessor;
 
-final class TestAPIAccessor extends Accessor {
+public final class TestAPIAccessor extends Accessor {
 
     private static final TestAPIAccessor API = new TestAPIAccessor();
 
-    static Accessor.EngineSupport engineAccess() {
+    public static Accessor.EngineSupport engineAccess() {
         return API.engineSupport();
     }
 
-    static Accessor.LanguageSupport languageAccess() {
+    public static Accessor.LanguageSupport languageAccess() {
         return API.languageSupport();
+    }
+
+    static Accessor.NodeSupport nodeAccess() {
+        return API.nodeSupport();
     }
 }
