@@ -994,17 +994,19 @@ public abstract class Launcher {
     }
 
     static final class PrintableOption implements Comparable<PrintableOption> {
+        final String name;
         final String option;
         final String description;
 
-        protected PrintableOption(String option, String description) {
+        protected PrintableOption(String name, String option, String description) {
+            this.name = name;
             this.option = option;
             this.description = description;
         }
 
         @Override
         public int compareTo(PrintableOption o) {
-            return this.option.compareTo(o.option);
+            return this.name.compareTo(o.name);
         }
     }
 
