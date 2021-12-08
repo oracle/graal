@@ -24,14 +24,7 @@
  */
 package com.oracle.svm.hosted.analysis;
 
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.core.annotate.UnknownObjectField;
-import com.oracle.svm.core.annotate.UnknownPrimitiveField;
-import jdk.vm.ci.meta.JavaKind;
-import org.graalvm.word.WordBase;
+import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
 
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -40,28 +33,36 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
+import org.graalvm.word.WordBase;
+
+import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.annotate.UnknownObjectField;
+import com.oracle.svm.core.annotate.UnknownPrimitiveField;
+
+import jdk.vm.ci.meta.JavaKind;
 
 public abstract class UnknownFieldHandler {
+    protected final BigBang bb;
     private Set<AnalysisField> handledUnknownValueFields = new HashSet<>();
     private final AnalysisMetaAccess metaAccess;
 
-    public UnknownFieldHandler(AnalysisMetaAccess metaAccess) {
+    public UnknownFieldHandler(BigBang bb, AnalysisMetaAccess metaAccess) {
+        this.bb = bb;
         this.metaAccess = metaAccess;
     }
 
-    public void handleUnknownValueField(BigBang bb, AnalysisField field) {
+    public void handleUnknownValueField(AnalysisField field) {
         if (handledUnknownValueFields.contains(field)) {
             return;
         }
-        if (!field.isAccessed()) {
-            /*
-             * Field is not reachable yet, so do no process it. In particular, we must not register
-             * types listed in the @UnknownObjectField annotation as allocated when the field is not
-             * yet reachable
-             */
-            return;
-        }
+        /*
+         * Only process fields that are accessed. In particular, we must not register types listed
+         * in the @UnknownObjectField annotation as allocated when the field is not yet accessed.
+         */
+        assert field.isAccessed();
 
         UnknownObjectField unknownObjectField = field.getAnnotation(UnknownObjectField.class);
         UnknownPrimitiveField unknownPrimitiveField = field.getAnnotation(UnknownPrimitiveField.class);
@@ -81,7 +82,7 @@ public abstract class UnknownFieldHandler {
              * Use the annotation types, instead of the declared type, in the UnknownObjectField
              * annotated fields initialization.
              */
-            handleUnknownObjectField(bb, field, aAnnotationTypes.toArray(new AnalysisType[0]));
+            handleUnknownObjectField(field, aAnnotationTypes.toArray(new AnalysisType[0]));
 
         } else if (unknownPrimitiveField != null) {
             assert !Modifier.isFinal(field.getModifiers()) : "@UnknownPrimitiveField annotated field " + field.format("%H.%n") + " cannot be final";
@@ -125,7 +126,7 @@ public abstract class UnknownFieldHandler {
         return aAnnotationTypes;
     }
 
-    protected abstract void handleUnknownObjectField(BigBang bb, AnalysisField aField, AnalysisType... declaredTypes);
+    protected abstract void handleUnknownObjectField(AnalysisField aField, AnalysisType... declaredTypes);
 
     public void cleanupAfterAnalysis() {
         handledUnknownValueFields = null;

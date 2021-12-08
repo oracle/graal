@@ -674,6 +674,10 @@ public class AnalysisUniverse implements Universe {
         return objectClass;
     }
 
+    public void onFieldAccessed(AnalysisField field) {
+        bb.onFieldAccessed(field);
+    }
+
     public SubstitutionProcessor getSubstitutions() {
         return substitutions;
     }
