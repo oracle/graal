@@ -43,14 +43,17 @@ public class AnnotationTypeSupport {
     private Map<Class<? extends Annotation>, AnnotationType> annotationTypeMap = new HashMap<>();
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void createInstance(Class<? extends Annotation> annotationClass) {
-        annotationTypeMap.putIfAbsent(annotationClass, AnnotationType.getInstance(annotationClass));
+    public boolean createInstance(Class<? extends Annotation> annotationClass) {
+        return annotationTypeMap.putIfAbsent(annotationClass, AnnotationType.getInstance(annotationClass)) == null;
     }
 
     public AnnotationType getInstance(Class<? extends Annotation> annotationClass) {
         return annotationTypeMap.get(annotationClass);
     }
 
+    public Map<Class<? extends Annotation>, AnnotationType> getAnnotationTypeMap() {
+        return annotationTypeMap;
+    }
 }
 
 @TargetClass(className = "sun.reflect.annotation.AnnotationType")

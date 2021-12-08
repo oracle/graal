@@ -46,6 +46,8 @@ import com.oracle.graal.pointsto.AnalysisPolicy;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
+import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
+import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.infrastructure.AnalysisConstantPool;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.infrastructure.Universe;
@@ -116,6 +118,8 @@ public class AnalysisUniverse implements Universe {
     private AnalysisType cloneableClass;
     private final JavaKind wordKind;
     private AnalysisPolicy analysisPolicy;
+    private ImageHeapScanner heapScanner;
+    private HeapSnapshotVerifier heapVerifier;
     private BigBang bb;
 
     public JavaKind getWordKind() {
@@ -521,6 +525,7 @@ public class AnalysisUniverse implements Universe {
      * Register an embedded root, i.e., a JavaConstant embedded in a Graal graph via a ConstantNode.
      */
     public void registerEmbeddedRoot(JavaConstant root, BytecodePosition position) {
+        this.heapScanner.scanEmbeddedRoot(root, position);
         this.embeddedRoots.put(root, position);
     }
 
@@ -699,4 +704,23 @@ public class AnalysisUniverse implements Universe {
         this.bb = bb;
     }
 
+    public BigBang getBigbang() {
+        return bb;
+    }
+
+    public void setHeapScanner(ImageHeapScanner heapScanner) {
+        this.heapScanner = heapScanner;
+    }
+
+    public ImageHeapScanner getHeapScanner() {
+        return heapScanner;
+    }
+
+    public void setHeapVerifier(HeapSnapshotVerifier heapVerifier) {
+        this.heapVerifier = heapVerifier;
+    }
+
+    public HeapSnapshotVerifier getHeapVerifier() {
+        return heapVerifier;
+    }
 }

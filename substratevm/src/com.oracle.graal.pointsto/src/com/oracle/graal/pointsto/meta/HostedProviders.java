@@ -37,12 +37,15 @@ import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.word.WordTypes;
 
+import com.oracle.graal.pointsto.PointsToAnalysis;
+
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 public class HostedProviders extends Providers {
 
+    private PointsToAnalysis bigBang;
     private GraphBuilderConfiguration.Plugins graphBuilderPlugins;
 
     public HostedProviders(MetaAccessProvider metaAccess, CodeCacheProvider codeCache, ConstantReflectionProvider constantReflection, ConstantFieldProvider constantFieldProvider,
@@ -58,6 +61,14 @@ public class HostedProviders extends Providers {
 
     public void setGraphBuilderPlugins(GraphBuilderConfiguration.Plugins graphBuilderPlugins) {
         this.graphBuilderPlugins = graphBuilderPlugins;
+    }
+
+    public void setBigBang(PointsToAnalysis bigBang) {
+        this.bigBang = bigBang;
+    }
+
+    public PointsToAnalysis getBigBang() {
+        return bigBang;
     }
 
     @Override

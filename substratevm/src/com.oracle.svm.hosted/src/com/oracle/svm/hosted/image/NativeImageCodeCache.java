@@ -173,7 +173,7 @@ public abstract class NativeImageCodeCache {
         for (DataSection.Data data : dataSection) {
             if (data instanceof SubstrateDataBuilder.ObjectData) {
                 JavaConstant constant = ((SubstrateDataBuilder.ObjectData) data).getConstant();
-                addConstantToHeap(constant);
+                addConstantToHeap(constant, "data section");
             }
         }
         for (CompilationResult compilationResult : compilations.values()) {
@@ -191,10 +191,6 @@ public abstract class NativeImageCodeCache {
         }
     }
 
-    private void addConstantToHeap(Constant constant) {
-        addConstantToHeap(constant, null);
-    }
-
     private void addConstantToHeap(Constant constant, Object reason) {
         Object obj = SubstrateObjectConstant.asObject(constant);
 
@@ -203,7 +199,7 @@ public abstract class NativeImageCodeCache {
                             (reason != null ? " Method: " + reason : ""));
         }
 
-        imageHeap.addObject(obj, false, constantReasons.get(constant));
+        imageHeap.addObject(obj, false, reason != null ? reason : constantReasons.get(constant));
     }
 
     protected int getConstantsSize() {

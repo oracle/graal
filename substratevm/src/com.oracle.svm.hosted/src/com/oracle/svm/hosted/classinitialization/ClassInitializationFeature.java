@@ -299,7 +299,9 @@ public class ClassInitializationFeature implements GraalFeature {
                                     provenSafe.add(c);
                                     ClassInitializationInfo initializationInfo = type.getClassInitializer() == null ? ClassInitializationInfo.NO_INITIALIZER_INFO_SINGLETON
                                                     : ClassInitializationInfo.INITIALIZED_INFO_SINGLETON;
-                                    ((SVMHost) universe.hostVM()).dynamicHub(type).setClassInitializationInfo(initializationInfo);
+                                    DynamicHub hub = ((SVMHost) universe.hostVM()).dynamicHub(type);
+                                    hub.setClassInitializationInfo(initializationInfo);
+                                    universe.getHeapScanner().rescanField(hub, DynamicHub.class, "classInitializationInfo");
                                 }
                             }
                         });
@@ -324,6 +326,9 @@ public class ClassInitializationFeature implements GraalFeature {
             info = type.getClassInitializer() == null ? ClassInitializationInfo.NO_INITIALIZER_INFO_SINGLETON : ClassInitializationInfo.INITIALIZED_INFO_SINGLETON;
         }
         hub.setClassInitializationInfo(info);
+        // TODO rescanning the hub here should not be necessary
+        universe.getHeapScanner().scanHub(type);
+        universe.getHeapScanner().rescanField(hub, DynamicHub.class, "classInitializationInfo");
     }
 
     private static ClassInitializationInfo buildRuntimeInitializationInfo(FeatureImpl.DuringAnalysisAccessImpl access, AnalysisType type) {

@@ -58,7 +58,11 @@ class NativeSecureRandomFilesCloser implements Feature {
     }
 
     private static void registerShutdownHook(@SuppressWarnings("unused") DuringAnalysisAccess access) {
-        RuntimeSupport.getRuntimeSupport().addTearDownHook(new NativeSecureRandomFilesCloserShutdownHook());
+        NativeSecureRandomFilesCloserShutdownHook hook = new NativeSecureRandomFilesCloserShutdownHook();
+        RuntimeSupport.getRuntimeSupport().addTearDownHook(hook);
+        // TODO just rescanning the tearDownHooks should be enough
+        access.rescanObject(RuntimeSupport.getRuntimeSupport());
+        access.rescanObject(hook);
     }
 }
 

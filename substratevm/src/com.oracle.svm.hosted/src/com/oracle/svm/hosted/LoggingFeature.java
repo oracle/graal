@@ -66,6 +66,8 @@ public class LoggingFeature implements Feature {
     public void duringAnalysis(DuringAnalysisAccess a) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
 
+        access.rescanRoot("sun.util.logging.PlatformLogger", "loggers");
+
         if (!reflectionConfigured && access.getMetaAccess().optionalLookupJavaType(java.util.logging.Logger.class).isPresent()) {
             registerForReflection(java.util.logging.ConsoleHandler.class);
             registerForReflection(java.util.logging.SimpleFormatter.class);

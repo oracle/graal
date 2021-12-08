@@ -99,6 +99,14 @@ public class SerializationFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         serializationBuilder.flushConditionalConfiguration(access);
+
+        try {
+            ImageClassLoader loader = ((FeatureImpl.BeforeAnalysisAccessImpl) access).getImageClassLoader();
+            /* Ensure SharedSecrets.javaObjectInputStreamAccess is initialized before scanning. */
+            loader.forName("java.io.ObjectInputStream", true);
+        } catch (ClassNotFoundException e) {
+            VMError.shouldNotReachHere(e);
+        }
     }
 
     @Override

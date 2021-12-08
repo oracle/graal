@@ -364,6 +364,19 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
          */
         TruffleBaseFeature.invokeStaticMethod("com.oracle.truffle.polyglot.PolyglotEngineImpl", "resetFallbackEngine", Collections.emptyList());
         TruffleBaseFeature.preInitializeEngine();
+
+        try {
+            /* Ensure org.graalvm.polyglot.io.IOHelper.IMPL is initialized. */
+            ((FeatureImpl.BeforeAnalysisAccessImpl) access).getImageClassLoader().forName("org.graalvm.polyglot.io.IOHelper", true);
+        } catch (ClassNotFoundException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+    }
+
+    @Override
+    public void duringAnalysis(DuringAnalysisAccess a) {
+        FeatureImpl.DuringAnalysisAccessImpl access = (FeatureImpl.DuringAnalysisAccessImpl) a;
+        access.rescanRoot("com.oracle.truffle.polyglot.PolyglotEngineImpl", "ENGINES");
     }
 
     static class TruffleParsingInlineInvokePlugin implements InlineInvokePlugin {

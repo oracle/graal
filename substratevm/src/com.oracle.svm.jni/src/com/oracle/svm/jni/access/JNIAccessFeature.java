@@ -281,7 +281,7 @@ public class JNIAccessFeature implements Feature {
         }
         JNIAccessibleClass jniClass = addClass(method.getDeclaringClass(), access);
         JNIAccessibleMethodDescriptor descriptor = JNIAccessibleMethodDescriptor.of(method);
-        jniClass.addMethodIfAbsent(descriptor, d -> {
+        jniClass.addMethodIfAbsent(access, descriptor, d -> {
             MetaAccessProvider wrappedMetaAccess = access.getMetaAccess().getWrapped();
 
             JNIJavaCallWrapperMethod varargsCallWrapper = new JNIJavaCallWrapperMethod(method, CallVariant.VARARGS, false, wrappedMetaAccess, nativeLibraries);
@@ -318,7 +318,7 @@ public class JNIAccessFeature implements Feature {
         }
         JNIAccessibleClass jniClass = addClass(reflField.getDeclaringClass(), access);
         AnalysisField field = access.getMetaAccess().lookupJavaField(reflField);
-        jniClass.addFieldIfAbsent(field.getName(), name -> new JNIAccessibleField(jniClass, name, field.getJavaKind(), field.getModifiers()));
+        jniClass.addFieldIfAbsent(access, field.getName(), name -> new JNIAccessibleField(jniClass, name, field.getJavaKind(), field.getModifiers()));
         field.registerAsJNIAccessed();
         field.registerAsRead(null);
         if (writable) {

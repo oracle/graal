@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.util.ImageHeapMap;
+import com.oracle.svm.hosted.FeatureImpl;
 
 import jdk.vm.ci.meta.MetaUtil;
 
@@ -65,22 +66,24 @@ public final class JNIAccessibleClass {
     }
 
     @Platforms(HOSTED_ONLY.class)
-    void addFieldIfAbsent(String name, Function<String, JNIAccessibleField> mappingFunction) {
+    void addFieldIfAbsent(FeatureImpl.DuringAnalysisAccessImpl access, String name, Function<String, JNIAccessibleField> mappingFunction) {
         if (fields == null) {
             fields = ImageHeapMap.create();
         }
         if (!fields.containsKey(name)) {
             fields.put(name, mappingFunction.apply(name));
+            access.rescanField(this, JNIAccessibleClass.class, "fields");
         }
     }
 
     @Platforms(HOSTED_ONLY.class)
-    void addMethodIfAbsent(JNIAccessibleMethodDescriptor descriptor, Function<JNIAccessibleMethodDescriptor, JNIAccessibleMethod> mappingFunction) {
+    void addMethodIfAbsent(FeatureImpl.DuringAnalysisAccessImpl access, JNIAccessibleMethodDescriptor descriptor, Function<JNIAccessibleMethodDescriptor, JNIAccessibleMethod> mappingFunction) {
         if (methods == null) {
             methods = ImageHeapMap.create();
         }
         if (!methods.containsKey(descriptor)) {
             methods.put(descriptor, mappingFunction.apply(descriptor));
+            access.rescanField(this, JNIAccessibleClass.class, "methods");
         }
     }
 

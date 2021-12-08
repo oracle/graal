@@ -363,6 +363,7 @@ public class ServiceLoaderFeature implements Feature {
             debugContext.log("ServiceLoaderFeature: registerResource: " + serviceResourceLocation);
         }
         Resources.registerResource(null, serviceResourceLocation, new ByteArrayInputStream(newResourceValue.toString().getBytes(StandardCharsets.UTF_8)));
+        // access.rescanObject(ImageSingletons.lookup(Resources.ResourcesSupport.class).hostedResources);
 
         /* Ensure that the static analysis runs again for the new implementation classes. */
         access.requireAnalysisIteration();

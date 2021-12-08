@@ -113,7 +113,7 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
 
         ValueNode callAddress;
         if (linkage.isBuiltInFunction()) {
-            callAddress = kit.unique(new CGlobalDataLoadAddressNode(linkage.getBuiltInAddress()));
+            callAddress = kit.unique(new CGlobalDataLoadAddressNode(linkage.getBuiltInAddress(providers.getBigBang())));
         } else {
             callAddress = kit.nativeCallAddress(kit.createObject(linkage));
         }

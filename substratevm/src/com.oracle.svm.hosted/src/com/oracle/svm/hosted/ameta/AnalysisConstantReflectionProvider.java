@@ -33,10 +33,12 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordBase;
 
+import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.graal.meta.SharedConstantReflectionProvider;
@@ -99,7 +101,21 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
             value = universe.lookup(ReadableJavaField.readFieldValue(suppliedMetaAccess, originalConstantReflection, field.wrapped, universe.toHosted(receiver)));
         }
 
-        return interceptValue(field, value);
+        JavaConstant result = interceptValue(universe, field, value);
+
+        if (!BuildPhaseProvider.isAnalysisFinished()) {
+            field.markReachable();
+        }
+
+        if (!BuildPhaseProvider.isAnalysisFinished() && field.getJavaKind() == JavaKind.Object && field.isRead()) {
+            /* Make sure the field value is scanned. */
+            ImageHeapScanner scanner = universe.getHeapScanner();
+            if (scanner.isEnabled()) {
+                scanner.scanFieldValue(field, receiver);
+            }
+        }
+
+        return result;
     }
 
     /*
@@ -126,7 +142,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
      * pretty likely (although not guaranteed) that we are not returning an unintended value for a
      * class that is re-initialized at run time.
      */
-    private static JavaConstant readUninitializedStaticValue(AnalysisField field) {
+    public static JavaConstant readUninitializedStaticValue(AnalysisField field) {
         JavaKind kind = field.getJavaKind();
 
         boolean canHaveConstantValueAttribute = kind.isPrimitive() || field.getType().getName().equals("Ljava/lang/String;");
@@ -175,19 +191,20 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
             case Object:
                 Object value = GraalUnsafeAccess.getUnsafe().getObject(base, offset);
                 assert value == null || value instanceof String : "String is currently the only specified object type for the ConstantValue class file attribute";
+                // return ImageHeapScanner.asConstant(value);
                 return SubstrateObjectConstant.forObject(value);
             default:
-                throw VMError.shouldNotReachHere();
+                throw AnalysisError.shouldNotReachHere();
         }
     }
 
-    public JavaConstant interceptValue(AnalysisField field, JavaConstant value) {
+    public static JavaConstant interceptValue(AnalysisUniverse universe, AnalysisField field, JavaConstant value) {
         JavaConstant result = value;
         if (result != null) {
             result = filterInjectedAccessor(field, result);
-            result = replaceObject(result);
+            result = replaceObject(universe, result);
             result = interceptAssertionStatus(field, result);
-            result = interceptWordType(field, result);
+            result = interceptWordType(universe, field, result);
         }
         return result;
     }
@@ -208,7 +225,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     /**
      * Run all registered object replacers.
      */
-    private JavaConstant replaceObject(JavaConstant value) {
+    private static JavaConstant replaceObject(AnalysisUniverse universe, JavaConstant value) {
         if (value == JavaConstant.NULL_POINTER) {
             return JavaConstant.NULL_POINTER;
         }
@@ -242,7 +259,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
      * Intercept {@link Word} types. They are boxed objects in the hosted world, but primitive
      * values in the runtime world.
      */
-    private JavaConstant interceptWordType(AnalysisField field, JavaConstant value) {
+    private static JavaConstant interceptWordType(AnalysisUniverse universe, AnalysisField field, JavaConstant value) {
         if (value.getJavaKind() == JavaKind.Object) {
             Object originalObject = universe.getSnippetReflection().asObject(Object.class, value);
             if (universe.hostVM().isRelocatedPointer(originalObject)) {
@@ -269,7 +286,8 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
             if (obj instanceof DynamicHub) {
                 return getHostVM().lookupType((DynamicHub) obj);
             } else if (obj instanceof Class) {
-                throw VMError.shouldNotReachHere("Must not have java.lang.Class object: " + obj);
+                // TODO do we need to make sure the hub is scanned?
+                return metaAccess.lookupJavaType((Class<?>) obj);
             }
         }
         return null;

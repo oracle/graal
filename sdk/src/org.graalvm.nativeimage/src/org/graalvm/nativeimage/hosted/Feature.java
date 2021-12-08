@@ -277,6 +277,13 @@ public interface Feature {
          * @since 19.0
          */
         void requireAnalysisIteration();
+
+        /**
+         * Rescan an object to be included in the image heap.
+         *
+         * @since 22.0
+         */
+        void rescanObject(Object obj);
     }
 
     /**

@@ -411,6 +411,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                 access.requireAnalysisIteration();
             }
             ClassForNameSupport.registerClass(clazz);
+            // access.rescanObject(annotationTypeSupport.getAnnotationTypeMap());
         } else if (type instanceof TypeVariable<?>) {
             for (Type bound : ((TypeVariable<?>) type).getBounds()) {
                 makeTypeReachable(access, bound);
@@ -443,7 +444,10 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
              * Parsing annotation data in reflection classes requires being able to instantiate all
              * annotation types at runtime.
              */
-            ImageSingletons.lookup(AnnotationTypeSupport.class).createInstance((Class<? extends Annotation>) type);
+            AnnotationTypeSupport annotationTypeSupport = ImageSingletons.lookup(AnnotationTypeSupport.class);
+            if (annotationTypeSupport.createInstance((Class<? extends Annotation>) type)) {
+                access.rescanField(annotationTypeSupport, AnnotationTypeSupport.class, "annotationTypeMap");
+            }
             ImageSingletons.lookup(DynamicProxyRegistry.class).addProxyClass(type);
 
             Annotation annotation = (Annotation) value;
@@ -507,6 +511,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
         if (reflectionClasses.contains(clazz)) {
             ClassForNameSupport.registerClass(clazz);
+            // access.rescanObject(ImageSingletons.lookup(ClassForNameSupport.class).registeredClasses);
         }
 
         /*
@@ -560,6 +565,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                             buildRecordComponents(clazz, access));
         }
         hub.setReflectionData(reflectionData);
+        access.rescanField(hub, DynamicHub.class, "rd");
 
         if (type.isAnnotation()) {
             /*

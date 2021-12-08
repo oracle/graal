@@ -893,6 +893,7 @@ CLSS public abstract interface static org.graalvm.nativeimage.hosted.Feature$Dur
 intf org.graalvm.nativeimage.hosted.Feature$BeforeAnalysisAccess
 intf org.graalvm.nativeimage.hosted.Feature$QueryReachabilityAccess
 meth public abstract void requireAnalysisIteration()
+meth public abstract void rescanObject(java.lang.Object)
 
 CLSS public abstract interface static org.graalvm.nativeimage.hosted.Feature$DuringSetupAccess
  outer org.graalvm.nativeimage.hosted.Feature

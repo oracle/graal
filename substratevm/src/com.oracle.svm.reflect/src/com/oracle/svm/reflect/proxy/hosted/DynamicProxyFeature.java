@@ -37,6 +37,7 @@ import com.oracle.svm.core.configure.ProxyConfigurationParser;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.hosted.ConfigurationTypeResolver;
 import com.oracle.svm.hosted.FallbackFeature;
+import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageOptions;
@@ -79,8 +80,10 @@ public final class DynamicProxyFeature implements Feature {
     }
 
     @Override
-    public void duringAnalysis(DuringAnalysisAccess access) {
-        proxyRegistry().flushConditionalConfiguration(access);
+    public void duringAnalysis(DuringAnalysisAccess a) {
+        DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
+        access.rescanField(ImageSingletons.lookup(DynamicProxyRegistry.class), DynamicProxySupport.class, "proxyCache");
+        proxyRegistry().flushConditionalConfiguration(a);
     }
 
     @Override

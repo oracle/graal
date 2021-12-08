@@ -77,6 +77,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.allocationprofile.AllocationCounter;
 import com.oracle.svm.core.allocationprofile.AllocationSite;
+import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.nodes.NewStoredContinuationNode;
@@ -384,7 +385,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
 
     public abstract static class Templates extends SubstrateTemplates {
         protected final AllocationSnippetCounters snippetCounters;
-        private final AllocationProfilingData profilingData;
+        @UnknownObjectField(types = {AllocationProfilingData.class}) private AllocationProfilingData profilingData;
 
         private final SnippetInfo allocateInstance;
         private final SnippetInfo allocateArray;

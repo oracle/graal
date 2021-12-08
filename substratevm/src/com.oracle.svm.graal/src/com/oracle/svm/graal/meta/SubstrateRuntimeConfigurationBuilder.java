@@ -75,7 +75,7 @@ public class SubstrateRuntimeConfigurationBuilder extends SharedRuntimeConfigura
 
     @Override
     protected ConstantFieldProvider createConstantFieldProvider(Providers p) {
-        return new AnalysisConstantFieldProvider(aUniverse, (AnalysisMetaAccess) p.getMetaAccess(), (AnalysisConstantReflectionProvider) p.getConstantReflection(), classInitializationSupport);
+        return new AnalysisConstantFieldProvider(aUniverse, (AnalysisMetaAccess) p.getMetaAccess(), classInitializationSupport);
     }
 
     @Override

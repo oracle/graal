@@ -36,6 +36,7 @@ import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.debug.MetricKey;
+import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotBackendFactory;
 import org.graalvm.compiler.hotspot.SnippetResolvedJavaMethod;
@@ -159,6 +160,9 @@ public class GraalObjectReplacer implements Function<Object, Object> {
         } else if (source instanceof MetricKey) {
             /* Ensure lazily initialized name fields are computed. */
             ((MetricKey) source).getName();
+        } else if (source instanceof NodeClass) {
+            /* Ensure lazily initialized shortName field is computed. */
+            ((NodeClass<?>) source).shortName();
 
         } else if (source instanceof HotSpotResolvedJavaMethod) {
             throw new UnsupportedFeatureException(source.toString());
@@ -217,7 +221,11 @@ public class GraalObjectReplacer implements Function<Object, Object> {
              * Annotations are updated in every analysis iteration, but this is a starting point. It
              * also ensures that all types used by annotations are created eagerly.
              */
-            sMethod.setAnnotationsEncoding(AnnotationsProcessor.encodeAnnotations(aMetaAccess, aMethod.getAnnotations(), aMethod.getDeclaredAnnotations(), null));
+            Object annotationsEncoding = AnnotationsProcessor.encodeAnnotations(aMetaAccess, aMethod.getAnnotations(), aMethod.getDeclaredAnnotations(), null);
+            if (sMethod.setAnnotationsEncoding(annotationsEncoding)) {
+                aUniverse.getHeapScanner().rescanField(sMethod, SubstrateField.class, "annotationsEncoding");
+                // aUniverse.getHeapScanner().rescanObject(sMethod);
+            }
         }
         return sMethod;
     }
@@ -246,12 +254,18 @@ public class GraalObjectReplacer implements Function<Object, Object> {
             fields.put(aField, sField);
 
             sField.setLinks(createType(aField.getType()), createType(aField.getDeclaringClass()));
+            aUniverse.getHeapScanner().rescanField(sField, SubstrateField.class, "type");
+            aUniverse.getHeapScanner().rescanField(sField, SubstrateField.class, "declaringClass");
 
             /*
              * Annotations are updated in every analysis iteration, but this is a starting point. It
              * also ensures that all types used by annotations are created eagerly.
              */
-            sField.setAnnotationsEncoding(AnnotationsProcessor.encodeAnnotations(aMetaAccess, aField.getAnnotations(), aField.getDeclaredAnnotations(), null));
+            Object annotationsEncoding = AnnotationsProcessor.encodeAnnotations(aMetaAccess, aField.getAnnotations(), aField.getDeclaredAnnotations(), null);
+            if (sField.setAnnotationsEncoding(annotationsEncoding)) {
+                aUniverse.getHeapScanner().rescanField(sField, SubstrateField.class, "annotationsEncoding");
+                // aUniverse.getHeapScanner().rescanObject(sField);
+            }
         }
         return sField;
     }
@@ -297,13 +311,16 @@ public class GraalObjectReplacer implements Function<Object, Object> {
             sType = new SubstrateType(aType.getJavaKind(), hub);
             types.put(aType, sType);
             hub.setMetaType(sType);
+            aUniverse.getHeapScanner().rescanField(hub, DynamicHub.class, "metaType");
 
             sType.setRawAllInstanceFields(createAllInstanceFields(aType));
+            aUniverse.getHeapScanner().rescanField(sType, SubstrateType.class, "rawAllInstanceFields");
             createType(aType.getSuperclass());
             createType(aType.getComponentType());
             for (AnalysisType aInterface : aType.getInterfaces()) {
                 createType(aInterface);
             }
+            // aUniverse.getHeapScanner().rescanObject(sType);
         }
         return sType;
     }
@@ -344,6 +361,7 @@ public class GraalObjectReplacer implements Function<Object, Object> {
              * infinite recursion.
              */
             sSignature.setTypes(parameterTypes, createType(original.getReturnType(null)));
+            // aUniverse.getHeapScanner().rescanObject(sSignature);
         }
         return sSignature;
     }
@@ -373,19 +391,26 @@ public class GraalObjectReplacer implements Function<Object, Object> {
                 implementations[idx++] = sImpl;
             }
             if (sMethod.setImplementations(implementations)) {
+                aUniverse.getHeapScanner().rescanField(sMethod, SubstrateMethod.class, "implementations");
                 result = true;
             }
         }
 
         for (Map.Entry<AnalysisMethod, SubstrateMethod> entry : methods.entrySet()) {
-            if (entry.getValue().setAnnotationsEncoding(AnnotationsProcessor.encodeAnnotations(metaAccess, entry.getKey().getAnnotations(), entry.getKey().getDeclaredAnnotations(),
-                            entry.getValue().getAnnotationsEncoding()))) {
+            SubstrateMethod method = entry.getValue();
+            AnalysisMethod sMethod = entry.getKey();
+            Object annotationsEncoding = AnnotationsProcessor.encodeAnnotations(metaAccess, sMethod.getAnnotations(), sMethod.getDeclaredAnnotations(), method.getAnnotationsEncoding());
+            if (method.setAnnotationsEncoding(annotationsEncoding)) {
+                aUniverse.getHeapScanner().rescanField(method, SubstrateMethod.class, "annotationsEncoding");
                 result = true;
             }
         }
         for (Map.Entry<AnalysisField, SubstrateField> entry : fields.entrySet()) {
-            if (entry.getValue().setAnnotationsEncoding(AnnotationsProcessor.encodeAnnotations(metaAccess, entry.getKey().getAnnotations(), entry.getKey().getDeclaredAnnotations(),
-                            entry.getValue().getAnnotationsEncoding()))) {
+            SubstrateField field = entry.getValue();
+            AnalysisField sField = entry.getKey();
+            Object annotationsEncoding = AnnotationsProcessor.encodeAnnotations(metaAccess, sField.getAnnotations(), sField.getDeclaredAnnotations(), field.getAnnotationsEncoding());
+            if (field.setAnnotationsEncoding(annotationsEncoding)) {
+                aUniverse.getHeapScanner().rescanField(field, SubstrateField.class, "annotationsEncoding");
                 result = true;
             }
         }

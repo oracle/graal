@@ -62,7 +62,7 @@ public class ReportUtils {
     static final Comparator<AnalysisField> fieldComparator = Comparator.comparing(f -> f.format("%H.%n"));
     static final Comparator<InvokeInfo> invokeInfoComparator = Comparator.comparing(i -> i.getTargetMethod().format("%H.%n(%p)"));
     static final Comparator<BytecodePosition> positionMethodComparator = Comparator.comparing(pos -> pos.getMethod().format("%H.%n(%p)"));
-    static final Comparator<BytecodePosition> positionComparator = positionMethodComparator.thenComparing(pos -> pos.getBCI());
+    public static final Comparator<BytecodePosition> positionComparator = positionMethodComparator.thenComparing(pos -> pos.getBCI());
 
     public static Path report(String description, String path, String name, String extension, Consumer<PrintWriter> reporter) {
         return report(description, path, name, extension, reporter, true);

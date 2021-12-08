@@ -42,14 +42,11 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 public class AnalysisConstantFieldProvider extends SharedConstantFieldProvider {
     private final AnalysisUniverse universe;
     private final AnalysisMetaAccess metaAccess;
-    private final AnalysisConstantReflectionProvider constantReflection;
 
-    public AnalysisConstantFieldProvider(AnalysisUniverse universe, AnalysisMetaAccess metaAccess, AnalysisConstantReflectionProvider constantReflection,
-                    ClassInitializationSupport classInitializationSupport) {
+    public AnalysisConstantFieldProvider(AnalysisUniverse universe, AnalysisMetaAccess metaAccess, ClassInitializationSupport classInitializationSupport) {
         super(metaAccess, classInitializationSupport);
         this.universe = universe;
         this.metaAccess = metaAccess;
-        this.constantReflection = constantReflection;
     }
 
     @Override
@@ -63,7 +60,7 @@ public class AnalysisConstantFieldProvider extends SharedConstantFieldProvider {
             if (readableField.allowConstantFolding()) {
                 JavaConstant fieldValue = readableField.readValue(metaAccess, universe.toHosted(analysisTool.getReceiver()));
                 if (fieldValue != null) {
-                    return analysisTool.foldConstant(constantReflection.interceptValue(f, universe.lookup(fieldValue)));
+                    return analysisTool.foldConstant(AnalysisConstantReflectionProvider.interceptValue(universe, f, universe.lookup(fieldValue)));
                 }
             }
             return null;

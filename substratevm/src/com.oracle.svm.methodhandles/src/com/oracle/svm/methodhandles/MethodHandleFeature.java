@@ -46,6 +46,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.invoke.MethodHandleIntrinsic;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.util.ReflectionUtil;
 
 // Checkstyle: stop
@@ -99,6 +100,15 @@ public class MethodHandleFeature implements Feature {
     private Field lambdaFormArity;
     private Field nameFunction;
     private Field namedFunctionMemberName;
+    private Field lambdaFormLFIdentity;
+    private Field lambdaFormLFZero;
+    private Field lambdaFormNFIdentity;
+    private Field lambdaFormNFZero;
+    private Field typedAccessors;
+    private Field classSpecializerCache;
+    private Class<?> lambdaFormClass;
+    private Class<?> classSpecializerClass;
+    private Class<?> arrayAccessorClass;
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -123,13 +133,23 @@ public class MethodHandleFeature implements Feature {
         memberNameIsField = ReflectionUtil.lookupMethod(memberNameClass, "isField");
         memberNameGetParameterTypes = ReflectionUtil.lookupMethod(memberNameClass, "getParameterTypes");
 
-        Class<?> lambdaFormClass = access.findClassByName("java.lang.invoke.LambdaForm");
+        lambdaFormClass = access.findClassByName("java.lang.invoke.LambdaForm");
         lambdaFormNames = ReflectionUtil.lookupField(lambdaFormClass, "names");
         lambdaFormArity = ReflectionUtil.lookupField(lambdaFormClass, "arity");
         Class<?> nameClass = access.findClassByName("java.lang.invoke.LambdaForm$Name");
         nameFunction = ReflectionUtil.lookupField(nameClass, "function");
         Class<?> namedFunctionClass = access.findClassByName("java.lang.invoke.LambdaForm$NamedFunction");
         namedFunctionMemberName = ReflectionUtil.lookupField(namedFunctionClass, "member");
+
+        lambdaFormLFIdentity = ReflectionUtil.lookupField(lambdaFormClass, "LF_identity");
+        lambdaFormLFZero = ReflectionUtil.lookupField(lambdaFormClass, "LF_zero");
+        lambdaFormNFIdentity = ReflectionUtil.lookupField(lambdaFormClass, "NF_identity");
+        lambdaFormNFZero = ReflectionUtil.lookupField(lambdaFormClass, "NF_zero");
+
+        classSpecializerClass = access.findClassByName("java.lang.invoke.ClassSpecializer");
+        arrayAccessorClass = access.findClassByName("java.lang.invoke.MethodHandleImpl$ArrayAccessor");
+        typedAccessors = ReflectionUtil.lookupField(arrayAccessorClass, "TYPED_ACCESSORS");
+        classSpecializerCache = ReflectionUtil.lookupField(classSpecializerClass, "cache");
 
         access.registerObjectReplacer(this::registerMethodHandle);
     }
@@ -174,6 +194,8 @@ public class MethodHandleFeature implements Feature {
 
         access.registerSubtypeReachabilityHandler(MethodHandleFeature::registerVarHandleMethodsForReflection,
                         access.findClassByName("java.lang.invoke.VarHandle"));
+
+        access.registerSubtypeReachabilityHandler(MethodHandleFeature::scanBoundMethodHandle, boundMethodHandleClass);
     }
 
     private static void registerMHImplFunctionsForReflection(DuringAnalysisAccess access) {
@@ -355,6 +377,31 @@ public class MethodHandleFeature implements Feature {
             /* Internal, malformed or illegal member name, we do not need to register it */
         } catch (IllegalAccessException | InvocationTargetException e) {
             throw VMError.shouldNotReachHere(e);
+        }
+    }
+
+    @Override
+    public void duringAnalysis(DuringAnalysisAccess a) {
+        DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
+        access.rescanRoot(lambdaFormLFIdentity);
+        access.rescanRoot(lambdaFormLFZero);
+        access.rescanRoot(lambdaFormNFIdentity);
+        access.rescanRoot(lambdaFormNFZero);
+        access.rescanRoot(typedAccessors);
+
+        // Object specializer = ReflectionUtil.readStaticField(boundMethodHandleClass,
+        // "SPECIALIZER");
+        // // Map<?, ?> cache = ReflectionUtil.readField(classSpecializerClass, "cache",
+        // specializer);
+        // // access.rescanObject(cache);
+        // access.rescanField(specializer, classSpecializerCache);
+    }
+
+    private static void scanBoundMethodHandle(DuringAnalysisAccess a, Class<?> bmhSubtype) {
+        DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
+        Field bmhSpeciesField = ReflectionUtil.lookupField(true, bmhSubtype, "BMH_SPECIES");
+        if (bmhSpeciesField != null) {
+            access.rescanRoot(bmhSpeciesField);
         }
     }
 }

@@ -211,7 +211,7 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
 
     @Override
     public ResolvedJavaMethod lookup(ResolvedJavaMethod method) {
-        if (isConstantAnnotationType(method.getDeclaringClass())) {
+        if (isConstantAnnotationType(method.getDeclaringClass()) && !method.getName().equals("proxyClassLookup")) {
             AnnotationSubstitutionType declaringClass = getSubstitution(method.getDeclaringClass());
             AnnotationSubstitutionMethod result = declaringClass.getSubstitutionMethod(method);
             assert result != null && result.original.equals(method);
@@ -236,6 +236,9 @@ public class AnnotationSupport extends CustomSubstitution<AnnotationSubstitution
             for (ResolvedJavaMethod originalMethod : type.getDeclaredMethods()) {
                 AnnotationSubstitutionMethod substitutionMethod;
                 String methodName = canonicalMethodName(originalMethod);
+                if (methodName.equals("proxyClassLookup")) {
+                    continue;
+                }
                 if (methodName.equals("equals")) {
                     substitutionMethod = new AnnotationEqualsMethod(originalMethod);
                 } else if (methodName.equals("hashCode")) {

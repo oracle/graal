@@ -191,6 +191,9 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
     /** List of providers deemed not to be used by this feature. */
     private List<Provider> removedProviders;
 
+    // TODO Filtering temporarily disabled see
+    // com.oracle.svm.core.jdk.Target_sun_security_jca_Providers.providerList for details.
+    // private boolean shouldFilterProviders = true;
     private boolean shouldFilterProviders = true;
 
     @Override
@@ -295,6 +298,40 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         loader = ((BeforeAnalysisAccessImpl) access).getImageClassLoader();
         verificationCacheCleaner = constructVerificationCacheCleaner();
+
+        try {
+            /* Ensure sun.security.provider.certpath.CertPathHelper.instance is initialized. */
+            loader.forName("java.security.cert.TrustAnchor", true);
+            /*
+             * Ensure jdk.internal.access.SharedSecrets.javaxCryptoSpecAccess is initialized before
+             * scanning.
+             */
+            loader.forName("javax.crypto.spec.SecretKeySpec", true);
+            /*
+             * Ensure jdk.internal.access.SharedSecrets.javaxCryptoSealedObjectAccess is initialized
+             * before scanning.
+             */
+            loader.forName("javax.crypto.SealedObject", true);
+
+            /*
+             * Ensure jdk.internal.access.SharedSecrets.javaIOAccess is initialized before scanning.
+             */
+            loader.forName("java.io.Console", true);
+
+            /*
+             * Ensure jdk.internal.access.SharedSecrets.javaSecuritySignatureAccess is initialized
+             * before scanning.
+             */
+            loader.forName("java.security.Signature", true);
+
+            /*
+             * Ensure all X509Certificate caches are initialized.
+             */
+            loader.forName("sun.security.util.AnchorCertificates", true);
+
+        } catch (ClassNotFoundException e) {
+            VMError.shouldNotReachHere(e);
+        }
 
         if (Options.EnableSecurityServicesFeature.getValue()) {
             registerServiceReachabilityHandlers(access);
@@ -546,7 +583,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
         try (TracingAutoCloseable ignored = trace(access, trigger, serviceType)) {
             Set<Service> services = availableServices.get(serviceType);
             for (Service service : services) {
-                registerService(service);
+                registerService(access, service);
             }
         }
     }
@@ -644,7 +681,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
         if (!usedProviders.contains(provider)) {
             usedProviders.add(provider);
             registerForReflection(provider.getClass());
-
+            /* Trigger initialization of lazy field java.security.Provider.entrySet. */
+            provider.entrySet();
             try {
                 Method getVerificationResult = ReflectionUtil.lookupMethod(loader.findClassOrFail("javax.crypto.JceSecurity"), "getVerificationResult", Provider.class);
                 /*
@@ -661,7 +699,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
     }
 
     @SuppressWarnings("try")
-    private void registerService(Service service) {
+    private void registerService(DuringAnalysisAccess a, Service service) {
         TypeResult<Class<?>> serviceClassResult = loader.findClass(service.getClassName());
         if (serviceClassResult.isPresent()) {
             try (TracingAutoCloseable ignored = trace(service)) {
@@ -682,7 +720,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
                     registerJks(loader);
                 }
                 if (isCertificateFactory(service) && service.getAlgorithm().equals(X509)) {
-                    registerX509Extensions();
+                    registerX509Extensions(a);
                 }
                 registerProvider(service.getProvider());
             }
@@ -706,7 +744,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
     /**
      * Register the x509 certificate extension classes for reflection.
      */
-    private static void registerX509Extensions() {
+    private static void registerX509Extensions(DuringAnalysisAccess a) {
+        DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
         /*
          * The OIDInfo class which represents the values in the map is not visible. Get the list of
          * extension names through reflection, i.e., the keys in the map, and use the
@@ -721,6 +760,29 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
                 trace("Registered X.509 extension class: %s", extensionClass.getName());
             } catch (CertificateException e) {
                 throw VMError.shouldNotReachHere(e);
+            }
+        }
+        access.rescanRoot(OIDMap.class, "oidMap");
+    }
+
+    @Override
+    public void duringAnalysis(DuringAnalysisAccess a) {
+        DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
+        access.rescanRoot("javax.crypto.JceSecurity", "verificationResults");
+        access.rescanRoot("sun.security.jca.Providers", "providerList");
+        if (JavaVersionUtil.JAVA_SPEC >= 17) {
+            access.rescanRoot("sun.security.util.ObjectIdentifier", "oidTable");
+        }
+        if (filteredProviderList != null) {
+            for (Provider provider : filteredProviderList.providers()) {
+                for (Service service : provider.getServices()) {
+                    if (JavaVersionUtil.JAVA_SPEC >= 17) {
+                        access.rescanField(service, Service.class, "classCache");
+                        access.rescanField(service, Service.class, "constructorCache");
+                    } else {
+                        access.rescanField(service, Service.class, "classRef");
+                    }
+                }
             }
         }
     }

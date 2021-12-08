@@ -163,14 +163,13 @@ public class FieldsOffsetsFeature implements Feature {
     private static void classReachabilityListener(DuringAnalysisAccess a, Class<?> newlyReachableClass) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
 
+        GraalSupport support = GraalSupport.get();
         if (Node.class.isAssignableFrom(newlyReachableClass) && newlyReachableClass != Node.class) {
-            FieldsOffsetsFeature.<NodeClass<?>> registerClass(newlyReachableClass, GraalSupport.get().nodeClasses, NodeClass::get, false, access);
-
+            FieldsOffsetsFeature.registerClass(newlyReachableClass, support.nodeClasses, NodeClass::get, false, access);
         } else if (LIRInstruction.class.isAssignableFrom(newlyReachableClass) && newlyReachableClass != LIRInstruction.class) {
-            FieldsOffsetsFeature.<LIRInstructionClass<?>> registerClass(newlyReachableClass, GraalSupport.get().instructionClasses, LIRInstructionClass::get, true, access);
-
+            FieldsOffsetsFeature.registerClass(newlyReachableClass, support.instructionClasses, LIRInstructionClass::get, true, access);
         } else if (CompositeValue.class.isAssignableFrom(newlyReachableClass) && newlyReachableClass != CompositeValue.class) {
-            FieldsOffsetsFeature.<CompositeValueClass<?>> registerClass(newlyReachableClass, GraalSupport.get().compositeValueClasses, CompositeValueClass::get, true, access);
+            FieldsOffsetsFeature.registerClass(newlyReachableClass, support.compositeValueClasses, CompositeValueClass::get, true, access);
         }
     }
 

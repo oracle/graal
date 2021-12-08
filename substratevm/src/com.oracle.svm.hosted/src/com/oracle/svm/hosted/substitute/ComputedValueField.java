@@ -225,6 +225,13 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
         return original.isSynthetic();
     }
 
+    /*
+     * TODO remove this method
+     * 
+     * It is a catch-all method in case we forgot to register some of the target fields as accessed.
+     * AnnotationSubstitutionProcessor.processComputedValueFields() also registers the target fields
+     * of the automatic re-computation as unsafe accessed.
+     */
     public void processAnalysis(AnalysisMetaAccess aMetaAccess) {
         switch (kind) {
             case FieldOffset:

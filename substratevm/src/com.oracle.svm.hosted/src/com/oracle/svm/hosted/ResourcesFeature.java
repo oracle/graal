@@ -268,6 +268,7 @@ public final class ResourcesFeature implements Feature {
         ImageSingletons.lookup(ClassLoaderSupport.class).collectResources(collector);
 
         resourcePatternWorkSet.clear();
+        // access.rescanObject(ImageSingletons.lookup(Resources.ResourcesSupport.class).hostedResources);
     }
 
     private ResourcePattern[] compilePatterns(Set<String> patterns) {

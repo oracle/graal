@@ -81,6 +81,7 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.option.HostedOptionProvider;
+import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.UnsafePartitionKind;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -245,6 +246,35 @@ public class FeatureImpl {
         Set<AnalysisMethod> reachableMethodOverrides(AnalysisMethod baseMethod) {
             return AnalysisUniverse.getMethodImplementations(getBigBang(), baseMethod, true);
         }
+
+        public void rescanObject(Object obj) {
+            getUniverse().getHeapScanner().rescanObject(obj);
+        }
+
+        public void rescanField(Object receiver, Field field) {
+            getUniverse().getHeapScanner().rescanField(receiver, field);
+        }
+
+        public void rescanField(Object receiver, Class<?> declaringClass, String fieldName) {
+            rescanField(receiver, ReflectionUtil.lookupField(declaringClass, fieldName));
+        }
+
+        public void rescanField(Object receiver, String className, String fieldName) {
+            rescanField(receiver, getImageClassLoader().findClassOrFail(className), fieldName);
+        }
+
+        public void rescanRoot(Field field) {
+            getUniverse().getHeapScanner().rescanRoot(field);
+        }
+
+        public void rescanRoot(Class<?> declaringClass, String fieldName) {
+            rescanRoot(ReflectionUtil.lookupField(declaringClass, fieldName));
+        }
+
+        public void rescanRoot(String declaringClassName, String fieldName) {
+            rescanRoot(getImageClassLoader().findClassOrFail(declaringClassName), fieldName);
+        }
+
     }
 
     public static class DuringSetupAccessImpl extends AnalysisAccessBase implements Feature.DuringSetupAccess {

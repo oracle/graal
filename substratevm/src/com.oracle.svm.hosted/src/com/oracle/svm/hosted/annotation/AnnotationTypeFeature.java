@@ -78,13 +78,18 @@ public class AnnotationTypeFeature implements Feature {
                         });
         Stream<AnnotatedElement> allElements = Stream.concat(Stream.concat(universe.getFields().stream(), universe.getMethods().stream()), universe.getTypes().stream());
         Stream<AnnotatedElement> newElements = allElements.filter(visitedElements::add);
-        newElements.forEach(this::reportAnnotation);
+        newElements.forEach(e -> reportAnnotation(access, e));
     }
 
-    private void reportAnnotation(AnnotatedElement element) {
+    private void reportAnnotation(DuringAnalysisAccess a, AnnotatedElement element) {
+        DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
         for (Annotation annotation : element.getDeclaredAnnotations()) {
-            if (repeatableAnnotationClasses.contains(annotation.annotationType())) {
-                ImageSingletons.lookup(AnnotationTypeSupport.class).createInstance(annotation.annotationType());
+            Class<? extends Annotation> annotationClass = annotation.annotationType();
+            if (repeatableAnnotationClasses.contains(annotationClass)) {
+                AnnotationTypeSupport annotationTypeSupport = ImageSingletons.lookup(AnnotationTypeSupport.class);
+                if (annotationTypeSupport.createInstance(annotationClass)) {
+                    access.rescanField(annotationTypeSupport, AnnotationTypeSupport.class, "annotationTypeMap");
+                }
             }
         }
     }

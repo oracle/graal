@@ -77,6 +77,7 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
     private AtomicBoolean isAccessed = new AtomicBoolean();
     private AtomicBoolean isRead = new AtomicBoolean();
     private AtomicBoolean isWritten = new AtomicBoolean();
+    private final AtomicBoolean isReachable = new AtomicBoolean();
 
     private boolean isJNIAccessed;
     private boolean isUsedInComparison;
@@ -267,9 +268,11 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
 
     public boolean registerAsAccessed() {
         boolean firstAttempt = AtomicUtils.atomicMark(isAccessed);
+        markReachable();
         notifyUpdateAccessInfo();
         if (firstAttempt) {
             getUniverse().onFieldAccessed(this);
+            getUniverse().getHeapScanner().onFieldRead(this);
         }
         return firstAttempt;
     }
@@ -280,8 +283,10 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
         if (readBy != null && method != null) {
             readBy.put(method, Boolean.TRUE);
         }
+        markReachable();
         if (firstAttempt) {
             getUniverse().onFieldAccessed(this);
+            getUniverse().getHeapScanner().onFieldRead(this);
         }
         return firstAttempt;
     }
@@ -298,10 +303,17 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
         if (writtenBy != null && method != null) {
             writtenBy.put(method, Boolean.TRUE);
         }
+        markReachable();
         if (firstAttempt && (Modifier.isVolatile(getModifiers()) || getStorageKind() == JavaKind.Object)) {
             getUniverse().onFieldAccessed(this);
         }
         return firstAttempt;
+    }
+
+    public void markReachable() {
+        if (AtomicUtils.atomicMark(isReachable)) {
+            getDeclaringClass().registerAsReachable();
+        }
     }
 
     public void registerAsUnsafeAccessed() {
@@ -396,6 +408,10 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
         return isAccessed.get() || isRead.get();
     }
 
+    public boolean isReachable() {
+        return isReachable.get();
+    }
+
     public boolean isWritten() {
         return isAccessed.get() || isWritten.get();
     }
@@ -480,7 +496,7 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
 
     @Override
     public String toString() {
-        return "AnalysisField<" + format("%h.%n") + " accessed: " + isAccessed + " reads: " + isRead + " written: " + isWritten + ">";
+        return "AnalysisField<" + format("%h.%n") + " accessed: " + isAccessed + " reads: " + isRead + " written: " + isWritten + " reachable: " + isReachable + ">";
     }
 
     public void markAsUsedInComparison() {

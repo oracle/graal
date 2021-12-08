@@ -57,7 +57,6 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.graal.pointsto.ObjectScanner.ReusableSet;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
@@ -128,7 +127,7 @@ public abstract class PointsToAnalysis implements BigBang {
     private final CompletionExecutor.Timing timing;
 
     public final Timer typeFlowTimer;
-    public final Timer checkObjectsTimer;
+    public final Timer verifyHeapTimer;
     public final Timer processFeaturesTimer;
     public final Timer analysisTimer;
 
@@ -142,7 +141,7 @@ public abstract class PointsToAnalysis implements BigBang {
         this.hostVM = hostVM;
         String imageName = hostVM.getImageName();
         this.typeFlowTimer = new Timer(imageName, "(typeflow)", false);
-        this.checkObjectsTimer = new Timer(imageName, "(objects)", false);
+        this.verifyHeapTimer = new Timer(imageName, "(verify)", false);
         this.processFeaturesTimer = new Timer(imageName, "(features)", false);
         this.analysisTimer = new Timer(imageName, "analysis", true);
 
@@ -152,6 +151,7 @@ public abstract class PointsToAnalysis implements BigBang {
         this.unsupportedFeatures = unsupportedFeatures;
         this.providers = providers;
         this.strengthenGraalGraphs = strengthenGraalGraphs;
+        providers.setBigBang(this);
 
         this.objectType = metaAccess.lookupJavaType(Object.class);
         /*
@@ -194,14 +194,14 @@ public abstract class PointsToAnalysis implements BigBang {
     @Override
     public void printTimers() {
         typeFlowTimer.print();
-        checkObjectsTimer.print();
+        verifyHeapTimer.print();
         processFeaturesTimer.print();
     }
 
     @Override
     public void printTimerStatistics(PrintWriter out) {
         StatisticsPrinter.print(out, "typeflow_time_ms", typeFlowTimer.getTotalTime());
-        StatisticsPrinter.print(out, "objects_time_ms", checkObjectsTimer.getTotalTime());
+        StatisticsPrinter.print(out, "verify_time_ms", verifyHeapTimer.getTotalTime());
         StatisticsPrinter.print(out, "features_time_ms", processFeaturesTimer.getTotalTime());
         StatisticsPrinter.print(out, "total_analysis_time_ms", analysisTimer.getTotalTime());
 
@@ -323,13 +323,15 @@ public abstract class PointsToAnalysis implements BigBang {
         allSynchronizedTypeFlow = null;
         unsafeLoads = null;
         unsafeStores = null;
-        scannedObjects = null;
 
         ConstantObjectsProfiler.constantTypes.clear();
 
         universe.getTypes().forEach(AnalysisType::cleanupAfterAnalysis);
         universe.getFields().forEach(AnalysisField::cleanupAfterAnalysis);
         universe.getMethods().forEach(AnalysisMethod::cleanupAfterAnalysis);
+
+        universe.getHeapScanner().cleanupAfterAnalysis();
+        universe.getHeapVerifier().cleanupAfterAnalysis();
     }
 
     @Override
@@ -578,6 +580,10 @@ public abstract class PointsToAnalysis implements BigBang {
     public void checkUserLimitations() {
     }
 
+    public void handleUnknownValueField(@SuppressWarnings("unused") AnalysisField field) {
+
+    }
+
     public interface TypeFlowRunnable extends DebugContextRunnable {
         TypeFlow<?> getTypeFlow();
     }
@@ -642,10 +648,6 @@ public abstract class PointsToAnalysis implements BigBang {
                  */
                 assert executor.getPostedOperations() == 0;
                 numTypes = universe.getTypes().size();
-                try (StopTimer t = checkObjectsTimer.start()) {
-                    // track static fields
-                    checkObjectGraph();
-                }
             } while (executor.getPostedOperations() != 0 || numTypes != universe.getTypes().size());
 
             universe.setAnalysisDataValid(true);
@@ -668,37 +670,9 @@ public abstract class PointsToAnalysis implements BigBang {
         return didSomeWork;
     }
 
-    private ReusableSet scannedObjects = new ReusableSet();
-
-    @SuppressWarnings("try")
-    private void checkObjectGraph() throws InterruptedException {
-        scannedObjects.reset();
-        // scan constants
-        boolean isParallel = PointstoOptions.ScanObjectsParallel.getValue(options);
-        ObjectScanner objectScanner = new AnalysisObjectScanner(this, isParallel ? executor : null, scannedObjects);
-        checkObjectGraph(objectScanner);
-        if (isParallel) {
-            executor.start();
-            objectScanner.scanBootImageHeapRoots(null, null);
-            executor.complete();
-            executor.shutdown();
-            executor.init(timing);
-        } else {
-            objectScanner.scanBootImageHeapRoots(null, null);
-        }
-    }
-
     @Override
     public HeapScanningPolicy scanningPolicy() {
         return heapScanningPolicy;
-    }
-
-    /**
-     * Traverses the object graph to discover references to new types.
-     *
-     * @param objectScanner
-     */
-    protected void checkObjectGraph(ObjectScanner objectScanner) {
     }
 
     @Override
@@ -748,20 +722,43 @@ public abstract class PointsToAnalysis implements BigBang {
                 /*
                  * Allow features to change the universe.
                  */
-                try (StopTimer t2 = getProcessFeaturesTimer().start()) {
-                    int numTypes = universe.getTypes().size();
-                    int numMethods = universe.getMethods().size();
-                    int numFields = universe.getFields().size();
-                    if (analysisEndCondition.apply(universe)) {
-                        if (numTypes != universe.getTypes().size() || numMethods != universe.getMethods().size() || numFields != universe.getFields().size()) {
-                            throw AnalysisError.shouldNotReachHere(
-                                            "When a feature makes more types, methods, or fields reachable, it must require another analysis iteration via DuringAnalysisAccess.requireAnalysisIteration()");
-                        }
+                int numTypes = universe.getTypes().size();
+                int numMethods = universe.getMethods().size();
+                int numFields = universe.getFields().size();
+                if (analysisEndCondition.apply(universe)) {
+                    if (numTypes != universe.getTypes().size() || numMethods != universe.getMethods().size() || numFields != universe.getFields().size()) {
+                        throw AnalysisError.shouldNotReachHere(
+                                        "When a feature makes more types, methods, or fields reachable, it must require another analysis iteration via DuringAnalysisAccess.requireAnalysisIteration()");
+                    }
+                    /*
+                     * Manual rescanning doesn't explicitly require analysis iterations, but it can
+                     * insert some pending operations.
+                     */
+                    boolean pendingOperations = executor.getPostedOperations() > 0;
+                    if (pendingOperations) {
+                        System.out.println("Found pending operations, continuing analysis.");
+                        continue;
+                    }
+                    /* Outer analysis loop is done. Check if the heap snapshot is stable. */
+                    if (isHeapStable()) {
                         return;
                     }
                 }
             }
         }
+    }
+
+    @SuppressWarnings("try")
+    private boolean isHeapStable() throws InterruptedException {
+        boolean foundMismatch;
+        try (StopTimer ignored = verifyHeapTimer.start()) {
+            foundMismatch = universe.getHeapVerifier().verifyHeapSnapshot(executor);
+            // System.out.println("Verification " + (foundMismatch ? " found " : " didn't find ") +
+            // " a mismatch.");
+        }
+        /* Initialize for the next iteration. */
+        executor.init(timing);
+        return !foundMismatch;
     }
 
     @SuppressFBWarnings(value = "NP_NONNULL_PARAM_VIOLATION", justification = "ForkJoinPool does support null for the exception handler.")

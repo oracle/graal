@@ -91,23 +91,26 @@ public final class AnalysisHeapHistogramPrinter extends ObjectScanner {
         }
 
         @Override
-        public void forRelocatedPointerFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue) {
+        public boolean forRelocatedPointerFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue, ScanReason reason) {
+            return false;
         }
 
         @Override
-        public void forNullFieldValue(JavaConstant receiver, AnalysisField field) {
+        public boolean forNullFieldValue(JavaConstant receiver, AnalysisField field, ScanReason reason) {
+            return false;
         }
 
         @Override
-        public void forNonNullFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue) {
+        public void forNonNullFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue, ScanReason reason) {
         }
 
         @Override
-        public void forNullArrayElement(JavaConstant array, AnalysisType arrayType, int index) {
+        public boolean forNullArrayElement(JavaConstant array, AnalysisType arrayType, int index, ScanReason reason) {
+            return false;
         }
 
         @Override
-        public void forNonNullArrayElement(JavaConstant array, AnalysisType arrayType, JavaConstant elementConstant, AnalysisType elementType, int index) {
+        public void forNonNullArrayElement(JavaConstant array, AnalysisType arrayType, JavaConstant elementConstant, AnalysisType elementType, int index, ScanReason reason) {
         }
     }
 }

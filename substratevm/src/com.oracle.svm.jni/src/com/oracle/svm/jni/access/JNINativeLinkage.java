@@ -28,6 +28,7 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
@@ -85,11 +86,12 @@ public final class JNINativeLinkage {
         return (PlatformNativeLibrarySupport.singleton().isBuiltinPkgNative(this.getShortName()));
     }
 
-    public CGlobalDataInfo getBuiltInAddress() {
+    public CGlobalDataInfo getBuiltInAddress(BigBang bb) {
         assert this.isBuiltInFunction();
         if (builtInAddress == null) {
             CGlobalData<CFunctionPointer> linkage = CGlobalDataFactory.forSymbol(this.getShortName());
             builtInAddress = CGlobalDataFeature.singleton().registerAsAccessedOrGet(linkage);
+            bb.getUniverse().getHeapScanner().rescanField(this, JNINativeLinkage.class, "builtInAddress");
         }
         return builtInAddress;
     }
