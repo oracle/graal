@@ -108,24 +108,18 @@ public abstract class RegexTestBase {
         validateResult(result, compiledRegex.getMember("groupCount").asInt(), isMatch, captureGroupBounds);
     }
 
-    protected void testLastGroup(String pattern, String flags, Object input, int fromIndex, int lastGroup) {
-        Value compiledRegex = compileRegex(pattern, flags);
-        Value result = execRegex(compiledRegex, input, fromIndex);
-        assertEquals(true, result.getMember("isMatch").asBoolean());
-        assertEquals(lastGroup, result.getMember("lastGroup").asInt());
-    }
-
-    private static void validateResult(Value result, int groupCount, boolean isMatch, int... captureGroupBounds) {
-        assert captureGroupBounds.length % 2 == 0;
+    private static void validateResult(Value result, int groupCount, boolean isMatch, int... captureGroupBoundsAndLastGroup) {
         assertEquals(isMatch, result.getMember("isMatch").asBoolean());
         if (isMatch) {
-            assertEquals(captureGroupBounds.length / 2, groupCount);
-            for (int i = 0; i < captureGroupBounds.length / 2; i++) {
-                if (captureGroupBounds[i * 2] != result.invokeMember("getStart", i).asInt() || captureGroupBounds[i * 2 + 1] != result.invokeMember("getEnd", i).asInt()) {
-                    fail(result, captureGroupBounds);
+            assertEquals(captureGroupBoundsAndLastGroup.length / 2, groupCount);
+            for (int i = 0; i < captureGroupBoundsAndLastGroup.length / 2; i++) {
+                if (captureGroupBoundsAndLastGroup[i * 2] != result.invokeMember("getStart", i).asInt() || captureGroupBoundsAndLastGroup[i * 2 + 1] != result.invokeMember("getEnd", i).asInt()) {
+                    fail(result, captureGroupBoundsAndLastGroup);
                 }
             }
         }
+        int lastGroup = captureGroupBoundsAndLastGroup.length % 2 == 1 ? captureGroupBoundsAndLastGroup[captureGroupBoundsAndLastGroup.length - 1] : -1;
+        assertEquals(lastGroup, result.getMember("lastGroup").asInt());
     }
 
     private static Charset encodingToCharSet(Encodings.Encoding encoding) {

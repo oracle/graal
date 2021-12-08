@@ -109,32 +109,32 @@ public class JsTests extends RegexTestBase {
     @Test
     public void lastGroupNotSet() {
         // IndexOf
-        testLastGroup("(a)", "", "a", 0, -1);
+        test("(a)", "", "a", 0, true, 0, 1, 0, 1, -1);
         // StartsWith
-        testLastGroup("^(a)", "", "a", 0, -1);
+        test("^(a)", "", "a", 0, true, 0, 1, 0, 1, -1);
         // EndsWith
-        testLastGroup("(a)$", "", "a", 0, -1);
+        test("(a)$", "", "a", 0, true, 0, 1, 0, 1, -1);
         // Equals
-        testLastGroup("^(a)$", "", "a", 0, -1);
+        test("^(a)$", "", "a", 0, true, 0, 1, 0, 1, -1);
         // RegionMatches
-        testLastGroup("(a)", "y", "a", 0, -1);
+        test("(a)", "y", "a", 0, true, 0, 1, 0, 1, -1);
         // EmptyIndexOf
-        testLastGroup("()", "", "", 0, -1);
+        test("()", "", "", 0, true, 0, 0, 0, 0, -1);
         // EmptyStartsWith
-        testLastGroup("^()", "", "", 0, -1);
+        test("^()", "", "", 0, true, 0, 0, 0, 0, -1);
         // EmptyEndsWith
-        testLastGroup("()$", "", "", 0, -1);
+        test("()$", "", "", 0, true, 0, 0, 0, 0, -1);
         // EmptyEquals
-        testLastGroup("^()$", "", "", 0, -1);
+        test("^()$", "", "", 0, true, 0, 0, 0, 0, -1);
 
         // Single possible CG result: exercises NFA, DFA and backtracker.
-        testLastGroup("([a0-9])", "", "a", 0, -1);
+        test("([a0-9])", "", "a", 0, true, 0, 1, 0, 1, -1);
         // TraceFinder: exercises NFA, DFA and backtracker.
-        testLastGroup("x?([a0-9])", "", "a", 0, -1);
+        test("x?([a0-9])", "", "a", 0, true, 0, 1, 0, 1, -1);
         // Unbounded length of match, unambiguous: exercises NFA, lazy DFA, simpleCG DFA and
         // backtracker.
-        testLastGroup("x*([a0-9])", "", "a", 0, -1);
+        test("x*([a0-9])", "", "a", 0, true, 0, 1, 0, 1, -1);
         // Unbounded length of match, ambiguous: exercises NFA, lazy DFA, eager DFA and backtracker.
-        testLastGroup(".*([a0-9])", "", "a", 0, -1);
+        test(".*([a0-9])", "", "a", 0, true, 0, 1, 0, 1, -1);
     }
 }
