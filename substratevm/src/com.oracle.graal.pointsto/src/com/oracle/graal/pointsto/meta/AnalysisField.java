@@ -77,6 +77,7 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
     private AtomicBoolean isAccessed = new AtomicBoolean();
     private AtomicBoolean isRead = new AtomicBoolean();
     private AtomicBoolean isWritten = new AtomicBoolean();
+
     private boolean isJNIAccessed;
     private boolean isUsedInComparison;
     private AtomicBoolean isUnsafeAccessed;
@@ -110,8 +111,9 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
         this.wrapped = wrappedField;
         this.id = universe.nextFieldId.getAndIncrement();
 
-        readBy = PointstoOptions.TrackAccessChain.getValue(universe.hostVM().options()) ? new ConcurrentHashMap<>() : null;
-        writtenBy = new ConcurrentHashMap<>();
+        boolean trackAccessChain = PointstoOptions.TrackAccessChain.getValue(universe.hostVM().options());
+        readBy = trackAccessChain ? new ConcurrentHashMap<>() : null;
+        writtenBy = trackAccessChain ? new ConcurrentHashMap<>() : null;
 
         declaringClass = universe.lookup(wrappedField.getDeclaringClass());
         fieldType = getDeclaredType(universe, wrappedField);
@@ -127,6 +129,11 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
             this.instanceFieldFlow = new FieldSinkTypeFlow(this, getType());
             this.initialInstanceFieldFlow = new FieldTypeFlow(this, getType());
         }
+    }
+
+    private AnalysisUniverse getUniverse() {
+        /* Access the universe via the declaring class to avoid storing it here. */
+        return declaringClass.getUniverse();
     }
 
     private static AnalysisType getDeclaredType(AnalysisUniverse universe, ResolvedJavaField wrappedField) {
@@ -261,6 +268,9 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
     public boolean registerAsAccessed() {
         boolean firstAttempt = AtomicUtils.atomicMark(isAccessed);
         notifyUpdateAccessInfo();
+        if (firstAttempt) {
+            getUniverse().onFieldAccessed(this);
+        }
         return firstAttempt;
     }
 
@@ -269,6 +279,9 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
         notifyUpdateAccessInfo();
         if (readBy != null && method != null) {
             readBy.put(method, Boolean.TRUE);
+        }
+        if (firstAttempt) {
+            getUniverse().onFieldAccessed(this);
         }
         return firstAttempt;
     }
@@ -285,14 +298,17 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
         if (writtenBy != null && method != null) {
             writtenBy.put(method, Boolean.TRUE);
         }
+        if (firstAttempt && (Modifier.isVolatile(getModifiers()) || getStorageKind() == JavaKind.Object)) {
+            getUniverse().onFieldAccessed(this);
+        }
         return firstAttempt;
     }
 
-    public void registerAsUnsafeAccessed(AnalysisUniverse universe) {
-        registerAsUnsafeAccessed(universe, DefaultUnsafePartition.get());
+    public void registerAsUnsafeAccessed() {
+        registerAsUnsafeAccessed(DefaultUnsafePartition.get());
     }
 
-    public void registerAsUnsafeAccessed(AnalysisUniverse universe, UnsafePartitionKind partitionKind) {
+    public void registerAsUnsafeAccessed(UnsafePartitionKind partitionKind) {
         /*
          * A field can potentially be registered as unsafe accessed multiple times. This is
          * especially true for the Graal nodes because FieldsOffsetsFeature.registerFields iterates
@@ -315,7 +331,7 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
 
             if (isStatic()) {
                 /* Register the static field as unsafe accessed with the analysis universe. */
-                universe.registerUnsafeAccessedStaticField(this);
+                getUniverse().registerUnsafeAccessedStaticField(this);
             } else {
                 /* Register the instance field as unsafe accessed on the declaring type. */
                 AnalysisType declaringType = getDeclaringClass();
@@ -477,7 +493,7 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
 
     @Override
     public Field getJavaField() {
-        return OriginalFieldProvider.getJavaField(getDeclaringClass().universe.getOriginalSnippetReflection(), wrapped);
+        return OriginalFieldProvider.getJavaField(getUniverse().getOriginalSnippetReflection(), wrapped);
     }
 
     public void addAnalysisFieldObserver(AnalysisFieldObserver observer) {

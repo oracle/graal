@@ -1085,6 +1085,10 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         return universe.lookup(wrapped.getHostClass());
     }
 
+    AnalysisUniverse getUniverse() {
+        return universe;
+    }
+
     @Override
     public int compareTo(AnalysisType other) {
         return Integer.compare(this.id, other.id);

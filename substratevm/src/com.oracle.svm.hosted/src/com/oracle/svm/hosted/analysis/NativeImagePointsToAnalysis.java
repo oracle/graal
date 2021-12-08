@@ -35,6 +35,7 @@ import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -63,7 +64,7 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
         this.annotationSubstitutionProcessor = annotationSubstitutionProcessor;
 
         dynamicHubInitializer = new DynamicHubInitializer(metaAccess, unsupportedFeatures, providers.getConstantReflection());
-        unknownFieldHandler = new PointsToUnknownFieldHandler(metaAccess);
+        unknownFieldHandler = new PointsToUnknownFieldHandler(this, metaAccess);
         callChecker = new CallChecker();
     }
 
@@ -79,7 +80,6 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
 
     @Override
     protected void checkObjectGraph(ObjectScanner objectScanner) {
-        universe.getFields().forEach(field -> unknownFieldHandler.handleUnknownValueField(this, field));
         universe.getTypes().stream().filter(AnalysisType::isReachable).forEach(dynamicHubInitializer::initializeMetaData);
 
         /* Scan hubs of all types that end up in the native image. */
@@ -106,6 +106,11 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
     @Override
     public AnnotationSubstitutionProcessor getAnnotationSubstitutionProcessor() {
         return annotationSubstitutionProcessor;
+    }
+
+    @Override
+    public void onFieldAccessed(AnalysisField field) {
+        unknownFieldHandler.handleUnknownValueField(field);
     }
 
     private void scanHub(ObjectScanner objectScanner, AnalysisType type) {

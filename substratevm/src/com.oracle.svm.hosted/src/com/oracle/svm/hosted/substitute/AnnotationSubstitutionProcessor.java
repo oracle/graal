@@ -249,7 +249,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                         targetFieldDeclaringType.registerAsReachable();
                         AnalysisField targetField = bb.getMetaAccess().lookupJavaField(cvField.getTargetField());
                         targetField.registerAsAccessed();
-                        targetField.registerAsUnsafeAccessed(bb.getUniverse());
+                        targetField.registerAsUnsafeAccessed();
                         break;
                 }
             }
