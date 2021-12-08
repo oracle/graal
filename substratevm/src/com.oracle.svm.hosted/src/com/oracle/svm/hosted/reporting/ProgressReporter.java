@@ -517,7 +517,9 @@ public class ProgressReporter {
 
     private void printResourceStats(double totalSeconds) {
         GCStats gcStats = getCurrentGCStats();
-        LinePrinter l = l().a("%.1fs", millisToSeconds(gcStats.totalTimeMillis)).a(" spent in ").a(gcStats.totalCount).a(" ").doclink("GCs", "#glossary-garbage-collections");
+        double gcSeconds = millisToSeconds(gcStats.totalTimeMillis);
+        LinePrinter l = l().a("%.1fs (%.1f%% of total time) in %d ", gcSeconds, gcSeconds / totalSeconds * 100, gcStats.totalCount)
+                        .doclink("GCs", "#glossary-garbage-collections");
         long peakRSS = ProgressReporterCHelper.getPeakRSS();
         if (peakRSS >= 0) {
             l.a(" | ").doclink("Peak RSS", "#glossary-peak-rss").a(": ").a("%.2fGB", bytesToGiB(peakRSS));
