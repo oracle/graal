@@ -159,6 +159,8 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         } catch (EspressoExitException e) {
             // Expected. Suppress. We do not want to throw during context closing.
         }
+
+        context.setFinalized();
     }
 
     @Override
