@@ -171,6 +171,9 @@ public final class EspressoContext {
 
     private Map<Class<? extends InternalRedefinitionPlugin>, InternalRedefinitionPlugin> redefinitionPlugins;
 
+    // After a context is finalized, guest code cannot be executed.
+    private volatile boolean isFinalized;
+
     // region Options
     // Checkstyle: stop field name check
 
@@ -824,6 +827,10 @@ public final class EspressoContext {
             getLogger().warning("unimplemented: disposeThread for non-current thread: " + hostThread + " / " + guestName);
             return;
         }
+        // Cannot run guest code after finalizeContext was called.
+        if (isFinalized()) {
+            return ;
+        }
         if (vm.DetachCurrentThread(this) != JNI_OK) {
             throw new RuntimeException("Could not detach thread correctly");
         }
@@ -1062,5 +1069,13 @@ public final class EspressoContext {
 
     public ClassHierarchyOracle getClassHierarchyOracle() {
         return classHierarchyOracle;
+    }
+
+    public boolean isFinalized() {
+        return isFinalized;
+    }
+
+    public void setFinalized() {
+        isFinalized = true;
     }
 }
