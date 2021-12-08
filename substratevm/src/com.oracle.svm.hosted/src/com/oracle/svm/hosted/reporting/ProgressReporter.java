@@ -59,6 +59,7 @@ import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.BuildArtifacts.ArtifactType;
+import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -140,7 +141,7 @@ public class ProgressReporter {
             Timer.disablePrinting();
         }
         usePrefix = SubstrateOptions.BuildOutputPrefix.getValue(options);
-        boolean enableColors = !IS_CI;
+        boolean enableColors = !IS_CI && OS.getCurrent() != OS.WINDOWS;
         if (SubstrateOptions.BuildOutputColorful.hasBeenSet(options)) {
             enableColors = SubstrateOptions.BuildOutputColorful.getValue(options);
         }
