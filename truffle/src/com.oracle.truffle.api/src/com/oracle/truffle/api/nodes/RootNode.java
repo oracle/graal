@@ -172,10 +172,14 @@ public abstract class RootNode extends ExecutableNode {
     public Node copy() {
         RootNode root = (RootNode) super.copy();
         root.frameDescriptor = frameDescriptor;
+        resetFieldsAfterCopy(root);
+        return root;
+    }
+
+    private static void resetFieldsAfterCopy(RootNode root) {
         root.callTarget = null;
         root.instrumentationBits = 0;
         root.lock = null;
-        return root;
     }
 
     /**
@@ -345,9 +349,7 @@ public abstract class RootNode extends ExecutableNode {
             // if the language copied we cannot be sure
             // that the call target is not reset (with their own means of copying)
             // so better make sure they are reset.
-            clonedRoot.callTarget = null;
-            clonedRoot.instrumentationBits = 0;
-            clonedRoot.lock = null;
+            resetFieldsAfterCopy(clonedRoot);
         } else {
             clonedRoot = NodeUtil.cloneNode(uninitializedRootNode);
             // regular cloning guarantees that call target, instrumentation bits,
