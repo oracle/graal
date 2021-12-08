@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
+import java.util.List;
 import java.util.Set;
 
 import com.oracle.truffle.api.dsl.Bind;
@@ -37,9 +38,6 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 
 @EspressoSubstitutions
 final class Target_jdk_internal_module_ModuleLoaderMap {
-
-    public static final String HOTSWAP_MODULE_NAME = "espresso.hotswap";
-    public static final String POLYGLOT_MODULE_NAME = "espresso.polyglot";
 
     /**
      * For JDK >11, boot modules are injected at
@@ -59,13 +57,14 @@ final class Target_jdk_internal_module_ModuleLoaderMap {
             // fetch original platform modules set
             @JavaType(Set.class)
             StaticObject originalResult = (StaticObject) original.call();
+            List<ModuleExtension> extensions = ModuleExtension.get(context);
+            if (extensions.isEmpty()) {
+                return originalResult;
+            }
             // inject our platform modules if options are enabled
             Method add = ((ObjectKlass) originalResult.getKlass()).itableLookup(meta.java_util_Set, meta.java_util_Set_add.getITableIndex());
-            if (context.HotSwapAPI) {
-                add.invokeDirect(originalResult, meta.toGuestString(HOTSWAP_MODULE_NAME));
-            }
-            if (context.Polyglot) {
-                add.invokeDirect(originalResult, meta.toGuestString(POLYGLOT_MODULE_NAME));
+            for (ModuleExtension me : extensions) {
+                add.invokeDirect(originalResult, meta.toGuestString(me.moduleName()));
             }
             return originalResult;
         }

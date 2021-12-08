@@ -22,17 +22,22 @@
  */
 package com.oracle.truffle.espresso;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.espresso.impl.EmptyKeysArray;
 import com.oracle.truffle.espresso.impl.KeysArray;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -53,18 +58,27 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
  * guest class loader. <br>
  * {@link ClassNotFoundException} is translated into interop's {@link UnknownIdentifierException
  * member not found}, all other guest exceptions thrown during class loading will be propagated.
+ * 
+ * <p>
+ * If properly set up, these bindings will expose the {@code addPath} invocable member, which allows
+ * to add a new path for the underlying class loader to load from. This invocation takes a single
+ * {@link String} as argument, the path to add.
  */
 @ExportLibrary(InteropLibrary.class)
 public final class EspressoBindings implements TruffleObject {
     public static final String JAVA_VM = "<JavaVM>";
+    public static final String ADD_PATH = "addPath";
 
     final StaticObject loader;
+    final boolean canAddPath;
+
     boolean withNativeJavaVM;
 
-    public EspressoBindings(@JavaType(ClassLoader.class) StaticObject loader, boolean withNativeJavaVM) {
+    public EspressoBindings(@JavaType(ClassLoader.class) StaticObject loader, boolean withNativeJavaVM, boolean canAddPath) {
         this.withNativeJavaVM = withNativeJavaVM;
         assert StaticObject.notNull(loader) : "boot classloader (null) not supported";
         this.loader = loader;
+        this.canAddPath = canAddPath;
     }
 
     public StaticObject getBindingsLoader() {
@@ -74,11 +88,14 @@ public final class EspressoBindings implements TruffleObject {
     @ExportMessage
     @SuppressWarnings("static-method")
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
+        List<String> members = new ArrayList<>(2);
         if (withNativeJavaVM) {
-            return new KeysArray(new String[]{JAVA_VM});
-        } else {
-            return EmptyKeysArray.INSTANCE;
+            members.add(JAVA_VM);
         }
+        if (canAddPath) {
+            members.add(ADD_PATH);
+        }
+        return new KeysArray(members.toArray(new String[0]));
     }
 
     @ExportMessage
@@ -90,18 +107,30 @@ public final class EspressoBindings implements TruffleObject {
     @ExportMessage
     @ExportMessage(name = "hasMemberReadSideEffects")
     @SuppressWarnings("static-method")
-    boolean isMemberReadable(@SuppressWarnings("unused") String member) {
+    boolean isMemberReadable(String member) {
         if (JAVA_VM.equals(member)) {
             return withNativeJavaVM;
+        }
+        if (ADD_PATH.equals(member)) {
+            return canAddPath;
         }
         // TODO(peterssen): Validate proper class name.
         return true;
     }
 
     @ExportMessage
+    boolean isMemberInvocable(String member) {
+        if (ADD_PATH.equals(member)) {
+            return canAddPath;
+        }
+        return false;
+    }
+
+    @ExportMessage
     Object readMember(String member,
                     @CachedLibrary("this") InteropLibrary self,
-                    @Exclusive @Cached BranchProfile error) throws UnknownIdentifierException {
+                    @CachedLibrary("this.loader") InteropLibrary loaderLibrary,
+                    @Exclusive @Cached BranchProfile error) throws UnknownIdentifierException, UnsupportedMessageException {
         if (!isMemberReadable(member)) {
             error.enter();
             throw UnknownIdentifierException.create(member);
@@ -109,6 +138,9 @@ public final class EspressoBindings implements TruffleObject {
         EspressoContext context = EspressoContext.get(self);
         if (withNativeJavaVM && JAVA_VM.equals(member)) {
             return context.getVM().getJavaVM();
+        }
+        if (canAddPath && ADD_PATH.equals(member)) {
+            return loaderLibrary.readMember(loader, ADD_PATH);
         }
         Meta meta = context.getMeta();
         try {
@@ -122,6 +154,24 @@ public final class EspressoBindings implements TruffleObject {
             }
             throw e; // exception during class loading
         }
+    }
+
+    @ExportMessage
+    Object invokeMember(String member, Object[] arguments,
+                    @CachedLibrary("this.loader") InteropLibrary loaderLibrary,
+                    @Exclusive @Cached BranchProfile error) throws UnknownIdentifierException, ArityException, UnsupportedMessageException, UnsupportedTypeException {
+        if (!isMemberInvocable(member)) {
+            error.enter();
+            throw UnknownIdentifierException.create(member);
+        }
+        if (canAddPath && ADD_PATH.equals(member)) {
+            if (arguments.length != 1) {
+                throw ArityException.create(1, 1, arguments.length);
+            }
+            return loaderLibrary.invokeMember(loader, member, arguments);
+        }
+        error.enter();
+        throw UnknownIdentifierException.create(member);
     }
 
     @ExportMessage
@@ -165,6 +215,9 @@ public final class EspressoBindings implements TruffleObject {
     @ExportMessage
     @SuppressWarnings("static-method")
     Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        if (canAddPath) {
+            return "espresso-bindings-classloader";
+        }
         return "espresso-system-classloader";
     }
 }

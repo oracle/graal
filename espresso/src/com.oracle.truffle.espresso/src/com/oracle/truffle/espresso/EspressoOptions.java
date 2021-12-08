@@ -471,6 +471,10 @@ public final class EspressoOptions {
                     usageSyntax = "false|true") //
     public static final OptionKey<Boolean> HotSwapAPI = new OptionKey<>(false);
 
+    @Option(help = "Use Custom ClassLoader for Bindings, allowing the addition of new locations for loading.", //
+                    category = OptionCategory.INTERNAL, stability = OptionStability.STABLE) //
+    public static final OptionKey<Boolean> UseBindingsLoader = new OptionKey<>(true);
+
     @Option(help = "Expose the <JavaVM> binding.", //
                     category = OptionCategory.EXPERT, //
                     stability = OptionStability.EXPERIMENTAL, //

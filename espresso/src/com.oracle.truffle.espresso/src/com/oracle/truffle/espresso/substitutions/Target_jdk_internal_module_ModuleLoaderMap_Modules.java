@@ -23,7 +23,7 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
-import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 import com.oracle.truffle.api.dsl.Bind;
@@ -55,18 +55,10 @@ public final class Target_jdk_internal_module_ModuleLoaderMap_Modules {
             assert meta.getJavaVersion().java17OrLater();
             original.call();
 
-            ArrayList<StaticObject> toAdd = new ArrayList<>(2);
-            if (context.JDWPOptions != null) {
-                toAdd.add(meta.toGuestString(Target_jdk_internal_module_ModuleLoaderMap.HOTSWAP_MODULE_NAME));
-            }
-            if (context.Polyglot) {
-                toAdd.add(meta.toGuestString(Target_jdk_internal_module_ModuleLoaderMap.POLYGLOT_MODULE_NAME));
-            }
-
-            if (toAdd.size() == 0) {
+            List<ModuleExtension> toAdd = ModuleExtension.get(context);
+            if (toAdd.isEmpty()) {
                 return;
             }
-
             /*
              * Spoof the statically stored boot module set.
              */
@@ -90,7 +82,7 @@ public final class Target_jdk_internal_module_ModuleLoaderMap_Modules {
             System.arraycopy(unwrapped, 0, unwrappedResult, toAdd.size(), unwrapped.length);
 
             for (int i = 0; i < toAdd.size(); i++) {
-                unwrappedResult[i] = toAdd.get(i);
+                unwrappedResult[i] = meta.toGuestString(toAdd.get(i).moduleName());
             }
 
             bootModulesField.setObject(staticStorage, setOf.invokeDirect(null, resultArray));

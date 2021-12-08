@@ -197,6 +197,7 @@ public final class EspressoContext {
     public final boolean AllowHostExit;
     public final boolean Polyglot;
     public final boolean HotSwapAPI;
+    public final boolean UseBindingsLoader;
     public final boolean EnableSignals;
     private final String multiThreadingDisabled;
     public final boolean NativeAccessAllowed;
@@ -301,6 +302,7 @@ public final class EspressoContext {
         this.HotSwapAPI = env.getOptions().get(EspressoOptions.HotSwapAPI);
         this.polyglotInterfaceMappings = new PolyglotInterfaceMappings(env.getOptions().get(EspressoOptions.PolyglotInterfaceMappings));
         this.proxyCache = polyglotInterfaceMappings.hasMappings() ? new HashMap<>() : null;
+        this.UseBindingsLoader = env.getOptions().get(EspressoOptions.UseBindingsLoader);
 
         EspressoOptions.JImageMode requestedJImageMode = env.getOptions().get(EspressoOptions.JImage);
         if (!NativeAccessAllowed && requestedJImageMode == EspressoOptions.JImageMode.NATIVE) {
@@ -623,12 +625,32 @@ public final class EspressoContext {
             try (DebugCloseable systemLoader = SYSTEM_CLASSLOADER.scope(timers)) {
                 systemClassLoader = (StaticObject) meta.java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);
             }
-            topBindings = new EspressoBindings(systemClassLoader, getEnv().getOptions().get(EspressoOptions.ExposeNativeJavaVM));
+            StaticObject bindingsLoader = createBindingsLoader(systemClassLoader);
+            topBindings = new EspressoBindings(bindingsLoader,
+                            getEnv().getOptions().get(EspressoOptions.ExposeNativeJavaVM),
+                            bindingsLoader != systemClassLoader);
 
             initDoneTimeNanos = System.nanoTime();
             long elapsedNanos = initDoneTimeNanos - initStartTimeNanos;
             getLogger().log(Level.FINE, "VM booted in {0} ms", TimeUnit.NANOSECONDS.toMillis(elapsedNanos));
         }
+    }
+
+    private StaticObject createBindingsLoader(StaticObject systemClassLoader) {
+        if (!UseBindingsLoader) {
+            return systemClassLoader;
+        }
+        Klass k = getMeta().loadKlassOrNull(Type.com_oracle_truffle_espresso_loader_BindingsLoader, StaticObject.NULL, StaticObject.NULL);
+        if (k == null) {
+            return systemClassLoader;
+        }
+        Method init = k.lookupDeclaredMethod(Name._init_, Signature._void_ClassLoader);
+        if (init == null) {
+            return systemClassLoader;
+        }
+        StaticObject bindingsLoader = k.allocateInstance();
+        init.invokeDirect(bindingsLoader, /* parent */systemClassLoader);
+        return bindingsLoader;
     }
 
     private NativeAccess spawnNativeAccess() {
@@ -684,7 +706,7 @@ public final class EspressoContext {
         // If --java.JavaHome is not specified, Espresso tries to use the same (jars and native)
         // libraries bundled with GraalVM.
         builder.javaHome(Engine.findHome());
-        EspressoProperties.processOptions(builder, getEnv().getOptions());
+        EspressoProperties.processOptions(builder, getEnv().getOptions(), this);
         getNativeAccess().updateEspressoProperties(builder, getEnv().getOptions());
         vmProperties = builder.build();
     }

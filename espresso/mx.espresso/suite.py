@@ -125,6 +125,16 @@ suite = {
             "license": "UPL",
         },
 
+        "com.oracle.truffle.espresso.loader": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+            ],
+            "javaCompliance": "1.8+",
+            "checkstyle": "com.oracle.truffle.espresso.polyglot",
+            "license": "UPL",
+        },
+
         "com.oracle.truffle.espresso": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -133,6 +143,7 @@ suite = {
                 "truffle:TRUFFLE_NFI",
                 "truffle:TRUFFLE_ASM_9.1",
                 "com.oracle.truffle.espresso.jdwp",
+                "com.oracle.truffle.espresso.loader",
             ],
             "requires": [
                 "java.logging",
@@ -388,6 +399,7 @@ suite = {
                     "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
                     "dependency:espresso:POLYGLOT/*",
                     "dependency:espresso:HOTSWAP/*",
+                    "dependency:espresso:LOADER/*",
                 ],
             },
             "maven": False,
@@ -433,6 +445,22 @@ suite = {
                 "name" : "espresso.hotswap",
                 "exports" : [
                     "com.oracle.truffle.espresso.hotswap",
+                ]
+            }
+        },
+
+        "LOADER": {
+            "subDir": "src",
+            "dependencies": [
+                "com.oracle.truffle.espresso.loader"
+            ],
+            "description": "Espresso Bindings ClassLoader",
+            "license": "UPL",
+            "javadocType": "api",
+            "moduleInfo" : {
+                "name" : "espresso.loader",
+                "exports" : [
+                    "com.oracle.truffle.espresso.loader",
                 ]
             }
         },
