@@ -784,7 +784,7 @@ public class ProgressReporter {
             int remaining = (CHARACTERS_PER_LINE / 2) - getCurrentTextLength();
             assert remaining >= 0 : "Column text too wide";
             a(stringFilledWith(remaining, " "));
-            assert getCurrentTextLength() == CHARACTERS_PER_LINE / 2;
+            assert !isEnabled || getCurrentTextLength() == CHARACTERS_PER_LINE / 2;
             return this;
         }
 
