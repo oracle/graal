@@ -58,6 +58,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.junit.Assert;
 import org.junit.Test;
+import org.junit.Assume;
 
 import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.DebugScope;
@@ -1195,6 +1196,7 @@ public class BreakpointTest extends AbstractDebugTest {
 
     @Test
     public void testOutOfRootBreakpointPositions() {
+        Assume.assumeFalse(System.getProperty("java.version").startsWith("1.8"));
         String source = "  \n" +
                         " B1_     < {F R1_[SB]\n" +
                         "B2_R2_{S}  } \n" +
