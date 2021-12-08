@@ -118,6 +118,7 @@ import com.oracle.truffle.api.instrumentation.ThreadsListener;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.TestAPIAccessor;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class ContextPreInitializationTest {
