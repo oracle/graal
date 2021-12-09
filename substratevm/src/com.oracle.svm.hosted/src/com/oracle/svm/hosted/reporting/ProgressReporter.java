@@ -63,6 +63,7 @@ import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.jdk.SystemInOutErrSupport;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.reflect.MethodMetadataDecoder;
 import com.oracle.svm.hosted.NativeImageGenerator;
@@ -239,8 +240,7 @@ public class ProgressReporter {
             public void closeAction() {
                 timer.stop();
                 printProgressEnd();
-                int analysisMillis = (int) bb.getAnalysisTimer().getTotalTime();
-                printStageEnd(analysisMillis);
+                printStageEndAndFlushStdioContent(bb.getAnalysisTimer());
                 String actualVsTotalFormat = "%,8d (%5.2f%%) of %,6d";
                 long reachableClasses = bb.getUniverse().getTypes().stream().filter(t -> t.isReachable()).count();
                 long totalClasses = bb.getUniverse().getTypes().size();
@@ -296,7 +296,7 @@ public class ProgressReporter {
                 timer.stop();
                 stopPeriodicPrinting();
                 printProgressEnd();
-                printStageEnd(timer);
+                printStageEndAndFlushStdioContent(timer);
             }
         };
     }
@@ -310,7 +310,7 @@ public class ProgressReporter {
             public void closeAction() {
                 timer.stop();
                 printProgressEnd();
-                printStageEnd(timer);
+                printStageEndAndFlushStdioContent(timer);
             }
         };
     }
@@ -332,7 +332,7 @@ public class ProgressReporter {
                 timer.stop();
                 stopPeriodicPrinting();
                 printProgressEnd();
-                printStageEnd(timer);
+                printStageEndAndFlushStdioContent(timer);
             }
         };
     }
@@ -549,6 +549,7 @@ public class ProgressReporter {
         linePrinter.a(progressBarStartPadding()).dim().a("[");
         numStageChars = PROGRESS_BAR_START + 1; /* +1 for [ */
         linePrinter.flush();
+        SystemInOutErrSupport.setCapturing(true);
     }
 
     private String progressBarStartPadding() {
@@ -556,12 +557,13 @@ public class ProgressReporter {
     }
 
     private void printProgressEnd() {
+        SystemInOutErrSupport.setCapturing(false);
         linePrinter.a("]").reset().flush();
         numStageChars++; // for ]
     }
 
     public void printStageProgress() {
-        linePrinter.printRaw("*");
+        linePrinter.printRaw('*');
         numStageChars++; // for *
     }
 
@@ -582,6 +584,11 @@ public class ProgressReporter {
 
     private void stopPeriodicPrinting() {
         periodicPrintingTask.cancel(false);
+    }
+
+    private void printStageEndAndFlushStdioContent(Timer timer) {
+        printStageEnd(timer);
+        SystemInOutErrSupport.flushCapturedContent();
     }
 
     private void printStageEnd(Timer timer) {
@@ -827,14 +834,14 @@ public class ProgressReporter {
             textBuffer.clear();
         }
 
-        private void printRaw(String text) {
+        private void printRaw(char value) {
             if (!isEnabled) {
                 return;
             }
             if (printBuffer != null) {
-                printBuffer.append(text);
+                printBuffer.append(value);
             } else {
-                System.out.print(text);
+                SystemInOutErrSupport.printToStdOutUnconditionally(value);
             }
         }
 

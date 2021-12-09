@@ -26,9 +26,11 @@ package com.oracle.svm.core.jdk;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.FileDescriptor;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.io.UnsupportedEncodingException;
@@ -39,6 +41,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.util.VMError;
 
 /**
  * This class provides replacement values for the {@link System#in}, {@link System#out}, and
@@ -51,9 +54,22 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
  * static analysis starts, i.e., in a {@link Feature#beforeAnalysis} method.
  */
 public final class SystemInOutErrSupport {
+    // Checkstyle: stop
+    private final PrintStream outOriginal = System.out;
+    private final CapturingStdioWrapper outWrapper = new CapturingStdioWrapper(outOriginal, new ByteArrayOutputStream(128));
+    private final CapturingStdioWrapper errWrapper = new CapturingStdioWrapper(System.err, new ByteArrayOutputStream(128));
+    // Checkstyle: resume
+
     private InputStream in = new BufferedInputStream(new FileInputStream(FileDescriptor.in));
     private PrintStream out = newPrintStream(new FileOutputStream(FileDescriptor.out), System.getProperty("sun.stdout.encoding"));
     private PrintStream err = newPrintStream(new FileOutputStream(FileDescriptor.err), System.getProperty("sun.stderr.encoding"));
+    private boolean isCapturing;
+
+    public SystemInOutErrSupport() {
+        /* Install stdout and stderr wrappers. */
+        System.setOut(outWrapper);
+        System.setErr(errWrapper);
+    }
 
     /* Create `PrintStream` in the same way as `System.newPrintStream`. */
     private static PrintStream newPrintStream(FileOutputStream fos, String enc) {
@@ -78,8 +94,22 @@ public final class SystemInOutErrSupport {
         ImageSingletons.lookup(SystemInOutErrSupport.class).err = Objects.requireNonNull(err);
     }
 
+    public static void setCapturing(boolean value) {
+        ImageSingletons.lookup(SystemInOutErrSupport.class).isCapturing = value;
+    }
+
+    public static void flushCapturedContent() {
+        ImageSingletons.lookup(SystemInOutErrSupport.class).outWrapper.flushCapturedContent();
+        ImageSingletons.lookup(SystemInOutErrSupport.class).errWrapper.flushCapturedContent();
+    }
+
+    public static void printToStdOutUnconditionally(char value) {
+        ImageSingletons.lookup(SystemInOutErrSupport.class).outOriginal.print(value);
+    }
+
     // Checkstyle: stop
     Object replaceStreams(Object object) {
+        assert System.out == outWrapper && System.err == errWrapper : "stdio handles are not allowed to change during image construction";
         if (object == System.in) {
             return in;
         } else if (object == System.out) {
@@ -91,6 +121,54 @@ public final class SystemInOutErrSupport {
         }
     }
     // Checkstyle: resume
+
+    /** Wrapper with the ability to temporarily capture output to stdout and stderr. */
+    final class CapturingStdioWrapper extends PrintStream {
+        private final ByteArrayOutputStream buffer;
+        private final PrintStream delegate;
+
+        CapturingStdioWrapper(PrintStream delegate, ByteArrayOutputStream buffer) {
+            super(buffer);
+            this.buffer = buffer;
+            this.delegate = delegate;
+        }
+
+        @Override
+        public void write(int b) {
+            if (isCapturing) {
+                super.write(b);
+            } else {
+                delegate.write(b);
+            }
+        }
+
+        @Override
+        public void write(byte[] buf, int off, int len) {
+            if (isCapturing) {
+                super.write(buf, off, len);
+            } else {
+                delegate.write(buf, off, len);
+            }
+        }
+
+        @Override
+        public void write(byte[] buf) throws IOException {
+            if (isCapturing) {
+                super.write(buf);
+            } else {
+                delegate.write(buf);
+            }
+        }
+
+        void flushCapturedContent() {
+            try {
+                delegate.write(buffer.toByteArray());
+            } catch (IOException e) {
+                throw VMError.shouldNotReachHere();
+            }
+            buffer.reset();
+        }
+    }
 }
 
 /**
