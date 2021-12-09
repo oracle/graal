@@ -958,6 +958,21 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                         removeThroughFalseBranch(tool, merge);
                         return true;
                     }
+                    /*-
+                     * Remove this pattern:
+                     * if (a == null)
+                     *     return null
+                     * else
+                     *     return a
+                     */
+                    if (condition instanceof IsNullNode && trueValue.isJavaConstant() && trueValue.asJavaConstant().isDefaultForKind() && merge instanceof MergeNode) {
+                        ValueNode value = ((IsNullNode) condition).getValue();
+                        if (falseValue == value && singlePhi.stamp(NodeView.DEFAULT).equals(value.stamp(NodeView.DEFAULT))) {
+                            singlePhi.setValueAt(trueEnd, falseValue);
+                            removeThroughFalseBranch(tool, merge);
+                            return true;
+                        }
+                    }
                 }
             }
         }
