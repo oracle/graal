@@ -349,22 +349,24 @@ public class ProgressReporter {
     public void printCreationEnd(Timer creationTimer, Timer writeTimer, int imageSize, AnalysisUniverse universe, int numHeapObjects, long imageHeapSize, int codeCacheSize,
                     int numCompilations, int debugInfoSize) {
         printStageEnd(creationTimer.getTotalTime() + writeTimer.getTotalTime());
-        String total = bytesToHuman("%4.2f", imageSize);
-        long otherBytes = imageSize - codeCacheSize - imageHeapSize;
-        l().a("%9s in total (%.1f%% ", total, codeCacheSize / (double) imageSize * 100).doclink("code area", "#glossary-code-area")
-                        .a(", %.1f%% ", imageHeapSize / (double) imageSize * 100).doclink("image heap", "#glossary-image-heap")
-                        .a(", and %.1f%% ", otherBytes / (double) imageSize * 100).doclink("other data", "#glossary-other-data").a(")").flushln();
-        l().a("%9s for code area:%,9d compilation units", bytesToHuman("%4.2f", codeCacheSize), numCompilations).flushln();
+        String format = "%9s (%5.2f%%) for ";
+        l().a(format, bytesToHuman(codeCacheSize), codeCacheSize / (double) imageSize * 100)
+                        .doclink("code area", "#glossary-code-area").a(":%,9d compilation units", numCompilations).flushln();
         long numInstantiatedClasses = universe.getTypes().stream().filter(t -> t.isInstantiated()).count();
-        l().a("%9s for image heap:%,8d classes and %,d objects", bytesToHuman("%4.2f", imageHeapSize), numInstantiatedClasses, numHeapObjects).flushln();
+        l().a(format, bytesToHuman(imageHeapSize), imageHeapSize / (double) imageSize * 100)
+                        .doclink("image heap", "#glossary-image-heap").a(":%,8d classes and %,d objects", numInstantiatedClasses, numHeapObjects).flushln();
         if (debugInfoSize > 0) {
-            l().a("%9s in debugInfo size", bytesToHuman("%4.2f", debugInfoSize)).flushln();
+            LinePrinter l = l().a(format, bytesToHuman(debugInfoSize), debugInfoSize / (double) imageSize * 100)
+                            .doclink("debug info", "#glossary-debug-info");
+            if (debugInfoTimer != null) {
+                l.a(" generated in %.1fs", millisToSeconds(debugInfoTimer.getTotalTime()));
+            }
+            l.flushln();
         }
-        l().a("%9s for other data", bytesToHuman("%4.2f", otherBytes)).flushln();
-        if (debugInfoTimer != null) {
-            String debugInfoTime = String.format("%.1fs", millisToSeconds(debugInfoTimer.getTotalTime()));
-            l().dim().a("%9s for generating debug info", debugInfoTime).reset().flushln();
-        }
+        long otherBytes = imageSize - codeCacheSize - imageHeapSize - debugInfoSize;
+        l().a(format, bytesToHuman(otherBytes), otherBytes / (double) imageSize * 100)
+                        .doclink("other data", "#glossary-other-data").flushln();
+        l().a("%9s in total", bytesToHuman(imageSize)).flushln();
     }
 
     public void printBreakdowns(Collection<CompileTask> compilationTasks, Collection<ObjectInfo> heapObjects) {
@@ -387,7 +389,7 @@ public class ProgressReporter {
             if (packagesBySize.hasNext()) {
                 Entry<String, Long> e = packagesBySize.next();
                 String className = truncateClassOrPackageName(e.getKey());
-                codeSizePart = String.format("%9s %s", bytesToHuman("%4.2f", e.getValue()), className);
+                codeSizePart = String.format("%9s %s", bytesToHuman(e.getValue()), className);
                 printedCodeSizeEntries.add(e);
             }
 
@@ -675,7 +677,7 @@ public class ProgressReporter {
     }
 
     private static String bytesToHuman(long bytes) {
-        return bytesToHuman("%.2f", bytes);
+        return bytesToHuman("%4.2f", bytes);
     }
 
     private static String bytesToHuman(String format, long bytes) {
