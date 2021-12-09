@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.instrumentation.test;
 
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
 import java.util.concurrent.atomic.AtomicInteger;
@@ -51,6 +52,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
@@ -60,6 +62,7 @@ import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.test.polyglot.ProxyInstrument;
 
 /**
@@ -68,6 +71,7 @@ import com.oracle.truffle.api.test.polyglot.ProxyInstrument;
 public class InstrumentationNoExceptionsTest extends AbstractInstrumentationTest {
 
     public InstrumentationNoExceptionsTest() {
+        needsLanguageEnv = true;
         needsInstrumentEnv = true;
     }
 
@@ -308,6 +312,10 @@ public class InstrumentationNoExceptionsTest extends AbstractInstrumentationTest
         Context.Builder builder = Context.newBuilder().allowAllAccess(true).out(out).err(err).logHandler(err);
         setupEnv(builder.build(), new TestDecentInstrument());
 
+        // Make sure there is at least one loaded root node
+        RootCallTarget target = (RootCallTarget) languageEnv.parsePublic(Source.newBuilder(InstrumentationTestLanguage.ID, "ROOT(EXPRESSION)", "LoadedRoot").build());
+        assertNotNull(target.getRootNode());
+
         SourceSectionFilter buggySourceSectionFilter = SourceSectionFilter.newBuilder().rootNameIs((s) -> {
             throw new MyInstrumentException();
         }).build();
@@ -326,6 +334,8 @@ public class InstrumentationNoExceptionsTest extends AbstractInstrumentationTest
         } finally {
             context.enter();
         }
+        // Make sure the node is not collected prematurely
+        assertNotNull(target.getRootNode());
     }
 
     @Test
