@@ -484,7 +484,7 @@ public class ProgressReporter {
         if (totalSeconds < 60) {
             timeStats = String.format("%.1fs", totalSeconds);
         } else {
-            timeStats = String.format("%.0fm %.0fs", totalSeconds / 60, totalSeconds % 60);
+            timeStats = String.format("%dm %ds", (int) totalSeconds / 60, (int) totalSeconds % 60);
         }
         l().a(wasSuccessfulBuild ? "Finished" : "Failed").a(" generating '").bold().a(imageName).reset().a("' ")
                         .a(wasSuccessfulBuild ? "in" : "after").a(" ").a(timeStats).a(".").flushln();
