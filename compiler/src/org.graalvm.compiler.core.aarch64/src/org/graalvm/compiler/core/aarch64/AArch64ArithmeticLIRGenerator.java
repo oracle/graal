@@ -121,11 +121,11 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
          * Issue an extending load of the proper bit size and set the result to the proper kind.
          */
         GraalError.guarantee(accessKind.isInteger(), "can only extend integer kinds");
-        Variable result = getLIRGen().newVariable(LIRKind.value(resultBits == 32 ? AArch64Kind.DWORD : AArch64Kind.QWORD));
+        AArch64Kind resultKind = resultBits <= 32 ? AArch64Kind.DWORD : AArch64Kind.QWORD;
+        Variable result = getLIRGen().newVariable(LIRKind.value(resultKind));
 
-        int dstBitSize = resultBits <= 32 ? 32 : 64;
         AArch64Move.ExtendKind extend = isSigned ? AArch64Move.ExtendKind.SIGN_EXTEND : AArch64Move.ExtendKind.ZERO_EXTEND;
-        getLIRGen().append(new AArch64Move.LoadOp(accessKind, dstBitSize, extend, result, address, state));
+        getLIRGen().append(new AArch64Move.LoadOp(accessKind, resultKind.getSizeInBytes() * Byte.SIZE, extend, result, address, state));
         return result;
     }
 
