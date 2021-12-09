@@ -232,6 +232,10 @@ public abstract class ReachabilityAnalysis extends AbstractReachabilityAnalysis 
         if (!type.registerAsAllocated(null)) {
             return;
         }
+        schedule(() -> onTypeInstantiated(type));
+    }
+
+    private void onTypeInstantiated(AnalysisType type) {
         type.forAllSuperTypes(current -> {
             Set<AnalysisMethod> invokedMethods = current.getInvokedMethods();
             for (AnalysisMethod method : invokedMethods) {
