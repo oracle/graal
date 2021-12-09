@@ -831,7 +831,7 @@ public final class EspressoContext {
         }
         // Cannot run guest code after finalizeContext was called.
         if (isFinalized()) {
-            return ;
+            return;
         }
         if (vm.DetachCurrentThread(this) != JNI_OK) {
             throw new RuntimeException("Could not detach thread correctly");
