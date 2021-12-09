@@ -299,7 +299,6 @@ suite = {
             ],
             "javaProperties": {
                 "org.graalvm.language.java.home": "<path:ESPRESSO_SUPPORT>",
-                "polyglot.java.JVMLibraryPath": "<path:ESPRESSO_JVM_SUPPORT>/truffle",
             },
             "maven": False,
         },
@@ -355,6 +354,8 @@ suite = {
                 "lib/": [
                     "dependency:espresso:com.oracle.truffle.espresso.eden/<lib:eden>",
                     "dependency:espresso:com.oracle.truffle.espresso.native/<lib:nespresso>",
+                    # Copy of libjvm.so, accessible by Sulong via the default Truffle file system.
+                    "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
                     "dependency:espresso:POLYGLOT/*",
                     "dependency:espresso:HOTSWAP/*",
                 ],
