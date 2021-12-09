@@ -45,7 +45,7 @@ Top 10 packages in code area:           Top 10 object types in image heap:
       ... 111 additional packages             ... 723 additional object types
                        (use GraalVM Dashboard to see all)
 --------------------------------------------------------------------------------
-  0.8s (5.4% of total time) in 17 GCs | Peak RSS: 2.60GB | CPU load: ~1183.69%
+    0.8s (5.4% of total time) in 17 GCs | Peak RSS: 2.60GB | CPU load: 11.83
 --------------------------------------------------------------------------------
 Produced artifacts:
  /home/janedoe/helloworld/helloworld (executable)
@@ -136,7 +136,7 @@ This data typically contains internal information for Native Image but it can al
 ### Resource Usage Statistics
 
 #### <a name="glossary-garbage-collection"></a>Garbage Collections
-The total time spent in all garbage collectors, total GC time divided by the total time to build the image in percent, and the total number of garbage collections.
+The total time spent in all garbage collectors, total GC time divided by the total process time in percent, and the total number of garbage collections.
 A large number of collections or time spent in collectors usually indicates that the system is under memory pressure.
 Increase the amount of available memory to reduce the time to build the image.
 
@@ -146,7 +146,7 @@ This value indicates the maximum amount of memory consumed by the build process.
 If the [GC statistics](#glossary-garbage-collection) do not show any problems, the amount of available memory of the system can be reduced to a value closer to the peak RSS.
 
 #### <a name="glossary-cpu-load"></a>CPU load
-The CPU time used by the process divided by the total time to build the image in percent.
+The CPU time used by the process divided by the total process time.
 Increase the number of CPU threads to reduce the time to build the image.
 
 ## Build Output Options

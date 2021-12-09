@@ -461,7 +461,7 @@ public class ProgressReporter {
 
     public void printEpilog(String imageName, NativeImageGenerator generator, boolean wasSuccessfulBuild, Timer totalTimer, OptionValues parsedHostedOptions) {
         l().printLineSeparator();
-        printResourceStats(millisToSeconds(totalTimer.getTotalTime()));
+        printResourceStats();
         l().printLineSeparator();
 
         l().yellowBold().a("Produced artifacts:").reset().flushln();
@@ -518,10 +518,11 @@ public class ProgressReporter {
         return ReportUtils.report("build artifacts", buildDir.resolve(imageName + ".build_artifacts.txt"), writerConsumer, !isEnabled);
     }
 
-    private void printResourceStats(double totalSeconds) {
+    private void printResourceStats() {
+        double totalProcessTimeSeconds = millisToSeconds(System.currentTimeMillis() - ManagementFactory.getRuntimeMXBean().getStartTime());
         GCStats gcStats = getCurrentGCStats();
         double gcSeconds = millisToSeconds(gcStats.totalTimeMillis);
-        LinePrinter l = l().a("%.1fs (%.1f%% of total time) in %d ", gcSeconds, gcSeconds / totalSeconds * 100, gcStats.totalCount)
+        LinePrinter l = l().a("%.1fs (%.1f%% of total time) in %d ", gcSeconds, gcSeconds / totalProcessTimeSeconds * 100, gcStats.totalCount)
                         .doclink("GCs", "#glossary-garbage-collections");
         long peakRSS = ProgressReporterCHelper.getPeakRSS();
         if (peakRSS >= 0) {
@@ -530,7 +531,7 @@ public class ProgressReporter {
         OperatingSystemMXBean osMXBean = ManagementFactory.getOperatingSystemMXBean();
         long processCPUTime = ((com.sun.management.OperatingSystemMXBean) osMXBean).getProcessCpuTime();
         if (processCPUTime > 0) {
-            l.a(" | ").doclink("CPU load", "#glossary-cpu-load").a(": ").a("~%.2f%%", nanosToSeconds(processCPUTime) / totalSeconds * 100);
+            l.a(" | ").doclink("CPU load", "#glossary-cpu-load").a(": ").a("%.2f", nanosToSeconds(processCPUTime) / totalProcessTimeSeconds);
         }
         l.flushCenteredln();
     }
