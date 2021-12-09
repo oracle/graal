@@ -56,6 +56,7 @@ import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.spi.Replacements;
+import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -1676,5 +1677,12 @@ public class InvocationPlugins {
             res.add(argumentsDescriptor.substring(start, cur));
         }
         return res;
+    }
+
+    /**
+     * Called when no invocation plugin can be found for the given target method.
+     */
+    @SuppressWarnings("unused")
+    public void notifyNoPlugin(ResolvedJavaMethod targetMethod, OptionValues options) {
     }
 }

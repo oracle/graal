@@ -409,6 +409,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPluginContext;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.InvocationPluginReceiver;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
@@ -2190,7 +2191,8 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     }
 
     protected boolean tryInvocationPlugin(InvokeKind invokeKind, ValueNode[] args, ResolvedJavaMethod targetMethod, JavaKind resultType) {
-        InvocationPlugin plugin = graphBuilderConfig.getPlugins().getInvocationPlugins().lookupInvocation(targetMethod, true);
+        InvocationPlugins plugins = graphBuilderConfig.getPlugins().getInvocationPlugins();
+        InvocationPlugin plugin = plugins.lookupInvocation(targetMethod, true);
         if (plugin != null) {
 
             if (intrinsicContext != null && intrinsicContext.isCallToOriginal(targetMethod)) {
@@ -2202,6 +2204,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                 return !plugin.isDecorator();
             }
         }
+        plugins.notifyNoPlugin(targetMethod, options);
         return false;
     }
 

@@ -77,6 +77,8 @@ public class StubPortProcessor extends AbstractProcessor {
         if (Boolean.valueOf(System.getenv(SYNC_CHECK_ENV_VAR))) {
             if (!roundEnv.processingOver()) {
                 try {
+                    // Set https.protocols explicitly to avoid handshake failure
+                    System.setProperty("https.protocols", "TLSv1.2");
                     MessageDigest md = MessageDigest.getInstance("SHA-1");
                     TypeElement tStubPort = getTypeElement(STUB_PORT_CLASS_NAME);
 
