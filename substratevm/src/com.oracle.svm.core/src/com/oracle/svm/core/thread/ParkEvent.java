@@ -56,8 +56,7 @@ public abstract class ParkEvent {
     }
 
     /**
-     * Resets a pending {@link #unpark()} at the time of the call. This must synchronize in a way
-     * that prevents it from being reordered with regard to setting the thread's interrupted status.
+     * Resets a pending {@link #unpark()} at the time of the call.
      */
     protected abstract void reset();
 

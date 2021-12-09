@@ -421,9 +421,16 @@ public final class Target_java_lang_Thread {
 
         Thread thread = JavaThreads.fromTarget(this);
         JavaThreads.interrupt(thread);
+        /*
+         * This may unpark the thread unnecessarily (e.g., the interrupt above could have already
+         * resumed the thread execution, so the thread could now be parked for some other reason).
+         * However, this is not a correctness issue as the unpark will only be a spurious wakeup.
+         */
         JavaThreads.unpark(thread);
-        // Must be executed after setting interrupted to true, see
-        // HeapImpl.waitForReferencePendingList()
+        /*
+         * Must be executed after setting interrupted to true, see
+         * HeapImpl.waitForReferencePendingList().
+         */
         JavaThreads.wakeUpVMConditionWaiters(thread);
     }
 

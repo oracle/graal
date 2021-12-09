@@ -24,39 +24,40 @@
  */
 package com.oracle.svm.core.thread;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
 import org.graalvm.compiler.nodes.PauseNode;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 
-import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.annotate.Uninterruptible;
 
 // Checkstyle: stop
 import sun.misc.Unsafe;
 // Checkstyle: resume
 
 /**
- * Spin locks may only be used in places where the critical section is only a few instructions of
- * uninterruptible code. We don't do a transition to native in case of a lock contention, so it is
- * crucial that really all code within the critical section is uninterruptible.
+ * Spin locks may only be used in places where the critical section contains only a few instructions
+ * of uninterruptible code. We don't do a transition to native in case of a lock contention, so it
+ * is crucial that really all code within the critical section is uninterruptible.
  */
 public class SpinLockUtils {
     private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
-    // TEMP (chaeubl): use SubstrateOptions.ActiveProcessorCount.getValue();
-    private static int ActiveProcessorCount = 10;
 
     @Uninterruptible(reason = "This method does not do a transition, so the whole critical section must be uninterruptible.", callerMustBe = true)
     public static void lockNoTransition(Object obj, long intFieldOffset) {
+        // Fast-path.
         if (UNSAFE.compareAndSwapInt(obj, intFieldOffset, 0, 1)) {
             return;
         }
 
-        // Lock contention.
-        int ctr = 0;
+        // Slow-path.
         int yields = 0;
         while (true) {
             while (UNSAFE.getIntVolatile(obj, intFieldOffset) != 0) {
-                if (VMThreads.singleton().supportsNativeYieldAndSleep() &&
-                                ((++ctr & 0xFFF) == 0 || ActiveProcessorCount == 1)) {
+                /*
+                 * It would be better to use a more sophisticated logic that takes the number of CPU
+                 * cores into account. However, this is not easily possible because calling
+                 * Runtime.availableProcessors() can be expensive.
+                 */
+                if (VMThreads.singleton().supportsNativeYieldAndSleep()) {
                     if (yields > 5) {
                         VMThreads.singleton().nativeSleep(1);
                     } else {

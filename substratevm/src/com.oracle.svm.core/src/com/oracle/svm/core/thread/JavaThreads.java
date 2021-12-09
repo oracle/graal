@@ -38,6 +38,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -77,12 +78,17 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
-public abstract class JavaThreads {
+// Checkstyle: stop
+import sun.misc.Unsafe;
+// Checkstyle: resume
 
+public abstract class JavaThreads {
     @Fold
     public static JavaThreads singleton() {
         return ImageSingletons.lookup(JavaThreads.class);
     }
+
+    private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
 
     /** The {@link java.lang.Thread} for the {@link IsolateThread}. */
     static final FastThreadLocalObject<Thread> currentThread = FastThreadLocalFactory.createObject(Thread.class, "JavaThreads.currentThread").setMaxOffset(FastThreadLocal.BYTE_OFFSET);
@@ -739,16 +745,17 @@ public abstract class JavaThreads {
         if (isInterrupted(thread)) { // avoid state changes and synchronization
             return;
         }
-        /*
-         * We can defer assigning a ParkEvent to here because Thread.interrupt() is guaranteed to
-         * assign and unpark one if it doesn't yet exist, otherwise we could lose a wakeup.
-         */
+
         ParkEvent parkEvent = getCurrentThreadData().ensureUnsafeParkEvent();
         // Change the Java thread state while parking.
         int oldStatus = JavaThreads.getThreadStatus(thread);
         int newStatus = MonitorSupport.singleton().maybeAdjustNewParkStatus(ThreadStatus.PARKED);
         JavaThreads.setThreadStatus(thread, newStatus);
         try {
+            /*
+             * If another thread interrupted this thread in the meanwhile, then the call below won't
+             * block because Thread.interrupt() modifies the ParkEvent.
+             */
             parkEvent.condWait();
         } finally {
             JavaThreads.setThreadStatus(thread, oldStatus);
@@ -762,15 +769,16 @@ public abstract class JavaThreads {
         if (isInterrupted(thread)) { // avoid state changes and synchronization
             return;
         }
-        /*
-         * We can defer assigning a ParkEvent to here because Thread.interrupt() is guaranteed to
-         * assign and unpark one if it doesn't yet exist, otherwise we could lose a wakeup.
-         */
+
         ParkEvent parkEvent = getCurrentThreadData().ensureUnsafeParkEvent();
         int oldStatus = JavaThreads.getThreadStatus(thread);
         int newStatus = MonitorSupport.singleton().maybeAdjustNewParkStatus(ThreadStatus.PARKED_TIMED);
         JavaThreads.setThreadStatus(thread, newStatus);
         try {
+            /*
+             * If another thread interrupted this thread in the meanwhile, then the call below won't
+             * block because Thread.interrupt() modifies the ParkEvent.
+             */
             parkEvent.condTimedWait(delayNanos);
         } finally {
             JavaThreads.setThreadStatus(thread, oldStatus);
@@ -810,20 +818,28 @@ public abstract class JavaThreads {
         Thread thread = Thread.currentThread();
         ParkEvent sleepEvent = getCurrentThreadData().ensureSleepParkEvent();
         sleepEvent.reset();
+
         /*
          * It is critical to reset the event *before* checking for an interrupt to avoid losing a
          * wakeup in the race. This requires that updates to the event's unparked status and updates
-         * to the thread's interrupt status cannot be reordered with regard to each other. Another
-         * important aspect is that the thread must have a sleepParkEvent assigned to it *before*
-         * the interrupted check because if not, the interrupt code will not assign one and the
-         * wakeup will be lost, too.
+         * to the thread's interrupt status cannot be reordered with regard to each other.
+         *
+         * Another important aspect is that the thread must have a sleepParkEvent assigned to it
+         * *before* the interrupted check because if not, the interrupt code will not assign one and
+         * the wakeup will be lost.
          */
+        UNSAFE.fullFence();
+
         if (isInterrupted(thread)) {
             return; // likely leaves a stale unpark which will be reset before the next sleep()
         }
         final int oldStatus = JavaThreads.getThreadStatus(thread);
         JavaThreads.setThreadStatus(thread, ThreadStatus.SLEEPING);
         try {
+            /*
+             * If another thread interrupted this thread in the meanwhile, then the call below won't
+             * block because Thread.interrupt() modifies the ParkEvent.
+             */
             sleepEvent.condTimedWait(delayNanos);
         } finally {
             JavaThreads.setThreadStatus(thread, oldStatus);
