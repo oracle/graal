@@ -181,6 +181,7 @@ public interface NativeAccess {
      * Allows the native backend to modify Espresso VM properties before creation e.g. inject/change
      * paths.
      */
+    @SuppressWarnings("unused")
     default void updateEspressoProperties(EspressoProperties.Builder builder, OptionValues options) {
         // nop
     }

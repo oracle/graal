@@ -61,13 +61,11 @@ import com.oracle.truffle.espresso.ffi.TruffleByteBuffer;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.runtime.EspressoException;
-import com.oracle.truffle.espresso.runtime.EspressoProperties;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Collect;
 import com.oracle.truffle.espresso.vm.UnsafeAccess;
 import com.oracle.truffle.nfi.api.SignatureLibrary;
 
-import org.graalvm.options.OptionValues;
 import sun.misc.Unsafe;
 
 /**

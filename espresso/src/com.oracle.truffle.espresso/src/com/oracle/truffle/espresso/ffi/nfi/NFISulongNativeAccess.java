@@ -23,12 +23,11 @@
 package com.oracle.truffle.espresso.ffi.nfi;
 
 import java.io.IOException;
-import java.nio.file.FileVisitOption;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+
+import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -36,11 +35,8 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.ffi.Pointer;
-import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoProperties;
 import com.oracle.truffle.espresso.substitutions.Collect;
-import org.graalvm.options.OptionValues;
-import org.graalvm.polyglot.Engine;
 
 public final class NFISulongNativeAccess extends NFINativeAccess {
 
@@ -163,7 +159,7 @@ public final class NFISulongNativeAccess extends NFINativeAccess {
     @Collect(NativeAccess.class)
     public static final class Provider implements NativeAccess.Provider {
 
-        final static String ID = "nfi-sulong";
+        static final String ID = "nfi-sulong";
 
         @Override
         public String id() {
