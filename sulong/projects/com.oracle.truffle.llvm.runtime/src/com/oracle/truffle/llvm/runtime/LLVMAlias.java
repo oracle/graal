@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import org.graalvm.collections.EconomicSet;
@@ -96,6 +97,7 @@ public class LLVMAlias extends LLVMSymbol {
         }
     }
 
+    @ExplodeLoop
     public static LLVMSymbol resolveAlias(LLVMSymbol symbol) {
         if (symbol == null) {
             return null;
