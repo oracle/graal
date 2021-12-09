@@ -86,7 +86,7 @@ public class NFINativeAccess implements NativeAccess {
 
     protected final InteropLibrary uncachedInterop = InteropLibrary.getUncached();
     protected final SignatureLibrary uncachedSignature = SignatureLibrary.getUncached();
-    private final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, "NFINativeAccess");
+    private final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, NFINativeAccess.class);
 
     protected final TruffleLanguage.Env env;
 
@@ -221,7 +221,7 @@ public class NFINativeAccess implements NativeAccess {
 
     @ExportLibrary(InteropLibrary.class)
     static final class NativeToJavaWrapper implements TruffleObject {
-        private static final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, "NativeToJavaWrapper");
+        private static final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, NativeToJavaWrapper.class);
 
         final TruffleObject delegate;
         final NativeSignature nativeSignature;
@@ -334,7 +334,7 @@ public class NFINativeAccess implements NativeAccess {
 
     @ExportLibrary(InteropLibrary.class)
     static final class JavaToNativeWrapper implements TruffleObject {
-        private static final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, "JavaToNativeWrapper");
+        private static final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, JavaToNativeWrapper.class);
 
         final TruffleObject delegate;
         final NativeSignature nativeSignature;
