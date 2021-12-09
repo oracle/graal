@@ -49,6 +49,7 @@ import com.oracle.truffle.api.CompilerDirectives;
  *
  * @since 0.11
  */
+@SuppressWarnings("serial")
 public final class UnsupportedTypeException extends InteropException {
 
     private static final long serialVersionUID = 1857745390734085182L;

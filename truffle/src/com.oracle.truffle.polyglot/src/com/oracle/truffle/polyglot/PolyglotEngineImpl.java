@@ -1516,6 +1516,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     }
 
     @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings("serial")
     static final class InterruptExecution extends AbstractTruffleException {
 
         private static final long serialVersionUID = 8652484189010224048L;
