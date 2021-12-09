@@ -46,8 +46,6 @@ public final class LLVMIVarBitSmall extends LLVMIVarBit {
 
     public static final int MAX_SIZE = Long.SIZE;
 
-    private static final long ALL_BITS = -1L;
-
     private final int bits;
     private final long value;
 
@@ -84,13 +82,9 @@ public final class LLVMIVarBitSmall extends LLVMIVarBit {
     }
 
     private static long getCleanedValue(long value, int bits, boolean signed) {
-        boolean oneExtend = signed && (value & (1 << (bits - 1))) != 0;
-
-        if (oneExtend) {
-            return value | (ALL_BITS << bits);
-        } else {
-            return value & (ALL_BITS >>> (Long.SIZE - bits));
-        }
+        int shl = Long.SIZE - bits;
+        long leftAligned = value << shl;
+        return signed ? leftAligned >> shl : leftAligned >>> shl;
     }
 
     public long getCleanedValue(boolean signed) {
