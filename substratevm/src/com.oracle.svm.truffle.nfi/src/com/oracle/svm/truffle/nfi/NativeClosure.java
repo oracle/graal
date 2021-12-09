@@ -66,6 +66,9 @@ import com.oracle.truffle.api.CompilerDirectives;
  * Contains the managed memory parts of `struct closure_data`.
  *
  * See truffle/src/com.oracle.truffle.nfi.native/src/closure.c.
+ *
+ * It is very important that this object contains no strong references to anything that might
+ * indirectly reference a Truffle context or engine. See the comment in ClosureNativePointer.
  */
 final class NativeClosure {
 
@@ -80,8 +83,9 @@ final class NativeClosure {
     }
 
     /*
-     * Weak to break reference cycles via the global ObjectHandles table in TruffleNFISupport. Will
-     * never actually die as long as this object is alive. See comment in ClosureNativePointer.
+     * The references to the CallTarget and the receiver are weak because they might contain cyclic
+     * references to the Truffle context. They can never actually die as long as this object is
+     * alive, because there are corresponding strong references in ClosureNativePointer.
      */
     private final WeakReference<CallTarget> callTarget;
     private final WeakReference<Object> receiver;
