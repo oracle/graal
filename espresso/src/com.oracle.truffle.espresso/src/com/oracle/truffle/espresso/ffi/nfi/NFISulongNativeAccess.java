@@ -119,11 +119,11 @@ public final class NFISulongNativeAccess extends NFINativeAccess {
     }
 
     /**
-     * Overrides --java.JVMLibraryPath and --java.BootLibraryPath only if those options are not set
+     * Overrides the JVMLibraryPath and BootLibraryPath properties only if the options are not set
      * by the user.
      *
      * Looks for libraries with embedded LLVM bitcode located in languages/java/lib/llvm/* , every
-     * folder represents a version
+     * folder represents different Java versions and/or different configurations.
      */
     @Override
     public void updateEspressoProperties(EspressoProperties.Builder builder, OptionValues options) {
