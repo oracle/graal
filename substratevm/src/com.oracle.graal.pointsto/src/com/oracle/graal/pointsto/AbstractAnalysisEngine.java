@@ -128,6 +128,7 @@ public abstract class AbstractAnalysisEngine implements BigBang {
 
     @Override
     public void printTimerStatistics(PrintWriter out) {
+        // todo print reachability here
         StatisticsPrinter.print(out, "features_time_ms", processFeaturesTimer.getTotalTime());
         StatisticsPrinter.print(out, "total_analysis_time_ms", analysisTimer.getTotalTime());
 

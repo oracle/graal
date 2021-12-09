@@ -279,7 +279,7 @@ public class SubstrateOptions {
      * Build output options.
      */
     @Option(help = "Use new build output style", type = OptionType.User)//
-    public static final HostedOptionKey<Boolean> BuildOutputUseNewStyle = new HostedOptionKey<>(true);
+    public static final HostedOptionKey<Boolean> BuildOutputUseNewStyle = new HostedOptionKey<>(false);
 
     @Option(help = "Prefix build output with '<pid>:<image name>'", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> BuildOutputPrefix = new HostedOptionKey<>(false);
