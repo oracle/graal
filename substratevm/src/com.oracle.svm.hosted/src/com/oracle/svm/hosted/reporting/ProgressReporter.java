@@ -59,6 +59,7 @@ import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.BuildArtifacts.ArtifactType;
+import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -140,7 +141,7 @@ public class ProgressReporter {
             Timer.disablePrinting();
         }
         usePrefix = SubstrateOptions.BuildOutputPrefix.getValue(options);
-        boolean enableColors = !IS_CI;
+        boolean enableColors = !IS_CI && OS.getCurrent() != OS.WINDOWS;
         if (SubstrateOptions.BuildOutputColorful.hasBeenSet(options)) {
             enableColors = SubstrateOptions.BuildOutputColorful.getValue(options);
         }
@@ -516,7 +517,9 @@ public class ProgressReporter {
 
     private void printResourceStats(double totalSeconds) {
         GCStats gcStats = getCurrentGCStats();
-        LinePrinter l = l().a("%.1fs", millisToSeconds(gcStats.totalTimeMillis)).a(" spent in ").a(gcStats.totalCount).a(" ").doclink("GCs", "#glossary-garbage-collections");
+        double gcSeconds = millisToSeconds(gcStats.totalTimeMillis);
+        LinePrinter l = l().a("%.1fs (%.1f%% of total time) in %d ", gcSeconds, gcSeconds / totalSeconds * 100, gcStats.totalCount)
+                        .doclink("GCs", "#glossary-garbage-collections");
         long peakRSS = ProgressReporterCHelper.getPeakRSS();
         if (peakRSS >= 0) {
             l.a(" | ").doclink("Peak RSS", "#glossary-peak-rss").a(": ").a("%.2fGB", bytesToGiB(peakRSS));
@@ -783,7 +786,7 @@ public class ProgressReporter {
             int remaining = (CHARACTERS_PER_LINE / 2) - getCurrentTextLength();
             assert remaining >= 0 : "Column text too wide";
             a(stringFilledWith(remaining, " "));
-            assert getCurrentTextLength() == CHARACTERS_PER_LINE / 2;
+            assert !isEnabled || getCurrentTextLength() == CHARACTERS_PER_LINE / 2;
             return this;
         }
 
