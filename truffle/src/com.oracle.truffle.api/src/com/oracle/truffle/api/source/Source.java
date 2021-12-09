@@ -151,7 +151,7 @@ public abstract class Source {
     private static final CharSequence CONTENT_UNSET = new String();
     private static final byte[] CONTENT_EMPTY = new byte[0];
 
-    private static final Source EMPTY = new SourceImpl.ImmutableKey(null, null, null, null, null, null, null, false, false, false, null).toSourceNotInterned();
+    private static final Source EMPTY = new SourceImpl.ImmutableKey(null, null, null, null, null, null, null, false, false, false, null, false).toSourceNotInterned();
     private static final String NO_FASTPATH_SUBSOURCE_CREATION_MESSAGE = "do not create sub sources from compiled code";
     private static final String URI_SCHEME = "truffle";
     private static final int MAX_BUFFER_SIZE = Integer.MAX_VALUE - 8;
@@ -977,7 +977,7 @@ public abstract class Source {
     private static final boolean ALLOW_IO = SourceAccessor.ACCESSOR.engineSupport().isIOAllowed();
 
     static Source buildSource(String language, Object origin, String name, String path, boolean canonicalizePath, String mimeType, Object content, URL url, URI uri, Charset encoding,
-                    boolean internal, boolean interactive, boolean cached, Object fileSystemContext) throws IOException {
+                    boolean internal, boolean interactive, boolean cached, Object fileSystemContext, boolean embedderSource) throws IOException {
         String useName = name;
         URI useUri = uri;
         Object useContent = content;
@@ -1090,14 +1090,15 @@ public abstract class Source {
                 if (SourceAccessor.ACCESSOR.engineSupport().inContextPreInitialization(fsEngineObject)) {
                     SourceImpl.Key key = new SourceImpl.ReinitializableKey(useTruffleFile, useContent, useMimeType, language,
                                     useUrl, useUri, useName, usePath, internal, interactive, cached,
-                                    relativePathInLanguageHome);
+                                    relativePathInLanguageHome, embedderSource);
                     Source source = SOURCES.intern(key);
                     SourceAccessor.onSourceCreated(source);
                     return source;
                 }
             }
         }
-        SourceImpl.Key key = new SourceImpl.ImmutableKey(useContent, useMimeType, language, useUrl, useUri, useName, usePath, internal, interactive, cached, relativePathInLanguageHome);
+        SourceImpl.Key key = new SourceImpl.ImmutableKey(useContent, useMimeType, language, useUrl, useUri, useName, usePath, internal, interactive, cached, relativePathInLanguageHome,
+                        embedderSource);
         return SOURCES.intern(key);
     }
 
@@ -1338,6 +1339,7 @@ public abstract class Source {
         private boolean cached = true;
         private Charset fileEncoding;
         private Object fileSystemContext;
+        private boolean embedderSource;
 
         SourceBuilder(String language, Object origin) {
             Objects.requireNonNull(language);
@@ -1525,6 +1527,10 @@ public abstract class Source {
             return this;
         }
 
+        void embedderSource(boolean b) {
+            this.embedderSource = b;
+        }
+
         /**
          * Uses configuration of this builder to create new {@link Source} object. The method throws
          * an {@link IOException} if an error loading the source occurred.
@@ -1537,7 +1543,7 @@ public abstract class Source {
         public Source build() throws IOException {
             assert this.language != null;
             Source source = buildSource(this.language, this.origin, this.name, this.path, this.canonicalizePath, this.mimeType, this.content, this.url, this.uri, this.fileEncoding, this.internal,
-                            this.interactive, this.cached, fileSystemContext);
+                            this.interactive, this.cached, fileSystemContext, this.embedderSource);
 
             // make sure origin is not consumed again if builder is used twice
             if (source.hasBytes()) {
@@ -1553,7 +1559,6 @@ public abstract class Source {
 
             return source;
         }
-
     }
 
     private static Object getSourceContent(Source source) {

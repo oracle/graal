@@ -290,6 +290,8 @@ class PolyglotSourceDispatch extends AbstractSourceDispatch {
             EngineAccessor.SOURCE.setFileSystemContext(builder, getDefaultFileSystemContext());
         }
 
+        EngineAccessor.SOURCE.setEmbedderSource(builder, true);
+
         if (content instanceof CharSequence) {
             builder.content((CharSequence) content);
         } else if (content instanceof ByteSequence) {
