@@ -477,11 +477,11 @@ public final class EspressoContext {
 
             long initStartTimeNanos = System.nanoTime();
 
+            this.nativeAccess = spawnNativeAccess();
             initVmProperties();
 
             // Spawn JNI first, then the VM.
             try (DebugCloseable vmInit = VM_INIT.scope(timers)) {
-                this.nativeAccess = spawnNativeAccess();
                 this.vm = VM.create(getJNI()); // Mokapot is loaded
                 vm.attachThread(Thread.currentThread());
             }
@@ -653,7 +653,9 @@ public final class EspressoContext {
         // If --java.JavaHome is not specified, Espresso tries to use the same (jars and native)
         // libraries bundled with GraalVM.
         builder.javaHome(Engine.findHome());
-        vmProperties = EspressoProperties.processOptions(builder, getEnv().getOptions()).build();
+        EspressoProperties.processOptions(builder, getEnv().getOptions());
+        getNativeAccess().updateEspressoProperties(builder, getEnv().getOptions());
+        vmProperties = builder.build();
     }
 
     private void initializeKnownClass(Symbol<Type> type) {
