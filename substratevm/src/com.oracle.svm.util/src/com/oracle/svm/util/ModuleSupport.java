@@ -24,7 +24,9 @@
  */
 package com.oracle.svm.util;
 
+import java.util.Collections;
 import java.util.NoSuchElementException;
+import java.util.Set;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
@@ -85,5 +87,15 @@ public final class ModuleSupport extends ModuleSupportBase {
     public static String getModuleName(Class<?> clazz) {
         assert JavaVersionUtil.JAVA_SPEC <= 8;
         return null;
+    }
+
+    public static Object getModuleDescriptor(Class<?> clazz) {
+        assert JavaVersionUtil.JAVA_SPEC <= 8;
+        return null;
+    }
+
+    public static Set<Object> getSystemModuleDescriptors() {
+        assert JavaVersionUtil.JAVA_SPEC <= 8;
+        return Collections.emptySet();
     }
 }

@@ -24,9 +24,12 @@
  */
 package com.oracle.svm.util;
 
+import java.lang.module.ModuleFinder;
+import java.lang.module.ModuleReference;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -123,5 +126,15 @@ public final class ModuleSupport extends ModuleSupportBase {
 
     public static String getModuleName(Class<?> clazz) {
         return clazz.getModule().getName();
+    }
+
+    public static Object getModuleDescriptor(Class<?> clazz) {
+        return clazz.getModule().getDescriptor();
+    }
+
+    public static Set<Object> getSystemModuleDescriptors() {
+        return ModuleFinder.ofSystem().findAll().stream()
+                        .map(ModuleReference::descriptor)
+                        .collect(Collectors.toSet());
     }
 }

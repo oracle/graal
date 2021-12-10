@@ -46,6 +46,7 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
+import com.oracle.svm.util.ModuleSupport;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -61,6 +62,8 @@ public class FallbackFeature implements Feature {
     private final List<String> jniCalls = new ArrayList<>();
     private final List<String> proxyCalls = new ArrayList<>();
     private final List<String> serializationCalls = new ArrayList<>();
+
+    private final Set<Object> systemModuleDescriptors = ModuleSupport.getSystemModuleDescriptors();
 
     private static class AutoProxyInvoke {
         private final ResolvedJavaMethod method;
@@ -103,7 +106,7 @@ public class FallbackFeature implements Feature {
         void check(ReflectionInvocationCheck check, BytecodePosition invokeLocation);
     }
 
-    private static class ReflectionInvocationCheck {
+    private class ReflectionInvocationCheck {
         private final Method reflectionMethod;
         private final InvokeChecker checker;
         private AnalysisMethod trackedReflectionMethod;
@@ -120,10 +123,15 @@ public class FallbackFeature implements Feature {
         }
 
         void apply(BytecodePosition invokeLocation) {
-            ClassLoader classLoader = ((AnalysisMethod) invokeLocation.getMethod()).getDeclaringClass().getJavaClass().getClassLoader();
-            if (NativeImageSystemClassLoader.singleton().isNativeImageClassLoader(classLoader)) {
-                checker.check(this, invokeLocation);
+            Class<?> javaClass = ((AnalysisMethod) invokeLocation.getMethod()).getDeclaringClass().getJavaClass();
+            if (systemModuleDescriptors.contains(ModuleSupport.getModuleDescriptor(javaClass))) {
+                return;
             }
+            ClassLoader classLoader = javaClass.getClassLoader();
+            if (!NativeImageSystemClassLoader.singleton().isNativeImageClassLoader(classLoader)) {
+                return;
+            }
+            checker.check(this, invokeLocation);
         }
 
         String locationString(BytecodePosition invokeLocation) {
