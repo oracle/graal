@@ -24,14 +24,6 @@
  */
 package org.graalvm.compiler.core.test;
 
-import org.graalvm.compiler.core.phases.HighTier;
-import org.graalvm.compiler.core.phases.MidTier;
-import org.graalvm.compiler.nodes.InvokeNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.OptimisticOptimizations;
-import org.graalvm.compiler.phases.tiers.MidTierContext;
-import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -49,32 +41,40 @@ public class GraalInterpreterTest extends GraalCompilerTest {
         return result;
     }
 
-    /** Smoke test for interpreter. */
+    /**
+     * Smoke test for interpreter.
+     */
     @Test
     public void test01() {
         Result expect = new Result(1, null);
-        checkAgainstInterpreter(expect, true,"fact", 0);
+        checkAgainstInterpreter(expect, true, "fact", 0);
     }
 
-    /** Test looping and Phi nodes */
+    /**
+     * Test the looping and Phi nodes.
+     */
     @Test
     public void test05() {
         Result expect = new Result(120, null);
-        checkAgainstInterpreter(expect, true,"fact", 5);
+        checkAgainstInterpreter(expect, true, "fact", 5);
     }
 
-    /** Test int overflow. */
+    /**
+     * Test int overflow.
+     */
     @Test
     public void testOverflow() {
         Result expect = new Result(-288522240, null);
-        checkAgainstInterpreter(expect, true,"fact", 17);
+        checkAgainstInterpreter(expect, true, "fact", 17);
     }
 
-    /** Test exception result. */
+    /**
+     * Test exception result.
+     */
     @Ignore("cannot handle strange object constants inside Throwable.init yet.")
     @Test
     public void testNeg() {
         Result expect = new Result(null, new IllegalArgumentException());
-        checkAgainstInterpreter(expect, true,"fact", -1);
+        checkAgainstInterpreter(expect, true, "fact", -1);
     }
 }

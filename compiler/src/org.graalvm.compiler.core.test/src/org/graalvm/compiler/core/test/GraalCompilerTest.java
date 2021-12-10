@@ -30,7 +30,6 @@ import static org.graalvm.compiler.nodes.ConstantNode.getConstantNodes;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.DO_NOT_INLINE_NO_EXCEPTION;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
 
-import java.io.IOException;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -39,7 +38,6 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -53,7 +51,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
-import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.api.test.ModuleSupport;
@@ -68,7 +65,6 @@ import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpHandler;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
-import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
@@ -110,7 +106,6 @@ import org.graalvm.compiler.nodes.java.AccessFieldNode;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
-import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
@@ -817,7 +812,7 @@ public abstract class GraalCompilerTest extends GraalTest {
     protected final Result test(String name, Object... args) {
         // return test(getInitialOptions(), name, args);
         Result result = test(getInitialOptions(), name, args);
-        String interpret = System.getProperty("INTERPRETER");
+        String interpret = System.getProperty("graal.Interpreter");
         if ("ALL".equals(interpret) ||
                 "PRIM".equals(interpret) && primitiveArgs(args) && result.exception == null) {
             checkAgainstInterpreter(result, false, name, args);
@@ -834,6 +829,7 @@ public abstract class GraalCompilerTest extends GraalTest {
      * @param args arguments to call the method with.
      */
     public void checkAgainstInterpreter(Result result, boolean strict, String name, Object... args) {
+        System.out.print("?");
         try {
             ResolvedJavaMethod method = getMetaAccess().lookupJavaMethod(getMethod(name));
             if (!method.isStatic()) {
@@ -856,6 +852,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         } catch (GraalError ex) {
             if (ex.getMessage().startsWith("unimplemented: ")) {
                 // this test contained a Node that does not yet implement the interpret methods.
+                System.out.print("U");
                 if (strict) {
                     throw new RuntimeException(ex);
                     // fail(ex.getMessage());

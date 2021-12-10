@@ -26,7 +26,6 @@ package org.graalvm.compiler.nodes;
 
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.util.InterpreterState;
 
 /**
  * Denotes the merging of multiple control-flow paths.
