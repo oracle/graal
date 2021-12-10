@@ -308,8 +308,8 @@ public final class ModuleLayerFeature implements Feature {
     }
 
     private static Configuration synthesizeRuntimeBootLayerConfiguration(List<Path> mp, Set<String> reachableModules) {
-        ModuleFinder beforeFinder = new BootModuleLayerModuleFinder();
-        ModuleFinder afterFinder = ModuleFinder.of(mp.toArray(Path[]::new));
+        ModuleFinder beforeFinder = ModuleFinder.of(mp.toArray(Path[]::new));
+        ModuleFinder afterFinder = ModuleFinder.ofSystem();
 
         try {
             ModuleFinder composed = ModuleFinder.compose(beforeFinder, afterFinder);
@@ -344,27 +344,6 @@ public final class ModuleLayerFeature implements Feature {
 
         // Ensure that the lazy modules field gets set
         runtimeBootLayer.modules();
-    }
-
-    static class BootModuleLayerModuleFinder implements ModuleFinder {
-
-        @Override
-        public Optional<ModuleReference> find(String name) {
-            return ModuleLayer.boot()
-                            .configuration()
-                            .findModule(name)
-                            .map(ResolvedModule::reference);
-        }
-
-        @Override
-        public Set<ModuleReference> findAll() {
-            return ModuleLayer.boot()
-                            .configuration()
-                            .modules()
-                            .stream()
-                            .map(ResolvedModule::reference)
-                            .collect(Collectors.toSet());
-        }
     }
 
     private static final class HostedRuntimeModulePair {

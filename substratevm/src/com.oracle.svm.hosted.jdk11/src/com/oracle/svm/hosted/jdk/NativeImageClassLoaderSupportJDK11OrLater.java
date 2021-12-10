@@ -86,10 +86,9 @@ public class NativeImageClassLoaderSupportJDK11OrLater extends AbstractNativeIma
     }
 
     private static ModuleLayer createModuleLayer(Path[] modulePaths, ClassLoader parent) {
-        ModuleFinder finder = ModuleFinder.of(modulePaths);
-        List<Configuration> parents = List.of(ModuleLayer.boot().configuration());
-        Set<String> moduleNames = finder.findAll().stream().map(moduleReference -> moduleReference.descriptor().name()).collect(Collectors.toSet());
-        Configuration configuration = Configuration.resolve(finder, parents, finder, moduleNames);
+        ModuleFinder modulePathsFinder = ModuleFinder.of(modulePaths);
+        Set<String> moduleNames = modulePathsFinder.findAll().stream().map(moduleReference -> moduleReference.descriptor().name()).collect(Collectors.toSet());
+        Configuration configuration = ModuleLayer.boot().configuration().resolve(modulePathsFinder, ModuleFinder.ofSystem(), moduleNames);
         /**
          * For the modules we want to build an image for, a ModuleLayer is needed that can be
          * accessed with a single classloader so we can use it for {@link ImageClassLoader}.
