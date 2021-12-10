@@ -62,6 +62,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk11.BootModuleLayerSupport;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.jdk.NativeImageClassLoaderSupportJDK11OrLater;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -209,7 +210,10 @@ public final class ModuleLayerFeature implements Feature {
     }
 
     private ModuleLayer synthesizeRuntimeBootLayer(ImageClassLoader cl, Set<String> reachableModules, Set<Module> syntheticModules) {
-        Configuration cf = synthesizeRuntimeBootLayerConfiguration(cl.modulepath(), reachableModules);
+        NativeImageClassLoaderSupportJDK11OrLater classLoaderSupport = (NativeImageClassLoaderSupportJDK11OrLater) cl.classLoaderSupport;
+        ModuleFinder beforeFinder = classLoaderSupport.modulepathModuleFinder;
+        ModuleFinder afterFinder = classLoaderSupport.upgradeAndSystemModuleFinder;
+        Configuration cf = synthesizeRuntimeBootLayerConfiguration(beforeFinder, afterFinder, reachableModules);
         try {
             ModuleLayer runtimeBootLayer = moduleLayerConstructor.newInstance(cf, List.of(), null);
             Map<String, Module> nameToModule = moduleLayerFeatureUtils.synthesizeNameToModule(runtimeBootLayer, cl.getClassLoader());
@@ -307,10 +311,7 @@ public final class ModuleLayerFeature implements Feature {
         return applicationModules;
     }
 
-    private static Configuration synthesizeRuntimeBootLayerConfiguration(List<Path> mp, Set<String> reachableModules) {
-        ModuleFinder beforeFinder = ModuleFinder.of(mp.toArray(Path[]::new));
-        ModuleFinder afterFinder = ModuleFinder.ofSystem();
-
+    private static Configuration synthesizeRuntimeBootLayerConfiguration(ModuleFinder beforeFinder, ModuleFinder afterFinder, Set<String> reachableModules) {
         try {
             ModuleFinder composed = ModuleFinder.compose(beforeFinder, afterFinder);
             List<String> missingModules = new ArrayList<>();

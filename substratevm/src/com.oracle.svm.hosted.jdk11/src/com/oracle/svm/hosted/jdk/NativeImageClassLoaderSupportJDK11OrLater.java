@@ -70,7 +70,11 @@ public class NativeImageClassLoaderSupportJDK11OrLater extends AbstractNativeIma
     private final List<Path> buildmp;
 
     private final ClassLoader classLoader;
+
+    public final ModuleFinder upgradeAndSystemModuleFinder;
     public final ModuleLayer moduleLayerForImageBuild;
+
+    public final ModuleFinder modulepathModuleFinder;
 
     public NativeImageClassLoaderSupportJDK11OrLater(ClassLoader defaultSystemClassLoader, String[] classpath, String[] modulePath) {
         super(defaultSystemClassLoader, classpath);
@@ -79,21 +83,56 @@ public class NativeImageClassLoaderSupportJDK11OrLater extends AbstractNativeIma
         buildmp = Optional.ofNullable(System.getProperty("jdk.module.path")).stream()
                         .flatMap(s -> Arrays.stream(s.split(File.pathSeparator))).map(Paths::get).collect(Collectors.toUnmodifiableList());
 
+        upgradeAndSystemModuleFinder = createUpgradeAndSystemModuleFinder();
         ModuleLayer moduleLayer = createModuleLayer(imagemp.toArray(Path[]::new), classPathClassLoader);
         adjustBootLayerQualifiedExports(moduleLayer);
         moduleLayerForImageBuild = moduleLayer;
+
         classLoader = getSingleClassloader(moduleLayer);
+
+        modulepathModuleFinder = ModuleFinder.of(modulepath().toArray(Path[]::new));
     }
 
-    private static ModuleLayer createModuleLayer(Path[] modulePaths, ClassLoader parent) {
+    private ModuleLayer createModuleLayer(Path[] modulePaths, ClassLoader parent) {
         ModuleFinder modulePathsFinder = ModuleFinder.of(modulePaths);
         Set<String> moduleNames = modulePathsFinder.findAll().stream().map(moduleReference -> moduleReference.descriptor().name()).collect(Collectors.toSet());
-        Configuration configuration = ModuleLayer.boot().configuration().resolve(modulePathsFinder, ModuleFinder.ofSystem(), moduleNames);
+
+        Configuration configuration = ModuleLayer.boot().configuration().resolve(modulePathsFinder, upgradeAndSystemModuleFinder, moduleNames);
         /**
          * For the modules we want to build an image for, a ModuleLayer is needed that can be
          * accessed with a single classloader so we can use it for {@link ImageClassLoader}.
          */
         return ModuleLayer.defineModulesWithOneLoader(configuration, List.of(ModuleLayer.boot()), parent).layer();
+    }
+
+    /**
+     * Gets a finder that locates the upgrade modules and the system modules, in that order.
+     */
+    private static ModuleFinder createUpgradeAndSystemModuleFinder() {
+        ModuleFinder finder = ModuleFinder.ofSystem();
+        ModuleFinder upgradeModulePath = finderFor("jdk.module.upgrade.path");
+        if (upgradeModulePath != null) {
+            finder = ModuleFinder.compose(upgradeModulePath, finder);
+        }
+        return finder;
+    }
+
+    /**
+     * Creates a finder from a module path specified by the {@code prop} system property.
+     */
+    private static ModuleFinder finderFor(String prop) {
+        String s = System.getProperty(prop);
+        if (s == null || s.isEmpty()) {
+            return null;
+        } else {
+            String[] dirs = s.split(File.pathSeparator);
+            Path[] paths = new Path[dirs.length];
+            int i = 0;
+            for (String dir : dirs) {
+                paths[i++] = Path.of(dir);
+            }
+            return ModuleFinder.of(paths);
+        }
     }
 
     private static void adjustBootLayerQualifiedExports(ModuleLayer layer) {
@@ -349,41 +388,6 @@ public class NativeImageClassLoaderSupportJDK11OrLater extends AbstractNativeIma
         return classLoader;
     }
 
-    private static ModuleFinder upgradeAndSystemModuleFinder;
-
-    /**
-     * Creates a finder from a module path specified by the {@code prop} system property.
-     */
-    private static ModuleFinder finderFor(String prop) {
-        String s = System.getProperty(prop);
-        if (s == null || s.isEmpty()) {
-            return null;
-        } else {
-            String[] dirs = s.split(File.pathSeparator);
-            Path[] paths = new Path[dirs.length];
-            int i = 0;
-            for (String dir : dirs) {
-                paths[i++] = Path.of(dir);
-            }
-            return ModuleFinder.of(paths);
-        }
-    }
-
-    /**
-     * Gets a finder that locates the upgrade modules and the system modules, in that order.
-     */
-    private static ModuleFinder getUpgradeAndSystemModuleFinder() {
-        if (upgradeAndSystemModuleFinder == null) {
-            ModuleFinder finder = ModuleFinder.ofSystem();
-            ModuleFinder upgradeModulePath = finderFor("jdk.module.upgrade.path");
-            if (upgradeModulePath != null) {
-                finder = ModuleFinder.compose(upgradeModulePath, finder);
-            }
-            upgradeAndSystemModuleFinder = finder;
-        }
-        return upgradeAndSystemModuleFinder;
-    }
-
     private class ClassInitWithModules extends ClassInit {
 
         ClassInitWithModules(ForkJoinPool executor, ImageClassLoader imageClassLoader) {
@@ -396,12 +400,12 @@ public class NativeImageClassLoaderSupportJDK11OrLater extends AbstractNativeIma
                             "jdk.internal.vm.ci", "jdk.internal.vm.compiler", "com.oracle.graal.graal_enterprise",
                             "org.graalvm.sdk", "org.graalvm.truffle");
 
-            for (ModuleReference moduleReference : getUpgradeAndSystemModuleFinder().findAll()) {
+            for (ModuleReference moduleReference : upgradeAndSystemModuleFinder.findAll()) {
                 if (requiresInit.contains(moduleReference.descriptor().name())) {
                     initModule(moduleReference);
                 }
             }
-            for (ModuleReference moduleReference : ModuleFinder.of(modulepath().toArray(Path[]::new)).findAll()) {
+            for (ModuleReference moduleReference : modulepathModuleFinder.findAll()) {
                 initModule(moduleReference);
             }
 

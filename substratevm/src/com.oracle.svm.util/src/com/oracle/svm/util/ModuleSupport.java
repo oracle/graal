@@ -89,6 +89,7 @@ public final class ModuleSupport extends ModuleSupportBase {
         return null;
     }
 
+    @SuppressWarnings("unused")
     public static Object getModuleDescriptor(Class<?> clazz) {
         assert JavaVersionUtil.JAVA_SPEC <= 8;
         return null;
