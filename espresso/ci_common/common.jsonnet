@@ -61,7 +61,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
     capabilities: ['darwin_mojave', 'amd64'],
   },
 
-  windows: self.common + sulong_deps.windows + {
+  windows: self.common + {
     capabilities : ['windows', 'amd64']
   },
 
