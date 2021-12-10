@@ -27,11 +27,14 @@ package org.graalvm.compiler.nodes;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
+import org.graalvm.compiler.interpreter.value.InterpreterValue;
+import org.graalvm.compiler.interpreter.value.InterpreterValuePrimitive;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.nodes.util.InterpreterState;
 
 /**
  * The {@code LogicConstantNode} represents a boolean constant.
@@ -103,5 +106,10 @@ public final class LogicConstantNode extends LogicNode implements LIRLowerable {
     @Override
     public void generate(NodeLIRBuilderTool generator) {
         // nothing to do
+    }
+
+    @Override
+    public InterpreterValue interpretExpr(InterpreterState interpreter) {
+        return InterpreterValuePrimitive.ofBoolean(value);
     }
 }

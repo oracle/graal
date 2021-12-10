@@ -34,6 +34,7 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.spi.Simplifiable;
 import org.graalvm.compiler.nodes.spi.SimplifierTool;
+import org.graalvm.compiler.nodes.util.InterpreterState;
 
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
 public final class BeginNode extends AbstractBeginNode implements Simplifiable {
@@ -73,5 +74,11 @@ public final class BeginNode extends AbstractBeginNode implements Simplifiable {
             begin.setNext(with);
             return begin;
         }
+    }
+
+    @Override
+    public FixedNode interpret(InterpreterState interpreter) {
+        // Doesn't do anything except move to next node.
+        return next();
     }
 }

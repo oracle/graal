@@ -42,8 +42,11 @@ import static org.graalvm.compiler.nodes.Invoke.SIZE_UNKNOWN_RATIONALE;
 import java.util.Map;
 
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.interpreter.value.InterpreterValue;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.nodes.util.InterpreterState;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -267,5 +270,15 @@ public final class InvokeNode extends AbstractMemoryCheckpoint implements Invoke
             default:
                 return SIZE_UNKNOWN;
         }
+    }
+
+    @Override
+    public FixedNode interpret(InterpreterState interpreter) {
+        InterpreterValue out = interpreter.interpretMethod(callTarget(), callTarget().arguments().snapshot());
+        if (out.isUnwindException()) {
+            GraalError.shouldNotReachHere("Unexpected exception thrown when interpreting InvokeNode");
+        }
+        interpreter.setNodeLookupValue(this, out);
+        return next();
     }
 }

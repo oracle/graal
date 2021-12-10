@@ -28,6 +28,7 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_4;
 
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.interpreter.value.InterpreterValue;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.memory.MemoryMapNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
@@ -35,6 +36,7 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
+import org.graalvm.compiler.nodes.util.InterpreterState;
 
 @NodeInfo(cycles = CYCLES_2, size = SIZE_4, cyclesRationale = "Restore frame + ret", sizeRationale = "Restore frame + ret")
 public final class ReturnNode extends MemoryMapControlSinkNode implements LIRLowerable {
@@ -76,5 +78,13 @@ public final class ReturnNode extends MemoryMapControlSinkNode implements LIRLow
             assert actual == expected : "return kind doesn't match: actual " + actual + ", expected: " + expected;
         }
         return true;
+    }
+
+    @Override
+    public FixedNode interpret(InterpreterState interpreter) {
+        interpreter.setNodeLookupValue(this,
+                result() == null ? InterpreterValue.InterpreterValueVoid.INSTANCE : interpreter.interpretExpr(result()));
+        // the last node in this execution
+        return null;
     }
 }

@@ -30,6 +30,8 @@ import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.interpreter.value.InterpreterValue;
+import org.graalvm.compiler.interpreter.value.InterpreterValuePrimitive;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -46,6 +48,7 @@ import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
+import org.graalvm.compiler.nodes.util.InterpreterState;
 import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
 import org.graalvm.compiler.nodes.virtual.VirtualBoxingNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
@@ -213,5 +216,20 @@ public final class ObjectEqualsNode extends PointerEqualsNode implements Virtual
             tool.addNode(node);
         }
         tool.replaceWithValue(node);
+    }
+
+    @Override
+    public InterpreterValue interpretExpr(InterpreterState interpreter) {
+        InterpreterValue xVal = interpreter.interpretExpr(getX());
+        InterpreterValue yVal = interpreter.interpretExpr(getY());
+
+        GraalError.guarantee(xVal.getJavaKind() == JavaKind.Object, "x doesn't interpret to object value");
+        GraalError.guarantee(yVal.getJavaKind() == JavaKind.Object, "y doesn't interpret to object value");
+
+        if (xVal.isNull() ^ yVal.isNull()) {
+            return InterpreterValuePrimitive.ofBoolean(false);
+        }
+
+        return InterpreterValuePrimitive.ofBoolean(xVal == yVal);
     }
 }

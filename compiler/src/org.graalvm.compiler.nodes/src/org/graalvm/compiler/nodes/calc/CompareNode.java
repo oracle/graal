@@ -38,6 +38,8 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.Position;
+import org.graalvm.compiler.interpreter.value.InterpreterValue;
+import org.graalvm.compiler.interpreter.value.InterpreterValuePrimitive;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.BinaryOpLogicNode;
@@ -51,6 +53,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.memory.VolatileReadNode;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.compiler.nodes.util.InterpreterState;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.meta.Constant;
@@ -497,5 +500,18 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
         }
 
         return comparison;
+    }
+
+    @Override
+    public InterpreterValue interpretExpr(InterpreterState interpreter) {
+        InterpreterValue xVal = interpreter.interpretExpr(getX());
+        InterpreterValue yVal = interpreter.interpretExpr(getY());
+
+        GraalError.guarantee(xVal.isPrimitive(), "compare gets non-primitive x: %s", xVal);
+        GraalError.guarantee(yVal.isPrimitive(), "compare gets non-primitive y: %s", yVal);
+
+        boolean result = condition().foldCondition(xVal.asPrimitiveConstant(), yVal.asPrimitiveConstant(), unorderedIsTrue());
+        // System.out.printf("   %s %s %s -> %s\n", xVal, condition(), yVal, result);
+        return InterpreterValuePrimitive.ofBoolean(result);
     }
 }

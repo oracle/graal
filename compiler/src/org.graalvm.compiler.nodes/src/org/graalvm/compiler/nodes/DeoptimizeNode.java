@@ -25,6 +25,7 @@
 package org.graalvm.compiler.nodes;
 
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -38,6 +39,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.SpeculationLog.Speculation;
 import jdk.vm.ci.meta.Value;
+import org.graalvm.compiler.nodes.util.InterpreterState;
 
 @NodeInfo(shortName = "Deopt", nameTemplate = "Deopt {p#reason/s}")
 public final class DeoptimizeNode extends AbstractDeoptimizeNode implements Lowerable, LIRLowerable, StaticDeoptimizingNode {
@@ -130,4 +132,11 @@ public final class DeoptimizeNode extends AbstractDeoptimizeNode implements Lowe
 
     @NodeIntrinsic
     public static native void deopt(@ConstantNodeParameter DeoptimizationAction action, @ConstantNodeParameter DeoptimizationReason reason);
+
+    @Override
+    public FixedNode interpret(InterpreterState interpreter) {
+        // TODO
+        GraalError.unimplemented("DeoptimizeNode");
+        return null;
+    }
 }
