@@ -248,7 +248,6 @@ public final class Safepoint {
      */
     @Uninterruptible(reason = "Must not contain safepoint checks.")
     private static void slowPathRunJavaStateActions() {
-        ThreadingSupportImpl.onSafepointCheckSlowpath();
         if (ActionOnTransitionToJavaSupport.isActionPending()) {
             if (ActionOnTransitionToJavaSupport.isSynchronizeCode()) {
                 CodeSynchronizationNode.synchronizeCode();
@@ -257,6 +256,9 @@ public final class Safepoint {
             }
             ActionOnTransitionToJavaSupport.clearActions();
         }
+
+        // Do this last so an exception cannot skip the above
+        ThreadingSupportImpl.onSafepointCheckSlowpath();
     }
 
     @NeverInline("Must not be inlined in a caller that has an exception handler: We only support InvokeNode and not InvokeWithExceptionNode between a CFunctionPrologueNode and CFunctionEpilogueNode")
