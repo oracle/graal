@@ -489,7 +489,8 @@ public class OptionProcessor extends AbstractProcessor {
         final String deprecationMessage;
         private String usageSyntax;
 
-        OptionInfo(String name, String help, VariableElement field, AnnotationMirror annotation, boolean deprecated, String category, String stability, boolean optionMap, String deprecationMessage, String usageSyntax) {
+        OptionInfo(String name, String help, VariableElement field, AnnotationMirror annotation, boolean deprecated, String category, String stability, boolean optionMap, String deprecationMessage,
+                        String usageSyntax) {
             this.name = name;
             this.help = help;
             this.field = field;

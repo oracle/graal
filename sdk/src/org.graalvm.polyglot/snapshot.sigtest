@@ -324,7 +324,7 @@ fld public final static org.graalvm.polyglot.PolyglotAccess NONE
 innr public final Builder
 meth public static org.graalvm.polyglot.PolyglotAccess$Builder newBuilder()
 supr java.lang.Object
-hfds EMPTY,allAccess,bindingsAccess,evalAccess
+hfds EMPTY,EMPTY_EVAL_ACCESS,allAccess,bindingsAccess,evalAccess
 
 CLSS public final org.graalvm.polyglot.PolyglotAccess$Builder
  outer org.graalvm.polyglot.PolyglotAccess

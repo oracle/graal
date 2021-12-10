@@ -185,7 +185,8 @@ public final class InspectorInstrument extends TruffleInstrument {
     static final OptionKey<Boolean> HideErrors = new OptionKey<>(false);
 
     @com.oracle.truffle.api.Option(help = "Path to the chrome inspect. This path should be unpredictable. Do note that any website opened in your browser that has knowledge of the URL can connect to the debugger. A predictable path can thus be " +
-                    "abused by a malicious website to execute arbitrary code on your computer, even if you are behind a firewall. (default: randomly generated)", usageSyntax = "<path>", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+                    "abused by a malicious website to execute arbitrary code on your computer, even if you are behind a firewall. (default: randomly generated)", //
+                    usageSyntax = "<path>", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<String> Path = new OptionKey<>("");
 
     @com.oracle.truffle.api.Option(help = "Inspect internal sources.", category = OptionCategory.INTERNAL) //
@@ -206,7 +207,8 @@ public final class InspectorInstrument extends TruffleInstrument {
     @com.oracle.truffle.api.Option(help = "The keystore password. (default:javax.net.ssl.keyStorePassword system property)", usageSyntax = "<keystorePassword>", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<String> KeyStorePassword = new OptionKey<>("");
 
-    @com.oracle.truffle.api.Option(help = "Password for recovering keys from a keystore. (default:javax.net.ssl.keyPassword system property, or keystore password)", usageSyntax = "<keystorePassword>", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @com.oracle.truffle.api.Option(help = "Password for recovering keys from a keystore. (default:javax.net.ssl.keyPassword system property, or keystore password)", //
+                    usageSyntax = "<keystorePassword>", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<String> KeyPassword = new OptionKey<>("");
 
     public static final String INSTRUMENT_ID = "inspect";

@@ -469,7 +469,7 @@ meth public java.lang.String getDescription()
 meth public java.lang.String toString()
 meth public java.util.Map<java.lang.String,java.lang.Object> getDebugProperties()
 supr java.lang.Object
-hfds GIL_LOCK,parent
+hfds GIL_LOCK,PARENT_LIMIT,parent
 
 CLSS public abstract interface !annotation com.oracle.truffle.api.nodes.NodeInfo
  anno 0 java.lang.annotation.Inherited()

@@ -214,7 +214,7 @@ public final class OptionDescriptor {
         return EMPTY.new Builder(key, name);
     }
 
-    private static final OptionDescriptor EMPTY = new OptionDescriptor(null, null, null, null, null, false, null, null);
+    private static final OptionDescriptor EMPTY = new OptionDescriptor(null, null, null, null, null, false, null, "");
 
     /**
      * Represents an option descriptor builder.
@@ -230,7 +230,7 @@ public final class OptionDescriptor {
         private OptionCategory category = OptionCategory.INTERNAL;
         private OptionStability stability = OptionStability.EXPERIMENTAL;
         private String help = "";
-        private String usageSyntax;
+        private String usageSyntax = "";
 
         Builder(OptionKey<?> key, String name) {
             this.key = key;

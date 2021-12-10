@@ -179,10 +179,11 @@ class CPUSamplerCLI extends ProfilerCLI {
     @Option(name = "Delay", help = "Delay the sampling for this many milliseconds (default: 0).", usageSyntax = "<ms>", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Long> DELAY_PERIOD = new OptionKey<>(0L);
 
-    @Option(name = "StackLimit", help = "Maximum number of maximum stack elements (default: 10000).", usageSyntax = "[1, inf]", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "StackLimit", help = "Maximum number of maximum stack elements (default: 10000).", usageSyntax = "[1, inf)", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Integer> STACK_LIMIT = new OptionKey<>(10000);
 
-    @Option(name = "Output", help = "Specify the output format to one of: histogram, calltree, json or flamegraph (default: histogram).", usageSyntax = "histogram|calltree|json|flamegraph", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "Output", help = "Specify the output format to one of: histogram, calltree, json or flamegraph (default: histogram).", //
+                    usageSyntax = "histogram|calltree|json|flamegraph", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Output> OUTPUT = new OptionKey<>(Output.HISTOGRAM, CLI_OUTPUT_TYPE);
 
     @Option(help = "Specify whether to show compilation information for entries. You can specify 'true' to show all compilation information, 'false' for none, or a comma separated list of compilation tiers. " +
@@ -213,7 +214,7 @@ class CPUSamplerCLI extends ProfilerCLI {
     @Option(name = "OutputFile", help = "Save output to the given file. Output is printed to output stream by default.", usageSyntax = "<path>", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<String> OUTPUT_FILE = new OptionKey<>("");
 
-    @Option(name = "MinSamples", help = "Remove elements from output if they have less samples than this value (default: 0)", usageSyntax = "[0, inf]", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "MinSamples", help = "Remove elements from output if they have less samples than this value (default: 0)", usageSyntax = "[0, inf)", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Integer> MIN_SAMPLES = new OptionKey<>(0);
 
     @Option(name = "SampleContextInitialization", help = "Enables sampling of code executed during context initialization", category = OptionCategory.EXPERT, stability = OptionStability.STABLE) //
