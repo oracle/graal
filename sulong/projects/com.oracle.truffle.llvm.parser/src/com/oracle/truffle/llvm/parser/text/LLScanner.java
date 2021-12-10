@@ -109,7 +109,7 @@ final class LLScanner {
 
             EconomicSet<LLVMSourceFileReference> sourceFileWorkset = createSourceFileSet(sourceFileReferences);
             if (sourceFileWorkset == null) {
-                printWarning("No source file checksums found in %s\n", bcPath);
+                printVerbose("No source file checksums found in %s\n", bcPath);
             }
             final LLScanner scanner = new LLScanner(sourceMap, sourceFileWorkset);
             for (String line = llReader.readLine(); line != null; line = llReader.readLine()) {
@@ -118,10 +118,10 @@ final class LLScanner {
                 }
             }
             if (sourceFileWorkset != null && !sourceFileWorkset.isEmpty()) {
-                printWarning("Checksums in the .ll file (%s) and the .bc file (%s) do not match!\n", llFile, bcPath);
-                printWarning("The following files have changed in the .bc file:\n");
+                printVerbose("Checksums in the .ll file (%s) and the .bc file (%s) do not match!\n", llFile, bcPath);
+                printVerbose("The following files have changed in the .bc file:\n");
                 for (LLVMSourceFileReference sourceFileReference : sourceFileWorkset) {
-                    printWarning("  %s\n", LLVMSourceFileReference.toString(sourceFileReference));
+                    printVerbose("  %s\n", LLVMSourceFileReference.toString(sourceFileReference));
                 }
             }
             return sourceMap;
@@ -131,6 +131,12 @@ final class LLScanner {
     }
 
     private static void printWarning(String format, Object... args) {
+        if (LLVMContext.llDebugWarningEnabled()) {
+            LLVMContext.llDebugWarningLog(String.format(format, args));
+        }
+    }
+
+    private static void printVerbose(String format, Object... args) {
         if (LLVMContext.llDebugVerboseEnabled()) {
             LLVMContext.llDebugVerboseLog(String.format(format, args));
         }

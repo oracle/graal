@@ -90,6 +90,7 @@ public final class LLVMContext {
     private static final Level NATIVE_CALL_STATISTICS_LEVEL = Level.FINER;
     private static final Level SYSCALLS_LOGGING_LEVEL = Level.FINER;
     private static final Level LL_DEBUG_VERBOSE_LOGGER_LEVEL = Level.FINER;
+    private static final Level LL_DEBUG_WARNING_LOGGER_LEVEL = Level.WARNING;
 
     private final List<Path> libraryPaths = new ArrayList<>();
     private final Object libraryPathsLock = new Object();
@@ -272,9 +273,6 @@ public final class LLVMContext {
         assert this.threadingStack == null;
         this.contextExtensions = contextExtens;
 
-        if (llDebugVerboseEnabled() && !env.getOptions().get(SulongEngineOption.LL_DEBUG)) {
-            llDebugVerboseLog("LL debug verbose logging is enabled, but \'--llvm.llDebug=true\' is not set");
-        }
         String opt = env.getOptions().get(SulongEngineOption.TRACE_IR);
         if (SulongEngineOption.optionEnabled(opt)) {
             if (!env.getOptions().get(SulongEngineOption.LL_DEBUG)) {
@@ -1152,6 +1150,14 @@ public final class LLVMContext {
 
     public static void llDebugVerboseLog(String message) {
         llDebugLogger.log(LL_DEBUG_VERBOSE_LOGGER_LEVEL, message);
+    }
+
+    public static boolean llDebugWarningEnabled() {
+        return llDebugLogger.isLoggable(LL_DEBUG_WARNING_LOGGER_LEVEL);
+    }
+
+    public static void llDebugWarningLog(String message) {
+        llDebugLogger.log(LL_DEBUG_WARNING_LOGGER_LEVEL, message);
     }
 
     public static TruffleLogger llDebugLogger() {
