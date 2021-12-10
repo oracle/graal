@@ -118,11 +118,7 @@ public final class EventContext {
     }
 
     private static boolean languageDeclaresTag(RootNode root, Class<?> tag) {
-        Object polyglotEngine = InstrumentAccessor.nodesAccess().getPolyglotEngine(root);
-        if (polyglotEngine == null) {
-            return true;
-        }
-        InstrumentationHandler handler = (InstrumentationHandler) InstrumentAccessor.engineAccess().getInstrumentationHandler(polyglotEngine);
+        InstrumentationHandler handler = (InstrumentationHandler) InstrumentAccessor.engineAccess().getInstrumentationHandler(root);
         Set<Class<?>> providedTags = handler.getProvidedTags(root);
         if (!providedTags.contains(tag)) {
             TruffleLanguage<?> language = InstrumentAccessor.nodesAccess().getLanguage(root);

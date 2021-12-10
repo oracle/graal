@@ -108,6 +108,7 @@ import org.graalvm.compiler.lir.amd64.AMD64ZeroMemoryOp;
 import org.graalvm.compiler.lir.amd64.vector.AMD64VectorCompareOp;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGenerator;
+import org.graalvm.compiler.lir.gen.MoveFactory;
 import org.graalvm.compiler.lir.hashing.IntHasher;
 import org.graalvm.compiler.phases.util.Providers;
 
@@ -133,28 +134,6 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
 
     public AMD64LIRGenerator(LIRKindTool lirKindTool, AMD64ArithmeticLIRGenerator arithmeticLIRGen, MoveFactory moveFactory, Providers providers, LIRGenerationResult lirGenRes) {
         super(lirKindTool, arithmeticLIRGen, moveFactory, providers, lirGenRes);
-    }
-
-    /**
-     * Checks whether the supplied constant can be used without loading it into a register for store
-     * operations, i.e., on the right hand side of a memory access.
-     *
-     * @param c The constant to check.
-     * @return True if the constant can be used directly, false if the constant needs to be in a
-     *         register.
-     */
-    protected static final boolean canStoreConstant(JavaConstant c) {
-        // there is no immediate move of 64-bit constants on Intel
-        switch (c.getJavaKind()) {
-            case Long:
-                return NumUtil.isInt(c.asLong());
-            case Double:
-                return false;
-            case Object:
-                return c.isNull();
-            default:
-                return true;
-        }
     }
 
     @Override

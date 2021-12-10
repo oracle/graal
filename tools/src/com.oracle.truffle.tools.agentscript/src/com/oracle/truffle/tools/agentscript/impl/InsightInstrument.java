@@ -24,6 +24,23 @@
  */
 package com.oracle.truffle.tools.agentscript.impl;
 
+import java.io.IOException;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
+import java.util.BitSet;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.function.Supplier;
+
+import org.graalvm.options.OptionCategory;
+import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionStability;
+import org.graalvm.tools.insight.Insight;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -35,25 +52,9 @@ import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.instrumentation.EventBinding;
-import com.oracle.truffle.api.instrumentation.Instrumenter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
-import java.io.IOException;
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
-import java.util.BitSet;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
-import java.util.function.Supplier;
-import org.graalvm.options.OptionCategory;
-import org.graalvm.options.OptionDescriptors;
-import org.graalvm.options.OptionKey;
-import org.graalvm.options.OptionStability;
-import org.graalvm.tools.insight.Insight;
 
 // @formatter:off
 @TruffleInstrument.Registration(
@@ -130,10 +131,7 @@ public class InsightInstrument extends TruffleInstrument {
     }
 
     final AutoCloseable registerAgentScript(final Supplier<Source> src) {
-        final Instrumenter instrumenter = env.getInstrumenter();
-        final InsightPerSource initializeAgent = new InsightPerSource(this, src, ignoreSources);
-        instrumenter.attachContextsListener(initializeAgent, true);
-        return initializeAgent;
+        return new InsightPerSource(env.getInstrumenter(), this, src, ignoreSources);
     }
 
     @Override
@@ -259,16 +257,22 @@ public class InsightInstrument extends TruffleInstrument {
         @CompilerDirectives.CompilationFinal //
         private int functionsMaxLen;
         private final AgentType type;
+        /* @GuardedBy(keys) */
         private EventBinding<?> binding;
 
         private Key(AgentType type, int index) {
+            if (index < 0) {
+                throw new IllegalArgumentException();
+            }
             this.type = type;
             this.index = index;
         }
 
         Key assign(EventBinding<?> b) {
-            this.binding = b;
-            return this;
+            synchronized (keys) {
+                this.binding = b;
+                return this;
+            }
         }
 
         int index() {
@@ -285,13 +289,15 @@ public class InsightInstrument extends TruffleInstrument {
         }
 
         private void close() {
-            EventBinding<?> b = binding;
-            if (b != null) {
-                b.dispose();
-            }
+            EventBinding<?> b;
             synchronized (keys) {
+                b = binding;
+                binding = null;
                 CompilerAsserts.neverPartOfCompilation();
                 index = -1;
+            }
+            if (b != null) {
+                b.dispose();
             }
         }
 
@@ -299,6 +305,12 @@ public class InsightInstrument extends TruffleInstrument {
             if (size > this.functionsMaxLen) {
                 this.functionsMaxLen = size;
                 keysUnchanged.invalidate();
+            }
+        }
+
+        boolean isClosed() {
+            synchronized (keys) {
+                return index == -1;
             }
         }
     }

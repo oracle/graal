@@ -75,6 +75,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.runtime.JVMCI;
+import jdk.vm.ci.services.Services;
 import sun.misc.Unsafe;
 
 /**
@@ -85,6 +86,7 @@ import sun.misc.Unsafe;
  * native-image shared library).
  */
 public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime implements HotSpotTruffleCompilerRuntime {
+    static final int JAVA_SPEC = getJavaSpecificationVersion();
 
     static final sun.misc.Unsafe UNSAFE = getUnsafe();
 
@@ -603,18 +605,18 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     }
 
     @Override
-    protected Object[] getNonPrimitiveResolvedFields(Class<?> type) {
+    protected Object[] getResolvedFields(Class<?> type, boolean includePrimitive, boolean includeSuperclasses) {
         if (type.isArray() || type.isPrimitive()) {
             throw new IllegalArgumentException("Class " + type.getName() + " is a primitive type or an array class!");
         }
         HotSpotMetaAccessProvider meta = (HotSpotMetaAccessProvider) getMetaAccess();
         ResolvedJavaType javaType = meta.lookupJavaType(type);
-        ResolvedJavaField[] fields = javaType.getInstanceFields(true);
+        ResolvedJavaField[] fields = javaType.getInstanceFields(includeSuperclasses);
         ResolvedJavaField[] fieldsToReturn = new ResolvedJavaField[fields.length];
         int fieldsCount = 0;
         for (int i = 0; i < fields.length; i++) {
             final ResolvedJavaField f = fields[i];
-            if (!f.getJavaKind().isPrimitive() && !fieldIsNotEligible(type, f)) {
+            if ((includePrimitive || !f.getJavaKind().isPrimitive()) && !fieldIsNotEligible(type, f)) {
                 fieldsToReturn[fieldsCount++] = f;
             }
         }
@@ -671,6 +673,27 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         ResolvedJavaType resolvedType = meta.lookupJavaType(componentType);
 
         return ((HotSpotJVMCIRuntime) JVMCI.getRuntime()).getArrayBaseOffset(resolvedType.getJavaKind());
+    }
+
+    private static int getJavaSpecificationVersion() {
+        String value = Services.getSavedProperties().get("java.specification.version");
+        if (value.startsWith("1.")) {
+            value = value.substring(2);
+        }
+        return Integer.parseInt(value);
+    }
+
+    @Override
+    public long getStackOverflowLimit() {
+        try {
+            int stackOverflowLimitOffset = vmConfigAccess.getFieldOffset(JAVA_SPEC >= 16 ? "JavaThread::_stack_overflow_state._stack_overflow_limit" : "JavaThread::_stack_overflow_limit",
+                            Integer.class, "address");
+            long threadEETopOffset = UNSAFE.objectFieldOffset(Thread.class.getDeclaredField("eetop"));
+            long eetop = UNSAFE.getLong(Thread.currentThread(), threadEETopOffset);
+            return UNSAFE.getLong(eetop + stackOverflowLimitOffset);
+        } catch (NoSuchFieldException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override

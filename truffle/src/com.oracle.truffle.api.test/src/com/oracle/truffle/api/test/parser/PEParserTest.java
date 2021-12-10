@@ -41,11 +41,13 @@
 package com.oracle.truffle.api.test.parser;
 
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.test.parser.PEParser.BasicNode;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class PEParserTest {
 
@@ -66,6 +68,11 @@ public class PEParserTest {
                     "05 IF H<I PRINT \"abcdef\"\n" +
                     "06 GOTO 02\n" +
                     "07 PRINT \"abcdefghijklmnopq\", J, \"bcdefg\"\n";
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     @Test
     public void test() {

@@ -191,14 +191,18 @@ public final class Target_sun_misc_Unsafe {
     }
 
     private static Field getInstanceFieldFromIndex(StaticObject holder, int slot) {
-        if (!(0 <= slot && slot < (1 << 16))) {
+        if (!(0 <= slot && slot < (1 << 16)) && slot >= 0) {
             throw EspressoError.shouldNotReachHere("the field offset is not normalized");
         }
-        if (holder.isStaticStorage()) {
-            // Lookup static field in current class.
-            return holder.getKlass().lookupStaticFieldTable(slot);
-        } else {
-            return holder.getKlass().lookupFieldTable(slot);
+        try {
+            if (holder.isStaticStorage()) {
+                // Lookup static field in current class.
+                return holder.getKlass().lookupStaticFieldTable(slot);
+            } else {
+                return holder.getKlass().lookupFieldTable(slot);
+            }
+        } catch (IndexOutOfBoundsException ex) {
+            throw EspressoError.shouldNotReachHere("invalid field offset");
         }
     }
 
@@ -1548,12 +1552,12 @@ public final class Target_sun_misc_Unsafe {
         if (k instanceof ObjectKlass) {
             ObjectKlass kl = (ObjectKlass) k;
             for (Field f : kl.getFieldTable()) {
-                if (f.getNameAsString().equals(hostName)) {
+                if (!f.isRemoved() && f.getNameAsString().equals(hostName)) {
                     return SAFETY_FIELD_OFFSET + f.getSlot();
                 }
             }
             for (Field f : kl.getStaticFieldTable()) {
-                if (f.getNameAsString().equals(hostName)) {
+                if (!f.isRemoved() && f.getNameAsString().equals(hostName)) {
                     return SAFETY_FIELD_OFFSET + f.getSlot();
                 }
             }

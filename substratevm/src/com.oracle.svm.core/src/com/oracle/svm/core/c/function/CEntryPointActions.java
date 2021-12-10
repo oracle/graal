@@ -28,7 +28,6 @@ import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CCharPointer;
-import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -100,39 +99,6 @@ public final class CEntryPointActions {
      * @return 0 on success, otherwise non-zero.
      */
     public static native int enterAttachThreadFromCrashHandler(Isolate isolate);
-
-    /**
-     * In the prologue, stop execution and return to the entry point method's caller with the given
-     * return value. The passed word is cast to the entry point method's return type, which must be
-     * a {@link WordBase} type.
-     */
-    public static native void bailoutInPrologue(WordBase value);
-
-    /**
-     * In the prologue, stop execution and return to the entry point method's caller with the given
-     * return value. The passed integer is narrowed to the entry point method's return type, which
-     * must be one of {@code long}, {@code int}, {@code short}, {@code char}, or {@code byte}.
-     */
-    public static native void bailoutInPrologue(long value);
-
-    /**
-     * In the prologue, stop execution and return to the entry point method's caller with the given
-     * return value. The entry point method's return type must be {@code double}, or can also be
-     * {@code float}, in which case a cast is applied.
-     */
-    public static native void bailoutInPrologue(double value);
-
-    /**
-     * In the prologue, stop execution and return to the entry point method's caller with the given
-     * return value. The entry point method's return type must be {@code boolean}.
-     */
-    public static native void bailoutInPrologue(boolean value);
-
-    /**
-     * In the prologue, stop execution and return to the entry point method's caller. The entry
-     * point method's return type must be {@code void}.
-     */
-    public static native void bailoutInPrologue();
 
     /**
      * Leaves the current thread's current context.

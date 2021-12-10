@@ -48,9 +48,9 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -83,8 +83,8 @@ import com.oracle.truffle.dsl.processor.CompileErrorException;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
-import com.oracle.truffle.dsl.processor.java.model.GeneratedElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
+import com.oracle.truffle.dsl.processor.java.model.GeneratedElement;
 
 /**
  * THIS IS NOT PUBLIC API.
@@ -1238,7 +1238,7 @@ public class ElementUtils {
      * <p>
      * Any declaration of the given method and signature in the direct super type hierarchy - even
      * if it is abstract - is considered to override the default method.
-     * 
+     *
      * @param declaringElement the type to check
      * @param name the name of the default interface method
      * @param params the signature of the method
@@ -1573,20 +1573,21 @@ public class ElementUtils {
     }
 
     public static List<TypeMirror> uniqueSortedTypes(Collection<TypeMirror> types, boolean reverse) {
+        return sortTypes(new ArrayList<>(uniqueTypes(types)), reverse);
+    }
+
+    @SuppressWarnings("cast")
+    public static Collection<TypeMirror> uniqueTypes(Collection<TypeMirror> types) {
         if (types.isEmpty()) {
-            return new ArrayList<>(0);
+            return types;
         } else if (types.size() <= 1) {
-            if (types instanceof List) {
-                return (List<TypeMirror>) types;
-            } else {
-                return new ArrayList<>(types);
-            }
+            return types;
         }
-        Map<String, TypeMirror> sourceTypes = new HashMap<>();
+        Map<String, TypeMirror> uniqueTypeMap = new LinkedHashMap<>();
         for (TypeMirror type : types) {
-            sourceTypes.put(ElementUtils.getUniqueIdentifier(type), type);
+            uniqueTypeMap.put(ElementUtils.getUniqueIdentifier(type), type);
         }
-        return sortTypes(new ArrayList<>(sourceTypes.values()), reverse);
+        return uniqueTypeMap.values();
     }
 
     public static int compareMethod(ExecutableElement method1, ExecutableElement method2) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -45,13 +45,13 @@ import jdk.vm.ci.meta.JavaKind;
 public final class VirtualFrameIsNode extends VirtualFrameAccessorNode implements Virtualizable {
     public static final NodeClass<VirtualFrameIsNode> TYPE = NodeClass.create(VirtualFrameIsNode.class);
 
-    public VirtualFrameIsNode(Receiver frame, int frameSlotIndex, int accessTag) {
-        super(TYPE, StampFactory.forKind(JavaKind.Boolean), frame, frameSlotIndex, accessTag);
+    public VirtualFrameIsNode(Receiver frame, int frameSlotIndex, int accessTag, VirtualFrameAccessType type) {
+        super(TYPE, StampFactory.forKind(JavaKind.Boolean), frame, frameSlotIndex, accessTag, type);
     }
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        ValueNode tagAlias = tool.getAlias(frame.virtualFrameTagArray);
+        ValueNode tagAlias = tool.getAlias(frame.getTagArray(type));
 
         if (tagAlias instanceof VirtualObjectNode) {
             VirtualObjectNode tagVirtual = (VirtualObjectNode) tagAlias;

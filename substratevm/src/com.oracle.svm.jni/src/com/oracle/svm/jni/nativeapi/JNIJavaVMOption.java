@@ -37,6 +37,14 @@ public interface JNIJavaVMOption extends PointerBase {
     @CField("optionString")
     CCharPointer getOptionString();
 
+    @CField("optionString")
+    void setOptionString(CCharPointer value);
+
     @CField("extraInfo")
     WordPointer getExtraInfo();
+
+    @CField("extraInfo")
+    void setExtraInfo(WordPointer value);
+
+    JNIJavaVMOption addressOf(int index);
 }

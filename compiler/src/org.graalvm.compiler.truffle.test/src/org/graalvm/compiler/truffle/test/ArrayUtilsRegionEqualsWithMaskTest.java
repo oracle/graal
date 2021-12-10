@@ -57,7 +57,8 @@ public class ArrayUtilsRegionEqualsWithMaskTest extends GraalCompilerTest {
     private final int length;
     private final String mask;
 
-    public ArrayUtilsRegionEqualsWithMaskTest(String a1, int fromIndex1, String a2, int fromIndex2, String mask, int length, @SuppressWarnings("unused") boolean expected) {
+    public ArrayUtilsRegionEqualsWithMaskTest(String a1, int fromIndex1, String a2, int fromIndex2, String mask, int length, @SuppressWarnings("unused") boolean expectedByte,
+                    @SuppressWarnings("unused") boolean expectedChar) {
         this.a1 = a1;
         this.fromIndex1 = fromIndex1;
         this.a2 = a2;

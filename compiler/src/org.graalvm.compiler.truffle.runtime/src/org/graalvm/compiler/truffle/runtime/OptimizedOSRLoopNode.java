@@ -33,9 +33,10 @@ import com.oracle.truffle.api.ReplaceObserver;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.impl.FrameWithoutBoxing;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
@@ -49,8 +50,8 @@ import jdk.vm.ci.meta.SpeculationLog;
  * Loop node implementation that supports on-stack-replacement with compiled code.
  *
  * @see #create(RepeatingNode)
- * @see #createOSRLoop(RepeatingNode, int, FrameSlot[], FrameSlot[])
  */
+@SuppressWarnings("deprecation")
 public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode implements ReplaceObserver {
 
     /**
@@ -115,7 +116,7 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
             } finally {
                 baseLoopCount = 0;
             }
-        } else if (GraalCompilerDirectives.hasNextTier()) {
+        } else if (CompilerDirectives.hasNextTier()) {
             long iterationsCompleted = 0;
             Object status;
             try {
@@ -265,7 +266,7 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
         if (speculationLog == null) {
             speculationLog = GraalTruffleRuntime.getRuntime().createSpeculationLog();
         }
-        OptimizedCallTarget osrTarget = GraalTruffleRuntime.getRuntime().createOSRCallTarget(createRootNodeImpl(root, frame.getClass()));
+        OptimizedCallTarget osrTarget = (OptimizedCallTarget) createRootNodeImpl(root, frame.getClass()).getCallTarget();
         if (!osrTarget.acceptForCompilation()) {
             /*
              * Don't retry if the target will not be accepted anyway.
@@ -371,8 +372,11 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
      *            kept <code>null</code> writtenFRameSlots must be <code>null</code> as well.
      *
      * @see LoopNode LoopNode on how to use loop nodes.
+     * @deprecated without replacement
      */
-    public static OptimizedOSRLoopNode createOSRLoop(RepeatingNode repeating, int osrThreshold, FrameSlot[] readFrameSlots, FrameSlot[] writtenFrameSlots) {
+    @Deprecated
+    public static OptimizedOSRLoopNode createOSRLoop(RepeatingNode repeating, int osrThreshold, com.oracle.truffle.api.frame.FrameSlot[] readFrameSlots,
+                    com.oracle.truffle.api.frame.FrameSlot[] writtenFrameSlots) {
         if ((readFrameSlots == null) != (writtenFrameSlots == null)) {
             throw new IllegalArgumentException("If either readFrameSlots or writtenFrameSlots is set both must be provided.");
         }
@@ -380,13 +384,14 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
     }
 
     /**
-     * @deprecated Use
-     *             {@link OptimizedOSRLoopNode#createOSRLoop(RepeatingNode, int, FrameSlot[], FrameSlot[])}
-     *             instead.
+     * @deprecated Use OptimizedOSRLoopNode#createOSRLoop(RepeatingNode, int,
+     *             com.oracle.truffle.api.frame.FrameSlot[],
+     *             com.oracle.truffle.api.frame.FrameSlot[]) instead.
      */
     @SuppressWarnings("unused")
     @Deprecated
-    public static OptimizedOSRLoopNode createOSRLoop(RepeatingNode repeating, int osrThreshold, int invalidationBackoff, FrameSlot[] readFrameSlots, FrameSlot[] writtenFrameSlots) {
+    public static OptimizedOSRLoopNode createOSRLoop(RepeatingNode repeating, int osrThreshold, int invalidationBackoff, com.oracle.truffle.api.frame.FrameSlot[] readFrameSlots,
+                    com.oracle.truffle.api.frame.FrameSlot[] writtenFrameSlots) {
         return createOSRLoop(repeating, osrThreshold, readFrameSlots, writtenFrameSlots);
     }
 
@@ -407,12 +412,13 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
      */
     private static final class OptimizedVirtualizingOSRLoopNode extends OptimizedOSRLoopNode {
 
-        @CompilationFinal(dimensions = 1) private final FrameSlot[] readFrameSlots;
-        @CompilationFinal(dimensions = 1) private final FrameSlot[] writtenFrameSlots;
+        @CompilationFinal(dimensions = 1) private final com.oracle.truffle.api.frame.FrameSlot[] readFrameSlots;
+        @CompilationFinal(dimensions = 1) private final com.oracle.truffle.api.frame.FrameSlot[] writtenFrameSlots;
 
         private VirtualizingLoopOSRRootNode previousRoot;
 
-        private OptimizedVirtualizingOSRLoopNode(RepeatingNode repeatableNode, int osrThreshold, boolean firstTierBackedgeCounts, FrameSlot[] readFrameSlots, FrameSlot[] writtenFrameSlots) {
+        private OptimizedVirtualizingOSRLoopNode(RepeatingNode repeatableNode, int osrThreshold, boolean firstTierBackedgeCounts, com.oracle.truffle.api.frame.FrameSlot[] readFrameSlots,
+                        com.oracle.truffle.api.frame.FrameSlot[] writtenFrameSlots) {
             super(repeatableNode, osrThreshold, firstTierBackedgeCounts);
             this.readFrameSlots = readFrameSlots;
             this.writtenFrameSlots = writtenFrameSlots;
@@ -491,8 +497,8 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
 
     private static final class VirtualizingLoopOSRRootNode extends AbstractLoopOSRRootNode {
 
-        @CompilationFinal(dimensions = 1) private final FrameSlot[] readFrameSlots;
-        @CompilationFinal(dimensions = 1) private final FrameSlot[] writtenFrameSlots;
+        @CompilationFinal(dimensions = 1) private final com.oracle.truffle.api.frame.FrameSlot[] readFrameSlots;
+        @CompilationFinal(dimensions = 1) private final com.oracle.truffle.api.frame.FrameSlot[] writtenFrameSlots;
 
         @CompilationFinal(dimensions = 1) private final byte[] readFrameSlotsTags;
         @CompilationFinal(dimensions = 1) private final byte[] writtenFrameSlotsTags;
@@ -510,7 +516,7 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
 
         VirtualizingLoopOSRRootNode(OptimizedOSRLoopNode loop, FrameDescriptor frameDescriptor,
                         Class<? extends VirtualFrame> clazz,
-                        FrameSlot[] readFrameSlots, FrameSlot[] writtenFrameSlots) {
+                        com.oracle.truffle.api.frame.FrameSlot[] readFrameSlots, com.oracle.truffle.api.frame.FrameSlot[] writtenFrameSlots) {
             super(loop, frameDescriptor, clazz);
             this.readFrameSlots = readFrameSlots;
             this.writtenFrameSlots = writtenFrameSlots;
@@ -522,10 +528,10 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
             this.maxTagsLength = maxIndex + 1;
         }
 
-        private static int initializeFrameSlots(FrameDescriptor frameDescriptor, FrameSlot[] frameSlots, byte[] tags, int maxIndex) {
+        private static int initializeFrameSlots(FrameDescriptor frameDescriptor, com.oracle.truffle.api.frame.FrameSlot[] frameSlots, byte[] tags, int maxIndex) {
             int currentMaxIndex = maxIndex;
             for (int i = 0; i < frameSlots.length; i++) {
-                FrameSlot frameSlot = frameSlots[i];
+                com.oracle.truffle.api.frame.FrameSlot frameSlot = frameSlots[i];
                 if (getFrameSlotIndex(frameSlot) > currentMaxIndex) {
                     currentMaxIndex = getFrameSlotIndex(frameSlot);
                 }
@@ -535,7 +541,7 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
         }
 
         @SuppressWarnings("deprecation")
-        private static int getFrameSlotIndex(FrameSlot slot) {
+        private static int getFrameSlotIndex(com.oracle.truffle.api.frame.FrameSlot slot) {
             return slot.getIndex();
         }
 
@@ -560,7 +566,7 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
         }
 
         @ExplodeLoop
-        private void executeTransfer(FrameWithoutBoxing source, FrameWithoutBoxing target, FrameSlot[] frameSlots, byte[] speculatedTags) {
+        private void executeTransfer(FrameWithoutBoxing source, FrameWithoutBoxing target, com.oracle.truffle.api.frame.FrameSlot[] frameSlots, byte[] speculatedTags) {
             if (frameSlots == null) {
                 return;
             }
@@ -577,7 +583,7 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
             }
 
             for (int i = 0; i < frameSlots.length; i++) {
-                FrameSlot slot = frameSlots[i];
+                com.oracle.truffle.api.frame.FrameSlot slot = frameSlots[i];
                 int index = getFrameSlotIndex(slot);
 
                 byte speculatedTag = speculatedTags[i];
@@ -592,38 +598,43 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
                     }
                 }
 
-                boolean tagsCondition = speculatedTag == currentSourceTag;
-                if (!tagsCondition) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    speculatedTags[i] = currentSourceTag;
-                    speculatedTag = currentSourceTag;
-                }
-
-                switch (speculatedTag) {
-                    case FrameWithoutBoxing.BOOLEAN_TAG:
-                        target.setBoolean(slot, source.getBooleanUnsafe(index, slot, tagsCondition));
-                        break;
-                    case FrameWithoutBoxing.BYTE_TAG:
-                        target.setByte(slot, source.getByteUnsafe(index, slot, tagsCondition));
-                        break;
-                    case FrameWithoutBoxing.DOUBLE_TAG:
-                        target.setDouble(slot, source.getDoubleUnsafe(index, slot, tagsCondition));
-                        break;
-                    case FrameWithoutBoxing.FLOAT_TAG:
-                        target.setFloat(slot, source.getFloatUnsafe(index, slot, tagsCondition));
-                        break;
-                    case FrameWithoutBoxing.INT_TAG:
-                        target.setInt(slot, source.getIntUnsafe(index, slot, tagsCondition));
-                        break;
-                    case FrameWithoutBoxing.LONG_TAG:
-                        target.setLong(slot, source.getLongUnsafe(index, slot, tagsCondition));
-                        break;
-                    case FrameWithoutBoxing.OBJECT_TAG:
-                        target.setObject(slot, source.getObjectUnsafe(index, slot, tagsCondition));
-                        break;
-                    default:
+                while (true) {
+                    try {
+                        switch (speculatedTag) {
+                            case FrameWithoutBoxing.BOOLEAN_TAG:
+                                target.setBoolean(slot, source.getBoolean(slot));
+                                break;
+                            case FrameWithoutBoxing.BYTE_TAG:
+                                target.setByte(slot, source.getByte(slot));
+                                break;
+                            case FrameWithoutBoxing.DOUBLE_TAG:
+                                target.setDouble(slot, source.getDouble(slot));
+                                break;
+                            case FrameWithoutBoxing.FLOAT_TAG:
+                                target.setFloat(slot, source.getFloat(slot));
+                                break;
+                            case FrameWithoutBoxing.INT_TAG:
+                                target.setInt(slot, source.getInt(slot));
+                                break;
+                            case FrameWithoutBoxing.LONG_TAG:
+                                target.setLong(slot, source.getLong(slot));
+                                break;
+                            case FrameWithoutBoxing.OBJECT_TAG:
+                                target.setObject(slot, source.getObject(slot));
+                                break;
+                            default:
+                                CompilerDirectives.transferToInterpreterAndInvalidate();
+                                throw new AssertionError("Defined frame slot " + slot + " is illegal. Revirtualization failed. Please initialize frame slot with a FrameSlotKind.");
+                        }
+                    } catch (FrameSlotTypeException e) {
+                        // The tag for this slot may have changed; if so, deoptimize and update it.
                         CompilerDirectives.transferToInterpreterAndInvalidate();
-                        throw new AssertionError("Defined frame slot " + slot + " is illegal. Revirtualization failed. Please initialize frame slot with a FrameSlotKind.");
+                        assert speculatedTag != currentSourceTag;
+                        speculatedTags[i] = currentSourceTag;
+                        speculatedTag = currentSourceTag;
+                        continue;
+                    }
+                    break;
                 }
             }
         }

@@ -27,6 +27,7 @@ package com.oracle.graal.pointsto.util;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 
 public class Timer {
+    private static boolean disablePrinting = false;
 
     private String prefix;
 
@@ -57,6 +58,10 @@ public class Timer {
         this.autoPrint = autoPrint;
     }
 
+    public static void disablePrinting() {
+        disablePrinting = true;
+    }
+
     /**
      * Registers the prefix to be used when {@linkplain Timer#print(long) printing} a timer. This
      * allows the output of interlaced native image executions to be disambiguated.
@@ -79,6 +84,9 @@ public class Timer {
     }
 
     private void print(long time) {
+        if (disablePrinting) {
+            return;
+        }
         final String concurrentPrefix;
         if (prefix != null) {
             // Add the PID to further disambiguate concurrent builds of images with the same name

@@ -49,7 +49,6 @@ import com.oracle.svm.core.thread.ThreadListenerFeature;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.jfr.events.ClassLoadingStatistics;
 import com.oracle.svm.jfr.traceid.JfrTraceId;
 import com.oracle.svm.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.jfr.traceid.JfrTraceIdMap;
@@ -68,9 +67,10 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  *
  * There are two different kinds of JFR events:
  * <ul>
- * <li>Java-level events where there is a Java class such as {@link ClassLoadingStatistics} that
- * defines the event. Those events are typically triggered by the Java application and a Java
- * {@link EventWriter} object is used when writing the event to a buffer.</li>
+ * <li>Java-level events are defined by a Java class that extends {@link jdk.jfr.Event} and that is
+ * annotated with JFR-specific annotations. Those events are typically triggered by the Java
+ * application and a Java {@link EventWriter} object is used when writing the event to a
+ * buffer.</li>
  * <li>Native events are triggered by the JVM itself and are defined in the JFR metadata.xml file.
  * For writing such an event to a buffer, we call into {@link JfrNativeEventWriter} and pass a
  * {@link JfrNativeEventWriterData} struct that is typically allocated on the stack.</li>
@@ -118,6 +118,7 @@ public class JfrFeature implements Feature {
     public void afterRegistration(AfterRegistrationAccess access) {
         ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.jfr", false);
         ModuleSupport.exportAndOpenAllPackagesToUnnamed("java.base", false);
+        ModuleSupport.exportAndOpenPackageToClass("jdk.jfr", "jdk.jfr.events", false, JfrFeature.class);
         ModuleSupport.exportAndOpenPackageToClass("jdk.internal.vm.ci", "jdk.vm.ci.hotspot", false, JfrEventSubstitution.class);
 
         // Initialize some parts of JFR/JFC at image build time.
@@ -131,6 +132,7 @@ public class JfrFeature implements Feature {
         ImageSingletons.add(JfrTraceIdEpoch.class, new JfrTraceIdEpoch());
 
         JfrSerializerSupport.get().register(new JfrFrameTypeSerializer());
+        JfrSerializerSupport.get().register(new JfrThreadStateSerializer());
         ThreadListenerSupport.get().register(SubstrateJVM.getThreadLocal());
     }
 

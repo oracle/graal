@@ -37,9 +37,9 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.windows.WindowsUtils;
-import com.oracle.svm.core.windows.headers.LibC;
 import com.oracle.svm.core.windows.headers.LibLoaderAPI;
 import com.oracle.svm.core.windows.headers.WinBase.HMODULE;
+import com.oracle.svm.core.windows.headers.WindowsLibC;
 import com.oracle.svm.truffle.nfi.Target_com_oracle_truffle_nfi_backend_libffi_NFIUnsatisfiedLinkError;
 import com.oracle.svm.truffle.nfi.TruffleNFISupport;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -66,7 +66,7 @@ final class WindowsTruffleNFISupport extends TruffleNFISupport {
 
     @Override
     protected CCharPointer strdupImpl(CCharPointer src) {
-        return LibC.strdup(src);
+        return WindowsLibC.strdup(src);
     }
 
     @Override

@@ -37,8 +37,9 @@ Here is a basic working example, before going into the details:
 
 ```ruby
 library = Polyglot.eval('nfi', 'load "libSDL2.dylib"')  # load a library
-symbol = library['SDL_GetRevisionNumber']               # load a symbol from the lirbary
-function = symbol.bind('():UINT32')                     # bind the symbol to types to create a function
+symbol = library['SDL_GetRevisionNumber']               # load a symbol from the library
+signature = Polyglot.eval('nfi', '():UINT32')           # prepare a signature
+function = signature.bind(symbol)                       # bind the symbol to the signature to create a function
 puts function.call # => 12373                           # call the function
 ```
 
@@ -63,7 +64,7 @@ the process, equivalent to `RTLD_DEFAULT` in the Posix interface.
 The `load "filename"` command loads a library from a file.
 You are responsible for any cross-platform concerns about library naming conventions and load paths.
 
-The `load (flag | flag | ...) "filename"`command allows you to specify flags to load the library.
+The `load (flag | flag | ...) "filename"` command allows you to specify flags to load the library.
 For the default backend (backends will be described later), and when running on a Posix platform, the flags available are `RTLD_GLOBAL`, `RTLD_LOCAL`, `RTLD_LAZY`, and `RTLD_NOW`, which have the conventional Posix semantics.
 The default is `RTLD_NOW` if neither `RTLD_LAZY` nor `RTLD_NOW` were specified.
 
@@ -77,13 +78,12 @@ symbol = library['symbol_name']
 
 ## Producing Native Function Objects from Symbols
 
-To get an executable object that you can call in order to invoke the native
-function, *bind* the symbol object that was previously loaded, by calling
-the `bind` method on it. Supply a type signature that needs to match the
-native function's actual type signature.
+To get an executable object that you can call in order to invoke the native function, *bind* the symbol object that was previously loaded, by creating a signature object and calling the `bind` method on it.
+The signature object needs to match the native function's actual type signature.
 
 ```ruby
-function = symbol.bind('...signature...')
+signature = Polyglot.eval('nfi', '...signature...')
+function = signature.bind(symbol)
 ```
 
 The format of the signature is `(arg, arg, ...) : return`, where `arg` and `return` are types.
@@ -145,7 +145,8 @@ void native_function(int32_t (*fn)(int32_t)) {
 ```
 
 ```ruby
-native_function = library['native_function'].bind("((SINT32):SINT32):VOID")
+signature = Polyglot.eval('nfi', '((SINT32):SINT32):VOID')
+native_function = signature.bind(library['native_function'])
 native_function.call(->(x) { x + 1 })
 ```
 
@@ -167,7 +168,8 @@ These two examples are equivalent:
 ```ruby
 library = Polyglot.eval('nfi', 'load libSDL2.dylib')
 symbol = library['SDL_GetRevisionNumber']
-function = symbol.bind('():UINT32')
+signature = Polyglot.eval('nfi', '():UINT32')
+function = signature.bind(symbol)
 puts function.call # => 12373
 ```
 
@@ -190,7 +192,7 @@ Depending on the configuration of components you are running, available backends
 
 ### Truffle NFI on Native Image
 
-To build a native image that contains the Truffle NFI, it is sufficient to use the `--langeage:nfi` argument, or specify `Requires = language:nfi` in `native-image.properties`.
+To build a native image that contains the Truffle NFI, it is sufficient to use the `--language:nfi` argument, or specify `Requires = language:nfi` in `native-image.properties`.
 It is possible to select what implementation to use for the `native` backend using `--language:nfi=<backend>`.
 
 Note that the `--language:nfi=<backend>` argument must come before any other arguments that might pull in the NFI as dependency via `Requires = language:nfi`.
@@ -207,10 +209,11 @@ This will break users of the NFI that rely on native access (e.g. the GraalVM LL
 
 The NFI can be used with unmodified, already compiled native code, but it can also be used with a Truffle-specific API being used by the native code.
 
-The special type `ENV` adds an additional parameter `TruffleEnv *env` to the signature. An additional simple type `OBJECT` translates to an opaque
-`TruffleObject` type.
+The special type `ENV` adds an additional parameter `TruffleEnv *env` to the signature.
+An additional simple type `OBJECT` translates to an opaque `TruffleObject` type.
 
-The `trufflenfi.h` library provides declarations for working with these types, that can then be used by the native code called through the NFI. See `trufflenfi.h` itself for more documentation on this API.
+The `trufflenfi.h` header file provides declarations for working with these types, that can then be used by the native code called through the NFI.
+See `trufflenfi.h` for more documentation on this API.
 
 ## Type Marshalling
 
@@ -234,7 +237,8 @@ The following table shows the possible types in NFI signatures with their corres
 
 The following sections describe the type conversions in detail.
 
-The type conversion behavior with function pointers can be slightly confusing, because the direction of the arguments is reversed. When in doubt, always try to figure out in which direction arguments or return values flow, from managed to native or from native to managed.
+The type conversion behavior with function pointers can be slightly confusing, because the direction of the arguments is reversed.
+When in doubt, always try to figure out in which direction arguments or return values flow, from managed to native or from native to managed.
 
 ### `VOID`
 
@@ -251,9 +255,12 @@ The argument needs to be a Polyglot number, and its value needs to fit in the va
 
 One thing to note is the handling of the unsigned integer types.
 Even though the Polyglot API does not specify separate messages for values fitting in unsigned types, the conversion is still using the unsigned value ranges.
-For example, the value `0xFF` passed from native to managed through a return value of type `SINT8` will result in a Polyglot number `-1`, which `fitsInByte`, but the same value returned as `UINT8` results in a Polyglot number `255`, which does *not*
-`fitsInByte`.
-Also, passing `-1` to an argument of type `UINT8` is a type error, but passing `255` is allowed, even though it does not `fitsInByte`.
+For example, the value `0xFF` passed from native to managed through a return value of type `SINT8` will result in a Polyglot number `-1`, which `fitsInByte`.
+But the same value returned as `UINT8` results in a Polyglot number `255`, which does *not* `fitsInByte`.
+
+When passing numbers from managed code to native code, the signedness of the number is ignored, only the bits of the number are relevant.
+So for example, passing `-1` to an argument of type `UINT8` is allowed, and the result on the native side is `255`, since it has the same bits as `-1`.
+The other way round, passing `255` to an argument of type `SINT8` is also allowed, and the result on the native side is `-1`.
 
 Since in the current Polyglot API it is not possible to represent numbers outside of the signed 64-bit range, the `UINT64` type is currently handled with *signed* semantics.
 This is a known bug in the API, and will change in a future release.
@@ -268,8 +275,6 @@ An object with `isNull == true` will be passed as a native `NULL`.
 
 `POINTER` return values will produce a polyglot object with `isPointer == true`.
 The native `NULL` pointer will additionally have `isNull == true`.
-
-In addition, the returned pointer object will also have a method `bind`, and behave the same as symbols loaded from an NFI library. When calling `bind` on such a pointer, it is the user's responsibility to ensure that the pointer really points to a function with a matching signature.
 
 ### `STRING`
 
@@ -302,7 +307,8 @@ The lifetime of `TruffleObject` references needs to be managed manually.
 See the documentation in `trufflenfi.h` for API functions to manage the lifetime of `TruffleObject` references.
 
 A `TruffleObject` passed as an argument is owned by the caller, and guaranteed to stay alive for the duration of the call.
-A `TruffleObject` reference returned from a callback function pointer is owned by the caller, and needs to be freed after use. Returning a `TruffleObject` from a native function does *not* transfer ownership (but there is an API function in `trufflenfi.h` to do that).
+A `TruffleObject` reference returned from a callback function pointer is owned by the caller, and needs to be freed after use.
+Returning a `TruffleObject` from a native function does *not* transfer ownership (but there is an API function in `trufflenfi.h` to do that).
 
 ### `[...]` (Native Primitive Arrays)
 
@@ -321,7 +327,7 @@ The effects of concurrent access to the Java array during the native call are un
 
 On the native side, a nested signature type corresponds to a function pointer with the given signature, calling back to managed code.
 
-Polyglot executable objects passed from managed to native using a function pointer type must be converted to a function pointer that can be called by the native code.
+Polyglot executable objects passed from managed to native using a function pointer type are converted to a function pointer that can be called by the native code.
 For function pointer arguments, the function pointer is owned by the caller, and is guaranteed to stay alive for the duration of the call only.
 Function pointer return values are owned by the caller, and have to be freed manually.
 See `polyglot.h` for API functions to manage the lifetime of function pointer values.
@@ -347,6 +353,7 @@ This function object is expected to be called with two integer arguments, and th
 When the `ENV` type is used as an argument type for a function pointer parameter, that function pointer must be called with a valid NFI environment as an argument.
 If the caller already has an environment, threading it through to callback function pointers is more efficient than calling them without an `ENV` argument.
 
-## Other Point
+## Calling Convention
 
 Native functions must use the system's standard ABI.
+There is currently no support for alternative ABIs.

@@ -124,7 +124,8 @@ final class PolyglotObjectProxyHandler implements InvocationHandler, PolyglotWra
         @Child private ProxyInvokeNode proxyInvoke = ProxyInvokeNodeGen.create();
         @Child private ToGuestValuesNode toGuests = ToGuestValuesNode.create();
 
-        ObjectProxyNode(Class<?> receiverType, Class<?> interfaceType) {
+        ObjectProxyNode(PolyglotLanguageInstance languageInstance, Class<?> receiverType, Class<?> interfaceType) {
+            super(languageInstance);
             this.receiverClass = receiverType;
             this.interfaceType = interfaceType;
         }
@@ -165,7 +166,7 @@ final class PolyglotObjectProxyHandler implements InvocationHandler, PolyglotWra
         }
 
         static CallTarget lookup(PolyglotLanguageContext languageContext, Class<?> receiverClass, Class<?> interfaceClass) {
-            ObjectProxyNode node = new ObjectProxyNode(receiverClass, interfaceClass);
+            ObjectProxyNode node = new ObjectProxyNode(languageContext.getLanguageInstance(), receiverClass, interfaceClass);
             CallTarget target = lookupHostCodeCache(languageContext, node, CallTarget.class);
             if (target == null) {
                 target = installHostCodeCache(languageContext, node, node.getCallTarget(), CallTarget.class);

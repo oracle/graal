@@ -80,10 +80,7 @@ import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.examples.TargetMappings;
 import com.oracle.truffle.tck.tests.ValueAssert.Trait;
 
@@ -240,7 +237,7 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
 
     @Test
     public void testStaticClassProperties() {
-        Value recordClass = getStaticClass(JavaRecord.class);
+        Value recordClass = context.eval("sl", "function main() { return java(\"" + JavaRecord.class.getName() + "\"); }");
         assertTrue(recordClass.canInstantiate());
         assertTrue(recordClass.getMetaObject().asHostObject() == Class.class);
         assertFalse(recordClass.hasMember("getName"));
@@ -262,7 +259,7 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
 
         assertValue(recordClass, Trait.INSTANTIABLE, Trait.MEMBERS, Trait.HOST_OBJECT, Trait.META);
 
-        Value bigIntegerStatic = getStaticClass(BigInteger.class);
+        Value bigIntegerStatic = context.eval("sl", "function main() { return java(\"" + BigInteger.class.getName() + "\"); }");
         assertTrue(bigIntegerStatic.hasMember("ZERO"));
         assertTrue(bigIntegerStatic.hasMember("ONE"));
         Value bigIntegerOne = bigIntegerStatic.getMember("ONE");
@@ -274,21 +271,6 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
         Value bigResult = bigValue.getMember("add").execute(bigIntegerOne);
         Value expectedResult = bigIntegerStatic.getMember("valueOf").execute(9001);
         assertEquals(0, bigResult.getMember("compareTo").execute(expectedResult).asInt());
-    }
-
-    private Value getStaticClass(Class<?> clazz) {
-        ProxyLanguage.setDelegate(new ProxyLanguage() {
-            @Override
-            protected CallTarget parse(ParsingRequest request) {
-                return new RootNode(languageInstance) {
-                    @Override
-                    public Object execute(VirtualFrame frame) {
-                        return LanguageContext.get(this).env.lookupHostSymbol(clazz.getName());
-                    }
-                }.getCallTarget();
-            }
-        });
-        return context.asValue(context.eval(ProxyLanguage.ID, clazz.getName()));
     }
 
     @Test

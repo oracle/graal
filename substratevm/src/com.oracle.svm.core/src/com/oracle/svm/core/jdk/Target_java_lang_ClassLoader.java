@@ -30,6 +30,8 @@ import java.net.URL;
 import java.security.ProtectionDomain;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -242,6 +244,9 @@ public final class Target_java_lang_ClassLoader {
         throw VMError.unsupportedFeature("The assertion status of classes is fixed at image build time.");
     }
 
+    @Delete
+    private native void initializeJavaAssertionMaps();
+
     /*
      * We are defensive and also handle private native methods by marking them as deleted. If they
      * are reachable, the user is certainly doing something wrong. But we do not want to fail with a
@@ -250,6 +255,9 @@ public final class Target_java_lang_ClassLoader {
 
     @Delete
     private static native void registerNatives();
+
+    @Delete
+    private static native long findNative(ClassLoader loader, String entryName);
 
     @Substitute
     @SuppressWarnings({"unused", "static-method"})
@@ -318,6 +326,13 @@ public final class Target_java_lang_ClassLoader {
     @TargetElement(onlyWith = JDK11OrLater.class)
     private static native Class<?> defineClass2(ClassLoader loader, String name, java.nio.ByteBuffer b, int off, int len, ProtectionDomain pd, String source);
 
+    @Substitute
+    @TargetElement(onlyWith = JDK17OrLater.class)
+    @SuppressWarnings("unused")
+    private static Class<?> defineClass0(ClassLoader loader, Class<?> lookup, String name, byte[] b, int off, int len, ProtectionDomain pd, boolean initialize, int flags, Object classData) {
+        throw VMError.unsupportedFeature("Defining hidden classes at runtime is not supported.");
+    }
+
     @Delete
     @TargetElement(onlyWith = JDK11OrEarlier.class)
     private native Class<?> findBootstrapClass(String name);
@@ -333,6 +348,41 @@ public final class Target_java_lang_ClassLoader {
 
     @Delete
     private static native Target_java_lang_AssertionStatusDirectives retrieveDirectives();
+
+    /*
+     * Ensure that fields and methods that hold state of the image generator are not reachable when
+     * all fields or methods of the class are registered for reflection.
+     */
+
+    @Delete //
+    @TargetElement(onlyWith = {JDK11OrLater.class, JDK11OrEarlier.class}) //
+    private static Set<String> loadedLibraryNames;
+    @Delete //
+    @TargetElement(onlyWith = {JDK11OrLater.class, JDK11OrEarlier.class}) //
+    private static Map<String, Target_java_lang_ClassLoader_NativeLibrary> systemNativeLibraries;
+    @Delete //
+    @TargetElement(onlyWith = {JDK11OrLater.class, JDK11OrEarlier.class}) //
+    private Map<String, Target_java_lang_ClassLoader_NativeLibrary> nativeLibraries;
+    // Checkstyle: stop
+    @Delete //
+    @TargetElement(onlyWith = JDK11OrEarlier.class) //
+    private static String[] usr_paths;
+    @Delete //
+    @TargetElement(onlyWith = JDK11OrEarlier.class) //
+    private static String[] sys_paths;
+    // Checkstyle: resume
+
+    @Delete
+    @TargetElement(onlyWith = {JDK11OrLater.class, JDK11OrEarlier.class})
+    private native Map<String, Target_java_lang_ClassLoader_NativeLibrary> nativeLibraries();
+
+    @Delete
+    @TargetElement(onlyWith = {JDK11OrLater.class, JDK11OrEarlier.class})
+    private static native Map<String, Target_java_lang_ClassLoader_NativeLibrary> systemNativeLibraries();
+
+    @Delete
+    @TargetElement(onlyWith = JDK11OrEarlier.class)
+    private static native boolean loadLibrary0(Class<?> fromClass, File file);
 }
 
 @TargetClass(value = ClassLoader.class, innerClass = "NativeLibrary", onlyWith = JDK11OrEarlier.class)

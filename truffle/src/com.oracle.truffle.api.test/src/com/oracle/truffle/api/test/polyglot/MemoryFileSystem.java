@@ -86,7 +86,11 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.BiConsumer;
+
 import org.graalvm.polyglot.io.FileSystem;
+import org.junit.BeforeClass;
+
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public final class MemoryFileSystem implements FileSystem {
     private static final byte[] EMPTY = new byte[0];
@@ -117,6 +121,11 @@ public final class MemoryFileSystem implements FileSystem {
             return 0;
         }
     };
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     private final Map<Long, FileInfo> inodes;
     private final Map<Long, byte[]> blocks;

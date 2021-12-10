@@ -47,13 +47,14 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Predicate;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 
-import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.graalvm.polyglot.EnvironmentAccess;
 import org.graalvm.polyglot.HostAccess;
@@ -77,7 +78,7 @@ final class PolyglotContextConfig {
     final boolean createProcessAllowed;
     final Predicate<String> classFilter;
     private final Map<String, String[]> applicationArguments;
-    final EconomicSet<String> allowedPublicLanguages;
+    final Set<String> allowedPublicLanguages;
     private final Map<String, OptionValuesImpl> optionsById;
     @CompilationFinal FileSystem fileSystem;
     @CompilationFinal FileSystem internalFileSystem;
@@ -92,6 +93,7 @@ final class PolyglotContextConfig {
     final PolyglotLimits limits;
     final ClassLoader hostClassLoader;
     private final List<PolyglotInstrument> configuredInstruments;
+    private final Set<PolyglotLanguage> configuredLanguages;
     final HostAccess hostAccess;
     final boolean allowValueSharing;
     final boolean useSystemExit;
@@ -100,7 +102,7 @@ final class PolyglotContextConfig {
                     boolean hostLookupAllowed, PolyglotAccess polyglotAccess, boolean nativeAccessAllowed, boolean createThreadAllowed,
                     boolean hostClassLoadingAllowed, boolean allowExperimentalOptions,
                     Predicate<String> classFilter, Map<String, String[]> applicationArguments,
-                    EconomicSet<String> allowedPublicLanguages, Map<String, String> options, FileSystem publicFileSystem, FileSystem internalFileSystem, Handler logHandler,
+                    Set<String> onlyLanguages, Map<String, String> options, FileSystem publicFileSystem, FileSystem internalFileSystem, Handler logHandler,
                     boolean createProcessAllowed, ProcessHandler processHandler, EnvironmentAccess environmentAccess, Map<String, String> environment,
                     ZoneId timeZone, PolyglotLimits limits, ClassLoader hostClassLoader, HostAccess hostAccess, boolean allowValueSharing, boolean useSystemExit) {
         assert out != null;
@@ -118,7 +120,7 @@ final class PolyglotContextConfig {
         this.createProcessAllowed = createProcessAllowed;
         this.classFilter = classFilter;
         this.applicationArguments = applicationArguments;
-        this.allowedPublicLanguages = allowedPublicLanguages;
+        this.allowedPublicLanguages = onlyLanguages.isEmpty() ? engine.getLanguages().keySet() : onlyLanguages;
         this.fileSystem = publicFileSystem;
         this.internalFileSystem = internalFileSystem;
         this.optionsById = new HashMap<>();
@@ -128,13 +130,17 @@ final class PolyglotContextConfig {
         this.logLevels = new HashMap<>(engine.logLevels);
         this.allowValueSharing = allowValueSharing;
         List<PolyglotInstrument> instruments = null;
+        final Set<PolyglotLanguage> languages = new LinkedHashSet<>();
+
+        for (String id : onlyLanguages) {
+            addConfiguredLanguage(engine, languages, engine.idToLanguage.get(id));
+        }
         for (String optionKey : options.keySet()) {
             final String group = PolyglotEngineImpl.parseOptionGroup(optionKey);
             if (group.equals(PolyglotEngineImpl.OPTION_GROUP_LOG)) {
                 logLevels.put(PolyglotEngineImpl.parseLoggerName(optionKey), Level.parse(options.get(optionKey)));
                 continue;
             }
-
             VMObject object = findObjectForContextOption(engine, optionKey, group);
             String id;
             OptionValuesImpl engineOptionValues;
@@ -142,6 +148,7 @@ final class PolyglotContextConfig {
                 PolyglotLanguage language = (PolyglotLanguage) object;
                 id = language.getId();
                 engineOptionValues = language.getOptionValues();
+                addConfiguredLanguage(engine, languages, language);
             } else if (object instanceof PolyglotInstrument) {
                 PolyglotInstrument instrument = (PolyglotInstrument) object;
                 id = instrument.getId();
@@ -153,20 +160,37 @@ final class PolyglotContextConfig {
             } else {
                 throw new AssertionError("invalid vm object");
             }
+
             OptionValuesImpl targetOptions = optionsById.get(id);
             if (targetOptions == null) {
                 targetOptions = engineOptionValues.copy();
                 optionsById.put(id, targetOptions);
             }
-            targetOptions.put(optionKey, options.get(optionKey), allowExperimentalOptions);
+            targetOptions.put(engine, optionKey, options.get(optionKey), allowExperimentalOptions);
         }
         this.configuredInstruments = instruments == null ? Collections.emptyList() : instruments;
+        this.configuredLanguages = languages == null ? Collections.emptySet() : languages;
         this.processHandler = processHandler;
         this.environmentAccess = environmentAccess;
         this.environment = environment == null ? Collections.emptyMap() : environment;
         this.hostAccess = hostAccess;
         this.hostClassLoader = hostClassLoader;
         this.useSystemExit = useSystemExit;
+    }
+
+    void addConfiguredLanguage(PolyglotEngineImpl engine, Set<PolyglotLanguage> languages, PolyglotLanguage language) {
+        if (language != null && languages.add(language)) {
+            collectDependentLanguages(engine, language.cache.getDependentLanguages(), languages);
+        }
+    }
+
+    private void collectDependentLanguages(PolyglotEngineImpl engine, final Collection<String> languageIds, Collection<PolyglotLanguage> foundLanguages) {
+        for (String id : languageIds) {
+            PolyglotLanguage language = engine.idToLanguage.get(id);
+            if (language != null && foundLanguages.add(language)) {
+                collectDependentLanguages(engine, language.cache.getDependentLanguages(), foundLanguages);
+            }
+        }
     }
 
     public ZoneId getTimeZone() {
@@ -225,7 +249,7 @@ final class PolyglotContextConfig {
         if (values == null) {
             values = lang.getOptionValues();
         }
-        return values.copy();
+        return values;
     }
 
     OptionValuesImpl getInstrumentOptionValues(PolyglotInstrument instrument) {
@@ -234,6 +258,10 @@ final class PolyglotContextConfig {
             values = instrument.getEngineOptionValues();
         }
         return values.copy();
+    }
+
+    Set<PolyglotLanguage> getConfiguredLanguages() {
+        return configuredLanguages;
     }
 
     /**

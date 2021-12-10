@@ -41,7 +41,7 @@
 #
 
 # If you update this number make sure the graalvm.version value in ./pom.xml matches
-VERSION="22.0.0-dev"
+VERSION="22.1.0-dev"
 
 MAIN_CLASS="com.oracle.truffle.sl.launcher.SLMain"
 SCRIPT_HOME="$(cd "$(dirname "$0")" && pwd -P)"

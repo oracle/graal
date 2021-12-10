@@ -45,8 +45,6 @@ import java.util.Objects;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
 
@@ -484,7 +482,7 @@ class BlockNodeSnippets {
     final class ResumableBlockNode extends LanguageNode
                     implements ElementExecutor<LanguageNode> {
 
-        @CompilationFinal private FrameSlot indexSlot;
+        @CompilationFinal private Integer indexSlot;
         @Child private BlockNode<LanguageNode> block;
 
         ResumableBlockNode(LanguageNode[] elements) {
@@ -493,7 +491,7 @@ class BlockNodeSnippets {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            frame.setInt(getIndexSlot(), 0);
+            frame.setAuxiliarySlot(getIndexSlot(), 0);
             return block.executeGeneric(frame, 0);
         }
 
@@ -501,14 +499,7 @@ class BlockNodeSnippets {
         // resumed later on after a yield.
         public void resume(VirtualFrame frame) {
             getIndexSlot();
-            int startIndex;
-            try {
-                startIndex = frame.getInt(getIndexSlot());
-            } catch (FrameSlotTypeException e) {
-                // should not happen because the first time
-                // the block must be called using execute
-                throw new AssertionError();
-            }
+            int startIndex = frame.getInt(getIndexSlot());
             block.executeGeneric(frame, startIndex);
         }
 
@@ -535,12 +526,12 @@ class BlockNodeSnippets {
             }
         }
 
-        private FrameSlot getIndexSlot() {
-            FrameSlot slot = this.indexSlot;
+        private int getIndexSlot() {
+            Integer slot = this.indexSlot;
             if (slot == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 FrameDescriptor fd = getRootNode().getFrameDescriptor();
-                this.indexSlot = slot = fd.findOrAddFrameSlot(this);
+                this.indexSlot = slot = fd.findOrAddAuxiliarySlot(this);
             }
             return slot;
         }

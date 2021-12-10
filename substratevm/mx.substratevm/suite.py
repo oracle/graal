@@ -2,7 +2,7 @@
 suite = {
     "mxversion": "5.310.0",
     "name": "substratevm",
-    "version" : "22.0.0",
+    "version" : "22.1.0",
     "release" : False,
     "url" : "https://github.com/oracle/graal/tree/master/substratevm",
 
@@ -121,6 +121,10 @@ suite = {
                         "sha1": "d1082bfd227b8f084682a2cd3b06e36f5d046e5e",
                         "urls": ["{urlbase}/llvm-shadowed-9.0.0-1.5.2-macosx-x86_64.jar"],
                         "moduleName" : "com.oracle.svm.shadowed.org.bytedeco.llvm.macosx.x86_64"
+                    },
+                    "aarch64": {
+                        # GR-34811
+                        "optional": True,
                     },
                 },
                 "<others>": {
@@ -462,6 +466,26 @@ suite = {
                 "<others>": {
                     "<others>": {
                         "cflags": ["-g", "-gdwarf-4", "-fPIC", "-O2", "-D_LITTLE_ENDIAN", "-ffunction-sections", "-fdata-sections", "-fvisibility=hidden", "-D_FORTIFY_SOURCE=0"],
+                    },
+                },
+            },
+        },
+
+        "com.oracle.svm.native.reporterchelper": {
+            "subDir": "src",
+            "native": "shared_lib",
+            "deliverable": "reporterchelper",
+            "platformDependent": True,
+            "use_jdk_headers": True,
+            "os_arch": {
+                "windows": {
+                    "<others>": {
+                        "cflags": ["-Wall"]
+                    }
+                },
+                "<others>": {
+                    "<others>": {
+                        "cflags": ["-Wall", "-Werror"],
                     },
                 },
             },
@@ -1081,6 +1105,7 @@ suite = {
                     "com.oracle.svm.core.snippets", # Uses of com.oracle.svm.core.snippets.KnownIntrinsics
                     "com.oracle.svm.core", # Uses of com.oracle.svm.core.TypeResult
                     "com.oracle.svm.core.util", # Uses of com.oracle.svm.core.util.VMError
+                    "com.oracle.svm.core.jni", # Uses of com.oracle.svm.core.jni.JNIRuntimeAccess
                     "com.oracle.svm.jfr", # Uses of com.oracle.svm.jfr.JfrEnabled
                     "com.oracle.svm.hosted                        to java.base",
                     "com.oracle.svm.hosted.agent                  to java.instrument",
@@ -1112,6 +1137,7 @@ suite = {
                     "com.oracle.truffle.api.TruffleLanguage.Provider",
                     "com.oracle.truffle.api.instrumentation.TruffleInstrument.Provider",
                     "com.oracle.svm.hosted.agent.NativeImageBytecodeInstrumentationAgentExtension",
+                    "com.oracle.svm.hosted.NativeImageClassLoaderPostProcessing",
                 ],
                 "requiresConcealed": {
                     "jdk.internal.vm.ci": [
@@ -1133,12 +1159,14 @@ suite = {
                         "sun.security.jca",
                         "sun.security.util",
                         "sun.security.provider",
+                        "sun.security.ssl",
                         "com.sun.crypto.provider",
                         "sun.reflect.generics.repository",
                         "jdk.internal.org.objectweb.asm",
                         "sun.util.locale.provider",
                         "sun.util.resources",
                         "sun.invoke.util",
+                        "sun.net",
                     ],
                     "java.management": [
                         "sun.management",
@@ -1442,7 +1470,14 @@ suite = {
                 "com.oracle.graal.pointsto.infrastructure",
                 "com.oracle.graal.pointsto.flow.context.object",
               ],
+              "requires": [
+                "java.management",
+                "jdk.management",
+              ],
               "requiresConcealed" : {
+                "java.management": [
+                  "sun.management",
+                ],
                 "jdk.internal.vm.ci" : [
                   "jdk.vm.ci.meta",
                   "jdk.vm.ci.common",
@@ -1514,6 +1549,7 @@ suite = {
             "layout" : {
                 "clibraries/" : ["extracted-dependency:substratevm:SVM_HOSTED_NATIVE"],
                 "builder/clibraries/" : ["extracted-dependency:substratevm:SVM_HOSTED_NATIVE"],
+                "builder/lib/" : ["dependency:com.oracle.svm.native.reporterchelper"],
             },
         },
 

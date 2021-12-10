@@ -24,15 +24,21 @@
  */
 package com.oracle.svm.truffle.nfi;
 
+import com.oracle.svm.core.c.CGlobalData;
+import com.oracle.svm.core.c.CGlobalDataFactory;
+import com.oracle.svm.core.c.function.CEntryPointErrors;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
+import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
+import com.oracle.svm.core.c.function.CEntryPointOptions.ReturnNullPointer;
 import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveDetachThreadEpilogue;
 import com.oracle.svm.truffle.nfi.NativeAPI.AttachCurrentThreadFunction;
 import com.oracle.svm.truffle.nfi.NativeAPI.DetachCurrentThreadFunction;
@@ -137,23 +143,22 @@ final class NativeAPIImpl {
     }
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = GetTruffleEnvPrologue.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = GetTruffleEnvPrologue.class, prologueBailout = ReturnNullPointer.class, publishAs = Publish.NotPublished)
     static NativeTruffleEnv getTruffleEnv(NativeTruffleContext context) {
         TruffleNFISupport support = ImageSingletons.lookup(TruffleNFISupport.class);
         Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext ctx = support.resolveContextHandle(context.contextHandle());
         return WordFactory.pointer(ctx.getNativeEnv());
     }
 
-    static class GetTruffleEnvPrologue {
-        static void enter(NativeTruffleContext context) {
-            if (CEntryPointActions.enterIsolate(context.isolate()) != 0) {
-                CEntryPointActions.bailoutInPrologue(WordFactory.nullPointer());
-            }
+    static class GetTruffleEnvPrologue implements CEntryPointOptions.Prologue {
+        @Uninterruptible(reason = "prologue")
+        static int enter(NativeTruffleContext context) {
+            return CEntryPointActions.enterIsolate(context.isolate());
         }
     }
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(prologue = AttachCurrentThreadPrologue.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = AttachCurrentThreadPrologue.class, prologueBailout = ReturnNullPointer.class, publishAs = Publish.NotPublished)
     static NativeTruffleEnv attachCurrentThread(NativeTruffleContext context) {
         TruffleNFISupport support = ImageSingletons.lookup(TruffleNFISupport.class);
         Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext ctx = support.resolveContextHandle(context.contextHandle());
@@ -164,11 +169,10 @@ final class NativeAPIImpl {
         }
     }
 
-    static class AttachCurrentThreadPrologue {
-        static void enter(NativeTruffleContext context) {
-            if (CEntryPointActions.enterAttachThread(context.isolate(), true) != 0) {
-                CEntryPointActions.bailoutInPrologue(WordFactory.nullPointer());
-            }
+    static class AttachCurrentThreadPrologue implements CEntryPointOptions.Prologue {
+        @Uninterruptible(reason = "prologue")
+        static int enter(NativeTruffleContext context) {
+            return CEntryPointActions.enterAttachThread(context.isolate(), true);
         }
     }
 
@@ -180,15 +184,27 @@ final class NativeAPIImpl {
         ctx.detachThread();
     }
 
-    static class EnterNativeTruffleContextPrologue {
+    static class EnterNativeTruffleContextPrologue implements CEntryPointOptions.Prologue {
+        private static final CGlobalData<CCharPointer> errorMessage = CGlobalDataFactory.createCString("Thread failed to enter the isolate of the truffle context.");
+
+        @Uninterruptible(reason = "prologue")
         static void enter(NativeTruffleContext context) {
-            CEntryPointActions.enterIsolate(context.isolate());
+            int code = CEntryPointActions.enterIsolate(context.isolate());
+            if (code != CEntryPointErrors.NO_ERROR) {
+                CEntryPointActions.failFatally(code, errorMessage.get());
+            }
         }
     }
 
-    static class EnterNativeTruffleEnvPrologue {
+    static class EnterNativeTruffleEnvPrologue implements CEntryPointOptions.Prologue {
+        private static final CGlobalData<CCharPointer> errorMessage = CGlobalDataFactory.createCString("Thread failed to enter its existing context.");
+
+        @Uninterruptible(reason = "prologue")
         static void enter(NativeTruffleEnv env) {
-            CEntryPointActions.enter(env.isolateThread());
+            int code = CEntryPointActions.enter(env.isolateThread());
+            if (code != CEntryPointErrors.NO_ERROR) {
+                CEntryPointActions.failFatally(code, errorMessage.get());
+            }
         }
     }
 }

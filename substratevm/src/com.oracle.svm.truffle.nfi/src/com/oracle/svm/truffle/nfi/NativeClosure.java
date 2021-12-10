@@ -45,13 +45,13 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.CErrorNumber;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
+import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.truffle.nfi.LibFFI.ClosureData;
@@ -191,7 +191,7 @@ final class NativeClosure {
     @Uninterruptible(reason = "contains prologue and epilogue for thread state transition", calleeMustBe = false)
     static void invokeClosureBufferRet(@SuppressWarnings("unused") ffi_cif cif, Pointer ret, WordPointer args, ClosureData user) {
         /* Read the C error number before transitioning into the Java state. */
-        int errno = CErrorNumber.getCErrorNumber();
+        int errno = LibC.errno();
 
         if (user.envArgIdx() >= 0) {
             WordPointer envArgPtr = args.read(user.envArgIdx());
@@ -212,7 +212,7 @@ final class NativeClosure {
         errno = ErrnoMirror.errnoMirror.getAddress().read();
         CEntryPointActions.leave();
         /* Restore the C error number after being back in the Native state. */
-        CErrorNumber.setCErrorNumber(errno);
+        LibC.setErrno(errno);
     }
 
     private static void doInvokeClosureBufferRet(Pointer ret, WordPointer args, ClosureData user) {
@@ -243,7 +243,7 @@ final class NativeClosure {
     @Uninterruptible(reason = "contains prologue and epilogue for thread state transition", calleeMustBe = false)
     static void invokeClosureVoidRet(@SuppressWarnings("unused") ffi_cif cif, @SuppressWarnings("unused") WordPointer ret, WordPointer args, ClosureData user) {
         /* Read the C error number before transitioning into the Java state. */
-        int errno = CErrorNumber.getCErrorNumber();
+        int errno = LibC.errno();
 
         if (user.envArgIdx() >= 0) {
             WordPointer envArgPtr = args.read(user.envArgIdx());
@@ -264,7 +264,7 @@ final class NativeClosure {
         errno = ErrnoMirror.errnoMirror.getAddress().read();
         CEntryPointActions.leave();
         /* Restore the C error number after being back in the Native state. */
-        CErrorNumber.setCErrorNumber(errno);
+        LibC.setErrno(errno);
     }
 
     private static void doInvokeClosureVoidRet(WordPointer args, ClosureData user) {
@@ -276,7 +276,7 @@ final class NativeClosure {
     @Uninterruptible(reason = "contains prologue and epilogue for thread state transition", calleeMustBe = false)
     static void invokeClosureStringRet(@SuppressWarnings("unused") ffi_cif cif, WordPointer ret, WordPointer args, ClosureData user) {
         /* Read the C error number before transitioning into the Java state. */
-        int errno = CErrorNumber.getCErrorNumber();
+        int errno = LibC.errno();
 
         if (user.envArgIdx() >= 0) {
             WordPointer envArgPtr = args.read(user.envArgIdx());
@@ -297,7 +297,7 @@ final class NativeClosure {
         errno = ErrnoMirror.errnoMirror.getAddress().read();
         CEntryPointActions.leave();
         /* Restore the C error number after being back in the Native state. */
-        CErrorNumber.setCErrorNumber(errno);
+        LibC.setErrno(errno);
     }
 
     private static void doInvokeClosureStringRet(WordPointer ret, WordPointer args, ClosureData user) {
@@ -310,7 +310,7 @@ final class NativeClosure {
     @Uninterruptible(reason = "contains prologue and epilogue for thread state transition", calleeMustBe = false)
     static void invokeClosureObjectRet(@SuppressWarnings("unused") ffi_cif cif, WordPointer ret, WordPointer args, ClosureData user) {
         /* Read the C error number before transitioning into the Java state. */
-        int errno = CErrorNumber.getCErrorNumber();
+        int errno = LibC.errno();
 
         if (user.envArgIdx() >= 0) {
             WordPointer envArgPtr = args.read(user.envArgIdx());
@@ -331,7 +331,7 @@ final class NativeClosure {
         errno = ErrnoMirror.errnoMirror.getAddress().read();
         CEntryPointActions.leave();
         /* Restore the C error number after being back in the Native state. */
-        CErrorNumber.setCErrorNumber(errno);
+        LibC.setErrno(errno);
     }
 
     private static void doInvokeClosureObjectRet(WordPointer ret, WordPointer args, ClosureData user) {

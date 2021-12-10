@@ -58,7 +58,7 @@ public abstract class LLVMVAListNode extends LLVMExpressionNode {
     }
 
     LLVMExpressionNode createAllocaNode() {
-        DataLayout dataLayout = LLVMVaListStorage.findDataLayoutFromCurrentFrame();
+        DataLayout dataLayout = getDataLayout();
         LLVMLanguage language = LLVMLanguage.get(null);
         PlatformCapability<?> capability = language.getCapability(PlatformCapability.class);
         return language.getActiveConfiguration().createNodeFactory(language, dataLayout).createAlloca(capability.getVAListType(), capability.getVAListAlignment());

@@ -176,22 +176,18 @@ public abstract class PostOrderNodeIterator<T extends MergeableState<T>> {
         nodeStates.put(end, state);
         visitedEnds.mark(end);
         LoopBeginNode begin = end.loopBegin();
-        boolean endsVisited = true;
         for (LoopEndNode le : begin.loopEnds()) {
             if (!visitedEnds.isMarked(le)) {
-                endsVisited = false;
-                break;
+                return;
             }
         }
-        if (endsVisited) {
-            ArrayList<T> states = new ArrayList<>(begin.loopEnds().count());
-            for (LoopEndNode le : begin.orderedLoopEnds()) {
-                states.add(nodeStates.get(le));
-            }
-            T loopBeginState = nodeStates.get(begin);
-            if (loopBeginState != null) {
-                loopBeginState.loopEnds(begin, states);
-            }
+        ArrayList<T> states = new ArrayList<>(begin.loopEnds().count());
+        for (LoopEndNode le : begin.orderedLoopEnds()) {
+            states.add(nodeStates.get(le));
+        }
+        T loopBeginState = nodeStates.get(begin);
+        if (loopBeginState != null) {
+            loopBeginState.loopEnds(begin, states);
         }
     }
 

@@ -1,5 +1,10 @@
 # Espresso Changelog
 
+## Version 22.0.0
+### Internal changes
+* Espresso adopted the new Frame API.
+
+
 ## Version 21.3.0
 ### User-visible changes
 * Java 17 guest and host support.

@@ -35,11 +35,10 @@ import static org.graalvm.compiler.nodes.Invoke.SIZE_UNKNOWN_RATIONALE;
 import java.util.Map;
 
 import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.debug.DebugCloseable;
-import org.graalvm.compiler.interpreter.value.InterpreterValue;
 import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.interpreter.value.InterpreterValue;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
@@ -139,7 +138,7 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
     @Override
     public void setNext(FixedNode x) {
         if (x != null) {
-            this.setNext(KillingBeginNode.begin(x, this.getKilledLocationIdentity()));
+            this.setNext(BeginNode.begin(x));
         } else {
             this.setNext(null);
         }
@@ -178,24 +177,6 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
             debugProperties.put("targetMethod", callTarget.targetName());
         }
         return debugProperties;
-    }
-
-    public AbstractBeginNode killKillingBegin() {
-        return killKillingBegin(next());
-    }
-
-    @SuppressWarnings("try")
-    public AbstractBeginNode killKillingBegin(AbstractBeginNode begin) {
-        if (begin instanceof KillingBeginNode) {
-            try (DebugCloseable position = begin.withNodeSourcePosition()) {
-                AbstractBeginNode newBegin = new BeginNode();
-                graph().addAfterFixed(begin, graph().add(newBegin));
-                begin.replaceAtUsages(newBegin);
-                graph().removeFixed(begin);
-                return newBegin;
-            }
-        }
-        return begin;
     }
 
     @Override
@@ -261,19 +242,7 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
     @Override
     public void simplify(SimplifierTool tool) {
         if (exceptionEdge() instanceof UnreachableBeginNode) {
-            AbstractBeginNode storedNext = next();
-            InvokeNode replacement = replaceWithInvoke();
-            if (graph().isAfterStage(StructuredGraph.StageFlag.FLOATING_READS)) {
-                if (!tool.allUsagesAvailable()) {
-                    // we don't know about the usages - do nothing
-                    return;
-                }
-                storedNext.replaceAtUsages(replacement, Memory);
-            }
-            // kill the killing begin
-            AbstractBeginNode newBegin = killKillingBegin(storedNext);
-            tool.addToWorkList(newBegin.next());
-            tool.addToWorkList(newBegin);
+            replaceWithInvoke();
         }
     }
 

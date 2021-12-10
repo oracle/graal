@@ -30,6 +30,10 @@ import com.oracle.svm.core.annotate.Uninterruptible;
  * Helper class that holds methods related to {@link JfrNativeEventWriterData}.
  */
 public final class JfrNativeEventWriterDataAccess {
+
+    /**
+     * Initialize the {@link JfrNativeEventWriterData data} so that it uses the given buffer.
+     */
     @Uninterruptible(reason = "Accesses a JFR buffer", callerMustBe = true)
     public static void initialize(JfrNativeEventWriterData data, JfrBuffer buffer) {
         assert buffer.isNonNull();
@@ -38,5 +42,16 @@ public final class JfrNativeEventWriterDataAccess {
         data.setStartPos(buffer.getPos());
         data.setCurrentPos(buffer.getPos());
         data.setEndPos(JfrBufferAccess.getDataEnd(buffer));
+    }
+
+    /**
+     * Initialize the {@link JfrNativeEventWriterData data} so that it uses the current thread's
+     * native buffer.
+     */
+    @Uninterruptible(reason = "Accesses a JFR buffer", callerMustBe = true)
+    public static void initializeThreadLocalNativeBuffer(JfrNativeEventWriterData data) {
+        JfrThreadLocal jfrThreadLocal = (JfrThreadLocal) SubstrateJVM.getThreadLocal();
+        JfrBuffer nativeBuffer = jfrThreadLocal.getNativeBuffer();
+        initialize(data, nativeBuffer);
     }
 }

@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.options;
 
-import java.util.Formatter;
-
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
@@ -64,19 +62,19 @@ public class OptionKey<T> {
     protected boolean checkDescriptorExists() {
         OptionKey.Lazy.init();
         if (descriptor == null) {
-            Formatter buf = new Formatter();
-            buf.format("Could not find a descriptor for an option key. The most likely cause is " +
-                            "a dependency on the %s annotation without a dependency on the " +
-                            "org.graalvm.compiler.options.processor.OptionProcessor annotation processor.", Option.class.getName());
+            StringBuilder result = new StringBuilder();
+            result.append("Could not find a descriptor for an option key. The most likely cause is a dependency on the ");
+            result.append(Option.class.getName());
+            result.append(" annotation without a dependency on the org.graalvm.compiler.options.processor.OptionProcessor annotation processor.");
             StackTraceElement[] stackTrace = new Exception().getStackTrace();
             if (stackTrace.length > 2 &&
                             stackTrace[1].getClassName().equals(OptionKey.class.getName()) &&
                             stackTrace[1].getMethodName().equals("getValue")) {
                 String caller = stackTrace[2].getClassName();
-                buf.format(" In suite.py, add GRAAL_OPTIONS_PROCESSOR to the \"annotationProcessors\" attribute of the project " +
-                                "containing %s.", caller);
+                result.append(" In suite.py, add GRAAL_OPTIONS_PROCESSOR to the \"annotationProcessors\" attribute of the project containing ");
+                result.append(caller);
             }
-            throw new AssertionError(buf.toString());
+            throw new AssertionError(result.toString());
         }
         return true;
     }
@@ -188,5 +186,11 @@ public class OptionKey<T> {
      * @param newValue
      */
     protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, T oldValue, T newValue) {
+    }
+
+    /**
+     * Notifies this object after a value associated with this key was set or updated.
+     */
+    protected void afterValueUpdate() {
     }
 }

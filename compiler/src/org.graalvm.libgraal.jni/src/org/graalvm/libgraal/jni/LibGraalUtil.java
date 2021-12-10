@@ -24,9 +24,9 @@
  */
 package org.graalvm.libgraal.jni;
 
-import org.graalvm.nativebridge.jni.JNI;
-import org.graalvm.nativebridge.jni.JNI.JNIEnv;
-import org.graalvm.nativebridge.jni.JNIMethodScope;
+import org.graalvm.jniutils.JNI;
+import org.graalvm.jniutils.JNI.JNIEnv;
+import org.graalvm.jniutils.JNIMethodScope;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -46,7 +46,11 @@ public final class LibGraalUtil {
 
     public static JNIMethodScope openScope(Class<?> entryPointClass, Enum<?> id, JNIEnv env) {
         Objects.requireNonNull(id, "Id must be non null.");
-        return new JNIMethodScope(entryPointClass.getSimpleName() + "::" + id, env);
+        return LibGraalJNIMethodScope.open(entryPointClass.getSimpleName() + "::" + id, env);
+    }
+
+    public static JNIMethodScope openScope(String scopeName, JNIEnv env) {
+        return LibGraalJNIMethodScope.open(scopeName, env);
     }
 
     /*----------------- CHECKING ------------------*/

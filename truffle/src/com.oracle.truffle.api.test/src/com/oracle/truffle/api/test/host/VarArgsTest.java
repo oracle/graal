@@ -42,22 +42,32 @@ package com.oracle.truffle.api.test.host;
 
 import static org.junit.Assert.assertEquals;
 
+import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.InputStream;
+import java.nio.file.CopyOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.test.host.AsCollectionsTest.ListBasedTO;
-import java.io.File;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class VarArgsTest extends ProxyLanguageEnvTest {
     private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     @Test
     public void testStringJoin1() throws InteropException {
@@ -175,6 +185,39 @@ public class VarArgsTest extends ProxyLanguageEnvTest {
             Assert.assertEquals(container, result);
             result = INTEROP.invokeMember(container, "getPorts");
             Assert.assertEquals(Arrays.asList(80), asJavaObject(List.class, (TruffleObject) result));
+        }
+    }
+
+    /*
+     * Test for GR-34985.
+     */
+    @Test
+    public void testPreferVarargsWithExactSignature() throws InteropException {
+        Object stream = asTruffleObject(new ByteArrayInputStream(new byte[0]));
+        Object path = asTruffleObject(Paths.get("/tmp/a"));
+
+        Object container = asTruffleObject(new PreferVarargsWithExactSignature());
+        assertEquals("copy1_2", INTEROP.invokeMember(container, "copy1", path, stream));
+        assertEquals("copy2_1", INTEROP.invokeMember(container, "copy2", path, stream));
+    }
+
+    @SuppressWarnings("unused")
+    public static class PreferVarargsWithExactSignature {
+
+        public String copy1(Path source, InputStream out, CopyOption... options) {
+            return "copy1_1";
+        }
+
+        public String copy1(Path source, InputStream out) {
+            return "copy1_2";
+        }
+
+        public String copy2(Path source, InputStream out, CopyOption... options) {
+            return "copy2_1";
+        }
+
+        public String copy2(InputStream source, InputStream out) {
+            return "copy2_2";
         }
     }
 

@@ -86,7 +86,7 @@ final class Target_java_security_AccessController {
         try {
             return action.run();
         } catch (Throwable ex) {
-            throw AccessControllerUtil.wrapCheckedException(ex);
+            throw AccessControllerUtil.wrapCheckedExceptionForPrivilegedAction(ex);
         }
     }
 
@@ -95,7 +95,7 @@ final class Target_java_security_AccessController {
         try {
             return action.run();
         } catch (Throwable ex) {
-            throw AccessControllerUtil.wrapCheckedException(ex);
+            throw AccessControllerUtil.wrapCheckedExceptionForPrivilegedAction(ex);
         }
     }
 
@@ -104,7 +104,7 @@ final class Target_java_security_AccessController {
         try {
             return action.run();
         } catch (Throwable ex) {
-            throw AccessControllerUtil.wrapCheckedException(ex);
+            throw AccessControllerUtil.wrapCheckedExceptionForPrivilegedAction(ex);
         }
     }
 
@@ -113,7 +113,7 @@ final class Target_java_security_AccessController {
         try {
             return action.run();
         } catch (Throwable ex) {
-            throw AccessControllerUtil.wrapCheckedException(ex);
+            throw AccessControllerUtil.wrapCheckedExceptionForPrivilegedAction(ex);
         }
     }
 
@@ -188,6 +188,13 @@ class AccessControllerUtil {
             return ex;
         }
     }
+
+    static Throwable wrapCheckedExceptionForPrivilegedAction(Throwable ex) {
+        if (JavaVersionUtil.JAVA_SPEC <= 11) {
+            return wrapCheckedException(ex);
+        }
+        return ex;
+    }
 }
 
 @AutomaticFeature
@@ -203,12 +210,6 @@ class AccessControlContextFeature implements Feature {
         }
         return obj;
     }
-}
-
-@TargetClass(java.security.AccessControlContext.class)
-final class Target_java_security_AccessControlContext {
-
-    @Alias protected boolean isPrivileged;
 }
 
 @TargetClass(SecurityManager.class)
@@ -330,6 +331,10 @@ final class Target_javax_crypto_JceSecurity {
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = VerificationCacheTransformer.class, disableCaching = true) //
     private static Map<Object, Object> verificationResults;
+
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    private static Map<Provider, Object> verifyingProviders;
 
     @Substitute
     @TargetElement(onlyWith = JDK8OrEarlier.class)

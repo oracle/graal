@@ -46,7 +46,7 @@ import org.junit.Before;
  */
 public abstract class TestWithSynchronousCompiling extends TestWithPolyglotOptions {
 
-    private static final String[] DEFAULT_OPTIONS = {
+    protected static final String[] DEFAULT_OPTIONS = {
                     "engine.BackgroundCompilation", Boolean.FALSE.toString(), //
                     "engine.SingleTierCompilationThreshold", "10", //
                     "engine.LastTierCompilationThreshold", "10", //

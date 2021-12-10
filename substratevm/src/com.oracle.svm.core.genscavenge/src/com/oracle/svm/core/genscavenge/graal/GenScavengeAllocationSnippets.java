@@ -28,8 +28,6 @@ import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.SnippetAnchorNode;
@@ -71,16 +69,16 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
         foreignCalls.register(FOREIGN_CALLS);
     }
 
-    public static void registerLowering(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection,
+    public static void registerLowering(OptionValues options, Providers providers,
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
         SubstrateAllocationSnippets snippetReceiver = ImageSingletons.lookup(SubstrateAllocationSnippets.class);
         GenScavengeAllocationSnippets.Templates allocationSnippets = new GenScavengeAllocationSnippets.Templates(
-                        snippetReceiver, options, factories, SnippetCounter.Group.NullFactory, providers, snippetReflection);
+                        snippetReceiver, options, SnippetCounter.Group.NullFactory, providers);
         allocationSnippets.registerLowerings(lowerings);
     }
 
     @Snippet
-    public Object formatObjectSnippet(Word memory, DynamicHub hub, boolean rememberedSet, boolean fillContents, boolean emitMemoryBarrier,
+    public Object formatObjectSnippet(Word memory, DynamicHub hub, boolean rememberedSet, FillContent fillContents, boolean emitMemoryBarrier,
                     @ConstantParameter AllocationSnippetCounters snippetCounters) {
         DynamicHub hubNonNull = (DynamicHub) PiNode.piCastNonNull(hub, SnippetAnchorNode.anchor());
         int layoutEncoding = hubNonNull.getLayoutEncoding();
@@ -90,7 +88,7 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
     }
 
     @Snippet
-    public Object formatArraySnippet(Word memory, DynamicHub hub, int length, boolean rememberedSet, boolean unaligned, boolean fillContents, int fillStartOffset, boolean emitMemoryBarrier,
+    public Object formatArraySnippet(Word memory, DynamicHub hub, int length, boolean rememberedSet, boolean unaligned, FillContent fillContents, int fillStartOffset, boolean emitMemoryBarrier,
                     @ConstantParameter boolean supportsBulkZeroing, @ConstantParameter boolean supportsOptimizedFilling, @ConstantParameter AllocationSnippetCounters snippetCounters) {
         DynamicHub hubNonNull = (DynamicHub) PiNode.piCastNonNull(hub, SnippetAnchorNode.anchor());
         int layoutEncoding = hubNonNull.getLayoutEncoding();
@@ -153,9 +151,8 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
         private final SnippetInfo formatObject;
         private final SnippetInfo formatArray;
 
-        Templates(SubstrateAllocationSnippets receiver, OptionValues options, Iterable<DebugHandlersFactory> factories,
-                        SnippetCounter.Group.Factory groupFactory, Providers providers, SnippetReflectionProvider snippetReflection) {
-            super(receiver, options, factories, groupFactory, providers, snippetReflection);
+        Templates(SubstrateAllocationSnippets receiver, OptionValues options, SnippetCounter.Group.Factory groupFactory, Providers providers) {
+            super(receiver, options, groupFactory, providers);
 
             formatObject = snippet(GenScavengeAllocationSnippets.class, "formatObjectSnippet", null, receiver);
             formatArray = snippet(GenScavengeAllocationSnippets.class, "formatArraySnippet", null, receiver);

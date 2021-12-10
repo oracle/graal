@@ -68,8 +68,6 @@ import com.oracle.truffle.api.debug.DebuggerSession;
 import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
@@ -601,7 +599,7 @@ public class DebugStackFrameTest extends AbstractDebugTest {
             private final String name;
             private final SourceSection rootSection;
             private final int depth;
-            private final FrameSlot entryCall = getFrameDescriptor().findOrAddFrameSlot("entryCall", FrameSlotKind.Boolean);
+            private final int entryCall = getFrameDescriptor().findOrAddAuxiliarySlot("entryCall");
 
             TestStackRootNode(TruffleLanguage<?> language, com.oracle.truffle.api.source.Source parsedSource, int depth) {
                 super(language);
@@ -625,7 +623,7 @@ public class DebugStackFrameTest extends AbstractDebugTest {
 
             @Override
             public Object execute(VirtualFrame frame) {
-                frame.setBoolean(entryCall, DEPTH == depth);
+                frame.setAuxiliarySlot(entryCall, DEPTH == depth);
                 return child.execute(frame);
             }
 
@@ -641,7 +639,7 @@ public class DebugStackFrameTest extends AbstractDebugTest {
                 }
                 boolean isEntryCall;
                 try {
-                    isEntryCall = frame.getBoolean(entryCall);
+                    isEntryCall = (boolean) frame.getAuxiliarySlot(entryCall);
                 } catch (FrameSlotTypeException ex) {
                     return null;
                 }
@@ -660,7 +658,7 @@ public class DebugStackFrameTest extends AbstractDebugTest {
                     Frame asyncFrame;
                     if (asyncRoot.depth == depth - 1) {
                         asyncFrame = Truffle.getRuntime().createMaterializedFrame(new Object[]{}, asyncRoot.getFrameDescriptor());
-                        asyncFrame.setBoolean(entryCall, true);
+                        asyncFrame.setAuxiliarySlot(entryCall, true);
                     } else {
                         asyncFrame = null;
                     }

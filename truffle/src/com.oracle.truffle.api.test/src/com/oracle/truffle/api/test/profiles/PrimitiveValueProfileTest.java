@@ -57,6 +57,7 @@ import static org.junit.Assume.assumeThat;
 import java.util.Objects;
 
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.experimental.theories.DataPoint;
 import org.junit.experimental.theories.Theories;
@@ -64,6 +65,7 @@ import org.junit.experimental.theories.Theory;
 import org.junit.runner.RunWith;
 
 import com.oracle.truffle.api.profiles.PrimitiveValueProfile;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 @RunWith(Theories.class)
 @SuppressWarnings("deprecation")
@@ -116,6 +118,11 @@ public class PrimitiveValueProfileTest {
 
     private static final float FLOAT_DELTA = 0.00001f;
     private static final double DOUBLE_DELTA = 0.00001;
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     private PrimitiveValueProfile profile;
 

@@ -48,6 +48,7 @@ import org.graalvm.wasm.memory.WasmMemory;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -61,7 +62,10 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
     public static final String WASM_MIME_TYPE = "application/wasm";
     public static final String WASM_SOURCE_NAME_SUFFIX = ".wasm";
 
+    private static final LanguageReference<WasmLanguage> REFERENCE = LanguageReference.create(WasmLanguage.class);
+
     private boolean isFirst = true;
+    @CompilationFinal private volatile boolean isMultiContext;
 
     @Override
     protected WasmContext createContext(Env env) {
@@ -113,7 +117,14 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
         }
     }
 
-    private static final LanguageReference<WasmLanguage> REFERENCE = LanguageReference.create(WasmLanguage.class);
+    @Override
+    protected void initializeMultipleContexts() {
+        isMultiContext = true;
+    }
+
+    public boolean isMultiContext() {
+        return isMultiContext;
+    }
 
     public static WasmLanguage get(Node node) {
         return REFERENCE.get(node);

@@ -122,8 +122,8 @@ public final class UninterruptibleAnnotationChecker {
         }
         for (HostedMethod caller : methodCollection) {
             Uninterruptible callerAnnotation = caller.getAnnotation(Uninterruptible.class);
-            StructuredGraph graph = caller.compilationInfo.getGraph();
             if (callerAnnotation != null) {
+                StructuredGraph graph = caller.compilationInfo.getGraph();
                 if (graph != null) {
                     for (Invoke invoke : graph.getInvokes()) {
                         HostedMethod callee = (HostedMethod) invoke.callTarget().targetMethod();

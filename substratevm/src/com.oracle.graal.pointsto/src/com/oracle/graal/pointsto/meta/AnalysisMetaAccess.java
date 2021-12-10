@@ -40,6 +40,11 @@ public class AnalysisMetaAccess extends UniverseMetaAccess {
 
     public AnalysisMetaAccess(AnalysisUniverse analysisUniverse, MetaAccessProvider originalMetaAccess) {
         super(analysisUniverse, originalMetaAccess);
+
+        /* Make sure that Object type is added to the universe before any other types. */
+        lookupJavaType(Object.class);
+        /* Cloneable is needed before any other instance class can be created. */
+        lookupJavaType(Cloneable.class);
     }
 
     @Override

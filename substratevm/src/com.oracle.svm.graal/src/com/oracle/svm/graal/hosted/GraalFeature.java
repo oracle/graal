@@ -42,6 +42,7 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
@@ -132,6 +133,7 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.phases.StrengthenStampsPhase;
 import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
 import com.oracle.svm.hosted.phases.SubstrateGraphBuilderPhase;
+import com.oracle.svm.hosted.reporting.ProgressReporter;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -392,7 +394,7 @@ public final class GraalFeature implements Feature {
                         config.getImageClassLoader(), ParsingReason.JITCompilation, ((Inflation) config.getBigBang()).getAnnotationSubstitutionProcessor(),
                         new SubstrateClassInitializationPlugin(config.getHostVM()), classInitializationSupport, ConfigurationValues.getTarget());
 
-        NativeImageGenerator.registerReplacements(debug, featureHandler, runtimeConfig, runtimeConfig.getProviders(), runtimeConfig.getSnippetReflection(), false, true);
+        NativeImageGenerator.registerReplacements(debug, featureHandler, runtimeConfig, runtimeConfig.getProviders(), false, true);
         featureHandler.forEachGraalFeature(feature -> feature.registerCodeObserver(runtimeConfig));
         Suites suites = NativeImageGenerator.createSuites(featureHandler, runtimeConfig, runtimeConfig.getSnippetReflection(), false);
         LIRSuites lirSuites = NativeImageGenerator.createLIRSuites(featureHandler, runtimeConfig.getProviders(), false);
@@ -574,7 +576,7 @@ public final class GraalFeature implements Feature {
 
         for (MethodCallTargetNode targetNode : callTargets) {
             AnalysisMethod targetMethod = (AnalysisMethod) targetNode.targetMethod();
-            AnalysisMethod callerMethod = (AnalysisMethod) targetNode.invoke().stateAfter().getMethod();
+            PointsToAnalysisMethod callerMethod = (PointsToAnalysisMethod) targetNode.invoke().stateAfter().getMethod();
             InvokeTypeFlow invokeFlow = callerMethod.getTypeFlow().getOriginalMethodFlows().getInvoke(targetNode.invoke().bci());
 
             if (invokeFlow == null) {
@@ -640,6 +642,11 @@ public final class GraalFeature implements Feature {
     }
 
     @Override
+    public void afterAnalysis(AfterAnalysisAccess access) {
+        ProgressReporter.singleton().setNumRuntimeCompiledMethods(methods.size());
+    }
+
+    @Override
     @SuppressWarnings("try")
     public void beforeCompilation(BeforeCompilationAccess c) {
         CompilationAccessImpl config = (CompilationAccessImpl) c;
@@ -647,7 +654,6 @@ public final class GraalFeature implements Feature {
         if (Options.PrintRuntimeCompileMethods.getValue()) {
             printCallTree();
         }
-        System.out.println(methods.size() + " method(s) included for runtime compilation");
 
         if (Options.PrintStaticTruffleBoundaries.getValue()) {
             printStaticTruffleBoundaries();
@@ -720,6 +726,7 @@ public final class GraalFeature implements Feature {
             }
         }
 
+        ProgressReporter.singleton().setGraphEncodingByteLength(graphEncoder.getEncoding().length);
         GraalSupport.setGraphEncoding(graphEncoder.getEncoding(), graphEncoder.getObjects(), graphEncoder.getNodeClasses());
 
         objectReplacer.updateDataDuringAnalysis((AnalysisMetaAccess) hMetaAccess.getWrapped());

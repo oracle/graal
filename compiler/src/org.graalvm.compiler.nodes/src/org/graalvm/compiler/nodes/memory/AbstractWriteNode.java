@@ -80,7 +80,7 @@ public abstract class AbstractWriteNode extends FixedAccessNode implements State
 
     @Override
     public boolean isAllowedUsageType(InputType type) {
-        return (type == InputType.Guard && getNullCheck()) ? true : super.isAllowedUsageType(type);
+        return (type == InputType.Guard && getUsedAsNullCheck()) ? true : super.isAllowedUsageType(type);
     }
 
     public abstract Stamp getAccessStamp(NodeView view);

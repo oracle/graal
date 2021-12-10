@@ -3277,10 +3277,10 @@ public abstract class AArch64Assembler extends Assembler {
 
         @Override
         public void patch(long startAddress, int relative, byte[] code) {
-            // currently, only BL instructions are being patched here
-            GraalError.guarantee(instruction == Instruction.BL, "trying to patch an unexpected instruction");
+            boolean expectedInstruction = instruction == Instruction.B || instruction == Instruction.BL;
+            GraalError.guarantee(expectedInstruction, "trying to patch an unexpected instruction");
 
-            int curValue = relative; // BL is PC-relative
+            int curValue = relative; // B & BL are PC-relative
             assert (curValue & ((1 << shift) - 1)) == 0 : "relative offset has incorrect alignment";
             curValue = curValue >> shift;
             GraalError.guarantee(NumUtil.isSignedNbit(operandSizeBits, curValue), "value too large to fit into space");

@@ -38,7 +38,7 @@ public class ComplexMatchValue extends Value {
 
     /**
      * This is the Value of a node which was matched as part of a complex match. The value isn't
-     * actually useable but this marks it as having been evaluated.
+     * actually usable but this marks it as having been evaluated.
      */
     public static final Value INTERIOR_MATCH = new Value(LIRKind.Illegal) {
 

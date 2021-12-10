@@ -32,10 +32,12 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.espresso.analysis.hierarchy.AssumptionGuardedValue;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
@@ -79,7 +81,6 @@ public abstract class InvokeVirtual extends Node {
         return (StaticObject) args[0];
     }
 
-    @ReportPolymorphism
     @ImportStatic(InvokeVirtual.class)
     @NodeInfo(shortName = "INVOKEVIRTUAL !nullcheck")
     public abstract static class WithoutNullCheck extends Node {
@@ -110,14 +111,34 @@ public abstract class InvokeVirtual extends Node {
             }
         }
 
+        protected AssumptionGuardedValue<ObjectKlass> readSingleImplementor() {
+            return EspressoContext.get(this).getClassHierarchyOracle().readSingleImplementor(resolutionSeed.getDeclaringKlass());
+        }
+
+        // The implementor assumption might be invalidated right between the assumption check and
+        // the value retrieval. To ensure that the single implementor value is safe to use, check
+        // that it's not null.
+        @Specialization(assumptions = {"maybeSingleImplementor.hasValue()", "resolvedMethod.getRedefineAssumption()"}, guards = "implementor != null")
+        Object callSingleImplementor(Object[] args,
+                        @Bind("getReceiver(args)") StaticObject receiver,
+                        @SuppressWarnings("unused") @Cached("readSingleImplementor()") AssumptionGuardedValue<ObjectKlass> maybeSingleImplementor,
+                        @SuppressWarnings("unused") @Cached("maybeSingleImplementor.get()") ObjectKlass implementor,
+                        @Cached("methodLookup(resolutionSeed, implementor)") Method.MethodVersion resolvedMethod,
+                        @Cached("create(resolvedMethod)") LazyDirectCallNode directCallNode) {
+            assert args[0] == receiver;
+            assert !StaticObject.isNull(receiver);
+            assert resolvedMethod.getMethod().getDeclaringKlass().isInitializedOrInitializing();
+            return directCallNode.execute(args);
+        }
+
         @Specialization(guards = {"!resolutionSeed.isAbstract()", "resolvedMethod.getMethod() == resolutionSeed"}, //
                         assumptions = { //
                                         "resolutionSeed.getLeafAssumption()",
-                                        "resolvedMethod.getAssumption()"
+                                        "resolvedMethod.getRedefineAssumption()"
                         })
-        Object callLeaf(Object[] args,
+        Object callLeafMethod(Object[] args,
                         @Bind("getReceiver(args)") StaticObject receiver,
-                        @Cached("methodLookup(resolutionSeed, receiver)") Method.MethodVersion resolvedMethod,
+                        @Cached("methodLookup(resolutionSeed, receiver.getKlass())") Method.MethodVersion resolvedMethod,
                         @Cached("create(resolvedMethod)") LazyDirectCallNode directCallNode) {
             assert args[0] == receiver;
             assert !StaticObject.isNull(receiver);
@@ -128,13 +149,13 @@ public abstract class InvokeVirtual extends Node {
 
         @SuppressWarnings("unused")
         @Specialization(limit = "LIMIT", //
-                        replaces = "callLeaf", //
+                        replaces = {"callSingleImplementor", "callLeafMethod"}, //
                         guards = "receiver.getKlass() == cachedKlass", //
-                        assumptions = "resolvedMethod.getAssumption()")
+                        assumptions = "resolvedMethod.getRedefineAssumption()")
         Object callDirect(Object[] args,
                         @Bind("getReceiver(args)") StaticObject receiver,
                         @Cached("receiver.getKlass()") Klass cachedKlass,
-                        @Cached("methodLookup(resolutionSeed, receiver)") Method.MethodVersion resolvedMethod,
+                        @Cached("methodLookup(resolutionSeed, cachedKlass)") Method.MethodVersion resolvedMethod,
                         @Cached("create(resolvedMethod.getCallTargetNoInit())") DirectCallNode directCallNode) {
             assert args[0] == receiver;
             assert !StaticObject.isNull(receiver);
@@ -150,34 +171,33 @@ public abstract class InvokeVirtual extends Node {
             assert args[0] == receiver;
             assert !StaticObject.isNull(receiver);
             // vtable lookup.
-            Method.MethodVersion target = methodLookup(resolutionSeed, receiver);
+            Method.MethodVersion target = methodLookup(resolutionSeed, receiver.getKlass());
             assert target.getMethod().getDeclaringKlass().isInitializedOrInitializing() : target.getMethod().getDeclaringKlass();
             return indirectCallNode.call(target.getCallTarget(), args);
         }
     }
 
-    static Method.MethodVersion methodLookup(Method resolutionSeed, StaticObject receiver) {
+    static Method.MethodVersion methodLookup(Method resolutionSeed, Klass receiverKlass) {
         if (resolutionSeed.isRemovedByRedefition()) {
             /*
              * Accept a slow path once the method has been removed put method behind a boundary to
              * avoid a deopt loop.
              */
-            return ClassRedefinition.handleRemovedMethod(resolutionSeed, receiver.getKlass()).getMethodVersion();
+            return resolutionSeed.getContext().getClassRedefinition().handleRemovedMethod(resolutionSeed, receiverKlass).getMethodVersion();
         }
         /*
          * Surprisingly, INVOKEVIRTUAL can try to invoke interface methods, even non-default ones.
          * Good thing is, miranda methods are taken care of at vtable creation !
          */
-        Klass receiverKlass = receiver.getKlass();
         int vtableIndex = resolutionSeed.getVTableIndex();
-        Method.MethodVersion target = null;
+        Method.MethodVersion target;
         if (receiverKlass.isArray()) {
             target = receiverKlass.getSuperKlass().vtableLookup(vtableIndex).getMethodVersion();
         } else {
             target = receiverKlass.vtableLookup(vtableIndex).getMethodVersion();
         }
         if (!target.getMethod().hasCode()) {
-            Meta meta = receiver.getKlass().getMeta();
+            Meta meta = receiverKlass.getMeta();
             throw meta.throwException(meta.java_lang_AbstractMethodError);
         }
         return target;
@@ -201,7 +221,6 @@ public abstract class InvokeVirtual extends Node {
         }
 
         @GenerateUncached
-        @ReportPolymorphism
         @NodeInfo(shortName = "INVOKEVIRTUAL dynamic !nullcheck")
         public abstract static class WithoutNullCheck extends Node {
 
@@ -225,7 +244,7 @@ public abstract class InvokeVirtual extends Node {
                             @Cached IndirectCallNode indirectCallNode) {
                 StaticObject receiver = (StaticObject) args[0];
                 assert !StaticObject.isNull(receiver);
-                Method.MethodVersion target = methodLookup(resolutionSeed, receiver);
+                Method.MethodVersion target = methodLookup(resolutionSeed, receiver.getKlass());
                 assert target.getMethod().getDeclaringKlass().isInitialized() : target.getMethod().getDeclaringKlass();
                 return indirectCallNode.call(target.getCallTarget(), args);
             }

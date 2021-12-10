@@ -28,6 +28,7 @@ import java.security.AccessControlContext;
 import java.util.Map;
 import java.util.Objects;
 
+import com.oracle.svm.core.annotate.AnnotateOriginal;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.IsolateThread;
 
@@ -78,6 +79,9 @@ public final class Target_java_lang_Thread {
 
     @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     boolean wasStartedByCurrentIsolate;
+
+    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    long parentThreadId;
 
     /**
      * Every thread has a {@link ParkEvent} for {@link sun.misc.Unsafe#park} and
@@ -211,6 +215,14 @@ public final class Target_java_lang_Thread {
         return tid;
     }
 
+    @AnnotateOriginal
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public native String getName();
+
+    @AnnotateOriginal
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public native ThreadGroup getThreadGroup();
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Substitute
     public boolean isDaemon() {
@@ -221,14 +233,18 @@ public final class Target_java_lang_Thread {
     @Substitute
     @TargetElement(onlyWith = NotLoomJDK.class)
     static Thread currentThread() {
-        return JavaThreads.currentThread.get();
+        Thread thread = JavaThreads.currentThread.get();
+        assert thread != null : "Thread has not been set yet";
+        return thread;
     }
 
     @Uninterruptible(reason = "called from uninterruptible code", mayBeInlined = true)
     @Substitute
     @TargetElement(onlyWith = LoomJDK.class)
     private static Thread currentThread0() {
-        return JavaThreads.currentThread.get();
+        Thread thread = JavaThreads.currentThread.get();
+        assert thread != null : "Thread has not been set yet";
+        return thread;
     }
 
     @Inject @TargetElement(onlyWith = LoomJDK.class)//
@@ -354,6 +370,7 @@ public final class Target_java_lang_Thread {
          */
         JavaContinuations.LoomCompatibilityUtil.setThreadStatus(this, ThreadStatus.RUNNABLE);
         wasStartedByCurrentIsolate = true;
+        parentThreadId = Thread.currentThread().getId();
         long stackSize = JavaThreads.getRequestedThreadSize(JavaThreads.fromTarget(this));
         JavaThreads.singleton().startThread(JavaThreads.fromTarget(this), stackSize);
     }

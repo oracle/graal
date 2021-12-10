@@ -44,6 +44,8 @@ import org.graalvm.compiler.options.OptionValues;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+import java.util.BitSet;
+
 /**
  * A convenience class for overriding just a portion of the Replacements API.
  */
@@ -80,9 +82,14 @@ public class DelegatingReplacements implements Replacements {
     }
 
     @Override
-    public StructuredGraph getSnippet(ResolvedJavaMethod method, ResolvedJavaMethod recursiveEntry, Object[] args, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition,
-                    OptionValues options) {
-        return delegate.getSnippet(method, recursiveEntry, args, trackNodeSourcePosition, replaceePosition, options);
+    public DebugContext openSnippetDebugContext(DebugContext.Description description, DebugContext outer, OptionValues options) {
+        return delegate.openSnippetDebugContext(description, outer, options);
+    }
+
+    @Override
+    public StructuredGraph getSnippet(ResolvedJavaMethod method, ResolvedJavaMethod recursiveEntry, Object[] args, BitSet nonNullParameters, boolean trackNodeSourcePosition,
+                    NodeSourcePosition replaceePosition, OptionValues options) {
+        return delegate.getSnippet(method, recursiveEntry, args, nonNullParameters, trackNodeSourcePosition, replaceePosition, options);
     }
 
     @Override

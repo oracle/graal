@@ -60,7 +60,6 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.JavaContinuations;
-import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.ThreadStatus;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
@@ -256,7 +255,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
 
     protected static final String NO_LONGER_UNINTERRUPTIBLE = "The monitor snippet slow path is uninterruptible to avoid stack overflow errors being thrown. Now the yellow zone is enabled and we are no longer uninterruptible, and allocation is allowed again too";
 
-    @RestrictHeapAccess(reason = NO_LONGER_UNINTERRUPTIBLE, overridesCallers = true, access = Access.UNRESTRICTED)
+    @RestrictHeapAccess(reason = NO_LONGER_UNINTERRUPTIBLE, access = Access.UNRESTRICTED)
     @Override
     public void monitorEnter(Object obj) {
         ReentrantLock lockObject = getOrCreateMonitor(obj, true);
@@ -295,7 +294,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         }
     }
 
-    @RestrictHeapAccess(reason = NO_LONGER_UNINTERRUPTIBLE, overridesCallers = true, access = Access.UNRESTRICTED)
+    @RestrictHeapAccess(reason = NO_LONGER_UNINTERRUPTIBLE, access = Access.UNRESTRICTED)
     @Override
     public void monitorExit(Object obj) {
         ReentrantLock lockObject = getOrCreateMonitor(obj, true);
@@ -484,12 +483,16 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         return newMonitor;
     }
 
+    protected static boolean isMonitorLock(ReentrantLock lock) {
+        return lock != null && isMonitorLockSynchronizer(SubstrateUtil.cast(lock, Target_java_util_concurrent_locks_ReentrantLock.class).sync);
+    }
+
     /**
      * Creates a new {@link ReentrantLock} that is locked by the provided thread. This requires
      * patching of internal state, since there is no public API in {@link ReentrantLock} to do that
      * (for a good reason, because it is a highly unusual operation).
      */
-    protected static ReentrantLock newLockedMonitorForThread(IsolateThread isolateThread, int recursionDepth) {
+    protected static ReentrantLock newLockedMonitorForThread(Thread thread, int recursionDepth) {
         ReentrantLock result = newMonitorLock();
         for (int i = 0; i < recursionDepth; i++) {
             result.lock();
@@ -499,13 +502,9 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         Target_java_util_concurrent_locks_AbstractOwnableSynchronizer sync = SubstrateUtil.cast(lock.sync, Target_java_util_concurrent_locks_AbstractOwnableSynchronizer.class);
 
         assert sync.exclusiveOwnerThread == Thread.currentThread() : "Must be locked by current thread";
-        sync.exclusiveOwnerThread = JavaThreads.fromVMThread(isolateThread);
+        sync.exclusiveOwnerThread = thread;
 
         return result;
-    }
-
-    protected static boolean isMonitorLock(ReentrantLock lock) {
-        return lock != null && isMonitorLockSynchronizer(SubstrateUtil.cast(lock, Target_java_util_concurrent_locks_ReentrantLock.class).sync);
     }
 
     protected static boolean isMonitorLockSynchronizer(Object obj) {

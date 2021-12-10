@@ -67,12 +67,12 @@ public final class WasmIfNode extends WasmNode {
 
     @BytecodeInterpreterSwitchBoundary
     @Override
-    public int execute(WasmContext context, VirtualFrame frame, long[] stacklocals) {
+    public int execute(WasmContext context, VirtualFrame frame) {
         int stackPointer = initialStackPointer - 1;
-        if (condition.profile(popInt(stacklocals, codeEntry().numLocals() + stackPointer) != 0)) {
-            return trueBranch.execute(context, frame, stacklocals);
+        if (condition.profile(WasmFrame.popInt(frame, codeEntry().numLocals() + stackPointer) != 0)) {
+            return trueBranch.execute(context, frame);
         } else if (falseBranch != null) {
-            return falseBranch.execute(context, frame, stacklocals);
+            return falseBranch.execute(context, frame);
         } else {
             return -1;
         }

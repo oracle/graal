@@ -427,12 +427,14 @@ public final class AArch64Address extends AbstractAddress {
             case REGISTER_OFFSET:
                 assert !(registerOffsetScaled && bitMemoryTransferSize == ANY_SIZE);
                 assert !base.equals(zr);
+                assert !base.equals(offset);
                 assert extendType == null;
                 assert immediate == 0;
                 break;
             case EXTENDED_REGISTER_OFFSET:
                 assert !(registerOffsetScaled && bitMemoryTransferSize == ANY_SIZE);
                 assert !base.equals(zr);
+                assert !base.equals(offset);
                 assert (extendType == AArch64Assembler.ExtendType.SXTW || extendType == AArch64Assembler.ExtendType.UXTW);
                 assert immediate == 0;
                 break;

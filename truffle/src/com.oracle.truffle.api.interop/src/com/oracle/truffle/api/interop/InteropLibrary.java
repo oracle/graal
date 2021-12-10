@@ -61,11 +61,11 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.zone.ZoneRules;
+import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
@@ -658,19 +658,24 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
-     * Reads the value of a given member. If the member is {@link #isMemberReadable(Object, String)
-     * readable} and {@link #isMemberInvocable(Object, String) invocable} then the result of reading
-     * the member is {@link #isExecutable(Object) executable} and is bound to this receiver. This
-     * method must have not observable side-effects unless
+     * Reads the value of a given member.
+     * <p>
+     * In case of a method-like member, we recommend that languages return a bound method (or an
+     * artificial receiver-method binding) to improve cross-language portability. In this case, the
+     * member should be {@link #isMemberReadable(Object, String) readable} and
+     * {@link #isMemberInvocable(Object, String) invocable} and the result of reading the member
+     * should be {@link #isExecutable(Object) executable} and bound to the receiver.
+     * <p>
+     * This message must have not observable side-effects unless
      * {@link #hasMemberReadSideEffects(Object, String)} returns <code>true</code>.
      *
      * @throws UnsupportedMessageException if when the receiver does not support reading at all. An
      *             empty receiver with no readable members supports the read operation (even though
      *             there is nothing to read), therefore it throws {@link UnknownIdentifierException}
      *             for all arguments instead.
-     * @throws UnknownIdentifierException if the given member is not
-     *             {@link #isMemberReadable(Object, String) readable}, e.g. when the member with the
-     *             given name does not exist.
+     * @throws UnknownIdentifierException if the given member cannot be read, e.g. because it is not
+     *             (or no longer) {@link #isMemberReadable(Object, String) readable} such as when
+     *             the member with the given name does not exist or has been removed.
      * @see #hasMemberReadSideEffects(Object, String)
      * @since 19.0
      */
@@ -2255,13 +2260,6 @@ public abstract class InteropLibrary extends Library {
     @Abstract(ifExported = {"getSourceLocation"})
     @TruffleBoundary
     public boolean hasSourceLocation(Object receiver) {
-        Env env = getLegacyEnv(receiver, false);
-        if (env != null) {
-            SourceSection location = InteropAccessor.ACCESSOR.languageSupport().legacyFindSourceLocation(env, receiver);
-            if (location != null) {
-                return true;
-            }
-        }
         // A workaround for missing inheritance feature for default exports.
         if (InteropAccessor.EXCEPTION.isException(receiver)) {
             return InteropAccessor.EXCEPTION.hasSourceLocation(receiver);
@@ -2288,13 +2286,6 @@ public abstract class InteropLibrary extends Library {
     @Abstract(ifExported = {"hasSourceLocation"})
     @TruffleBoundary
     public SourceSection getSourceLocation(Object receiver) throws UnsupportedMessageException {
-        Env env = getLegacyEnv(receiver, false);
-        if (env != null) {
-            SourceSection location = InteropAccessor.ACCESSOR.languageSupport().legacyFindSourceLocation(env, receiver);
-            if (location != null) {
-                return location;
-            }
-        }
         // A workaround for missing inheritance feature for default exports.
         if (InteropAccessor.EXCEPTION.isException(receiver)) {
             return InteropAccessor.EXCEPTION.getSourceLocation(receiver);
@@ -2327,9 +2318,8 @@ public abstract class InteropLibrary extends Library {
      * @since 20.1
      */
     @Abstract(ifExported = {"getLanguage", "isScope"})
-    @TruffleBoundary
     public boolean hasLanguage(Object receiver) {
-        return getLegacyEnv(receiver, false) != null;
+        return false;
     }
 
     /**
@@ -2346,12 +2336,7 @@ public abstract class InteropLibrary extends Library {
      */
     @SuppressWarnings("unchecked")
     @Abstract(ifExported = {"hasLanguage"})
-    @TruffleBoundary
     public Class<? extends TruffleLanguage<?>> getLanguage(Object receiver) throws UnsupportedMessageException {
-        Env env = getLegacyEnv(receiver, false);
-        if (env != null) {
-            return (Class<? extends TruffleLanguage<?>>) InteropAccessor.ACCESSOR.languageSupport().getSPI(env).getClass();
-        }
         throw UnsupportedMessageException.create();
     }
 
@@ -2379,15 +2364,7 @@ public abstract class InteropLibrary extends Library {
      * @since 20.1
      */
     @Abstract(ifExported = {"getMetaObject"})
-    @TruffleBoundary
     public boolean hasMetaObject(Object receiver) {
-        Env env = getLegacyEnv(receiver, false);
-        if (env != null) {
-            Object metaObject = InteropAccessor.ACCESSOR.languageSupport().legacyFindMetaObject(env, receiver);
-            if (metaObject != null) {
-                return true;
-            }
-        }
         return false;
     }
 
@@ -2415,15 +2392,7 @@ public abstract class InteropLibrary extends Library {
      * @since 20.1
      */
     @Abstract(ifExported = {"hasMetaObject"})
-    @TruffleBoundary
     public Object getMetaObject(Object receiver) throws UnsupportedMessageException {
-        Env env = getLegacyEnv(receiver, false);
-        if (env != null) {
-            Object metaObject = InteropAccessor.ACCESSOR.languageSupport().legacyFindMetaObject(env, receiver);
-            if (metaObject != null) {
-                return new LegacyMetaObjectWrapper(receiver, metaObject);
-            }
-        }
         throw UnsupportedMessageException.create();
     }
 
@@ -2447,16 +2416,11 @@ public abstract class InteropLibrary extends Library {
     @Abstract(ifExported = {"hasLanguage", "getLanguage", "isScope"})
     @TruffleBoundary
     public Object toDisplayString(Object receiver, boolean allowSideEffects) {
-        Env env = getLegacyEnv(receiver, false);
-        if (env != null && allowSideEffects) {
-            return InteropAccessor.ACCESSOR.languageSupport().legacyToString(env, receiver);
+        if (allowSideEffects) {
+            return Objects.toString(receiver);
         } else {
             return receiver.getClass().getTypeName() + "@" + Integer.toHexString(System.identityHashCode(receiver));
         }
-    }
-
-    private static Env getLegacyEnv(Object receiver, boolean nullForhost) {
-        return InteropAccessor.ACCESSOR.engineSupport().getLegacyLanguageEnv(receiver, nullForhost);
     }
 
     /**
@@ -2968,10 +2932,6 @@ public abstract class InteropLibrary extends Library {
         }
 
         private boolean notOtherType(Object receiver, Type type) {
-            if (receiver instanceof LegacyMetaObjectWrapper) {
-                // ignore other type assertions for legacy meta object wrapper
-                return true;
-            }
             assert type == Type.NULL || !delegate.isNull(receiver) : violationInvariant(receiver);
             assert type == Type.BOOLEAN || !delegate.isBoolean(receiver) : violationInvariant(receiver);
             assert type == Type.STRING || !delegate.isString(receiver) : violationInvariant(receiver);

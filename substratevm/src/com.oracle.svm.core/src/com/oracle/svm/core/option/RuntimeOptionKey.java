@@ -46,6 +46,14 @@ public class RuntimeOptionKey<T> extends OptionKey<T> {
         return getValue(RuntimeOptionValues.singleton());
     }
 
+    public void update(T value) {
+        RuntimeOptionValues.singleton().update(this, value);
+    }
+
+    public boolean hasBeenSet() {
+        return hasBeenSet(RuntimeOptionValues.singleton());
+    }
+
     @Fold
     public T getHostedValue() {
         return getValue(RuntimeOptionValues.singleton());

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -42,6 +42,7 @@ public final class ElfDynamicSection {
     private static final int DT_NEEDED = 1;
     private static final int DT_STRTAB = 5;
     private static final int DT_STRSZ = 10;
+    private static final int DT_SONAME = 14;
     private static final int DT_RPATH = 15;
     private static final int DT_RUNPATH = 29;
 
@@ -124,6 +125,10 @@ public final class ElfDynamicSection {
         return getEntryStream(DT_RUNPATH).flatMap(ElfDynamicSection::splitPaths);
     }
 
+    public String getDTSOName() {
+        return getSingleEntry(DT_SONAME);
+    }
+
     public List<String> getDTRPath() {
         return getEntryStream(DT_RPATH).flatMap(ElfDynamicSection::splitPaths).collect(Collectors.toList());
     }
@@ -132,6 +137,15 @@ public final class ElfDynamicSection {
         for (ElfSectionHeaderTable.Entry e : sht.getEntries()) {
             if (".dynamic".equals(e.getName(sht))) {
                 return e;
+            }
+        }
+        return null;
+    }
+
+    private String getSingleEntry(int tag) {
+        for (Entry entry : entries) {
+            if (entry.tag == tag) {
+                return getString(entry.getValue());
             }
         }
         return null;

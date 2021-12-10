@@ -36,6 +36,7 @@ import java.util.EnumSet;
 import java.util.function.Function;
 
 import org.graalvm.compiler.asm.Label;
+import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.PrefetchMode;
 import org.graalvm.compiler.core.aarch64.AArch64ArithmeticLIRGenerator;
@@ -75,6 +76,7 @@ import org.graalvm.compiler.lir.aarch64.AArch64PrefetchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64RestoreRegistersOp;
 import org.graalvm.compiler.lir.aarch64.AArch64SaveRegistersOp;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
+import org.graalvm.compiler.lir.gen.MoveFactory;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64Kind;
@@ -286,7 +288,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
         if (address.getValueKind().getPlatformKind() == AArch64Kind.DWORD) {
             CompressEncoding encoding = config.getOopEncoding();
             Value uncompressed = emitUncompress(address, encoding, false);
-            append(new AArch64Move.NullCheckOp(asAddressValue(uncompressed), state));
+            append(new AArch64Move.NullCheckOp(asAddressValue(uncompressed, AArch64Address.ANY_SIZE), state));
         } else {
             super.emitNullCheck(address, state);
         }
@@ -316,7 +318,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
     @Override
     public LIRInstruction createMultiBenchmarkCounter(String[] names, String[] groups, Value[] increments) {
         if (BenchmarkCounters.enabled) {
-            Value[] incrementValues = (Value[]) Arrays.stream(increments).map(this::transformBenchmarkCounterIncrement).toArray();
+            Value[] incrementValues = Arrays.stream(increments).map(this::transformBenchmarkCounterIncrement).toArray(Value[]::new);
             return new AArch64HotSpotCounterOp(names, groups, incrementValues, getProviders().getRegisters(), config);
         }
         throw GraalError.shouldNotReachHere("BenchmarkCounters are not enabled!");
@@ -324,7 +326,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
 
     @Override
     public void emitPrefetchAllocate(Value address) {
-        append(new AArch64PrefetchOp(asAddressValue(address), PrefetchMode.PSTL1KEEP));
+        append(new AArch64PrefetchOp(asAddressValue(address, AArch64Address.ANY_SIZE), PrefetchMode.PSTL1KEEP));
     }
 
     @Override
@@ -473,10 +475,9 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
         final EnumSet<AArch64.Flag> flags = ((AArch64) target().arch).getFlags();
 
         boolean isDcZvaProhibited = true;
-        int zvaLength = 0;
-        if (GraalHotSpotVMConfig.JDK >= 16) {
-            zvaLength = config.zvaLength;
-            isDcZvaProhibited = 0 == config.zvaLength;
+        int zvaLength = config.zvaLength;
+        if (zvaLength != Integer.MAX_VALUE) {
+            isDcZvaProhibited = 0 == zvaLength;
         } else {
             int dczidValue = config.psrInfoDczidValue;
 

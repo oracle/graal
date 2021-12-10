@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core;
 
+import java.io.InputStream;
 import java.util.List;
 import java.util.Locale;
 import java.util.ResourceBundle;
@@ -46,6 +47,17 @@ public abstract class ClassLoaderSupport {
     }
 
     protected abstract boolean isNativeImageClassLoaderImpl(ClassLoader classLoader);
+
+    public interface ResourceCollector {
+
+        boolean isIncluded(String moduleName, String resourceName);
+
+        void addResource(String moduleName, String resourceName, InputStream resourceStream);
+
+        void addDirectoryResource(String moduleName, String dir, String content);
+    }
+
+    public abstract void collectResources(ResourceCollector resourceCollector);
 
     public abstract List<ResourceBundle> getResourceBundle(String bundleName, Locale locale);
 }

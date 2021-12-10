@@ -47,7 +47,7 @@ public class AArch64SafepointCheckOp extends AArch64LIRInstruction {
 
     public static final LIRInstructionClass<AArch64SafepointCheckOp> TYPE = LIRInstructionClass.create(AArch64SafepointCheckOp.class);
 
-    protected AArch64SafepointCheckOp() {
+    public AArch64SafepointCheckOp() {
         super(TYPE);
     }
 
@@ -61,13 +61,21 @@ public class AArch64SafepointCheckOp extends AArch64LIRInstruction {
         try (ScratchRegister scratchRegister = masm.getScratchRegister()) {
             Register scratch = scratchRegister.getRegister();
             masm.ldr(safepointSize, scratch, safepointAddress);
-            masm.subs(safepointSize, scratch, scratch, 1);
             if (ThreadingSupportImpl.isRecurringCallbackSupported()) {
+                /* Before subtraction, Safepoint.safepointRequested is being compared against 1. */
+                masm.subs(safepointSize, scratch, scratch, 1);
                 masm.str(safepointSize, scratch, safepointAddress);
+            } else {
+                /* Safepoint.safepointRequested is being compared against 0. */
+                masm.compare(safepointSize, scratch, 0);
             }
         }
     }
 
+    /**
+     * The slow path should be entered when Safepoint.safepointRequested is <= 0. See Safepoint.java
+     * for more details about safepoint orchestration.
+     */
     public AArch64Assembler.ConditionFlag getConditionFlag() {
         return AArch64Assembler.ConditionFlag.LE;
     }

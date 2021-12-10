@@ -584,7 +584,9 @@ public class ValueAssert {
 
                     for (String key : value.getMemberKeys()) {
                         Value child = value.getMember(key);
-                        if (!isSameHostObject(value, child)) {
+                        if (child == null) {
+                            assertTrue("A non-readable member must at least be modifiable, removable, or invocable", value.hasMember(key));
+                        } else if (!isSameHostObject(value, child)) {
                             assertValueImpl(child, depth + 1, hasHostAccess, detectSupportedTypes(child));
                         }
                     }

@@ -57,8 +57,24 @@ import org.graalvm.polyglot.PolyglotException;
 public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
 
     private static final Constructor<AbstractLanguageLauncher> LAUNCHER_CTOR;
+    /**
+     * Set to true if the launcher has been started via the {@code runLauncher} JNI entry point.
+     */
+    private boolean jniLaunch;
+    /**
+     * Native argument count, set if the launcher has been started via {@code runLauncher}.
+     */
     private int nativeArgc;
+    /**
+     * Pointer to the native argument value array, set if the launcher has been started via
+     * {@code runLauncher}.
+     */
     private long nativeArgv;
+    /**
+     * Indicates if this launcher instance is the result of a relaunch, where actual VM arguments
+     * have been identified and set previously.
+     */
+    private boolean relaunch;
 
     static {
         LAUNCHER_CTOR = getLauncherCtor();
@@ -107,6 +123,8 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
                 throw e;
             } catch (PolyglotException e) {
                 handlePolyglotException(e);
+            } catch (RelaunchException e) {
+                throw e;
             } catch (Throwable t) {
                 throw abort(t);
             }
@@ -122,9 +140,10 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
      * @param args the command line arguments as an encoding-agnostic byte array
      * @param argc the number of native command line arguments
      * @param argv pointer to argv
+     * @param relaunch indicates if this is a relaunch with previously identified vm arguments
      * @throws Exception if no launcher constructor has been set.
      */
-    public static void runLauncher(byte[][] args, int argc, long argv) throws Exception {
+    public static void runLauncher(byte[][] args, int argc, long argv, boolean relaunch) throws Exception {
         if (isAOT()) {
             // enable signal handling for the launcher
             RuntimeOptions.set("EnableSignalHandling", true);
@@ -134,15 +153,81 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
             throw new Exception("Launcher constructor has not been set.");
         }
 
+        AbstractLanguageLauncher launcher = LAUNCHER_CTOR.newInstance();
+        launcher.jniLaunch = true;
+        launcher.nativeArgc = argc;
+        launcher.nativeArgv = argv;
+        launcher.relaunch = relaunch;
+
         String[] arguments = new String[args.length];
         for (int i = 0; i < args.length; i++) {
             arguments[i] = new String(args[i]);
         }
 
-        AbstractLanguageLauncher launcher = LAUNCHER_CTOR.newInstance();
-        launcher.nativeArgc = argc;
-        launcher.nativeArgv = argv;
         launcher.launch(arguments);
+
+        // shut down the launcher - do this in favor of calling the JNI DestroyJavaVM API, which
+        // might hang waiting for daemon threads on SVM (GR-35345)
+        System.exit(0);
+    }
+
+    /**
+     * Check if the arguments parsing heuristic of the native launcher correctly identified the set
+     * of VM arguments. Throw a {@code RelaunchException} if it hasn't. The exception will be picked
+     * up by the native launcher, which will read the {@code vmArgs}, put them in environment
+     * variables and restart the VM with the correct set of VM arguments.
+     *
+     * @param originalArgs original set of arguments (except for argv[0], the program name)
+     * @param unrecognizedArgs set of arguments returned by {@code preprocessArguments()}
+     */
+    protected final void validateVmArguments(List<String> originalArgs, List<String> unrecognizedArgs) {
+        if (relaunch) {
+            // vm arguments have been explicitly set, bypassing the heuristic
+            return;
+        }
+
+        List<String> heuristicVmArgs = new ArrayList<>();
+        List<String> actualVmArgs = new ArrayList<>();
+
+        for (String arg : originalArgs) {
+            if (arg.startsWith("--vm.")) {
+                heuristicVmArgs.add(arg);
+            }
+        }
+        for (String arg : unrecognizedArgs) {
+            if (arg.startsWith("--vm.")) {
+                actualVmArgs.add(arg);
+            }
+        }
+
+        if (!heuristicVmArgs.equals(actualVmArgs)) {
+            throw new RelaunchException(actualVmArgs);
+        }
+
+        // all argument match, we're good
+        return;
+    }
+
+    /**
+     * Used by the native launcher to detect that a relaunch of the VM is needed.
+     */
+    protected static final class RelaunchException extends RuntimeException {
+        private static final long serialVersionUID = -4014071914987464223L;
+
+        /**
+         * Actual VM arguments, set if validateVmArguments fails s.t. the native launcher can obtain
+         * the actual VM arguments for a relaunch.
+         */
+        @SuppressWarnings("unused") private String[] vmArgs;
+
+        RelaunchException(List<String> actualVmArgs) {
+            vmArgs = actualVmArgs.toArray(new String[actualVmArgs.size()]);
+        }
+
+        @Override
+        public String getMessage() {
+            return "Misidentified VM arguments, relaunch required";
+        }
     }
 
     /**
@@ -179,9 +264,13 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
 
         List<String> unrecognizedArgs = preprocessArguments(args, polyglotOptions);
 
+        if (jniLaunch) {
+            validateVmArguments(originalArgs, unrecognizedArgs);
+        }
+
         if (isAOT() && doNativeSetup && !IS_LIBPOLYGLOT) {
             assert nativeAccess != null;
-            maybeNativeExec(originalArgs, unrecognizedArgs, false);
+            maybeExec(originalArgs, unrecognizedArgs, false, getDefaultVMType(), jniLaunch);
         }
 
         parseUnrecognizedOptions(getLanguageId(), polyglotOptions, unrecognizedArgs);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -93,7 +93,22 @@ public interface OptionDescriptors extends Iterable<OptionDescriptor> {
         } else if (descriptors.length == 1) {
             return descriptors[0];
         } else {
-            return new UnionOptionDescriptors(descriptors);
+            OptionDescriptors singleNonEmpty = null;
+            for (int i = 0; i < descriptors.length; i++) {
+                OptionDescriptors d = descriptors[i];
+                if (d != EMPTY) {
+                    if (singleNonEmpty == null) {
+                        singleNonEmpty = d;
+                    } else {
+                        return new UnionOptionDescriptors(descriptors);
+                    }
+                }
+            }
+            if (singleNonEmpty == null) {
+                return EMPTY;
+            } else {
+                return singleNonEmpty;
+            }
         }
     }
 

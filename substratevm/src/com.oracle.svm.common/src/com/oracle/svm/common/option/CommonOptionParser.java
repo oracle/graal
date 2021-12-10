@@ -66,21 +66,27 @@ public class CommonOptionParser {
         private final Set<String> optionNameFilter;
         private final String error;
         private final OptionKey<?> optionKey;
+        private final boolean optionUnrecognized;
         private static final String EXTRA_HELP_OPTIONS_WILDCARD = "*";
 
-        OptionParseResult(EnumSet<OptionType> printFlags, String error, Set<String> optionNameFilter, OptionKey<?> optionKey) {
+        OptionParseResult(EnumSet<OptionType> printFlags, String error, Set<String> optionNameFilter, OptionKey<?> optionKey, boolean optionUnrecognized) {
             this.printFlags = printFlags;
             this.error = error;
             this.optionNameFilter = optionNameFilter;
             this.optionKey = optionKey;
+            this.optionUnrecognized = optionUnrecognized;
         }
 
         private OptionParseResult(EnumSet<OptionType> printFlags, String error, OptionKey<?> optionKey) {
-            this(printFlags, error, new HashSet<>(), optionKey);
+            this(printFlags, error, new HashSet<>(), optionKey, false);
         }
 
         static OptionParseResult error(String message) {
             return new OptionParseResult(EnumSet.noneOf(OptionType.class), message, null);
+        }
+
+        static OptionParseResult optionUnrecognizedError(String message) {
+            return new OptionParseResult(EnumSet.noneOf(OptionType.class), message, new HashSet<>(), null, true);
         }
 
         static OptionParseResult correct(OptionKey<?> optionKey) {
@@ -97,7 +103,7 @@ public class CommonOptionParser {
                 optionNames = new HashSet<>();
                 optionNames.add(EXTRA_HELP_OPTIONS_WILDCARD);
             }
-            return new OptionParseResult(EnumSet.noneOf(OptionType.class), null, optionNames, null);
+            return new OptionParseResult(EnumSet.noneOf(OptionType.class), null, optionNames, null, false);
         }
 
         public boolean printFlags() {
@@ -112,6 +118,10 @@ public class CommonOptionParser {
             boolean result = optionKey != null;
             assert result == (printFlags.isEmpty() && optionNameFilter.isEmpty() && error == null);
             return result;
+        }
+
+        public boolean optionUnrecognized() {
+            return optionUnrecognized;
         }
 
         public String getError() {
@@ -218,7 +228,7 @@ public class CommonOptionParser {
                 }
             }
             msg.append(". Use ").append(optionPrefix).append(CommonOptions.PrintFlags.getName()).append("= to list all available options.");
-            return OptionParseResult.error(msg.toString());
+            return OptionParseResult.optionUnrecognizedError(msg.toString());
         }
 
         OptionKey<?> optionKey = desc.getOptionKey();

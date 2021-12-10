@@ -159,6 +159,8 @@ public abstract class AbstractImage {
         return heap;
     }
 
+    public abstract long getImageHeapSize();
+
     public abstract ObjectFile getOrCreateDebugObjectFile();
 
     public boolean requiresCustomDebugRelocation() {

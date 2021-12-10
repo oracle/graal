@@ -44,8 +44,6 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
-import com.oracle.truffle.espresso.analysis.hierarchy.DefaultClassHierarchyOracle;
-import com.oracle.truffle.espresso.analysis.hierarchy.NoOpClassHierarchyOracle;
 import org.graalvm.options.OptionMap;
 import org.graalvm.polyglot.Engine;
 
@@ -69,6 +67,8 @@ import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.FinalizationSupport;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
+import com.oracle.truffle.espresso.analysis.hierarchy.DefaultClassHierarchyOracle;
+import com.oracle.truffle.espresso.analysis.hierarchy.NoOpClassHierarchyOracle;
 import com.oracle.truffle.espresso.descriptors.Names;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -83,6 +83,7 @@ import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
+import com.oracle.truffle.espresso.jdwp.api.Ids;
 import com.oracle.truffle.espresso.jdwp.api.VMEventListenerImpl;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -90,7 +91,9 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.perf.DebugCloseable;
 import com.oracle.truffle.espresso.perf.DebugTimer;
 import com.oracle.truffle.espresso.perf.TimerCollection;
+import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.redefinition.plugins.api.InternalRedefinitionPlugin;
+import com.oracle.truffle.espresso.redefinition.plugins.impl.RedefinitionPluginHandler;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.threads.EspressoThreadRegistry;
 import com.oracle.truffle.espresso.threads.ThreadsAccess;
@@ -162,6 +165,8 @@ public final class EspressoContext {
     private final JDWPContextImpl jdwpContext;
     private final boolean shouldReportVMEvents;
     private final VMEventListenerImpl eventListener;
+    private ClassRedefinition classRedefinition;
+    private final boolean arbitraryChangesSupport;
     // endregion JDWP
 
     private Map<Class<? extends InternalRedefinitionPlugin>, InternalRedefinitionPlugin> redefinitionPlugins;
@@ -301,6 +306,7 @@ public final class EspressoContext {
 
         this.vmArguments = buildVmArguments();
         this.jdwpContext = new JDWPContextImpl(this);
+        this.arbitraryChangesSupport = env.getOptions().get(EspressoOptions.ArbitraryChangesSupport);
         if (this.EnableClassHierarchyAnalysis) {
             this.classHierarchyOracle = new DefaultClassHierarchyOracle();
         } else {
@@ -685,6 +691,10 @@ public final class EspressoContext {
         return vm.getJavaVersion();
     }
 
+    public boolean advancedRedefinitionEnabled() {
+        return JDWPOptions != null;
+    }
+
     public Types getTypes() {
         return getLanguage().getTypes();
     }
@@ -1033,6 +1043,21 @@ public final class EspressoContext {
      */
     public static EspressoContext get(Node node) {
         return REFERENCE.get(node);
+    }
+
+    public synchronized ClassRedefinition createClassRedefinition(Ids<Object> ids, RedefinitionPluginHandler redefinitionPluginHandler) {
+        if (classRedefinition == null) {
+            classRedefinition = new ClassRedefinition(this, ids, redefinitionPluginHandler);
+        }
+        return classRedefinition;
+    }
+
+    public ClassRedefinition getClassRedefinition() {
+        return classRedefinition;
+    }
+
+    public boolean arbitraryChangesSupported() {
+        return arbitraryChangesSupport;
     }
 
     public ClassHierarchyOracle getClassHierarchyOracle() {

@@ -51,6 +51,7 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyObject;
 import org.junit.Assert;
 import org.junit.Assume;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -71,6 +72,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class RetainedSizeContextBoundaryTest extends AbstractPolyglotTest {
     @ExportLibrary(InteropLibrary.class)
@@ -164,6 +166,15 @@ public class RetainedSizeContextBoundaryTest extends AbstractPolyglotTest {
         protected Object getScope(LanguageContext languageContext) {
             return ((LanguageWithScopeContext) languageContext).scope;
         }
+    }
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
+
+    public RetainedSizeContextBoundaryTest() {
+        needsInstrumentEnv = true;
     }
 
     @Test

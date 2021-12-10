@@ -63,9 +63,9 @@ See also the [guide on assisted configuration of Java resources and other dynami
 ## Locales
 
 It is also possible to specify which locales should be included in the image and what should be the default one.
-For example, to switch the default locale to German and also include French and English, one can use the following hosted options.
+For example, to switch the default locale to Swiss German and also include French and English, one can use the following hosted options.
 ```shell
-native-image -H:DefaultLocale=de -H:IncludeLocales=fr,en
+native-image -Duser.country=CH -Duser.language=de -H:IncludeLocales=fr,en
 ```
 The locales are specified using [language tags](https://docs.oracle.com/javase/tutorial/i18n/locale/matching.html). All
 locales can be included via ``-H:+IncludeAllLocales``, but please note that it increases the size of the resulting
@@ -95,6 +95,31 @@ native-image -H:IncludeResourceBundles=your.pgk.Bundle,another.pkg.Resource,etc.
 ```
 By default, the requested bundles are included for all requested locales.
 In order to optimize this, it is possible to use ``IncludeResourceBundles`` with locale specific substring, for example ``-H:+IncludeResourceBundles=com.company.bundles.MyBundle_fr-FR`` will include the bundle only in French.
+
+### Resources in Java modules
+
+Wherever resources are specified with `<Java regexp that matches resources to be included in the image>` or resource bundles are specified via bundle name, it is possible to specify the exact modules these resources or bundles should be taken from. To do so, specify the module-name before the resource-regex or bundle name with `:` as separator. For example:
+
+```json
+{
+   "resources": {
+      "includes": [
+         {
+            "pattern": "library-module:^resource-file.txt$"
+         }
+      ]
+   },
+   "bundles": [
+      {"name":"main-module:your.pkg.Bundle"}
+   ]
+}
+```
+
+This will make native-image include `resource-file.txt` only from Java module `library-module`. So even if other modules or the classpath contains resources that would match pattern `^resource-file.txt$` only the one in module `library-module` would be registered for image-inclusion. Similar if there would be other bundles accessible with the same bundle name `your.pkg.Bundle` only the one from `main-module` would be included. Native image will also ensure that the modules are guaranteed to be accessible at image-runtime. I.e. the following code pattern:
+```java
+InputStream resource = ModuleLayer.boot().findModule(moduleName).getResourceAsStream(resourcePath);
+```
+will always work as expected for resources registered as described above (even if the module does not contain any code that is seen reachable by the static analysis).
 
 ### JVM Mode of Localization
 

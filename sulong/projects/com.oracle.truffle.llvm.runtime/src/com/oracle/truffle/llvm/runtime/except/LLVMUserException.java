@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -42,8 +42,6 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
  */
 @ExportLibrary(value = InteropLibrary.class, delegateTo = "unwindHeader")
 public final class LLVMUserException extends LLVMException {
-
-    public static final String FRAME_SLOT_ID = "<function exception value>";
 
     private static final long serialVersionUID = 1L;
 

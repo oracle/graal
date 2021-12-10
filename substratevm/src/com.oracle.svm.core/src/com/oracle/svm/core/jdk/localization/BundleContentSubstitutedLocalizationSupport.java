@@ -88,6 +88,14 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
         }
     }
 
+    @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
+    protected void onClassBundlePrepared(Class<?> bundleClass) {
+        if (isBundleSupported(bundleClass)) {
+            prepareNonCompliant(bundleClass);
+        }
+    }
+
     @Platforms(Platform.HOSTED_ONLY.class)
     private void storeBundleContentOf(ResourceBundle bundle) {
         GraalError.guarantee(isBundleSupported(bundle), "Unsupported bundle %s of type %s", bundle, bundle.getClass());
@@ -114,8 +122,13 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public boolean isBundleSupported(ResourceBundle bundle) {
-        return bundle instanceof ListResourceBundle || bundle instanceof OpenListResourceBundle || bundle instanceof ParallelListResourceBundle;
+    private static boolean isBundleSupported(ResourceBundle bundle) {
+        return isBundleSupported(bundle.getClass());
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    private static boolean isBundleSupported(Class<?> bundleClass) {
+        return ListResourceBundle.class.isAssignableFrom(bundleClass) || OpenListResourceBundle.class.isAssignableFrom(bundleClass) || ParallelListResourceBundle.class.isAssignableFrom(bundleClass);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

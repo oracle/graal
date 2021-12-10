@@ -32,7 +32,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import org.graalvm.compiler.truffle.runtime.FrameWithoutBoxing;
+import com.oracle.truffle.api.impl.FrameWithoutBoxing;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
@@ -42,6 +42,7 @@ import org.junit.Test;
 @AddExports("jdk.internal.vm.compiler/org.graalvm.compiler.truffle.runtime")
 public class NewFrameNodeTest extends PartialEvaluationTest {
 
+    @SuppressWarnings("deprecation")
     @Test
     public void newFrameNodeFrameSizeIsCorrect() {
         final FrameDescriptor fd = new FrameDescriptor();

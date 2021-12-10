@@ -52,11 +52,6 @@ public class VolatileWriteNode extends WriteNode implements Lowerable, OrderedMe
     }
 
     @Override
-    public boolean canNullCheck() {
-        return false;
-    }
-
-    @Override
     public MemoryOrderMode getMemoryOrder() {
         return MemoryOrderMode.VOLATILE;
     }

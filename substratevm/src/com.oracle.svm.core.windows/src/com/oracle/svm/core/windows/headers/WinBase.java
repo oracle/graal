@@ -33,7 +33,7 @@ import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.word.PointerBase;
 
-import com.oracle.svm.core.windows.headers.LibC.WCharPointer;
+import com.oracle.svm.core.windows.headers.WindowsLibC.WCharPointer;
 
 // Checkstyle: stop
 
@@ -48,6 +48,9 @@ public class WinBase {
      */
     public interface HANDLE extends PointerBase {
     }
+
+    @CConstant
+    public static native HANDLE INVALID_HANDLE_VALUE();
 
     @CPointerTo(nameOfCType = "HANDLE")
     public interface LPHANDLE extends PointerBase {

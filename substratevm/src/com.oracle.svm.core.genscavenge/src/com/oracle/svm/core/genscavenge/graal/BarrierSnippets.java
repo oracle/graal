@@ -31,8 +31,6 @@ import java.util.Map;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.BreakpointNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
@@ -85,8 +83,8 @@ public class BarrierSnippets extends SubstrateTemplates implements Snippets {
         return ImageSingletons.lookup(BarrierSnippetCounters.class);
     }
 
-    BarrierSnippets(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection) {
-        super(options, factories, providers, snippetReflection);
+    BarrierSnippets(OptionValues options, Providers providers) {
+        super(options, providers);
     }
 
     public void registerLowerings(Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
