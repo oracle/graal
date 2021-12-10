@@ -3,5 +3,5 @@
   "ci": {
     "overlay": "30806c62fe3527181448edf5716b4a151634262a"
   },
-  "mx_version" : "HEAD"
+  "mx_version" : "5.317.1"
 }
