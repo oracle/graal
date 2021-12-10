@@ -573,7 +573,7 @@ public class SubstrateOptions {
 
         /** Use {@link ReferenceHandler#useDedicatedThread()} instead. */
         @Option(help = "Populate reference queues in a separate thread rather than after a garbage collection.", type = OptionType.Expert) //
-        public static final RuntimeOptionKey<Boolean> UseReferenceHandlerThread = new RuntimeOptionKey<>(false);
+        public static final RuntimeOptionKey<Boolean> UseReferenceHandlerThread = new RuntimeOptionKey<>(true);
     }
 
     @Option(help = "Overwrites the available number of processors provided by the OS. Any value <= 0 means using the processor count from the OS.")//
