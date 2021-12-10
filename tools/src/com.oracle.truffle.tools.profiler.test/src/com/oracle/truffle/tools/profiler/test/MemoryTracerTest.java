@@ -310,6 +310,10 @@ public class MemoryTracerTest extends AbstractProfilerTest {
 
         static final String ID = "AllocatesDuringReportingAllocation";
 
+        public AllocatesDuringReportingAllocation() {
+            wrapper = false;
+        }
+
         @Override
         protected CallTarget parse(ParsingRequest request) {
             final ADRARootNode rootNode = new ADRARootNode(this);

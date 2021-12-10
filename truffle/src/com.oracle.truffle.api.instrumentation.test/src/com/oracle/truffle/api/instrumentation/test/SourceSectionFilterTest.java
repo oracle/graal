@@ -1033,6 +1033,10 @@ public class SourceSectionFilterTest extends AbstractPolyglotTest {
     public static class ProvidesTagLanguage extends ProxyLanguage {
         static final String ID = "SourceSectionFilterTest_ProvidesTagLanguage";
 
+        public ProvidesTagLanguage() {
+            wrapper = false;
+        }
+
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
             final Source source = request.getSource();

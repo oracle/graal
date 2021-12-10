@@ -120,8 +120,8 @@ import com.oracle.truffle.api.test.polyglot.LanguageSPITest.ServiceTestLanguage.
 import com.oracle.truffle.api.test.polyglot.LanguageSPITest.ServiceTestLanguage.LanguageSPITestLanguageService2;
 import com.oracle.truffle.api.test.polyglot.LanguageSPITest.ServiceTestLanguage.LanguageSPITestLanguageService3;
 import com.oracle.truffle.api.test.polyglot.LanguageSPITestLanguage.LanguageContext;
-import com.oracle.truffle.tck.tests.ValueAssert;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
+import com.oracle.truffle.tck.tests.ValueAssert;
 
 public class LanguageSPITest {
 
@@ -754,6 +754,10 @@ public class LanguageSPITest {
     public static class OneContextLanguage extends MultiContextLanguage {
         static final String ID = "OneContextLanguage";
 
+        public OneContextLanguage() {
+            wrapper = false;
+        }
+
         @Override
         protected OptionDescriptors getOptionDescriptors() {
             return null;
@@ -790,6 +794,10 @@ public class LanguageSPITest {
 
         @Option(help = "", category = OptionCategory.INTERNAL, stability = OptionStability.STABLE) //
         static final OptionKey<Integer> DummyOption = new OptionKey<>(0);
+
+        public MultiContextLanguage() {
+            wrapper = false;
+        }
 
         @Override
         protected OptionDescriptors getOptionDescriptors() {
@@ -2024,6 +2032,10 @@ public class LanguageSPITest {
 
     @TruffleLanguage.Registration(id = INHERITED_VERSION, name = "")
     public static class InheritedVersionLanguage extends ProxyLanguage {
+
+        public InheritedVersionLanguage() {
+            wrapper = false;
+        }
     }
 
     @Test

@@ -622,6 +622,10 @@ public class AllocationReporterTest {
         public static final String ID = "truffle-allocation-reporter-language";
         public static final String PROP_SIZE_CALLS = "sizeCalls";
 
+        public AllocationReporterLanguage() {
+            wrapper = false;
+        }
+
         @Override
         protected CallTarget parse(ParsingRequest request) throws Exception {
             final com.oracle.truffle.api.source.Source code = request.getSource();
