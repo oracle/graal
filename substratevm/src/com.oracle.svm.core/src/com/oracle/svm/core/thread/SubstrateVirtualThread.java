@@ -29,6 +29,7 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 import java.util.Locale;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
@@ -48,7 +49,7 @@ import sun.misc.Unsafe;
 
 // Checkstyle: allow synchronization
 
-final class VirtualThread extends Thread {
+final class SubstrateVirtualThread extends Thread {
     private static final Unsafe U = GraalUnsafeAccess.getUnsafe();
     private static final ScheduledExecutorService UNPARKER = createDelayedTaskScheduler();
 
@@ -57,14 +58,16 @@ final class VirtualThread extends Thread {
     private static final long TERMINATION;
     static {
         try {
-            STATE = U.objectFieldOffset(VirtualThread.class.getDeclaredField("state"));
-            PARK_PERMIT = U.objectFieldOffset(VirtualThread.class.getDeclaredField("parkPermit"));
-            TERMINATION = U.objectFieldOffset(VirtualThread.class.getDeclaredField("termination"));
+            STATE = U.objectFieldOffset(SubstrateVirtualThread.class.getDeclaredField("state"));
+            PARK_PERMIT = U.objectFieldOffset(SubstrateVirtualThread.class.getDeclaredField("parkPermit"));
+            TERMINATION = U.objectFieldOffset(SubstrateVirtualThread.class.getDeclaredField("termination"));
         } catch (ReflectiveOperationException e) {
             throw VMError.shouldNotReachHere(e);
         }
     }
 
+    // scheduler and continuation
+    private final Executor scheduler;
     private final Continuation cont;
     private final Runnable runContinuation;
 
@@ -94,14 +97,24 @@ final class VirtualThread extends Thread {
     // termination object when joining, created lazily if needed
     private volatile CountDownLatch termination;
 
-    VirtualThread(Runnable task) {
+    SubstrateVirtualThread(Executor scheduler, Runnable task) {
         super(task);
+        if (scheduler == null) {
+            Thread parent = Thread.currentThread();
+            if (parent instanceof SubstrateVirtualThread) {
+                this.scheduler = ((SubstrateVirtualThread) parent).scheduler;
+            } else {
+                this.scheduler = SubstrateVirtualThreads.SCHEDULER;
+            }
+        } else {
+            this.scheduler = scheduler;
+        }
         this.cont = new Continuation(() -> run(task));
         this.runContinuation = this::runContinuation;
     }
 
     private void runContinuation() {
-        if (Thread.currentThread() instanceof VirtualThread) {
+        if (Thread.currentThread() instanceof SubstrateVirtualThread) {
             throw new RuntimeException("Virtual thread was scheduled on another virtual thread");
         }
 
@@ -126,7 +139,7 @@ final class VirtualThread extends Thread {
     }
 
     private void submitRunContinuation() {
-        Continuations.SCHEDULER.execute(runContinuation);
+        scheduler.execute(runContinuation);
     }
 
     private void run(Runnable task) {
@@ -333,8 +346,8 @@ final class VirtualThread extends Thread {
         if (!getAndSetParkPermit(true) && currentThread != this) {
             int s = state();
             if (s == PARKED && compareAndSetState(PARKED, RUNNABLE)) {
-                if (currentThread instanceof VirtualThread) {
-                    VirtualThread vthread = (VirtualThread) currentThread;
+                if (currentThread instanceof SubstrateVirtualThread) {
+                    SubstrateVirtualThread vthread = (SubstrateVirtualThread) currentThread;
                     Thread carrier = vthread.carrierThread;
 
                     JavaThreads.setCurrentThread(carrier, carrier);
@@ -410,7 +423,6 @@ final class VirtualThread extends Thread {
                 if (b != null) {
                     b.interrupt(this);
                 }
-
                 Thread carrier = carrierThread;
                 if (carrier != null) {
                     JavaThreads.platformSetInterrupt(carrier);
@@ -423,7 +435,7 @@ final class VirtualThread extends Thread {
         unpark();
     }
 
-    public boolean getAndClearInterrupt() {
+    boolean getAndClearCarrierInterrupt() {
         assert Thread.currentThread() == this;
         synchronized (interruptLock()) {
             return JavaThreads.platformGetAndClearInterrupt(carrierThread);

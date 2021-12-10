@@ -61,11 +61,11 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackFrameVisitor;
 import com.oracle.svm.core.stack.JavaStackWalk;
 import com.oracle.svm.core.stack.JavaStackWalker;
-import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.LoomSupport;
 import com.oracle.svm.core.thread.Target_java_lang_Continuation;
 import com.oracle.svm.core.thread.Target_java_lang_ContinuationScope;
 import com.oracle.svm.core.thread.Target_java_lang_VirtualThread;
+import com.oracle.svm.core.thread.VirtualThreads;
 import com.oracle.svm.core.util.VMError;
 
 @TargetClass(value = java.lang.StackWalker.class)
@@ -146,7 +146,7 @@ final class Target_java_lang_StackWalker {
             JavaStackWalk walk = StackValue.get(JavaStackWalk.class);
             Pointer sp = KnownIntrinsics.readCallerStackPointer();
 
-            if (LoomSupport.isEnabled() && (this.contScope != null || JavaThreads.isVirtual(thread))) {
+            if (LoomSupport.isEnabled() && (this.contScope != null || VirtualThreads.get().isVirtual(thread))) {
                 // has a delimitation scope
                 Target_java_lang_ContinuationScope delimitationScope = this.contScope != null ? this.contScope : Target_java_lang_VirtualThread.continuationScope();
                 Target_java_lang_Continuation topContinuation = Target_java_lang_Continuation.getCurrentContinuation(delimitationScope);

@@ -43,8 +43,8 @@ final class Target_java_util_concurrent_locks_LockSupport {
     @Substitute
     static void unpark(Thread thread) {
         if (thread != null) {
-            if (thread instanceof VirtualThread) {
-                ((VirtualThread) thread).unpark(); // can throw RejectedExecutionException
+            if (VirtualThreads.get().isVirtual(thread)) {
+                VirtualThreads.get().unpark(thread);
             } else {
                 U.unpark(thread);
             }
@@ -56,8 +56,8 @@ final class Target_java_util_concurrent_locks_LockSupport {
         Thread t = Thread.currentThread();
         setBlocker(t, blocker);
         try {
-            if (t instanceof VirtualThread) {
-                ((VirtualThread) t).park();
+            if (VirtualThreads.get().isVirtual(t)) {
+                VirtualThreads.get().park();
             } else {
                 U.park(false, 0L);
             }
@@ -72,8 +72,8 @@ final class Target_java_util_concurrent_locks_LockSupport {
             Thread t = Thread.currentThread();
             setBlocker(t, blocker);
             try {
-                if (t instanceof VirtualThread) {
-                    ((VirtualThread) t).parkNanos(nanos);
+                if (VirtualThreads.get().isVirtual(t)) {
+                    VirtualThreads.get().parkNanos(nanos);
                 } else {
                     U.park(false, nanos);
                 }
@@ -88,8 +88,8 @@ final class Target_java_util_concurrent_locks_LockSupport {
         Thread t = Thread.currentThread();
         setBlocker(t, blocker);
         try {
-            if (t instanceof VirtualThread) {
-                ((VirtualThread) t).parkUntil(deadline);
+            if (VirtualThreads.get().isVirtual(t)) {
+                VirtualThreads.get().parkUntil(deadline);
             } else {
                 U.park(true, deadline);
             }
@@ -100,8 +100,8 @@ final class Target_java_util_concurrent_locks_LockSupport {
 
     @Substitute
     static void park() {
-        if (Thread.currentThread() instanceof VirtualThread) {
-            ((VirtualThread) Thread.currentThread()).park();
+        if (VirtualThreads.get().isVirtual(Thread.currentThread())) {
+            VirtualThreads.get().park();
         } else {
             U.park(false, 0L);
         }
@@ -110,8 +110,9 @@ final class Target_java_util_concurrent_locks_LockSupport {
     @Substitute
     public static void parkNanos(long nanos) {
         if (nanos > 0) {
-            if (Thread.currentThread() instanceof VirtualThread) {
-                ((VirtualThread) Thread.currentThread()).parkNanos(nanos);
+            if (VirtualThreads.get().isVirtual(Thread.currentThread())) {
+                VirtualThreads.get().parkNanos(nanos);
+                ((SubstrateVirtualThread) Thread.currentThread()).parkNanos(nanos);
             } else {
                 U.park(false, nanos);
             }
@@ -120,8 +121,8 @@ final class Target_java_util_concurrent_locks_LockSupport {
 
     @Substitute
     public static void parkUntil(long deadline) {
-        if (Thread.currentThread() instanceof VirtualThread) {
-            ((VirtualThread) Thread.currentThread()).parkUntil(deadline);
+        if (VirtualThreads.get().isVirtual(Thread.currentThread())) {
+            VirtualThreads.get().parkUntil(deadline);
         } else {
             U.park(true, deadline);
         }

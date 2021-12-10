@@ -26,11 +26,34 @@ package com.oracle.svm.core.thread;
 
 import java.util.concurrent.ThreadFactory;
 
-public final class Continuations {
-    public static ThreadFactory virtualThreadFactory() {
-        return VirtualThreads.get().createFactory();
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.ImageSingletons;
+
+public interface VirtualThreads {
+    @Fold
+    static VirtualThreads get() {
+        return ImageSingletons.lookup(VirtualThreads.class);
     }
 
-    private Continuations() {
-    }
+    ThreadFactory createFactory();
+
+    boolean isVirtual(Thread thread);
+
+    boolean getAndClearInterrupt(Thread thread);
+
+    void join(Thread thread, long millis) throws InterruptedException;
+
+    void yield();
+
+    void sleepMillis(long millis) throws InterruptedException;
+
+    boolean isAlive(Thread thread);
+
+    void unpark(Thread thread);
+
+    void park();
+
+    void parkNanos(long nanos);
+
+    void parkUntil(long deadline);
 }

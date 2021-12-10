@@ -26,7 +26,6 @@ package com.oracle.svm.core.thread;
 
 import static com.oracle.svm.core.SubstrateOptions.MultiThreaded;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import java.lang.Thread.UncaughtExceptionHandler;
 import java.security.AccessControlContext;
@@ -62,6 +61,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
@@ -245,13 +245,14 @@ public abstract class JavaThreads {
     }
 
     static boolean getAndClearInterrupt(Thread thread) {
-        if (JavaContinuations.isSupported() && thread instanceof VirtualThread) {
-            return ((VirtualThread) thread).getAndClearInterrupt();
+        if (isVirtual(thread)) {
+            return VirtualThreads.get().getAndClearInterrupt(thread);
         }
         return platformGetAndClearInterrupt(thread);
     }
 
     static boolean platformGetAndClearInterrupt(Thread thread) {
+        assert !isVirtual(thread);
         /*
          * As we don't use a lock, it is possible to observe any kinds of races with other threads
          * that try to set interrupted to true. However, those races don't cause any correctness
@@ -259,12 +260,11 @@ public abstract class JavaThreads {
          * There also can't be any problematic races with other calls to isInterrupted as
          * clearInterrupted may only be true if this method is being executed by the current thread.
          */
-        assert !JavaContinuations.isSupported() || !(thread instanceof VirtualThread);
         return getAndWriteInterruptedFlag(thread, false);
     }
 
     static void platformSetInterrupt(Thread thread) {
-        assert !JavaContinuations.isSupported() || !(thread instanceof VirtualThread);
+        assert !isVirtual(thread);
         boolean oldValue = getAndWriteInterruptedFlag(thread, true);
         if (!oldValue) {
             toTarget(thread).interrupt0();
@@ -313,11 +313,18 @@ public abstract class JavaThreads {
         return platformThread.get(thread);
     }
 
-    public static boolean isVirtual(Thread thread) {
-        if (!LoomSupport.isEnabled()) {
+    @AlwaysInline("Inline checks.")
+    private static boolean isVirtual(Thread thread) {
+        return VirtualThreads.get().isVirtual(thread);
+    }
+
+    @AlwaysInline("Inline checks.")
+    private static boolean isVirtualDisallowLoom(Thread thread) {
+        if (LoomSupport.isEnabled()) {
+            assert !isVirtual(thread) : "should not see Loom virtual thread objects here";
             return false;
         }
-        return toTarget(thread).isVirtual();
+        return isVirtual(thread);
     }
 
     /**
@@ -358,11 +365,8 @@ public abstract class JavaThreads {
         if (millis < 0) {
             throw new IllegalArgumentException("timeout value is negative");
         }
-        if (JavaContinuations.isSupported() && thread instanceof VirtualThread) {
-            if (thread.isAlive()) {
-                long nanos = MILLISECONDS.toNanos(millis);
-                ((VirtualThread) thread).joinNanos(nanos);
-            }
+        if (isVirtual(thread)) {
+            VirtualThreads.get().join(thread, millis);
             return;
         }
 
@@ -796,8 +800,8 @@ public abstract class JavaThreads {
     protected abstract void platformYield();
 
     void yield() {
-        if (JavaContinuations.isSupported() && Thread.currentThread() instanceof VirtualThread) {
-            ((VirtualThread) Thread.currentThread()).tryYield();
+        if (isVirtualDisallowLoom(Thread.currentThread())) {
+            VirtualThreads.get().yield();
         } else {
             platformYield();
         }
@@ -942,7 +946,7 @@ public abstract class JavaThreads {
     static void platformPark() {
         VMOperationControl.guaranteeOkayToBlock("[JavaThreads.park(): Should not park when it is not okay to block.]");
         Thread thread = Thread.currentThread();
-        assert !JavaContinuations.isSupported() || !(thread instanceof VirtualThread);
+        assert !isVirtual(thread);
         if (isInterrupted(thread)) { // avoid state changes and synchronization
             return;
         }
@@ -967,7 +971,7 @@ public abstract class JavaThreads {
     static void platformPark(long delayNanos) {
         VMOperationControl.guaranteeOkayToBlock("[JavaThreads.park(long): Should not park when it is not okay to block.]");
         Thread thread = Thread.currentThread();
-        assert !JavaContinuations.isSupported() || !(thread instanceof VirtualThread);
+        assert !isVirtual(thread);
         if (isInterrupted(thread)) { // avoid state changes and synchronization
             return;
         }
@@ -994,6 +998,7 @@ public abstract class JavaThreads {
      * @see #platformPark(long)
      */
     static void platformUnpark(Thread thread) {
+        assert !isVirtual(thread);
         ThreadData threadData = acquireThreadData(thread);
         if (threadData != null) {
             try {
@@ -1005,9 +1010,8 @@ public abstract class JavaThreads {
     }
 
     static void sleep(long millis) throws InterruptedException {
-        if (JavaContinuations.isSupported() && Thread.currentThread() instanceof VirtualThread) {
-            long nanos = TimeUnit.NANOSECONDS.convert(millis, TimeUnit.MILLISECONDS);
-            ((VirtualThread) Thread.currentThread()).sleepNanos(nanos);
+        if (isVirtualDisallowLoom(Thread.currentThread())) {
+            VirtualThreads.get().sleepMillis(millis);
         } else {
             platformSleep(millis);
         }
@@ -1063,7 +1067,7 @@ public abstract class JavaThreads {
      * @see #platformSleep(long)
      */
     static void platformInterrupt(Thread thread) {
-        assert !JavaContinuations.isSupported() || !(thread instanceof VirtualThread);
+        assert !isVirtual(thread);
         ThreadData threadData = acquireThreadData(thread);
         if (threadData != null) {
             try {
@@ -1078,15 +1082,14 @@ public abstract class JavaThreads {
     }
 
     static boolean isAlive(Thread thread) {
-        if (JavaContinuations.isSupported() && thread instanceof VirtualThread) {
-            Thread.State state = thread.getState();
-            return !(state == Thread.State.NEW || state == Thread.State.TERMINATED);
+        if (isVirtualDisallowLoom(thread)) {
+            return VirtualThreads.get().isAlive(thread);
         }
         return platformIsAlive(thread);
     }
 
     static boolean platformIsAlive(Thread thread) {
-        assert !JavaContinuations.isSupported() || !(thread instanceof VirtualThread);
+        assert !isVirtual(thread);
         int threadStatus = LoomSupport.CompatibilityUtil.getThreadStatus(toTarget(thread));
         return !(threadStatus == ThreadStatus.NEW || threadStatus == ThreadStatus.TERMINATED);
     }

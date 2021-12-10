@@ -504,7 +504,7 @@ public final class Target_java_lang_Thread {
     }
 
     @Substitute
-    @TargetElement(onlyWith = NotLoomJDK.class)
+    @TargetElement
     public void join(long millis) throws InterruptedException {
         JavaThreads.join(JavaThreads.fromTarget(this), millis);
     }
@@ -521,7 +521,7 @@ public final class Target_java_lang_Thread {
 
     @Substitute
     private StackTraceElement[] getStackTrace() {
-        if (JavaThreads.isVirtual(JavaThreads.fromTarget(this))) {
+        if (LoomSupport.isEnabled() && VirtualThreads.get().isVirtual(JavaThreads.fromTarget(this))) {
             return asyncGetStackTrace();
         }
         return JavaThreads.getStackTrace(JavaThreads.fromTarget(this));
