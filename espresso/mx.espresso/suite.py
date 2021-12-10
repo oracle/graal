@@ -76,7 +76,14 @@ suite = {
                 "subdir": True,
                 "urls": [
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
-                ]
+                ],
+                "os_arch": {
+                    "windows": {
+                        "<others>": {
+                            "ignore": True,
+                        },
+                    },
+                }
             },
             {
                 "name" : "java-benchmarks",
