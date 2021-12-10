@@ -37,12 +37,8 @@ import com.oracle.svm.core.jdk.RuntimeSupport;
  * A runtime option that can only be modified as long as the VM is not fully initialized yet.
  */
 public class ImmutableRuntimeOptionKey<T> extends RuntimeOptionKey<T> {
-    public ImmutableRuntimeOptionKey(T defaultValue) {
-        super(defaultValue);
-    }
-
-    public ImmutableRuntimeOptionKey(T defaultValue, boolean isRelevantForCompilationIsolate) {
-        super(defaultValue, isRelevantForCompilationIsolate);
+    public ImmutableRuntimeOptionKey(T defaultValue, RuntimeOptionKeyFlag... flags) {
+        super(defaultValue, flags);
     }
 
     @Override

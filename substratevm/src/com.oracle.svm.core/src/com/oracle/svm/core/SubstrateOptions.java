@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core;
 
-import static com.oracle.svm.core.option.RuntimeOptionKey.RelevantForCompilationIsolates;
+import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
 import static org.graalvm.compiler.core.common.GraalOptions.TrackNodeSourcePosition;
 import static org.graalvm.compiler.core.common.SpectrePHTMitigations.None;
 import static org.graalvm.compiler.core.common.SpectrePHTMitigations.Options.SpectrePHTBarriers;
@@ -36,8 +36,6 @@ import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import com.oracle.svm.core.heap.ReferenceHandler;
-import com.oracle.svm.core.thread.VMOperationControl;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
@@ -53,12 +51,14 @@ import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
+import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.APIOptionGroup;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.ImmutableRuntimeOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.RuntimeOptionKey;
+import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.util.UserError;
 
 public class SubstrateOptions {

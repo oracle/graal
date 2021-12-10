@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.code;
 
-import static com.oracle.svm.core.option.RuntimeOptionKey.RelevantForCompilationIsolates;
+import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
 
 import org.graalvm.compiler.options.Option;

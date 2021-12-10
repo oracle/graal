@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.graal;
 
-import static com.oracle.svm.core.option.RuntimeOptionKey.RelevantForCompilationIsolates;
+import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.io.PrintStream;

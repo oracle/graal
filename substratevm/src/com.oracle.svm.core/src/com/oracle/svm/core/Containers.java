@@ -26,7 +26,7 @@ package com.oracle.svm.core;
 
 import static com.oracle.svm.core.Containers.Options.PreferContainerQuotaForCPUCount;
 import static com.oracle.svm.core.Containers.Options.UseContainerSupport;
-import static com.oracle.svm.core.option.RuntimeOptionKey.RelevantForCompilationIsolates;
+import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
 
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;

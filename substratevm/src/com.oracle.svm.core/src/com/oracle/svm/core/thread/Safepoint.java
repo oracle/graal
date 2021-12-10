@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.thread;
 
+import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
+
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.compiler.api.replacements.Fold;
@@ -76,8 +78,6 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
-
-import static com.oracle.svm.core.option.RuntimeOptionKey.RelevantForCompilationIsolates;
 
 /**
  * Support for initiating safepoints, which are a global state in which all threads are paused so
