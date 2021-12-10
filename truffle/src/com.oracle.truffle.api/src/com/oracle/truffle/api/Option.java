@@ -159,14 +159,16 @@ public @interface Option {
      * Recommendations:
      * <ul>
      * <li>if the option accepts a discrete number of values (e.g. boolean, enum) list the values
-     * separated by a '|' character. The default value should be placed as the first in the list.
-     * e.g. <code>"true|false"</code>, <code>"none|red|green|blue|white"</code></li>
+     * separated by a '|' character. The default value for enums should be placed as the first in
+     * the list. e.g. <code>"true|false"</code>, <code>"none|red|green|blue|white"</code></li>
      * <li>if the options accepts a value representing a well-known concept or a number representing
      * particular units, place that concept/unit between &lt; and &gt; e.g.
      * <code>"&lt;ms&gt;"</code>, <code>"&lt;path&gt;"</code>, <code>"&lt;country&gt;"</code>,
      * <code>"&lt;&gt;"</code></li>
-     * <li>if the options accepts a number of a particular type, place the type between &lt; and
-     * &gt; e.g. <code>"&lt;int&gt;"</code>, <code>"&lt;float&gt;"</code>.
+     * <li>if the options accepts a range of numbers use the range syntax: [a,b] for inclusive range
+     * from a to b, (a, b) for exclusive range from a to b, [a, b) for range from a to b including a
+     * and (a, b] for range from a to b including b. If the range is infinite use inf and -inf. For
+     * example: <code>"[0, 100]"</code>, <code>"(0.0, 1.0)"</code>, <code>"[0, inf)</code>.
      * <li>if the options accepts a comma-separated list, use two comma-separated values and a
      * <code>...</code>. Apply these same recommendations to individual values, e.g.
      * <code>"&lt;targetName&gt;,&lt;targetName&gt;,..."</code>.
