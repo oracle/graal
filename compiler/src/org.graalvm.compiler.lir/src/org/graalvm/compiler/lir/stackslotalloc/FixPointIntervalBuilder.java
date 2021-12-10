@@ -47,6 +47,7 @@ import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
 import org.graalvm.compiler.lir.LIRInstruction.OperandMode;
 import org.graalvm.compiler.lir.VirtualStackSlot;
+import org.graalvm.compiler.lir.framemap.SimpleVirtualStackSlotAlias;
 
 import jdk.vm.ci.meta.Value;
 
@@ -296,21 +297,18 @@ final class FixPointIntervalBuilder {
 
     }
 
-    private StackInterval get(VirtualStackSlot stackSlot) {
-        return stackSlotMap[stackSlot.getId()];
-    }
-
-    private void put(VirtualStackSlot stackSlot, StackInterval interval) {
-        stackSlotMap[stackSlot.getId()] = interval;
-    }
-
-    private StackInterval getOrCreateInterval(VirtualStackSlot stackSlot) {
-        StackInterval interval = get(stackSlot);
-        if (interval == null) {
-            interval = new StackInterval(stackSlot, stackSlot.getValueKind());
-            put(stackSlot, interval);
+    private StackInterval getOrCreateInterval(VirtualStackSlot slot) {
+        VirtualStackSlot stackSlot;
+        if (slot instanceof SimpleVirtualStackSlotAlias) {
+            stackSlot = ((SimpleVirtualStackSlotAlias) slot).getAliasedSlot();
+        } else {
+            stackSlot = slot;
         }
-        return interval;
+
+        if (stackSlotMap[stackSlot.getId()] == null) {
+            stackSlotMap[stackSlot.getId()] = new StackInterval(stackSlot, stackSlot.getValueKind());
+        }
+        return stackSlotMap[stackSlot.getId()];
     }
 
     private StackInterval getIntervalFromStackId(int id) {
