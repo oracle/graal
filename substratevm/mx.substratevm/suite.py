@@ -590,6 +590,9 @@ suite = {
                 "jdk.unsupported"
             ],
             "requiresConcealed": {
+                "jdk.management": [
+                    "com.sun.management.internal"
+                ],
                 "jdk.jfr": [
                     "jdk.jfr.internal",
                     "jdk.jfr.internal.consumer",
