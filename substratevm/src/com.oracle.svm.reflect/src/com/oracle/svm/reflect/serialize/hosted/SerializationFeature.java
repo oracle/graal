@@ -27,49 +27,8 @@ package com.oracle.svm.reflect.serialize.hosted;
 
 // Checkstyle: allow reflection
 
-import static com.oracle.svm.reflect.serialize.hosted.SerializationFeature.capturingClasses;
-import static com.oracle.svm.reflect.serialize.hosted.SerializationFeature.println;
-
-import java.io.Externalizable;
-import java.io.ObjectStreamClass;
-import java.io.Serializable;
-import java.lang.invoke.SerializedLambda;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
 import com.oracle.graal.pointsto.util.GraalAccess;
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.graph.iterators.NodeIterable;
-import org.graalvm.compiler.java.GraphBuilderPhase;
-import org.graalvm.compiler.java.LambdaUtils;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import org.graalvm.compiler.phases.OptimisticOptimizations;
-import org.graalvm.compiler.phases.tiers.HighTierContext;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
-import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
-
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
@@ -89,6 +48,43 @@ import com.oracle.svm.reflect.hosted.ReflectionFeature;
 import com.oracle.svm.reflect.serialize.SerializationRegistry;
 import com.oracle.svm.reflect.serialize.SerializationSupport;
 import com.oracle.svm.util.ReflectionUtil;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.graph.iterators.NodeIterable;
+import org.graalvm.compiler.java.GraphBuilderPhase;
+import org.graalvm.compiler.java.LambdaUtils;
+import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import org.graalvm.compiler.phases.OptimisticOptimizations;
+import org.graalvm.compiler.phases.tiers.HighTierContext;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
+
+import java.io.Externalizable;
+import java.io.ObjectStreamClass;
+import java.io.Serializable;
+import java.lang.invoke.SerializedLambda;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+
+import static com.oracle.svm.reflect.serialize.hosted.SerializationFeature.capturingClasses;
+import static com.oracle.svm.reflect.serialize.hosted.SerializationFeature.println;
 
 @AutomaticFeature
 public class SerializationFeature implements Feature {
@@ -121,9 +117,9 @@ public class SerializationFeature implements Feature {
                         ConfigurationFile.SERIALIZATION.getFileName());
     }
 
-    private static GraphBuilderConfiguration buildLambdaParserConfig(ClassInitializationPlugin cip) {
+    private static GraphBuilderConfiguration buildLambdaParserConfig() {
         GraphBuilderConfiguration.Plugins plugins = new GraphBuilderConfiguration.Plugins(new InvocationPlugins());
-        plugins.setClassInitializationPlugin(cip);
+        plugins.setClassInitializationPlugin(new NoClassInitializationPlugin());
         return GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true);
     }
 
@@ -131,7 +127,7 @@ public class SerializationFeature implements Feature {
     private static StructuredGraph createMethodGraph(ResolvedJavaMethod method, DebugContext debug) {
         StructuredGraph graph = new StructuredGraph.Builder(debug.getOptions(), debug).method(method).build();
         try (DebugContext.Scope ignored = debug.scope("ParsingToMaterializeLambdas")) {
-            GraphBuilderPhase lambdaParserPhase = new GraphBuilderPhase(buildLambdaParserConfig(new NoClassInitializationPlugin()));
+            GraphBuilderPhase lambdaParserPhase = new GraphBuilderPhase(buildLambdaParserConfig());
             HighTierContext context = new HighTierContext(GraalAccess.getOriginalProviders(), null, OptimisticOptimizations.NONE);
             lambdaParserPhase.apply(graph, context);
         } catch (Throwable e) {
@@ -140,9 +136,9 @@ public class SerializationFeature implements Feature {
         return graph;
     }
 
-    private static Class<?> lookupForMemberField(Class<?> clazz, Object constantObject) {
+    private static Class<?> getLambdaClassFromMemberField(Class<?> clazz, Object constantObject, String fieldName) {
         try {
-            Field memberField = clazz.getDeclaredField("member");
+            Field memberField = clazz.getDeclaredField(fieldName);
             memberField.setAccessible(true);
             Object object = memberField.get(constantObject);
             Method getDeclaringClass = object.getClass().getDeclaredMethod("getDeclaringClass");
@@ -153,9 +149,9 @@ public class SerializationFeature implements Feature {
         }
     }
 
-    private static Class<?> lookupForLambdaClass(Class<?> clazz, Object constantObject, String fieldName) {
+    private static Class<?> getLambdaClassFromConstantObject(Class<?> clazz, Object constantObject) {
         try {
-            Field instanceClassField = clazz.getDeclaredField(fieldName);
+            Field instanceClassField = clazz.getDeclaredField("staticBase");
             instanceClassField.setAccessible(true);
             return (Class<?>) instanceClassField.get(constantObject);
         } catch (IllegalAccessException | NoSuchFieldException ignored) {
@@ -163,6 +159,31 @@ public class SerializationFeature implements Feature {
         }
     }
 
+    /**
+     * It is not possible to avoid reflection when trying to get lambda class from
+     * {@link ConstantNode} instance. Lambda class is wrapped in the {@code ConstantNode#value}
+     * which is of type {@code DirectHotSpotObjectConstantImpl}. That class is protected and it is
+     * not visible in the {@link SerializationFeature}. The only way to access fields and methods of
+     * this class is through the reflection. There are 2 different ways of getting lambda from the
+     * {@code ConstantNode#value}:
+     *
+     * 1. For capturing classes from the JDK {@code ConstantNode#value} of type
+     * {@code DirectHotSpotObjectConstantImpl} has {@code DirectHotSpotObjectConstantImpl#object} of
+     * type {@code DirectMethodHandle$Constructor} on Java 17 and in previous versions. Lambda class
+     * can be extracted from {@code DirectMethodHandle$Constructor#initMethod} using the
+     * {@code MemberName#getDeclaringClass()} or from {@code DirectMethodHandle#member} using the
+     * {@code MemberName#getDeclaringClass()}. Since all of those classes are protected and are not
+     * in the same package as the {@link SerializationFeature}, the only way to get the lambda class
+     * is using the reflection.
+     *
+     * 2. For capturing classes that are user-defined classes, {@code ConstantNode#value} of type
+     * {@code DirectHotSpotObjectConstantImpl} has {@code DirectHotSpotObjectConstantImpl#object} of
+     * type {@code DirectMethodHandle$StaticAccessor} type. In that case, lambda class is stored in
+     * the {@code DirectMethodHandle$StaticAccessor#staticBase}. Since
+     * {@code DirectMethodHandle$StaticAccessor} is also protected class and cannot be imported in
+     * the {@link SerializationFeature}, it is not possible to get values from this field in any
+     * ways other than the reflection.
+     */
     private static Class<?> getLambdaClassFromConstantNode(ConstantNode constantNode) {
         Constant constant = constantNode.getValue();
         Object constantObject;
@@ -176,14 +197,16 @@ public class SerializationFeature implements Feature {
         }
 
         Class<?> clazz = constantObject.getClass();
-        Class<?> lambdaClass = lookupForMemberField(clazz, constantObject);
+        Class<?> lambdaClass;
+
+        if (JavaVersionUtil.JAVA_SPEC >= 17) {
+            lambdaClass = getLambdaClassFromMemberField(clazz, constantObject, "initMethod");
+        } else {
+            lambdaClass = getLambdaClassFromMemberField(clazz, constantObject, "member");
+        }
 
         if (lambdaClass == null) {
-            if (JavaVersionUtil.JAVA_SPEC >= 17) {
-                lambdaClass = lookupForLambdaClass(clazz, constantObject, "instanceField");
-            } else {
-                lambdaClass = lookupForLambdaClass(clazz, constantObject, "staticBase");
-            }
+            lambdaClass = getLambdaClassFromConstantObject(clazz, constantObject);
         }
 
         if (lambdaClass == null) {
@@ -193,7 +216,7 @@ public class SerializationFeature implements Feature {
         return lambdaClass.getName().contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING) ? lambdaClass : null;
     }
 
-    private static void traverseGraph(StructuredGraph graph) {
+    private static void registerLambdasFromConstantNodesInGraph(StructuredGraph graph) {
         NodeIterable<ConstantNode> constantNodes = ConstantNode.getConstantNodes(graph);
 
         for (ConstantNode cNode : constantNodes) {
@@ -204,7 +227,7 @@ public class SerializationFeature implements Feature {
                     Method serializeLambdaMethod = lambdaClass.getDeclaredMethod("writeReplace");
                     RuntimeReflection.register(serializeLambdaMethod);
                 } catch (NoSuchMethodException e) {
-                    throw VMError.shouldNotReachHere("Serializable lambda class must contain writeReplace method.");
+                    throw VMError.shouldNotReachHere("Serializable lambda class must contain the writeReplace method.");
                 }
             }
         }
@@ -213,13 +236,20 @@ public class SerializationFeature implements Feature {
     @SuppressWarnings("try")
     private static void registerLambdasFromMethod(ResolvedJavaMethod method, DebugContext debug) {
         StructuredGraph graph = createMethodGraph(method, debug);
-        traverseGraph(graph);
+        registerLambdasFromConstantNodesInGraph(graph);
     }
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         FeatureImpl.BeforeAnalysisAccessImpl impl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
 
+        /*
+         * In order to serialize lambda classes we need to register proper methods for reflection.
+         * Since lambda names are not stable, we do not know which lambdas should be serialized. We
+         * simply register all the lambdas from capturing classes written in the serialization
+         * configuration file for serialization. In order to find all the lambdas from a class, we
+         * parse all the methods of the given class and find all the lambdas in them.
+         */
         for (Class<?> clazz : capturingClasses) {
             ResolvedJavaType clazzType = GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaType(clazz);
             ResolvedJavaMethod[] methods = clazzType.getDeclaredMethods();
@@ -236,25 +266,6 @@ public class SerializationFeature implements Feature {
 
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
-        FeatureImpl.DuringAnalysisAccessImpl impl = (FeatureImpl.DuringAnalysisAccessImpl) access;
-        AnalysisUniverse universe = impl.getUniverse();
-
-        List<AnalysisType> types = universe.getTypes();
-
-        for (AnalysisType type : types) {
-            if (type.getName().contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING) && type.isReachable()) {
-                Class<?> capturingClass = access.findClassByName(type.getJavaClass().getName().split(LambdaUtils.LAMBDA_SPLIT_PATTERN)[0]);
-                if (SerializationFeature.capturingClasses.contains(capturingClass)) {
-                    try {
-                        Method serializeLambdaMethod = type.getJavaClass().getDeclaredMethod("writeReplace");
-                        RuntimeReflection.register(serializeLambdaMethod);
-                    } catch (NoSuchMethodException e) {
-                        throw VMError.shouldNotReachHere("You have to register class from which you want lambdas to be serialized.");
-                    }
-                }
-            }
-        }
-
         serializationBuilder.flushConditionalConfiguration(access);
     }
 
