@@ -73,8 +73,6 @@ public final class LoadDependencyNode extends LLVMNode {
         } else {
             // only create a source if the library has not already been parsed.
             TruffleFile file = createTruffleFile(libraryName, libraryLocator);
-            // if the file is null, then this file does not exist or the file system has denied
-            // access to this file.
             CallTarget calls = getLanguage().getCachedLibrary(file.getPath());
             if (calls != null) {
                 return calls;
