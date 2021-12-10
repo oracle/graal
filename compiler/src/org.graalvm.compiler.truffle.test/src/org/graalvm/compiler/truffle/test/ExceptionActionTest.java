@@ -228,26 +228,19 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
     }
 
     @Override
-    protected Context setupContext(String... keyValuePairs) {
+    protected Context.Builder newContextBuilder() {
         try {
+            Context.Builder builder = super.newContextBuilder();
             String logFile = System.getProperty(LOG_FILE_PROPERTY);
             FileHandler handler = new FileHandler(logFile);
             handler.setFormatter(new SimpleFormatter());
-            Context.Builder builder = Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).logHandler(handler);
-            setOptions(builder, DEFAULT_OPTIONS);
-            setOptions(builder, keyValuePairs);
-            return super.setupContext(builder);
+            builder.logHandler(handler);
+            for (int i = 0; i < DEFAULT_OPTIONS.length; i += 2) {
+                builder.option(DEFAULT_OPTIONS[i], DEFAULT_OPTIONS[i + 1]);
+            }
+            return builder;
         } catch (IOException ioe) {
             throw new AssertionError("Cannot write log file.", ioe);
-        }
-    }
-
-    private static void setOptions(Context.Builder builder, String... keyValuePairs) {
-        if ((keyValuePairs.length & 1) == 1) {
-            throw new IllegalArgumentException("KeyValuePairs must have even length.");
-        }
-        for (int i = 0; i < keyValuePairs.length; i += 2) {
-            builder.option(keyValuePairs[i], keyValuePairs[i + 1]);
         }
     }
 

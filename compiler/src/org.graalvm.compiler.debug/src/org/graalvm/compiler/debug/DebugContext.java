@@ -140,7 +140,11 @@ public final class DebugContext implements AutoCloseable {
     private long[] metricValues;
 
     public static PrintStream getDefaultLogStream() {
-        return TTY.out;
+        // The PrintStream in the TTY#out field cannot be used because it does not respect current
+        // thread TTY.Filter. We have to use TTY#out(), which returns a LogStream that respects
+        // current thread TTY.filter. Truffle uses TTY.Filter to redirect Graal logging into engine
+        // logger.
+        return TTY.out().out();
     }
 
     /**
