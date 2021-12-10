@@ -62,10 +62,11 @@ public final class DAPInstrument extends TruffleInstrument {
         }
     }, (Consumer<HostAndPort>) (address) -> address.verify());
 
-    @Option(name = "", help = "Start the Debug Protocol Server on [[host:]port].", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "", help = "Start the Debug Protocol Server on [[host:]port] (default: <loopback address>:" + DEFAULT_PORT +
+                    ")", usageSyntax = "[[<host>:]<port>]", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<HostAndPort> Dap = new OptionKey<>(DEFAULT_ADDRESS, ADDRESS_OR_BOOLEAN);
 
-    @Option(help = "Suspend the execution at first executed source line.", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(help = "Suspend the execution at first executed source line (default: true).", usageSyntax = "true|false", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Boolean> Suspend = new OptionKey<>(true);
 
     @Option(help = "Do not execute any source code until debugger client is attached.", category = OptionCategory.USER, stability = OptionStability.STABLE) //
@@ -77,7 +78,7 @@ public final class DAPInstrument extends TruffleInstrument {
     @Option(help = "Debug language initialization.", category = OptionCategory.INTERNAL) //
     static final OptionKey<Boolean> Initialization = new OptionKey<>(false);
 
-    @Option(help = "Requested maximum length of the Socket queue of incoming connections.", category = OptionCategory.EXPERT) //
+    @Option(help = "Requested maximum length of the Socket queue of incoming connections (default: unspecified).", usageSyntax = "[0, inf]", category = OptionCategory.EXPERT) //
     static final OptionKey<Integer> SocketBacklogSize = new OptionKey<>(-1);
 
     @Override
