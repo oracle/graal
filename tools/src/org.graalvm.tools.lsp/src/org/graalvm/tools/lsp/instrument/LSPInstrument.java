@@ -111,13 +111,13 @@ public final class LSPInstrument extends TruffleInstrument implements Environmen
     @Option(help = "Include internal sources in goto-definition, references and symbols search.", category = OptionCategory.INTERNAL) //
     public static final OptionKey<Boolean> Internal = new OptionKey<>(false);
 
-    @Option(name = "", help = "Start the Language Server on [[host:]port].", category = OptionCategory.USER) //
+    @Option(name = "", help = "Start the Language Server on [[host:]port].", usageSyntax = "[[<host>:]<port>]", category = OptionCategory.USER) //
     static final OptionKey<HostAndPort> Lsp = new OptionKey<>(DEFAULT_ADDRESS, ADDRESS_OR_BOOLEAN);
 
-    @Option(help = "Requested maximum length of the Socket queue of incoming connections.", category = OptionCategory.EXPERT) //
+    @Option(help = "Requested maximum length of the Socket queue of incoming connections.", usageSyntax = "[0, inf)", category = OptionCategory.EXPERT) //
     static final OptionKey<Integer> SocketBacklogSize = new OptionKey<>(-1);
 
-    @Option(help = "Delegate language servers", category = OptionCategory.USER) //
+    @Option(help = "Delegate language servers (default: no language server).", usageSyntax = "[languageId@][[host:]port],...", category = OptionCategory.USER) //
     static final OptionKey<List<LanguageAndAddress>> Delegates = new OptionKey<>(Collections.emptyList(), DELEGATES);
 
     @Override
