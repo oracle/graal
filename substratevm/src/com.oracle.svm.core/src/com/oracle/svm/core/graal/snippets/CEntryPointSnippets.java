@@ -192,7 +192,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             return result;
         }
         if (MultiThreaded.getValue()) {
-            Safepoint.transitionNativeToJava();
+            Safepoint.transitionNativeToJava(false);
         }
 
         result = runtimeCallInitializeIsolate(INITIALIZE_ISOLATE, parameters);
@@ -346,7 +346,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         }
 
         if (MultiThreaded.getValue() && !inCrashHandler) {
-            Safepoint.transitionNativeToJava();
+            Safepoint.transitionNativeToJava(false);
         }
         if (ensureJavaThread) {
             runtimeCallEnsureJavaThread(ENSURE_JAVA_THREAD);
@@ -471,7 +471,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             result = runtimeCall(ENTER_ISOLATE_MT, isolate);
             if (result == CEntryPointErrors.NO_ERROR) {
                 if (VMThreads.StatusSupport.isStatusNativeOrSafepoint()) {
-                    Safepoint.transitionNativeToJava();
+                    Safepoint.transitionNativeToJava(false);
                 }
             }
         } else {
@@ -534,7 +534,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                  */
                 runtimeCall(VERIFY_ISOLATE_THREAD, thread);
             }
-            Safepoint.transitionNativeToJava();
+            Safepoint.transitionNativeToJava(false);
         }
 
         return CEntryPointErrors.NO_ERROR;

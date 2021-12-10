@@ -43,6 +43,7 @@ public class JavaFrameAnchors {
         lastAnchor.set(anchor);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static JavaFrameAnchor popFrameAnchor() {
         JavaFrameAnchor result = lastAnchor.get();
         lastAnchor.set(result.getPreviousAnchor());
