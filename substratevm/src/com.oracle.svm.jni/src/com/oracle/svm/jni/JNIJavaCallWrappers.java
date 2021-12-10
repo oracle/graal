@@ -30,7 +30,6 @@ import com.oracle.svm.jni.hosted.JNIJavaCallWrapperMethod.CallVariant;
 
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Holder class for generated {@link JNIJavaCallWrapperMethod} code.
@@ -42,7 +41,7 @@ public final class JNIJavaCallWrappers {
         return metaAccess.lookupJavaType(JNIJavaCallWrappers.class).getDeclaredConstructors()[0].getConstantPool();
     }
 
-    public static ResolvedJavaMethod lookupJavaCallTrampoline(MetaAccessProvider metaAccess, CallVariant variant, boolean nonVirtual) {
+    public static String getTrampolineName(CallVariant variant, boolean nonVirtual) {
         StringBuilder name = new StringBuilder(48);
         if (variant == CallVariant.VARARGS) {
             name.append("varargs");
@@ -57,11 +56,7 @@ public final class JNIJavaCallWrappers {
             name.append("Nonvirtual");
         }
         name.append("JavaCallTrampoline");
-        try {
-            return metaAccess.lookupJavaMethod(JNIJavaCallWrappers.class.getDeclaredMethod(name.toString()));
-        } catch (NoSuchMethodException e) {
-            throw VMError.shouldNotReachHere(e);
-        }
+        return name.toString();
     }
 
     private JNIJavaCallWrappers() {

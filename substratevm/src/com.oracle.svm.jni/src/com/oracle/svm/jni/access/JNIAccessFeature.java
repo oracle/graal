@@ -31,11 +31,13 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.util.VMError;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -90,12 +92,7 @@ public class JNIAccessFeature implements Feature {
 
     private boolean sealed = false;
     private NativeLibraries nativeLibraries;
-    private JNICallTrampolineMethod varargsCallTrampolineMethod;
-    private JNICallTrampolineMethod arrayCallTrampolineMethod;
-    private JNICallTrampolineMethod valistCallTrampolineMethod;
-    private JNICallTrampolineMethod varargsNonvirtualCallTrampolineMethod;
-    private JNICallTrampolineMethod arrayNonvirtualCallTrampolineMethod;
-    private JNICallTrampolineMethod valistNonvirtualCallTrampolineMethod;
+    private final Map<String, JNICallTrampolineMethod> trampolineMethods = new HashMap<>();
 
     private int loadedConfigurations;
 
@@ -169,12 +166,12 @@ public class JNIAccessFeature implements Feature {
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) arg;
         this.nativeLibraries = access.getNativeLibraries();
 
-        varargsCallTrampolineMethod = createJavaCallTrampoline(access, CallVariant.VARARGS, false);
-        arrayCallTrampolineMethod = createJavaCallTrampoline(access, CallVariant.ARRAY, false);
-        valistCallTrampolineMethod = createJavaCallTrampoline(access, CallVariant.VA_LIST, false);
-        varargsNonvirtualCallTrampolineMethod = createJavaCallTrampoline(access, CallVariant.VARARGS, true);
-        arrayNonvirtualCallTrampolineMethod = createJavaCallTrampoline(access, CallVariant.ARRAY, true);
-        valistNonvirtualCallTrampolineMethod = createJavaCallTrampoline(access, CallVariant.VA_LIST, true);
+        createJavaCallTrampoline(access, CallVariant.VARARGS, false);
+        createJavaCallTrampoline(access, CallVariant.ARRAY, false);
+        createJavaCallTrampoline(access, CallVariant.VA_LIST, false);
+        createJavaCallTrampoline(access, CallVariant.VARARGS, true);
+        createJavaCallTrampoline(access, CallVariant.ARRAY, true);
+        createJavaCallTrampoline(access, CallVariant.VA_LIST, true);
 
         /* duplicated to reduce the number of analysis iterations */
         getConditionalConfigurationRegistry().flushConditionalConfiguration(access);
@@ -184,28 +181,32 @@ public class JNIAccessFeature implements Feature {
         return (ConditionalConfigurationRegistry) ImageSingletons.lookup(JNIRuntimeAccess.JNIRuntimeAccessibilitySupport.class);
     }
 
-    private static JNICallTrampolineMethod createJavaCallTrampoline(BeforeAnalysisAccessImpl access, CallVariant variant, boolean nonVirtual) {
+    private void createJavaCallTrampoline(BeforeAnalysisAccessImpl access, CallVariant variant, boolean nonVirtual) {
         MetaAccessProvider wrappedMetaAccess = access.getMetaAccess().getWrapped();
         ResolvedJavaField field = JNIAccessibleMethod.getCallWrapperField(wrappedMetaAccess, variant, nonVirtual);
         access.getUniverse().lookup(field.getDeclaringClass()).registerAsReachable();
         access.registerAsAccessed(access.getUniverse().lookup(field));
-        ResolvedJavaMethod method = JNIJavaCallWrappers.lookupJavaCallTrampoline(wrappedMetaAccess, variant, nonVirtual);
+        String trampolineName = JNIJavaCallWrappers.getTrampolineName(variant, nonVirtual);
+        ResolvedJavaMethod method;
+        try {
+            method = wrappedMetaAccess.lookupJavaMethod(JNIJavaCallWrappers.class.getDeclaredMethod(trampolineName));
+        } catch (NoSuchMethodException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
         JNICallTrampolineMethod trampoline = new JNICallTrampolineMethod(method, field, nonVirtual);
         access.registerAsCompiled(access.getUniverse().lookup(trampoline));
-        return trampoline;
+        trampolineMethods.put(trampolineName, trampoline);
     }
 
     public JNICallTrampolineMethod getCallTrampolineMethod(CallVariant variant, boolean nonVirtual) {
-        JNICallTrampolineMethod method = null;
-        if (variant == CallVariant.VARARGS) {
-            method = nonVirtual ? varargsNonvirtualCallTrampolineMethod : varargsCallTrampolineMethod;
-        } else if (variant == CallVariant.ARRAY) {
-            method = nonVirtual ? arrayNonvirtualCallTrampolineMethod : arrayCallTrampolineMethod;
-        } else if (variant == CallVariant.VA_LIST) {
-            method = nonVirtual ? valistNonvirtualCallTrampolineMethod : valistCallTrampolineMethod;
-        }
-        assert method != null;
-        return method;
+        String trampolineName = JNIJavaCallWrappers.getTrampolineName(variant, nonVirtual);
+        return getCallTrampolineMethod(trampolineName);
+    }
+
+    public JNICallTrampolineMethod getCallTrampolineMethod(String javaTrampolineName) {
+        JNICallTrampolineMethod jniCallTrampolineMethod = trampolineMethods.get(javaTrampolineName);
+        assert jniCallTrampolineMethod != null;
+        return jniCallTrampolineMethod;
     }
 
     public JNINativeLinkage makeLinkage(String declaringClass, String name, String descriptor) {

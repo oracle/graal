@@ -29,6 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 
+import com.oracle.svm.jni.access.JNIAccessFeature;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -41,6 +42,13 @@ class JNINativeCallWrapperSubstitutionProcessor extends SubstitutionProcessor {
     @Override
     public ResolvedJavaMethod lookup(ResolvedJavaMethod method) {
         assert method.isNative() : "Must have been registered as a native substitution processor";
+        if (method.getDeclaringClass().getName().equals("Lcom/oracle/svm/jni/JNIJavaCallWrappers;")) {
+            // Avoid generating JNINativeCallWrapperMethods for trampolines
+            JNICallTrampolineMethod callTrampolineMethod = JNIAccessFeature.singleton().getCallTrampolineMethod(method.getName());
+            if (callTrampolineMethod != null) {
+                return callTrampolineMethod;
+            }
+        }
         return callWrappers.computeIfAbsent(method, JNINativeCallWrapperMethod::new);
     }
 
