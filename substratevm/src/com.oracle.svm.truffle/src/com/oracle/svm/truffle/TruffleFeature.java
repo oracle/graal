@@ -363,6 +363,7 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
          * don't expect it to be used except for profiling enabled check.
          */
         TruffleBaseFeature.invokeStaticMethod("com.oracle.truffle.polyglot.PolyglotEngineImpl", "resetFallbackEngine", Collections.emptyList());
+        TruffleBaseFeature.preInitializeEngine();
     }
 
     static class TruffleParsingInlineInvokePlugin implements InlineInvokePlugin {
