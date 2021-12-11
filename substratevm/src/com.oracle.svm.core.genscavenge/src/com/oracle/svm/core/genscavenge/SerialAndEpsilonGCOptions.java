@@ -45,7 +45,7 @@ public final class SerialAndEpsilonGCOptions {
     public static final RuntimeOptionKey<Integer> MaximumYoungGenerationSizePercent = new NotifyGCRuntimeOptionKey<>(10, SerialAndEpsilonGCOptions::serialOrEpsilonGCOnly);
 
     @Option(help = "The size of an aligned chunk. Serial and epsilon GC only.", type = OptionType.Expert) //
-    public static final HostedOptionKey<Long> AlignedHeapChunkSize = new HostedOptionKey<>(1L * 1024L * 1024L, SerialAndEpsilonGCOptions::serialOrEpsilonGCOnly) {
+    public static final HostedOptionKey<Long> AlignedHeapChunkSize = new HostedOptionKey<>(512 * 1024L, SerialAndEpsilonGCOptions::serialOrEpsilonGCOnly) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
             int multiple = 4096;
