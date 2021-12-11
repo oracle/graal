@@ -354,8 +354,8 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
 
         StaticObjectSupport.duringAnalysis(a);
 
-        for (Class<?> clazz : a.reachableSubtypes(com.oracle.truffle.api.nodes.Node.class)) {
-            registerUnsafeAccess(a, clazz.asSubclass(com.oracle.truffle.api.nodes.Node.class));
+        for (Class<?> clazz : access.reachableSubtypes(com.oracle.truffle.api.nodes.Node.class)) {
+            registerUnsafeAccess(access, clazz.asSubclass(com.oracle.truffle.api.nodes.Node.class));
 
             AnalysisType type = access.getMetaAccess().lookupJavaType(clazz);
             if (type.isInstantiated()) {
