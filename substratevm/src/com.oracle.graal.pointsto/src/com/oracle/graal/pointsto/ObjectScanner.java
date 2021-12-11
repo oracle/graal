@@ -373,7 +373,7 @@ public class ObjectScanner {
         return bb.getMetaAccess().lookupJavaType(constant.getClass());
     }
 
-    protected static AnalysisType constantType(BigBang bb, JavaConstant constant) {
+    public static AnalysisType constantType(BigBang bb, JavaConstant constant) {
         return bb.getMetaAccess().lookupJavaType(constant);
     }
 

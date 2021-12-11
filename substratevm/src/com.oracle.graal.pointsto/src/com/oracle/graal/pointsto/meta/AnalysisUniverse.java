@@ -688,6 +688,10 @@ public class AnalysisUniverse implements Universe {
         bb.onTypeInstantiated(type, usage);
     }
 
+    public void onTypeScanned(AnalysisType type) {
+        bb.onTypeScanned(type);
+    }
+
     public SubstitutionProcessor getSubstitutions() {
         return substitutions;
     }

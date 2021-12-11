@@ -352,6 +352,8 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
     public void duringAnalysis(DuringAnalysisAccess a) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
 
+        StaticObjectSupport.duringAnalysis(a);
+
         for (Class<?> clazz : a.reachableSubtypes(com.oracle.truffle.api.nodes.Node.class)) {
             registerUnsafeAccess(a, clazz.asSubclass(com.oracle.truffle.api.nodes.Node.class));
 
@@ -373,9 +375,9 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
         // access.rescanRoot("com.oracle.truffle.api.library.LibraryFactory$ResolvedDispatch",
         // "CACHE");
         access.rescanRoot("com.oracle.truffle.object.DefaultLayout$LayoutInfo", "LAYOUT_INFO_MAP");
-        access.rescanRoot("com.oracle.truffle.polyglot.PolyglotEngineImpl", "ENGINES");
-        // access.rescanRoot("com.oracle.truffle.api.TruffleLogger$LoggerCache", "INSTANCE");
         access.rescanRoot("com.oracle.truffle.object.DefaultLayout", "LAYOUT_MAP");
+        // access.rescanRoot("com.oracle.truffle.polyglot.PolyglotEngineImpl", "ENGINES");
+        // access.rescanRoot("com.oracle.truffle.api.TruffleLogger$LoggerCache", "INSTANCE");
 
         // Object instance = access.rescanRoot("com.oracle.truffle.api.TruffleLogger$LoggerCache",
         // "INSTANCE");

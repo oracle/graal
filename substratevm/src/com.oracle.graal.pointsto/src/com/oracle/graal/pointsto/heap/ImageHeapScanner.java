@@ -38,7 +38,7 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 
-import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.ObjectScanner.ArrayScan;
 import com.oracle.graal.pointsto.ObjectScanner.EmbeddedRootScan;
 import com.oracle.graal.pointsto.ObjectScanner.FieldScan;
@@ -79,16 +79,12 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * When an instance field is marked as accessed the objects of its declaring type (and all the
  * subtypes) are re-scanned.
  */
-public class ImageHeapScanner {
+public abstract class ImageHeapScanner {
     public static class Options {
         @Option(help = "Enable manual rescanning of image heap objects.")//
         public static final OptionKey<Boolean> EnableManualRescan = new OptionKey<>(true);
-
-        @Option(help = "Print warnings when verifier finds mismatch.")//
-        public static final OptionKey<Boolean> PrintOnMismatch = new OptionKey<>(false);
     }
 
-    private final BigBang bb;
     protected final ImageHeap imageHeap;
     protected final AnalysisMetaAccess metaAccess;
     protected final AnalysisUniverse universe;
@@ -102,9 +98,8 @@ public class ImageHeapScanner {
     protected boolean isEnabled;
     private final boolean enableManualRescan;
 
-    public ImageHeapScanner(BigBang bb, ImageHeap heap, AnalysisMetaAccess aMetaAccess,
-                    SnippetReflectionProvider aSnippetReflection, ConstantReflectionProvider aConstantReflection, ObjectScanningObserver aScanningObserver) {
-        this.bb = bb;
+    public ImageHeapScanner(ImageHeap heap, AnalysisMetaAccess aMetaAccess, SnippetReflectionProvider aSnippetReflection,
+                    ConstantReflectionProvider aConstantReflection, ObjectScanningObserver aScanningObserver) {
         imageHeap = heap;
         universe = aMetaAccess.getUniverse();
         metaAccess = aMetaAccess;
@@ -132,6 +127,16 @@ public class ImageHeapScanner {
 
     public ImageHeap getImageHeap() {
         return imageHeap;
+    }
+
+    protected abstract Class<?> getClass(String className);
+
+    protected AnalysisType getAnalysisType(String className) {
+        return metaAccess.lookupJavaType(getClass(className));
+    }
+
+    protected AnalysisField getAnalysisField(String className, String fieldName) {
+        return metaAccess.lookupJavaField(ReflectionUtil.lookupField(getClass(className), fieldName));
     }
 
     public void scanEmbeddedRoot(JavaConstant root, BytecodePosition position) {
@@ -402,6 +407,7 @@ public class ImageHeapScanner {
         AnalysisError.guarantee(rawValue.isAvailable(), "Value not yet available for " + field.format("%H.%n"));
 
         /* Attempting to materialize the value before it is available may result in an error. */
+        // TODO why run the transformer here, it is run by markConstantReachable anyway
         JavaConstant transformedValue = transformFieldValue(field, receiver, rawValue.get());
 
         if (scanningObserver != null) {
@@ -410,6 +416,9 @@ public class ImageHeapScanner {
             } else if (transformedValue.isNull()) {
                 scanningObserver.forNullFieldValue(receiver, field, reason);
             } else {
+                // TODO this adds the transformedValue in the heap, should we do this here?
+                // This will also run the replacer again; transformFieldValue already run the
+                // replacer
                 AnalysisFuture<ImageHeapObject> objectFuture = markConstantReachable(transformedValue, reason);
                 /* Notify the points-to analysis of the scan. */
                 if (objectFuture != null) {
@@ -478,12 +487,12 @@ public class ImageHeapScanner {
         return false;
     }
 
-    public void rescanRoot(Field reflectionField) {
+    public Object rescanRoot(Field reflectionField) {
         if (!enableManualRescan) {
-            return;
+            return null;
         }
         if (skipScanning()) {
-            return;
+            return null;
         }
         AnalysisType type = metaAccess.lookupJavaType(reflectionField.getDeclaringClass());
         if (type.isReachable()) {
@@ -492,9 +501,12 @@ public class ImageHeapScanner {
             TypeData typeData = field.getDeclaringClass().getOrComputeData();
             AnalysisFuture<JavaConstant> fieldTask = patchStaticField(typeData, field, fieldValue, OtherReason.RESCAN);
             if (field.isRead()) {
-                rescanCollectionElements(asObject(fieldTask.ensureDone()));
+                Object root = asObject(fieldTask.ensureDone());
+                rescanCollectionElements(root);
+                return root;
             }
         }
+        return null;
     }
 
     public void rescanField(Object receiver, Class<?> declaringClass, String fieldName) {
@@ -591,10 +603,10 @@ public class ImageHeapScanner {
 
     public void scanHub(AnalysisType type) {
         /* Initialize dynamic hub metadata before scanning it. */
-        bb.onTypeScanned(type);
+        universe.onTypeScanned(type);
         metaAccess.lookupJavaType(java.lang.Class.class).registerAsReachable();
         /* We scan the original class here, the scanner does the replacement to DynamicHub. */
-        createImageHeapObject(asConstant(type.getJavaClass()), OtherReason.HUB);
+        toImageHeapObject(asConstant(type.getJavaClass()), ObjectScanner.OtherReason.HUB);
     }
 
     protected AnalysisType analysisType(Object constant) {

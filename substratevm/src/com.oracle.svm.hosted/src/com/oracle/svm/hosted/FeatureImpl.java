@@ -263,16 +263,16 @@ public class FeatureImpl {
             rescanField(receiver, getImageClassLoader().findClassOrFail(className), fieldName);
         }
 
-        public void rescanRoot(Field field) {
-            getUniverse().getHeapScanner().rescanRoot(field);
+        public Object rescanRoot(Field field) {
+            return getUniverse().getHeapScanner().rescanRoot(field);
         }
 
-        public void rescanRoot(Class<?> declaringClass, String fieldName) {
-            rescanRoot(ReflectionUtil.lookupField(declaringClass, fieldName));
+        public Object rescanRoot(Class<?> declaringClass, String fieldName) {
+            return rescanRoot(ReflectionUtil.lookupField(declaringClass, fieldName));
         }
 
-        public void rescanRoot(String declaringClassName, String fieldName) {
-            rescanRoot(getImageClassLoader().findClassOrFail(declaringClassName), fieldName);
+        public Object rescanRoot(String declaringClassName, String fieldName) {
+            return rescanRoot(getImageClassLoader().findClassOrFail(declaringClassName), fieldName);
         }
 
     }

@@ -26,9 +26,16 @@ package com.oracle.graal.pointsto.heap;
 
 import static com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import static com.oracle.graal.pointsto.ObjectScanner.asString;
+import static com.oracle.graal.pointsto.ObjectScanner.constantAsObject;
 
+import java.util.HashSet;
 import java.util.Objects;
-import java.util.concurrent.ExecutionException;
+import java.util.Set;
+import java.util.function.BooleanSupplier;
+
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;
@@ -47,6 +54,15 @@ import com.oracle.graal.pointsto.util.CompletionExecutor;
 import jdk.vm.ci.meta.JavaConstant;
 
 public class HeapSnapshotVerifier {
+    private static final int QUIET = 0;
+    private static final int MOST = 1;
+    private static final int ALL = 2;
+
+    static class Options {
+        @Option(help = "Control heap verifier verbosity level: 0 - quiet, 1 - print most, 2 - print all.", type = OptionType.Expert)//
+        public static final OptionKey<Integer> HeapVerifierVerbosity = new OptionKey<>(0);
+    }
+
     protected final BigBang bb;
     protected final ImageHeapScanner scanner;
     protected final ImageHeap imageHeap;
@@ -54,14 +70,51 @@ public class HeapSnapshotVerifier {
     private ReusableSet scannedObjects;
     private boolean foundMismatch;
 
-    private final boolean printOnMismatch;
+    private final int verbosity;
+
+    private final Set<AnalysisType> skipArrayTypes = new HashSet<>();
+    /**
+     * Internal data structure fields that can always be skipped from reporting, for example
+     * `java.util.HashMap$Node.next`. These fields can change for example when a map is balanced.
+     */
+    private final Set<AnalysisField> internalFields = new HashSet<>();
+    /**
+     * External data structure fields that should be reported when their value is not in the heap
+     * (even if they don't link to the value), but should be reported when the value is completely
+     * missing.
+     */
+    private final Set<AnalysisField> externalFields = new HashSet<>();
 
     public HeapSnapshotVerifier(BigBang bb, ImageHeap imageHeap, ImageHeapScanner scanner) {
         this.bb = bb;
         this.scanner = scanner;
         this.imageHeap = imageHeap;
         scannedObjects = new ReusableSet();
-        printOnMismatch = ImageHeapScanner.Options.PrintOnMismatch.getValue(bb.getOptions());
+        verbosity = Options.HeapVerifierVerbosity.getValue(bb.getOptions());
+
+        skipArrayTypes.add(scanner.getAnalysisType("java.util.concurrent.ConcurrentHashMap$Node").getArrayClass());
+        skipArrayTypes.add(scanner.getAnalysisType("java.util.HashMap$Node").getArrayClass());
+        skipArrayTypes.add(scanner.getAnalysisType("java.util.WeakHashMap$Entry").getArrayClass());
+
+        internalFields.add(scanner.getAnalysisField("java.util.concurrent.ConcurrentHashMap", "table"));
+        internalFields.add(scanner.getAnalysisField("java.util.concurrent.ConcurrentHashMap$Node", "next"));
+        internalFields.add(scanner.getAnalysisField("java.util.HashMap", "table"));
+        internalFields.add(scanner.getAnalysisField("java.util.HashMap$Node", "next"));
+        internalFields.add(scanner.getAnalysisField("java.util.LinkedList", "last"));
+        internalFields.add(scanner.getAnalysisField("java.util.LinkedList", "first"));
+        internalFields.add(scanner.getAnalysisField("java.util.LinkedHashMap", "head"));
+        internalFields.add(scanner.getAnalysisField("java.util.LinkedHashMap", "tail"));
+        internalFields.add(scanner.getAnalysisField("java.util.LinkedHashMap$Entry", "before"));
+        internalFields.add(scanner.getAnalysisField("java.util.LinkedHashMap$Entry", "after"));
+        internalFields.add(scanner.getAnalysisField("java.util.LinkedList$Node", "prev"));
+        internalFields.add(scanner.getAnalysisField("java.util.LinkedList$Node", "next"));
+        internalFields.add(scanner.getAnalysisField("java.util.ArrayList", "elementData"));
+
+        externalFields.add(scanner.getAnalysisField("java.util.concurrent.ConcurrentHashMap$Node", "key"));
+        externalFields.add(scanner.getAnalysisField("java.util.concurrent.ConcurrentHashMap$Node", "val"));
+        externalFields.add(scanner.getAnalysisField("java.util.HashMap$Node", "key"));
+        externalFields.add(scanner.getAnalysisField("java.util.HashMap$Node", "value"));
+        // externalFields.add(scanner.getAnalysisField("java.lang.ref.Reference", "referent")); ?
     }
 
     public boolean verifyHeapSnapshot(CompletionExecutor executor) throws InterruptedException {
@@ -107,41 +160,30 @@ public class HeapSnapshotVerifier {
 
         @Override
         public void forNonNullFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue, ScanReason reason) {
-            try {
-                if (field.isStatic()) {
-                    TypeData typeData = field.getDeclaringClass().getOrComputeData();
-                    AnalysisFuture<JavaConstant> fieldValueTask = typeData.getStaticFieldValueTask(field);
-                    if (fieldValueTask.isDone()) {
-                        JavaConstant fieldSnapshot = fieldValueTask.get();
-                        if (!Objects.equals(fieldSnapshot, fieldValue)) {
-                            warning(reason, "Value mismatch for static field %s %n snapshot: %s %n new value: %s %n",
-                                            field, fieldSnapshot, fieldValue);
-                            scanner.patchStaticField(typeData, field, fieldValue, reason).ensureDone();
-                        }
-                    } else {
-                        warning(reason, "Snapshot not yet computed for field %s %n new value: %s %n", field, fieldValue);
-                        fieldValueTask.ensureDone();
-                    }
-                } else {
-                    AnalysisFuture<ImageHeapObject> receiverTask = imageHeap.getTask(receiver);
-                    assert receiverTask != null && receiverTask.isDone() : message(reason, "Task %s for receiver %s.",
-                                    (receiverTask == null ? "is null" : "not yet executed"), receiver);
-                    ImageHeapInstance receiverObject = (ImageHeapInstance) receiverTask.get();
-                    AnalysisFuture<JavaConstant> fieldValueTask = receiverObject.getFieldTask(field);
-                    if (fieldValueTask.isDone()) {
-                        JavaConstant fieldSnapshot = fieldValueTask.get();
-                        if (!Objects.equals(fieldSnapshot, fieldValue)) {
-                            warning(reason, "Value mismatch for field %s %n snapshot: %s %n new value: %s %n",
-                                            field, fieldSnapshot, fieldValue);
-                            scanner.patchInstanceField(receiverObject, field, fieldValue, reason).ensureDone();
-                        }
-                    } else {
-                        warning(reason, "Snapshot not yet computed for field %s %n new value: %s %n", field, fieldValue);
-                        fieldValueTask.ensureDone();
-                    }
+            if (field.isStatic()) {
+                TypeData typeData = field.getDeclaringClass().getOrComputeData();
+                AnalysisFuture<JavaConstant> fieldValueTask = typeData.getStaticFieldValueTask(field);
+                if (!fieldValueTask.isDone()) {
+                    warnStaticFieldNotComputed(field, fieldValue, reason);
+                    fieldValueTask.ensureDone();
                 }
-            } catch (InterruptedException | ExecutionException e) {
-                throw AnalysisError.shouldNotReachHere(e);
+                JavaConstant fieldSnapshot = fieldValueTask.guardedGet();
+                if (!Objects.equals(fieldSnapshot, fieldValue)) {
+                    warnStaticFieldMismatch(field, fieldSnapshot, fieldValue, reason);
+                    scanner.patchStaticField(typeData, field, fieldValue, reason).ensureDone();
+                }
+            } else {
+                ImageHeapInstance receiverObject = (ImageHeapInstance) getReceiverObject(receiver, reason);
+                AnalysisFuture<JavaConstant> fieldValueTask = receiverObject.getFieldTask(field);
+                if (!fieldValueTask.isDone()) {
+                    warnInstanceFieldNotComputed(field, fieldValue, reason);
+                    fieldValueTask.ensureDone();
+                }
+                JavaConstant fieldSnapshot = fieldValueTask.guardedGet();
+                if (!Objects.equals(fieldSnapshot, fieldValue)) {
+                    warnInstanceFieldMismatch(field, fieldSnapshot, fieldValue, reason);
+                    scanner.patchInstanceField(receiverObject, field, fieldValue, reason).ensureDone();
+                }
             }
         }
 
@@ -156,19 +198,20 @@ public class HeapSnapshotVerifier {
 
         @Override
         public void forNonNullArrayElement(JavaConstant array, AnalysisType arrayType, JavaConstant elementValue, AnalysisType elementType, int index, ScanReason reason) {
-            try {
-                AnalysisFuture<ImageHeapObject> arrayTask = imageHeap.getTask(array);
-                assert arrayTask != null && arrayTask.isDone() : message(reason, "Task %s for array %s.",
-                                (arrayTask == null ? "is null" : "not yet executed"), array);
-                ImageHeapArray receiverObject = (ImageHeapArray) arrayTask.get();
-                JavaConstant elementSnapshot = receiverObject.getElement(index);
-                if (!Objects.equals(elementSnapshot, elementValue)) {
-                    warning(reason, "Value mismatch for array element %n snapshot: %s %n new value: %s %n", elementSnapshot, elementValue);
-                    receiverObject.setElement(index, scanner.onArrayElementReachable(array, arrayType, elementValue, index, reason));
-                }
-            } catch (InterruptedException | ExecutionException e) {
-                throw AnalysisError.shouldNotReachHere(e);
+            ImageHeapArray arrayObject = (ImageHeapArray) getReceiverObject(array, reason);
+            JavaConstant elementSnapshot = arrayObject.getElement(index);
+            if (!Objects.equals(elementSnapshot, elementValue)) {
+                warnArrayElementMismatch(arrayType, elementSnapshot, elementValue, reason);
+                arrayObject.setElement(index, scanner.onArrayElementReachable(array, arrayType, elementValue, index, reason));
             }
+        }
+
+        private ImageHeapObject getReceiverObject(JavaConstant constant, ScanReason reason) {
+            AnalysisFuture<ImageHeapObject> task = imageHeap.getTask(constant);
+            if (task == null || !task.isDone()) {
+                throw error(reason, "Task %s for constant %s.", (task == null ? "is null" : "not yet executed"), constant);
+            }
+            return task.guardedGet();
         }
 
         @Override
@@ -177,13 +220,9 @@ public class HeapSnapshotVerifier {
             if (rootTask == null) {
                 throw error(reason, "No snapshot task found for embedded root %s %n", root);
             } else if (rootTask.isDone()) {
-                try {
-                    JavaConstant rootSnapshot = rootTask.get().getObject();
-                    if (!Objects.equals(rootSnapshot, root)) {
-                        throw error(reason, "Value mismatch for embedded root %n snapshot: %s %n new value: %s %n", rootSnapshot, root);
-                    }
-                } catch (InterruptedException | ExecutionException e) {
-                    throw AnalysisError.shouldNotReachHere(e);
+                JavaConstant rootSnapshot = rootTask.guardedGet().getObject();
+                if (!Objects.equals(rootSnapshot, root)) {
+                    throw error(reason, "Value mismatch for embedded root %n snapshot: %s %n new value: %s %n", rootSnapshot, root);
                 }
             } else {
                 throw error(reason, "Snapshot not yet computed for embedded root %n new value: %s %n", root);
@@ -192,19 +231,93 @@ public class HeapSnapshotVerifier {
 
         @Override
         public void forScannedConstant(JavaConstant value, ScanReason reason) {
-            /* Make sure the value is scanned. */
             AnalysisFuture<ImageHeapObject> task = imageHeap.getTask(value);
-            if (task == null) {
-                scanner.toImageHeapObject(value, reason);
+            if (constantAsObject(bb, value).getClass().equals(Class.class)) {
+                /* Make sure the DynamicHub value is scanned. */
+                if (task == null) {
+                    warnNoTaskForHub(value, reason);
+                    scanner.toImageHeapObject(value, reason);
+                } else {
+                    if (!task.isDone()) {
+                        /* If there is a task for the hub it should have been triggered. */
+                        warnNoTaskComputedForHub(value, reason);
+                        task.ensureDone();
+                    }
+                    JavaConstant snapshot = task.guardedGet().getObject();
+                    if (!Objects.equals(snapshot, value)) {
+                        throw error(reason, "Value mismatch for hub snapshot: %s %n new value: %s %n", snapshot, value);
+                    }
+                }
             }
         }
     }
 
-    private void warning(ScanReason reason, String format, Object... args) {
+    private void warnNoTaskForHub(JavaConstant value, ScanReason reason) {
         foundMismatch = true;
-        if (printOnMismatch) {
-            System.out.println("WARNING: " + message(reason, format, args));
+        if (!skipWarning()) {
+            warning(reason, "No snapshot task found for hub %s %n", value);
         }
+    }
+
+    private void warnNoTaskComputedForHub(JavaConstant value, ScanReason reason) {
+        foundMismatch = true;
+        if (!skipWarning()) {
+            warning(reason, "Snapshot not yet computed for hub %n new value: %s %n", value);
+        }
+    }
+
+    private void warnArrayElementMismatch(AnalysisType arrayType, JavaConstant elementSnapshot, JavaConstant elementValue, ScanReason reason) {
+        foundMismatch = true;
+        if (skipWarning(() -> skipArrayTypes.contains(arrayType))) {
+            return;
+        }
+        warning(reason, "Value mismatch for array element %n snapshot: %s %n new value: %s %n", elementSnapshot, elementValue);
+    }
+
+    private void warnStaticFieldMismatch(AnalysisField field, JavaConstant fieldSnapshot, JavaConstant fieldValue, ScanReason reason) {
+        foundMismatch = true;
+        if (!skipWarning(() -> internalFields.contains(field))) {
+            warning(reason, "Value mismatch for static field %s %n snapshot: %s %n new value: %s %n", field, fieldSnapshot, fieldValue);
+        }
+    }
+
+    private void warnStaticFieldNotComputed(AnalysisField field, JavaConstant fieldValue, ScanReason reason) {
+        foundMismatch = true;
+        if (!skipWarning(() -> internalFields.contains(field))) {
+            warning(reason, "Snapshot not yet computed for static field %s %n new value: %s %n", field, fieldValue);
+        }
+    }
+
+    private void warnInstanceFieldMismatch(AnalysisField field, JavaConstant fieldSnapshot, JavaConstant fieldValue, ScanReason reason) {
+        foundMismatch = true;
+        if (!skipWarning(() -> internalFields.contains(field))) {
+            warning(reason, "Value mismatch for instance field %s %n snapshot: %s %n new value: %s %n", field, fieldSnapshot, fieldValue);
+        }
+    }
+
+    private void warnInstanceFieldNotComputed(AnalysisField field, JavaConstant fieldValue, ScanReason reason) {
+        foundMismatch = true;
+        if (!skipWarning(() -> internalFields.contains(field) || externalFields.contains(field))) {
+            warning(reason, "Snapshot not yet computed for instance field %s %n new value: %s %n", field, fieldValue);
+        }
+    }
+
+    private boolean skipWarning() {
+        return skipWarning(() -> false);
+    }
+
+    private boolean skipWarning(BooleanSupplier skip) {
+        if (verbosity == QUIET) {
+            return true;
+        } else if (verbosity == MOST) {
+            return skip.getAsBoolean();
+        }
+        assert verbosity == ALL;
+        return false;
+    }
+
+    private void warning(ScanReason reason, String format, Object... args) {
+        System.out.println("WARNING: " + message(reason, format, args));
     }
 
     private RuntimeException error(ScanReason reason, String format, Object... args) {

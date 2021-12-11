@@ -27,7 +27,6 @@ package com.oracle.svm.hosted.analysis.heap;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 
-import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.ObjectScanningObserver;
 import com.oracle.graal.pointsto.heap.ImageHeap;
@@ -51,17 +50,24 @@ import jdk.vm.ci.meta.JavaConstant;
 
 public class SVMImageHeapScanner extends ImageHeapScanner {
 
+    private final ImageClassLoader loader;
     protected HostedMetaAccess hostedMetaAccess;
     private final Class<?> economicMapImpl;
 
-    public SVMImageHeapScanner(BigBang bb, ImageHeap imageHeap, ImageClassLoader loader, AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflection,
-                    ConstantReflectionProvider constantReflection, ObjectScanningObserver aScanningObserver) {
-        super(bb, imageHeap, metaAccess, snippetReflection, constantReflection, aScanningObserver);
-        this.economicMapImpl = loader.findClassOrFail("org.graalvm.collections.EconomicMapImpl");
+    public SVMImageHeapScanner(ImageHeap imageHeap, ImageClassLoader loader, AnalysisMetaAccess metaAccess,
+                    SnippetReflectionProvider snippetReflection, ConstantReflectionProvider aConstantReflection, ObjectScanningObserver aScanningObserver) {
+        super(imageHeap, metaAccess, snippetReflection, aConstantReflection, aScanningObserver);
+        this.loader = loader;
+        this.economicMapImpl = this.loader.findClassOrFail("org.graalvm.collections.EconomicMapImpl");
     }
 
     public void setHostedMetaAccess(HostedMetaAccess hostedMetaAccess) {
         this.hostedMetaAccess = hostedMetaAccess;
+    }
+
+    @Override
+    protected Class<?> getClass(String className) {
+        return loader.findClassOrFail(className);
     }
 
     @Override

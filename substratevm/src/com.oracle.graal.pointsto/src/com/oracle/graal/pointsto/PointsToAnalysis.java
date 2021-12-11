@@ -753,8 +753,7 @@ public abstract class PointsToAnalysis implements BigBang {
         boolean foundMismatch;
         try (StopTimer ignored = verifyHeapTimer.start()) {
             foundMismatch = universe.getHeapVerifier().verifyHeapSnapshot(executor);
-            // System.out.println("Verification " + (foundMismatch ? " found " : " didn't find ") +
-            // " a mismatch.");
+            System.out.println("Verification " + (foundMismatch ? " found " : " didn't find ") + " a mismatch.");
         }
         /* Initialize for the next iteration. */
         executor.init(timing);
