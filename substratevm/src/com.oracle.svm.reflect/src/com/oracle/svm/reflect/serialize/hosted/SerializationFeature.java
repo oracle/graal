@@ -88,7 +88,7 @@ import static com.oracle.svm.reflect.serialize.hosted.SerializationFeature.print
 
 @AutomaticFeature
 public class SerializationFeature implements Feature {
-    public static final HashSet<Class<?>> capturingClasses = new HashSet<>();
+    static final HashSet<Class<?>> capturingClasses = new HashSet<>();
     private SerializationBuilder serializationBuilder;
     private int loadedConfigurations;
 

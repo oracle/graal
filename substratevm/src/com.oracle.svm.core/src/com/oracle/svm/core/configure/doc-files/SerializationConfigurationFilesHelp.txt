@@ -10,15 +10,23 @@ Example:
       }
     ]
 
-There is a special case when serializing/deserializing lambdas. In that case, name of the class that captures 
-lambda(s) should be specified in the file.
+When trying to deserialize lambda class, capturing class of that lambda needs to be specified in the separate section of
+the configuration file:
 
 Example:
     
     [
-      {
-        "lambdaCapturingClass":"java.util.Comparator"
-      }
+      types: [
+        {
+          "name":"java.lang.Object"
+        }
+      ],
+
+      lambdaCapturingTypes: [
+        {
+          "name":"java.util.Comparator"
+        }
+      ]
     ]
 
 This JSON file format is also used for the serialization deny list.
