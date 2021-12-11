@@ -293,13 +293,6 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         return asVariable(value);
     }
 
-    public Value loadNonConst(Value value) {
-        if (isConstantValue(value) && !moveFactory.canInlineConstant(asConstant(value))) {
-            return emitMove(value);
-        }
-        return value;
-    }
-
     /**
      * Determines if only oop maps are required for the code generated from the LIR.
      */

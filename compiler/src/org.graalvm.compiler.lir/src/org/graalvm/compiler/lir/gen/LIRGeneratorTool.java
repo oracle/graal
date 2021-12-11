@@ -176,6 +176,10 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
      */
     void emitReturn(JavaKind javaKind, Value input);
 
+    /**
+     * Returns an {@link AllocatableValue} holding the {@code value} by moving it if necessary. If
+     * {@code value} is already an {@link AllocatableValue}, returns it unchanged.
+     */
     AllocatableValue asAllocatable(Value value);
 
     Variable load(Value value);
