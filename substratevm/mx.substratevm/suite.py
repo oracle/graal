@@ -1155,6 +1155,7 @@ suite = {
                         "sun.reflect.generics.reflectiveObjects",
                         "sun.reflect.generics.repository",
                         "sun.reflect.generics.tree",
+                        "sun.reflect.generics.scope",
                         "sun.util.calendar",
                         "sun.security.jca",
                         "sun.security.util",
