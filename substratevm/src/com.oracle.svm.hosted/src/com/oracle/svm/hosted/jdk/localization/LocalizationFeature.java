@@ -89,6 +89,7 @@ import com.oracle.svm.util.ReflectionUtil;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import sun.util.locale.LocaleObjectCache;
 import sun.util.locale.provider.LocaleProviderAdapter;
 import sun.util.locale.provider.ResourceBundleBasedAdapter;
 import sun.util.resources.LocaleData;
@@ -321,14 +322,14 @@ public abstract class LocalizationFeature implements Feature {
             scanLocaleCache(access, "sun.util.locale.BaseLocale", "CACHE");
             scanLocaleCache(access, "java.util.Locale", "LOCALECACHE");
         }
+        scanLocaleCache(access, "java.util.ResourceBundle$Control", "CANDIDATES_CACHE");
     }
 
     private static void scanLocaleCache(DuringAnalysisAccessImpl access, String localeClassName, String cacheFieldName) {
-        access.rescanRoot(localeClassName, cacheFieldName);
-        // Object localeCache = access.rescanRoot(localeClassName, cacheFieldName);
-        // Object localeCacheMap = ReflectionUtil.readField(LocaleObjectCache.class, "map",
-        // localeCache);
-        // access.rescanObject(localeCacheMap);
+        Object localeCache = access.rescanRoot(localeClassName, cacheFieldName);
+        if (localeCache != null) {
+            access.rescanField(localeCache, LocaleObjectCache.class, "map");
+        }
     }
 
     @Override
