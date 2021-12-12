@@ -33,7 +33,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordBase;
 
-import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -105,14 +104,6 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
 
         if (!BuildPhaseProvider.isAnalysisFinished()) {
             field.markReachable();
-        }
-
-        if (!BuildPhaseProvider.isAnalysisFinished() && field.getJavaKind() == JavaKind.Object && field.isRead()) {
-            /* Make sure the field value is scanned. */
-            ImageHeapScanner scanner = universe.getHeapScanner();
-            if (scanner.isEnabled()) {
-                scanner.scanFieldValue(field, receiver);
-            }
         }
 
         return result;

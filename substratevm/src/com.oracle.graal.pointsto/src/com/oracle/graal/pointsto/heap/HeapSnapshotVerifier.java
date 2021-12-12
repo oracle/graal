@@ -117,7 +117,6 @@ public class HeapSnapshotVerifier {
     }
 
     public boolean verifyHeapSnapshot(CompletionExecutor executor) throws InterruptedException {
-        scanner.disable();
         foundMismatch = false;
         scannedObjects.reset();
         executor.start();
@@ -126,7 +125,6 @@ public class HeapSnapshotVerifier {
         objectScanner.scanBootImageHeapRoots();
         executor.complete();
         executor.shutdown();
-        scanner.enable();
         return foundMismatch;
     }
 

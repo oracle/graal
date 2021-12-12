@@ -94,7 +94,6 @@ public abstract class ImageHeapScanner {
     protected final SnippetReflectionProvider hostedSnippetReflection;
 
     protected ObjectScanningObserver scanningObserver;
-    protected boolean isEnabled;
     private final boolean enableManualRescan;
 
     public ImageHeapScanner(ImageHeap heap, AnalysisMetaAccess aMetaAccess, SnippetReflectionProvider aSnippetReflection,
@@ -108,20 +107,7 @@ public abstract class ImageHeapScanner {
         scanningObserver = aScanningObserver;
         hostedConstantReflection = GraalAccess.getOriginalProviders().getConstantReflection();
         hostedSnippetReflection = GraalAccess.getOriginalProviders().getSnippetReflection();
-        isEnabled = true;
         enableManualRescan = Options.EnableManualRescan.getValue(hostVM.options());
-    }
-
-    public void disable() {
-        isEnabled = false;
-    }
-
-    public void enable() {
-        isEnabled = true;
-    }
-
-    public boolean isEnabled() {
-        return isEnabled;
     }
 
     public void scanEmbeddedRoot(JavaConstant root, BytecodePosition position) {
@@ -130,6 +116,7 @@ public abstract class ImageHeapScanner {
         getOrCreateConstantReachableTask(root, new EmbeddedRootScan(position, root)).ensureDone();
     }
 
+    @SuppressWarnings("unused")
     public void scanFieldValue(AnalysisField field, JavaConstant receiver) {
         assert field.isReachable() && isValueAvailable(field);
         if (field.isStatic()) {
