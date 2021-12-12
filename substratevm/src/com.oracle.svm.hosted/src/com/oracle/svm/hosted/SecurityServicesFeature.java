@@ -196,6 +196,14 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
     // private boolean shouldFilterProviders = true;
     private boolean shouldFilterProviders = true;
 
+    private Field verificationResultsField;
+    private Field providerListField;
+    private Field oidTableField;
+    private Field oidMapField;
+    private Field classCacheField;
+    private Field constructorCacheField;
+    private Field classRefField;
+
     @Override
     public void afterRegistration(AfterRegistrationAccess a) {
         ModuleSupport.exportAndOpenPackageToClass("java.base", "sun.security.x509", false, getClass());
@@ -224,6 +232,19 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
     public void duringSetup(DuringSetupAccess a) {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
         addManuallyConfiguredUsedProviders(a);
+
+        verificationResultsField = access.findField("javax.crypto.JceSecurity", "verificationResults");
+        providerListField = access.findField("sun.security.jca.Providers", "providerList");
+        if (JavaVersionUtil.JAVA_SPEC >= 17) {
+            oidTableField = access.findField("sun.security.util.ObjectIdentifier", "oidTable");
+        }
+        oidMapField = access.findField(OIDMap.class, "oidMap");
+        if (JavaVersionUtil.JAVA_SPEC >= 17) {
+            classCacheField = access.findField(Service.class, "classCache");
+            constructorCacheField = access.findField(Service.class, "constructorCache");
+        } else {
+            classRefField = access.findField(Service.class, "classRef");
+        }
 
         RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
         /*
@@ -744,7 +765,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
     /**
      * Register the x509 certificate extension classes for reflection.
      */
-    private static void registerX509Extensions(DuringAnalysisAccess a) {
+    private void registerX509Extensions(DuringAnalysisAccess a) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
         /*
          * The OIDInfo class which represents the values in the map is not visible. Get the list of
@@ -762,25 +783,25 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
                 throw VMError.shouldNotReachHere(e);
             }
         }
-        access.rescanRoot(OIDMap.class, "oidMap");
+        access.rescanRoot(oidMapField);
     }
 
     @Override
     public void duringAnalysis(DuringAnalysisAccess a) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
-        access.rescanRoot("javax.crypto.JceSecurity", "verificationResults");
-        access.rescanRoot("sun.security.jca.Providers", "providerList");
+        access.rescanRoot(verificationResultsField);
+        access.rescanRoot(providerListField);
         if (JavaVersionUtil.JAVA_SPEC >= 17) {
-            access.rescanRoot("sun.security.util.ObjectIdentifier", "oidTable");
+            access.rescanRoot(oidTableField);
         }
         if (filteredProviderList != null) {
             for (Provider provider : filteredProviderList.providers()) {
                 for (Service service : provider.getServices()) {
                     if (JavaVersionUtil.JAVA_SPEC >= 17) {
-                        access.rescanField(service, Service.class, "classCache");
-                        access.rescanField(service, Service.class, "constructorCache");
+                        access.rescanField(service, classCacheField);
+                        access.rescanField(service, constructorCacheField);
                     } else {
-                        access.rescanField(service, Service.class, "classRef");
+                        access.rescanField(service, classRefField);
                     }
                 }
             }

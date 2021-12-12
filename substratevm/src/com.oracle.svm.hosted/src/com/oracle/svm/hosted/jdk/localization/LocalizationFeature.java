@@ -83,6 +83,7 @@ import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -146,6 +147,11 @@ public abstract class LocalizationFeature implements Feature {
     protected LocalizationSupport support;
 
     private Function<String, Class<?>> findClassByName;
+
+    private Field baseLocaleCacheField;
+    private Field localeCacheField;
+    private Field candidatesCacheField;
+    private Field localeObjectCacheMapField;
 
     public static class Options {
         @Option(help = "Comma separated list of bundles to be included into the image.", type = OptionType.User)//
@@ -263,10 +269,20 @@ public abstract class LocalizationFeature implements Feature {
     }
 
     @Override
-    public void duringSetup(DuringSetupAccess access) {
+    public void duringSetup(DuringSetupAccess a) {
+        DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
         if (optimizedMode) {
             access.registerObjectReplacer(this::eagerlyInitializeBundles);
         }
+        if (JavaVersionUtil.JAVA_SPEC >= 17) {
+            baseLocaleCacheField = access.findField("sun.util.locale.BaseLocale$Cache", "CACHE");
+            localeCacheField = access.findField("java.util.Locale$Cache", "LOCALECACHE");
+        } else {
+            baseLocaleCacheField = access.findField("sun.util.locale.BaseLocale", "CACHE");
+            localeCacheField = access.findField("java.util.Locale", "LOCALECACHE");
+        }
+        candidatesCacheField = access.findField("java.util.ResourceBundle$Control", "CANDIDATES_CACHE");
+        localeObjectCacheMapField = access.findField(LocaleObjectCache.class, "map");
     }
 
     /**
@@ -315,20 +331,15 @@ public abstract class LocalizationFeature implements Feature {
     @Override
     public void duringAnalysis(DuringAnalysisAccess a) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
-        if (JavaVersionUtil.JAVA_SPEC >= 17) {
-            scanLocaleCache(access, "sun.util.locale.BaseLocale$Cache", "CACHE");
-            scanLocaleCache(access, "java.util.Locale$Cache", "LOCALECACHE");
-        } else {
-            scanLocaleCache(access, "sun.util.locale.BaseLocale", "CACHE");
-            scanLocaleCache(access, "java.util.Locale", "LOCALECACHE");
-        }
-        scanLocaleCache(access, "java.util.ResourceBundle$Control", "CANDIDATES_CACHE");
+        scanLocaleCache(access, baseLocaleCacheField);
+        scanLocaleCache(access, localeCacheField);
+        scanLocaleCache(access, candidatesCacheField);
     }
 
-    private static void scanLocaleCache(DuringAnalysisAccessImpl access, String localeClassName, String cacheFieldName) {
-        Object localeCache = access.rescanRoot(localeClassName, cacheFieldName);
+    private void scanLocaleCache(DuringAnalysisAccessImpl access, Field cacheFieldField) {
+        Object localeCache = access.rescanRoot(cacheFieldField);
         if (localeCache != null) {
-            access.rescanField(localeCache, LocaleObjectCache.class, "map");
+            access.rescanField(localeCache, localeObjectCacheMapField);
         }
     }
 

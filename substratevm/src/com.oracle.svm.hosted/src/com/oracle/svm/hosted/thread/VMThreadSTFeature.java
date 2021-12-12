@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.thread;
 
+import java.lang.reflect.Field;
 import java.util.List;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -56,6 +57,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
 import com.oracle.svm.core.threadlocal.VMThreadLocalSTSupport;
+import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -69,6 +71,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class VMThreadSTFeature implements GraalFeature {
 
     private final VMThreadLocalCollector threadLocalCollector = new VMThreadLocalCollector();
+    private Field infosField;
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -79,6 +82,7 @@ public class VMThreadSTFeature implements GraalFeature {
     public void duringSetup(DuringSetupAccess config) {
         ImageSingletons.add(VMThreadLocalSTSupport.class, new VMThreadLocalSTSupport());
         config.registerObjectReplacer(threadLocalCollector);
+        infosField = ((FeatureImpl.DuringSetupAccessImpl) config).findField(VMThreadLocalInfos.class, "infos");
     }
 
     /**
@@ -214,7 +218,7 @@ public class VMThreadSTFeature implements GraalFeature {
         if (VMThreadLocalInfos.setInfos(threadLocalCollector.threadLocals.values())) {
             a.requireAnalysisIteration();
             DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
-            access.rescanField(ImageSingletons.lookup(VMThreadLocalInfos.class), VMThreadLocalInfos.class, "infos");
+            access.rescanField(ImageSingletons.lookup(VMThreadLocalInfos.class), infosField);
         }
     }
 

@@ -373,12 +373,6 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
         }
     }
 
-    @Override
-    public void duringAnalysis(DuringAnalysisAccess a) {
-        FeatureImpl.DuringAnalysisAccessImpl access = (FeatureImpl.DuringAnalysisAccessImpl) a;
-        access.rescanRoot("com.oracle.truffle.polyglot.PolyglotEngineImpl", "ENGINES");
-    }
-
     static class TruffleParsingInlineInvokePlugin implements InlineInvokePlugin {
 
         private final SVMHost hostVM;

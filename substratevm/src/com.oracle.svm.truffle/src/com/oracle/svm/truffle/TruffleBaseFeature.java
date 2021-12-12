@@ -155,6 +155,10 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
     private boolean profilingEnabled;
     // Checkstyle: resume
 
+    private Field layoutInfoMapField;
+    private Field layoutMapField;
+    private Field uncachedDispatchField;
+
     private static void initializeTruffleReflectively(ClassLoader imageClassLoader) {
         invokeStaticMethod("com.oracle.truffle.api.impl.Accessor", "getTVMCI", Collections.emptyList());
         invokeStaticMethod("com.oracle.truffle.polyglot.LanguageCache", "initializeNativeImageState",
@@ -291,8 +295,12 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
         }
         GraalProviderObjectReplacements providerReplacements = ImageSingletons.lookup(RuntimeGraalSetup.class)
                         .getProviderObjectReplacements(metaAccess);
-        graalObjectReplacer = new GraalObjectReplacer(config.getUniverse(), metaAccess, providerReplacements);
+        graalObjectReplacer = new GraalObjectReplacer(config, config.getUniverse(), metaAccess, providerReplacements);
         access.registerObjectReplacer(this::replaceNodeFieldAccessor);
+
+        layoutInfoMapField = config.findField("com.oracle.truffle.object.DefaultLayout$LayoutInfo", "LAYOUT_INFO_MAP");
+        layoutMapField = config.findField("com.oracle.truffle.object.DefaultLayout", "LAYOUT_MAP");
+        uncachedDispatchField = config.findField(LibraryFactory.class, "uncachedDispatch");
     }
 
     @SuppressWarnings("deprecation")
@@ -374,8 +382,8 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
         // "REGISTRY");
         // access.rescanRoot("com.oracle.truffle.api.library.LibraryFactory$ResolvedDispatch",
         // "CACHE");
-        access.rescanRoot("com.oracle.truffle.object.DefaultLayout$LayoutInfo", "LAYOUT_INFO_MAP");
-        access.rescanRoot("com.oracle.truffle.object.DefaultLayout", "LAYOUT_MAP");
+        access.rescanRoot(layoutInfoMapField);
+        access.rescanRoot(layoutMapField);
         // access.rescanRoot("com.oracle.truffle.polyglot.PolyglotEngineImpl", "ENGINES");
         // access.rescanRoot("com.oracle.truffle.api.TruffleLogger$LoggerCache", "INSTANCE");
 
@@ -443,13 +451,13 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
      *
      * @see #registerTruffleLibrariesAsInHeap
      */
-    private static void initializeTruffleLibrariesAtBuildTime(DuringAnalysisAccessImpl access, AnalysisType type) {
+    private void initializeTruffleLibrariesAtBuildTime(DuringAnalysisAccessImpl access, AnalysisType type) {
         if (type.isAnnotationPresent(GenerateLibrary.class)) {
             /* Eagerly resolve library type. */
             LibraryFactory<? extends Library> factory = LibraryFactory.resolve(type.getJavaClass().asSubclass(Library.class));
             /* Trigger computation, then rescan uncachedDispatch. */
             factory.getUncached();
-            access.rescanField(factory, LibraryFactory.class, "uncachedDispatch");
+            access.rescanField(factory, uncachedDispatchField);
         }
         if (type.getDeclaredAnnotationsByType(ExportLibrary.class).length != 0) {
             /* Eagerly resolve receiver type. */

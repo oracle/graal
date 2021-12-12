@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted.analysis.heap;
 
+import java.lang.reflect.Field;
+
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 
@@ -44,6 +46,7 @@ import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
@@ -53,12 +56,16 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
     private final ImageClassLoader loader;
     protected HostedMetaAccess hostedMetaAccess;
     private final Class<?> economicMapImpl;
+    private final Field economicMapImplEntriesField;
+    private final Field economicMapImplHashArrayField;
 
     public SVMImageHeapScanner(ImageHeap imageHeap, ImageClassLoader loader, AnalysisMetaAccess metaAccess,
                     SnippetReflectionProvider snippetReflection, ConstantReflectionProvider aConstantReflection, ObjectScanningObserver aScanningObserver) {
         super(imageHeap, metaAccess, snippetReflection, aConstantReflection, aScanningObserver);
         this.loader = loader;
-        this.economicMapImpl = this.loader.findClassOrFail("org.graalvm.collections.EconomicMapImpl");
+        economicMapImpl = getClass("org.graalvm.collections.EconomicMapImpl");
+        economicMapImplEntriesField = ReflectionUtil.lookupField(economicMapImpl, "entries");
+        economicMapImplHashArrayField = ReflectionUtil.lookupField(economicMapImpl, "hashArray");
     }
 
     public void setHostedMetaAccess(HostedMetaAccess hostedMetaAccess) {
@@ -144,8 +151,8 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
         super.rescanEconomicMap(map);
         /* Make sure any EconomicMapImpl$CollisionLink objects are scanned. */
         if (map.getClass() == economicMapImpl) {
-            rescanField(map, economicMapImpl, "entries");
-            rescanField(map, economicMapImpl, "hashArray");
+            rescanField(map, economicMapImplEntriesField);
+            rescanField(map, economicMapImplHashArrayField);
         }
 
     }

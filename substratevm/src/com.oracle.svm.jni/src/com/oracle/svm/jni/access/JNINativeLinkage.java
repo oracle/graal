@@ -24,6 +24,10 @@
  */
 package com.oracle.svm.jni.access;
 
+//Checkstyle: allow reflection
+
+import java.lang.reflect.Field;
+
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
@@ -35,6 +39,7 @@ import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.jdk.NativeLibrarySupport;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaUtil;
@@ -91,7 +96,8 @@ public final class JNINativeLinkage {
         if (builtInAddress == null) {
             CGlobalData<CFunctionPointer> linkage = CGlobalDataFactory.forSymbol(this.getShortName());
             builtInAddress = CGlobalDataFeature.singleton().registerAsAccessedOrGet(linkage);
-            bb.getUniverse().getHeapScanner().rescanField(this, JNINativeLinkage.class, "builtInAddress");
+            Field jniNativeLinkageBuiltInAddressField = ReflectionUtil.lookupField(JNINativeLinkage.class, "builtInAddress");
+            bb.getUniverse().getHeapScanner().rescanField(this, jniNativeLinkageBuiltInAddressField);
         }
         return builtInAddress;
     }

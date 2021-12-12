@@ -29,6 +29,7 @@ import static com.oracle.svm.hosted.classinitialization.InitKind.RERUN;
 import static com.oracle.svm.hosted.classinitialization.InitKind.RUN_TIME;
 
 import java.io.PrintWriter;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -75,6 +76,7 @@ public class ClassInitializationFeature implements GraalFeature {
     private ClassInitializationSupport classInitializationSupport;
     private AnalysisUniverse universe;
     private AnalysisMetaAccess metaAccess;
+    private Field dynamicHubClassInitializationInfoField;
 
     public static void processClassInitializationOptions(ClassInitializationSupport initializationSupport) {
         initializeNativeImagePackagesAtBuildTime(initializationSupport);
@@ -115,6 +117,7 @@ public class ClassInitializationFeature implements GraalFeature {
         access.registerObjectReplacer(this::checkImageHeapInstance);
         universe = ((FeatureImpl.DuringSetupAccessImpl) a).getBigBang().getUniverse();
         metaAccess = ((FeatureImpl.DuringSetupAccessImpl) a).getBigBang().getMetaAccess();
+        dynamicHubClassInitializationInfoField = access.findField(DynamicHub.class, "classInitializationInfo");
     }
 
     private Object checkImageHeapInstance(Object obj) {
@@ -301,7 +304,7 @@ public class ClassInitializationFeature implements GraalFeature {
                                                     : ClassInitializationInfo.INITIALIZED_INFO_SINGLETON;
                                     DynamicHub hub = ((SVMHost) universe.hostVM()).dynamicHub(type);
                                     hub.setClassInitializationInfo(initializationInfo);
-                                    universe.getHeapScanner().rescanField(hub, DynamicHub.class, "classInitializationInfo");
+                                    universe.getHeapScanner().rescanField(hub, dynamicHubClassInitializationInfoField);
                                 }
                             }
                         });
@@ -328,7 +331,7 @@ public class ClassInitializationFeature implements GraalFeature {
         hub.setClassInitializationInfo(info);
         // TODO rescanning the hub here should not be necessary
         universe.getHeapScanner().scanHub(type);
-        universe.getHeapScanner().rescanField(hub, DynamicHub.class, "classInitializationInfo");
+        universe.getHeapScanner().rescanField(hub, dynamicHubClassInitializationInfoField);
     }
 
     private static ClassInitializationInfo buildRuntimeInitializationInfo(FeatureImpl.DuringAnalysisAccessImpl access, AnalysisType type) {

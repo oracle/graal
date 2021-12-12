@@ -455,10 +455,6 @@ public abstract class ImageHeapScanner {
         return null;
     }
 
-    public void rescanField(Object receiver, Class<?> declaringClass, String fieldName) {
-        rescanField(receiver, ReflectionUtil.lookupField(declaringClass, fieldName));
-    }
-
     public void rescanField(Object receiver, Field reflectionField) {
         if (!enableManualRescan) {
             return;
@@ -543,7 +539,7 @@ public abstract class ImageHeapScanner {
 
     void doScan(JavaConstant constant) {
         if (constant.getJavaKind() == JavaKind.Object && constant.isNonNull()) {
-            toImageHeapObject(constant, OtherReason.SCAN);
+            getOrCreateConstantReachableTask(constant, OtherReason.SCAN);
         }
     }
 
@@ -552,7 +548,7 @@ public abstract class ImageHeapScanner {
         universe.onTypeScanned(type);
         metaAccess.lookupJavaType(java.lang.Class.class).registerAsReachable();
         /* We scan the original class here, the scanner does the replacement to DynamicHub. */
-        toImageHeapObject(asConstant(type.getJavaClass()), ObjectScanner.OtherReason.HUB);
+        getOrCreateConstantReachableTask(asConstant(type.getJavaClass()), ObjectScanner.OtherReason.HUB);
     }
 
     protected AnalysisType analysisType(Object constant) {

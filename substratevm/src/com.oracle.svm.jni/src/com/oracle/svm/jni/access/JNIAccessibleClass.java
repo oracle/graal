@@ -34,6 +34,7 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.MetaUtil;
 
@@ -72,7 +73,7 @@ public final class JNIAccessibleClass {
         }
         if (!fields.containsKey(name)) {
             fields.put(name, mappingFunction.apply(name));
-            access.rescanField(this, JNIAccessibleClass.class, "fields");
+            access.rescanField(this, ReflectionUtil.lookupField(JNIAccessibleClass.class, "fields"));
         }
     }
 
@@ -83,7 +84,7 @@ public final class JNIAccessibleClass {
         }
         if (!methods.containsKey(descriptor)) {
             methods.put(descriptor, mappingFunction.apply(descriptor));
-            access.rescanField(this, JNIAccessibleClass.class, "methods");
+            access.rescanField(this, ReflectionUtil.lookupField(JNIAccessibleClass.class, "methods"));
         }
     }
 

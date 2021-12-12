@@ -51,10 +51,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.jdk.SealedClassSupport;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
+import org.graalvm.nativeimage.hosted.Feature.DuringSetupAccess;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.util.GuardedAnnotationAccess;
@@ -67,11 +67,13 @@ import com.oracle.svm.core.hub.AnnotationTypeSupport;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.RecordSupport;
+import com.oracle.svm.core.jdk.SealedClassSupport;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.FeatureAccessImpl;
 import com.oracle.svm.hosted.annotation.AnnotationSubstitutionType;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
@@ -107,6 +109,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private final Map<Class<?>, Set<Member>> annotationMembers = new HashMap<>();
 
     private final ReflectionDataAccessors accessors;
+
+    private static Field annotationTypeMapField;
+    private static Field dynamicHubReflectionDataField;
 
     public ReflectionDataBuilder(FeatureAccessImpl access) {
         arrayReflectionData = getArrayReflectionData();
@@ -196,6 +201,12 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         if (sealed) {
             throw UserError.abort("Too late to add classes, methods, and fields for reflective access. Registration must happen in a Feature before the analysis has finished.");
         }
+    }
+
+    protected void duringSetup(DuringSetupAccess a) {
+        DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
+        annotationTypeMapField = access.findField(AnnotationTypeSupport.class, "annotationTypeMap");
+        dynamicHubReflectionDataField = access.findField(DynamicHub.class, "rd");
     }
 
     protected void duringAnalysis(DuringAnalysisAccess a) {
@@ -446,7 +457,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
              */
             AnnotationTypeSupport annotationTypeSupport = ImageSingletons.lookup(AnnotationTypeSupport.class);
             if (annotationTypeSupport.createInstance((Class<? extends Annotation>) type)) {
-                access.rescanField(annotationTypeSupport, AnnotationTypeSupport.class, "annotationTypeMap");
+                access.rescanField(annotationTypeSupport, annotationTypeMapField);
             }
             ImageSingletons.lookup(DynamicProxyRegistry.class).addProxyClass(type);
 
@@ -565,7 +576,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                             buildRecordComponents(clazz, access));
         }
         hub.setReflectionData(reflectionData);
-        access.rescanField(hub, DynamicHub.class, "rd");
+        access.rescanField(hub, dynamicHubReflectionDataField);
 
         if (type.isAnnotation()) {
             /*

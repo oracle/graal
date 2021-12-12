@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.annotation;
 import java.lang.annotation.Annotation;
 import java.lang.annotation.Repeatable;
 import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.Field;
 import java.util.Objects;
 import java.util.stream.Stream;
 
@@ -40,12 +41,15 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.hub.AnnotationTypeSupport;
 import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 
 @AutomaticFeature
 public class AnnotationTypeFeature implements Feature {
 
     private EconomicSet<Object> repeatableAnnotationClasses = EconomicSet.create();
     private EconomicSet<AnnotatedElement> visitedElements = EconomicSet.create();
+
+    private Field annotationTypeMapField;
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
@@ -55,6 +59,11 @@ public class AnnotationTypeFeature implements Feature {
                         .filter(Objects::nonNull)
                         .map(Repeatable::value)
                         .forEach(repeatableAnnotationClasses::add);
+    }
+
+    @Override
+    public void duringSetup(DuringSetupAccess access) {
+        annotationTypeMapField = ((DuringSetupAccessImpl) access).findField(AnnotationTypeSupport.class, "annotationTypeMap");
     }
 
     @Override
@@ -88,7 +97,7 @@ public class AnnotationTypeFeature implements Feature {
             if (repeatableAnnotationClasses.contains(annotationClass)) {
                 AnnotationTypeSupport annotationTypeSupport = ImageSingletons.lookup(AnnotationTypeSupport.class);
                 if (annotationTypeSupport.createInstance(annotationClass)) {
-                    access.rescanField(annotationTypeSupport, AnnotationTypeSupport.class, "annotationTypeMap");
+                    access.rescanField(annotationTypeSupport, annotationTypeMapField);
                 }
             }
         }

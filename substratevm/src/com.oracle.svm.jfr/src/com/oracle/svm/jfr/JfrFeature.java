@@ -189,7 +189,7 @@ public class JfrFeature implements Feature {
                 try {
                     Field f = c.getDeclaredField("eventHandler");
                     RuntimeReflection.register(f);
-                    access.rescanRoot(c, "eventHandler");
+                    access.rescanRoot(f);
                 } catch (Exception e) {
                     throw VMError.shouldNotReachHere("Unable to register eventHandler for: " + c.getCanonicalName(), e);
                 }

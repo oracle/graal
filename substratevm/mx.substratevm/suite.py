@@ -1157,6 +1157,7 @@ suite = {
                         "sun.reflect.generics.tree",
                         "sun.reflect.generics.scope",
                         "sun.util.calendar",
+                        "sun.util.locale",
                         "sun.security.jca",
                         "sun.security.util",
                         "sun.security.provider",

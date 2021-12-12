@@ -255,26 +255,17 @@ public class FeatureImpl {
             getUniverse().getHeapScanner().rescanField(receiver, field);
         }
 
-        public void rescanField(Object receiver, Class<?> declaringClass, String fieldName) {
-            rescanField(receiver, ReflectionUtil.lookupField(declaringClass, fieldName));
-        }
-
-        public void rescanField(Object receiver, String className, String fieldName) {
-            rescanField(receiver, getImageClassLoader().findClassOrFail(className), fieldName);
-        }
-
         public Object rescanRoot(Field field) {
             return getUniverse().getHeapScanner().rescanRoot(field);
         }
 
-        public Object rescanRoot(Class<?> declaringClass, String fieldName) {
-            return rescanRoot(ReflectionUtil.lookupField(declaringClass, fieldName));
+        public Field findField(String declaringClassName, String fieldName) {
+            return findField(imageClassLoader.findClassOrFail(declaringClassName), fieldName);
         }
 
-        public Object rescanRoot(String declaringClassName, String fieldName) {
-            return rescanRoot(getImageClassLoader().findClassOrFail(declaringClassName), fieldName);
+        public Field findField(Class<?> declaringClass, String fieldName) {
+            return ReflectionUtil.lookupField(declaringClass, fieldName);
         }
-
     }
 
     public static class DuringSetupAccessImpl extends AnalysisAccessBase implements Feature.DuringSetupAccess {
