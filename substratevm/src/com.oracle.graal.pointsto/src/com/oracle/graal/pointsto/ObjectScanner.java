@@ -131,12 +131,12 @@ public class ObjectScanner {
     }
 
     private void scanEmbeddedRoot(JavaConstant root, BytecodePosition position) {
-        AnalysisMethod method = (AnalysisMethod) position.getMethod();
         try {
-            EmbeddedRootScan reason = new EmbeddedRootScan(method, position, root);
+            EmbeddedRootScan reason = new EmbeddedRootScan(position, root);
             scanConstant(root, reason);
             scanningObserver.forEmbeddedRoot(root, reason);
         } catch (UnsupportedFeatureException ex) {
+            AnalysisMethod method = (AnalysisMethod) position.getMethod();
             bb.getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, ex.getMessage(), null, ex);
         }
     }
@@ -465,26 +465,24 @@ public class ObjectScanner {
     }
 
     public static class EmbeddedRootScan extends ScanReason {
-        final AnalysisMethod method;
-        final BytecodePosition sourcePosition;
+        final BytecodePosition position;
 
-        public EmbeddedRootScan(AnalysisMethod method, BytecodePosition nodeSourcePosition, JavaConstant root) {
-            this(method, nodeSourcePosition, root, null);
+        public EmbeddedRootScan(BytecodePosition nodeSourcePosition, JavaConstant root) {
+            this(nodeSourcePosition, root, null);
         }
 
-        public EmbeddedRootScan(AnalysisMethod method, BytecodePosition nodeSourcePosition, JavaConstant root, ScanReason previous) {
+        public EmbeddedRootScan(BytecodePosition nodeSourcePosition, JavaConstant root, ScanReason previous) {
             super(previous, root);
-            this.method = method;
-            this.sourcePosition = nodeSourcePosition;
+            this.position = nodeSourcePosition;
         }
 
         public AnalysisMethod getMethod() {
-            return method;
+            return (AnalysisMethod) position.getMethod();
         }
 
         @Override
         public String toString() {
-            return sourcePosition == null ? method.format("%H.%n(%p)") : method.asStackTraceElement(sourcePosition.getBCI()).toString();
+            return position.getMethod().asStackTraceElement(position.getBCI()).toString();
         }
     }
 

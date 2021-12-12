@@ -101,6 +101,7 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
 
     private final AnalysisType declaringClass;
     private final AnalysisType fieldType;
+    private final boolean isStatic;
 
     public AnalysisField(AnalysisUniverse universe, ResolvedJavaField wrappedField) {
         assert !wrappedField.isInternal();
@@ -111,6 +112,7 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
 
         this.wrapped = wrappedField;
         this.id = universe.nextFieldId.getAndIncrement();
+        this.isStatic = Modifier.isStatic(this.getModifiers());
 
         boolean trackAccessChain = PointstoOptions.TrackAccessChain.getValue(universe.hostVM().options());
         readBy = trackAccessChain ? new ConcurrentHashMap<>() : null;
@@ -476,7 +478,7 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
 
     @Override
     public boolean isStatic() {
-        return Modifier.isStatic(this.getModifiers());
+        return isStatic;
     }
 
     @Override

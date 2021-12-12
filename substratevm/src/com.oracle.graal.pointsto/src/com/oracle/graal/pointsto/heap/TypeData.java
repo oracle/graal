@@ -22,10 +22,13 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.pointsto.meta;
+package com.oracle.graal.pointsto.heap;
 
 import java.util.Map;
 
+import com.oracle.graal.pointsto.ObjectScanner;
+import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -36,34 +39,41 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * as reachable. Computed lazily once the type is seen as reachable.
  */
 public final class TypeData {
-    /** The class initialization state: initialize the class at build time or at run time. */
-    final boolean initializeAtRunTime;
+    /**
+     * The class initialization state: initialize the class at build time or at run time.
+     */
+    final boolean shouldInitializeAtRunTime;
     /**
      * The raw values of all static fields, regardless of field reachability status. Evaluating the
      * {@link AnalysisFuture} runs
-     * com.oracle.graal.pointsto.heap.ImageHeapScanner#onFieldValueReachable adds the result to the
-     * image heap}.
+     * {@link ImageHeapScanner#onFieldValueReachable(AnalysisField, JavaConstant, JavaConstant, ObjectScanner.ScanReason)}
+     * adds the result to the image heap}.
      */
     final Map<ResolvedJavaField, AnalysisFuture<JavaConstant>> staticFieldValues;
 
-    public TypeData(boolean initializeAtRunTime, Map<ResolvedJavaField, AnalysisFuture<JavaConstant>> staticFieldValues) {
-        this.initializeAtRunTime = initializeAtRunTime;
+    public TypeData(boolean shouldInitializeAtRunTime, Map<ResolvedJavaField, AnalysisFuture<JavaConstant>> staticFieldValues) {
+        this.shouldInitializeAtRunTime = shouldInitializeAtRunTime;
         this.staticFieldValues = staticFieldValues;
     }
 
-    public boolean initializeAtRunTime() {
-        return initializeAtRunTime;
+    public boolean shouldInitializeAtRunTime() {
+        return shouldInitializeAtRunTime;
     }
 
-    public AnalysisFuture<JavaConstant> getStaticFieldValueTask(AnalysisField field) {
+    /**
+     * Return a task for transforming and snapshotting the field value, effectively a future for
+     * {@link ImageHeapScanner#onFieldValueReachable(AnalysisField, JavaConstant, JavaConstant, ObjectScanner.ScanReason)}.
+     */
+    public AnalysisFuture<JavaConstant> getFieldTask(AnalysisField field) {
         return staticFieldValues.get(field);
     }
 
-    public JavaConstant readStaticFieldValue(AnalysisField field) {
+    /** Read the field value, executing the field task in this thread if not already executed. */
+    public JavaConstant readField(AnalysisField field) {
         return staticFieldValues.get(field).ensureDone();
     }
 
-    public void setStaticFieldValueTask(AnalysisField field, AnalysisFuture<JavaConstant> task) {
+    public void setFieldTask(AnalysisField field, AnalysisFuture<JavaConstant> task) {
         staticFieldValues.put(field, task);
     }
 

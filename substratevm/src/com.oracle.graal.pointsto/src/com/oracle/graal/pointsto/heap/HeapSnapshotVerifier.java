@@ -46,7 +46,6 @@ import com.oracle.graal.pointsto.heap.ImageHeap.ImageHeapInstance;
 import com.oracle.graal.pointsto.heap.ImageHeap.ImageHeapObject;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.TypeData;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
@@ -92,28 +91,28 @@ public class HeapSnapshotVerifier {
         scannedObjects = new ReusableSet();
         verbosity = Options.HeapVerifierVerbosity.getValue(bb.getOptions());
 
-        skipArrayTypes.add(scanner.getAnalysisType("java.util.concurrent.ConcurrentHashMap$Node").getArrayClass());
-        skipArrayTypes.add(scanner.getAnalysisType("java.util.HashMap$Node").getArrayClass());
-        skipArrayTypes.add(scanner.getAnalysisType("java.util.WeakHashMap$Entry").getArrayClass());
+        skipArrayTypes.add(scanner.lookupJavaType("java.util.concurrent.ConcurrentHashMap$Node").getArrayClass());
+        skipArrayTypes.add(scanner.lookupJavaType("java.util.HashMap$Node").getArrayClass());
+        skipArrayTypes.add(scanner.lookupJavaType("java.util.WeakHashMap$Entry").getArrayClass());
 
-        internalFields.add(scanner.getAnalysisField("java.util.concurrent.ConcurrentHashMap", "table"));
-        internalFields.add(scanner.getAnalysisField("java.util.concurrent.ConcurrentHashMap$Node", "next"));
-        internalFields.add(scanner.getAnalysisField("java.util.HashMap", "table"));
-        internalFields.add(scanner.getAnalysisField("java.util.HashMap$Node", "next"));
-        internalFields.add(scanner.getAnalysisField("java.util.LinkedList", "last"));
-        internalFields.add(scanner.getAnalysisField("java.util.LinkedList", "first"));
-        internalFields.add(scanner.getAnalysisField("java.util.LinkedHashMap", "head"));
-        internalFields.add(scanner.getAnalysisField("java.util.LinkedHashMap", "tail"));
-        internalFields.add(scanner.getAnalysisField("java.util.LinkedHashMap$Entry", "before"));
-        internalFields.add(scanner.getAnalysisField("java.util.LinkedHashMap$Entry", "after"));
-        internalFields.add(scanner.getAnalysisField("java.util.LinkedList$Node", "prev"));
-        internalFields.add(scanner.getAnalysisField("java.util.LinkedList$Node", "next"));
-        internalFields.add(scanner.getAnalysisField("java.util.ArrayList", "elementData"));
+        internalFields.add(scanner.lookupJavaField("java.util.concurrent.ConcurrentHashMap", "table"));
+        internalFields.add(scanner.lookupJavaField("java.util.concurrent.ConcurrentHashMap$Node", "next"));
+        internalFields.add(scanner.lookupJavaField("java.util.HashMap", "table"));
+        internalFields.add(scanner.lookupJavaField("java.util.HashMap$Node", "next"));
+        internalFields.add(scanner.lookupJavaField("java.util.LinkedList", "last"));
+        internalFields.add(scanner.lookupJavaField("java.util.LinkedList", "first"));
+        internalFields.add(scanner.lookupJavaField("java.util.LinkedHashMap", "head"));
+        internalFields.add(scanner.lookupJavaField("java.util.LinkedHashMap", "tail"));
+        internalFields.add(scanner.lookupJavaField("java.util.LinkedHashMap$Entry", "before"));
+        internalFields.add(scanner.lookupJavaField("java.util.LinkedHashMap$Entry", "after"));
+        internalFields.add(scanner.lookupJavaField("java.util.LinkedList$Node", "prev"));
+        internalFields.add(scanner.lookupJavaField("java.util.LinkedList$Node", "next"));
+        internalFields.add(scanner.lookupJavaField("java.util.ArrayList", "elementData"));
 
-        externalFields.add(scanner.getAnalysisField("java.util.concurrent.ConcurrentHashMap$Node", "key"));
-        externalFields.add(scanner.getAnalysisField("java.util.concurrent.ConcurrentHashMap$Node", "val"));
-        externalFields.add(scanner.getAnalysisField("java.util.HashMap$Node", "key"));
-        externalFields.add(scanner.getAnalysisField("java.util.HashMap$Node", "value"));
+        externalFields.add(scanner.lookupJavaField("java.util.concurrent.ConcurrentHashMap$Node", "key"));
+        externalFields.add(scanner.lookupJavaField("java.util.concurrent.ConcurrentHashMap$Node", "val"));
+        externalFields.add(scanner.lookupJavaField("java.util.HashMap$Node", "key"));
+        externalFields.add(scanner.lookupJavaField("java.util.HashMap$Node", "value"));
         // externalFields.add(scanner.getAnalysisField("java.lang.ref.Reference", "referent")); ?
     }
 
@@ -162,7 +161,7 @@ public class HeapSnapshotVerifier {
         public void forNonNullFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue, ScanReason reason) {
             if (field.isStatic()) {
                 TypeData typeData = field.getDeclaringClass().getOrComputeData();
-                AnalysisFuture<JavaConstant> fieldValueTask = typeData.getStaticFieldValueTask(field);
+                AnalysisFuture<JavaConstant> fieldValueTask = typeData.getFieldTask(field);
                 if (!fieldValueTask.isDone()) {
                     warnStaticFieldNotComputed(field, fieldValue, reason);
                     fieldValueTask.ensureDone();

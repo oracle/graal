@@ -71,7 +71,7 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
     }
 
     @Override
-    protected boolean initializeAtRunTime(AnalysisType type) {
+    protected boolean shouldInitializeAtRunTime(AnalysisType type) {
         return ((SVMHost) hostVM).getClassInitializationSupport().shouldInitializeAtRuntime(type);
     }
 
@@ -103,8 +103,8 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
     }
 
     @Override
-    protected ValueSupplier<JavaConstant> readHostedFieldValue(AnalysisField field, JavaConstant object) {
-        if (field.isStatic() && initializeAtRunTime(field.getDeclaringClass())) {
+    protected ValueSupplier<JavaConstant> readHostedFieldValue(AnalysisField field, JavaConstant receiver) {
+        if (field.isStatic() && shouldInitializeAtRunTime(field.getDeclaringClass())) {
             return ValueSupplier.eagerValue(AnalysisConstantReflectionProvider.readUninitializedStaticValue(field));
         }
 
@@ -112,7 +112,7 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
             ReadableJavaField readableField = (ReadableJavaField) field.wrapped;
             if (readableField.isValueAvailableDuringAnalysis()) {
                 /* Materialize and return the value. */
-                JavaConstant value = universe.lookup(readableField.readValue(metaAccess, object));
+                JavaConstant value = universe.lookup(readableField.readValue(metaAccess, receiver));
                 return ValueSupplier.eagerValue(value);
             } else {
                 /*
@@ -122,11 +122,11 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
                  * ComputedValueField.processSubstrate() or by ComputedValueField.readValue().
                  * Attempts to materialize the value earlier will result in an error.
                  */
-                return ValueSupplier.lazyValue(() -> universe.lookup(readableField.readValue(hostedMetaAccess, object)),
+                return ValueSupplier.lazyValue(() -> universe.lookup(readableField.readValue(hostedMetaAccess, receiver)),
                                 readableField::isValueAvailable);
             }
         }
-        return super.readHostedFieldValue(field, object);
+        return super.readHostedFieldValue(field, receiver);
     }
 
     @Override

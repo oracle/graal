@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
@@ -127,8 +128,19 @@ public class ImageHeap {
             return objectFieldValues.get(field).ensureDone();
         }
 
+        /**
+         * Return a task for transforming and snapshotting the field value, effectively a future for
+         * {@link ImageHeapScanner#onFieldValueReachable(AnalysisField, JavaConstant, JavaConstant, ObjectScanner.ScanReason)}.
+         */
         public AnalysisFuture<JavaConstant> getFieldTask(AnalysisField field) {
             return objectFieldValues.get(field);
+        }
+
+        /**
+         * Read the field value, executing the field task in this thread if not already executed.
+         */
+        public JavaConstant readField(AnalysisField field) {
+            return objectFieldValues.get(field).ensureDone();
         }
 
         public void setFieldTask(AnalysisField field, AnalysisFuture<JavaConstant> task) {
@@ -145,6 +157,10 @@ public class ImageHeap {
             this.arrayElementValues = arrayElementValues;
         }
 
+        /**
+         * Return the value of the element at the specified index as computed by
+         * {@link ImageHeapScanner#onArrayElementReachable(JavaConstant, AnalysisType, JavaConstant, int, ObjectScanner.ScanReason)}.
+         */
         public JavaConstant getElement(int idx) {
             return arrayElementValues[idx];
         }
