@@ -115,6 +115,7 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.OSUtils;
+import com.oracle.truffle.api.test.TestAPIAccessor;
 import com.oracle.truffle.api.test.polyglot.FileSystemsTest.ForwardingFileSystem;
 import com.oracle.truffle.api.test.polyglot.TruffleFileTest.DuplicateMimeTypeLanguage1.Language1Detector;
 import com.oracle.truffle.api.test.polyglot.TruffleFileTest.DuplicateMimeTypeLanguage2.Language2Detector;

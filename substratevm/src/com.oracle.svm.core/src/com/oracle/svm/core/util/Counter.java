@@ -93,7 +93,7 @@ public final class Counter {
             this.name = name;
             this.enabledOption = enabledOption;
 
-            ImageSingletons.lookup(CounterGroupList.class).value.add(this);
+            ImageSingletons.lookup(CounterGroupList.class).addGroup(this);
         }
 
         public Counter[] getCounters() {
@@ -232,7 +232,18 @@ final class Target_com_oracle_svm_core_util_Counter {
 }
 
 class CounterGroupList {
-    final List<Group> value = new ArrayList<>();
+    private final List<Group> value = new ArrayList<>();
+    private boolean frozen = false;
+
+    public List<Group> getGroups() {
+        frozen = true;
+        return value;
+    }
+
+    public void addGroup(Group group) {
+        VMError.guarantee(!frozen);
+        value.add(group);
+    }
 }
 
 class CounterSupport {

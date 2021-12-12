@@ -29,7 +29,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
 import org.graalvm.compiler.core.common.NumUtil;
@@ -79,6 +78,7 @@ import jdk.vm.ci.code.site.DataPatch;
 import jdk.vm.ci.code.site.DataSectionReference;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Handles the installation of runtime-compiled code, allocating memory for code, data, and metadata
@@ -225,6 +225,7 @@ public class RuntimeCodeInstaller extends AbstractRuntimeCodeInstaller {
         CodeReferenceMapEncoder encoder = new CodeReferenceMapEncoder();
         encoder.add(objectConstants.referenceMap);
         RuntimeCodeInfoAccess.setCodeObjectConstantsInfo(codeInfo, encoder.encodeAll(), encoder.lookupEncoding(objectConstants.referenceMap));
+        ImageSingletons.lookup(CodeInfoEncoder.Counters.class).addToReferenceMapSize(encoder.getEncodingSize());
         patchDirectObjectConstants(objectConstants, codeInfo, adjuster);
 
         createCodeChunkInfos(codeInfo, adjuster);

@@ -25,6 +25,7 @@
 package org.graalvm.compiler.truffle.test;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Context.Builder;
 import org.junit.After;
 
 public abstract class TestWithPolyglotOptions {
@@ -43,11 +44,19 @@ public abstract class TestWithPolyglotOptions {
         }
     }
 
-    protected Context setupContext(String... keyValuePairs) {
+    /**
+     * Creates a new {@link Builder} with default options set. The default options can be
+     * overwritten using {@link Builder#option(String, String)}.
+     */
+    protected Builder newContextBuilder() {
+        return Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true);
+    }
+
+    protected final Context setupContext(String... keyValuePairs) {
         if ((keyValuePairs.length & 1) != 0) {
             throw new IllegalArgumentException("KeyValuePairs must have even size");
         }
-        Context.Builder builder = Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true);
+        Context.Builder builder = newContextBuilder();
         for (int i = 0; i < keyValuePairs.length; i += 2) {
             builder.option(keyValuePairs[i], keyValuePairs[i + 1]);
         }

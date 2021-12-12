@@ -197,6 +197,13 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         }
     }
 
+    protected Value loadNonInlinableConstant(Value value) {
+        if (isConstantValue(value) && !getMoveFactory().canInlineConstant(asConstant(value))) {
+            return emitMove(value);
+        }
+        return value;
+    }
+
     private AllocatableValue asAllocatable(Value value, ValueKind<?> kind) {
         if (value.getValueKind().equals(kind)) {
             return asAllocatable(value);
@@ -308,9 +315,9 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         }
 
         if (LIRValueUtil.isVariable(right)) {
-            emitRawCompareBranch(OperandSize.get(cmpKind), load(right), loadNonConst(left), cond.mirror(), trueLabel, falseLabel, trueLabelProbability);
+            emitRawCompareBranch(OperandSize.get(cmpKind), load(right), loadNonInlinableConstant(left), cond.mirror(), trueLabel, falseLabel, trueLabelProbability);
         } else {
-            emitRawCompareBranch(OperandSize.get(cmpKind), load(left), loadNonConst(right), cond, trueLabel, falseLabel, trueLabelProbability);
+            emitRawCompareBranch(OperandSize.get(cmpKind), load(left), loadNonInlinableConstant(right), cond, trueLabel, falseLabel, trueLabelProbability);
         }
     }
 
@@ -477,7 +484,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         } else if (isFloatComparison) {
             append(new FloatCondMoveOp(result, condition, unorderedIsTrue, load(trueValue), load(falseValue), isSelfEqualsCheck));
         } else {
-            append(new CondMoveOp(result, condition, load(trueValue), loadNonConst(falseValue)));
+            append(new CondMoveOp(result, condition, load(trueValue), loadNonInlinableConstant(falseValue)));
         }
         return result;
     }
@@ -485,7 +492,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public Variable emitIntegerTestMove(Value left, Value right, Value trueValue, Value falseValue) {
         emitIntegerTest(left, right);
-        return emitCondMoveOp(Condition.EQ, load(trueValue), loadNonConst(falseValue), false, false);
+        return emitCondMoveOp(Condition.EQ, load(trueValue), loadNonInlinableConstant(falseValue), false, false);
     }
 
     protected static AVXSize getRegisterSize(Value a) {
@@ -535,7 +542,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     private void emitRawCompare(PlatformKind cmpKind, Value left, Value right) {
-        ((AMD64ArithmeticLIRGeneratorTool) arithmeticLIRGen).emitCompareOp((AMD64Kind) cmpKind, load(left), loadNonConst(right));
+        ((AMD64ArithmeticLIRGeneratorTool) arithmeticLIRGen).emitCompareOp((AMD64Kind) cmpKind, load(left), loadNonInlinableConstant(right));
     }
 
     @Override

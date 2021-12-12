@@ -24,12 +24,14 @@
  */
 package org.graalvm.compiler.truffle.test;
 
+import java.io.ByteArrayOutputStream;
 import java.util.concurrent.TimeUnit;
 
 import org.graalvm.compiler.test.GraalTest;
 import org.graalvm.compiler.truffle.runtime.BytecodeOSRMetadata;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
@@ -140,6 +142,11 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
      */
     @Test
     public void testFailedCompilation() {
+        Context.Builder builder = newContextBuilder().logHandler(new ByteArrayOutputStream());
+        builder.option("engine.MultiTier", "false");
+        builder.option("engine.OSR", "true");
+        builder.option("engine.OSRCompilationThreshold", String.valueOf(osrThreshold));
+        setupContext(builder);
         FrameDescriptor frameDescriptor = new FrameDescriptor();
         UncompilableFixedIterationLoop osrNode = new UncompilableFixedIterationLoop(frameDescriptor);
         RootNode rootNode = new Program(osrNode, frameDescriptor);

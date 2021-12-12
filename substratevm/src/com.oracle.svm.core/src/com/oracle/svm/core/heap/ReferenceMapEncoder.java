@@ -80,6 +80,12 @@ public abstract class ReferenceMapEncoder {
         usageCounts.put(input, newCount);
     }
 
+    public long getEncodingSize() {
+        long size = writeBuffer.getBytesWritten();
+        assert size != 0 : "encodeAll() has not been called";
+        return size;
+    }
+
     public NonmovableArray<Byte> encodeAll() {
         assert writeBuffer.getBytesWritten() == 0 : "encodeAll() must not be called multiple times";
 
