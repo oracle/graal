@@ -54,7 +54,7 @@ public abstract class InterpreterValue {
     /**
      * Is this value an exception object that was thrown by an UnwindNode?
      *
-     * @return
+     * @return true if this return result represents an exception return from a method call.
      */
     public boolean isUnwindException() {
         return false;

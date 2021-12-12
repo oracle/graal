@@ -46,7 +46,7 @@ public class InterpreterValueConstantObject extends InterpreterValueObject {
     public boolean hasField(ResolvedJavaField field) {
         try {
             // TODO: try superclass fields too
-            Field f = realObject.getClass().getDeclaredField(field.getName());
+            /* Field f = */ realObject.getClass().getDeclaredField(field.getName());
             return true;
         } catch (NoSuchFieldException e) {
             return false;
