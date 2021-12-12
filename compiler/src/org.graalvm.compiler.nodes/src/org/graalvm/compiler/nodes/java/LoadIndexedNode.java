@@ -206,13 +206,13 @@ public class LoadIndexedNode extends AccessIndexedNode implements Virtualizable,
 
     @Override
     public FixedNode interpret(InterpreterState interpreter) {
-        InterpreterValue index = interpreter.interpretExpr(index());
-        InterpreterValue array = interpreter.interpretExpr(array());
+        InterpreterValue indexVal = interpreter.interpretExpr(index());
+        InterpreterValue arrayVal = interpreter.interpretExpr(array());
 
-        GraalError.guarantee(index.isPrimitive() && index.asPrimitiveConstant().getJavaKind().getStackKind() == JavaKind.Int, "LoadIndexNode index doesn't interpret to int");
-        GraalError.guarantee(array.isArray(), "LoadIndexNode array did not interpret to an array");
+        GraalError.guarantee(indexVal.isPrimitive() && indexVal.asPrimitiveConstant().getJavaKind().getStackKind() == JavaKind.Int, "LoadIndexNode index doesn't interpret to int");
+        GraalError.guarantee(arrayVal.isArray(), "LoadIndexNode array did not interpret to an array");
 
-        interpreter.setNodeLookupValue(this, ((InterpreterValueArray) array).getAtIndex(index.asPrimitiveConstant().asInt()));
+        interpreter.setNodeLookupValue(this, ((InterpreterValueArray) arrayVal).getAtIndex(indexVal.asPrimitiveConstant().asInt()));
 
         return next();
     }

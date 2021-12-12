@@ -581,11 +581,11 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable, Ar
 
     @Override
     public InterpreterValue interpretExpr(InterpreterState interpreter) {
-        Constant value = getValue();
-        if (value instanceof PrimitiveConstant) {
-            return InterpreterValuePrimitive.ofPrimitiveConstant(value);
+        Constant cVal = getValue();
+        if (cVal instanceof PrimitiveConstant) {
+            return InterpreterValuePrimitive.ofPrimitiveConstant(cVal);
         }
-        String msg = String.format("cannot interpret constant Value=%s class=%s\n", value, value.getClass());
+        String msg = String.format("cannot interpret constant Value=%s class=%s\n", cVal, cVal.getClass());
         throw GraalError.unimplemented(msg);
     }
 }

@@ -147,10 +147,10 @@ public class NewArrayNode extends AbstractNewArrayNode implements VirtualizableA
 
     @Override
     public FixedNode interpret(InterpreterState interpreter) {
-        InterpreterValue length = interpreter.interpretExpr(length());
-        GraalError.guarantee(length.isPrimitive() && length.asPrimitiveConstant().getJavaKind().getStackKind() == JavaKind.Int, "NewArrayNode length doesn't interpret to int");
+        InterpreterValue len = interpreter.interpretExpr(length());
+        GraalError.guarantee(len.isPrimitive() && len.asPrimitiveConstant().getJavaKind().getStackKind() == JavaKind.Int, "NewArrayNode length doesn't interpret to int");
 
-        interpreter.setHeapValue(this, interpreter.getRuntimeValueFactory().createArray(elementType(), length.asPrimitiveConstant().asInt()));
+        interpreter.setHeapValue(this, interpreter.getRuntimeValueFactory().createArray(elementType(), len.asPrimitiveConstant().asInt()));
         return next();
     }
 

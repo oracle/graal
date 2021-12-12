@@ -132,15 +132,15 @@ public final class StoreIndexedNode extends AccessIndexedNode implements StateSp
 
     @Override
     public FixedNode interpret(InterpreterState interpreter) {
-        InterpreterValue index = interpreter.interpretExpr(index());
-        InterpreterValue array = interpreter.interpretExpr(array());
-        InterpreterValue value = interpreter.interpretExpr(value());
+        InterpreterValue indexVal = interpreter.interpretExpr(index());
+        InterpreterValue arrayVal = interpreter.interpretExpr(array());
+        InterpreterValue newVal = interpreter.interpretExpr(value());
 
-        GraalError.guarantee(index.isPrimitive() && index.asPrimitiveConstant().getJavaKind().getStackKind() == JavaKind.Int, "StoreIndexedNode index doesn't interpret to int");
-        GraalError.guarantee(array.isArray(), "StoreIndexedNode array did not interpret to an array");
+        GraalError.guarantee(indexVal.isPrimitive() && indexVal.asPrimitiveConstant().getJavaKind().getStackKind() == JavaKind.Int, "StoreIndexedNode index doesn't interpret to int");
+        GraalError.guarantee(arrayVal.isArray(), "StoreIndexedNode array did not interpret to an array");
 
         // TODO: check type of value is compatible?
-        ((InterpreterValueArray) array).setAtIndex(index.asPrimitiveConstant().asInt(), value);
+        ((InterpreterValueArray) arrayVal).setAtIndex(indexVal.asPrimitiveConstant().asInt(), newVal);
 
         return next();
     }

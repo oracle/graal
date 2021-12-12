@@ -125,7 +125,7 @@ public class GraalInterpreter {
      *
      * @param graph
      * @param args
-     * @return
+     * @return the return value of the method or a wrapped exception.
      * @throws InvocationTargetException
      */
     public Object executeGraph(StructuredGraph graph, Object... args) throws InvocationTargetException {
@@ -444,9 +444,9 @@ public class GraalInterpreter {
             }
             ResolvedJavaType resolvedType = context.getMetaAccess().lookupJavaType(value.getClass());
             InterpreterValueObject createdObject = createObject(resolvedType);
-            for (ResolvedJavaField field : resolvedType.getInstanceFields(true)) {
+            // for (ResolvedJavaField field : resolvedType.getInstanceFields(true)) {
                 // TODO: how to get this field out of object and stick into createdObject
-            }
+            // }
             return createdObject;
         }
     }
