@@ -242,31 +242,41 @@ public class GroupBoundaries implements JsonConvertible {
      * @param index current index. All group boundaries contained in this object will be set to this
      *            value in the resultFactory.
      */
-    public void applyToResultFactory(PreCalculatedResultFactory resultFactory, int index) {
+    public void applyToResultFactory(PreCalculatedResultFactory resultFactory, int index, boolean tracksLastGroup) {
         if (hasIndexUpdates()) {
             resultFactory.updateIndices(updateIndices, index);
+        }
+        if (tracksLastGroup && hasLastGroup()) {
+            resultFactory.setLastGroup(getLastGroup());
         }
     }
 
     @ExplodeLoop
-    public void applyExploded(int[] array, int offset, int index) {
+    public void applyExploded(int[] array, int cgOffset, int lgOffset, int index, boolean trackLastGroup, boolean dontOverwriteLastGroup) {
         CompilerAsserts.partialEvaluationConstant(this);
         CompilerAsserts.partialEvaluationConstant(clearArray);
         CompilerAsserts.partialEvaluationConstant(updateArray);
+        CompilerAsserts.partialEvaluationConstant(lastGroup);
         for (int i = 0; i < clearArray.length; i++) {
-            array[offset + Short.toUnsignedInt(clearArray[i])] = -1;
+            array[cgOffset + Short.toUnsignedInt(clearArray[i])] = -1;
         }
         for (int i = 0; i < updateArray.length; i++) {
-            array[offset + Short.toUnsignedInt(updateArray[i])] = index;
+            array[cgOffset + Short.toUnsignedInt(updateArray[i])] = index;
+        }
+        if (trackLastGroup && hasLastGroup() && (!dontOverwriteLastGroup || array[lgOffset] == -1)) {
+            array[lgOffset] = getLastGroup();
         }
     }
 
-    public void apply(int[] array, int offset, int index) {
+    public void apply(int[] array, int cgOffset, int lgOffset, int index, boolean trackLastGroup) {
         for (int i = 0; i < clearArray.length; i++) {
-            array[offset + Short.toUnsignedInt(clearArray[i])] = -1;
+            array[cgOffset + Short.toUnsignedInt(clearArray[i])] = -1;
         }
         for (int i = 0; i < updateArray.length; i++) {
-            array[offset + Short.toUnsignedInt(updateArray[i])] = index;
+            array[cgOffset + Short.toUnsignedInt(updateArray[i])] = index;
+        }
+        if (trackLastGroup && hasLastGroup()) {
+            array[lgOffset] = getLastGroup();
         }
     }
 

@@ -96,18 +96,12 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
 
     @Override
     public TRegexExecutorLocals createLocals(Object input, int fromIndex, int index, int maxIndex) {
-        return new TRegexNFAExecutorLocals(input, fromIndex, index, maxIndex, getNumberOfCaptureGroups(), nfa.getNumberOfStates(), returnsLastGroup());
+        return new TRegexNFAExecutorLocals(input, fromIndex, index, maxIndex, getNumberOfCaptureGroups(), nfa.getNumberOfStates(), tracksLastGroup());
     }
 
     @Override
     public Object execute(TRegexExecutorLocals abstractLocals, boolean compactString) {
         TRegexNFAExecutorLocals locals = (TRegexNFAExecutorLocals) abstractLocals;
-        Object innerResult = executeInner(locals);
-        int lastGroup = locals.getLastGroup();
-        return addLastGroup(innerResult, lastGroup);
-    }
-
-    public Object executeInner(TRegexNFAExecutorLocals locals) {
         CompilerDirectives.ensureVirtualized(locals);
 
         final int offset = rewindUpTo(locals, 0, nfa.getAnchoredEntry().length - 1);

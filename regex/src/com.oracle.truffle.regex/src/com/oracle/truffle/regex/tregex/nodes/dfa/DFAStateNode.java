@@ -376,9 +376,6 @@ public class DFAStateNode extends DFAAbstractStateNode {
         if (executor.isSimpleCG()) {
             if (executor.getProperties().isSimpleCGMustCopy()) {
                 System.arraycopy(locals.getCGData().results, 0, locals.getCGData().currentResult, 0, locals.getCGData().currentResult.length);
-                if (executor.returnsLastGroup()) {
-                    locals.getCGData().currentLastGroup = locals.getCGData().lastGroups[0];
-                }
             }
             locals.setResultInt(0);
         } else {
@@ -387,11 +384,11 @@ public class DFAStateNode extends DFAAbstractStateNode {
     }
 
     void applySimpleCGTransition(DFASimpleCGTransition transition, TRegexDFAExecutorNode executor, TRegexDFAExecutorLocals locals) {
-        transition.apply(locals.getCGData().results, locals.getCGData().lastGroups, locals.getIndex(), executor.returnsLastGroup());
+        transition.apply(locals.getCGData().results, locals.getIndex(), executor.tracksLastGroup());
     }
 
     void applySimpleCGFinalTransition(DFASimpleCGTransition transition, TRegexDFAExecutorNode executor, TRegexDFAExecutorLocals locals) {
-        transition.applyFinal(locals.getCGData(), locals.getIndex(), executor.getProperties().isSimpleCGMustCopy(), executor.returnsLastGroup());
+        transition.applyFinal(locals.getCGData(), locals.getIndex(), executor.getProperties().isSimpleCGMustCopy(), executor.tracksLastGroup());
     }
 
     @TruffleBoundary

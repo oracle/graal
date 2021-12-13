@@ -171,32 +171,19 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
 
     private DFACaptureGroupTrackingData createCGData() {
         if (isGenericCG() || isSimpleCG()) {
-            return new DFACaptureGroupTrackingData(getMaxNumberOfNFAStates(), getNumberOfCaptureGroups(), props, returnsLastGroup());
+            return new DFACaptureGroupTrackingData(getMaxNumberOfNFAStates(), getNumberOfCaptureGroups(), props);
         } else {
             return null;
         }
     }
 
-    @Override
-    public Object execute(final TRegexExecutorLocals abstractLocals, final boolean compactString) {
-        TRegexDFAExecutorLocals locals = (TRegexDFAExecutorLocals) abstractLocals;
-        Object innerResult = executeInner(locals, compactString);
-        int lastGroup = -1;
-        if (returnsLastGroup()) {
-            if (isSimpleCG() && !props.isSimpleCGMustCopy()) {
-                lastGroup = locals.getCGData().lastGroups[0];
-            } else {
-                lastGroup = locals.getCGData().currentLastGroup;
-            }
-        }
-        return addLastGroup(innerResult, lastGroup);
-    }
-
     /**
      * records position of the END of the match found, or -1 if no match exists.
      */
+    @Override
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
-    public Object executeInner(final TRegexDFAExecutorLocals locals, final boolean compactString) {
+    public Object execute(final TRegexExecutorLocals abstractLocals, final boolean compactString) {
+        TRegexDFAExecutorLocals locals = (TRegexDFAExecutorLocals) abstractLocals;
         CompilerDirectives.ensureVirtualized(locals);
         CompilerAsserts.compilationConstant(states);
         CompilerAsserts.compilationConstant(states.length);
@@ -209,15 +196,9 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
             initResultOrder(locals);
             locals.setLastTransition((short) -1);
             Arrays.fill(locals.getCGData().results, -1);
-            if (returnsLastGroup()) {
-                Arrays.fill(locals.getCGData().lastGroups, -1);
-            }
         } else if (isSimpleCG()) {
             CompilerDirectives.ensureVirtualized(locals.getCGData());
             Arrays.fill(locals.getCGData().results, -1);
-            if (returnsLastGroup()) {
-                locals.getCGData().lastGroups[0] = -1;
-            }
         }
         // check if input is long enough for a match
         if (props.getMinResultLength() > 0 &&
@@ -651,7 +632,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
     private void initResultOrder(TRegexDFAExecutorLocals locals) {
         DFACaptureGroupTrackingData cgData = locals.getCGData();
         for (int i = 0; i < maxNumberOfNFAStates; i++) {
-            cgData.currentResultOrder[i] = i * getNumberOfCaptureGroups() * 2;
+            cgData.currentResultOrder[i] = i * (getNumberOfCaptureGroups() * 2 + 1);
         }
     }
 

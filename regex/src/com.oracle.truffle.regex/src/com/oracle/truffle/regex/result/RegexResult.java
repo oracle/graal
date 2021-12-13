@@ -103,50 +103,43 @@ public final class RegexResult extends AbstractConstantKeysObject {
 
     private final int start;
     private final int end;
-    private int[] indices;
-    private int lastGroup;
+    private int[] result;
 
     private final CallTarget lazyCallTarget;
 
-    protected RegexResult(Object input, int fromIndex, int start, int end, int[] indices, int lastGroup, CallTarget lazyCallTarget) {
+    protected RegexResult(Object input, int fromIndex, int start, int end, int[] result, CallTarget lazyCallTarget) {
         this.input = input;
         this.fromIndex = fromIndex;
         this.start = start;
         this.end = end;
-        this.indices = indices;
-        this.lastGroup = lastGroup;
+        this.result = result;
         this.lazyCallTarget = lazyCallTarget;
     }
 
-    private static final RegexResult NO_MATCH_RESULT = new RegexResult(null, -1, -1, -1, new int[]{}, -1, null);
+    private static final RegexResult NO_MATCH_RESULT = new RegexResult(null, -1, -1, -1, new int[]{}, null);
 
     public static RegexResult getNoMatchInstance() {
         return NO_MATCH_RESULT;
     }
 
     public static RegexResult create(int start, int end) {
-        return new RegexResult(null, -1, 0, 0, new int[]{start, end}, -1, null);
+        return new RegexResult(null, -1, 0, 0, new int[]{start, end, -1}, null);
     }
 
-    public static RegexResult create(int[] indices, int lastGroup) {
-        assert indices != null && indices.length >= 2;
-        return new RegexResult(null, -1, 0, 0, indices, lastGroup, null);
+    public static RegexResult create(int[] result) {
+        assert result != null && result.length >= 3;
+        return new RegexResult(null, -1, 0, 0, result, null);
     }
 
-    public static RegexResult createFromIndicesArray(Object executorResult, boolean returnsLastGroup) {
+    public static RegexResult createFromIndicesArray(Object executorResult) {
         if (executorResult == null) {
             return RegexResult.getNoMatchInstance();
         }
-        if (returnsLastGroup) {
-            WithLastGroup lastGroupWrapper = (WithLastGroup) executorResult;
-            return RegexResult.create((int[]) lastGroupWrapper.getResult(), lastGroupWrapper.getLastGroup());
-        } else {
-            return RegexResult.create((int[]) executorResult, -1);
-        }
+        return RegexResult.create((int[]) executorResult);
     }
 
     public static RegexResult createLazy(Object input, int fromIndex, int start, int end, CallTarget lazyCallTarget) {
-        return new RegexResult(input, fromIndex, start, end, null, -1, lazyCallTarget);
+        return new RegexResult(input, fromIndex, start, end, null, lazyCallTarget);
     }
 
     public Object getInput() {
@@ -165,26 +158,22 @@ public final class RegexResult extends AbstractConstantKeysObject {
         return end;
     }
 
-    public void setIndices(int[] indices) {
-        this.indices = indices;
+    public void setResult(int[] result) {
+        this.result = result;
     }
 
     public int getStart(int groupNumber) {
         int index = groupNumber * 2;
-        return index >= indices.length ? -1 : indices[index];
+        return index >= result.length - 1 ? -1 : result[index];
     }
 
     public int getEnd(int groupNumber) {
         int index = groupNumber * 2 + 1;
-        return index >= indices.length ? -1 : indices[index];
+        return index >= result.length - 1 ? -1 : result[index];
     }
 
     public int getLastGroup() {
-        return lastGroup;
-    }
-
-    public void setLastGroup(int lastGroup) {
-        this.lastGroup = lastGroup;
+        return result.length >= 3 ? result[result.length - 1] : -1;
     }
 
     @ExportMessage
@@ -483,10 +472,10 @@ public final class RegexResult extends AbstractConstantKeysObject {
     public void debugForceEvaluation() {
         CompilerAsserts.neverPartOfCompilation();
         assert this != getNoMatchInstance();
-        if (indices == null) {
+        if (result == null) {
             lazyCallTarget.call(this);
         }
-        assert indices != null;
+        assert result != null;
     }
 
     private static final int INVALID_RESULT_INDEX = -1;
@@ -500,12 +489,12 @@ public final class RegexResult extends AbstractConstantKeysObject {
         static int doResult(RegexResult receiver, int groupNumber,
                         @Cached ConditionProfile lazyProfile,
                         @Cached DispatchNode getIndicesCall) {
-            if (lazyProfile.profile(receiver.indices == null)) {
+            if (lazyProfile.profile(receiver.result == null)) {
                 assert receiver.lazyCallTarget != null;
                 getIndicesCall.execute(receiver.lazyCallTarget, receiver);
             }
             int i = groupNumber * 2 + 1;
-            return i < 0 || i >= receiver.indices.length ? INVALID_RESULT_INDEX : receiver.indices[i];
+            return i < 0 || i >= receiver.result.length ? INVALID_RESULT_INDEX : receiver.result[i];
         }
     }
 
@@ -522,12 +511,12 @@ public final class RegexResult extends AbstractConstantKeysObject {
         static int doResult(RegexResult receiver, int groupNumber,
                         @Cached ConditionProfile lazyProfile,
                         @Cached DispatchNode getIndicesCall) {
-            if (lazyProfile.profile(receiver.indices == null)) {
+            if (lazyProfile.profile(receiver.result == null)) {
                 assert receiver.lazyCallTarget != null;
                 getIndicesCall.execute(receiver.lazyCallTarget, receiver);
             }
             int i = groupNumber * 2;
-            return i < 0 || i >= receiver.indices.length ? INVALID_RESULT_INDEX : receiver.indices[i];
+            return i < 0 || i >= receiver.result.length ? INVALID_RESULT_INDEX : receiver.result[i];
         }
     }
 
@@ -537,15 +526,10 @@ public final class RegexResult extends AbstractConstantKeysObject {
         if (this == getNoMatchInstance()) {
             return "NO_MATCH";
         }
-        if (indices == null) {
+        if (result == null) {
             return "[ _lazy_ ]";
         }
-        String indicesStr = Arrays.toString(indices);
-        if (lastGroup != -1) {
-            return String.format("%s(%d)", indicesStr, lastGroup);
-        } else {
-            return indicesStr;
-        }
+        return Arrays.toString(result);
     }
 
     @TruffleBoundary

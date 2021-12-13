@@ -81,7 +81,7 @@ public final class DFASimpleCGTransition implements JsonConvertible {
         return EMPTY_INSTANCE;
     }
 
-    public void apply(int[] result, int[] lastGroups, int currentIndex, boolean trackLastGroup) {
+    public void apply(int[] result, int currentIndex, boolean trackLastGroup) {
         CompilerAsserts.partialEvaluationConstant(this);
         if (indexClears == FULL_CLEAR_ARRAY) {
             Arrays.fill(result, -1);
@@ -90,7 +90,7 @@ public final class DFASimpleCGTransition implements JsonConvertible {
         }
         applyIndexUpdate(result, currentIndex);
         if (trackLastGroup && lastGroup != -1) {
-            lastGroups[0] = lastGroup;
+            result[result.length - 1] = lastGroup;
         }
     }
 
@@ -105,9 +105,9 @@ public final class DFASimpleCGTransition implements JsonConvertible {
         applyIndexUpdate(result, currentIndex);
         if (trackLastGroup && lastGroup != -1) {
             if (simpleCGMustCopy) {
-                cgData.currentLastGroup = lastGroup;
+                cgData.currentResult[cgData.currentResult.length - 1] = lastGroup;
             } else {
-                cgData.lastGroups[0] = lastGroup;
+                cgData.results[cgData.results.length - 1] = lastGroup;
             }
         }
     }

@@ -49,7 +49,6 @@ import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.charset.CharMatchers;
 import com.oracle.truffle.regex.charset.CodePointSet;
-import com.oracle.truffle.regex.result.WithLastGroup;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
 import com.oracle.truffle.regex.tregex.nfa.PureNFA;
@@ -203,7 +202,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
     @Override
     public TRegexExecutorLocals createLocals(Object input, int fromIndex, int index, int maxIndex) {
         return new TRegexBacktrackingNFAExecutorLocals(input, fromIndex, index, maxIndex, getNumberOfCaptureGroups(), nQuantifiers, nZeroWidthQuantifiers, zeroWidthTermEnclosedCGLow,
-                        zeroWidthQuantifierCGOffsets, transitionMatchesStepByStep, maxNTransitions, returnsLastGroup(), returnsFirstGroup);
+                        zeroWidthQuantifierCGOffsets, transitionMatchesStepByStep, maxNTransitions, tracksLastGroup(), returnsFirstGroup);
     }
 
     private static final int IP_BEGIN = -1;
@@ -213,12 +212,6 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
     @Override
     public Object execute(TRegexExecutorLocals abstractLocals, boolean compactString) {
         TRegexBacktrackingNFAExecutorLocals locals = (TRegexBacktrackingNFAExecutorLocals) abstractLocals;
-        Object innerResult = executeInner(locals, compactString);
-        int lastGroup = locals.getLastGroup();
-        return addLastGroup(innerResult, lastGroup);
-    }
-
-    public Object executeInner(TRegexBacktrackingNFAExecutorLocals locals, boolean compactString) {
         CompilerDirectives.ensureVirtualized(locals);
         if (innerLiteral != null) {
             locals.setIndex(locals.getFromIndex());
@@ -371,11 +364,6 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
             if (subMatchFailed(curState, subMatchResult)) {
                 return IP_BACKTRACK;
             } else if (!curState.isLookAroundNegated() && getLookAroundExecutor(curState).writesCaptureGroups()) {
-                if (getLookAroundExecutor(curState).returnsLastGroup()) {
-                    WithLastGroup lastGroupWrapper = (WithLastGroup) subMatchResult;
-                    locals.setLastGroup(lastGroupWrapper.getLastGroup());
-                    subMatchResult = lastGroupWrapper.getResult();
-                }
                 locals.overwriteCaptureGroups((int[]) subMatchResult);
             }
         }

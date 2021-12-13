@@ -78,11 +78,6 @@ public final class TRegexNFAExecutorLocals extends TRegexExecutorLocals {
      */
     private int[] result;
     /**
-     * This field stores the last group matched by the best match found so far. It should be updated
-     * in sync with {@code result}.
-     */
-    private int lastGroup = -1;
-    /**
      * Indicates whether a path to a final state has been completed in this step. If true, then no
      * further paths should be considered, as they would have a lower priority than this completed
      * path.
@@ -146,10 +141,7 @@ public final class TRegexNFAExecutorLocals extends TRegexExecutorLocals {
         } else {
             Arrays.fill(nextStates, offsetCaptureGroups(nextStatesLength), nextStatesLength + frameSize, -1);
         }
-        t.getGroupBoundaries().apply(nextStates, offsetCaptureGroups(nextStatesLength), getIndex());
-        if (trackLastGroup && t.getGroupBoundaries().hasLastGroup()) {
-            nextStates[offsetLastGroup(nextStatesLength)] = t.getGroupBoundaries().getLastGroup();
-        }
+        t.getGroupBoundaries().apply(nextStates, offsetCaptureGroups(nextStatesLength), offsetLastGroup(nextStatesLength), getIndex(), trackLastGroup);
         nextStatesLength += frameSize;
     }
 
@@ -167,25 +159,14 @@ public final class TRegexNFAExecutorLocals extends TRegexExecutorLocals {
     public void pushResult(NFAStateTransition t, boolean copy) {
         resultPushed = true;
         if (result == null) {
-            result = new int[nCaptureGroups * 2];
+            result = new int[nCaptureGroups * 2 + 1];
         }
         if (copy) {
             System.arraycopy(curStates, offsetCaptureGroups(iCurStates - frameSize), result, 0, result.length);
-            if (trackLastGroup) {
-                lastGroup = curStates[offsetLastGroup(iCurStates - frameSize)];
-            }
         } else {
             Arrays.fill(result, -1);
-            if (trackLastGroup) {
-                lastGroup = -1;
-            }
         }
-        t.getGroupBoundaries().apply(result, 0, getIndex());
-        if (t.getGroupBoundaries().hasLastGroup()) {
-            if (trackLastGroup) {
-                lastGroup = t.getGroupBoundaries().getLastGroup();
-            }
-        }
+        t.getGroupBoundaries().apply(result, 0, nCaptureGroups * 2, getIndex(), trackLastGroup);
     }
 
     public boolean hasResult() {
@@ -198,10 +179,6 @@ public final class TRegexNFAExecutorLocals extends TRegexExecutorLocals {
 
     public int[] getResult() {
         return result;
-    }
-
-    public int getLastGroup() {
-        return lastGroup;
     }
 
     @TruffleBoundary

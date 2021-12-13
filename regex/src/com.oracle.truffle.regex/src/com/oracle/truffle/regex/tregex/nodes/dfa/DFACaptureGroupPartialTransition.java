@@ -204,8 +204,8 @@ public final class DFACaptureGroupPartialTransition implements JsonConvertible {
         applyArrayCopy(d.results, d.currentResultOrder, d.currentResult.length);
         applyIndexUpdate(d.results, d.currentResultOrder, currentIndex);
         applyIndexClear(d.results, d.currentResultOrder);
-        if (executor.returnsLastGroup()) {
-            applyLastGroupUpdate(d.lastGroups, d.currentResultOrder, d.results.length);
+        if (executor.tracksLastGroup()) {
+            applyLastGroupUpdate(d.results, d.currentResultOrder, d.currentResult.length);
         }
     }
 
@@ -218,7 +218,7 @@ public final class DFACaptureGroupPartialTransition implements JsonConvertible {
         if (executor.recordExecution()) {
             executor.getDebugRecorder().recordCGPartialTransition(currentIndex, id);
         }
-        d.exportResult(preReorderFinalStateResultIndex, executor.returnsLastGroup());
+        d.exportResult(preReorderFinalStateResultIndex);
         applyFinalStateTransition(executor, d, currentIndex);
     }
 
@@ -243,9 +243,9 @@ public final class DFACaptureGroupPartialTransition implements JsonConvertible {
             assert indexClears[0].targetArray == 0;
             applyFinalStateTransitionIndexClears(d);
         }
-        if (executor.returnsLastGroup()) {
+        if (executor.tracksLastGroup()) {
             if (lastGroupUpdates.length == 1) {
-                assert lastGroupUpdates[0].targetState == 0;
+                assert lastGroupUpdates[0].targetArray == 0;
                 applyFinalStateTransitionLastGroupUpdates(d);
             }
         }
@@ -267,7 +267,7 @@ public final class DFACaptureGroupPartialTransition implements JsonConvertible {
 
     @ExplodeLoop
     private void applyFinalStateTransitionLastGroupUpdates(DFACaptureGroupTrackingData d) {
-        d.currentLastGroup = lastGroupUpdates[0].getLastGroup();
+        d.currentResult[d.currentResult.length - 1] = lastGroupUpdates[0].getLastGroup();
     }
 
     @ExplodeLoop
@@ -311,10 +311,10 @@ public final class DFACaptureGroupPartialTransition implements JsonConvertible {
     }
 
     @ExplodeLoop
-    private void applyLastGroupUpdate(int[] lastGroups, int[] currentResultOrder, int resultsStride) {
+    private void applyLastGroupUpdate(int[] results, int[] currentResultOrder, int length) {
         for (LastGroupUpdate lastGroupUpdate : lastGroupUpdates) {
-            final int targetState = lastGroupUpdate.getTargetState();
-            lastGroups[currentResultOrder[targetState] / resultsStride] = lastGroupUpdate.getLastGroup();
+            final int targetArray = lastGroupUpdate.getTargetArray();
+            results[currentResultOrder[targetArray] + length - 1] = lastGroupUpdate.getLastGroup();
         }
     }
 
@@ -458,18 +458,19 @@ public final class DFACaptureGroupPartialTransition implements JsonConvertible {
 
     public static final class LastGroupUpdate implements JsonConvertible {
 
-        private final byte targetState;
+        private final byte targetArray;
         private final byte lastGroup;
 
-        public LastGroupUpdate(int targetState, int lastGroup) {
-            assert targetState < 256;
+        public LastGroupUpdate(int targetArray, int lastGroup) {
+            assert targetArray < 256;
             assert lastGroup < Byte.MAX_VALUE;
-            this.targetState = (byte) targetState;
+            assert lastGroup > 0;
+            this.targetArray = (byte) targetArray;
             this.lastGroup = (byte) lastGroup;
         }
 
-        public int getTargetState() {
-            return Byte.toUnsignedInt(targetState);
+        public int getTargetArray() {
+            return Byte.toUnsignedInt(targetArray);
         }
 
         public int getLastGroup() {
@@ -479,7 +480,7 @@ public final class DFACaptureGroupPartialTransition implements JsonConvertible {
         @TruffleBoundary
         @Override
         public JsonValue toJson() {
-            return Json.obj(Json.prop("target", getTargetState()),
+            return Json.obj(Json.prop("target", getTargetArray()),
                             Json.prop("lastGroup", getLastGroup()));
         }
     }
