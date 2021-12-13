@@ -77,7 +77,6 @@ public class SpinLockUtils {
 
     @Uninterruptible(reason = "The whole critical section must be uninterruptible.", callerMustBe = true)
     public static void unlock(Object obj, long intFieldOffset) {
-        UNSAFE.fullFence();
         /*
          * Roach-motel semantics. It's safe if subsequent LDs and STs float "up" into the critical
          * section, but prior LDs and STs within the critical section can't be allowed to reorder or
@@ -85,8 +84,9 @@ public class SpinLockUtils {
          * which appear in program order before the store that releases the lock - must also appear
          * before the store that releases the lock in memory visibility order. Conceptually we need
          * a #loadstore|#storestore "release" MEMBAR before the ST of 0 into the lock-word which
-         * releases the lock, so fence more than covers this on all platforms.
+         * releases the lock.
          */
+        UNSAFE.putIntVolatile(obj, intFieldOffset, 0);
         UNSAFE.putInt(obj, intFieldOffset, 0);
     }
 }

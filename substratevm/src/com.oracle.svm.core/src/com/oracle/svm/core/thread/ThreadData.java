@@ -45,10 +45,14 @@ import sun.misc.Unsafe;
 public final class ThreadData extends UnacquiredThreadData {
     private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
     private static final long LOCK_OFFSET;
+    private static final long UNSAFE_PARK_EVENT_OFFSET;
+    private static final long SLEEP_PARK_EVENT_OFFSET;
 
     static {
         try {
             LOCK_OFFSET = UNSAFE.objectFieldOffset(ThreadData.class.getDeclaredField("lock"));
+            UNSAFE_PARK_EVENT_OFFSET = UNSAFE.objectFieldOffset(ThreadData.class.getDeclaredField("unsafeParkEvent"));
+            SLEEP_PARK_EVENT_OFFSET = UNSAFE.objectFieldOffset(ThreadData.class.getDeclaredField("sleepParkEvent"));
         } catch (Throwable ex) {
             throw VMError.shouldNotReachHere(ex);
         }
@@ -86,10 +90,7 @@ public final class ThreadData extends UnacquiredThreadData {
             return existingEvent;
         }
 
-        ParkEvent newEvent = ParkEvent.acquire(false);
-        if (!tryToStoreUnsafeParkEvent(newEvent)) {
-            ParkEvent.release(newEvent);
-        }
+        initializeParkEvent(UNSAFE_PARK_EVENT_OFFSET, false);
         return unsafeParkEvent;
     }
 
@@ -106,10 +107,7 @@ public final class ThreadData extends UnacquiredThreadData {
             return existingEvent;
         }
 
-        ParkEvent newEvent = ParkEvent.acquire(true);
-        if (!tryToStoreSleepParkEvent(newEvent)) {
-            ParkEvent.release(newEvent);
-        }
+        initializeParkEvent(SLEEP_PARK_EVENT_OFFSET, true);
         return sleepParkEvent;
     }
 
@@ -185,28 +183,21 @@ public final class ThreadData extends UnacquiredThreadData {
         }
     }
 
-    @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
-    private boolean tryToStoreUnsafeParkEvent(ParkEvent newEvent) {
-        SpinLockUtils.lockNoTransition(this, LOCK_OFFSET);
-        try {
-            if (unsafeParkEvent != null) {
-                return false;
-            }
-            unsafeParkEvent = newEvent;
-            return true;
-        } finally {
-            SpinLockUtils.unlock(this, LOCK_OFFSET);
+    private void initializeParkEvent(long offset, boolean isSleepEvent) {
+        ParkEvent newEvent = ParkEvent.acquire(isSleepEvent);
+        if (!tryToStoreParkEvent(offset, newEvent)) {
+            ParkEvent.release(newEvent);
         }
     }
 
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
-    private boolean tryToStoreSleepParkEvent(ParkEvent newEvent) {
+    private boolean tryToStoreParkEvent(long offset, ParkEvent newEvent) {
         SpinLockUtils.lockNoTransition(this, LOCK_OFFSET);
         try {
-            if (sleepParkEvent != null) {
+            if (UNSAFE.getObject(this, offset) != null) {
                 return false;
             }
-            sleepParkEvent = newEvent;
+            UNSAFE.putObjectVolatile(this, offset, newEvent);
             return true;
         } finally {
             SpinLockUtils.unlock(this, LOCK_OFFSET);
