@@ -137,4 +137,9 @@ public class JsTests extends RegexTestBase {
         // Unbounded length of match, ambiguous: exercises NFA, lazy DFA, eager DFA and backtracker.
         test(".*([a0-9])", "", "a", 0, true, 0, 1, 0, 1, -1);
     }
+
+    @Test
+    public void gr35771() {
+        test("(^\\s*)|(\\s*$)", "", "", 0, true, 0, 0, 0, 0, -1, -1);
+    }
 }
