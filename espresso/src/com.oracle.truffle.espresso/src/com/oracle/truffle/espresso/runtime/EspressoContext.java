@@ -44,6 +44,9 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.espresso.ffi.nfi.NFIIsolatedNativeAccess;
+import com.oracle.truffle.espresso.ffi.nfi.NFINativeAccess;
+import com.oracle.truffle.espresso.ffi.nfi.NFISulongNativeAccess;
 import org.graalvm.options.OptionMap;
 import org.graalvm.polyglot.Engine;
 
@@ -606,13 +609,14 @@ public final class EspressoContext {
         if (getEnv().getOptions().hasBeenSet(EspressoOptions.NativeBackend)) {
             nativeBackend = getEnv().getOptions().get(EspressoOptions.NativeBackend);
         } else {
+            // Pick a sane "default" native backend depending on the platform.
             if (EspressoOptions.RUNNING_ON_SVM) {
-                nativeBackend = "nfi-native";
+                nativeBackend = NFINativeAccess.Provider.ID;
             } else {
                 if (OS.getCurrent() == OS.Linux) {
-                    nativeBackend = "nfi-dlmopen";
+                    nativeBackend = NFIIsolatedNativeAccess.Provider.ID;
                 } else {
-                    nativeBackend = "nfi-sulong";
+                    nativeBackend = NFISulongNativeAccess.Provider.ID;
                 }
             }
         }

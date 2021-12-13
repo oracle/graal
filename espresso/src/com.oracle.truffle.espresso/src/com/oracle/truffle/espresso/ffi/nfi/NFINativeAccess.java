@@ -472,9 +472,12 @@ public class NFINativeAccess implements NativeAccess {
 
     @Collect(NativeAccess.class)
     public static final class Provider implements NativeAccess.Provider {
+
+        public static final String ID = "nfi-native";
+
         @Override
         public String id() {
-            return "nfi-native";
+            return ID;
         }
 
         @Override
