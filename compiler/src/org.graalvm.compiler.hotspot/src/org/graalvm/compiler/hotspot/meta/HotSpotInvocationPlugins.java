@@ -82,10 +82,12 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
             this.unimplementedIntrinsics = new UnimplementedGraalIntrinsics(config, target.arch);
             this.missingIntrinsicMetrics = new HashMap<>();
             Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                TTY.println("[Warning] Missing intrinsics found: %d", missingIntrinsicMetrics.size());
-                missingIntrinsicMetrics.entrySet().stream().sorted(Comparator.comparing(Entry::getValue, Comparator.reverseOrder())).forEach(entry -> {
-                    TTY.println("        - %d occurrences during parsing: %s", entry.getValue(), entry.getKey());
-                });
+                if (missingIntrinsicMetrics.size() > 0) {
+                    TTY.println("[Warning] Missing intrinsics found: %d", missingIntrinsicMetrics.size());
+                    missingIntrinsicMetrics.entrySet().stream().sorted(Comparator.comparing(Entry::getValue, Comparator.reverseOrder())).forEach(entry -> {
+                        TTY.println("        - %d occurrences during parsing: %s", entry.getValue(), entry.getKey());
+                    });
+                }
             }));
         } else {
             this.unimplementedIntrinsics = null;
