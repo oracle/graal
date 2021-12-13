@@ -25,7 +25,9 @@ package com.oracle.truffle.espresso.ffi.nfi;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 import org.graalvm.options.OptionValues;
 
@@ -95,6 +97,9 @@ public final class NFISulongNativeAccess extends NFINativeAccess {
     private Path llvmBootLibraryPath(String javaVersion, Path llvmRoot) {
         // Try $ESPRESSO_HOME/lib/llvm/default first.
         Path llvmDefault = llvmRoot.resolve("default");
+        if (!Files.exists(llvmDefault)) {
+            getLogger().warning(() -> "espresso-llvm (default) component not found. Run 'gu install espresso-llvm' to install it, if available for your platform.");
+        }
         String llvmDefaultVersion = getJavaVersion(llvmDefault);
         getLogger().fine(() -> "Check " + llvmDefault + " with Java version: " + llvmDefaultVersion);
         if (javaVersion.equals(llvmDefaultVersion)) {
@@ -105,7 +110,15 @@ public final class NFISulongNativeAccess extends NFINativeAccess {
          * Try directories in $ESPRESSO_HOME/lib/llvm/* for libraries with LLVM-bitcode compatible
          * with the specified Java version.
          */
-        for (Path llvmImpl : llvmRoot) {
+        List<Path> sortedPaths = new ArrayList<>();
+        for (Path p : llvmRoot) {
+            sortedPaths.add(p);
+        }
+
+        // Ensure order is deterministic.
+        Collections.sort(sortedPaths);
+
+        for (Path llvmImpl : sortedPaths) {
             if (!llvmDefault.equals(llvmImpl) && Files.isDirectory(llvmImpl)) {
                 String llvmImplVersion = getJavaVersion(llvmImpl);
                 getLogger().fine(() -> "Checking " + llvmImpl + " with Java version: " + llvmImplVersion);
