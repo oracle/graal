@@ -210,6 +210,10 @@ public final class ModuleLayerFeature implements Feature {
     }
 
     private ModuleLayer synthesizeRuntimeBootLayer(ImageClassLoader cl, Set<String> reachableModules, Set<Module> syntheticModules) {
+        /**
+         * For consistent module lookup we reuse the {@link ModuleFinder}s defined and used in
+         * {@link NativeImageClassLoaderSupportJDK11OrLater}.
+         */
         NativeImageClassLoaderSupportJDK11OrLater classLoaderSupport = (NativeImageClassLoaderSupportJDK11OrLater) cl.classLoaderSupport;
         ModuleFinder beforeFinder = classLoaderSupport.modulepathModuleFinder;
         ModuleFinder afterFinder = classLoaderSupport.upgradeAndSystemModuleFinder;

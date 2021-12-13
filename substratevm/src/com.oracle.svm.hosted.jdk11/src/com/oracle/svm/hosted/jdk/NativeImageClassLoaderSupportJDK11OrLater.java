@@ -97,6 +97,13 @@ public class NativeImageClassLoaderSupportJDK11OrLater extends AbstractNativeIma
         ModuleFinder modulePathsFinder = ModuleFinder.of(modulePaths);
         Set<String> moduleNames = modulePathsFinder.findAll().stream().map(moduleReference -> moduleReference.descriptor().name()).collect(Collectors.toSet());
 
+        /**
+         * When building a moduleLayer for the module-path passed to native-image we need to be able
+         * to resolve against system modules that are not used by the moduleLayer in which the
+         * image-builder got loaded into. To do so we use {@link upgradeAndSystemModuleFinder} as
+         * {@code ModuleFinder after} in
+         * {@link Configuration#resolve(ModuleFinder, ModuleFinder, Collection)}.
+         */
         Configuration configuration = ModuleLayer.boot().configuration().resolve(modulePathsFinder, upgradeAndSystemModuleFinder, moduleNames);
         /**
          * For the modules we want to build an image for, a ModuleLayer is needed that can be
@@ -106,7 +113,8 @@ public class NativeImageClassLoaderSupportJDK11OrLater extends AbstractNativeIma
     }
 
     /**
-     * Gets a finder that locates the upgrade modules and the system modules, in that order.
+     * Gets a finder that locates the upgrade modules and the system modules, in that order. Upgrade
+     * modules are used when mx environment variable {@code MX_BUILD_EXPLODED=true} is used.
      */
     private static ModuleFinder createUpgradeAndSystemModuleFinder() {
         ModuleFinder finder = ModuleFinder.ofSystem();

@@ -125,12 +125,15 @@ public class FallbackFeature implements Feature {
         void apply(BytecodePosition invokeLocation) {
             Class<?> javaClass = ((AnalysisMethod) invokeLocation.getMethod()).getDeclaringClass().getJavaClass();
             if (systemModuleDescriptors.contains(ModuleSupport.getModuleDescriptor(javaClass))) {
+                /* Ensure all JDK system modules are excluded from reporting reflection use. */
                 return;
             }
             ClassLoader classLoader = javaClass.getClassLoader();
             if (!NativeImageSystemClassLoader.singleton().isNativeImageClassLoader(classLoader)) {
+                /* Classes not loaded by NativeImageClassLoader are also excluded. */
                 return;
             }
+            /* Collect reflection use in application classes. */
             checker.check(this, invokeLocation);
         }
 
