@@ -13,12 +13,12 @@ The support for WebAssembly is in the early stages of its development.
 
 ## Installing Wasm
 
-The support is not available by default, but you can add it to GraalVM using the [GraalVM Updater](/reference-manual/graalvm-updater/) tool:
+The support is not available by default, but you can add it to GraalVM using the [GraalVM Updater](../graalvm-updater.md) tool:
 ```shell
 gu install wasm
 ```
 The above command will install a community version of a component from the GitHub catalog.
-For GraalVM Enterprise users, the [manual component installation](/reference-manual/graalvm-updater/#component-installation) is required.
+For GraalVM Enterprise users, the [manual component installation](../graalvm-updater.md#component-installation) is required.
 
 Then `wasm` launcher, which can run compiled WebAssembly binary code, becomes available.
 
@@ -75,4 +75,4 @@ Value mainFunction = context.getBindings("wasm").getMember("main").getMember("_s
 mainFunction.execute();
 ```
 
-For more polyglot examples, visit the [Polyglot Programming](/reference-manual/polyglot-programming/) page.
+For more polyglot examples, visit the [Polyglot Programming](../polyglot-programming.md) page.

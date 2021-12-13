@@ -8,9 +8,11 @@ redirect_from: /docs/tools/chrome-debugger/
 
 # Chrome Debugger
 
-GraalVM supports debugging of guest language applications and provides a built-in implementation of the [Chrome DevTools Protocol](https://chromedevtools.github.io/devtools-protocol/). This allows you to attach compatible debuggers such as [Chrome Developer Tools](https://developers.google.com/web/tools/chrome-devtools/) to GraalVM.
+GraalVM supports debugging of guest language applications and provides a built-in implementation of the [Chrome DevTools Protocol](https://chromedevtools.github.io/devtools-protocol/).
+This allows you to attach compatible debuggers such as [Chrome Developer Tools](https://developers.google.com/web/tools/chrome-devtools/) to GraalVM.
 
 To debug guest language applications, pass the `--inspect` option to the command line launcher, as in the following example with a Node.js _HelloWorld_ program:
+
 ```javascript
 var http = require('http');
 
