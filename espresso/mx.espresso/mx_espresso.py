@@ -28,17 +28,19 @@ import mx_espresso_benchmarks  # pylint: disable=unused-import
 import mx_sdk_vm
 from mx_gate import Task, add_gate_runner
 from mx_jackpot import jackpot
-
+from os.path import join
 
 _suite = mx.suite('espresso')
 
+# JDK compiled with the Sulong toolchain.
+LLVM_JAVA_HOME = mx.get_env('LLVM_JAVA_HOME')
 
 def _espresso_command(launcher, args):
     import mx_sdk_vm_impl
-    bin_dir = os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin')
-    exe = os.path.join(bin_dir, mx.exe_suffix(launcher))
+    bin_dir = join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin')
+    exe = join(bin_dir, mx.exe_suffix(launcher))
     if not os.path.exists(exe):
-        exe = os.path.join(bin_dir, mx.cmd_suffix(launcher))
+        exe = join(bin_dir, mx.cmd_suffix(launcher))
     return [exe] + args
 
 
@@ -108,15 +110,15 @@ The registration of the Espresso library ('lib:espresso') is skipped. Please run
 {}""".format(run_instructions))
 
             errors = False
-            mokapot_dir = os.path.join(mx.project('com.oracle.truffle.espresso.mokapot').dir, 'include')
+            mokapot_dir = join(mx.project('com.oracle.truffle.espresso.mokapot').dir, 'include')
             libespresso_dir = mx.project(mx_sdk_vm_impl.GraalVmNativeImage.project_name(espresso_library_config)).get_output_root()
 
             for header in ['libespresso_dynamic.h', 'graal_isolate_dynamic.h']:
-                committed_header = os.path.join(mokapot_dir, header)
+                committed_header = join(mokapot_dir, header)
                 if not mx.exists(committed_header):
                     mx.abort("Cannot locate '{}'. Was the file moved or renamed?".format(committed_header))
 
-                generated_header = os.path.join(libespresso_dir, header)
+                generated_header = join(libespresso_dir, header)
                 if not mx.exists(generated_header):
                     mx.abort("Cannot locate '{}'. Did you forget to build? Example:\n'mx --dynamicimports=/substratevm --native-images=lib:espresso build'".format(generated_header))
 
@@ -207,6 +209,42 @@ To rebuild the polyglot library:
     gu rebuild-images libpolyglot -cp """ + lib_espresso_cp,
     stability="experimental",
 ))
+
+if LLVM_JAVA_HOME:
+    mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
+        suite=_suite,
+        name='Espresso LLVM Java libraries',
+        short_name='ellvm',
+        license_files=[],
+        third_party_license_files=[],
+        truffle_jars=[],
+        include_in_polyglot=False,
+        dir_name='java',
+        installable_id='espresso-llvm',
+        installable=True,
+        dependencies=['Java on Truffle', 'LLVM Runtime Native'],
+        support_distributions=['espresso:ESPRESSO_LLVM_SUPPORT'],
+        priority=2,
+        stability="experimental",
+    ))
+
+
+def mx_register_dynamic_suite_constituents(register_project, register_distribution):
+    """Conditionally creates the ESPRESSO_LLVM_SUPPORT distribution if a Java home with LLVM bitcode is provided.
+    :type register_project: (mx.Project) -> None
+    :type register_distribution: (mx.Distribution) -> None
+    """
+    if LLVM_JAVA_HOME:
+        lib_prefix = mx.add_lib_prefix('')
+        lib_suffix = mx.add_lib_suffix('')
+        lib_path = join(LLVM_JAVA_HOME, 'lib')
+        libraries = [join(lib_path, name) for name in os.listdir(lib_path) if name.startswith(lib_prefix) and name.endswith(lib_suffix)]
+        register_distribution(mx.LayoutTARDistribution(_suite, 'ESPRESSO_LLVM_SUPPORT', [], {
+            "lib/llvm/default/":
+                ["file:" + lib for lib in libraries] +
+                ["file:{}/release".format(LLVM_JAVA_HOME)],
+        }, None, True, None))
+
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,
