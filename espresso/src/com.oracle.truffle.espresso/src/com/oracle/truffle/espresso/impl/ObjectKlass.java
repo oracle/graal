@@ -1171,6 +1171,21 @@ public final class ObjectKlass extends Klass {
         }
     }
 
+    @Override
+    public Klass[] getSuperTypes() {
+        return getKlassVersion().getSuperTypes();
+    }
+
+    @Override
+    protected int getHierarchyDepth() {
+        return getKlassVersion().getHierarchyDepth();
+    }
+
+    @Override
+    protected ObjectKlass.KlassVersion[] getTransitiveInterfacesList() {
+        return getKlassVersion().getTransitiveInterfacesList();
+    }
+
     /**
      * Returns true if the interface has declared (not inherited) default methods, false otherwise.
      */
@@ -1465,6 +1480,13 @@ public final class ObjectKlass extends Klass {
         private final ClassHierarchyAssumption noConcreteSubclassesAssumption;
         // endregion
 
+        @CompilationFinal(dimensions = 1) //
+        private Klass[] supertypesWithSelfCache;
+
+        @CompilationFinal private int hierarchyDepth = -1;
+
+        @CompilationFinal(dimensions = 1) private KlassVersion[] transitiveInterfaceCache;
+
         // used to create the first version only
         private KlassVersion(RuntimeConstantPool pool, LinkedKlass linkedKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces) {
             this.assumption = Truffle.getRuntime().createAssumption();
@@ -1687,6 +1709,53 @@ public final class ObjectKlass extends Klass {
             }
             // Remember to strip ACC_SUPER bit
             return flags & ~ACC_SUPER & JVM_ACC_WRITTEN_FLAGS;
+        }
+
+        // index 0 is Object, index hierarchyDepth is this
+        public Klass[] getSuperTypes() {
+            Klass[] supertypes = supertypesWithSelfCache;
+            if (supertypes == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                Klass supertype = getSupertype();
+                if (supertype == null) {
+                    this.supertypesWithSelfCache = new Klass[]{this.getKlass()};
+                    return supertypesWithSelfCache;
+                }
+                Klass[] superKlassTypes = supertype.getSuperTypes();
+                supertypes = new Klass[superKlassTypes.length + 1];
+                int depth = getHierarchyDepth();
+                assert supertypes.length == depth + 1;
+                supertypes[depth] = this.getKlass();
+                System.arraycopy(superKlassTypes, 0, supertypes, 0, depth);
+                supertypesWithSelfCache = supertypes;
+            }
+            return supertypes;
+        }
+
+        public int getHierarchyDepth() {
+            int result = hierarchyDepth;
+            if (result == -1) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                if (getSupertype() == null) {
+                    // Primitives or java.lang.Object
+                    result = 0;
+                } else {
+                    result = getSupertype().getHierarchyDepth() + 1;
+                }
+                hierarchyDepth = result;
+            }
+            return result;
+        }
+
+        public ObjectKlass.KlassVersion[] getTransitiveInterfacesList() {
+            ObjectKlass.KlassVersion[] transitiveInterfaces = transitiveInterfaceCache;
+            if (transitiveInterfaces == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                // Use the itable construction.
+                transitiveInterfaces = getKlass().getiKlassTable();
+                transitiveInterfaceCache = transitiveInterfaces;
+            }
+            return transitiveInterfaces;
         }
     }
 }

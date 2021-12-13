@@ -1030,10 +1030,10 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     }
 
     @CompilationFinal(dimensions = 1) //
-    private Klass[] supertypesWithSelfCache;
+    protected Klass[] supertypesWithSelfCache;
 
     // index 0 is Object, index hierarchyDepth is this
-    Klass[] getSuperTypes() {
+    protected Klass[] getSuperTypes() {
         Klass[] supertypes = supertypesWithSelfCache;
         if (supertypes == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -1053,7 +1053,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return supertypes;
     }
 
-    int getHierarchyDepth() {
+    protected int getHierarchyDepth() {
         int result = hierarchyDepth;
         if (result == -1) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -1070,19 +1070,15 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
     @CompilationFinal(dimensions = 1) private ObjectKlass.KlassVersion[] transitiveInterfaceCache;
 
-    protected final ObjectKlass.KlassVersion[] getTransitiveInterfacesList() {
+    protected ObjectKlass.KlassVersion[] getTransitiveInterfacesList() {
         ObjectKlass.KlassVersion[] transitiveInterfaces = transitiveInterfaceCache;
         if (transitiveInterfaces == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            if (this.isArray() || this.isPrimitive()) {
-                ObjectKlass[] superItfs = this.getSuperInterfaces();
-                transitiveInterfaces = new ObjectKlass.KlassVersion[superItfs.length];
-                for (int i = 0; i < superItfs.length; i++) {
-                    transitiveInterfaces[i] = superItfs[i].getKlassVersion();
-                }
-            } else {
-                // Use the itable construction.
-                transitiveInterfaces = ((ObjectKlass) this).getiKlassTable();
+            assert this.isArray() || this.isPrimitive();
+            ObjectKlass[] superItfs = this.getSuperInterfaces();
+            transitiveInterfaces = new ObjectKlass.KlassVersion[superItfs.length];
+            for (int i = 0; i < superItfs.length; i++) {
+                transitiveInterfaces[i] = superItfs[i].getKlassVersion();
             }
             transitiveInterfaceCache = transitiveInterfaces;
         }
