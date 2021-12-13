@@ -14,7 +14,7 @@ The JVM passes bytecode to the GraalVM compiler, which compiles that to the mach
 
 GraalVM's dynamic compiler can improve the efficiency and the speed of applications written in Java, Scala, Kotlin, or other JVM languages through unique approaches to code analysis and optimization.
 For example, it assures performance advantages for highly abstracted programs due to its ability to remove costly object allocations.
-To learn more, go to the [Compiler](/reference-manual/compiler/) page.
+To learn more, go to the [Compiler](../compiler.md) page.
 The open source compiler's code is available on [GitHub](https://github.com/oracle/graal/tree/master/compiler).
 
 ## Compiler Operating Modes
@@ -28,10 +28,10 @@ This is the default and recommended mode of operation.
 - **jargraal**: the GraalVM compiler goes through the same warm-up phase that the rest of the Java application does. That is, it is first interpreted before its hot methods are compiled.
 This mode is selected with the `-XX:-UseJVMCINativeLibrary` command-line option.
 This will delay the time to reach peak performance as the compiler itself needs to be compiled before it produces code quickly.
-This mode allows you to [debug the GraalVM compiler with a Java debugger](Operations.md/#troubleshooting-the-graalvm-compiler).
+This mode allows you to [debug the GraalVM compiler with a Java debugger](Operations.md#troubleshooting-the-graalvm-compiler).
 
 
 ## Interoperability
 
-In addition to running JVM-based languages on GraalVM, you can also call any other language implemented with the [Truffle language implementation framework](../truffle-framework/README.md) directly from Java.
-See the [Polyglot Programming](../polyglot-programming.md) and [Embedding Languages](../embed-languages.md) guides for more information about interoperability with other programming languages.
+In addition to running JVM-based languages on GraalVM, you can also call any other language implemented with the [Truffle language implementation framework](../../../truffle/docs/README.md) directly from Java.
+See the [Polyglot Programming](../polyglot-programming.md) and [Embedding Languages](../embedding/embed-languages.md) guides for more information about interoperability with other programming languages.
