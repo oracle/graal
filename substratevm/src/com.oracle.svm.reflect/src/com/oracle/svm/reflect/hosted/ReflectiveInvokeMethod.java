@@ -29,7 +29,7 @@ package com.oracle.svm.reflect.hosted;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
-import java.lang.reflect.Method;
+import java.lang.reflect.Executable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -55,10 +55,12 @@ import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 
+import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.phases.SubstrateIntrinsicGraphBuilder;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
+import com.oracle.svm.hosted.code.FactoryMethodSupport;
 import com.oracle.svm.hosted.code.NonBytecodeStaticMethod;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -67,9 +69,9 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class ReflectiveInvokeMethod extends NonBytecodeStaticMethod {
 
-    private final Method method;
+    private final Executable method;
 
-    public ReflectiveInvokeMethod(String name, ResolvedJavaMethod prototype, Method method) {
+    public ReflectiveInvokeMethod(String name, ResolvedJavaMethod prototype, Executable method) {
         super(name, prototype.getDeclaringClass(), prototype.getSignature(), prototype.getConstantPool());
         this.method = method;
     }
@@ -91,12 +93,21 @@ public class ReflectiveInvokeMethod extends NonBytecodeStaticMethod {
         graphKit.getFrameState().clearLocals();
 
         ResolvedJavaMethod targetMethod = providers.getMetaAccess().lookupJavaMethod(method);
+        if (targetMethod.isStatic() || targetMethod.isConstructor()) {
+            graphKit.emitEnsureInitializedCall(targetMethod.getDeclaringClass());
+        }
+        if (targetMethod.isConstructor()) {
+            /*
+             * For a constructor, we invoke a synthetic static factory method that combines both the
+             * allocation and the constructor invocation.
+             */
+            targetMethod = FactoryMethodSupport.singleton().lookup((UniverseMetaAccess) providers.getMetaAccess(), targetMethod, false);
+        }
+
         Class<?>[] argTypes = method.getParameterTypes();
         int receiverOffset = targetMethod.isStatic() ? 0 : 1;
         ValueNode[] args = new ValueNode[argTypes.length + receiverOffset];
-        if (targetMethod.isStatic()) {
-            graphKit.emitEnsureInitializedCall(targetMethod.getDeclaringClass());
-        } else {
+        if (!targetMethod.isStatic()) {
             /*
              * The specification explicitly demands a NullPointerException and not a
              * IllegalArgumentException when the receiver of a non-static method is null
@@ -112,11 +123,12 @@ public class ReflectiveInvokeMethod extends NonBytecodeStaticMethod {
         graphKit.fillArgsArray(argumentArray, receiverOffset, args, argTypes);
 
         InvokeKind invokeKind;
+        assert !targetMethod.isConstructor() : "Constructors are already rewritten to static factory methods";
         if (targetMethod.isStatic()) {
             invokeKind = InvokeKind.Static;
         } else if (targetMethod.isInterface()) {
             invokeKind = InvokeKind.Interface;
-        } else if (targetMethod.canBeStaticallyBound() || targetMethod.isConstructor()) {
+        } else if (targetMethod.canBeStaticallyBound()) {
             invokeKind = InvokeKind.Special;
         } else {
             invokeKind = InvokeKind.Virtual;
@@ -172,7 +184,7 @@ public class ReflectiveInvokeMethod extends NonBytecodeStaticMethod {
         }
         graphKit.createReturn(returnValue, JavaKind.Object);
 
-        graphKit.emitIllegalArgumentException(method, receiver, argumentArray);
+        graphKit.emitIllegalArgumentException(method, invokeKind == InvokeKind.Static ? null : receiver, argumentArray);
         graphKit.emitInvocationTargetException();
 
         for (InvokeWithExceptionNode invoke : invokes) {
