@@ -25,9 +25,9 @@ package com.oracle.truffle.espresso.ffi.nfi;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.graalvm.options.OptionValues;
 
@@ -37,6 +37,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.ffi.Pointer;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoProperties;
 import com.oracle.truffle.espresso.substitutions.Collect;
 
@@ -110,13 +111,13 @@ public final class NFISulongNativeAccess extends NFINativeAccess {
          * Try directories in $ESPRESSO_HOME/lib/llvm/* for libraries with LLVM-bitcode compatible
          * with the specified Java version.
          */
-        List<Path> sortedPaths = new ArrayList<>();
-        for (Path p : llvmRoot) {
-            sortedPaths.add(p);
+        List<Path> sortedPaths = null;
+        try {
+            // Order must be deterministic.
+            sortedPaths = Files.list(llvmRoot).sorted().collect(Collectors.toList());
+        } catch (IOException e) {
+            throw EspressoError.unexpected(e.getMessage(), e);
         }
-
-        // Ensure order is deterministic.
-        Collections.sort(sortedPaths);
 
         for (Path llvmImpl : sortedPaths) {
             if (!llvmDefault.equals(llvmImpl) && Files.isDirectory(llvmImpl)) {
