@@ -79,7 +79,7 @@ Now you have a ready-to-go VM instance with GraalVM Enterprise installed and rea
    ```
 
 2. Look up the necessary RPM package name and add it to GraalVM Enterprise with the `yum install <package_name> command` command.
-For example, to install [Native Image](/reference-manual/native-image/), which is a technology to ahead-of-time compile Java code to a standalone native executable, run this command:
+For example, to install [Native Image](../../../reference-manual/native-image/README.md), which is a technology to ahead-of-time compile Java code to a standalone native executable, run this command:
 
    ```shell
    sudo yum install graalvm21-ee-11-native-image

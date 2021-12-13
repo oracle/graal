@@ -39,16 +39,17 @@ To run GraalVM Community Edition based on OpenJDK 8u292 on a Windows platform, t
 
 ## Supported Functionalities
 
-The GraalVM Community distribution for Windows platforms includes OpenJDK with the GraalVM compiler enabled, the [GraalVM Updater](/reference-manual/graalvm-updater/) tool to install additional functionalities, the JavaScript runtime, and the developer tools (e.g., Chrome inspector based debugger, Profiler, etc.).
-Currently, the GraalVM environment on Windows can be extended with [Native Image](/reference-manual/native-image/), [Java on Trufle](/reference-manual/java-on-truffle/), WebAssembly, and Node.js support.
+The GraalVM Community distribution for Windows platforms includes OpenJDK with the GraalVM compiler enabled, the [GraalVM Updater](../../reference-manual/graalvm-updater.md) tool to install additional functionalities, the JavaScript runtime, and the developer tools (e.g., Chrome inspector based debugger, Profiler, etc.).
+Currently, the GraalVM environment on Windows can be extended with [Native Image](../../reference-manual/native-image/README.md), [Java on Trufle](../../reference-manual/java-on-truffle/README.md), WebAssembly, and Node.js support.
 
 ## Prerequisites for Using Native Image on Windows
-To make use of Native Image on Windows, observe the following recommendations.
-The required Microsoft Visual C++ (MSVC) version depends on the JDK version that GraalVM is based on.
-For GraalVM based on JDK 8, you will need MSVC 2010 SP1 version. The recommended installation method is using Microsoft Windows SDK 7.1:
-1. Download the SDK file `GRMSDKX_EN_DVD.iso` for from [Microsoft](https://www.microsoft.com/en-gb/download).
-2. Mount the image by opening `F:\Setup\SDKSetup.exe` directly.
+On Windows, Native Image requires Visual Studio Code and Microsoft Visual C++(MSVC).
+You can use Visual Studio 2017 version 15.9 or later.
+There are two installation options:
+- Install the Visual Studio Code Build Tools with the Windows 10 SDK
+- Install Visual Studio Code with the Windows 10 SDK
 
-For GraalVM distribution based on JDK 11, you will need MSVC 2017 15.5.5 or later version.
+The last prerequisite is the proper [Developer Command Prompt](https://docs.microsoft.com/en-us/cpp/build/building-on-the-command-line?view=vs-2019#developer_command_prompt_shortcuts) for your version of [Visual Studio](https://visualstudio.microsoft.com/vs/).
+On Windows the `native-image` tool only works when it is executed from the **x64 Native Tools Command Prompt**.
 
-The last prerequisite, common for both distributions, is the proper [Developer Command Prompt](https://docs.microsoft.com/en-us/cpp/build/building-on-the-command-line?view=vs-2019#developer_command_prompt_shortcuts) for your version of [Visual Studio](https://visualstudio.microsoft.com/vs/). On Windows the `native-image` tool only works when it is executed from the **x64 Native Tools Command Prompt**.
+Step by step instructions on installing Visual Studio Build Tools and Windows 10 SDK, and starting using Native Image can be found [here](https://medium.com/graalvm/using-graalvm-and-native-image-on-windows-10-9954dc071311).

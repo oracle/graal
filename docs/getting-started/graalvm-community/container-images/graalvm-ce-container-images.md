@@ -50,9 +50,8 @@ bash-4.4#
 ```
 
 Please note that the image contains only the components immediately available in the GraalVM Community core download.
-However, the [GraalVM Updater](/reference-manual/graalvm-updater/) utility is on the `PATH` and you can install the support for additional languages and runtimes like Node.js, Ruby, R, Python or WebAssembly at will.
+However, the [GraalVM Updater, `gu`](../../../reference-manual/graalvm-updater.md), utility is included in the container image and may be used to install additional languages and runtimes like Node.js, Ruby, R, Python or WebAssembly.
 
-However, the [GraalVM Updater, `gu`](/reference-manual/graalvm-updater/), utility is included in the container image and may be used to install additional languages and runtimes like Node.js, Ruby, R, Python or WebAssembly.
 For example, the following command installs the Ruby support (the output below is truncated for brevity):
 
 ```shell

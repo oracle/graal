@@ -38,7 +38,7 @@ export GRAALVM_HOME=/Users/${current_user}/path/to/graalvm/Contents/Home
 ```
 Note that your paths are likely to be different depending on the download location.
 
-3&#46; [Install Native Image](../reference-manual/native-image/README.md/#install-native-image) to make use of the `native-image` utility.
+3&#46; [Install Native Image](../reference-manual/native-image/README.md#install-native-image) to make use of the `native-image` utility.
 
 4&#46; Then execute:
 ```shell
