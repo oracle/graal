@@ -178,7 +178,9 @@ public final class InspectorInstrument extends TruffleInstrument {
     @com.oracle.truffle.api.Option(help = "Do not execute any source code until inspector client is attached.", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Boolean> WaitAttached = new OptionKey<>(false);
 
-    @com.oracle.truffle.api.Option(help = "Specifies list of directories or ZIP/JAR files representing source path (default: empty list).", usageSyntax = "<path>,<path>,...", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    private static final String SOURCE_PATH_USAGE = "<path>,<path>,...";
+
+    @com.oracle.truffle.api.Option(help = "Specifies list of directories or ZIP/JAR files representing source path (default: empty list).", usageSyntax = SOURCE_PATH_USAGE, category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<List<URI>> SourcePath = new OptionKey<>(Collections.emptyList(), SOURCE_PATH);
 
     @com.oracle.truffle.api.Option(help = "Hide internal errors that can occur as a result of debugger inspection.", category = OptionCategory.EXPERT) //
@@ -307,7 +309,7 @@ public final class InspectorInstrument extends TruffleInstrument {
                             String example = " Example: " + File.separator + "projects" + File.separator + "foo" + File.separator + "src" + File.pathSeparator + "sources.jar" + File.pathSeparator +
                                             "package.zip!/src";
                             descriptor = OptionDescriptor.newBuilder(SourcePath, descriptor.getName()).deprecated(descriptor.isDeprecated()).category(descriptor.getCategory()).help(
-                                            descriptor.getHelp() + example).build();
+                                            descriptor.getHelp() + example).usageSyntax(SOURCE_PATH_USAGE).build();
                         }
                         return descriptor;
                     }
