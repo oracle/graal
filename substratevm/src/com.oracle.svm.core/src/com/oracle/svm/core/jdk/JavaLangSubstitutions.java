@@ -726,6 +726,12 @@ public final class JavaLangSubstitutions {
         }
     }
 
+    public static class String {
+        public static byte coder(java.lang.String string) {
+            return SubstrateUtil.cast(string, Target_java_lang_String.class).coder();
+        }
+    }
+
     public static final class ClassValueSupport {
 
         /**
