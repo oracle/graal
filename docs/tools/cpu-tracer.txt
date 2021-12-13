@@ -1,0 +1,10 @@
+- `--cputracer` : Enable the CPU tracer (default: false).
+- `--cputracer.FilterFile=*` : Wildcard filter for source file paths. (eg. *program*.sl) (default: no filter).
+- `--cputracer.FilterLanguage=<languageId>` : Only profile languages with given ID. (eg. js) (default: no filter).
+- `--cputracer.FilterMimeType=<mime-type>` : Only profile languages with mime-type. (eg. application/javascript) (default: no filter).
+- `--cputracer.FilterRootName=*` : Wildcard filter for program roots. (eg. Math.*) (default: no filter).
+- `--cputracer.Output=histogram|json` : Print a 'histogram' or 'json' as output (default: histogram).
+- `--cputracer.OutputFile=<path>` : Save output to the given file. Output is printed to standard output stream by default.
+- `--cputracer.TraceCalls` : Capture calls when tracing (default: false).
+- `--cputracer.TraceRoots=true|false` : Capture roots when tracing (default: true).
+- `--cputracer.TraceStatements` : Capture statements when tracing (default: false).

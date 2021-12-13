@@ -179,14 +179,14 @@ The current set of available options is as follows.
 
 ### CPU Sampler Options
 
-{% include_relative cpu-sampler.options %}
+{% include_relative cpu-sampler.txt%}
 
 ### CPU Tracer Options
 
-{% include_relative cpu-tracer.options %}
+{% include_relative cpu-tracer.txt%}
 
 ### Memory Tracer Options
 
 The memory tracer tool is currently an experimental tool. Make sure to prepend the `--experimental-options` flag to enable `--memtracer`.
 
-{% include_relative mem-tracer.options %}
+{% include_relative mem-tracer.txt%}
