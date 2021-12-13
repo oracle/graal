@@ -40,7 +40,6 @@ import org.graalvm.compiler.hotspot.HotSpotNodeLIRBuilder;
 import org.graalvm.compiler.hotspot.nodes.HotSpotDirectCallTargetNode;
 import org.graalvm.compiler.hotspot.nodes.HotSpotIndirectCallTargetNode;
 import org.graalvm.compiler.lir.LIRFrameState;
-import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.amd64.AMD64BreakpointOp;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.nodes.BreakpointNode;
@@ -151,12 +150,12 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
 
     @Override
     public void emitPatchReturnAddress(ValueNode address) {
-        append(new AMD64HotSpotPatchReturnAddressOp(gen.load(operand(address))));
+        append(new AMD64HotSpotPatchReturnAddressOp(gen.asAllocatable(operand(address))));
     }
 
     @Override
     public void emitJumpToExceptionHandlerInCaller(ValueNode handlerInCallerPc, ValueNode exception, ValueNode exceptionPc) {
-        Variable handler = gen.load(operand(handlerInCallerPc));
+        AllocatableValue handler = gen.asAllocatable(operand(handlerInCallerPc));
         ForeignCallLinkage linkage = gen.getForeignCalls().lookupForeignCall(EXCEPTION_HANDLER_IN_CALLER);
         CallingConvention outgoingCc = linkage.getOutgoingCallingConvention();
         assert outgoingCc.getArgumentCount() == 2;

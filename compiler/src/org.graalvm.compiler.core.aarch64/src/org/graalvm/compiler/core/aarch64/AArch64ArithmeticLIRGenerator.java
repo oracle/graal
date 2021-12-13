@@ -331,16 +331,11 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
          * The net effect of a narrow is only to change the underlying AArchKind. Because AArch64
          * instructions operate on registers of either 32 or 64 bits, if needed, we switch the value
          * type from QWORD to DWORD.
-         *
-         * Ideally, switching the value type shouldn't require a move, but instead could be
-         * reinterpreted in some other way.
          */
         if (inputVal.getPlatformKind() == AArch64Kind.QWORD && toBits <= 32) {
             LIRKind resultKind = getLIRKindForBitSize(toBits, inputVal);
             assert resultKind.getPlatformKind() == AArch64Kind.DWORD;
-            Variable result = getLIRGen().newVariable(resultKind);
-            getLIRGen().emitMove(result, inputVal);
-            return result;
+            return new CastValue(resultKind, asAllocatable(inputVal));
         } else {
             return inputVal;
         }
@@ -387,15 +382,15 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
         return result;
     }
 
-    private static LIRKind getLIRKindForBitSize(int bitSize, Value... inputValues) {
+    private static LIRKind getLIRKindForBitSize(int bitSize, Value inputValue) {
         /*
          * AArch64 general-purpose operations are either 32 or 64 bits.
          */
         assert bitSize <= 64;
         if (bitSize <= 32) {
-            return LIRKind.combine(inputValues).changeType(AArch64Kind.DWORD);
+            return LIRKind.combine(inputValue).changeType(AArch64Kind.DWORD);
         } else {
-            return LIRKind.combine(inputValues).changeType(AArch64Kind.QWORD);
+            return LIRKind.combine(inputValue).changeType(AArch64Kind.QWORD);
         }
     }
 

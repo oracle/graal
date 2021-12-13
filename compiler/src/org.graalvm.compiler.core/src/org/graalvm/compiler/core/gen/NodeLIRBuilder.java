@@ -714,13 +714,13 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         if (keyCount == 0) {
             gen.emitJump(defaultTarget);
         } else {
-            Variable value = gen.load(operand(x.value()));
+            AllocatableValue value = gen.asAllocatable(operand(x.value()));
             if (keyCount == 1) {
                 assert defaultTarget != null;
                 double probability = x.probability(x.keySuccessor(0));
                 LIRKind kind = gen.getLIRKind(x.value().stamp(NodeView.DEFAULT));
                 Value key = gen.emitConstant(kind, x.keyAt(0));
-                gen.emitCompareBranch(kind.getPlatformKind(), gen.load(operand(x.value())), key, Condition.EQ, false, getLIRBlock(x.keySuccessor(0)), defaultTarget, probability);
+                gen.emitCompareBranch(kind.getPlatformKind(), value, key, Condition.EQ, false, getLIRBlock(x.keySuccessor(0)), defaultTarget, probability);
             } else if (x instanceof IntegerSwitchNode && x.isSorted()) {
                 IntegerSwitchNode intSwitch = (IntegerSwitchNode) x;
                 LabelRef[] keyTargets = new LabelRef[keyCount];

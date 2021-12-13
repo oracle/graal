@@ -798,7 +798,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     }
 
     @Override
-    public Variable load(Value value) {
+    public AllocatableValue addressAsAllocatableInteger(Value value) {
         LLVMValueRef load = builder.buildPtrToInt(getVal(value));
         return new LLVMVariable(load);
     }

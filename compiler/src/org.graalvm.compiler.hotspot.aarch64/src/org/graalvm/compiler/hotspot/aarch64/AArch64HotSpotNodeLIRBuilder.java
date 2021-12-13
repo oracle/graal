@@ -137,12 +137,12 @@ public class AArch64HotSpotNodeLIRBuilder extends AArch64NodeLIRBuilder implemen
 
     @Override
     public void emitPatchReturnAddress(ValueNode address) {
-        append(new AArch64HotSpotPatchReturnAddressOp(gen.load(operand(address))));
+        append(new AArch64HotSpotPatchReturnAddressOp(gen.asAllocatable(operand(address))));
     }
 
     @Override
     public void emitJumpToExceptionHandlerInCaller(ValueNode handlerInCallerPc, ValueNode exception, ValueNode exceptionPc) {
-        Variable handler = gen.load(operand(handlerInCallerPc));
+        AllocatableValue handler = gen.asAllocatable(operand(handlerInCallerPc));
         ForeignCallLinkage linkage = gen.getForeignCalls().lookupForeignCall(EXCEPTION_HANDLER_IN_CALLER);
         CallingConvention outgoingCc = linkage.getOutgoingCallingConvention();
         assert outgoingCc.getArgumentCount() == 2;
