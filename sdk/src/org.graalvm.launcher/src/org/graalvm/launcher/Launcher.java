@@ -1128,7 +1128,7 @@ public abstract class Launcher {
         maybeExec(originalArgs, unrecognizedArgs, isPolyglotLauncher, getDefaultVMType(), false);
     }
 
-    void maybeExec(List<String> originalArgs, List<String> unrecognizedArgs, boolean isPolyglotLauncher, VMType defaultVmType, boolean vmArgsApplied) {
+    void maybeExec(List<String> originalArgs, List<String> unrecognizedArgs, boolean isPolyglotLauncher, VMType defaultVmType, boolean thinLauncher) {
         assert isAOT();
         VMType vmType = null;
         boolean polyglot = false;
@@ -1189,15 +1189,21 @@ public abstract class Launcher {
                 applicationArgs.add(0, "--polyglot");
             }
             assert !isStandalone();
-            executeJVM(nativeAccess == null ? System.getProperty("java.class.path") : nativeAccess.getClasspath(jvmArgs), jvmArgs, applicationArgs, Collections.emptyMap());
+            if (thinLauncher) {
+                List<String> env = new ArrayList<>();
+                env.add("GRAALVM_LAUNCHER_FORCE_JVM=true");
+                nativeAccess.reExec(originalArgs, env);
+            } else {
+                executeJVM(nativeAccess == null ? System.getProperty("java.class.path") : nativeAccess.getClasspath(jvmArgs), jvmArgs, applicationArgs, Collections.emptyMap());
+            }
         } else {
             assert vmType == VMType.Native;
 
             /*
-             * If the VM args have already been applied (e.g. by the native launcher), there is no
+             * If the VM args have already been applied (e.g. by the thin launcher), there is no
              * need to set them again at runtime
              */
-            if (!vmArgsApplied) {
+            if (!thinLauncher) {
                 for (String vmOption : vmOptions) {
                     nativeAccess.setNativeOption(vmOption);
                 }
@@ -1555,6 +1561,30 @@ public abstract class Launcher {
                 return null;
             }
             return sb.substring(0, sb.length() - 1);
+        }
+
+        /**
+         * Re-rexecutes the launcher executable with the given arguments and additional environment.
+         *
+         * @param args launcher arguments
+         * @param env additional environment - the entries will be added to the existing environment
+         */
+        public void reExec(List<String> args, List<String> env) {
+            String path = ProcessProperties.getExecutableName();
+            Path executable = Paths.get(path);
+            String[] newEnv = new String[System.getenv().size() + env.size()];
+            int i = 0;
+            for (Entry<String, String> e : System.getenv().entrySet()) {
+                newEnv[i++] = e.getKey() + "=" + e.getValue();
+            }
+            for (String e : env) {
+                newEnv[i++] = e;
+            }
+            // for exec, arg 0 needs to be the name of the executable
+            List<String> execArgs = new ArrayList<>();
+            execArgs.add(path);
+            execArgs.addAll(args);
+            ProcessProperties.exec(executable, execArgs.toArray(new String[0]), newEnv);
         }
 
         private void exec(Path executable, List<String> command) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -157,6 +157,16 @@ public final class ProcessProperties {
      */
     public static void exec(Path executable, String... args) {
         ImageSingletons.lookup(ProcessPropertiesSupport.class).exec(executable, args);
+    }
+
+    /**
+     * Replaces the current process image with the process image specified by the given path invoked
+     * with the given args and environment. This method does not return if the call is successful.
+     *
+     * @since 22.1
+     */
+    public static void exec(Path executable, String[] args, String[] env) {
+        ImageSingletons.lookup(ProcessPropertiesSupport.class).exec(executable, args, env);
     }
 
     /**

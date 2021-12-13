@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -61,6 +61,11 @@ public class WindowsProcessPropertiesSupport extends BaseProcessPropertiesSuppor
 
     @Override
     public void exec(Path executable, String[] args) {
+        exec(executable, args, new String[0]);
+    }
+
+    @Override
+    public void exec(Path executable, String[] args, String[] envp) {
         if (!Files.isExecutable(executable)) {
             throw new RuntimeException("Path " + executable + " does not point to executable file");
         }
@@ -69,7 +74,24 @@ public class WindowsProcessPropertiesSupport extends BaseProcessPropertiesSuppor
         cmd.addAll(Arrays.asList(args).subList(1, args.length));
         java.lang.Process process = null;
         try {
-            process = new ProcessBuilder(cmd).redirectInput(ProcessBuilder.Redirect.INHERIT).redirectOutput(ProcessBuilder.Redirect.INHERIT).redirectError(ProcessBuilder.Redirect.INHERIT).start();
+            ProcessBuilder pb = new ProcessBuilder(cmd).redirectInput(ProcessBuilder.Redirect.INHERIT).redirectOutput(ProcessBuilder.Redirect.INHERIT).redirectError(ProcessBuilder.Redirect.INHERIT);
+            // clear environment
+            pb.environment().clear();
+            // copied from ProcessBuilder.environment(String[] envp)
+            for (String envstring : envp) {
+                String e = envstring;
+                // Silently discard any trailing junk.
+                if (e.indexOf('\u0000') != -1) {
+                    e = e.replaceFirst("\u0000.*", "");
+                }
+                int eqlsign = e.indexOf('=');
+                // Silently ignore envstrings lacking the required `='.
+                if (eqlsign != -1) {
+                    pb.environment().put(e.substring(0, eqlsign),
+                                    e.substring(eqlsign + 1));
+                }
+            }
+            process = pb.start();
         } catch (IOException e) {
             throw VMError.shouldNotReachHere();
         }

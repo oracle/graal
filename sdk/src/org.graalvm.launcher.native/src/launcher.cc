@@ -316,20 +316,26 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
 int main(int argc, char *argv[]) {
     debug = (getenv("VERBOSE_GRAALVM_LAUNCHERS") != NULL);
     std::string exeDir = exe_directory();
-    std::string libPath = vm_path(exeDir, false);
-    bool jvmMode = false;
-    CreateJVM createVM = loadvmlib(libPath);
-    if (!createVM) {
-        // fall back to loading jvm
-        std::cerr << "Could not load native language library. Falling back to JVM." << std::endl;
-        libPath = vm_path(exeDir, true);
+    char* jvmModeEnv = getenv("GRAALVM_LAUNCHER_FORCE_JVM");
+    bool jvmMode = (jvmModeEnv && (strcmp(jvmModeEnv, "true") == 0));
+    CreateJVM createVM = NULL;
+    if (!jvmMode) {
+        std::string libPath = vm_path(exeDir, false);
+        createVM = loadvmlib(libPath);
+        if (!createVM) {
+            // fall back to loading jvm
+            jvmMode = true;
+        }
+    }
+    if (jvmMode) {
+        std::string libPath = vm_path(exeDir, true);
         createVM = loadvmlib(libPath);
         if (!createVM) {
             std::cerr << "Could not load JVM." << std::endl;
             return -1;
         }
-        jvmMode = true;
     }
+
     JavaVM *vm;
     JNIEnv *env;
     JavaVMInitArgs vmInitArgs;

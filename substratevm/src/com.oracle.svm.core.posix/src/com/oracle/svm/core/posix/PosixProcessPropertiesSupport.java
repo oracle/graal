@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -102,6 +102,22 @@ public abstract class PosixProcessPropertiesSupport extends BaseProcessPropertie
                         CTypeConversion.CCharPointerPointerHolder argvHolder = CTypeConversion.toCStrings(args)) {
             if (Unistd.execv(pathHolder.get(), argvHolder.get()) != 0) {
                 String msg = PosixUtils.lastErrorString("Executing " + executable + " with arguments " + String.join(" ", args) + " failed");
+                throw new RuntimeException(msg);
+            }
+        }
+    }
+
+    @Override
+    public void exec(Path executable, String[] args, String[] env) {
+        if (!Files.isExecutable(executable)) {
+            throw new RuntimeException("Path " + executable + " does not point to executable file");
+        }
+
+        try (CTypeConversion.CCharPointerHolder pathHolder = CTypeConversion.toCString(executable.toString());
+                        CTypeConversion.CCharPointerPointerHolder argvHolder = CTypeConversion.toCStrings(args);
+                        CTypeConversion.CCharPointerPointerHolder envpHolder = CTypeConversion.toCStrings(env)) {
+            if (Unistd.execve(pathHolder.get(), argvHolder.get(), envpHolder.get()) != 0) {
+                String msg = PosixUtils.lastErrorString("Executing " + executable + " with arguments " + String.join(" ", args) + " and environment " + String.join(" ", env) + " failed");
                 throw new RuntimeException(msg);
             }
         }
