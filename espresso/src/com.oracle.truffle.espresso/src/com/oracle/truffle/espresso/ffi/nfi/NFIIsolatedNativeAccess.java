@@ -239,9 +239,12 @@ public final class NFIIsolatedNativeAccess extends NFINativeAccess {
 
     @Collect(NativeAccess.class)
     public static final class Provider implements NativeAccess.Provider {
+
+        public static final String ID = "nfi-dlmopen";
+
         @Override
         public String id() {
-            return "nfi-dlmopen";
+            return ID;
         }
 
         @Override

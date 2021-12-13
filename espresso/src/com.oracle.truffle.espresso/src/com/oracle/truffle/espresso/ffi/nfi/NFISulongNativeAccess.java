@@ -172,7 +172,7 @@ public final class NFISulongNativeAccess extends NFINativeAccess {
     @Collect(NativeAccess.class)
     public static final class Provider implements NativeAccess.Provider {
 
-        static final String ID = "nfi-sulong";
+        public static final String ID = "nfi-llvm";
 
         @Override
         public String id() {
