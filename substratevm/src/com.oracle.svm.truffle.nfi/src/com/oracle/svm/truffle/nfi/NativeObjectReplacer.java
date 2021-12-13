@@ -62,7 +62,7 @@ public final class NativeObjectReplacer implements Function<Object, Object> {
         disallowedClasses.put(nativePointer, Boolean.FALSE);
 
         try {
-            nativePointerField = nativePointer.getDeclaredField("nativePointer");
+            nativePointerField = nativePointer.getSuperclass().getDeclaredField("nativePointer");
             nativePointerField.setAccessible(true);
         } catch (NoSuchFieldException | SecurityException ex) {
             throw VMError.shouldNotReachHere(ex);

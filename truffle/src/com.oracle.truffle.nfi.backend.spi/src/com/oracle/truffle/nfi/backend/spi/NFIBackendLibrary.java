@@ -40,11 +40,13 @@
  */
 package com.oracle.truffle.nfi.backend.spi;
 
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 
 @GenerateLibrary
+@GenerateAOT
 public abstract class NFIBackendLibrary extends Library {
 
     public abstract Object getSimpleType(Object backend, NativeSimpleType type);
@@ -54,4 +56,14 @@ public abstract class NFIBackendLibrary extends Library {
     public abstract Object getEnvType(Object backend);
 
     public abstract Object createSignatureBuilder(Object backend);
+
+    @GenerateLibrary.Abstract(ifExported = "getMemento")
+    public Object createSignatureBuilderWithMemento(Object backend, @SuppressWarnings("unused") Object memento) {
+        return createSignatureBuilder(backend);
+    }
+
+    @GenerateLibrary.Abstract(ifExported = "createSignatureBuilderWithMemento")
+    public Object getMemento(@SuppressWarnings("unused") Object backend, @SuppressWarnings("unused") Object builder) {
+        return null;
+    }
 }

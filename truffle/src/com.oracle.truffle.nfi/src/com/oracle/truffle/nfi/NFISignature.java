@@ -45,6 +45,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
@@ -69,7 +70,7 @@ import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder;
 import static com.oracle.truffle.api.dsl.Cached.Shared;
 
 @ExportLibrary(InteropLibrary.class)
-@ExportLibrary(SignatureLibrary.class)
+@ExportLibrary(value = SignatureLibrary.class, useForAOT = true, useForAOTPriority = 1)
 final class NFISignature implements TruffleObject {
 
     final String backendId;
@@ -138,6 +139,7 @@ final class NFISignature implements TruffleObject {
 
         @Specialization(guards = {"executable == cachedClosure.executable", "signature == cachedClosure.signature"}, assumptions = "getSingleContextAssumption()")
         @SuppressWarnings("unused")
+        @GenerateAOT.Exclude
         static Object doCached(NFISignature signature, Object executable,
                         @Cached("createClosure(executable, signature)") NFIClosure cachedClosure,
                         @CachedLibrary("cachedClosure.signature.nativeSignature") NFIBackendSignatureLibrary lib,
@@ -146,6 +148,7 @@ final class NFISignature implements TruffleObject {
         }
 
         @Specialization(replaces = "doCached")
+        @GenerateAOT.Exclude
         static Object doCreate(NFISignature signature, Object executable,
                         @CachedLibrary("signature.nativeSignature") NFIBackendSignatureLibrary lib) {
             NFIClosure closure = new NFIClosure(executable, signature);
@@ -332,7 +335,7 @@ final class NFISignature implements TruffleObject {
         }
     }
 
-    @ExportLibrary(NFIBackendSignatureBuilderLibrary.class)
+    @ExportLibrary(value = NFISignatureBuilderLibrary.class, useForAOT = true, useForAOTPriority = 1)
     static final class SignatureBuilder {
 
         final String backendId;
@@ -352,14 +355,25 @@ final class NFISignature implements TruffleObject {
         }
 
         @ExportMessage
-        void makeVarargs(
-                        @CachedLibrary("this.backendBuilder") NFIBackendSignatureBuilderLibrary backendLibrary) {
-            /*
-             * Just forward to the NFI backend. The NFI frontend does not distinguish between
-             * regular arguments and varargs arguments.
-             */
-            backendLibrary.makeVarargs(backendBuilder);
+        static class MakeVarargs {
+
+            @Specialization
+            static void makeVarargs(SignatureBuilder self,
+                    @CachedLibrary("self.backendBuilder") NFIBackendSignatureBuilderLibrary backendLibrary) {
+                /*
+                 * Just forward to the NFI backend. The NFI frontend does not distinguish between
+                 * regular arguments and varargs arguments.
+                 */
+                backendLibrary.makeVarargs(self.backendBuilder);
+            }
+
+            @Specialization(replaces = "makeVarargs")
+            static void makeVarargsAOT(SignatureBuilder self,
+                             @CachedLibrary(limit = "1") NFIBackendSignatureBuilderLibrary backendLibrary) {
+                makeVarargs(self, backendLibrary);
+            }
         }
+
 
         @ExportMessage
         static class AddArgument {
@@ -385,17 +399,30 @@ final class NFISignature implements TruffleObject {
                 backendLibrary.addArgument(builder.backendBuilder, type.backendType);
                 builder.argTypes.add(type);
             }
+
+            @Specialization(replaces = "doGeneric")
+            static void doGenericAOT(SignatureBuilder builder, NFIType type,
+                                  @CachedLibrary(limit = "1") NFIBackendSignatureBuilderLibrary backendLibrary) {
+                doGeneric(builder, type, backendLibrary);
+            }
         }
 
         @ExportMessage
         static class SetReturnType {
 
             @Specialization
+            @GenerateAOT.Exclude
             static void doSet(SignatureBuilder builder, NFIType type,
                             @CachedLibrary("builder.backendBuilder") NFIBackendSignatureBuilderLibrary backendLibrary) {
                 builder.retType = type;
                 builder.retTypeState = type.cachedState;
                 backendLibrary.setReturnType(builder.backendBuilder, type.backendType);
+            }
+
+            @Specialization(replaces = "doSet")
+            static void doSetAOT(SignatureBuilder builder, NFIType type,
+                              @CachedLibrary(limit = "1") NFIBackendSignatureBuilderLibrary backendLibrary) {
+                doSet(builder, type, backendLibrary);
             }
         }
 
@@ -417,6 +444,12 @@ final class NFISignature implements TruffleObject {
                 Object nativeSignature = backendLibrary.build(builder.backendBuilder);
                 return new NFISignature(builder.backendId, null, nativeSignature, builder.retType,
                                 builder.argTypes.getFinalArray(), builder.argsState.nativeArgCount, builder.argsState.managedArgCount);
+            }
+
+            @Specialization(replaces = "doGeneric")
+            static NFISignature doGenericAOT(SignatureBuilder builder,
+                                          @CachedLibrary(limit = "1") NFIBackendSignatureBuilderLibrary backendLibrary) {
+                return doGeneric(builder, backendLibrary);
             }
         }
     }

@@ -104,25 +104,36 @@ final class LibFFISignature {
         return ret;
     }
 
-    @ExportMessage(limit = "3")
-    @GenerateAOT.Exclude
-    static Object call(LibFFISignature self, Object functionPointer, Object[] args,
-                    @CachedLibrary("functionPointer") InteropLibrary interop,
-                    @Cached BranchProfile toNative,
-                    @Cached BranchProfile error,
-                    @Cached FunctionExecuteNode functionExecute) throws ArityException, UnsupportedTypeException {
-        if (!interop.isPointer(functionPointer)) {
-            toNative.enter();
-            interop.toNative(functionPointer);
+    @ExportMessage
+    static class Call {
+
+        @Specialization
+        static Object callLibFFI(LibFFISignature self, LibFFISymbol functionPointer, Object[] args,
+                                 @Cached.Exclusive @Cached FunctionExecuteNode functionExecute) throws ArityException, UnsupportedTypeException {
+            long pointer = functionPointer.asPointer();
+            return functionExecute.execute(pointer, self, args);
         }
-        long pointer;
-        try {
-            pointer = interop.asPointer(functionPointer);
-        } catch (UnsupportedMessageException e) {
-            error.enter();
-            throw UnsupportedTypeException.create(new Object[]{functionPointer}, "functionPointer", e);
+
+        @Specialization(limit = "3")
+        @GenerateAOT.Exclude
+        static Object callGeneric(LibFFISignature self, Object functionPointer, Object[] args,
+                                  @CachedLibrary("functionPointer") InteropLibrary interop,
+                                  @Cached BranchProfile toNative,
+                                  @Cached BranchProfile error,
+                                  @Cached.Exclusive @Cached FunctionExecuteNode functionExecute) throws ArityException, UnsupportedTypeException {
+            if (!interop.isPointer(functionPointer)) {
+                toNative.enter();
+                interop.toNative(functionPointer);
+            }
+            long pointer;
+            try {
+                pointer = interop.asPointer(functionPointer);
+            } catch (UnsupportedMessageException e) {
+                error.enter();
+                throw UnsupportedTypeException.create(new Object[]{functionPointer}, "functionPointer", e);
+            }
+            return functionExecute.execute(pointer, self, args);
         }
-        return functionExecute.execute(pointer, self, args);
     }
 
     @ExportMessage
@@ -353,7 +364,7 @@ final class LibFFISignature {
         }
     }
 
-    @ExportLibrary(NFIBackendSignatureBuilderLibrary.class)
+    @ExportLibrary(value = NFIBackendSignatureBuilderLibrary.class, useForAOT = true, useForAOTPriority = 1)
     static final class SignatureBuilder {
 
         static final int NOT_VARARGS = -1;
@@ -435,7 +446,7 @@ final class LibFFISignature {
 
             @Specialization(replaces = "doCached")
             static Object doGeneric(SignatureBuilder builder,
-                            @CachedLibrary("builder") NFIBackendSignatureBuilderLibrary self) {
+                                    @CachedLibrary("builder") NFIBackendSignatureBuilderLibrary self) {
                 CachedSignatureInfo sigInfo = prepareSignatureInfo(builder.retType.typeInfo, builder.state);
                 return create(LibFFIContext.get(self), sigInfo, builder.retType, builder.state.argCount, builder.fixedArgCount, builder.argTypes.getFinalArray());
             }

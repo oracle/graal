@@ -40,26 +40,21 @@
  */
 package com.oracle.truffle.nfi.backend.libffi;
 
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.nfi.backend.spi.BackendNativePointerLibrary;
 
-@ExportLibrary(InteropLibrary.class)
 @SuppressWarnings("unused")
-class NativePointer implements TruffleObject {
-
-    static final NativePointer NULL = new NativePointer(0);
+@ExportLibrary(InteropLibrary.class)
+abstract class AbstractNativePointer implements TruffleObject {
 
     final long nativePointer;
 
-    static Object create(LibFFILanguage language, long nativePointer) {
-        return language.getTools().createBindableSymbol(new NativePointer(nativePointer));
-    }
-
-    NativePointer(long nativePointer) {
+    AbstractNativePointer(long nativePointer) {
         this.nativePointer = nativePointer;
     }
 
@@ -97,5 +92,29 @@ class NativePointer implements TruffleObject {
     @TruffleBoundary
     Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
         return "NativePointer(" + nativePointer + ")";
+    }
+}
+
+@ExportLibrary(value = BackendNativePointerLibrary.class, useForAOT = true, useForAOTPriority = 1)
+final class NativePointer extends AbstractNativePointer {
+
+    static final NativePointer NULL = new NativePointer(0);
+
+    NativePointer(long nativePointer) {
+        super(nativePointer);
+    }
+
+    static Object create(LibFFILanguage language, long nativePointer) {
+        return language.getTools().createBindableSymbol(new NativePointer(nativePointer));
+    }
+
+    @ExportMessage(library = BackendNativePointerLibrary.class)
+    boolean isPointer() {
+        return super.isPointer();
+    }
+
+    @ExportMessage(library = BackendNativePointerLibrary.class)
+    long asPointer() {
+        return super.asPointer();
     }
 }

@@ -40,10 +40,12 @@
  */
 package com.oracle.truffle.nfi.backend.spi;
 
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 
 @GenerateLibrary
+@GenerateAOT
 public abstract class NFIBackendSignatureBuilderLibrary extends Library {
 
     public abstract void setReturnType(Object builder, Object type);

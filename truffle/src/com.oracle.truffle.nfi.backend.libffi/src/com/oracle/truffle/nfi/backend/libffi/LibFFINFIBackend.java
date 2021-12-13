@@ -44,7 +44,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -57,7 +56,7 @@ import com.oracle.truffle.nfi.backend.spi.types.NativeLibraryDescriptor;
 import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder.ArrayBuilderFactory;
 
-@ExportLibrary(NFIBackendLibrary.class)
+@ExportLibrary(value = NFIBackendLibrary.class, useForAOT = true, useForAOTPriority = 1)
 @SuppressWarnings("static-method")
 final class LibFFINFIBackend implements NFIBackend {
 
@@ -164,29 +163,48 @@ final class LibFFINFIBackend implements NFIBackend {
 
     @ExportMessage
     Object getSimpleType(NativeSimpleType type,
-                    @CachedLibrary("this") InteropLibrary self) {
+                    @CachedLibrary("this") NFIBackendLibrary self) {
         return LibFFIContext.get(self).lookupSimpleType(type);
     }
 
     @ExportMessage
     Object getArrayType(NativeSimpleType type,
-                    @CachedLibrary("this") InteropLibrary self) {
+                    @CachedLibrary("this") NFIBackendLibrary self) {
         return LibFFIContext.get(self).lookupArrayType(type);
     }
 
     @ExportMessage
-    Object getEnvType(@CachedLibrary("this") InteropLibrary self) {
+    Object getEnvType(@CachedLibrary("this") NFIBackendLibrary self) {
         return LibFFIContext.get(self).lookupEnvType();
     }
 
     @ExportMessage
     Object createSignatureBuilder(
                     @CachedLibrary("this") NFIBackendLibrary self,
-                    @Cached ArrayBuilderFactory builderFactory) {
+                    @Cached.Shared("builderFactory") @Cached ArrayBuilderFactory builderFactory) {
         if (!LibFFIContext.get(self).env.isNativeAccessAllowed()) {
             CompilerDirectives.transferToInterpreter();
             throw new NFIUnsatisfiedLinkError("Access to native code is not allowed by the host environment.", self);
         }
         return new SignatureBuilder(builderFactory);
+    }
+
+    @ExportMessage
+    Object createSignatureBuilderWithMemento(Object memento) {
+        assert memento instanceof Memento;
+        return new SignatureBuilder(((Memento) memento).builderFactory);
+    }
+
+    @ExportMessage
+    Object getMemento(Object builder, @Cached.Shared("builderFactory") @Cached ArrayBuilderFactory builderFactory) {
+        return new LibFFINFIBackend.Memento(builderFactory);
+    }
+
+    static class Memento {
+        final ArrayBuilderFactory builderFactory;
+
+        Memento(ArrayBuilderFactory builderFactory) {
+            this.builderFactory = builderFactory;
+        }
     }
 }

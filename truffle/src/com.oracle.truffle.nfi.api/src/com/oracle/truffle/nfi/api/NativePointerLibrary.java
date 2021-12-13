@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,55 +38,43 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.nfi.test.parser.backend;
+package com.oracle.truffle.nfi.api;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.dsl.GenerateAOT;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.nfi.backend.spi.NFIBackendSignatureBuilderLibrary;
-import com.oracle.truffle.nfi.backend.spi.NFIBackendSignatureLibrary;
-import java.util.ArrayList;
+import com.oracle.truffle.api.library.GenerateLibrary;
+import com.oracle.truffle.api.library.Library;
 
-@ExportLibrary(value = NFIBackendSignatureBuilderLibrary.class, useForAOT = false)
-@ExportLibrary(value = NFIBackendSignatureLibrary.class, useForAOT = false)
-public class TestSignature implements TruffleObject {
+@GenerateLibrary
+@GenerateAOT
+@GenerateLibrary.DefaultExport(NativePointerLibrary.LongNativePointerLibrary.class)
+public abstract class NativePointerLibrary extends Library {
 
-    public Object retType;
-    public final ArrayList<Object> argTypes = new ArrayList<>();
-
-    public static final int NOT_VARARGS = -1;
-    public int fixedArgCount = NOT_VARARGS;
-
-    @ExportMessage
-    final void setReturnType(Object retType) {
-        this.retType = retType;
+    @GenerateLibrary.Abstract(ifExported = {"asPointer"})
+    public boolean isPointer(Object receiver) {
+        return false;
     }
 
-    @ExportMessage
-    @TruffleBoundary
-    final void addArgument(Object type) {
-        argTypes.add(type);
+    @GenerateLibrary.Abstract(ifExported = {"isPointer"})
+    public long asPointer(Object receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
     }
 
-    @ExportMessage
-    @TruffleBoundary
-    final void makeVarargs() {
-        fixedArgCount = argTypes.size();
-    }
+    @ExportLibrary(value = NativePointerLibrary.class, receiverType = Long.class, useForAOT = true, useForAOTPriority = 1)
+    static final class LongNativePointerLibrary {
 
-    @ExportMessage
-    final Object build() {
-        return this;
-    }
+        @ExportMessage
+        public static boolean isPointer(Long receiver) {
+            assert receiver != null;
+            return true;
+        }
 
-    @ExportMessage
-    final Object call(Object function, Object... args) {
-        return new TestCallInfo(this, function, args);
-    }
-
-    @ExportMessage
-    final Object createClosure(Object executable) {
-        return new TestClosure(this, executable);
+        @ExportMessage
+        public static long asPointer(Long receiver) throws UnsupportedMessageException {
+            assert receiver != null;
+            return receiver;
+        }
     }
 }

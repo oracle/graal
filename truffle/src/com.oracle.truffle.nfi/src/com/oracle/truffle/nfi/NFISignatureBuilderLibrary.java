@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,55 +38,22 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.nfi.test.parser.backend;
+package com.oracle.truffle.nfi;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.nfi.backend.spi.NFIBackendSignatureBuilderLibrary;
-import com.oracle.truffle.nfi.backend.spi.NFIBackendSignatureLibrary;
-import java.util.ArrayList;
+import com.oracle.truffle.api.dsl.GenerateAOT;
+import com.oracle.truffle.api.library.GenerateLibrary;
+import com.oracle.truffle.api.library.Library;
 
-@ExportLibrary(value = NFIBackendSignatureBuilderLibrary.class, useForAOT = false)
-@ExportLibrary(value = NFIBackendSignatureLibrary.class, useForAOT = false)
-public class TestSignature implements TruffleObject {
+@GenerateLibrary
+@GenerateAOT
+public abstract class NFISignatureBuilderLibrary extends Library {
 
-    public Object retType;
-    public final ArrayList<Object> argTypes = new ArrayList<>();
+    public abstract void setReturnType(Object builder, Object type);
 
-    public static final int NOT_VARARGS = -1;
-    public int fixedArgCount = NOT_VARARGS;
+    public abstract void addArgument(Object builder, Object type);
 
-    @ExportMessage
-    final void setReturnType(Object retType) {
-        this.retType = retType;
+    public void makeVarargs(@SuppressWarnings("unused") Object builder) {
     }
 
-    @ExportMessage
-    @TruffleBoundary
-    final void addArgument(Object type) {
-        argTypes.add(type);
-    }
-
-    @ExportMessage
-    @TruffleBoundary
-    final void makeVarargs() {
-        fixedArgCount = argTypes.size();
-    }
-
-    @ExportMessage
-    final Object build() {
-        return this;
-    }
-
-    @ExportMessage
-    final Object call(Object function, Object... args) {
-        return new TestCallInfo(this, function, args);
-    }
-
-    @ExportMessage
-    final Object createClosure(Object executable) {
-        return new TestClosure(this, executable);
-    }
+    public abstract Object build(Object builder);
 }
