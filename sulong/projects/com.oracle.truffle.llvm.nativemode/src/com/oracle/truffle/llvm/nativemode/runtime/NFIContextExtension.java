@@ -563,6 +563,24 @@ public final class NFIContextExtension extends NativeContextExtension {
         }
     }
 
+    @Override
+    public CallTarget createSignatureCallTarget(Source signatureSource) {
+        return env.parseInternal(signatureSource);
+    }
+
+    @Override
+    @TruffleBoundary
+    public Object createSignature(Source signatureSource, CallTarget createSignatureCallTarget) {
+        synchronized (signatureCache) {
+            Object ret = signatureCache.get(signatureSource);
+            if (ret == null) {
+                ret = createSignatureCallTarget.call();
+                signatureCache.put(signatureSource, ret);
+            }
+            return ret;
+        }
+    }
+
     @TruffleBoundary
     private Object getCachedSignature(Source signatureSource) {
         Object ret = signatureCache.get(signatureSource);

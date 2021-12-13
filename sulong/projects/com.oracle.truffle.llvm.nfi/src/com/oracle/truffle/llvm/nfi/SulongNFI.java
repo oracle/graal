@@ -81,7 +81,7 @@ public final class SulongNFI extends TruffleLanguage<Env> {
         return env;
     }
 
-    @ExportLibrary(NFIBackendLibrary.class)
+    @ExportLibrary(value = NFIBackendLibrary.class, useForAOT = false)
     final class SulongNFIBackend implements NFIBackend {
 
         private final NFIBackendTools tools;
