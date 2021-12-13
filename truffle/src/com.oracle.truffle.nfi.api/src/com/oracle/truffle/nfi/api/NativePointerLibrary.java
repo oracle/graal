@@ -53,12 +53,12 @@ import com.oracle.truffle.api.library.Library;
 public abstract class NativePointerLibrary extends Library {
 
     @GenerateLibrary.Abstract(ifExported = {"asPointer"})
-    public boolean isPointer(Object receiver) {
+    public boolean isPointer(@SuppressWarnings("unused") Object receiver) {
         return false;
     }
 
     @GenerateLibrary.Abstract(ifExported = {"isPointer"})
-    public long asPointer(Object receiver) throws UnsupportedMessageException {
+    public long asPointer(@SuppressWarnings("unused") Object receiver) throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
     }
 
@@ -72,7 +72,7 @@ public abstract class NativePointerLibrary extends Library {
         }
 
         @ExportMessage
-        public static long asPointer(Long receiver) throws UnsupportedMessageException {
+        public static long asPointer(Long receiver) {
             assert receiver != null;
             return receiver;
         }

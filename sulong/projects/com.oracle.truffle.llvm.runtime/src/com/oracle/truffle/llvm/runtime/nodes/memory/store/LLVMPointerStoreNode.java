@@ -96,8 +96,8 @@ public abstract class LLVMPointerStoreNode extends LLVMStoreNode {
 
         @Specialization(replaces = "doManaged")
         protected static void doManagedAOT(LLVMManagedPointer addr, long offset, Object value,
-                                        @Cached LLVMToPointerNode toPointer,
-                                        @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
+                        @Cached LLVMToPointerNode toPointer,
+                        @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
             doManaged(addr, offset, value, toPointer, nativeWrite);
         }
     }
@@ -139,8 +139,8 @@ public abstract class LLVMPointerStoreNode extends LLVMStoreNode {
 
     @Specialization(replaces = "doManaged")
     protected static void doManagedAOT(LLVMManagedPointer address, Object value,
-                                    @Cached LLVMToPointerNode toPointer,
-                                    @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
+                    @Cached LLVMToPointerNode toPointer,
+                    @CachedLibrary(limit = "3") LLVMManagedWriteLibrary nativeWrite) {
         doManaged(address, value, toPointer, nativeWrite);
     }
 }

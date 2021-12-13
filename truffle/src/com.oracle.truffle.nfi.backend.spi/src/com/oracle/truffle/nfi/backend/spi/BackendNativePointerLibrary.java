@@ -50,12 +50,12 @@ import com.oracle.truffle.api.library.Library;
 public abstract class BackendNativePointerLibrary extends Library {
 
     @GenerateLibrary.Abstract(ifExported = {"asPointer"})
-    public boolean isPointer(Object receiver) {
+    public boolean isPointer(@SuppressWarnings("unused") Object receiver) {
         return false;
     }
 
     @GenerateLibrary.Abstract(ifExported = {"isPointer"})
-    public long asPointer(Object receiver) throws UnsupportedMessageException {
+    public long asPointer(@SuppressWarnings("unused") Object receiver) throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
     }
 

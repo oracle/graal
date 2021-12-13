@@ -63,11 +63,13 @@ final class LibFFISymbol extends AbstractNativePointer {
     }
 
     @ExportMessage
+    @Override
     boolean isPointer() {
         return super.isPointer();
     }
 
     @ExportMessage
+    @Override
     long asPointer() {
         return super.asPointer();
     }

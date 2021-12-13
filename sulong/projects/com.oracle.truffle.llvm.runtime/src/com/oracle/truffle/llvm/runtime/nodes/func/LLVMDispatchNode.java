@@ -287,7 +287,8 @@ public abstract class LLVMDispatchNode extends LLVMNode {
             Object[] nativeArgs = prepareNativeArguments(arguments, toNative);
             Object returnValue = signatureLibrary.call(signature, nativeFunction, nativeArgs);
             if (isPointerReturnType && nfiNativePointerLibrary.isPointer(returnValue)) {
-                // By using the raw long value we can avoid using interop in the subsequent conversion
+                // By using the raw long value we can avoid using interop in the subsequent
+                // conversion
                 returnValue = nfiNativePointerLibrary.asPointer(returnValue);
             }
             return fromNative.executeConvert(returnValue);

@@ -252,7 +252,7 @@ abstract class CallSignatureNode extends Node {
 
     @GenerateAOT
     @GenerateUncached
-    static abstract class BackendSymbolUnwrapNode extends Node {
+    abstract static class BackendSymbolUnwrapNode extends Node {
         abstract Object execute(Object symbol);
 
         @Specialization

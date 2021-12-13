@@ -109,11 +109,13 @@ final class NativePointer extends AbstractNativePointer {
     }
 
     @ExportMessage(library = BackendNativePointerLibrary.class)
+    @Override
     boolean isPointer() {
         return super.isPointer();
     }
 
     @ExportMessage(library = BackendNativePointerLibrary.class)
+    @Override
     long asPointer() {
         return super.asPointer();
     }

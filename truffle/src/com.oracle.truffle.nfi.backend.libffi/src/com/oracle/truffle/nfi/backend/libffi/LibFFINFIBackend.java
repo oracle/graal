@@ -196,7 +196,7 @@ final class LibFFINFIBackend implements NFIBackend {
     }
 
     @ExportMessage
-    Object getMemento(Object builder, @Cached.Shared("builderFactory") @Cached ArrayBuilderFactory builderFactory) {
+    Object getMemento(@SuppressWarnings("unused") Object builder, @Cached.Shared("builderFactory") @Cached ArrayBuilderFactory builderFactory) {
         return new LibFFINFIBackend.Memento(builderFactory);
     }
 

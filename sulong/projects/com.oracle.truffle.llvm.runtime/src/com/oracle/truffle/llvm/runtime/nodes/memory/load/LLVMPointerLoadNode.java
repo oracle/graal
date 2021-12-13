@@ -78,7 +78,7 @@ public abstract class LLVMPointerLoadNode extends LLVMLoadNode {
 
         @Specialization(replaces = "doIndirectedForeign")
         protected LLVMPointer doIndirectedForeignAOT(LLVMManagedPointer addr, long offset,
-                                                  @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
+                        @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
             return doIndirectedForeign(addr, offset, nativeRead);
         }
     }
@@ -103,7 +103,7 @@ public abstract class LLVMPointerLoadNode extends LLVMLoadNode {
 
     @Specialization(replaces = "doIndirectedForeign")
     protected LLVMPointer doIndirectedForeignAOT(LLVMManagedPointer addr,
-                                              @CachedLibrary(limit = "3") LLVMManagedReadLibrary read) {
+                    @CachedLibrary(limit = "3") LLVMManagedReadLibrary read) {
         return doIndirectedForeign(addr, read);
     }
 

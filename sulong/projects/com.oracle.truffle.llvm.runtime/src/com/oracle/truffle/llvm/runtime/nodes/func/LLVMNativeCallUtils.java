@@ -55,6 +55,7 @@ public final class LLVMNativeCallUtils {
             throw CompilerDirectives.shouldNotReachHere("Exception thrown by a callback during the native call " + function + argsToString(nativeArgs), e);
         }
     }
+
     @TruffleBoundary
     private static String argsToString(Object[] nativeArgs) {
         StringJoiner joiner = new StringJoiner(", ", "(", ")");

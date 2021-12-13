@@ -121,9 +121,10 @@ final class SignatureRootNode extends RootNode {
         @Specialization(limit = "3")
         @ExplodeLoop
         Object doBuild(API api,
-                       @CachedLibrary("api.backend") NFIBackendLibrary backendLibrary,
-                       @CachedLibrary(limit = "1") NFISignatureBuilderLibrary sigBuilderLibrary) {
-            Object backendBuilder = backendMemento.memento == null ? backendLibrary.createSignatureBuilder(api.backend) : backendLibrary.createSignatureBuilderWithMemento(api.backend, backendMemento.memento);
+                        @CachedLibrary("api.backend") NFIBackendLibrary backendLibrary,
+                        @CachedLibrary(limit = "1") NFISignatureBuilderLibrary sigBuilderLibrary) {
+            Object backendBuilder = backendMemento.memento == null ? backendLibrary.createSignatureBuilder(api.backend)
+                            : backendLibrary.createSignatureBuilderWithMemento(api.backend, backendMemento.memento);
             SignatureBuilder sigBuilder = new SignatureBuilder(api.backendId, backendBuilder, factory.allocate(FACTORY));
 
             for (int i = 0; i < argBuilders.length; i++) {
@@ -141,8 +142,8 @@ final class SignatureRootNode extends RootNode {
 
         @Specialization(replaces = "doBuild")
         Object doBuildAOT(API api,
-                       @CachedLibrary(limit = "1") NFIBackendLibrary backendLibrary,
-                       @CachedLibrary(limit = "1") NFISignatureBuilderLibrary sigBuilderLibrary) {
+                        @CachedLibrary(limit = "1") NFIBackendLibrary backendLibrary,
+                        @CachedLibrary(limit = "1") NFISignatureBuilderLibrary sigBuilderLibrary) {
             return doBuild(api, backendLibrary, sigBuilderLibrary);
         }
     }
@@ -192,7 +193,7 @@ final class SignatureRootNode extends RootNode {
 
         @Specialization(replaces = "addArgument")
         void addArgumentAOT(API api, Object sigBuilder,
-                         @CachedLibrary(limit = "1") NFISignatureBuilderLibrary sigBuilderLib) {
+                        @CachedLibrary(limit = "1") NFISignatureBuilderLibrary sigBuilderLib) {
             addArgument(api, sigBuilder, sigBuilderLib);
         }
     }
@@ -207,7 +208,7 @@ final class SignatureRootNode extends RootNode {
 
         @Specialization(replaces = "makeVarargs")
         void makeVarargsAOT(@SuppressWarnings("unused") API api, Object sigBuilder,
-                         @CachedLibrary(limit = "1") NFISignatureBuilderLibrary sigBuilderLib) {
+                        @CachedLibrary(limit = "1") NFISignatureBuilderLibrary sigBuilderLib) {
             makeVarargs(api, sigBuilder, sigBuilderLib);
         }
     }
@@ -234,7 +235,7 @@ final class SignatureRootNode extends RootNode {
 
         @Specialization(replaces = "getType")
         Object getTypeAOT(API api,
-                       @CachedLibrary(limit = "1") NFIBackendLibrary backendLibrary) {
+                        @CachedLibrary(limit = "1") NFIBackendLibrary backendLibrary) {
             return getType(api, backendLibrary);
         }
     }
@@ -256,7 +257,7 @@ final class SignatureRootNode extends RootNode {
 
         @Specialization(replaces = "getType")
         Object getTypeAOT(API api,
-                       @CachedLibrary(limit = "1") NFIBackendLibrary backendLibrary) {
+                        @CachedLibrary(limit = "1") NFIBackendLibrary backendLibrary) {
             return getType(api, backendLibrary);
         }
     }
@@ -272,7 +273,7 @@ final class SignatureRootNode extends RootNode {
 
         @Specialization(replaces = "getType")
         Object getTypeAOT(API api,
-                       @CachedLibrary(limit = "1") NFIBackendLibrary backend) {
+                        @CachedLibrary(limit = "1") NFIBackendLibrary backend) {
             return getType(api, backend);
         }
     }
@@ -295,7 +296,7 @@ final class SignatureRootNode extends RootNode {
 
         @Specialization(replaces = "getType")
         Object getTypeAOT(API api,
-                       @CachedLibrary(limit = "1") NFIBackendLibrary backend) {
+                        @CachedLibrary(limit = "1") NFIBackendLibrary backend) {
             return getType(api, backend);
         }
     }
