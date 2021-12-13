@@ -236,6 +236,12 @@ public final class NFAGenerator {
                         transitionsBuffer.add(createTransition(sourceState, anchoredFinalState, ast.getEncoding().getFullSet(), lastGroup));
                     } else if (containsMatchFound) {
                         transitionsBuffer.add(createTransition(sourceState, finalState, ast.getEncoding().getFullSet(), lastGroup));
+                        // Transitions dominated by a transition to a final state will never end up
+                        // being used and so we can skip generating them and return the current list
+                        // of transitions.
+                        transitionGBUpdateIndices.clear();
+                        transitionGBClearIndices.clear();
+                        return transitionsBuffer.toArray(new NFAStateTransition[transitionsBuffer.size()]);
                     }
                 } else if (!containsPositionAssertion) {
                     assert mergeBuilder.getCodePointSet().matchesSomething();
