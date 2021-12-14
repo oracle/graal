@@ -87,6 +87,5 @@ public class SpinLockUtils {
          * releases the lock.
          */
         UNSAFE.putIntVolatile(obj, intFieldOffset, 0);
-        UNSAFE.putInt(obj, intFieldOffset, 0);
     }
 }
