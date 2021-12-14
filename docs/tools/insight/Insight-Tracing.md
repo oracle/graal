@@ -172,12 +172,13 @@ The server console prints a lot of detailed information while handling the reque
 and the Jaeger UI fills with the traces:
 
 
-![Jaeger UI](Insight-Jaeger.png)
+![Jaeger UI](img/Insight-Jaeger.png)
 
 We have successfully enhanced a plain nodejs application with tracing. The
 traces remain separated in its own `agent.js` file and can be applied
 at start time (demonstrated here) or [dynamically](Insight-Embedding.md) when
 really needed.
 
-For other, generic ideas about using [Insight](Insight.md)
-consult its [hacker's manual](Insight-Manual.md).
+### What to Read Rext
+
+To learn more about Insight and find some challenging tasks, go to the [Insight Manual](Insight-Manual.md).

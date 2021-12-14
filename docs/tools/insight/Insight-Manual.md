@@ -7,7 +7,7 @@ pointcuts on already deployed applications running at full speed.
 [Insight](Insight.md) further blurs the difference between various DevOps tasks -
 code once, apply your insights anytime, anywhere!
 
-Any moderately skilled hacker can easily create own 
+Any moderately skilled hacker can easily create own
 so called [Insight](Insight.md) snippets and dynamically apply them to
 the actual programs. That provides ultimate insights into
 execution and behavior of one's application without compromising the speed
@@ -85,7 +85,7 @@ insight.on('enter', function(ev) {
 insight.on('close', dumpHotness);
 ```
 
-The `map` is a global variable visible for the whole **Insight** script that 
+The `map` is a global variable visible for the whole **Insight** script that
 allows the code to share data between the `insight.on('enter')` function and the `dumpHotness`
 function. The latter is executed when the `node` process execution is over (registered via
 `insight.on('close', dumpHotness)`. Invoke as:
@@ -121,7 +121,7 @@ Table with names and counts of function invocations is printed out when the
 
 So far the examples used `node.js`, but the **Insight** system isn't tight
 to Node.js at all - it is available in all the environments GraalVM provides.
-Let's try it on `bin/js` - pure JavaScript implementation that comes with 
+Let's try it on `bin/js` - pure JavaScript implementation that comes with
 GraalVM. Let's define `function-tracing.js` script as:
 
 ```js
@@ -157,14 +157,14 @@ Just called Natural.next as 4097 function invocation
 ```
 
 **Insight** scripts are ready to be used in any environment - be it the
-default `node` implementation, the lightweight `js` command line tool - 
+default `node` implementation, the lightweight `js` command line tool -
 or your own application that decides to [embedd GraalVM scripting](Insight-Embedding.md)
 capabilities!
 
 ### Truly Polyglot - Insight any Language
 
 The previous examples were written in JavaScript, but due to the polyglot
-nature of GraalVM, we can take the same instrument and use it 
+nature of GraalVM, we can take the same instrument and use it
 in a program written in the Ruby language.
 Here is an example - create `source-trace.js` file:
 
@@ -352,7 +352,7 @@ R: observed loading of test.R
 ```
 
 The only change is the R language. All the other [Insight](Insight.md)
-features and 
+features and
 [APIs](https://www.graalvm.org/tools/javadoc/org/graalvm/tools/insight/Insight.html#VERSION)
 remain the same.
 
@@ -373,7 +373,7 @@ insight.on('enter', function(ctx, frame) {
 ```
 
 This instrument uses second function argument `frame` to get access to values
-of local variables inside of every instrumented function. 
+of local variables inside of every instrumented function.
 The above **Insight** script also uses `rootNameFilter` to apply its hook only
 to function named `fib`:
 
@@ -405,7 +405,7 @@ programming!
 
 ### Modifying Local Variables
 
-Not only that **Insight** can access local variables, but it can also modify them. 
+Not only that **Insight** can access local variables, but it can also modify them.
 Imagine summing an array:
 
 ```js
@@ -418,7 +418,7 @@ var sum = 0;
 print(sum);
 ```
 
-which naturally leads to printing out number `45`. Let's apply following 
+which naturally leads to printing out number `45`. Let's apply following
 **Insight** script to ''erase'' non-even numbers before adding them:
 
 ```js
@@ -466,8 +466,8 @@ functionality/element is available since.
 ### Delaying **Insight** Initialization in **node.js**
 
 **Insight** can be used in any GraalVM enabled environment including GraalVM's
-`node` implementation. However, when in `node`, one doesn't want to write 
-plain simple **Insight** scripts - one wants to use full power of `node` 
+`node` implementation. However, when in `node`, one doesn't want to write
+plain simple **Insight** scripts - one wants to use full power of `node`
 ecosystem including its modules. Here is a sample `agent-require.js` script that does it:
 
 ```js
@@ -488,10 +488,10 @@ insight.on('source', waitForRequire, { roots: true });
 
 The script solves an important problem: **Insight** scripts are
 initialized as soon as possible and at that moment the `require` function isn't
-yet ready. As such the script first attaches a listener on loaded scripts and when 
-the main user script is being loaded, it obtains its `process.mainModule.require` 
-function. Then it removes the probes using `insight.off` and invokes the actual 
-`initialize` function to perform the real initialization while having 
+yet ready. As such the script first attaches a listener on loaded scripts and when
+the main user script is being loaded, it obtains its `process.mainModule.require`
+function. Then it removes the probes using `insight.off` and invokes the actual
+`initialize` function to perform the real initialization while having
 access to all the node modules. The script can be used as
 
 ```js
@@ -522,7 +522,7 @@ You can register an instrument `term.js` and terminate the execution in the midd
 of the `seq.js` program execution based on observing the logged message:
 
 ```js
-insight.on('enter', (ev, frame) => { 
+insight.on('enter', (ev, frame) => {
     if (frame.msg === 'are') {
         throw 'great you are!';
     }
@@ -579,9 +579,9 @@ insight.on('enter', function(ctx, frame) {
 The `returnNow` method immediatelly stops execution and returns to the
 caller of the `plus` function. The body of the `plus` method isn't executed
 at all because we applied the insight `on('enter', ...)` - e.g. before the
-actual body of the function was executed. 
+actual body of the function was executed.
 Multiplying instead of adding two numbers may not sound very tempting, but
-the same approach is useful in providing add-on caching (e.g. memoization) 
+the same approach is useful in providing add-on caching (e.g. memoization)
 of repeating function invocations.
 
 It is also possible to let the original function code run and just alter
@@ -691,7 +691,7 @@ C, C++, Fortran, Rust and inspect with JavaScript, Ruby & co.!
 ### Minimal Overhead when Accessing Locals
 
 GraalVM [Insight](Insight.md) is capable to access local variables. Moreover it
-is almost for free. Insight code accessing local variables blends with the 
+is almost for free. Insight code accessing local variables blends with the
 actual function code defining them and there is no visible slowdown.
 
 Let's demonstrate the this on [sieve.js](../../vm/benchmarks/agentscript/sieve.js) -
@@ -788,7 +788,7 @@ operation. Use rarely, if you want your program to continue running at full spee
 
 [Insight](Insight.md) can be used to snapshot a region of your program heap during
 the execution. Use `--heap.dump=/path/to/output.hprof` option together with
-regular `--insight` one. The [Insight](Insight.md) 
+regular `--insight` one. The [Insight](Insight.md)
 script is going to get access to `heap` object with `dump` function.
 Place your hook whereever needed and at the right moment dump the heap:
 
@@ -813,7 +813,7 @@ insight.on('return', (ctx, frame) => {
             },
             // there can be multiple events like the previous one
         ],
-    }); 
+    });
     throw 'Heap dump written!';
 }, {
     roots: true,
@@ -829,29 +829,29 @@ launch it as:
 $ graalvm/bin/js --insight=dump.js --heap.dump=dump.hprof --file sieve.js
 ```
 
-![Heap Stack](Insight-HeapStack.png)
+![Heap Stack](img/Insight-HeapStack.png)
 
 A `dump.hprof` file is going to be created at the end of `measure` function
-capturing the state of the memory of your progam. 
+capturing the state of the memory of your progam.
 Inspect the generated `.hprof` file with regular tools like
 [VisualVM](https://www.graalvm.org/tools/visualvm/) or [NetBeans](http://netbeans.org):
 
-![Heap Inspect](Insight-HeapInspect.png)
+![Heap Inspect](img/Insight-HeapInspect.png)
 
 The previous picture shows heap dump taken at the end of `measure` function in the
 [sieve.js](../../vm/benchmarks/agentscript/sieve.js) script. The function has just
 computed one hundred thousand (count available in variable `cnt`) prime numbers.
 The picture shows a linked list `Filter` holding prime numbers from `2` to `17`.
-The rest of the linked list is hidden (only references up to depth `10` were 
-requested) behind `unreachable` object. Last variable `x` shows the number of 
+The rest of the linked list is hidden (only references up to depth `10` were
+requested) behind `unreachable` object. Last variable `x` shows the number of
 searched natural numbers to compute all the prime numbers.
 
 <!--
 
 ### TODO:
 
-GraalVM comes with a unified set of prepackaged high performance **Insight** 
-insights at your convenience. 
+GraalVM comes with a unified set of prepackaged high performance **Insight**
+insights at your convenience.
 
 **Insight** is an ideal tool for practicing *aspects oriented programming*
 in a completely language agnostic way.
@@ -859,12 +859,12 @@ in a completely language agnostic way.
 
 - powerful tools to help you write, debug, manage, and organize
 your **Insight** insights scripts. It is a matter of pressing a single button
-to enable selected **Insight** insight and a matter of another click to 
-disable it cleanly, returning the application to state prior to the use 
+to enable selected **Insight** insight and a matter of another click to
+disable it cleanly, returning the application to state prior to the use
 of the insight.
 
 - *VisualVM* has been enhanced to provide a unified view of locally as well as
-remotely running applications and the **Insight** insights dynamically 
+remotely running applications and the **Insight** insights dynamically
 applied to each of them. Enlist available *HotSpot* or *native-image* based
 virtual machines. Connect to them on demand. Apply selected insights. Let
 them gather their data. Obtain the data and analyze them with the integrated

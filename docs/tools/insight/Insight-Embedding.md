@@ -1,11 +1,4 @@
-# [GraalVM Insight](Insight.md): Embedding
-
-GraalVM [Insight](Insight.md) is a multipurpose, flexible tool providing
-enourmous possiblilities when it comes to dynamic understanding of user
-application behavior. See its [manual](Insight-Manual.md) for more details.
-Read on to learn how to embed [Insight](Insight.md) into your own application.
-
-### Embedding Insight into Java Application
+# Embedding Insight into Java Applications
 
 [GraalVM](http://graalvm.org) languages can be embedded into custom Java applications via polyglot
 [Context](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.html) API.
@@ -57,7 +50,7 @@ public final class MeaningOfWorldInstrument extends TruffleInstrument {
 }
 ```
 
-The previous Java code creates an instrument which registers new symbol `meaning` 
+The previous Java code creates an instrument which registers new symbol `meaning`
 to every Insight script evaluated then. Each script can then reference it and use it for example
 for limiting number of method invocations:
 
@@ -65,7 +58,7 @@ for limiting number of method invocations:
 insight.on('enter', (ctx, frames) => { if (--meaning <= 0) throw 'Stop!' }, { roots : true });
 ```
 
-It is possible to expose simple values, as well as complex objects. See the 
+It is possible to expose simple values, as well as complex objects. See the
 [javadoc](https://www.graalvm.org/tools/javadoc/org/graalvm/tools/insight/Insight.SymbolProvider.html)
 for more detailed information - take care when writing your instruments - they
 can alter many aspects of program execution and aren't subject to any security
@@ -136,6 +129,7 @@ When writing your own `adminserver.js` pay attention to security. [Insight](Insi
 scripts are very powerful and you want only authorized persons to apply arbitrary
 hooks to your application. Don't open the admin server port to everybody.
 
-## Where next?
+### What to Read Rext
 
-Read about more [Insight](Insight.md) use-cases in its [hacker's manual](Insight-Manual.md).
+To learn more about Insight and find some usecases, go to the [Insight Manual](Insight-Manual.md).
+It starts with an obligatory _HelloWorld_ example and then demonstrates more challenging tasks.
