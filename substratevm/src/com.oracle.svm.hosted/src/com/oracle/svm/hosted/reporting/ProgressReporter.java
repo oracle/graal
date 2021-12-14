@@ -63,10 +63,10 @@ import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.jdk.SystemInOutErrSupport;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.reflect.MethodMetadataDecoder;
 import com.oracle.svm.hosted.NativeImageGenerator;
+import com.oracle.svm.hosted.NativeImageSystemIOWrappers;
 import com.oracle.svm.hosted.StringAccess;
 import com.oracle.svm.hosted.code.CompileQueue.CompileTask;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
@@ -91,6 +91,8 @@ public class ProgressReporter {
     private static final double BYTES_TO_KiB = 1024d;
     private static final double BYTES_TO_MiB = 1024d * 1024d;
     private static final double BYTES_TO_GiB = 1024d * 1024d * 1024d;
+
+    private final NativeImageSystemIOWrappers builderIO;
 
     private final boolean isEnabled;
     private final LinePrinter linePrinter;
@@ -137,6 +139,8 @@ public class ProgressReporter {
     }
 
     public ProgressReporter(OptionValues options) {
+        builderIO = NativeImageSystemIOWrappers.singleton();
+
         isEnabled = SubstrateOptions.BuildOutputUseNewStyle.getValue(options);
         if (isEnabled) {
             Timer.disablePrinting();
@@ -240,7 +244,7 @@ public class ProgressReporter {
             public void closeAction() {
                 timer.stop();
                 printProgressEnd();
-                printStageEndAndFlushStdioContent(bb.getAnalysisTimer());
+                printStageEnd(bb.getAnalysisTimer());
                 String actualVsTotalFormat = "%,8d (%5.2f%%) of %,6d";
                 long reachableClasses = bb.getUniverse().getTypes().stream().filter(t -> t.isReachable()).count();
                 long totalClasses = bb.getUniverse().getTypes().size();
@@ -296,7 +300,7 @@ public class ProgressReporter {
                 timer.stop();
                 stopPeriodicPrinting();
                 printProgressEnd();
-                printStageEndAndFlushStdioContent(timer);
+                printStageEnd(timer);
             }
         };
     }
@@ -310,7 +314,7 @@ public class ProgressReporter {
             public void closeAction() {
                 timer.stop();
                 printProgressEnd();
-                printStageEndAndFlushStdioContent(timer);
+                printStageEnd(timer);
             }
         };
     }
@@ -332,7 +336,7 @@ public class ProgressReporter {
                 timer.stop();
                 stopPeriodicPrinting();
                 printProgressEnd();
-                printStageEndAndFlushStdioContent(timer);
+                printStageEnd(timer);
             }
         };
     }
@@ -546,13 +550,13 @@ public class ProgressReporter {
                         .doclink(stage.message, "#stage-" + stage.name().toLowerCase()).a("...").reset();
         numStageChars = linePrinter.getCurrentTextLength();
         linePrinter.flush();
+        builderIO.useCapturing = true;
     }
 
     private void printProgressStart() {
         linePrinter.a(progressBarStartPadding()).dim().a("[");
         numStageChars = PROGRESS_BAR_START + 1; /* +1 for [ */
         linePrinter.flush();
-        SystemInOutErrSupport.setCapturing(true);
     }
 
     private String progressBarStartPadding() {
@@ -560,8 +564,7 @@ public class ProgressReporter {
     }
 
     private void printProgressEnd() {
-        SystemInOutErrSupport.setCapturing(false);
-        linePrinter.a("]").reset().flush();
+        linePrinter.printRaw(']');
         numStageChars++; // for ]
     }
 
@@ -589,11 +592,6 @@ public class ProgressReporter {
         periodicPrintingTask.cancel(false);
     }
 
-    private void printStageEndAndFlushStdioContent(Timer timer) {
-        printStageEnd(timer);
-        SystemInOutErrSupport.flushCapturedContent();
-    }
-
     private void printStageEnd(Timer timer) {
         printStageEnd(timer.getTotalTime());
     }
@@ -607,6 +605,8 @@ public class ProgressReporter {
         if (SubstrateOptions.BuildOutputGCWarnings.getValue()) {
             checkForExcessiveGarbageCollection();
         }
+        builderIO.useCapturing = false;
+        builderIO.flushCapturedContent();
     }
 
     private void checkForExcessiveGarbageCollection() {
@@ -632,7 +632,7 @@ public class ProgressReporter {
      */
 
     private static void resetANSIMode() {
-        System.out.print(ANSIColors.RESET);
+        NativeImageSystemIOWrappers.singleton().originalOut().print(ANSIColors.RESET);
     }
 
     private static String stringFilledWith(int size, String fill) {
@@ -832,7 +832,7 @@ public class ProgressReporter {
             if (printBuffer != null) {
                 textBuffer.forEach(printBuffer::append);
             } else {
-                textBuffer.forEach(System.out::print);
+                textBuffer.forEach(builderIO.originalOut()::print);
             }
             textBuffer.clear();
         }
@@ -844,7 +844,7 @@ public class ProgressReporter {
             if (printBuffer != null) {
                 printBuffer.append(value);
             } else {
-                SystemInOutErrSupport.printToStdOutUnconditionally(value);
+                builderIO.originalOut().print(value);
             }
         }
 
@@ -857,15 +857,15 @@ public class ProgressReporter {
                 return;
             }
             if (useOutputPrefix) {
-                System.out.print(outputPrefix);
+                builderIO.originalOut().print(outputPrefix);
             }
             if (printBuffer != null) {
-                System.out.print(printBuffer.toString());
+                builderIO.originalOut().print(printBuffer);
                 printBuffer.setLength(0); // Clear buffer.
             }
-            textBuffer.forEach(System.out::print);
+            textBuffer.forEach(builderIO.originalOut()::print);
             textBuffer.clear();
-            System.out.println();
+            builderIO.originalOut().println();
         }
 
         private void flushCenteredln() {
