@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.thread;
 
+import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
+
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.compiler.api.replacements.Fold;
@@ -162,10 +164,10 @@ public final class Safepoint {
 
     public static class Options {
         @Option(help = "Print a warning if I can not come to a safepoint in this many nanoseconds. 0 implies forever.")//
-        public static final RuntimeOptionKey<Long> SafepointPromptnessWarningNanos = new RuntimeOptionKey<>(TimeUtils.millisToNanos(0L));
+        public static final RuntimeOptionKey<Long> SafepointPromptnessWarningNanos = new RuntimeOptionKey<>(TimeUtils.millisToNanos(0L), RelevantForCompilationIsolates);
 
         @Option(help = "Exit the VM if I can not come to a safepoint in this many nanoseconds. 0 implies forever.")//
-        public static final RuntimeOptionKey<Long> SafepointPromptnessFailureNanos = new RuntimeOptionKey<>(TimeUtils.millisToNanos(0L));
+        public static final RuntimeOptionKey<Long> SafepointPromptnessFailureNanos = new RuntimeOptionKey<>(TimeUtils.millisToNanos(0L), RelevantForCompilationIsolates);
     }
 
     private static long getSafepointPromptnessWarningNanos() {

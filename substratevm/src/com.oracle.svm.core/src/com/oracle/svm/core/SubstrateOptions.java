@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core;
 
+import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
 import static org.graalvm.compiler.core.common.GraalOptions.TrackNodeSourcePosition;
 import static org.graalvm.compiler.core.common.SpectrePHTMitigations.None;
 import static org.graalvm.compiler.core.common.SpectrePHTMitigations.Options.SpectrePHTBarriers;
@@ -50,12 +51,14 @@ import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
+import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.APIOptionGroup;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.ImmutableRuntimeOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.RuntimeOptionKey;
+import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.util.UserError;
 
 public class SubstrateOptions {
@@ -325,10 +328,10 @@ public class SubstrateOptions {
      */
 
     @Option(help = "The number of nanoseconds before and between which tearing down an isolate gives a warning message.  0 implies no warning.")//
-    public static final RuntimeOptionKey<Long> TearDownWarningNanos = new RuntimeOptionKey<>(0L);
+    public static final RuntimeOptionKey<Long> TearDownWarningNanos = new RuntimeOptionKey<>(0L, RelevantForCompilationIsolates);
 
     @Option(help = "The number of nanoseconds before tearing down an isolate gives a failure message.  0 implies no message.")//
-    public static final RuntimeOptionKey<Long> TearDownFailureNanos = new RuntimeOptionKey<>(0L);
+    public static final RuntimeOptionKey<Long> TearDownFailureNanos = new RuntimeOptionKey<>(0L, RelevantForCompilationIsolates);
 
     public static final long getTearDownWarningNanos() {
         return TearDownWarningNanos.getValue().longValue();
@@ -408,9 +411,6 @@ public class SubstrateOptions {
         return "llvm".equals(CompilerBackend.getValue());
     }
 
-    @Option(help = "Determines if VM operations should be executed in a dedicated thread.", type = OptionType.Expert)//
-    public static final HostedOptionKey<Boolean> UseDedicatedVMOperationThread = new HostedOptionKey<>(false);
-
     /*
      * RemoveUnusedSymbols is not enabled on Darwin by default, because the linker sometimes
      * segfaults when the -dead_strip option is used.
@@ -472,8 +472,8 @@ public class SubstrateOptions {
         return CodeAlignment.getValue();
     }
 
-    @Option(help = "Populate reference queues in a separate thread rather than after a garbage collection.", type = OptionType.Expert) //
-    public static final HostedOptionKey<Boolean> UseReferenceHandlerThread = new HostedOptionKey<>(false);
+    @Option(help = "Determines if VM internal threads (e.g., a dedicated VM operation or reference handling thread) are allowed in this image.", type = OptionType.Expert) //
+    public static final HostedOptionKey<Boolean> AllowVMInternalThreads = new HostedOptionKey<>(true);
 
     @APIOption(name = "-g", fixedValue = "2", customHelp = "generate debugging information")//
     @Option(help = "Insert debug info into the generated native image or library")//
@@ -555,14 +555,22 @@ public class SubstrateOptions {
         };
 
         @Option(help = "Activate runtime compilation in separate isolates (enable support during image build with option SupportCompileInIsolates).") //
-        public static final RuntimeOptionKey<Boolean> CompileInIsolates = new RuntimeOptionKey<>(true);
+        public static final RuntimeOptionKey<Boolean> CompileInIsolates = new RuntimeOptionKey<>(true, RelevantForCompilationIsolates);
 
         @Option(help = "Determines if a remembered sets is used, which is necessary for collecting the young and old generation independently.", type = OptionType.Expert) //
         public static final HostedOptionKey<Boolean> UseRememberedSet = new HostedOptionKey<>(true);
+
+        /** Use {@link VMOperationControl#useDedicatedVMOperationThread()} instead. */
+        @Option(help = "Determines if VM operations should be executed in a dedicated thread.", type = OptionType.Expert)//
+        public static final HostedOptionKey<Boolean> UseDedicatedVMOperationThread = new HostedOptionKey<>(false);
+
+        /** Use {@link ReferenceHandler#useDedicatedThread()} instead. */
+        @Option(help = "Populate reference queues in a separate thread rather than after a garbage collection.", type = OptionType.Expert) //
+        public static final RuntimeOptionKey<Boolean> UseReferenceHandlerThread = new RuntimeOptionKey<>(false);
     }
 
     @Option(help = "Overwrites the available number of processors provided by the OS. Any value <= 0 means using the processor count from the OS.")//
-    public static final RuntimeOptionKey<Integer> ActiveProcessorCount = new ImmutableRuntimeOptionKey<>(-1);
+    public static final RuntimeOptionKey<Integer> ActiveProcessorCount = new ImmutableRuntimeOptionKey<>(-1, RelevantForCompilationIsolates);
 
     @Option(help = "For internal purposes only. Disables type id result verification even when running with assertions enabled.", stability = OptionStability.EXPERIMENTAL, type = Debug)//
     public static final HostedOptionKey<Boolean> DisableTypeIdResultVerification = new HostedOptionKey<>(true);
@@ -648,7 +656,7 @@ public class SubstrateOptions {
     @Option(help = "Specifies how many details are printed for certain diagnostic thunks, e.g.: 'DumpThreads:1,DumpRegisters:2'. " +
                     "A value of 1 will result in the maximum amount of information, higher values will print less information. " +
                     "By default, the most detailed output is enabled for all diagnostic thunks. Wildcards (*) are supported in the name of the diagnostic thunk.", type = Expert)//
-    public static final RuntimeOptionKey<String> DiagnosticDetails = new RuntimeOptionKey<String>("") {
+    public static final RuntimeOptionKey<String> DiagnosticDetails = new RuntimeOptionKey<String>("", RelevantForCompilationIsolates) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
             super.onValueUpdate(values, oldValue, newValue);

@@ -40,6 +40,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
@@ -218,6 +219,9 @@ public final class ReferenceInternals {
 
     @SuppressFBWarnings(value = "WA_NOT_IN_LOOP", justification = "Wait for progress, not necessarily completion.")
     public static boolean waitForReferenceProcessing() throws InterruptedException {
+        assert !VMOperation.isInProgress() : "could cause a deadlock";
+        assert !ReferenceHandlerThread.isReferenceHandlerThread() : "would cause a deadlock";
+
         synchronized (processPendingLock) {
             if (processPendingActive || Heap.getHeap().hasReferencePendingList()) {
                 processPendingLock.wait(); // Wait for progress, not necessarily completion

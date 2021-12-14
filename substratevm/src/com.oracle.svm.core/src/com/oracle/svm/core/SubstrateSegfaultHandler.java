@@ -26,7 +26,6 @@ package com.oracle.svm.core;
 
 import static com.oracle.svm.core.annotate.RestrictHeapAccess.Access.NO_ALLOCATION;
 
-import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -59,6 +58,7 @@ import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.util.VMError;
 
 @AutomaticFeature

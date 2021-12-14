@@ -995,6 +995,9 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
                 # These 2 arguments provide walkable call stacks for a crash in libgraal
                 '-H:+PreserveFramePointer',
                 '-H:-DeleteLocalSymbols',
+
+                # No VM-internal threads may be spawned for libgraal.
+                '-H:-AllowVMInternalThreads',
             ],
         ),
     ],

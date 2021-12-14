@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.graal;
 
+import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.io.PrintStream;
@@ -140,7 +141,7 @@ public class SubstrateGraalUtils {
 
     public static class Options {
         @Option(help = "Force-dump graphs before compilation")//
-        public static final RuntimeOptionKey<Boolean> ForceDumpGraphsBeforeCompilation = new RuntimeOptionKey<>(false);
+        public static final RuntimeOptionKey<Boolean> ForceDumpGraphsBeforeCompilation = new RuntimeOptionKey<>(false, RelevantForCompilationIsolates);
     }
 
     @SuppressWarnings("try")

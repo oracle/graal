@@ -27,6 +27,7 @@ package com.oracle.svm.graal.isolated;
 import java.lang.reflect.Array;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Builder;
@@ -47,6 +48,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.deopt.SubstrateInstalledCode;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.graal.GraalSupport;
 import com.oracle.svm.graal.SubstrateGraalUtils;
@@ -62,6 +64,8 @@ public final class IsolatedGraalUtils {
         if (addressSpaceSize > 0) {
             builder.reservedAddressSpaceSize(WordFactory.signed(addressSpaceSize));
         }
+        // Compilation isolates never need a dedicated reference handler thread.
+        builder.appendArgument(getOptionString(SubstrateOptions.ConcealedOptions.UseReferenceHandlerThread, false));
         CreateIsolateParameters params = builder.build();
         return (CompilerIsolateThread) Isolates.createIsolate(params);
     }
@@ -132,14 +136,35 @@ public final class IsolatedGraalUtils {
     }
 
     public static byte[] encodeRuntimeOptionValues() {
-        EconomicMap<OptionKey<?>, Object> map = EconomicMap.create(RuntimeOptionValues.singleton().getMap());
+        /** Copy all options that are relevant for the compilation isolate. */
+        EconomicMap<OptionKey<?>, Object> result = EconomicMap.create();
+        UnmodifiableMapCursor<OptionKey<?>, Object> cur = RuntimeOptionValues.singleton().getMap().getEntries();
+        while (cur.advance()) {
+            OptionKey<?> optionKey = cur.getKey();
+            if (shouldCopyToCompilationIsolate(optionKey)) {
+                result.put(optionKey, cur.getValue());
+            }
+        }
+
         /*
          * All compilation isolates should use the same folder for debug dumps, to avoid confusion
          * of users. Always setting the DumpPath option in the compilation isolates is the easiest
          * way to achieve that.
          */
-        map.put(DebugOptions.DumpPath, DebugOptions.getDumpDirectoryName(RuntimeOptionValues.singleton()));
-        return OptionValuesEncoder.encode(map);
+        result.put(DebugOptions.DumpPath, DebugOptions.getDumpDirectoryName(RuntimeOptionValues.singleton()));
+        return OptionValuesEncoder.encode(result);
+    }
+
+    private static boolean shouldCopyToCompilationIsolate(OptionKey<?> optionKey) {
+        if (optionKey instanceof RuntimeOptionKey) {
+            return ((RuntimeOptionKey<?>) optionKey).shouldCopyToCompilationIsolate();
+        }
+
+        /*
+         * For all other options (Truffle, Graal, ...) outside the control of Native Image, we
+         * assume that they are relevant for the compilation isolate.
+         */
+        return true;
     }
 
     public static int getNullableArrayLength(Object array) {
@@ -163,6 +188,10 @@ public final class IsolatedGraalUtils {
     private static void copyOptions(@SuppressWarnings("unused") @CEntryPoint.IsolateThreadContext ClientIsolateThread isolate, ClientHandle<byte[]> encodedOptionsHandle, PointerBase buffer) {
         byte[] encodedOptions = IsolatedCompileClient.get().unhand(encodedOptionsHandle);
         CTypeConversion.asByteBuffer(buffer, encodedOptions.length).put(encodedOptions);
+    }
+
+    private static String getOptionString(RuntimeOptionKey<Boolean> option, boolean value) {
+        return "-XX:" + (value ? "+" : "-") + option.getName();
     }
 
     private IsolatedGraalUtils() {

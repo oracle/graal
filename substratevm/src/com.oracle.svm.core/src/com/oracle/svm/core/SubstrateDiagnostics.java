@@ -24,9 +24,10 @@
  */
 package com.oracle.svm.core;
 
+import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
+
 import java.util.Arrays;
 
-import com.oracle.svm.core.option.RuntimeOptionKey;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
@@ -69,6 +70,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicWord;
 import com.oracle.svm.core.locks.VMLockSupport;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.stack.JavaStackWalker;
@@ -981,7 +983,7 @@ public class SubstrateDiagnostics {
 
     public static class Options {
         @Option(help = "Execute an endless loop before printing diagnostics for a fatal error.", type = OptionType.Debug)//
-        public static final RuntimeOptionKey<Boolean> LoopOnFatalError = new RuntimeOptionKey<Boolean>(false) {
+        public static final RuntimeOptionKey<Boolean> LoopOnFatalError = new RuntimeOptionKey<Boolean>(false, RelevantForCompilationIsolates) {
             @Override
             protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
                 super.onValueUpdate(values, oldValue, newValue);

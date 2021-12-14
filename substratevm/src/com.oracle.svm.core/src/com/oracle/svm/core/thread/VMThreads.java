@@ -24,11 +24,6 @@
  */
 package com.oracle.svm.core.thread;
 
-import static com.oracle.svm.core.SubstrateOptions.UseDedicatedVMOperationThread;
-
-import com.oracle.svm.core.annotate.NeverInline;
-import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
-import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.replacements.ReplacementsUtil;
@@ -47,6 +42,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CFunctionOptions;
@@ -56,6 +52,8 @@ import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicWord;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
+import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
@@ -430,8 +428,8 @@ public abstract class VMThreads {
     }
 
     public void tearDown() {
-        ThreadingSupportImpl.pauseRecurringCallback("Execution of arbitrary code is prohibited while/after shutting down the VM operation thread.");
-        if (UseDedicatedVMOperationThread.getValue()) {
+        ThreadingSupportImpl.pauseRecurringCallback("Execution of arbitrary code is prohibited during the last teardown steps.");
+        if (VMOperationControl.useDedicatedVMOperationThread()) {
             VMOperationControl.shutdownAndDetachVMOperationThread();
         }
         // At this point, it is guaranteed that all other threads were detached.
