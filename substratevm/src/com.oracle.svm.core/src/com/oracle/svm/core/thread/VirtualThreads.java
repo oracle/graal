@@ -56,4 +56,8 @@ public interface VirtualThreads {
     void parkNanos(long nanos);
 
     void parkUntil(long deadline);
+
+    void pinCurrent();
+
+    void unpinCurrent();
 }

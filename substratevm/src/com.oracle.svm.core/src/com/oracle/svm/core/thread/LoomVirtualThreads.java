@@ -34,9 +34,10 @@ import com.oracle.svm.core.util.VMError;
 
 /**
  * Code specific to virtual threads is part of the {@link Thread} methods, e.g. {@code yield} or
- * {@code sleep}, and the implementation for platform threads in {@code yield0} or {@code sleep0},
- * so we only substitute this platform thread code in {@link Target_java_lang_Thread}, and never
- * expect these methods to be reachable, therefore extending {@link NoVirtualThreads}.
+ * {@code sleep}, and the implementation for platform threads generally in {@code yield0} or
+ * {@code sleep0}, so we only substitute this platform thread code in
+ * {@link Target_java_lang_Thread}, and never expect these methods to be reachable, therefore
+ * extending {@link NoVirtualThreads}.
  */
 final class LoomVirtualThreads extends NoVirtualThreads {
     private static Target_java_lang_VirtualThread cast(Thread thread) {

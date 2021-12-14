@@ -27,6 +27,8 @@ package com.oracle.svm.core.thread;
 import java.util.concurrent.locks.LockSupport;
 
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Inject;
+import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.ContinuationsSupported;
@@ -129,7 +131,40 @@ final class Target_java_util_concurrent_locks_LockSupport {
     }
 }
 
-final class ContinuationLockSupportSubstitutions {
-    private ContinuationLockSupportSubstitutions() {
+@TargetClass(className = "sun.nio.ch.NativeThreadSet", onlyWith = {ContinuationsSupported.class, NotLoomJDK.class})
+final class Target_sun_nio_ch_NativeThreadSet {
+    @Alias @InjectAccessors(NativeThreadSetUsedAccessors.class) //
+    int used;
+
+    @Inject //
+    int injectedUsed;
+}
+
+final class NativeThreadSetUsedAccessors {
+    static int get(Target_sun_nio_ch_NativeThreadSet that) {
+        return that.injectedUsed;
+    }
+
+    static void set(Target_sun_nio_ch_NativeThreadSet that, int value) {
+        // Note that the accessing method holds a lock that prevents concurrent updates
+        if (VirtualThreads.get().isVirtual(Thread.currentThread())) {
+            int diff = value - that.injectedUsed;
+            if (diff == 1) {
+                VirtualThreads.get().pinCurrent();
+            } else if (diff == -1) {
+                VirtualThreads.get().unpinCurrent();
+            } else {
+                assert value == 0 : "must only be incremented or decremented by 1 (or initialized to 0)";
+            }
+        }
+        that.injectedUsed = value;
+    }
+
+    private NativeThreadSetUsedAccessors() {
+    }
+}
+
+final class ContinuationSubstitutions {
+    private ContinuationSubstitutions() {
     }
 }

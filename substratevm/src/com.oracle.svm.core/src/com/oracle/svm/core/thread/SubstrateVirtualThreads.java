@@ -115,4 +115,14 @@ final class SubstrateVirtualThreads implements VirtualThreads {
     public void parkUntil(long deadline) {
         current().parkUntil(deadline);
     }
+
+    @Override
+    public void pinCurrent() {
+        current().pin();
+    }
+
+    @Override
+    public void unpinCurrent() {
+        current().unpin();
+    }
 }

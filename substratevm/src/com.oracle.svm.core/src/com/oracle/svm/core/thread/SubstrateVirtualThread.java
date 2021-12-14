@@ -42,6 +42,8 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.ContinuationsSupported;
 import com.oracle.svm.core.jdk.NotLoomJDK;
+import com.oracle.svm.core.stack.JavaFrameAnchor;
+import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.util.VMError;
 
 import sun.misc.Unsafe;
@@ -93,6 +95,9 @@ final class SubstrateVirtualThread extends Thread {
 
     // carrier thread when mounted
     private volatile Thread carrierThread;
+
+    // number of active pinnings to the carrier thread
+    private short pins;
 
     // termination object when joining, created lazily if needed
     private volatile CountDownLatch termination;
@@ -185,6 +190,15 @@ final class SubstrateVirtualThread extends Thread {
     }
 
     private boolean yieldContinuation() {
+        assert this == Thread.currentThread();
+        if (pins > 0) {
+            return false;
+        }
+        JavaFrameAnchor anchor = JavaFrameAnchors.getFrameAnchor();
+        if (anchor.isNonNull() && cont.sp.aboveThan(anchor.getLastJavaSP())) {
+            return false;
+        }
+
         unmount();
         try {
             return cont.yield() == JavaContinuations.YIELD_SUCCESS;
@@ -593,6 +607,24 @@ final class SubstrateVirtualThread extends Thread {
 
     private void dispatchUncaughtException(Throwable e) {
         getUncaughtExceptionHandler().uncaughtException(this, e);
+    }
+
+    void pin() {
+        assert currentThread() == this;
+        assert pins >= 0;
+        if (pins == Short.MAX_VALUE) {
+            throw new IllegalStateException("Too many pins");
+        }
+        pins++;
+    }
+
+    void unpin() {
+        assert currentThread() == this;
+        assert pins >= 0;
+        if (pins == 0) {
+            throw new IllegalStateException("Not pinned");
+        }
+        pins--;
     }
 
     @Override

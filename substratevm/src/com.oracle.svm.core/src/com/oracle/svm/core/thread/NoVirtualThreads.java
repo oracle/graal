@@ -90,4 +90,13 @@ class NoVirtualThreads implements VirtualThreads {
         throw unreachable();
     }
 
+    @Override
+    public void pinCurrent() {
+        throw unreachable();
+    }
+
+    @Override
+    public void unpinCurrent() {
+        throw unreachable();
+    }
 }
