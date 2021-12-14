@@ -111,6 +111,10 @@ public final class NFISulongNativeAccess extends NFINativeAccess {
          * Try directories in $ESPRESSO_HOME/lib/llvm/* for libraries with LLVM-bitcode compatible
          * with the specified Java version.
          */
+        if (!Files.exists(llvmRoot) || !Files.isDirectory(llvmRoot)) {
+            return null; // no folders with Java libraries + embedded LLVM-bitcode.
+        }
+
         List<Path> sortedPaths = null;
         try {
             // Order must be deterministic.
