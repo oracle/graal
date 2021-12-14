@@ -1,8 +1,15 @@
 # Espresso Changelog
 
+## Version 22.1.0
+
 ## Version 22.0.0
+### User-visible changes
+* Support changes to fields in class redefinition
+* Support changes to class access modifiers in class redefinition
 ### Internal changes
 * Espresso adopted the new Frame API.
+### Noteworthy fixes
+* Fix strings not being displayed properly in debugger through JDWP in some cases
 
 
 ## Version 21.3.0
