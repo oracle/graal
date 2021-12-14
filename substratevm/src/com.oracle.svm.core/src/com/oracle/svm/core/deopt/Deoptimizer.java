@@ -751,7 +751,7 @@ public final class Deoptimizer {
     };
 
     public static void logRecentDeoptimizationEvents(Log log) {
-        log.string("Recent deoptimization events:").indent(true);
+        log.string("Recent deoptimization events (oldest first):").indent(true);
         recentDeoptimizationEvents.foreach(log, deoptEventsConsumer);
         log.indent(false);
     }
