@@ -147,11 +147,6 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
         }
     }
 
-    /**
-     * True in the first analysis run where contexts are pre-initialized.
-     */
-    private boolean firstAnalysisRun;
-
     // Checkstyle: stop
     private ClassLoader imageClassLoader;
     private AnalysisMetaAccess metaAccess;
@@ -328,8 +323,13 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
                         LibraryFactory.class);
         config.registerSubtypeReachabilityHandler(TruffleBaseFeature::registerTruffleLibrariesAsInHeap,
                         LibraryExport.class);
+    }
 
-        firstAnalysisRun = true;
+    public static void preInitializeEngine() {
+        invokeStaticMethod("org.graalvm.polyglot.Engine$ImplHolder", "preInitializeEngine",
+                        Collections.emptyList());
+        invokeStaticMethod("com.oracle.truffle.api.impl.ThreadLocalHandshake", "resetNativeImageState",
+                        Collections.emptyList());
     }
 
     /**
@@ -348,15 +348,6 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
     @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
         StaticObjectSupport.duringAnalysis(access);
-
-        if (firstAnalysisRun) {
-            firstAnalysisRun = false;
-            invokeStaticMethod("org.graalvm.polyglot.Engine$ImplHolder", "preInitializeEngine",
-                            Collections.emptyList());
-            invokeStaticMethod("com.oracle.truffle.api.impl.ThreadLocalHandshake", "resetNativeImageState",
-                            Collections.emptyList());
-            access.requireAnalysisIteration();
-        }
 
         for (Class<?> clazz : access.reachableSubtypes(com.oracle.truffle.api.nodes.Node.class)) {
             registerUnsafeAccess(access, clazz.asSubclass(com.oracle.truffle.api.nodes.Node.class));
