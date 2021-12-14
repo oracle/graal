@@ -62,6 +62,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk11.BootModuleLayerSupport;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.jdk.NativeImageClassLoaderSupportJDK11OrLater;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -209,7 +210,14 @@ public final class ModuleLayerFeature implements Feature {
     }
 
     private ModuleLayer synthesizeRuntimeBootLayer(ImageClassLoader cl, Set<String> reachableModules, Set<Module> syntheticModules) {
-        Configuration cf = synthesizeRuntimeBootLayerConfiguration(cl.modulepath(), reachableModules);
+        /**
+         * For consistent module lookup we reuse the {@link ModuleFinder}s defined and used in
+         * {@link NativeImageClassLoaderSupportJDK11OrLater}.
+         */
+        NativeImageClassLoaderSupportJDK11OrLater classLoaderSupport = (NativeImageClassLoaderSupportJDK11OrLater) cl.classLoaderSupport;
+        ModuleFinder beforeFinder = classLoaderSupport.modulepathModuleFinder;
+        ModuleFinder afterFinder = classLoaderSupport.upgradeAndSystemModuleFinder;
+        Configuration cf = synthesizeRuntimeBootLayerConfiguration(beforeFinder, afterFinder, reachableModules);
         try {
             ModuleLayer runtimeBootLayer = moduleLayerConstructor.newInstance(cf, List.of(), null);
             Map<String, Module> nameToModule = moduleLayerFeatureUtils.synthesizeNameToModule(runtimeBootLayer, cl.getClassLoader());
@@ -307,10 +315,7 @@ public final class ModuleLayerFeature implements Feature {
         return applicationModules;
     }
 
-    private static Configuration synthesizeRuntimeBootLayerConfiguration(List<Path> mp, Set<String> reachableModules) {
-        ModuleFinder beforeFinder = new BootModuleLayerModuleFinder();
-        ModuleFinder afterFinder = ModuleFinder.of(mp.toArray(Path[]::new));
-
+    private static Configuration synthesizeRuntimeBootLayerConfiguration(ModuleFinder beforeFinder, ModuleFinder afterFinder, Set<String> reachableModules) {
         try {
             ModuleFinder composed = ModuleFinder.compose(beforeFinder, afterFinder);
             List<String> missingModules = new ArrayList<>();
@@ -344,27 +349,6 @@ public final class ModuleLayerFeature implements Feature {
 
         // Ensure that the lazy modules field gets set
         runtimeBootLayer.modules();
-    }
-
-    static class BootModuleLayerModuleFinder implements ModuleFinder {
-
-        @Override
-        public Optional<ModuleReference> find(String name) {
-            return ModuleLayer.boot()
-                            .configuration()
-                            .findModule(name)
-                            .map(ResolvedModule::reference);
-        }
-
-        @Override
-        public Set<ModuleReference> findAll() {
-            return ModuleLayer.boot()
-                            .configuration()
-                            .modules()
-                            .stream()
-                            .map(ResolvedModule::reference)
-                            .collect(Collectors.toSet());
-        }
     }
 
     private static final class HostedRuntimeModulePair {
