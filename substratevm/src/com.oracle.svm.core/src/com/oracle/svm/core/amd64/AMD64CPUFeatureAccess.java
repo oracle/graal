@@ -35,7 +35,6 @@ import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.CPUFeatureAccess;
-import com.oracle.svm.core.CalleeSavedRegisters;
 import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.jdk.JVMCISubstitutions;
 import com.oracle.svm.core.util.VMError;
@@ -205,21 +204,12 @@ public class AMD64CPUFeatureAccess implements CPUFeatureAccess {
 
     @Override
     public void enableFeatures(Architecture runtimeArchitecture) {
-        if (CalleeSavedRegisters.supportedByPlatform()) {
-            /*
-             * The code for saving and restoring callee-saved registers currently only covers the
-             * registers and register bit width for the CPU features used at image build time. To
-             * enable more CPU features for JIT compilation at run time, the new CPU features
-             * computed by this method would need to be taken into account. Until this is
-             * implemented as part of GR-20653, JIT compilation uses the same CPU features as AOT
-             * compilation.
-             */
-            return;
-        }
+        // update cpu features
         AMD64 architecture = (AMD64) runtimeArchitecture;
         EnumSet<AMD64.CPUFeature> features = determineHostCPUFeatures();
         architecture.getFeatures().addAll(features);
 
+        // update largest storable kind
         AMD64Kind largestStorableKind = (new AMD64(features, architecture.getFlags())).getLargestStorableKind(AMD64.XMM);
         JVMCISubstitutions.updateLargestStorableKind(architecture, largestStorableKind);
     }

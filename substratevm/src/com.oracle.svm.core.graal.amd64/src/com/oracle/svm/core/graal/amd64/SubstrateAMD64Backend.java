@@ -784,7 +784,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
 
             if (method.hasCalleeSavedRegisters()) {
                 VMError.guarantee(!method.isDeoptTarget(), "Deoptimization runtime cannot fill the callee saved registers");
-                AMD64CalleeSavedRegisters.singleton().emitSave((AMD64MacroAssembler) crb.asm, crb.frameMap.totalFrameSize());
+                AMD64CalleeSavedRegisters.singleton().emitSave((AMD64MacroAssembler) crb.asm, crb.frameMap.totalFrameSize(), crb);
             }
             crb.recordMark(PROLOGUE_END);
         }
@@ -817,7 +817,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                 if (returnKind != JavaKind.Void) {
                     returnRegister = crb.frameMap.getRegisterConfig().getReturnRegister(returnKind);
                 }
-                AMD64CalleeSavedRegisters.singleton().emitRestore((AMD64MacroAssembler) crb.asm, crb.frameMap.totalFrameSize(), returnRegister);
+                AMD64CalleeSavedRegisters.singleton().emitRestore((AMD64MacroAssembler) crb.asm, crb.frameMap.totalFrameSize(), returnRegister, crb);
             }
 
             if (((SubstrateAMD64RegisterConfig) crb.frameMap.getRegisterConfig()).shouldUseBasePointer()) {
