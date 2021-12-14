@@ -110,11 +110,47 @@ public @interface RecomputeFieldValue {
         Custom,
     }
 
+    enum ValueAvailability {
+        BeforeAnalysis,
+        AfterAnalysis,
+        AfterCompilation
+    }
+
+    interface CustomFieldValueProvider {
+
+        /**
+         * When is the value for this custom computation available? By default, it is assumed that
+         * the value is available {@link ValueAvailability#BeforeAnalysis during analysis}.
+         */
+        ValueAvailability valueAvailability();
+
+        /** Return true if value is available during analysis, false otherwise. */
+        default boolean isAvailableBeforeAnalysis() {
+            return valueAvailability() == ValueAvailability.BeforeAnalysis;
+        }
+
+        /**
+         * Return true if value is available only after analysis, i.e., it depends on data computed
+         * by the analysis (such as field offsets), false otherwise.
+         */
+        default boolean isAvailableAfterAnalysis() {
+            return valueAvailability() == ValueAvailability.AfterAnalysis;
+        }
+
+        /**
+         * Return true if value is available only after compilation, i.e., it depends on data
+         * computed during compilation, false otherwise.
+         */
+        default boolean isAvailableAfterCompilation() {
+            return valueAvailability() == ValueAvailability.AfterCompilation;
+        }
+    }
+
     /**
      * Custom recomputation of field values. A class implementing this interface must have a
      * no-argument constructor, which is used to instantiate it before invoking {@link #compute}.
      */
-    interface CustomFieldValueComputer {
+    interface CustomFieldValueComputer extends CustomFieldValueProvider {
         /**
          * Computes the new field value. This method can already be invoked during the analysis,
          * especially when it computes the value of an object field that needs to be visited.
@@ -140,7 +176,7 @@ public @interface RecomputeFieldValue {
      * original value, but also requires the original field to be present, e.g., it cannot be use
      * for {@link Inject injected fields}.
      */
-    interface CustomFieldValueTransformer {
+    interface CustomFieldValueTransformer extends CustomFieldValueProvider {
         /**
          * Computes the new field value. This method can already be invoked during the analysis,
          * especially when it computes the value of an object field that needs to be visited.
@@ -160,6 +196,11 @@ public @interface RecomputeFieldValue {
      * Reset an array field to a new empty array of the same type and length.
      */
     final class NewEmptyArrayTransformer implements CustomFieldValueTransformer {
+        @Override
+        public ValueAvailability valueAvailability() {
+            return ValueAvailability.BeforeAnalysis;
+        }
+
         @Override
         public Object transform(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver, Object originalValue) {
             if (originalValue == null) {

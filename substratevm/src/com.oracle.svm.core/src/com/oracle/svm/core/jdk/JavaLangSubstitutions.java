@@ -721,6 +721,11 @@ public final class JavaLangSubstitutions {
 
     static class ClassValueInitializer implements CustomFieldValueComputer {
         @Override
+        public RecomputeFieldValue.ValueAvailability valueAvailability() {
+            return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+        }
+
+        @Override
         public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
             ClassValueSupport support = ImageSingletons.lookup(ClassValueSupport.class);
             ClassValue<?> v = (ClassValue<?>) receiver;

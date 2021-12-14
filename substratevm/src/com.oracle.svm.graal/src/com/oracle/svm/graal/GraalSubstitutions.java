@@ -140,6 +140,10 @@ final class Target_org_graalvm_compiler_debug_DebugContext_Invariants {
 @TargetClass(value = DebugContext.class, innerClass = "Immutable", onlyWith = GraalFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_debug_DebugContext_Immutable {
     static class ClearImmutableCache implements RecomputeFieldValue.CustomFieldValueComputer {
+        @Override
+        public RecomputeFieldValue.ValueAvailability valueAvailability() {
+            return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+        }
 
         @Override
         public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
@@ -168,6 +172,10 @@ final class Target_org_graalvm_compiler_debug_DebugContext_Immutable {
 @TargetClass(value = DebugHandlersFactory.class, onlyWith = GraalFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_debug_DebugHandlersFactory {
     static class CachedFactories implements RecomputeFieldValue.CustomFieldValueComputer {
+        @Override
+        public RecomputeFieldValue.ValueAvailability valueAvailability() {
+            return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+        }
 
         @Override
         public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {

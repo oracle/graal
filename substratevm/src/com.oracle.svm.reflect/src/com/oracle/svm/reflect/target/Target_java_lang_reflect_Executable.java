@@ -242,6 +242,10 @@ public final class Target_java_lang_reflect_Executable {
     }
 
     public static final class ParameterAnnotationsComputer implements CustomFieldValueComputer {
+        @Override
+        public RecomputeFieldValue.ValueAvailability valueAvailability() {
+            return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+        }
 
         @Override
         public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
@@ -251,6 +255,10 @@ public final class Target_java_lang_reflect_Executable {
     }
 
     public static final class AnnotatedReceiverTypeComputer implements CustomFieldValueComputer {
+        @Override
+        public RecomputeFieldValue.ValueAvailability valueAvailability() {
+            return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+        }
 
         @Override
         public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
@@ -260,6 +268,10 @@ public final class Target_java_lang_reflect_Executable {
     }
 
     public static final class AnnotatedParameterTypesComputer implements CustomFieldValueComputer {
+        @Override
+        public RecomputeFieldValue.ValueAvailability valueAvailability() {
+            return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+        }
 
         @Override
         public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
@@ -269,6 +281,10 @@ public final class Target_java_lang_reflect_Executable {
     }
 
     public static final class AnnotatedReturnTypeComputer implements CustomFieldValueComputer {
+        @Override
+        public RecomputeFieldValue.ValueAvailability valueAvailability() {
+            return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+        }
 
         @Override
         public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
@@ -278,6 +294,10 @@ public final class Target_java_lang_reflect_Executable {
     }
 
     public static final class AnnotatedExceptionTypesComputer implements CustomFieldValueComputer {
+        @Override
+        public RecomputeFieldValue.ValueAvailability valueAvailability() {
+            return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+        }
 
         @Override
         public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {

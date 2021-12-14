@@ -429,6 +429,11 @@ final class Target_java_lang_NamedPackage {
 
 class PackageFieldTransformer implements RecomputeFieldValue.CustomFieldValueTransformer {
     @Override
+    public RecomputeFieldValue.ValueAvailability valueAvailability() {
+        return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+    }
+
+    @Override
     public Object transform(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver, Object originalValue) {
         assert receiver instanceof ClassLoader;
 

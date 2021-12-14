@@ -42,6 +42,10 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * @see RecomputeFieldValue
  */
 public final class ExecutableAccessorComputer implements RecomputeFieldValue.CustomFieldValueComputer {
+    @Override
+    public RecomputeFieldValue.ValueAvailability valueAvailability() {
+        return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+    }
 
     @Override
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {

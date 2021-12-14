@@ -464,6 +464,10 @@ final class Target_java_util_concurrent_Exchanger {
  */
 @Platforms(Platform.HOSTED_ONLY.class)
 class ExchangerABASEComputer implements RecomputeFieldValue.CustomFieldValueComputer {
+    @Override
+    public RecomputeFieldValue.ValueAvailability valueAvailability() {
+        return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+    }
 
     @Override
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {

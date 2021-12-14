@@ -222,6 +222,11 @@ class VarHandleInfo {
 
 class VarHandleFieldOffsetComputer implements RecomputeFieldValue.CustomFieldValueComputer {
     @Override
+    public RecomputeFieldValue.ValueAvailability valueAvailability() {
+        return RecomputeFieldValue.ValueAvailability.AfterAnalysis;
+    }
+
+    @Override
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object varHandle) {
         Field field = ImageSingletons.lookup(VarHandleFeature.class).findVarHandleField(varHandle);
         SharedField sField = (SharedField) metaAccess.lookupJavaField(field);

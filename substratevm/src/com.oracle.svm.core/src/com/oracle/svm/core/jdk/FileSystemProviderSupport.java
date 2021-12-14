@@ -237,6 +237,11 @@ class NeedsReinitializationProvider implements RecomputeFieldValue.CustomFieldVa
     static final int STATUS_REINITIALIZED = 0;
 
     @Override
+    public RecomputeFieldValue.ValueAvailability valueAvailability() {
+        return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+    }
+
+    @Override
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
         return STATUS_NEEDS_REINITIALIZATION;
     }
