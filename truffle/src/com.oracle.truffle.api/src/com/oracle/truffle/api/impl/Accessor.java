@@ -630,6 +630,12 @@ public abstract class Accessor {
 
         public abstract boolean isResourceLimitCancelExecution(Throwable cancelExecution);
 
+        public abstract boolean isPolyglotEngineException(Throwable throwable);
+
+        public abstract Throwable getPolyglotEngineExceptionCause(Throwable engineException);
+
+        public abstract RuntimeException createPolyglotEngineException(RuntimeException cause);
+
         public abstract int getExitExceptionExitCode(Throwable cancelExecution);
 
         public abstract SourceSection getCancelExecutionSourceLocation(Throwable cancelExecution);

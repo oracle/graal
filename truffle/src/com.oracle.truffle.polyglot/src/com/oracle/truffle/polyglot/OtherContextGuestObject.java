@@ -189,6 +189,11 @@ final class OtherContextGuestObject implements TruffleObject {
             } else {
                 throw new OtherContextException(receiverContext, e, valueContext);
             }
+        } else if (e instanceof PolyglotEngineException) {
+            // [GR-35549] Truffle isolate enters the guest context as result of
+            // delegateLibrary#send(). Exceptions thrown by enter are wrapped as
+            // PolyglotEngineException. We need to unwrap them and throw as host exception.
+            throw toHostException(receiverContext, e);
         } else {
             throw e;
         }
