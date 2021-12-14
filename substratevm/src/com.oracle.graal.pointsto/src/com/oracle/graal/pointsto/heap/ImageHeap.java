@@ -35,7 +35,6 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.ResolvedJavaField;
 
 public class ImageHeap {
 
@@ -53,8 +52,8 @@ public class ImageHeap {
         return heapObjects.get(constant);
     }
 
-    public ImageHeapObject get(JavaConstant constant) {
-        return getTask(constant).ensureDone();
+    public AnalysisFuture<ImageHeapObject> addTask(JavaConstant constant, AnalysisFuture<ImageHeapObject> object) {
+        return heapObjects.putIfAbsent(constant, object);
     }
 
     public Set<ImageHeapObject> getObjects(AnalysisType type) {
@@ -62,11 +61,8 @@ public class ImageHeap {
     }
 
     public boolean add(AnalysisType type, ImageHeapObject heapObj) {
-        return heapObjects(type).add(heapObj);
-    }
-
-    private Set<ImageHeapObject> heapObjects(AnalysisType type) {
-        return typesToObjects.computeIfAbsent(type, t -> Collections.newSetFromMap(new ConcurrentHashMap<>()));
+        Set<ImageHeapObject> objectSet = typesToObjects.computeIfAbsent(type, t -> ConcurrentHashMap.newKeySet());
+        return objectSet.add(heapObj);
     }
 
     /**
@@ -76,27 +72,18 @@ public class ImageHeap {
      * created only after an object is processed through the object replacers.
      */
     public static class ImageHeapObject {
-        final AnalysisType type;
         /** Store the object, already processed by the object transformers. */
-        final JavaConstant object;
+        private final JavaConstant object;
 
-        ImageHeapObject(JavaConstant object, AnalysisType type) {
+        ImageHeapObject(JavaConstant object) {
             this.object = object;
-            this.type = type;
         }
 
         public JavaConstant getObject() {
             return object;
         }
 
-        /*
-         * Equals and hascode just compare the replaced constant. Thus two HeapObject insantaces are
-         * considered equal if they snapshot the same constant, even if the instanceFieldValues are
-         * different, i.e., they were snapshotted at different times during analysis and one of them
-         * mutated. This is necessary for the removal of the old snapshotted value on forced
-         * updates. Alternativelly each AnalysisType needs a mapping from JavaConstant to HeapObject
-         * instead of just a set of HeapObject.
-         */
+        /* Equals and hashCode just compare the replaced constant. */
 
         @Override
         public boolean equals(Object o) {
@@ -117,15 +104,15 @@ public class ImageHeap {
     public static final class ImageHeapInstance extends ImageHeapObject {
 
         /** Store original field values of the object. */
-        final Map<ResolvedJavaField, AnalysisFuture<JavaConstant>> objectFieldValues;
+        private final AnalysisFuture<JavaConstant>[] objectFieldValues;
 
-        ImageHeapInstance(JavaConstant object, AnalysisType type, Map<ResolvedJavaField, AnalysisFuture<JavaConstant>> objectFieldValues) {
-            super(object, type);
+        ImageHeapInstance(JavaConstant object, AnalysisFuture<JavaConstant>[] objectFieldValues) {
+            super(object);
             this.objectFieldValues = objectFieldValues;
         }
 
         public JavaConstant readFieldValue(AnalysisField field) {
-            return objectFieldValues.get(field).ensureDone();
+            return objectFieldValues[field.getPosition()].ensureDone();
         }
 
         /**
@@ -133,18 +120,18 @@ public class ImageHeap {
          * {@link ImageHeapScanner#onFieldValueReachable(AnalysisField, JavaConstant, JavaConstant, ObjectScanner.ScanReason)}.
          */
         public AnalysisFuture<JavaConstant> getFieldTask(AnalysisField field) {
-            return objectFieldValues.get(field);
+            return objectFieldValues[field.getPosition()];
         }
 
         /**
          * Read the field value, executing the field task in this thread if not already executed.
          */
         public JavaConstant readField(AnalysisField field) {
-            return objectFieldValues.get(field).ensureDone();
+            return objectFieldValues[field.getPosition()].ensureDone();
         }
 
         public void setFieldTask(AnalysisField field, AnalysisFuture<JavaConstant> task) {
-            objectFieldValues.put(field, task);
+            objectFieldValues[field.getPosition()] = task;
         }
     }
 
@@ -152,8 +139,8 @@ public class ImageHeap {
         /** Contains the already scanned array elements. */
         private final JavaConstant[] arrayElementValues;
 
-        ImageHeapArray(JavaConstant object, AnalysisType type, JavaConstant[] arrayElementValues) {
-            super(object, type);
+        ImageHeapArray(JavaConstant object, JavaConstant[] arrayElementValues) {
+            super(object);
             this.arrayElementValues = arrayElementValues;
         }
 

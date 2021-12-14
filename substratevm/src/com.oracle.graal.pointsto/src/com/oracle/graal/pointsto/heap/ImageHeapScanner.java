@@ -225,7 +225,7 @@ public abstract class ImageHeapScanner {
 
     protected AnalysisFuture<ImageHeapObject> getOrCreateConstantReachableTask(JavaConstant javaConstant, ScanReason reason) {
         ScanReason nonNullReason = Objects.requireNonNull(reason);
-        AnalysisFuture<ImageHeapObject> existingTask = imageHeap.heapObjects.get(javaConstant);
+        AnalysisFuture<ImageHeapObject> existingTask = imageHeap.getTask(javaConstant);
         if (existingTask == null) {
             /*
              * TODO - this still true? is it ok to seal the heap?
@@ -238,7 +238,7 @@ public abstract class ImageHeapScanner {
                 throw AnalysisError.shouldNotReachHere("Universe is sealed. New constant reachable: " + javaConstant.toValueString());
             }
             AnalysisFuture<ImageHeapObject> newTask = new AnalysisFuture<>(() -> createImageHeapObject(javaConstant, nonNullReason));
-            existingTask = imageHeap.heapObjects.putIfAbsent(javaConstant, newTask);
+            existingTask = imageHeap.addTask(javaConstant, newTask);
             if (existingTask == null) {
                 /*
                  * Immediately schedule the new task. There is no need to have not-yet-reachable
@@ -251,6 +251,7 @@ public abstract class ImageHeapScanner {
         return existingTask;
     }
 
+    @SuppressWarnings({"unchecked", "rawtypes"})
     protected ImageHeapObject createImageHeapObject(JavaConstant constant, ScanReason reason) {
         assert constant.getJavaKind() == JavaKind.Object && !constant.isNull();
 
@@ -283,19 +284,19 @@ public abstract class ImageHeapScanner {
                 final JavaConstant rawElementValue = constantReflection.readArrayElement(constant, idx);
                 arrayElements[idx] = onArrayElementReachable(constant, type, rawElementValue, idx, arrayReason);
             }
-            newImageHeapObject = new ImageHeapArray(constant, type, arrayElements);
+            newImageHeapObject = new ImageHeapArray(constant, arrayElements);
             markTypeInstantiated(type);
         } else {
-            Map<ResolvedJavaField, AnalysisFuture<JavaConstant>> instanceFieldValues = new HashMap<>();
             /*
              * We need to have the new ImageHeapInstance early so that we can reference it in the
              * lambda when the field value gets reachable. But it must not be published to any other
              * thread before all instanceFieldValues are filled in.
              */
-            newImageHeapObject = new ImageHeapInstance(constant, type, instanceFieldValues);
             /* We are about to query the type's fields, the type must be marked as reachable. */
             markTypeInstantiated(type);
-            for (AnalysisField field : type.getInstanceFields(true)) {
+            AnalysisField[] instanceFields = type.getInstanceFields(true);
+            AnalysisFuture<JavaConstant>[] instanceFieldValues = new AnalysisFuture[instanceFields.length];
+            for (AnalysisField field : instanceFields) {
                 ScanReason fieldReason = new FieldScan(field, constant, reason);
                 ValueSupplier<JavaConstant> rawFieldValue;
                 try {
@@ -304,8 +305,9 @@ public abstract class ImageHeapScanner {
                     /* Ignore missing type errors. */
                     continue;
                 }
-                instanceFieldValues.put(field, new AnalysisFuture<>(() -> onFieldValueReachable(field, constant, rawFieldValue, fieldReason)));
+                instanceFieldValues[field.getPosition()] = new AnalysisFuture<>(() -> onFieldValueReachable(field, constant, rawFieldValue, fieldReason));
             }
+            newImageHeapObject = new ImageHeapInstance(constant, instanceFieldValues);
         }
 
         /*
@@ -369,7 +371,7 @@ public abstract class ImageHeapScanner {
                 /* Notify the points-to analysis of the scan. */
                 if (objectFuture != null) {
                     /* Add the transformed value to the image heap. */
-                    scanningObserver.forNonNullFieldValue(receiver, field, objectFuture.ensureDone().object, reason);
+                    scanningObserver.forNonNullFieldValue(receiver, field, objectFuture.ensureDone().getObject(), reason);
                 }
             }
         }
@@ -389,24 +391,25 @@ public abstract class ImageHeapScanner {
                 scanningObserver.forNullArrayElement(array, arrayType, elementIndex, reason);
             } else {
                 ImageHeapObject element = objectFuture.ensureDone();
-                AnalysisType elementType = constantType(element.object);
+                AnalysisType elementType = constantType(element.getObject());
                 markTypeInstantiated(elementType);
                 /* Process the array element. */
-                scanningObserver.forNonNullArrayElement(array, arrayType, element.object, elementType, elementIndex, reason);
-                return element.object;
+                scanningObserver.forNonNullArrayElement(array, arrayType, element.getObject(), elementType, elementIndex, reason);
+                return element.getObject();
             }
         }
         return null;
     }
 
     void onObjectReachable(ImageHeapObject imageHeapObject) {
-        imageHeap.add(imageHeapObject.type, imageHeapObject);
+        AnalysisType objectType = metaAccess.lookupJavaType(imageHeapObject.getObject());
+        imageHeap.add(objectType, imageHeapObject);
 
-        markTypeInstantiated(imageHeapObject.type);
+        markTypeInstantiated(objectType);
 
         if (imageHeapObject instanceof ImageHeapInstance) {
             ImageHeapInstance imageHeapInstance = (ImageHeapInstance) imageHeapObject;
-            for (AnalysisField field : imageHeapObject.type.getInstanceFields(true)) {
+            for (AnalysisField field : objectType.getInstanceFields(true)) {
                 if (field.isReachable() && field.isRead() && isValueAvailable(field)) {
                     postTask(imageHeapInstance.getFieldTask(field));
                 }
@@ -489,7 +492,7 @@ public abstract class ImageHeapScanner {
     }
 
     protected AnalysisFuture<JavaConstant> patchInstanceField(ImageHeapInstance receiverObject, AnalysisField field, JavaConstant fieldValue, ScanReason reason) {
-        AnalysisFuture<JavaConstant> task = new AnalysisFuture<>(() -> onFieldValueReachable(field, receiverObject.object, fieldValue, reason));
+        AnalysisFuture<JavaConstant> task = new AnalysisFuture<>(() -> onFieldValueReachable(field, receiverObject.getObject(), fieldValue, reason));
         receiverObject.setFieldTask(field, task);
         return task;
     }
