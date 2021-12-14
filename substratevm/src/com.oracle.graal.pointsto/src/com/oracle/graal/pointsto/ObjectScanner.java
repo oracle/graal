@@ -71,6 +71,10 @@ public class ObjectScanner {
         this(bb, null, new ObjectScanner.ReusableSet(), scanningObserver);
     }
 
+    public ObjectScanner(BigBang bb, ReusableSet scannedObjects, ObjectScanningObserver scanningObserver) {
+        this(bb, null, scannedObjects, scanningObserver);
+    }
+
     public ObjectScanner(BigBang bb, CompletionExecutor executor, ReusableSet scannedObjects, ObjectScanningObserver scanningObserver) {
         this.bb = bb;
         this.scanningObserver = scanningObserver;

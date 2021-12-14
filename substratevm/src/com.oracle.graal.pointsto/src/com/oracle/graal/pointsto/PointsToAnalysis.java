@@ -572,10 +572,6 @@ public abstract class PointsToAnalysis implements BigBang {
         return providers.getConstantFieldProvider();
     }
 
-    public CompletionExecutor getExecutor() {
-        return executor;
-    }
-
     @Override
     public void checkUserLimitations() {
     }
@@ -636,22 +632,9 @@ public abstract class PointsToAnalysis implements BigBang {
     public boolean finish() throws InterruptedException {
         try (Indent indent = debug.logAndIndent("starting analysis in BigBang.finish")) {
             universe.setAnalysisDataValid(false);
-            boolean didSomeWork = false;
-
-            int numTypes;
-            do {
-                didSomeWork |= doTypeflow();
-
-                /*
-                 * Check if the object graph introduces any new types, which leads to new operations
-                 * being posted.
-                 */
-                assert executor.getPostedOperations() == 0;
-                numTypes = universe.getTypes().size();
-            } while (executor.getPostedOperations() != 0 || numTypes != universe.getTypes().size());
-
+            boolean didSomeWork = doTypeflow();
+            assert executor.getPostedOperations() == 0;
             universe.setAnalysisDataValid(true);
-
             return didSomeWork;
         }
     }
@@ -718,7 +701,6 @@ public abstract class PointsToAnalysis implements BigBang {
                                     "The analysis itself %s find a change in type states in the last iteration.",
                                     numIterations, analysisChanged ? "DID" : "DID NOT"));
                 }
-
                 /*
                  * Allow features to change the universe.
                  */
