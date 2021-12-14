@@ -24,21 +24,53 @@
  */
 package com.oracle.svm.jni;
 
-import com.oracle.svm.jni.hosted.JNICallTrampolineMethod;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.jni.hosted.JNIJavaCallWrapperMethod;
+import com.oracle.svm.jni.hosted.JNIJavaCallWrapperMethod.CallVariant;
 
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
- * Holder class for generated {@link JNICallTrampolineMethod} code.
+ * Holder class for generated {@link JNIJavaCallWrapperMethod} code.
  */
-public final class JNIJavaCallWrappers {
+public final class JNIJavaCallTrampolines {
     public static ConstantPool getConstantPool(MetaAccessProvider metaAccess) {
         // Each generated call wrapper needs an actual constant pool, so we provide our
         // private constructor's
         return metaAccess.lookupJavaType(JNIJavaCallWrappers.class).getDeclaredConstructors()[0].getConstantPool();
     }
 
-    private JNIJavaCallWrappers() {
+    public static String getTrampolineName(CallVariant variant, boolean nonVirtual) {
+        StringBuilder name = new StringBuilder(48);
+        if (variant == CallVariant.VARARGS) {
+            name.append("varargs");
+        } else if (variant == CallVariant.ARRAY) {
+            name.append("array");
+        } else if (variant == CallVariant.VA_LIST) {
+            name.append("valist");
+        } else {
+            throw VMError.shouldNotReachHere();
+        }
+        if (nonVirtual) {
+            name.append("Nonvirtual");
+        }
+        name.append("JavaCallTrampoline");
+        return name.toString();
     }
+
+    private JNIJavaCallTrampolines() {
+    }
+
+    private native void varargsJavaCallTrampoline();
+
+    private native void arrayJavaCallTrampoline();
+
+    private native void valistJavaCallTrampoline();
+
+    private native void varargsNonvirtualJavaCallTrampoline();
+
+    private native void arrayNonvirtualJavaCallTrampoline();
+
+    private native void valistNonvirtualJavaCallTrampoline();
 }

@@ -28,6 +28,7 @@ package com.oracle.svm.jni.access;
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.Collections;
@@ -37,7 +38,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.jni.JNIJavaCallTrampolines;
+import com.oracle.svm.util.ReflectionUtil;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -68,7 +70,6 @@ import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.meta.MaterializedConstantFields;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
-import com.oracle.svm.jni.JNIJavaCallWrappers;
 import com.oracle.svm.jni.JNISupport;
 import com.oracle.svm.jni.hosted.JNICallTrampolineMethod;
 import com.oracle.svm.jni.hosted.JNIFieldAccessorMethod;
@@ -186,20 +187,16 @@ public class JNIAccessFeature implements Feature {
         ResolvedJavaField field = JNIAccessibleMethod.getCallWrapperField(wrappedMetaAccess, variant, nonVirtual);
         access.getUniverse().lookup(field.getDeclaringClass()).registerAsReachable();
         access.registerAsAccessed(access.getUniverse().lookup(field));
-        String trampolineName = JNIJavaCallWrappers.getTrampolineName(variant, nonVirtual);
-        ResolvedJavaMethod method;
-        try {
-            method = wrappedMetaAccess.lookupJavaMethod(JNIJavaCallWrappers.class.getDeclaredMethod(trampolineName));
-        } catch (NoSuchMethodException e) {
-            throw VMError.shouldNotReachHere(e);
-        }
+        String trampolineName = JNIJavaCallTrampolines.getTrampolineName(variant, nonVirtual);
+        Method reflectionMethod = ReflectionUtil.lookupMethod(JNIJavaCallTrampolines.class, trampolineName);
+        ResolvedJavaMethod method = wrappedMetaAccess.lookupJavaMethod(reflectionMethod);
         JNICallTrampolineMethod trampoline = new JNICallTrampolineMethod(method, field, nonVirtual);
         access.registerAsCompiled(access.getUniverse().lookup(trampoline));
         trampolineMethods.put(trampolineName, trampoline);
     }
 
     public JNICallTrampolineMethod getCallTrampolineMethod(CallVariant variant, boolean nonVirtual) {
-        String trampolineName = JNIJavaCallWrappers.getTrampolineName(variant, nonVirtual);
+        String trampolineName = JNIJavaCallTrampolines.getTrampolineName(variant, nonVirtual);
         return getCallTrampolineMethod(trampolineName);
     }
 
