@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.api.staticobject.StaticShape;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
 public final class RedefineAddedField extends Field {
 
@@ -67,4 +68,361 @@ public final class RedefineAddedField extends Field {
         return extensionShape;
     }
 
+    private ExtensionFieldObject getExtensionObject(StaticObject instance) {
+        ExtensionFieldObject extensionFieldObject;
+        if (isStatic()) {
+            extensionFieldObject = getDeclaringKlass().getStaticExtensionFieldObject();
+        } else {
+            Field extensionField = holder.getKlass().getMeta().HIDDEN_OBJECT_EXTENSION_FIELD;
+            Object object = extensionField.getHiddenObject(instance);
+            if (object == null) {
+                // create new instance Extension field object
+                synchronized (instance) {
+                    object = extensionField.getHiddenObject(instance);
+                    if (object == null) {
+                        extensionFieldObject = new ExtensionFieldObject();
+                        extensionField.setHiddenObject(instance, extensionFieldObject);
+                    } else {
+                        extensionFieldObject = (ExtensionFieldObject) object;
+                    }
+                }
+            } else {
+                extensionFieldObject = (ExtensionFieldObject) object;
+            }
+        }
+        return extensionFieldObject;
+    }
+
+    @Override
+    protected StaticObject getObject(StaticObject obj, boolean forceVolatile) {
+        if (hasCompatibleField()) {
+            return getCompatibleField().getObject(obj, forceVolatile);
+        } else {
+            return getExtensionObject(obj).getObject(this, forceVolatile);
+        }
+    }
+
+    @Override
+    public final void setObject(StaticObject obj, Object value, boolean forceVolatile) {
+        if (hasCompatibleField()) {
+            getCompatibleField().setObject(obj, value, forceVolatile);
+        } else {
+            getExtensionObject(obj).setObject(this, value, forceVolatile);
+        }
+    }
+
+    @Override
+    public StaticObject getAndSetObject(StaticObject obj, StaticObject value) {
+        if (hasCompatibleField()) {
+            return getCompatibleField().getAndSetObject(obj, value);
+        } else {
+            return getExtensionObject(obj).getAndSetObject(this, value);
+        }
+    }
+
+    @Override
+    public boolean compareAndSwapObject(StaticObject obj, Object before, Object after) {
+        if (hasCompatibleField()) {
+            return getCompatibleField().compareAndSwapObject(obj, before, after);
+        } else {
+            return getExtensionObject(obj).compareAndSwapObject(this, before, after);
+        }
+    }
+
+    @Override
+    public StaticObject compareAndExchangeObject(StaticObject obj, Object before, Object after) {
+        if (hasCompatibleField()) {
+            return getCompatibleField().compareAndExchangeObject(obj, before, after);
+        } else {
+            return getExtensionObject(obj).compareAndExchangeObject(this, before, after);
+        }
+    }
+
+    @Override
+    public boolean getBoolean(StaticObject obj, boolean forceVolatile) {
+        if (hasCompatibleField()) {
+            return getCompatibleField().getBoolean(obj, forceVolatile);
+        } else {
+            return getExtensionObject(obj).getBoolean(this, forceVolatile);
+        }
+    }
+
+    @Override
+    public void setBoolean(StaticObject obj, boolean value, boolean forceVolatile) {
+        if (hasCompatibleField()) {
+            getCompatibleField().setBoolean(obj, value, forceVolatile);
+        } else {
+            getExtensionObject(obj).setBoolean(this, value, forceVolatile);
+        }
+    }
+
+    @Override
+    public boolean compareAndSwapBoolean(StaticObject obj, boolean before, boolean after) {
+        if (hasCompatibleField()) {
+            return getCompatibleField().compareAndSwapBoolean(obj, before, after);
+        } else {
+            return getExtensionObject(obj).compareAndSwapBoolean(this, before, after);
+        }
+    }
+
+    @Override
+    public boolean compareAndExchangeBoolean(StaticObject obj, boolean before, boolean after) {
+        if (hasCompatibleField()) {
+            return getCompatibleField().compareAndExchangeBoolean(obj, before, after);
+        } else {
+            return getExtensionObject(obj).compareAndExchangeBoolean(this, before, after);
+        }
+    }
+
+    @Override
+    public byte getByte(StaticObject obj, boolean forceVolatile) {
+        if (hasCompatibleField()) {
+            return getCompatibleField().getByte(obj, forceVolatile);
+        } else {
+            return getExtensionObject(obj).getByte(this, forceVolatile);
+        }
+    }
+
+    @Override
+    public void setByte(StaticObject obj, byte value, boolean forceVolatile) {
+        if (hasCompatibleField()) {
+            getCompatibleField().setByte(obj, value, forceVolatile);
+        } else {
+            getExtensionObject(obj).setByte(this, value, forceVolatile);
+        }
+    }
+
+    @Override
+    public boolean compareAndSwapByte(StaticObject obj, byte before, byte after) {
+        if (hasCompatibleField()) {
+            return getCompatibleField().compareAndSwapByte(obj, before, after);
+        } else {
+            return getExtensionObject(obj).compareAndSwapByte(this, before, after);
+        }
+    }
+
+    @Override
+    public byte compareAndExchangeByte(StaticObject obj, byte before, byte after) {
+        if (hasCompatibleField()) {
+            return getCompatibleField().compareAndExchangeByte(obj, before, after);
+        } else {
+            return getExtensionObject(obj).compareAndExchangeByte(this, before, after);
+        }
+    }
+
+    @Override
+    public char getChar(StaticObject obj, boolean forceVolatile) {
+        if (hasCompatibleField()) {
+            return getCompatibleField().getChar(obj, forceVolatile);
+        } else {
+            return getExtensionObject(obj).getChar(this, forceVolatile);
+        }
+    }
+
+    @Override
+    public void setChar(StaticObject obj, char value, boolean forceVolatile) {
+        if (hasCompatibleField()) {
+            getCompatibleField().setChar(obj, value, forceVolatile);
+        } else {
+            getExtensionObject(obj).setChar(this, value, forceVolatile);
+        }
+    }
+
+    @Override
+    public boolean compareAndSwapChar(StaticObject obj, char before, char after) {
+        if (hasCompatibleField()) {
+            return getCompatibleField().compareAndSwapChar(obj, before, after);
+        } else {
+            return getExtensionObject(obj).compareAndSwapChar(this, before, after);
+        }
+    }
+
+    @Override
+    public char compareAndExchangeChar(StaticObject obj, char before, char after) {
+        if (hasCompatibleField()) {
+            return getCompatibleField().compareAndExchangeChar(obj, before, after);
+        } else {
+            return getExtensionObject(obj).compareAndExchangeChar(this, before, after);
+        }
+    }
+
+    @Override
+    public double getDouble(StaticObject obj, boolean forceVolatile) {
+        if (hasCompatibleField()) {
+            return getCompatibleField().getDouble(obj, forceVolatile);
+        } else {
+            return getExtensionObject(obj).getDouble(this, forceVolatile);
+        }
+    }
+
+    @Override
+    public void setDouble(StaticObject obj, double value, boolean forceVolatile) {
+        if (hasCompatibleField()) {
+            getCompatibleField().setDouble(obj, value, forceVolatile);
+        } else {
+            getExtensionObject(obj).setDouble(this, value, forceVolatile);
+        }
+    }
+
+    @Override
+    public boolean compareAndSwapDouble(StaticObject obj, double before, double after) {
+        if (hasCompatibleField()) {
+            return getCompatibleField().compareAndSwapDouble(obj, before, after);
+        } else {
+            return getExtensionObject(obj).compareAndSwapDouble(this, before, after);
+        }
+    }
+
+    @Override
+    public double compareAndExchangeDouble(StaticObject obj, double before, double after) {
+        if (hasCompatibleField()) {
+            return getCompatibleField().compareAndExchangeDouble(obj, before, after);
+        } else {
+            return getExtensionObject(obj).compareAndExchangeDouble(this, before, after);
+        }
+    }
+
+    @Override
+    public float getFloat(StaticObject obj, boolean forceVolatile) {
+        if (hasCompatibleField()) {
+            return getCompatibleField().getFloat(obj, forceVolatile);
+        } else {
+            return getExtensionObject(obj).getFloat(this, forceVolatile);
+        }
+    }
+
+    @Override
+    public void setFloat(StaticObject obj, float value, boolean forceVolatile) {
+        if (hasCompatibleField()) {
+            getCompatibleField().setFloat(obj, value, forceVolatile);
+        } else {
+            getExtensionObject(obj).setFloat(this, value, forceVolatile);
+        }
+    }
+
+    @Override
+    public boolean compareAndSwapFloat(StaticObject obj, float before, float after) {
+        if (hasCompatibleField()) {
+            return getCompatibleField().compareAndSwapFloat(obj, before, after);
+        } else {
+            return getExtensionObject(obj).compareAndSwapFloat(this, before, after);
+        }
+    }
+
+    @Override
+    public float compareAndExchangeFloat(StaticObject obj, float before, float after) {
+        if (hasCompatibleField()) {
+            return getCompatibleField().compareAndExchangeFloat(obj, before, after);
+        } else {
+            return getExtensionObject(obj).compareAndExchangeFloat(this, before, after);
+        }
+    }
+
+    @Override
+    public int getInt(StaticObject obj, boolean forceVolatile) {
+        if (hasCompatibleField()) {
+            return getCompatibleField().getInt(obj, forceVolatile);
+        } else {
+            return getExtensionObject(obj).getInt(this, forceVolatile);
+        }
+    }
+
+    @Override
+    public void setInt(StaticObject obj, int value, boolean forceVolatile) {
+        if (hasCompatibleField()) {
+            getCompatibleField().setInt(obj, value, forceVolatile);
+        } else {
+            getExtensionObject(obj).setInt(this, value, forceVolatile);
+        }
+    }
+
+    @Override
+    public boolean compareAndSwapInt(StaticObject obj, int before, int after) {
+        if (hasCompatibleField()) {
+            return getCompatibleField().compareAndSwapInt(obj, before, after);
+        } else {
+            return getExtensionObject(obj).compareAndSwapInt(this, before, after);
+        }
+    }
+
+    @Override
+    public int compareAndExchangeInt(StaticObject obj, int before, int after) {
+        if (hasCompatibleField()) {
+            return getCompatibleField().compareAndExchangeInt(obj, before, after);
+        } else {
+            return getExtensionObject(obj).compareAndExchangeInt(this, before, after);
+        }
+    }
+
+    @Override
+    public long getLong(StaticObject obj, boolean forceVolatile) {
+        if (hasCompatibleField()) {
+            return getCompatibleField().getLong(obj, forceVolatile);
+        } else {
+            return getExtensionObject(obj).getLong(this, forceVolatile);
+        }
+    }
+
+    @Override
+    public void setLong(StaticObject obj, long value, boolean forceVolatile) {
+        if (hasCompatibleField()) {
+            getCompatibleField().setLong(obj, value, forceVolatile);
+        } else {
+            getExtensionObject(obj).setLong(this, value, forceVolatile);
+        }
+    }
+
+    @Override
+    public boolean compareAndSwapLong(StaticObject obj, long before, long after) {
+        if (hasCompatibleField()) {
+            return getCompatibleField().compareAndSwapLong(obj, before, after);
+        } else {
+            return getExtensionObject(obj).compareAndSwapLong(this, before, after);
+        }
+    }
+
+    @Override
+    public long compareAndExchangeLong(StaticObject obj, long before, long after) {
+        if (hasCompatibleField()) {
+            return getCompatibleField().compareAndExchangeLong(obj, before, after);
+        } else {
+            return getExtensionObject(obj).compareAndExchangeLong(this, before, after);
+        }
+    }
+
+    @Override
+    public short getShort(StaticObject obj, boolean forceVolatile) {
+        if (hasCompatibleField()) {
+            return getCompatibleField().getShort(obj, forceVolatile);
+        } else {
+            return getExtensionObject(obj).getShort(this, forceVolatile);
+        }
+    }
+
+    @Override
+    public void setShort(StaticObject obj, short value, boolean forceVolatile) {
+        if (hasCompatibleField()) {
+            getCompatibleField().setShort(obj, value, forceVolatile);
+        } else {
+            getExtensionObject(obj).setShort(this, value, forceVolatile);
+        }
+    }
+
+    @Override
+    public boolean compareAndSwapShort(StaticObject obj, short before, short after) {
+        if (hasCompatibleField()) {
+            return getCompatibleField().compareAndSwapShort(obj, before, after);
+        } else {
+            return getExtensionObject(obj).compareAndSwapShort(this, before, after);
+        }
+    }
+
+    @Override
+    public short compareAndExchangeShort(StaticObject obj, short before, short after) {
+        if (hasCompatibleField()) {
+            return getCompatibleField().compareAndExchangeShort(obj, before, after);
+        } else {
+            return getExtensionObject(obj).compareAndExchangeShort(this, before, after);
+        }
+    }
 }
