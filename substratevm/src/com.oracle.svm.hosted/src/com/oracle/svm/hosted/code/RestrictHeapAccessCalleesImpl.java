@@ -86,8 +86,12 @@ public class RestrictHeapAccessCalleesImpl implements RestrictHeapAccessCallees 
 
     @Override
     public boolean mustNotAllocate(ResolvedJavaMethod method) {
+        return isRestricted(method) || Uninterruptible.Utils.isUninterruptible(method);
+    }
+
+    private boolean isRestricted(ResolvedJavaMethod method) {
         RestrictionInfo info = getRestrictionInfo(method);
-        return info != null && (info.getAccess() == Access.NO_ALLOCATION || info.getAccess().isMoreRestrictiveThan(Access.NO_ALLOCATION));
+        return info != null && info.getAccess() != Access.UNRESTRICTED;
     }
 
     /** Get the map from a callee to a caller. */
@@ -96,8 +100,8 @@ public class RestrictHeapAccessCalleesImpl implements RestrictHeapAccessCallees 
     }
 
     /**
-     * Aggregate a set of methods that are annotated with {@link RestrictHeapAccess} or with
-     * {@link Uninterruptible}, or methods that are called from those methods.
+     * Aggregate a set of methods that are annotated with {@link RestrictHeapAccess}, or methods
+     * that are called from those methods.
      */
     public void aggregateMethods(Collection<AnalysisMethod> methods) {
         assert !initialized : "RestrictHeapAccessCallees.aggregateMethods: Should only initialize once.";
@@ -112,17 +116,6 @@ public class RestrictHeapAccessCalleesImpl implements RestrictHeapAccessCallees 
         for (AnalysisMethod method : aggregation.keySet().toArray(new AnalysisMethod[0])) {
             walker.walkMethod(method, visitor);
         }
-
-        for (AnalysisMethod method : methods) {
-            /*
-             * Uninterruptible annotations must also be present on all callees of an annotated
-             * method, so there is no need to propagate information through the call tree.
-             */
-            if (method.isAnnotationPresent(Uninterruptible.class) && aggregation.get(method) == null) {
-                aggregation.put(method, new RestrictionInfo(Access.NO_ALLOCATION, null, null, method));
-            }
-        }
-
         calleeToCallerMap = Collections.unmodifiableMap(aggregation);
         initialized = true;
     }

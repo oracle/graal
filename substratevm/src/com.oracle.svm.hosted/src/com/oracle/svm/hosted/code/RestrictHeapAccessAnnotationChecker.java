@@ -85,7 +85,7 @@ public final class RestrictHeapAccessAnnotationChecker {
         return isAllocationNode(node);
     }
 
-    private static boolean isAllocationNode(Node node) {
+    static boolean isAllocationNode(Node node) {
         return (node instanceof CommitAllocationNode || node instanceof AbstractNewObjectNode || node instanceof NewMultiArrayNode);
     }
 
