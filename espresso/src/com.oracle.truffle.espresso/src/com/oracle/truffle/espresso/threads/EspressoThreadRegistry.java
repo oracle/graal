@@ -336,18 +336,19 @@ public final class EspressoThreadRegistry implements ContextAccess {
 
     public void stopThreads() {
         synchronized (activeThreadLock) {
+            StaticObject currentThread = getGuestThreadFromHost(Thread.currentThread());
             activeThreads.forEach(t -> {
-//                if (context.getCurrentThread().equals(t))
-//                    return;
-//                try {
-//                    context.getThreadAccess().terminate(t);
-//                } catch (Exception e) {
-//                    logger.warning(() -> {
-//                        String guestName = context.getThreadAccess().getThreadName(t);
-//                        long guestId = context.getThreadAccess().getThreadId(t);
-//                        return String.format("Failed to stop thread: [GUEST:%s, %d]", guestName, guestId);
-//                    });
-//                }
+                if (currentThread != null && currentThread.equals(t))
+                    return;
+                try {
+                    context.getThreadAccess().terminate(t);
+                } catch (Exception e) {
+                    logger.warning(() -> {
+                        String guestName = context.getThreadAccess().getThreadName(t);
+                        long guestId = context.getThreadAccess().getThreadId(t);
+                        return String.format("Failed to stop thread: [GUEST:%s, %d]", guestName, guestId);
+                    });
+                }
             });
         }
     }

@@ -133,6 +133,10 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     @Override
     protected EspressoContext createContext(final TruffleLanguage.Env env) {
+        if (env.isPreInitialization() && env.getOptions().get(EspressoOptions.MultiThreaded)) {
+            throw new UnsupportedOperationException("Context pre-initialization in multi-threaded mode is not yet supported.");
+        }
+
         // TODO(peterssen): Redirect in/out to env.in()/out()
         EspressoContext context = new EspressoContext(env, this);
         context.setMainArguments(env.getApplicationArguments());
@@ -146,7 +150,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     @Override
     protected void finalizeContext(EspressoContext context) {
-        if (!context.isInitialized()) {
+        if (context.isReadyForSerialization()) {
             return;
         }
 
@@ -270,14 +274,14 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     @Override
     protected void initializeThread(EspressoContext context, Thread thread) {
-        if (context.isInitialized()) {
+        if (!context.isReadyForSerialization()) {
             context.createThread(thread);
         }
     }
 
     @Override
     protected void disposeThread(EspressoContext context, Thread thread) {
-        if (context.isInitialized()) {
+        if (!context.isReadyForSerialization()) {
             context.disposeThread(thread);
         }
     }

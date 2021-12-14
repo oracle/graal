@@ -164,6 +164,7 @@ public final class EspressoContext {
     @CompilationFinal private boolean modulesInitialized = false;
     @CompilationFinal private boolean metaInitialized = false;
     private boolean initialized = false;
+    private boolean readyForSerialization = false;
     private Classpath bootClasspath;
     // endregion InitControl
 
@@ -366,6 +367,8 @@ public final class EspressoContext {
         } else {
             this.classHierarchyOracle = new NoOpClassHierarchyOracle();
         }
+
+        this.readyForSerialization = false;
     }
 
     public EspressoLanguage getLanguage() {
@@ -471,6 +474,7 @@ public final class EspressoContext {
         if (getEnv().isPreInitialization()) {
             populateParserKlassCache();
             prepareForSerialization();
+            this.readyForSerialization = true;
         } else {
             this.initialized = true;
             // enable JDWP instrumenter only if options are set (assumed valid if non-null)
@@ -576,6 +580,9 @@ public final class EspressoContext {
             this.referenceDrainer.joinReferenceDrain();
         } catch (InterruptedException e) {
             getLogger().log(Level.FINE, "An error occurred while joining reference drainer");
+        }
+        if (vm.DetachCurrentThread(this) != JNI_OK) {
+            throw new RuntimeException("Could not detach current thread correctly");
         }
         this.threadRegistry.stopThreads();
         this.bootClasspath.closeEntries();
@@ -827,6 +834,10 @@ public final class EspressoContext {
 
     public boolean isInitialized() {
         return initialized;
+    }
+
+    public boolean isReadyForSerialization() {
+        return readyForSerialization;
     }
 
     public InterpreterToVM getInterpreterToVM() {
