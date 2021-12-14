@@ -35,7 +35,6 @@ public final class JavaContinuations {
     public static final int YIELD_SUCCESS = 0;
     public static final int PINNED_CRITICAL_SECTION = 1;
     public static final int PINNED_NATIVE = 2;
-    public static final int PINNED_MONITOR = 3;
 
     @Fold
     public static boolean isSupported() {

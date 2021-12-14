@@ -152,6 +152,11 @@ public final class Target_java_lang_Thread {
     @Alias @TargetElement(onlyWith = NotLoomJDK.class) //
     volatile Target_sun_nio_ch_Interruptible blocker;
 
+    /** @see JavaThreads#setCurrentThreadLockHelper */
+    @Inject @TargetElement(onlyWith = ContinuationsSupported.class) //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    Object lockHelper;
+
     @Alias
     native void setPriority(int newPriority);
 

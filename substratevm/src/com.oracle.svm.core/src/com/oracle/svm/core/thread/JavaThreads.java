@@ -98,10 +98,16 @@ public abstract class JavaThreads {
     static final FastThreadLocalObject<Thread> platformThread = FastThreadLocalFactory.createObject(Thread.class, "JavaThreads.platformThread").setMaxOffset(FastThreadLocal.BYTE_OFFSET);
 
     /**
+     * A thread-local helper object for locking. Use only if each {@link Thread} corresponds to an
+     * {@link IsolateThread}, otherwise use {@link Target_java_lang_Thread#lockHelper}.
+     */
+    private static final FastThreadLocalObject<Object> lockHelper = FastThreadLocalFactory.createObject(Object.class, "JavaThreads.lockHelper").setMaxOffset(FastThreadLocal.BYTE_OFFSET);
+
+    /**
      * The number of running non-daemon threads. The initial value accounts for the main thread,
      * which is implicitly running when the isolate is created.
      */
-    static final UninterruptibleUtils.AtomicInteger nonDaemonThreads = new UninterruptibleUtils.AtomicInteger(1);
+    private static final UninterruptibleUtils.AtomicInteger nonDaemonThreads = new UninterruptibleUtils.AtomicInteger(1);
 
     /**
      * Tracks the number of threads that have been started, but are not yet executing Java code. For
@@ -1101,6 +1107,24 @@ public abstract class JavaThreads {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     static ThreadData getCurrentThreadData() {
         return (ThreadData) toTarget(Thread.currentThread()).threadData;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.")
+    public static void setCurrentThreadLockHelper(Object root) {
+        if (JavaContinuations.isSupported()) {
+            toTarget(Thread.currentThread()).lockHelper = root;
+        } else {
+            lockHelper.set(root);
+        }
+    }
+
+    @AlwaysInline("Locking fast path.")
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static Object getCurrentThreadLockHelper() {
+        if (JavaContinuations.isSupported()) {
+            return toTarget(Thread.currentThread()).lockHelper;
+        }
+        return lockHelper.get();
     }
 
     /**

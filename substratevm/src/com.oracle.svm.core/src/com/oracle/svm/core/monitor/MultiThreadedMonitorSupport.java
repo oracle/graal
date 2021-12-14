@@ -41,7 +41,6 @@ import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.BarrieredAccess;
-import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -58,11 +57,8 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
-import com.oracle.svm.core.thread.LoomSupport;
 import com.oracle.svm.core.thread.ThreadStatus;
 import com.oracle.svm.core.thread.VMOperationControl;
-import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
-import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.util.VMError;
 
 import sun.misc.Unsafe;
@@ -91,24 +87,6 @@ import sun.misc.Unsafe;
 public class MultiThreadedMonitorSupport extends MonitorSupport {
 
     private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
-
-    /**
-     * This is only used for preempting a continuation in the experimental Loom JDK support. There's
-     * performance impact in this solution.
-     */
-    protected static final FastThreadLocalInt lockedMonitors = FastThreadLocalFactory.createInt("MultiThreadedMonitorSupport.lockedMonitors");
-
-    protected static void onMonitorLocked() {
-        if (LoomSupport.isEnabled()) {
-            lockedMonitors.set(lockedMonitors.get() + 1);
-        }
-    }
-
-    protected static void onMonitorUnlocked() {
-        if (LoomSupport.isEnabled()) {
-            lockedMonitors.set(lockedMonitors.get() - 1);
-        }
-    }
 
     /**
      * Types that are used to implement the secondary storage for monitor slots cannot themselves
@@ -266,8 +244,6 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     public void monitorEnter(Object obj) {
         ReentrantLock lockObject = getOrCreateMonitor(obj, true);
         lockObject.lock();
-
-        onMonitorLocked();
     }
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
@@ -305,8 +281,6 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     public void monitorExit(Object obj) {
         ReentrantLock lockObject = getOrCreateMonitor(obj, true);
         lockObject.unlock();
-
-        onMonitorUnlocked();
     }
 
     @Override
@@ -375,12 +349,6 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     public boolean isLockedByAnyThread(Object obj) {
         ReentrantLock lockObject = getOrCreateMonitor(obj, false);
         return lockObject != null && lockObject.isLocked();
-    }
-
-    @Override
-    public int countThreadLock(IsolateThread vmThread) {
-        VMError.guarantee(LoomSupport.isEnabled(), "This method is only supported when continuations are enabled.");
-        return lockedMonitors.get(vmThread);
     }
 
     @SuppressFBWarnings(value = {"WA_AWAIT_NOT_IN_LOOP"}, justification = "This method is a wait implementation.")

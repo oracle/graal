@@ -54,9 +54,6 @@ public final class Target_java_lang_Continuation {
     static byte FLAG_SAFEPOINT_YIELD = 1 << 1;
     // Checkstyle: resume
 
-    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
-    int monitorBefore;
-
     @SuppressWarnings("unused")
     @Alias
     public Target_java_lang_Continuation(Target_java_lang_ContinuationScope scope, Runnable target) {
@@ -171,7 +168,6 @@ public final class Target_java_lang_Continuation {
         if (!isContinue) {
             assert cont.internal == null;
             cont.internal = new Continuation(cont::enter0);
-            cont.monitorBefore = 0;
         }
 
         cont.internal.enter();
