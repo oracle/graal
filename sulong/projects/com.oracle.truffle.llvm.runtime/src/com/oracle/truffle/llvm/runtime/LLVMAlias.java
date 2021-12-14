@@ -87,7 +87,7 @@ public class LLVMAlias extends LLVMSymbol {
         return super.getName() + " -> " + target.toString();
     }
 
-    private void checkForCycle(LLVMAlias alias, EconomicSet<LLVMAlias> visited) {
+    private static void checkForCycle(LLVMAlias alias, EconomicSet<LLVMAlias> visited) {
         if (visited.contains(alias)) {
             throw new LLVMLinkerException("Found a cycle between the following aliases: " + visited.toString());
         }
@@ -102,11 +102,15 @@ public class LLVMAlias extends LLVMSymbol {
         if (symbol == null) {
             return null;
         }
-        LLVMSymbol tmp = symbol;
-        while (tmp.isAlias()) {
-            tmp = ((LLVMAlias) tmp).getTarget();
+        LLVMSymbol temp = symbol;
+        if (temp instanceof LLVMAlias) {
+            EconomicSet<LLVMAlias> visited = EconomicSet.create(Equivalence.IDENTITY);
+            checkForCycle((LLVMAlias) temp, visited);
+            while (temp.isAlias()) {
+                temp = ((LLVMAlias) temp).getTarget();
+            }
         }
-        return tmp;
+        return temp;
     }
 
     @Override
