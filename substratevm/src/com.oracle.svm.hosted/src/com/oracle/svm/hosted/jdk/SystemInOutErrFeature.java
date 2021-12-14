@@ -48,11 +48,17 @@ public class SystemInOutErrFeature implements Feature {
     private final PrintStream hostedOut = System.out;
     private final PrintStream hostedErr = System.err;
 
+    private SystemInOutErrSupport runtime;
+
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        runtime = new SystemInOutErrSupport();
+        ImageSingletons.add(SystemInOutErrSupport.class, runtime);
+    }
+
     @Override
     public void duringSetup(DuringSetupAccess access) {
         NativeImageSystemIOWrappers.singleton().verifySystemOutErrReplacement();
-
-        ImageSingletons.add(SystemInOutErrSupport.class, new SystemInOutErrSupport());
         access.registerObjectReplacer(this::replaceStreams);
     }
 
@@ -63,11 +69,11 @@ public class SystemInOutErrFeature implements Feature {
 
     Object replaceStreams(Object object) {
         if (object == hostedIn) {
-            return SystemInOutErrSupport.in();
+            return runtime.in();
         } else if (object == hostedOut) {
-            return SystemInOutErrSupport.out();
+            return runtime.out();
         } else if (object == hostedErr) {
-            return SystemInOutErrSupport.err();
+            return runtime.err();
         } else {
             return object;
         }

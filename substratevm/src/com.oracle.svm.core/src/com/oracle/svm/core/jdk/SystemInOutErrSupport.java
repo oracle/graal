@@ -63,27 +63,32 @@ public final class SystemInOutErrSupport {
         return new PrintStream(new BufferedOutputStream(fos, 128), true);
     }
 
-    public static InputStream in() {
-        return ImageSingletons.lookup(SystemInOutErrSupport.class).in;
+    public InputStream in() {
+        return in;
     }
 
     public static void setIn(InputStream in) {
         ImageSingletons.lookup(SystemInOutErrSupport.class).in = Objects.requireNonNull(in);
     }
 
-    public static PrintStream out() {
-        return ImageSingletons.lookup(SystemInOutErrSupport.class).out;
+    public PrintStream out() {
+        return out;
     }
 
     public static void setOut(PrintStream out) {
         ImageSingletons.lookup(SystemInOutErrSupport.class).out = Objects.requireNonNull(out);
     }
 
-    public static PrintStream err() {
-        return ImageSingletons.lookup(SystemInOutErrSupport.class).err;
+    public PrintStream err() {
+        return err;
     }
 
     public static void setErr(PrintStream err) {
         ImageSingletons.lookup(SystemInOutErrSupport.class).err = Objects.requireNonNull(err);
     }
+}
+
+@SuppressWarnings("unused")
+class SystemInOutErrFeature implements Feature {
+    /* Dummy for backward compatibility. */
 }
