@@ -42,7 +42,7 @@ import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationImpl;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
-import com.oracle.svm.core.thread.JavaContinuations;
+import com.oracle.svm.core.thread.Continuation;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -159,7 +159,7 @@ public class LayoutEncoding {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isStoredContinuation(int encoding) {
-        return JavaContinuations.isSupported() && encoding == STORED_CONTINUATION_VALUE;
+        return Continuation.isSupported() && encoding == STORED_CONTINUATION_VALUE;
     }
 
     // May be inlined because it does not deal in Pointers.

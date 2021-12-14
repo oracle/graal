@@ -24,11 +24,13 @@
  */
 package com.oracle.svm.core.thread;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -37,7 +39,19 @@ import com.oracle.svm.core.heap.StoredContinuationImpl;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
+/**
+ * Foundation for continuation support via {@link SubstrateVirtualThread} or
+ * {@linkplain Target_java_lang_Continuation Project Loom}.
+ */
 public final class Continuation {
+    @Fold
+    public static boolean isSupported() {
+        return SubstrateOptions.SupportContinuations.getValue();
+    }
+
+    public static final int YIELDING = -2;
+    public static final int YIELD_SUCCESS = 0;
+
     private final Runnable target;
 
     public StoredContinuation stored;
@@ -52,6 +66,10 @@ public final class Continuation {
 
     Continuation(Runnable target) {
         this.target = target;
+    }
+
+    public void setIP(CodePointer ip) {
+        this.ip = ip;
     }
 
     void enter() {
@@ -144,7 +162,7 @@ public final class Continuation {
     }
 
     static class TryPreemptThunk implements SubstrateUtil.Thunk {
-        int preemptStatus = JavaContinuations.YIELD_SUCCESS;
+        int preemptStatus = YIELD_SUCCESS;
 
         final Continuation cont;
         final Thread thread;

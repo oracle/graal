@@ -28,6 +28,8 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import java.util.concurrent.ThreadFactory;
 
+import org.graalvm.compiler.api.replacements.Fold;
+
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.util.VMError;
@@ -42,6 +44,12 @@ import com.oracle.svm.core.util.VMError;
 final class LoomVirtualThreads extends NoVirtualThreads {
     private static Target_java_lang_VirtualThread cast(Thread thread) {
         return SubstrateUtil.cast(thread, Target_java_lang_VirtualThread.class);
+    }
+
+    @Fold
+    @Override
+    public boolean isSupported() {
+        return true;
     }
 
     @Override

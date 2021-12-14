@@ -50,7 +50,6 @@ import com.oracle.svm.core.graal.nodes.NewStoredContinuationNode;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.thread.Continuation;
-import com.oracle.svm.core.thread.JavaContinuations;
 import com.oracle.svm.core.thread.Safepoint;
 import com.oracle.svm.core.util.VMError;
 
@@ -249,12 +248,12 @@ public final class StoredContinuationImpl {
             resultLeafSP = visitor.leafSP;
         }
 
-        if (visitor.preemptStatus != JavaContinuations.YIELD_SUCCESS) {
+        if (visitor.preemptStatus != Continuation.YIELD_SUCCESS) {
             return visitor.preemptStatus;
         }
 
         if (!isCurrentThread) {
-            JavaContinuations.setIP(cont, visitor.leafIP);
+            cont.setIP(visitor.leafIP);
         }
         VMError.guarantee(resultLeafSP.isNonNull());
 
@@ -280,7 +279,7 @@ public final class StoredContinuationImpl {
         VMError.guarantee(frameSize == allFrameSize);
         UnmanagedMemoryUtil.copy(resultLeafSP, frameStart, WordFactory.unsigned(frameSize));
 
-        return JavaContinuations.YIELD_SUCCESS;
+        return Continuation.YIELD_SUCCESS;
     }
 
     /**
@@ -320,7 +319,7 @@ public final class StoredContinuationImpl {
     }
 
     private static class YieldVisitor extends StackFrameVisitor {
-        int preemptStatus = JavaContinuations.YIELD_SUCCESS;
+        int preemptStatus = Continuation.YIELD_SUCCESS;
 
         Pointer rootSP;
         Pointer leafSP;
@@ -345,7 +344,7 @@ public final class StoredContinuationImpl {
         protected boolean visitFrame(Pointer sp, CodePointer ip, CodeInfo codeInfo, DeoptimizedFrame deoptimizedFrame) {
             FrameInfoQueryResult frameInfo = CodeInfoTable.lookupCodeInfoQueryResult(codeInfo, ip).getFrameInfo();
             if (frameInfo.getSourceClass().equals(StoredContinuationImpl.class) && frameInfo.getSourceMethodName().equals("allocateFromStack")) {
-                preemptStatus = JavaContinuations.YIELDING;
+                preemptStatus = Continuation.YIELDING;
                 return false;
             }
 

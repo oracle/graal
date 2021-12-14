@@ -46,7 +46,7 @@ public class ContinuationsFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         VirtualThreads impl;
-        if (JavaContinuations.isSupported()) {
+        if (Continuation.isSupported()) {
             if (LoomSupport.isEnabled()) {
                 impl = new LoomVirtualThreads();
             } else {
@@ -62,7 +62,7 @@ public class ContinuationsFeature implements Feature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (JavaContinuations.isSupported()) {
+        if (Continuation.isSupported()) {
             access.registerAsInHeap(StoredContinuation.class);
 
             if (LoomSupport.isEnabled()) {

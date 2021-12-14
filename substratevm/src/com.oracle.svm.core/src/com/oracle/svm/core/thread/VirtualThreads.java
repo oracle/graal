@@ -35,6 +35,9 @@ public interface VirtualThreads {
         return ImageSingletons.lookup(VirtualThreads.class);
     }
 
+    @Fold
+    boolean isSupported();
+
     ThreadFactory createFactory();
 
     boolean isVirtual(Thread thread);

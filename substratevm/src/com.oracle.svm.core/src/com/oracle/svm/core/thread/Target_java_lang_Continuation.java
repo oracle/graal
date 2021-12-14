@@ -202,10 +202,10 @@ public final class Target_java_lang_Continuation {
             cont.yieldInfo = scope;
         }
         int preemptResult = internal.tryPreempt(SubstrateUtil.cast(thread, Thread.class));
-        if (preemptResult == 0) {
+        if (preemptResult == Continuation.YIELD_SUCCESS) {
             flags = FLAG_SAFEPOINT_YIELD;
         }
-        return preemptResult;
+        return LoomSupport.convertInternalYieldResult(preemptResult);
     }
 }
 

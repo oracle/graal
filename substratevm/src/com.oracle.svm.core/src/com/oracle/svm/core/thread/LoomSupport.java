@@ -43,14 +43,21 @@ import com.oracle.svm.util.ReflectionUtil;
 import sun.misc.Unsafe;
 
 public final class LoomSupport {
+    public static final int YIELD_SUCCESS = 0;
+    public static final int PINNED_CRITICAL_SECTION = 1;
+    public static final int PINNED_NATIVE = 2;
 
     @Fold
     public static boolean isEnabled() {
-        return JavaContinuations.isSupported() && SubstrateOptions.UseLoom.getValue();
+        return Continuation.isSupported() && SubstrateOptions.UseLoom.getValue();
     }
 
-    public static Integer yield(Target_java_lang_Continuation cont) {
-        return cont.internal.yield();
+    public static int yield(Target_java_lang_Continuation cont) {
+        return convertInternalYieldResult(cont.internal.yield());
+    }
+
+    static int convertInternalYieldResult(int value) {
+        return value; // ideally, the values are the same
     }
 
     public static int isPinned(Target_java_lang_Thread thread, Target_java_lang_ContinuationScope scope, boolean isCurrentThread) {
@@ -61,7 +68,7 @@ public final class LoomSupport {
         if (cont != null) {
             while (true) {
                 if (cont.cs > 0) {
-                    return JavaContinuations.PINNED_CRITICAL_SECTION;
+                    return PINNED_CRITICAL_SECTION;
                 }
 
                 if (cont.getParent() != null && cont.getScope() != scope) {
@@ -73,10 +80,10 @@ public final class LoomSupport {
 
             JavaFrameAnchor anchor = JavaFrameAnchors.getFrameAnchor(vmThread);
             if (anchor.isNonNull() && cont.internal.sp.aboveThan(anchor.getLastJavaSP())) {
-                return JavaContinuations.PINNED_NATIVE;
+                return PINNED_NATIVE;
             }
         }
-        return JavaContinuations.YIELD_SUCCESS;
+        return YIELD_SUCCESS;
     }
 
     public static boolean isStarted(Target_java_lang_Continuation cont) {

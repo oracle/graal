@@ -201,7 +201,7 @@ final class SubstrateVirtualThread extends Thread {
 
         unmount();
         try {
-            return cont.yield() == JavaContinuations.YIELD_SUCCESS;
+            return cont.yield() == Continuation.YIELD_SUCCESS;
         } finally {
             mount();
         }

@@ -26,12 +26,20 @@ package com.oracle.svm.core.thread;
 
 import java.util.concurrent.ThreadFactory;
 
+import org.graalvm.compiler.api.replacements.Fold;
+
 import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.util.VMError;
 
 class NoVirtualThreads implements VirtualThreads {
     private static RuntimeException unreachable() {
         return VMError.shouldNotReachHere();
+    }
+
+    @Fold
+    @Override
+    public boolean isSupported() {
+        return false;
     }
 
     @Override

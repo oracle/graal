@@ -31,6 +31,8 @@ import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
+import org.graalvm.compiler.api.replacements.Fold;
+
 /** Our own implementation of virtual threads that does not need Project Loom. */
 final class SubstrateVirtualThreads implements VirtualThreads {
     private static final class CarrierThread extends ForkJoinWorkerThread {
@@ -54,6 +56,12 @@ final class SubstrateVirtualThreads implements VirtualThreads {
 
     private static SubstrateVirtualThread current() {
         return (SubstrateVirtualThread) Thread.currentThread();
+    }
+
+    @Fold
+    @Override
+    public boolean isSupported() {
+        return true;
     }
 
     @Override

@@ -26,11 +26,11 @@ package com.oracle.svm.core.jdk;
 
 import java.util.function.BooleanSupplier;
 
-import com.oracle.svm.core.thread.JavaContinuations;
+import com.oracle.svm.core.thread.Continuation;
 
 public class ContinuationsSupported implements BooleanSupplier {
     @Override
     public boolean getAsBoolean() {
-        return JavaContinuations.isSupported();
+        return Continuation.isSupported();
     }
 }
