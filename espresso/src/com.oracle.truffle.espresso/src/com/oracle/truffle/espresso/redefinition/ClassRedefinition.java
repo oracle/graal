@@ -101,6 +101,7 @@ public final class ClassRedefinition {
         NEW_CLASS,
         // currently supported under option
         SCHEMA_CHANGE,
+        CLASS_HIERARCHY_CHANGED,
         INVALID;
     }
 
@@ -229,6 +230,13 @@ public final class ClassRedefinition {
                     } else {
                         return ErrorCodes.SCHEMA_CHANGE_NOT_IMPLEMENTED;
                     }
+                case CLASS_HIERARCHY_CHANGED:
+                    if (context.arbitraryChangesSupported()) {
+                        doRedefineClass(packet, invalidatedClasses, redefinedClasses);
+                        return 0;
+                    } else {
+                        return ErrorCodes.HIERARCHY_CHANGE_NOT_IMPLEMENTED;
+                    }
                 case NEW_CLASS:
                     ClassInfo classInfo = packet.info;
 
@@ -263,22 +271,6 @@ public final class ClassRedefinition {
         ClassChange result = ClassChange.NO_CHANGE;
         ParserKlass oldParserKlass = oldKlass.getLinkedKlass().getParserKlass();
         boolean isPatched = finalParserKlass != null;
-
-        // detect changes to superclass and implemented interfaces
-        Klass superKlass = oldKlass.getSuperKlass();
-        if (!newParserKlass.getSuperKlass().equals(oldParserKlass.getSuperKlass())) {
-            superKlass = getLoadedKlass(newParserKlass.getSuperKlass(), oldKlass);
-        }
-        collectedChanges.addSuperKlass((ObjectKlass) superKlass);
-
-        ObjectKlass[] newSuperInterfaces = oldKlass.getSuperInterfaces();
-        if (!Arrays.equals(newParserKlass.getSuperInterfaces(), oldParserKlass.getSuperInterfaces())) {
-            newSuperInterfaces = new ObjectKlass[newParserKlass.getSuperInterfaces().length];
-            for (int i = 0; i < newParserKlass.getSuperInterfaces().length; i++) {
-                newSuperInterfaces[i] = (ObjectKlass) getLoadedKlass(newParserKlass.getSuperInterfaces()[i], oldKlass);
-            }
-        }
-        collectedChanges.addSuperInterfaces(newSuperInterfaces);
 
         // detect method changes (including constructors)
         ParserMethod[] newParserMethods = newParserKlass.getMethods();
@@ -442,6 +434,25 @@ public final class ClassRedefinition {
         }
 
         collectedChanges.addCompatibleFields(compatibleFields);
+
+        // detect changes to superclass and implemented interfaces
+        Klass superKlass = oldKlass.getSuperKlass();
+        if (!newParserKlass.getSuperKlass().equals(oldParserKlass.getSuperKlass())) {
+            result = ClassChange.CLASS_HIERARCHY_CHANGED;
+            superKlass = getLoadedKlass(newParserKlass.getSuperKlass(), oldKlass);
+        }
+        collectedChanges.addSuperKlass((ObjectKlass) superKlass);
+
+        ObjectKlass[] newSuperInterfaces = oldKlass.getSuperInterfaces();
+        if (!Arrays.equals(newParserKlass.getSuperInterfaces(), oldParserKlass.getSuperInterfaces())) {
+            result = ClassChange.CLASS_HIERARCHY_CHANGED;
+            newSuperInterfaces = new ObjectKlass[newParserKlass.getSuperInterfaces().length];
+            for (int i = 0; i < newParserKlass.getSuperInterfaces().length; i++) {
+                newSuperInterfaces[i] = (ObjectKlass) getLoadedKlass(newParserKlass.getSuperInterfaces()[i], oldKlass);
+            }
+        }
+        collectedChanges.addSuperInterfaces(newSuperInterfaces);
+
         return result;
     }
 
