@@ -833,7 +833,7 @@ public final class EspressoContext {
             getLogger().warning("unimplemented: disposeThread for non-current thread: " + hostThread + " / " + guestName);
             return;
         }
-        // Cannot run guest code after finalizeContext was called.
+        // Cannot run guest code after finalizeContext was called (GR-35712).
         if (isFinalized()) {
             return;
         }

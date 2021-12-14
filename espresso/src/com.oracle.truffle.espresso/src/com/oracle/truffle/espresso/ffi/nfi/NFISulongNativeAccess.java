@@ -64,7 +64,7 @@ public final class NFISulongNativeAccess extends NFINativeAccess {
 
     /**
      * Returns the Java version of the specified Java home directory, as declared in the 'release'
-     * file. Compatible only with Java 11+.
+     * file.
      * 
      * @return Java version as declared in the JAVA_VERSION property in the 'release' file, or null
      *         otherwise.
@@ -77,11 +77,12 @@ public final class NFISulongNativeAccess extends NFINativeAccess {
         try {
             for (String line : Files.readAllLines(releaseFile)) {
                 if (line.startsWith("JAVA_VERSION=")) {
-                    String quotedVersion = line.substring("JAVA_VERSION=".length()).trim();
-                    if (quotedVersion.length() > 2) {
-                        assert quotedVersion.startsWith("\"") && quotedVersion.endsWith("\"");
-                        return quotedVersion.substring(1, quotedVersion.length() - 1);
+                    String version = line.substring("JAVA_VERSION=".length()).trim();
+                    // JAVA_VERSION=<value> may be quoted or unquoted, both cases are supported.
+                    if (version.length() > 2 && version.startsWith("\"") && version.endsWith("\"")) {
+                        version = version.substring(1, version.length() - 1);
                     }
+                    return version;
                 }
             }
         } catch (IOException e) {
@@ -111,25 +112,26 @@ public final class NFISulongNativeAccess extends NFINativeAccess {
          * Try directories in $ESPRESSO_HOME/lib/llvm/* for libraries with LLVM-bitcode compatible
          * with the specified Java version.
          */
-        if (!Files.exists(llvmRoot) || !Files.isDirectory(llvmRoot)) {
+        if (!Files.exists(llvmRoot)) {
             return null; // no folders with Java libraries + embedded LLVM-bitcode.
         }
 
         List<Path> sortedPaths = null;
         try {
             // Order must be deterministic.
-            sortedPaths = Files.list(llvmRoot).sorted().collect(Collectors.toList());
+            sortedPaths = Files.list(llvmRoot) //
+                            .filter(f -> !llvmDefault.equals(f) && Files.isDirectory(f)) //
+                            .sorted() //
+                            .collect(Collectors.toList());
         } catch (IOException e) {
             throw EspressoError.unexpected(e.getMessage(), e);
         }
 
         for (Path llvmImpl : sortedPaths) {
-            if (!llvmDefault.equals(llvmImpl) && Files.isDirectory(llvmImpl)) {
-                String llvmImplVersion = getJavaVersion(llvmImpl);
-                getLogger().fine(() -> "Checking " + llvmImpl + " with Java version: " + llvmImplVersion);
-                if (javaVersion.equals(llvmImplVersion)) {
-                    return llvmImpl;
-                }
+            String llvmImplVersion = getJavaVersion(llvmImpl);
+            getLogger().fine(() -> "Checking " + llvmImpl + " with Java version: " + llvmImplVersion);
+            if (javaVersion.equals(llvmImplVersion)) {
+                return llvmImpl;
             }
         }
 
@@ -146,7 +148,7 @@ public final class NFISulongNativeAccess extends NFINativeAccess {
     @Override
     public void updateEspressoProperties(EspressoProperties.Builder builder, OptionValues options) {
         if (options.hasBeenSet(EspressoOptions.BootLibraryPath)) {
-            getLogger().warning("--java.BootLibraryPath was set by the user, skip override for " + Provider.ID);
+            getLogger().info("--java.BootLibraryPath was set by the user, skipping override for " + Provider.ID);
         } else {
             String targetJavaVersion = getJavaVersion(builder.javaHome());
             if (targetJavaVersion == null) {
@@ -168,7 +170,7 @@ public final class NFISulongNativeAccess extends NFINativeAccess {
          * file system.
          */
         if (options.hasBeenSet(EspressoOptions.JVMLibraryPath)) {
-            getLogger().warning("--java.JVMLibraryPath was set by the user, skip override for " + Provider.ID);
+            getLogger().info("--java.JVMLibraryPath was set by the user, skipping override for " + Provider.ID);
         } else {
             builder.jvmLibraryPath(Collections.singletonList(builder.espressoHome().resolve("lib")));
         }
