@@ -49,6 +49,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.ImageSingletonsSupport;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -200,8 +201,12 @@ public class ProgressReporter {
         printStageStart(BuildStage.INITIALIZING);
     }
 
-    public void printInitializeEnd(Timer classlistTimer, Timer setupTimer, Collection<String> libraries) {
+    public void printInitializeEnd(Timer classlistTimer, Timer setupTimer) {
         printStageEnd(classlistTimer.getTotalTime() + setupTimer.getTotalTime());
+    }
+
+    public void printInitializeEnd(Timer classlistTimer, Timer setupTimer, Collection<String> libraries) {
+        printInitializeEnd(classlistTimer, setupTimer);
         l().a(" ").doclink("Version info", "#glossary-version-info").a(": '").a(ImageSingletons.lookup(VM.class).version).a("'").flushln();
         printNativeLibraries(libraries);
     }
@@ -602,7 +607,8 @@ public class ProgressReporter {
         String padding = stringFilledWith(Math.max(0, CHARACTERS_PER_LINE - numStageChars - suffix.length()), " ");
         linePrinter.a(padding).dim().a(suffix).reset().flushln(false);
         numStageChars = 0;
-        if (SubstrateOptions.BuildOutputGCWarnings.getValue()) {
+        boolean optionsAvailable = ImageSingletonsSupport.isInstalled() && ImageSingletons.contains(HostedOptionValues.class);
+        if (optionsAvailable && SubstrateOptions.BuildOutputGCWarnings.getValue()) {
             checkForExcessiveGarbageCollection();
         }
         builderIO.useCapturing = false;
