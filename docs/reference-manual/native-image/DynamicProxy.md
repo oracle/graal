@@ -98,7 +98,7 @@ Native Image provides two options for that: `-H:DynamicProxyConfigurationFiles=<
 [
  { "interfaces": [ "java.lang.AutoCloseable", "java.util.Comparator" ] },
  { "interfaces": [ "java.util.Comparator" ] },
- { "interfaces": [ "java.lang.List" ] }
+ { "interfaces": [ "java.util.List" ] }
 ]
 ```
 Note that the order of the specified proxy interfaces is significant: two requests for a `Proxy` class with the same combination of interfaces but in a different order will result in two distinct behaviours (for more detailed information, refer to [`Proxy Class `javadoc](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/reflect/Proxy.html).
