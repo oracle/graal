@@ -132,17 +132,17 @@ public final class EspressoKlassCache {
         }
     }
 
-    public LinkedKlass getOrCreateLinkedKlass(EspressoLanguage language, JavaVersion version, ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces, ClassRegistry.ClassDefinitionInfo info) {
+    public LinkedKlass getOrCreateLinkedKlass(ContextDescription description, ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces, ClassRegistry.ClassDefinitionInfo info) {
         if (isLinkedKlassCacheEnabled && !info.isAnonymousClass()) {
             LinkedKlassCacheKey key = new LinkedKlassCacheKey(parserKlass, superKlass, interfaces);
             LinkedKlass linkedKlass = linkedKlassCache.get(key);
             if (linkedKlass == null) {
-                linkedKlass = createLinkedKlass(language, version, parserKlass, superKlass, interfaces);
+                linkedKlass = createLinkedKlass(description, parserKlass, superKlass, interfaces);
                 linkedKlassCache.put(key, linkedKlass);
             }
             return linkedKlass;
         } else {
-            return createLinkedKlass(language, version, parserKlass, superKlass, interfaces);
+            return createLinkedKlass(description, parserKlass, superKlass, interfaces);
         }
     }
 
@@ -172,8 +172,8 @@ public final class EspressoKlassCache {
         return ClassfileParser.parse(new ClassfileStream(bytes, null), loader, typeOrNull, context, info);
     }
 
-    private LinkedKlass createLinkedKlass(EspressoLanguage language, JavaVersion version, ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces) {
-        return LinkedKlass.create(language, version, parserKlass, superKlass, interfaces);
+    private LinkedKlass createLinkedKlass(ContextDescription description, ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces) {
+        return LinkedKlass.create(description, parserKlass, superKlass, interfaces);
     }
 
     private static final class ParserKlassCacheKey {
