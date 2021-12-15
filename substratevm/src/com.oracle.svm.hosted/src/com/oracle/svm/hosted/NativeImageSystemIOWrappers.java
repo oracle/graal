@@ -49,9 +49,9 @@ public class NativeImageSystemIOWrappers {
     }
 
     public void verifySystemOutErrReplacement() {
-        String msg = " was changed during image building. This is not allowed.";
-        UserError.guarantee(System.out == outWrapper, "System.out" + msg);
-        UserError.guarantee(System.err == errWrapper, "System.err" + msg);
+        String format = "%s was changed during image building. This is not allowed.";
+        UserError.guarantee(System.out == outWrapper, format, "System.out");
+        UserError.guarantee(System.err == errWrapper, format, "System.err");
     }
 
     public PrintStream getOut() {
