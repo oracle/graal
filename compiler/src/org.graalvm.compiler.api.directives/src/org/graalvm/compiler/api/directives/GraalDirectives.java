@@ -24,6 +24,9 @@
  */
 package org.graalvm.compiler.api.directives;
 
+import jdk.vm.ci.meta.DeoptimizationAction;
+import jdk.vm.ci.meta.DeoptimizationReason;
+
 // JaCoCo Exclude
 
 /**
@@ -42,13 +45,29 @@ public final class GraalDirectives {
 
     /**
      * Directive for the compiler to fall back to the bytecode interpreter at this point.
+     *
+     * @param action the action to take with respect to the code being deoptimized
+     * @param reason the reason to use for the deoptimization
+     */
+    public static void deoptimize(DeoptimizationAction action, DeoptimizationReason reason) {
+    }
+
+    /**
+     * Directive for the compiler to fall back to the bytecode interpreter at this point.
+     *
+     * This is equivalent to calling {@link #deoptimize(DeoptimizationAction, DeoptimizationReason)}
+     * with {@link DeoptimizationAction#None} and {@link DeoptimizationReason#TransferToInterpreter}
+     * as arguments.
      */
     public static void deoptimize() {
     }
 
     /**
-     * Directive for the compiler to fall back to the bytecode interpreter at this point, invalidate
-     * the compiled code and reprofile the method.
+     * Directive for the compiler to fall back to the bytecode interpreter at this point.
+     *
+     * This is equivalent to calling {@link #deoptimize(DeoptimizationAction, DeoptimizationReason)}
+     * with {@link DeoptimizationAction#InvalidateReprofile} and
+     * {@link DeoptimizationReason#TransferToInterpreter} as arguments.
      */
     public static void deoptimizeAndInvalidate() {
     }

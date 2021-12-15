@@ -503,6 +503,9 @@ suite = {
     "org.graalvm.compiler.api.directives" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
+      "dependencies" : [
+        "JVMCI_API",
+      ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
       "workingSets" : "API,Graal",

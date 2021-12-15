@@ -34,6 +34,7 @@ import static org.graalvm.compiler.replacements.ArrayIndexOf.STUB_INDEX_OF_1_BYT
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.function.BiFunction;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
@@ -212,7 +213,7 @@ public class StandardGraphBuilderPlugins {
         registerPlatformSpecificUnsafePlugins(plugins, replacements, explicitUnsafeNullChecks,
                         new JavaKind[]{JavaKind.Boolean, JavaKind.Byte, JavaKind.Char, JavaKind.Short, JavaKind.Int, JavaKind.Long, JavaKind.Float, JavaKind.Double, JavaKind.Object});
         registerEdgesPlugins(metaAccess, plugins);
-        registerGraalDirectivesPlugins(plugins);
+        registerGraalDirectivesPlugins(plugins, snippetReflection);
         registerBoxingPlugins(plugins);
         registerJMHBlackholePlugins(plugins, replacements);
         registerJFRThrowablePlugins(plugins, replacements);
@@ -1402,7 +1403,7 @@ public class StandardGraphBuilderPlugins {
 
     private static final SpeculationReasonGroup DIRECTIVE_SPECULATIONS = new SpeculationReasonGroup("GraalDirective", BytecodePosition.class);
 
-    private static void registerGraalDirectivesPlugins(InvocationPlugins plugins) {
+    private static void registerGraalDirectivesPlugins(InvocationPlugins plugins, SnippetReflectionProvider snippetReflection) {
         Registration r = new Registration(plugins, GraalDirectives.class);
         r.register0("deoptimize", new InvocationPlugin() {
             @Override
@@ -1413,6 +1414,23 @@ public class StandardGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.add(new DeoptimizeNode(DeoptimizationAction.None, DeoptimizationReason.TransferToInterpreter));
+                return true;
+            }
+        });
+
+        r.register2("deoptimize", DeoptimizationAction.class, DeoptimizationReason.class, new InvocationPlugin() {
+            @Override
+            public boolean inlineOnly() {
+                return true;
+            }
+
+            private <T> T asConstant(Class<T> type, ValueNode value) {
+                return Objects.requireNonNull(snippetReflection.asObject(type, (JavaConstant) value.asConstant()), value + " must be a non-null compile time constant");
+            }
+
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode actionValue, ValueNode reasonValue) {
+                b.add(new DeoptimizeNode(asConstant(DeoptimizationAction.class, actionValue), asConstant(DeoptimizationReason.class, reasonValue)));
                 return true;
             }
         });
