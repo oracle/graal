@@ -28,12 +28,12 @@ package com.oracle.svm.hosted;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.util.UserError;
 
 public class NativeImageSystemIOWrappers {
 
-    private final CapturingStdioWrapper outWrapper;
-    private final CapturingStdioWrapper errWrapper;
+    final CapturingStdioWrapper outWrapper;
+    final CapturingStdioWrapper errWrapper;
 
     public boolean useCapturing;
 
@@ -49,8 +49,8 @@ public class NativeImageSystemIOWrappers {
 
     public void verifySystemOutErrReplacement() {
         String msg = " was changed during image building. This is not allowed.";
-        VMError.guarantee(System.out == outWrapper, "System.out" + msg);
-        VMError.guarantee(System.err == errWrapper, "System.err" + msg);
+        UserError.guarantee(System.out == outWrapper, "System.out" + msg);
+        UserError.guarantee(System.err == errWrapper, "System.err" + msg);
     }
 
     public PrintStream originalOut() {
