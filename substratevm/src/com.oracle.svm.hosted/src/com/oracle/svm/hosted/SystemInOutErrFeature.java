@@ -23,7 +23,7 @@
  * questions.
  */
 
-package com.oracle.svm.hosted.jdk;
+package com.oracle.svm.hosted;
 
 import java.io.InputStream;
 import java.io.PrintStream;
@@ -34,7 +34,6 @@ import org.graalvm.nativeimage.hosted.Feature;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.jdk.SystemInOutErrSupport;
-import com.oracle.svm.hosted.NativeImageSystemIOWrappers;
 
 /**
  * We use an {@link Feature.DuringSetupAccess#registerObjectReplacer object replacer} because the
@@ -44,9 +43,16 @@ import com.oracle.svm.hosted.NativeImageSystemIOWrappers;
  */
 @AutomaticFeature
 public class SystemInOutErrFeature implements Feature {
-    private final InputStream hostedIn = System.in;
-    private final PrintStream hostedOut = System.out;
-    private final PrintStream hostedErr = System.err;
+    private final InputStream hostedIn;
+    private final PrintStream hostedOut;
+    private final PrintStream hostedErr;
+
+    public SystemInOutErrFeature() {
+        hostedIn = System.in;
+        NativeImageSystemIOWrappers wrappers = NativeImageSystemIOWrappers.singleton();
+        hostedOut = wrappers.outWrapper;
+        hostedErr = wrappers.errWrapper;
+    }
 
     private SystemInOutErrSupport runtime;
 
