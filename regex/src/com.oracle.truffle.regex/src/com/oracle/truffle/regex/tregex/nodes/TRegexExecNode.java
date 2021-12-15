@@ -450,7 +450,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         private RegexResult executeForward(Object input, int fromIndexArg, int inputLength) {
             if (getForwardExecutor().isSimpleCG()) {
                 Object result = forwardEntryNode.execute(input, fromIndexArg, fromIndexArg, inputLength);
-                return RegexResult.createFromIndicesArray(result);
+                return RegexResult.createFromExecutorResult(result);
             }
             final int end = (int) forwardEntryNode.execute(input, fromIndexArg, fromIndexArg, inputLength);
             if (end == TRegexDFAExecutorNode.NO_MATCH) {
@@ -479,7 +479,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         private RegexResult executeBackwardAnchored(Object input, int fromIndexArg, int inputLength) {
             if (getBackwardExecutor().isSimpleCG()) {
                 Object result = backwardEntryNode.execute(input, fromIndexArg, inputLength, inputLength);
-                return RegexResult.createFromIndicesArray(result);
+                return RegexResult.createFromExecutorResult(result);
             }
             final int backwardResult = (int) backwardEntryNode.execute(input, fromIndexArg, inputLength, inputLength);
             if (backwardResult == TRegexDFAExecutorNode.NO_MATCH) {
@@ -495,7 +495,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
             if (getForwardExecutor().isSimpleCG()) {
                 Object result = forwardEntryNode.execute(input, fromIndexArg, start, inputLength);
                 assert result != null;
-                return RegexResult.createFromIndicesArray(result);
+                return RegexResult.createFromExecutorResult(result);
             }
             if (captureGroupEntryNode != null) {
                 return RegexResult.createLazy(input, start, start, inputLength, captureGroupCallTarget);
@@ -527,7 +527,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         @Override
         protected RegexResult runInternal(Object input, int fromIndexArg, int inputLength) {
             Object result = entryNode.execute(input, fromIndexArg, fromIndexArg, inputLength);
-            return RegexResult.createFromIndicesArray(result);
+            return RegexResult.createFromExecutorResult(result);
         }
     }
 
@@ -546,7 +546,7 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         @Override
         protected RegexResult runInternal(Object input, int fromIndexArg, int inputLength) {
             Object result = entryNode.execute(input, fromIndexArg, fromIndexArg, inputLength);
-            return RegexResult.createFromIndicesArray(result);
+            return RegexResult.createFromExecutorResult(result);
         }
     }
 }

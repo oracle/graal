@@ -132,7 +132,6 @@ public final class DFAGenerator implements JsonConvertible {
     private boolean hasAmbiguousStates = false;
     private boolean doSimpleCG = false;
     private boolean simpleCGMustCopy = false;
-    private final boolean allowReturnLastGroup;
 
     private DFAStateNodeBuilder[] entryStates;
     private final DFACaptureGroupTransitionBuilder initialCGTransition;
@@ -146,7 +145,7 @@ public final class DFAGenerator implements JsonConvertible {
 
     private final Matchers.Builder matchersBuilder;
 
-    public DFAGenerator(TRegexCompilationRequest compilationReqest, NFA nfa, TRegexDFAExecutorProperties executorProps, CompilationBuffer compilationBuffer, boolean allowReturnLastGroup) {
+    public DFAGenerator(TRegexCompilationRequest compilationReqest, NFA nfa, TRegexDFAExecutorProperties executorProps, CompilationBuffer compilationBuffer) {
         this.compilationReqest = compilationReqest;
         this.nfa = nfa;
         this.executorProps = executorProps;
@@ -165,7 +164,6 @@ public final class DFAGenerator implements JsonConvertible {
         assert !nfa.isDead();
         this.canonicalizer = new DFATransitionCanonicalizer(this);
         this.matchersBuilder = nfa.getAst().getEncoding().createMatchersBuilder();
-        this.allowReturnLastGroup = allowReturnLastGroup;
     }
 
     public NFA getNfa() {
@@ -340,8 +338,7 @@ public final class DFAGenerator implements JsonConvertible {
         }
         executorProps.setSimpleCG(doSimpleCG);
         executorProps.setSimpleCGMustCopy(simpleCGMustCopy);
-        boolean returnLastGroup = allowReturnLastGroup && (executorProps.isGenericCG() || executorProps.isSimpleCG());
-        return new TRegexDFAExecutorNode(executorProps, maxNumberOfNfaStates, states, captureGroupTransitions, TRegexDFAExecutorDebugRecorder.create(getOptions(), this), returnLastGroup);
+        return new TRegexDFAExecutorNode(executorProps, maxNumberOfNfaStates, states, captureGroupTransitions, TRegexDFAExecutorDebugRecorder.create(getOptions(), this));
     }
 
     private void createInitialStatesForward() {
@@ -726,7 +723,7 @@ public final class DFAGenerator implements JsonConvertible {
                 nfa.getReverseAnchoredEntry().setSource(literalFirstState);
                 nfa.getReverseUnAnchoredEntry().setSource(literalFirstState);
                 prefixMatcher = compilationReqest.createDFAExecutor(nfa, new TRegexDFAExecutorProperties(false, false, false, doSimpleCG, getOptions().isRegressionTestMode(),
-                                rootSeq.getTerms().get(literalStart - 1).getMinPath()), "innerLiteralPrefix", false);
+                                false, rootSeq.getTerms().get(literalStart - 1).getMinPath()), "innerLiteralPrefix");
                 prefixMatcher.setRoot(compilationReqest.getRoot());
                 prefixMatcher.getProperties().setSimpleCGMustCopy(false);
                 doSimpleCG = doSimpleCG && prefixMatcher.isSimpleCG();

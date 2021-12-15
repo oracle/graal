@@ -204,7 +204,7 @@ public final class DFACaptureGroupPartialTransition implements JsonConvertible {
         applyArrayCopy(d.results, d.currentResultOrder, d.currentResult.length);
         applyIndexUpdate(d.results, d.currentResultOrder, currentIndex);
         applyIndexClear(d.results, d.currentResultOrder);
-        if (executor.tracksLastGroup()) {
+        if (executor.getProperties().tracksLastGroup()) {
             applyLastGroupUpdate(d.results, d.currentResultOrder, d.currentResult.length);
         }
     }
@@ -243,7 +243,7 @@ public final class DFACaptureGroupPartialTransition implements JsonConvertible {
             assert indexClears[0].targetArray == 0;
             applyFinalStateTransitionIndexClears(d);
         }
-        if (executor.tracksLastGroup()) {
+        if (executor.getProperties().tracksLastGroup()) {
             if (lastGroupUpdates.length == 1) {
                 assert lastGroupUpdates[0].targetArray == 0;
                 applyFinalStateTransitionLastGroupUpdates(d);

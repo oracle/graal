@@ -104,6 +104,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
      * detailed handling of the quantifiers is to be used or not.
      */
     private final boolean transitionMatchesStepByStep;
+    private final boolean trackLastGroup;
     /**
      * Should the reported lastGroup point to the first group that *begins* instead of the last
      * group that *ends*? This is needed when executing Python lookbehind expressions. The semantics
@@ -123,8 +124,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
     @Child InputIndexOfStringNode indexOfNode;
     private final CharMatcher loopbackInitialStateMatcher;
 
-    public TRegexBacktrackingNFAExecutorNode(PureNFAMap nfaMap, PureNFA nfa, TRegexExecutorNode[] lookAroundExecutors, CompilationBuffer compilationBuffer, boolean returnlastGroup) {
-        super(returnlastGroup);
+    public TRegexBacktrackingNFAExecutorNode(PureNFAMap nfaMap, PureNFA nfa, TRegexExecutorNode[] lookAroundExecutors, CompilationBuffer compilationBuffer) {
         RegexASTSubtreeRootNode subtree = nfaMap.getASTSubtree(nfa);
         this.nfa = nfa;
         this.writesCaptureGroups = subtree.hasCaptureGroups();
@@ -134,6 +134,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
         this.backrefWithNullTargetFails = nfaMap.getAst().getOptions().getFlavor().backreferencesToUnmatchedGroupsFail();
         this.monitorCaptureGroupsInEmptyCheck = nfaMap.getAst().getOptions().getFlavor().emptyChecksMonitorCaptureGroups();
         this.transitionMatchesStepByStep = nfaMap.getAst().getOptions().getFlavor().emptyChecksMonitorCaptureGroups();
+        this.trackLastGroup = nfaMap.getAst().getOptions().getFlavor().usesLastGroupResultField();
         this.returnsFirstGroup = !this.forward && nfaMap.getAst().getOptions().getFlavor().lookBehindsRunLeftToRight();
         this.loneSurrogates = nfaMap.getAst().getProperties().hasLoneSurrogates();
         this.nQuantifiers = nfaMap.getAst().getQuantifierCount().getCount();
@@ -202,7 +203,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
     @Override
     public TRegexExecutorLocals createLocals(Object input, int fromIndex, int index, int maxIndex) {
         return new TRegexBacktrackingNFAExecutorLocals(input, fromIndex, index, maxIndex, getNumberOfCaptureGroups(), nQuantifiers, nZeroWidthQuantifiers, zeroWidthTermEnclosedCGLow,
-                        zeroWidthQuantifierCGOffsets, transitionMatchesStepByStep, maxNTransitions, tracksLastGroup(), returnsFirstGroup);
+                        zeroWidthQuantifierCGOffsets, transitionMatchesStepByStep, maxNTransitions, trackLastGroup, returnsFirstGroup);
     }
 
     private static final int IP_BEGIN = -1;
@@ -599,8 +600,8 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
         }
     }
 
-    protected Object runSubMatcher(TRegexBacktrackingNFAExecutorLocals subLocals, boolean compactString, PureNFAState lookAroundState) {
-        return getLookAroundExecutor(lookAroundState).execute(subLocals, compactString);
+    protected int[] runSubMatcher(TRegexBacktrackingNFAExecutorLocals subLocals, boolean compactString, PureNFAState lookAroundState) {
+        return (int[]) getLookAroundExecutor(lookAroundState).execute(subLocals, compactString);
     }
 
     protected static boolean subMatchFailed(PureNFAState curState, Object subMatchResult) {

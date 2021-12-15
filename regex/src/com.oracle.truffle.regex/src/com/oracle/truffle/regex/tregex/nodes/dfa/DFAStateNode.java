@@ -384,11 +384,11 @@ public class DFAStateNode extends DFAAbstractStateNode {
     }
 
     void applySimpleCGTransition(DFASimpleCGTransition transition, TRegexDFAExecutorNode executor, TRegexDFAExecutorLocals locals) {
-        transition.apply(locals.getCGData().results, locals.getIndex(), executor.tracksLastGroup());
+        transition.apply(locals.getCGData().results, locals.getIndex(), executor.getProperties().tracksLastGroup());
     }
 
     void applySimpleCGFinalTransition(DFASimpleCGTransition transition, TRegexDFAExecutorNode executor, TRegexDFAExecutorLocals locals) {
-        transition.applyFinal(locals.getCGData(), locals.getIndex(), executor.getProperties().isSimpleCGMustCopy(), executor.tracksLastGroup());
+        transition.applyFinal(locals.getCGData(), locals.getIndex(), executor.getProperties().isSimpleCGMustCopy(), executor.getProperties().tracksLastGroup());
     }
 
     @TruffleBoundary

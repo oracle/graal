@@ -52,11 +52,6 @@ import com.oracle.truffle.regex.tregex.string.Encodings.Encoding.UTF16;
 public abstract class TRegexExecutorNode extends Node {
 
     @CompilationFinal protected TRegexExecNode root;
-    private final boolean tracksLastGroup;
-
-    public TRegexExecutorNode(boolean tracksLastGroup) {
-        this.tracksLastGroup = tracksLastGroup;
-    }
 
     public void setRoot(TRegexExecNode root) {
         this.root = root;
@@ -353,10 +348,6 @@ public abstract class TRegexExecutorNode extends Node {
      * Returns {@code true} if this executor may write any new capture group boundaries.
      */
     public abstract boolean writesCaptureGroups();
-
-    public boolean tracksLastGroup() {
-        return tracksLastGroup;
-    }
 
     public abstract TRegexExecutorLocals createLocals(Object input, int fromIndex, int index, int maxIndex);
 

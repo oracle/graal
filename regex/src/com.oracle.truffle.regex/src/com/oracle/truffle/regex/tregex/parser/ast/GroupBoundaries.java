@@ -242,11 +242,11 @@ public class GroupBoundaries implements JsonConvertible {
      * @param index current index. All group boundaries contained in this object will be set to this
      *            value in the resultFactory.
      */
-    public void applyToResultFactory(PreCalculatedResultFactory resultFactory, int index, boolean tracksLastGroup) {
+    public void applyToResultFactory(PreCalculatedResultFactory resultFactory, int index, boolean trackLastGroup) {
         if (hasIndexUpdates()) {
             resultFactory.updateIndices(updateIndices, index);
         }
-        if (tracksLastGroup && hasLastGroup()) {
+        if (trackLastGroup && hasLastGroup()) {
             resultFactory.setLastGroup(getLastGroup());
         }
     }

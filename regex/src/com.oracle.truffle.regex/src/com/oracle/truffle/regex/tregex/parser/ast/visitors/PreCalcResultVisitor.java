@@ -68,7 +68,7 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
 
     private PreCalcResultVisitor(RegexAST ast, boolean extractLiteral) {
         this.ast = ast;
-        result = new PreCalculatedResultFactory(ast.getNumberOfCaptureGroups());
+        result = new PreCalculatedResultFactory(ast.getNumberOfCaptureGroups(), ast.getOptions().getFlavor().usesLastGroupResultField());
         this.extractLiteral = extractLiteral;
         if (extractLiteral) {
             literal = ast.getEncoding().createStringBuffer(ast.getRoot().getMinPath());

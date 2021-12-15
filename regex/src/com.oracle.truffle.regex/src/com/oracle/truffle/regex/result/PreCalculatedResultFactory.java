@@ -55,21 +55,24 @@ import com.oracle.truffle.regex.util.TBitSet;
  */
 public final class PreCalculatedResultFactory implements JsonConvertible {
 
+    private final int nGroups;
     @CompilationFinal(dimensions = 1) private final int[] result;
     @CompilationFinal private int length;
 
-    public PreCalculatedResultFactory(int nGroups) {
-        this.result = new int[nGroups * 2 + 1];
+    public PreCalculatedResultFactory(int nGroups, boolean trackLastGroup) {
+        this.nGroups = nGroups;
+        this.result = new int[nGroups * 2 + (trackLastGroup ? 1 : 0)];
         Arrays.fill(this.result, -1);
     }
 
-    private PreCalculatedResultFactory(int[] result, int length) {
+    private PreCalculatedResultFactory(int nGroups, int[] result, int length) {
+        this.nGroups = nGroups;
         this.result = result;
         this.length = length;
     }
 
     public PreCalculatedResultFactory copy() {
-        return new PreCalculatedResultFactory(Arrays.copyOf(result, result.length), length);
+        return new PreCalculatedResultFactory(nGroups, Arrays.copyOf(result, result.length), length);
     }
 
     public int getStart(int groupNr) {
@@ -101,6 +104,7 @@ public final class PreCalculatedResultFactory implements JsonConvertible {
     }
 
     public void setLastGroup(int lastGroup) {
+        assert (result.length & 1) != 0;
         result[result.length - 1] = lastGroup;
     }
 
@@ -125,12 +129,8 @@ public final class PreCalculatedResultFactory implements JsonConvertible {
         return realResult;
     }
 
-    public int getNumberOfGroups() {
-        return result.length / 2;
-    }
-
     private RegexResult createFromOffset(int offset) {
-        if (result.length == 3) {
+        if (result.length >> 1 == 1) {
             return RegexResult.create(result[0] + offset, result[1] + offset);
         }
         final int[] realResult = new int[result.length];
@@ -138,13 +138,9 @@ public final class PreCalculatedResultFactory implements JsonConvertible {
         return RegexResult.create(realResult);
     }
 
-    public void applyRelativeToEnd(int[] target, int end) {
-        applyOffset(target, end - length);
-    }
-
     private void applyOffset(int[] target, int offset) {
         // Apply offset to capture group indices
-        for (int i = 0; i < result.length - 1; i++) {
+        for (int i = 0; i < 2 * nGroups; i++) {
             if (result[i] == -1) {
                 target[i] = -1;
             } else {
@@ -152,7 +148,9 @@ public final class PreCalculatedResultFactory implements JsonConvertible {
             }
         }
         // Copy over lastGroup
-        target[result.length - 1] = result[result.length - 1];
+        if ((result.length & 1) != 0) {
+            target[result.length - 1] = result[result.length - 1];
+        }
     }
 
     @Override

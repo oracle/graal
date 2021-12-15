@@ -180,16 +180,15 @@ public final class TRegexCompilationRequest {
         debugPureNFA();
         TRegexExecutorNode[] lookAroundExecutors = pureNFA.getLookArounds().size() == 0 ? TRegexBacktrackingNFAExecutorNode.NO_LOOK_AROUND_EXECUTORS
                         : new TRegexExecutorNode[pureNFA.getLookArounds().size()];
-        boolean returnsLastGroup = ast.getOptions().getFlavor().usesLastGroupResultField();
         for (int i = 0; i < pureNFA.getLookArounds().size(); i++) {
             PureNFA lookAround = pureNFA.getLookArounds().get(i);
             if (pureNFA.getASTSubtree(lookAround).asLookAroundAssertion().isLiteral()) {
                 lookAroundExecutors[i] = new TRegexLiteralLookAroundExecutorNode(pureNFA.getASTSubtree(lookAround).asLookAroundAssertion(), compilationBuffer);
             } else {
-                lookAroundExecutors[i] = new TRegexBacktrackingNFAExecutorNode(pureNFA, lookAround, lookAroundExecutors, compilationBuffer, returnsLastGroup);
+                lookAroundExecutors[i] = new TRegexBacktrackingNFAExecutorNode(pureNFA, lookAround, lookAroundExecutors, compilationBuffer);
             }
         }
-        return new TRegexBacktrackingNFAExecutorNode(pureNFA, pureNFA.getRoot(), lookAroundExecutors, compilationBuffer, returnsLastGroup);
+        return new TRegexBacktrackingNFAExecutorNode(pureNFA, pureNFA.getRoot(), lookAroundExecutors, compilationBuffer);
     }
 
     @TruffleBoundary
@@ -216,18 +215,18 @@ public final class TRegexCompilationRequest {
                 // assigning preCalculatedResults
             }
         }
-        final boolean allowReturnLastGroup = ast.getOptions().getFlavor().usesLastGroupResultField();
+        final boolean trackLastGroup = ast.getOptions().getFlavor().usesLastGroupResultField();
         executorNodeForward = createDFAExecutor(nfa, true, true, false, allowSimpleCG && preCalculatedResults == null && !(ast.getRoot().startsWithCaret() && !properties.hasCaptureGroups()),
-                        allowReturnLastGroup);
+                        trackLastGroup);
         final boolean createCaptureGroupTracker = !executorNodeForward.isSimpleCG() && (properties.hasCaptureGroups() || properties.hasLookAroundAssertions()) &&
                         preCalculatedResults == null;
         if (createCaptureGroupTracker) {
-            executorNodeCaptureGroups = createDFAExecutor(nfa, true, false, true, false, allowReturnLastGroup);
+            executorNodeCaptureGroups = createDFAExecutor(nfa, true, false, true, false, trackLastGroup);
         }
         if (preCalculatedResults != null && preCalculatedResults.length > 1) {
             executorNodeBackward = createDFAExecutor(traceFinderNFA, false, false, false, false, false);
         } else if (!executorNodeForward.isAnchored() && !executorNodeForward.isSimpleCG() && (preCalculatedResults == null || !nfa.hasReverseUnAnchoredEntry())) {
-            executorNodeBackward = createDFAExecutor(nfa, false, false, false, allowSimpleCG && !(ast.getRoot().endsWithDollar() && !properties.hasCaptureGroups()), allowReturnLastGroup);
+            executorNodeBackward = createDFAExecutor(nfa, false, false, false, allowSimpleCG && !(ast.getRoot().endsWithDollar() && !properties.hasCaptureGroups()), trackLastGroup);
         }
         logAutomatonSizes(rootNode);
         return new TRegexExecNode.LazyCaptureGroupRegexSearchNode(
@@ -289,13 +288,13 @@ public final class TRegexCompilationRequest {
         debugNFA();
     }
 
-    private TRegexDFAExecutorNode createDFAExecutor(NFA nfaArg, boolean forward, boolean searching, boolean genericCG, boolean allowSimpleCG, boolean allowReturnLastGroup) {
+    private TRegexDFAExecutorNode createDFAExecutor(NFA nfaArg, boolean forward, boolean searching, boolean genericCG, boolean allowSimpleCG, boolean trackLastGroup) {
         return createDFAExecutor(nfaArg, new TRegexDFAExecutorProperties(forward, searching, genericCG, allowSimpleCG,
-                        source.getOptions().isRegressionTestMode(), nfaArg.getAst().getRoot().getMinPath()), null, allowReturnLastGroup);
+                        source.getOptions().isRegressionTestMode(), trackLastGroup, nfaArg.getAst().getRoot().getMinPath()), null);
     }
 
-    public TRegexDFAExecutorNode createDFAExecutor(NFA nfaArg, TRegexDFAExecutorProperties props, String debugDumpName, boolean allowReturnLastGroup) {
-        DFAGenerator dfa = new DFAGenerator(this, nfaArg, props, compilationBuffer, allowReturnLastGroup);
+    public TRegexDFAExecutorNode createDFAExecutor(NFA nfaArg, TRegexDFAExecutorProperties props, String debugDumpName) {
+        DFAGenerator dfa = new DFAGenerator(this, nfaArg, props, compilationBuffer);
         phaseStart(dfa.getDebugDumpName(debugDumpName) + " DFA");
         TRegexDFAExecutorNode executorNode;
         try {

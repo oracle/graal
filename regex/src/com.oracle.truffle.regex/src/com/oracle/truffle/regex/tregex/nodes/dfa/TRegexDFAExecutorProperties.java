@@ -51,6 +51,7 @@ public final class TRegexDFAExecutorProperties {
     @CompilationFinal private boolean simpleCG;
     @CompilationFinal private boolean simpleCGMustCopy;
     private final boolean regressionTestMode;
+    private final boolean trackLastGroup;
     private final int minResultLength;
 
     public TRegexDFAExecutorProperties(
@@ -59,12 +60,14 @@ public final class TRegexDFAExecutorProperties {
                     boolean genericCG,
                     boolean allowSimpleCG,
                     boolean regressionTestMode,
+                    boolean trackLastGroup,
                     int minResultLength) {
         this.forward = forward;
         this.searching = searching;
         this.genericCG = genericCG;
         this.allowSimpleCG = allowSimpleCG;
         this.regressionTestMode = regressionTestMode;
+        this.trackLastGroup = trackLastGroup;
         this.minResultLength = minResultLength;
     }
 
@@ -117,6 +120,10 @@ public final class TRegexDFAExecutorProperties {
 
     public boolean isRegressionTestMode() {
         return regressionTestMode;
+    }
+
+    public boolean tracksLastGroup() {
+        return trackLastGroup;
     }
 
     public int getMinResultLength() {

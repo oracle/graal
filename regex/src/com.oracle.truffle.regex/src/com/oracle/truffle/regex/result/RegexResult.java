@@ -123,15 +123,15 @@ public final class RegexResult extends AbstractConstantKeysObject {
     }
 
     public static RegexResult create(int start, int end) {
-        return new RegexResult(null, -1, 0, 0, new int[]{start, end, -1}, null);
+        return new RegexResult(null, -1, 0, 0, new int[]{start, end}, null);
     }
 
     public static RegexResult create(int[] result) {
-        assert result != null && result.length >= 3;
+        assert result != null && result.length >= 2;
         return new RegexResult(null, -1, 0, 0, result, null);
     }
 
-    public static RegexResult createFromIndicesArray(Object executorResult) {
+    public static RegexResult createFromExecutorResult(Object executorResult) {
         if (executorResult == null) {
             return RegexResult.getNoMatchInstance();
         }
@@ -164,16 +164,16 @@ public final class RegexResult extends AbstractConstantKeysObject {
 
     public int getStart(int groupNumber) {
         int index = groupNumber * 2;
-        return index >= result.length - 1 ? -1 : result[index];
+        return groupNumber >= result.length >> 1 ? -1 : result[index];
     }
 
     public int getEnd(int groupNumber) {
         int index = groupNumber * 2 + 1;
-        return index >= result.length - 1 ? -1 : result[index];
+        return groupNumber >= result.length >> 1 ? -1 : result[index];
     }
 
     public int getLastGroup() {
-        return result.length >= 3 ? result[result.length - 1] : -1;
+        return (result.length & 1) == 0 ? -1 : result[result.length - 1];
     }
 
     @ExportMessage

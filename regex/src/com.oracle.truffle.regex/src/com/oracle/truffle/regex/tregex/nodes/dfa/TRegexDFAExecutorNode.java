@@ -72,23 +72,12 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                     int maxNumberOfNFAStates,
                     DFAAbstractStateNode[] states,
                     DFACaptureGroupLazyTransition[] cgTransitions,
-                    TRegexDFAExecutorDebugRecorder debugRecorder,
-                    boolean returnLastGroup) {
-        super(returnLastGroup);
+                    TRegexDFAExecutorDebugRecorder debugRecorder) {
         this.props = props;
         this.maxNumberOfNFAStates = maxNumberOfNFAStates;
         this.states = states;
         this.cgTransitions = cgTransitions;
         this.debugRecorder = debugRecorder;
-    }
-
-    public TRegexDFAExecutorNode(
-                    TRegexDFAExecutorProperties props,
-                    int maxNumberOfNFAStates,
-                    DFAAbstractStateNode[] states,
-                    DFACaptureGroupLazyTransition[] cgTransitions,
-                    boolean returnLastGroup) {
-        this(props, maxNumberOfNFAStates, states, cgTransitions, null, returnLastGroup);
     }
 
     private DFAInitialStateNode getInitialState() {
@@ -171,7 +160,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
 
     private DFACaptureGroupTrackingData createCGData() {
         if (isGenericCG() || isSimpleCG()) {
-            return new DFACaptureGroupTrackingData(getMaxNumberOfNFAStates(), getNumberOfCaptureGroups(), props);
+            return new DFACaptureGroupTrackingData(getMaxNumberOfNFAStates(), getNumberOfCaptureGroups(), getProperties());
         } else {
             return null;
         }
@@ -632,7 +621,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
     private void initResultOrder(TRegexDFAExecutorLocals locals) {
         DFACaptureGroupTrackingData cgData = locals.getCGData();
         for (int i = 0; i < maxNumberOfNFAStates; i++) {
-            cgData.currentResultOrder[i] = i * (getNumberOfCaptureGroups() * 2 + 1);
+            cgData.currentResultOrder[i] = i * (getNumberOfCaptureGroups() * 2 + (props.tracksLastGroup() ? 1 : 0));
         }
     }
 

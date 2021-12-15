@@ -87,7 +87,7 @@ public final class TRegexNFAExecutorLocals extends TRegexExecutorLocals {
 
     public TRegexNFAExecutorLocals(Object input, int fromIndex, int index, int maxIndex, int nCaptureGroups, int nStates, boolean trackLastGroup) {
         super(input, fromIndex, maxIndex, index);
-        this.frameSize = 1 + nCaptureGroups * 2 + 1;
+        this.frameSize = 1 + nCaptureGroups * 2 + (trackLastGroup ? 1 : 0);
         this.nCaptureGroups = nCaptureGroups;
         this.maxSize = nStates * frameSize;
         this.curStates = new int[frameSize * 8];
@@ -101,7 +101,7 @@ public final class TRegexNFAExecutorLocals extends TRegexExecutorLocals {
     }
 
     private int offsetLastGroup(int recordOffset) {
-        return recordOffset + 1 + nCaptureGroups * 2;
+        return trackLastGroup ? recordOffset + 1 + nCaptureGroups * 2 : -1;
     }
 
     public void addInitialState(int stateId) {
@@ -159,7 +159,7 @@ public final class TRegexNFAExecutorLocals extends TRegexExecutorLocals {
     public void pushResult(NFAStateTransition t, boolean copy) {
         resultPushed = true;
         if (result == null) {
-            result = new int[nCaptureGroups * 2 + 1];
+            result = new int[nCaptureGroups * 2 + (trackLastGroup ? 1 : 0)];
         }
         if (copy) {
             System.arraycopy(curStates, offsetCaptureGroups(iCurStates - frameSize), result, 0, result.length);
