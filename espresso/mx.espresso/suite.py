@@ -72,6 +72,20 @@ suite = {
                 ]
             },
             {
+                "name": "sulong",
+                "subdir": True,
+                "urls": [
+                    {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
+                ],
+                "os_arch": {
+                    "windows": {
+                        "<others>": {
+                            "ignore": True,
+                        },
+                    },
+                }
+            },
+            {
                 "name" : "java-benchmarks",
                 "subdir": True,
                 "urls": [
@@ -198,6 +212,7 @@ suite = {
                 "<others>": {
                     "<others>": {
                         "cflags": ["-Wall", "-Werror"],
+                        "toolchain": "sulong:SULONG_BOOTSTRAP_TOOLCHAIN",
                     },
                 },
             },
@@ -249,6 +264,7 @@ suite = {
                             "-Wl,-current_version,1.0.0",
                             "-Wl,-compatibility_version,1.0.0"
                         ],
+                        "toolchain": "sulong:SULONG_BOOTSTRAP_TOOLCHAIN",
                     },
                 },
                 "linux": {
@@ -258,6 +274,7 @@ suite = {
                             "-Wl,-soname,libjvm.so",
                             "-Wl,--version-script,<path:espresso:com.oracle.truffle.espresso.mokapot>/mapfile-vers",
                         ],
+                        "toolchain": "sulong:SULONG_BOOTSTRAP_TOOLCHAIN",
                     },
                 },
                 "windows": {
