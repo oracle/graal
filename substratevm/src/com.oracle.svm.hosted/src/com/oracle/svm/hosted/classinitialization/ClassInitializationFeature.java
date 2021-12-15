@@ -39,6 +39,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.util.TimerManager;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.options.OptionValues;
@@ -171,8 +173,11 @@ public class ClassInitializationFeature implements GraalFeature {
     @Override
     @SuppressWarnings("try")
     public void afterAnalysis(AfterAnalysisAccess access) {
-        String imageName = ((FeatureImpl.AfterAnalysisAccessImpl) access).getBigBang().getHostVM().getImageName();
-        try (Timer.StopTimer ignored = new Timer(imageName, "(clinit)").start()) {
+        BigBang bigBang = ((FeatureImpl.AfterAnalysisAccessImpl) access).getBigBang();
+        TimerManager timerManager = bigBang.getTimerManager();
+        String imageName = bigBang.getHostVM().getImageName();
+        Timer clinitTimer = timerManager.register(new Timer(imageName, "(clinit)"));
+        try (Timer.StopTimer ignored = clinitTimer.start()) {
             classInitializationSupport.setUnsupportedFeatures(null);
 
             String path = SubstrateOptions.reportsPath();

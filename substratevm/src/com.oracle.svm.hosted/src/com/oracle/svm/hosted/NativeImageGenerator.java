@@ -55,6 +55,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
+import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisFactory;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
+import com.oracle.graal.pointsto.util.TimerManager;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.Fold;
@@ -312,14 +316,16 @@ public class NativeImageGenerator {
     private Inflation bb;
     private NativeLibraries nativeLibraries;
     private AbstractImage image;
+    private final TimerManager timerManager;
     private AtomicBoolean buildStarted = new AtomicBoolean();
 
     private Pair<Method, CEntryPointData> mainEntryPoint;
 
     private final Map<ArtifactType, List<Path>> buildArtifacts = new EnumMap<>(ArtifactType.class);
 
-    public NativeImageGenerator(ImageClassLoader loader, HostedOptionProvider optionProvider, Pair<Method, CEntryPointData> mainEntryPoint, ProgressReporter reporter) {
+    public NativeImageGenerator(ImageClassLoader loader, HostedOptionProvider optionProvider, Pair<Method, CEntryPointData> mainEntryPoint, ProgressReporter reporter, TimerManager timerManager) {
         this.loader = loader;
+        this.timerManager = timerManager;
         this.mainEntryPoint = mainEntryPoint;
         this.featureHandler = new FeatureHandler();
         this.optionProvider = optionProvider;
@@ -560,7 +566,8 @@ public class NativeImageGenerator {
             NativeImageHeap heap;
             HostedMetaAccess hMetaAccess;
             SharedRuntimeConfigurationBuilder runtime;
-            try (ReporterClosable c = reporter.printUniverse(new Timer(imageName, "universe"))) {
+            Timer universeTimer = timerManager.register(new Timer(imageName, "universe"));
+            try (ReporterClosable c = reporter.printUniverse(universeTimer)) {
                 bb.getHeartbeatCallback().run();
 
                 hUniverse = new HostedUniverse(bb);
@@ -624,7 +631,8 @@ public class NativeImageGenerator {
 
             NativeImageCodeCache codeCache;
             CompileQueue compileQueue;
-            try (StopTimer t = new Timer(imageName, "compile").start()) {
+            Timer compileTimer = timerManager.register(new Timer(imageName, "compile"));
+            try (StopTimer t = compileTimer.start()) {
                 compileQueue = HostedConfiguration.instance().createCompileQueue(debug, featureHandler, hUniverse, runtime, DeoptTester.enabled(), bb.getProviders().getSnippetReflection(),
                                 compilationExecutor);
                 compileQueue.finish(debug);
@@ -642,7 +650,7 @@ public class NativeImageGenerator {
             }
             CodeCacheProvider codeCacheProvider = runtime.getRuntimeConfig().getBackendForNormalMethod().getProviders().getCodeCache();
             reporter.printCreationStart();
-            Timer imageTimer = new Timer(imageName, "image");
+            Timer imageTimer = timerManager.register(new Timer(imageName, "image"));
             try (Indent indent = debug.logAndIndent("create native image")) {
                 try (DebugContext.Scope buildScope = debug.scope("CreateImage", codeCacheProvider)) {
                     try (StopTimer t = imageTimer.start()) {
@@ -676,7 +684,7 @@ public class NativeImageGenerator {
                 }
             }
 
-            Timer writeTimer = new Timer(imageName, "write");
+            Timer writeTimer = timerManager.register(new Timer(imageName, "write"));
             try (StopTimer t = writeTimer.start()) {
                 bb.getHeartbeatCallback().run();
                 BeforeImageWriteAccessImpl beforeConfig = new BeforeImageWriteAccessImpl(featureHandler, loader, imageName, image,
@@ -781,7 +789,8 @@ public class NativeImageGenerator {
         if (SubstrateOptions.DisableTypeIdResultVerification.getValue()) {
             return true;
         }
-        try (StopTimer t = new Timer(imageName, "(verifyAssignableTypes)").start()) {
+        Timer timer = timerManager.register(new Timer(imageName, "(verifyAssignableTypes)"));
+        try (StopTimer t = timer.start()) {
             return AnalysisType.verifyAssignableTypes(bb);
         }
     }
@@ -791,8 +800,8 @@ public class NativeImageGenerator {
                     SubstitutionProcessor harnessSubstitutions,
                     ForkJoinPool analysisExecutor, SnippetReflectionProvider originalSnippetReflection, DebugContext debug) {
         try (Indent ignored = debug.logAndIndent("setup native-image builder")) {
-            Timer timer = new Timer(imageName, "setup");
-            try (StopTimer ignored1 = timer.start()) {
+            Timer setupTimer = timerManager.register(new Timer(imageName, "setup"));
+            try (StopTimer ignored1 = setupTimer.start()) {
                 SubstrateTargetDescription target = createTarget(loader.platform);
                 ImageSingletons.add(Platform.class, loader.platform);
                 ImageSingletons.add(SubstrateTargetDescription.class, target);
@@ -853,7 +862,7 @@ public class NativeImageGenerator {
 
                 ForeignCallsProvider aForeignCalls = new SubstrateForeignCallsProvider(aMetaAccess, null);
                 bb = createBigBang(options, target, aUniverse, analysisExecutor, watchdog::recordActivity, aMetaAccess, aConstantReflection, aWordTypes, aSnippetReflection,
-                                annotationSubstitutions, aForeignCalls, classInitializationSupport, originalProviders);
+                                annotationSubstitutions, aForeignCalls, classInitializationSupport, originalProviders, timerManager);
                 aUniverse.setBigBang(bb);
 
                 /* Create the HeapScanner and install it into the universe. */
@@ -892,7 +901,7 @@ public class NativeImageGenerator {
                 entryPoints.forEach((method, entryPointData) -> CEntryPointCallStubSupport.singleton().registerStubForMethod(method, () -> entryPointData));
             }
 
-            ProgressReporter.singleton().printInitializeEnd(classlistTimer, timer, nativeLibraries.getLibraries());
+            ProgressReporter.singleton().printInitializeEnd(classlistTimer, setupTimer, nativeLibraries.getLibraries());
         }
     }
 
@@ -1029,7 +1038,7 @@ public class NativeImageGenerator {
     public static Inflation createBigBang(OptionValues options, TargetDescription target, AnalysisUniverse aUniverse, ForkJoinPool analysisExecutor,
                     Runnable heartbeatCallback, AnalysisMetaAccess aMetaAccess, AnalysisConstantReflectionProvider aConstantReflection, WordTypes aWordTypes,
                     SnippetReflectionProvider aSnippetReflection, AnnotationSubstitutionProcessor annotationSubstitutionProcessor, ForeignCallsProvider aForeignCalls,
-                    ClassInitializationSupport classInitializationSupport, Providers originalProviders) {
+                    ClassInitializationSupport classInitializationSupport, Providers originalProviders, TimerManager timerManager) {
         assert aUniverse != null : "Analysis universe must be initialized.";
         aMetaAccess.lookupJavaType(String.class).registerAsReachable();
         AnalysisConstantFieldProvider aConstantFieldProvider = new AnalysisConstantFieldProvider(aUniverse, aMetaAccess, aConstantReflection, classInitializationSupport);
@@ -1050,13 +1059,14 @@ public class NativeImageGenerator {
         aProviders = new HostedProviders(aMetaAccess, null, aConstantReflection, aConstantFieldProvider, aForeignCalls, aLoweringProvider, aReplacments, aStampProvider,
                         aSnippetReflection, aWordTypes, platformConfig, aMetaAccessExtensionProvider, originalProviders.getLoopsDataProvider());
 
-        return new NativeImagePointsToAnalysis(options, aUniverse, aProviders, annotationSubstitutionProcessor, analysisExecutor, heartbeatCallback, new SubstrateUnsupportedFeatures());
+        return new NativeImagePointsToAnalysis(options, aUniverse, aProviders, annotationSubstitutionProcessor, analysisExecutor, heartbeatCallback, new SubstrateUnsupportedFeatures(), timerManager);
     }
 
     @SuppressWarnings("try")
     private NativeLibraries setupNativeLibraries(String imageName, ConstantReflectionProvider aConstantReflection, MetaAccessProvider aMetaAccess,
                     SnippetReflectionProvider aSnippetReflection, CEnumCallWrapperSubstitutionProcessor cEnumProcessor, ClassInitializationSupport classInitializationSupport, DebugContext debug) {
-        try (StopTimer ignored = new Timer(imageName, "(cap)").start()) {
+        Timer capTimer = timerManager.register(new Timer(imageName, "(cap)"));
+        try (StopTimer ignored = capTimer.start()) {
             NativeLibraries nativeLibs = new NativeLibraries(aConstantReflection, aMetaAccess, aSnippetReflection, ConfigurationValues.getTarget(), classInitializationSupport,
                             ImageSingletons.lookup(TemporaryBuildDirectoryProvider.class).getTemporaryBuildDirectory(), debug);
             cEnumProcessor.setNativeLibraries(nativeLibs);

@@ -150,6 +150,7 @@ class NativeImageVM(GraalVm):
             self.log_dir = self.output_dir
             self.analysis_report_path = os.path.join(self.output_dir, self.executable_name + '-analysis.json')
             self.image_build_report_path = os.path.join(self.output_dir, self.executable_name + '-image-build-stats.json')
+            self.timer_report_path = os.path.join(self.output_dir, self.executable_name + '-timer-stats.json')
             self.base_image_build_args = [os.path.join(vm.home(), 'bin', 'native-image')]
             self.base_image_build_args += ['--no-fallback', '-g', '--allow-incomplete-classpath']
             self.base_image_build_args += ['-H:+VerifyGraalGraphs', '-H:+VerifyPhases', '--diagnostics-mode'] if vm.is_gate else []
@@ -163,6 +164,7 @@ class NativeImageVM(GraalVm):
             self.base_image_build_args += ['-H:+PrintAnalysisStatistics', '-H:AnalysisStatisticsFile=' + self.analysis_report_path]
             self.base_image_build_args += ['-H:+PrintCallEdges']
             self.base_image_build_args += ['-H:+CollectImageBuildStatistics', '-H:ImageBuildStatisticsFile=' + self.image_build_report_path]
+            self.base_image_build_args += ['-H:TimerStatsOutputFile=' + self.timer_report_path]
             if vm.is_quickbuild:
                 self.base_image_build_args += ['-Ob']
             if vm.is_llvm:
@@ -523,6 +525,41 @@ class NativeImageVM(GraalVm):
             }, [metric_objects[i]]))
         return rules
 
+    def image_build_timers_rules(self, benchmark):
+        class NativeImageTimeToInt(object):
+            def __call__(self, *args, **kwargs):
+                return int(float(args[0].replace(',', '')))
+
+        measured_phases = ['setup', 'classlist', 'analysis', 'universe', 'compile', 'dbginfo', 'image', 'write']
+        rules = []
+        for i in range(0, len(measured_phases)):
+            phase = measured_phases[i]
+            value_name = phase + "_time"
+            rules.append(mx_benchmark.JsonStdOutFileRule(r'^# Printing timer stats to: (?P<path>\S+?)$', 'path', {
+                "benchmark": benchmark,
+                "metric.name": "compile-time",
+                "metric.type": "numeric",
+                "metric.unit": "ms",
+                "metric.value": ("<" + value_name + ">", NativeImageTimeToInt()),
+                "metric.score-function": "id",
+                "metric.better": "lower",
+                "metric.iteration": 0,
+                "metric.object": phase,
+            }, [value_name]))
+            value_name = phase + "_memory"
+            rules.append(mx_benchmark.JsonStdOutFileRule(r'^# Printing timer stats to: (?P<path>\S+?)$', 'path', {
+                "benchmark": benchmark,
+                "metric.name": "analysis-stats",
+                "metric.type": "numeric",
+                "metric.unit": "B",
+                "metric.value": ("<" + value_name + ">", NativeImageTimeToInt()),
+                "metric.score-function": "id",
+                "metric.better": "lower",
+                "metric.iteration": 0,
+                "metric.object": phase + "_memory",
+            }, [value_name]))
+        return rules
+
     def rules(self, output, benchmarks, bmSuiteArgs):
         class NativeImageTimeToInt(object):
             def __call__(self, *args, **kwargs):
@@ -572,17 +609,6 @@ class NativeImageVM(GraalVm):
                 "metric.better": "lower",
                 "metric.iteration": 0,
                 "metric.object": "total",
-            }),
-            mx_benchmark.StdOutRule(r'^\[\S+:[0-9]+\][ ]+(?P<phase>\w+?):[ ]+(?P<time>[0-9,.]+?) ms', {
-                "benchmark": benchmarks[0],
-                "metric.name": "compile-time",
-                "metric.type": "numeric",
-                "metric.unit": "ms",
-                "metric.value": ("<time>", NativeImageTimeToInt()),
-                "metric.score-function": "id",
-                "metric.better": "lower",
-                "metric.iteration": 0,
-                "metric.object": ("<phase>", str),
             }),
             mx_benchmark.StdOutRule(r'^[ ]*[0-9]+[ ]+.(?P<section>[a-zA-Z0-9._-]+?)[ ]+(?P<size>[0-9a-f]+?)[ ]+', {
                 "benchmark": benchmarks[0],
@@ -650,7 +676,7 @@ class NativeImageVM(GraalVm):
                 "metric.iteration": 0,
                 "metric.object": "memory"
             }, ['total_memory_bytes'])
-        ] + self.image_build_statistics_rules(benchmarks[0])
+        ] + self.image_build_statistics_rules(benchmarks[0] + self.image_build_timers_rules(benchmarks[0]))
 
     def run_stage_agent(self, config, stages):
         profile_path = config.profile_path_no_extension + '-agent' + config.profile_file_extension

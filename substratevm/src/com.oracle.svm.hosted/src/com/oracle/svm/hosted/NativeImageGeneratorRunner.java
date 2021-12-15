@@ -43,6 +43,7 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import com.oracle.graal.pointsto.util.TimerManager;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.options.OptionValues;
@@ -280,8 +281,9 @@ public class NativeImageGeneratorRunner {
         if (!verifyValidJavaVersionAndPlatform()) {
             return 1;
         }
+        TimerManager timerManager = new TimerManager();
         String imageName = null;
-        Timer totalTimer = new Timer("[total]", false);
+        Timer totalTimer = timerManager.register(new Timer("[total]", false));
 
         HostedOptionParser optionParser = classLoader.classLoaderSupport.getHostedOptionParser();
         OptionValues parsedHostedOptions = classLoader.classLoaderSupport.getParsedHostedOptions();
@@ -297,7 +299,7 @@ public class NativeImageGeneratorRunner {
         ProgressReporter reporter = new ProgressReporter(parsedHostedOptions);
         boolean wasSuccessfulBuild = false;
         try (StopTimer ignored = totalTimer.start()) {
-            Timer classlistTimer = new Timer("classlist", false);
+            Timer classlistTimer = timerManager.register(new Timer("classlist", false));
             try (StopTimer ignored1 = classlistTimer.start()) {
                 classLoader.initAllClasses();
             }
@@ -419,7 +421,7 @@ public class NativeImageGeneratorRunner {
                 int maxConcurrentThreads = NativeImageOptions.getMaximumNumberOfConcurrentThreads(parsedHostedOptions);
                 analysisExecutor = NativeImagePointsToAnalysis.createExecutor(debug, NativeImageOptions.getMaximumNumberOfAnalysisThreads(parsedHostedOptions));
                 compilationExecutor = NativeImagePointsToAnalysis.createExecutor(debug, maxConcurrentThreads);
-                generator = new NativeImageGenerator(classLoader, optionParser, mainEntryPointData, reporter);
+                generator = new NativeImageGenerator(classLoader, optionParser, mainEntryPointData, reporter, timerManager);
                 generator.run(entryPoints, javaMainSupport, imageName, classlistTimer, imageKind, SubstitutionProcessor.IDENTITY,
                                 compilationExecutor, analysisExecutor, optionParser.getRuntimeOptionNames());
                 wasSuccessfulBuild = true;
@@ -479,6 +481,7 @@ public class NativeImageGeneratorRunner {
             if (imageName != null && generator != null) {
                 reporter.printEpilog(imageName, generator, wasSuccessfulBuild, totalTimer, parsedHostedOptions);
             }
+            timerManager.onBuildFinished(parsedHostedOptions);
             NativeImageGenerator.clearSystemPropertiesForImage();
             ImageSingletonsSupportImpl.HostedManagement.clear();
         }

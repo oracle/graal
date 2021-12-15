@@ -114,6 +114,10 @@ public class Timer {
         return totalMemory;
     }
 
+    public String getName() {
+        return name;
+    }
+
     public class StopTimer implements AutoCloseable {
 
         @Override
