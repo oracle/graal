@@ -12,6 +12,7 @@ Changes:
 * Option `--llvm.sysCalls` is replaced by `--log.llvm.SysCalls.level=FINER`.
 * Option `--llvm.llDebugVerbose` is replaced by `--log.llvm.LLDebug.level=FINER`.
 * Option `--llvm.traceIR` is replaced by `--log.llvm.TraceIR.level=FINER`.
+* The function `__sulong_print_stacktrace` now prints stack traces to the `llvm.StackTrace` logs instead of stdout.
 
 # Version 22.0.0
 
