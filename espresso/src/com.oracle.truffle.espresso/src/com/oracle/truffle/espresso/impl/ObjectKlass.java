@@ -1646,6 +1646,14 @@ public final class ObjectKlass extends Klass {
             return ObjectKlass.this;
         }
 
+        public ObjectKlass getSuperKlass() {
+            return superKlass;
+        }
+
+        public ObjectKlass[] getSuperInterfaces() {
+            return superInterfaces;
+        }
+
         public ClassHierarchyAssumption getNoConcreteSubclassesAssumption(ClassHierarchyAccessor assumptionAccessor) {
             Objects.requireNonNull(assumptionAccessor);
             return noConcreteSubclassesAssumption;
