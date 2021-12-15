@@ -119,7 +119,7 @@ public class HeapSnapshotVerifier {
     public boolean verifyHeapSnapshot(CompletionExecutor executor) throws InterruptedException {
         foundMismatch = false;
         scannedObjects.reset();
-        ObjectScanner objectScanner = new ObjectScanner(bb, scannedObjects, new ScanningObserver());
+        ObjectScanner objectScanner = new ObjectScanner(bb, executor, scannedObjects, new ScanningObserver());
         executor.start();
         scanTypes(objectScanner);
         objectScanner.scanBootImageHeapRoots();

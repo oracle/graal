@@ -137,8 +137,8 @@ public class ObjectScanner {
     private void scanEmbeddedRoot(JavaConstant root, BytecodePosition position) {
         try {
             EmbeddedRootScan reason = new EmbeddedRootScan(position, root);
-            scanConstant(root, reason);
             scanningObserver.forEmbeddedRoot(root, reason);
+            scanConstant(root, reason);
         } catch (UnsupportedFeatureException ex) {
             AnalysisMethod method = (AnalysisMethod) position.getMethod();
             bb.getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, ex.getMessage(), null, ex);
@@ -178,10 +178,14 @@ public class ObjectScanner {
             } else if (fieldValue.isNull()) {
                 scanningObserver.forNullFieldValue(receiver, field, reason);
             } else if (fieldValue.getJavaKind() == JavaKind.Object) {
-                /* Scan the field value. */
-                scanConstant(fieldValue, reason);
-                /* Process the field value. */
+                /* First notify the observer about the field value... */
                 scanningObserver.forNonNullFieldValue(receiver, field, fieldValue, reason);
+                /*
+                 * ... and only then scan the new value, i.e., follow its references. The order is
+                 * important for observers that expect to see the receiver before any of its
+                 * referenced elements are being scanned.
+                 */
+                scanConstant(fieldValue, reason);
             }
 
         } catch (UnsupportedFeatureException ex) {
@@ -211,11 +215,14 @@ public class ObjectScanner {
                     Object element = bb.getUniverse().replaceObject(e);
                     JavaConstant elementConstant = bb.getSnippetReflectionProvider().forObject(element);
                     AnalysisType elementType = analysisType(bb, element);
-
-                    /* Scan the array element. */
-                    scanConstant(elementConstant, reason);
-                    /* Process the array element. */
+                    /* First notify the observer about the array element value... */
                     scanningObserver.forNonNullArrayElement(array, arrayType, elementConstant, elementType, idx, reason);
+                    /*
+                     * ... and only then scan the new value, i.e., follow its references. The order
+                     * is important for observers that expect to see the receiver before any of its
+                     * referenced elements are being scanned.
+                     */
+                    scanConstant(elementConstant, reason);
                 }
             } catch (UnsupportedFeatureException ex) {
                 unsupportedFeature(arrayType.toJavaName(true), ex.getMessage(), reason);
