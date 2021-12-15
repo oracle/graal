@@ -1582,6 +1582,4 @@ public abstract class GraalCompilerTest extends GraalTest {
         return true;
     }
 
-    private static final boolean ALL_TESTS = false;
-
 }

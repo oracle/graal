@@ -34,9 +34,10 @@ public class GraalInterpreterTest extends GraalCompilerTest {
         if (n < 0) {
             throw new IllegalArgumentException();
         }
-        while (n > 1) {
-            result *= n;
-            n -= 1;
+        int i = n;
+        while (i > 1) {
+            result *= i;
+            i -= 1;
         }
         return result;
     }
