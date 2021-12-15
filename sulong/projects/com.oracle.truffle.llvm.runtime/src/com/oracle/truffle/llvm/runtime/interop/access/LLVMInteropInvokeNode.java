@@ -83,7 +83,7 @@ public abstract class LLVMInteropInvokeNode extends LLVMNode {
                     @CachedLibrary(limit = "5") InteropLibrary interop)
                     throws UnsupportedMessageException, UnknownIdentifierException, UnsupportedTypeException, ArityException {
         // TODO scopes!
-        String functionFound = getContext().getGlobalScopeChain().getMangledName(member);
+        String functionFound = member.startsWith("$") ? member : getContext().getGlobalScopeChain().getMangledName(member);
         if (functionFound != null) {
             long[] symbolOffsets = getContext().getGlobalScopeChain().getSymbolOffsets(functionFound);
 

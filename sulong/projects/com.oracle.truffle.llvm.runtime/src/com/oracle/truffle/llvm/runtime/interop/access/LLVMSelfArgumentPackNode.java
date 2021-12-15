@@ -33,17 +33,16 @@ package com.oracle.truffle.llvm.runtime.interop.access;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @GenerateUncached
 public abstract class LLVMSelfArgumentPackNode extends LLVMNode {
-    public abstract Object[] execute(LLVMPointer receiver, Object[] arguments, boolean addSelfFirst);
+    public abstract Object[] execute(Object receiver, Object[] arguments, boolean addSelfFirst);
 
     /**
      * @param addSelfFirst
      */
     @Specialization(guards = "addSelfFirst")
-    public Object[] doPackFirst(LLVMPointer receiver, Object[] arguments, boolean addSelfFirst) {
+    public Object[] doPackFirst(Object receiver, Object[] arguments, boolean addSelfFirst) {
         Object[] newArgs = new Object[arguments.length + 1];
         newArgs[0] = receiver;
         for (int i = 0; i < arguments.length; i++) {
@@ -56,7 +55,7 @@ public abstract class LLVMSelfArgumentPackNode extends LLVMNode {
      * @param addSelfFirst
      */
     @Specialization(guards = "!addSelfFirst")
-    public Object[] doPackLast(LLVMPointer receiver, Object[] arguments, boolean addSelfFirst) {
+    public Object[] doPackLast(Object receiver, Object[] arguments, boolean addSelfFirst) {
         Object[] newArgs = new Object[arguments.length + 1];
         for (int i = 0; i < arguments.length; i++) {
             newArgs[i] = arguments[i];

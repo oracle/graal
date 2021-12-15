@@ -60,6 +60,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
 import com.oracle.truffle.llvm.runtime.except.LLVMIllegalSymbolIndexException;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
+import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropSwiftClassAccess;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.interop.export.LLVMForeignWriteNode;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
@@ -183,16 +184,14 @@ public final class SulongLibrary implements TruffleObject {
                     @Cached @Exclusive BranchProfile swiftName) throws UnknownIdentifierException {
         Object ret = lookup.execute(this, member);
         if (ret == null) {
-            System.out.println("scope name " + this.name);
             final String swiftMember = SwiftDemangler.getSwiftTypeAccessorName(new String[]{this.name, member});
             ret = lookup.execute(this, swiftMember);
             if (ret == null) {
                 notFound.enter();
                 throw UnknownIdentifierException.create(member);
             } else {
-                System.out.println("read swift " + swiftMember);
                 swiftName.enter();
-
+                return new LLVMInteropSwiftClassAccess(this, (LLVMFunctionDescriptor) ret, member);
             }
         }
 
@@ -203,19 +202,11 @@ public final class SulongLibrary implements TruffleObject {
     Object invokeMember(String member, Object[] arguments,
                     @Shared("lookup") @Cached LookupNode lookup,
                     @CachedLibrary(limit = "1") InteropLibrary interop,
-                    @Cached @Shared("notFound") BranchProfile notFound,
-                    @Cached @Exclusive BranchProfile swiftName) throws ArityException, UnknownIdentifierException, UnsupportedTypeException, UnsupportedMessageException {
+                    @Cached @Shared("notFound") BranchProfile notFound) throws ArityException, UnknownIdentifierException, UnsupportedTypeException, UnsupportedMessageException {
         LLVMFunctionDescriptor fn = lookup.execute(this, member);
         if (fn == null) {
-            fn = lookup.execute(this, SwiftDemangler.getSwiftTypeAccessorName(new String[]{this.name, member}));
-            if (fn == null) {
-                notFound.enter();
-                throw UnknownIdentifierException.create(member);
-            } else {
-                swiftName.enter();
-                System.out.println("invoke swift");
-            }
-
+            notFound.enter();
+            throw UnknownIdentifierException.create(member);
         }
 
         return interop.execute(fn, arguments);

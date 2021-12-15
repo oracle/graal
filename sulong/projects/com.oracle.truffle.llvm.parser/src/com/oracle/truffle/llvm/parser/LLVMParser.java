@@ -259,7 +259,7 @@ public final class LLVMParser {
             }
             // swift: last index has offset of 5 TODO pichristoph check why off by 5
             indexVals[indexVals.length - 1] -= 5;
-            runtime.getFileScope().setSymbolOffsets(methodName, indexVals);
+            runtime.getPublicFileScope().setSymbolOffsets(methodName, indexVals);
         }
     }
 

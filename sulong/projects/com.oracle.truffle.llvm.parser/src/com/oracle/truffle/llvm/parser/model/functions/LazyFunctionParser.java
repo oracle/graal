@@ -110,12 +110,10 @@ public final class LazyFunctionParser {
                 final String displayName = e.displayName;
                 final String linkageName = e.linkageName;
                 final String scopeName = e.scopeName;
-                if (linkageName != null && (linkageName.contains("Inherit") || linkageName.contains("14") || linkageName.contains("3P5")) && linkageName.charAt(0) == '$') {
-                    System.out.println("\t>" + scopeName + "::" + displayName + " = " + linkageName);
-                }
                 if (linkageName != null && runtime.getFileScope().getFunction(displayName) == null) {
-                    runtime.getFileScope().registerLinkageName(displayName, linkageName);
-                    // TODO get scope scopeName
+                    runtime.getFileScope().registerLinkageName(scopeName, displayName, linkageName);
+                    // System.out.println(runtime.getFileScope());
+                    // TODO
                 }
             }
         }
