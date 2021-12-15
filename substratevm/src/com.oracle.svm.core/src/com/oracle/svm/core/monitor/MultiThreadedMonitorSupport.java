@@ -422,7 +422,38 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         return DynamicHub.fromClass(obj.getClass()).getMonitorOffset();
     }
 
-    protected final ReentrantLock getOrCreateMonitor(Object obj, boolean createIfNotExisting) {
+    private static final Object CLEANER_CLASS;
+    private static final Object CLEANER_REPLACEMENT;
+
+    static {
+        try {
+            CLEANER_CLASS = Class.forName((JavaVersionUtil.JAVA_SPEC <= 8 ? "sun.misc." : "jdk.internal.ref.") + "Cleaner");
+        } catch (ClassNotFoundException ex) {
+            throw VMError.shouldNotReachHere(ex);
+        }
+        CLEANER_REPLACEMENT = new Object();
+        VMError.guarantee(FORCE_MONITOR_SLOT_TYPES.contains(CLEANER_REPLACEMENT.getClass()), "Must have a monitor slot for Cleaner replacement object");
+    }
+
+    protected final ReentrantLock getOrCreateMonitor(Object unreplacedObject, boolean createIfNotExisting) {
+        Object obj;
+        if (unreplacedObject == CLEANER_CLASS) {
+            /*
+             * Workaround for jdk.internal.ref.Cleaner when cleaners do not run in a separate
+             * thread. Cleaner uses static synchronized methods. Since classes (= DynamicHub) never
+             * have a monitor slot, static synchronized methods always use the additionalMonitors
+             * map. When a Cleaner then runs at a time where the application thread already holds
+             * the additionalMonitorsLock, i.e., when a GC runs while allocating a monitor in
+             * getOrCreateMonitorFromMap(), a disallowed recursive locking of additionalMonitorsLock
+             * would happen. Note that CLEANER_REPLACEMENT is an Object which always has a monitor
+             * slot. This workaround will be removed by GR-35898 when we have a better
+             * implementation of static synchronized methods.
+             */
+            obj = CLEANER_REPLACEMENT;
+        } else {
+            obj = unreplacedObject;
+        }
+
         assert obj != null;
         int monitorOffset = getMonitorOffset(obj);
         if (monitorOffset != 0) {
