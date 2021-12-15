@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -353,10 +353,10 @@ abstract class HostToTypeNode extends Node {
                     return result;
                 }
                 // fallthrough
-            } else if (interop.hasMembers(value)) {
-                return asJavaObject(hostContext, value, Map.class, null, false);
             } else if (interop.hasArrayElements(value)) {
                 return asJavaObject(hostContext, value, List.class, null, false);
+            } else if (interop.hasMembers(value)) {
+                return asJavaObject(hostContext, value, Map.class, null, false);
             } else if (interop.hasIterator(value)) {
                 return asJavaObject(hostContext, value, Iterable.class, null, false);
             } else if (interop.isIterator(value)) {
