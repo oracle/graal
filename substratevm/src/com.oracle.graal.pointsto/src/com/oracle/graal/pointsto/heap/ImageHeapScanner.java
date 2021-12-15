@@ -186,12 +186,12 @@ public abstract class ImageHeapScanner {
         type.registerAsInHeap();
     }
 
-    AnalysisFuture<ImageHeapObject> markConstantReachable(JavaConstant constant, ScanReason reason) {
+    JavaConstant markConstantReachable(JavaConstant constant, ScanReason reason) {
         if (constant.getJavaKind() == JavaKind.Object && constant.isNonNull()) {
-            return getOrCreateConstantReachableTask(constant, reason);
+            return getOrCreateConstantReachableTask(constant, reason).ensureDone().getObject();
         }
 
-        return null;
+        return constant;
     }
 
     public ImageHeapObject toImageHeapObject(JavaConstant constant) {
@@ -343,33 +343,32 @@ public abstract class ImageHeapScanner {
          */
         AnalysisError.guarantee(rawValue.isAvailable(), "Value not yet available for " + field.format("%H.%n"));
 
-        /* Attempting to materialize the value before it is available may result in an error. */
-        // TODO why run the transformer here, it is run by markConstantReachable anyway
+        // TODO the transformer here and markConstantReachable both run the object replacers
         JavaConstant transformedValue = transformFieldValue(field, receiver, rawValue.get());
+        /* Add the transformed value to the image heap. */
+        JavaConstant fieldValue = markConstantReachable(transformedValue, reason);
 
         if (scanningObserver != null) {
-            boolean analysisModified = false;
-            if (transformedValue.getJavaKind() == JavaKind.Object && hostVM.isRelocatedPointer(asObject(transformedValue))) {
-                analysisModified = scanningObserver.forRelocatedPointerFieldValue(receiver, field, transformedValue, reason);
-            } else if (transformedValue.isNull()) {
-                analysisModified = scanningObserver.forNullFieldValue(receiver, field, reason);
-            } else {
-                // TODO this adds the transformedValue in the heap, should we do this here?
-                // This will also run the replacer again; transformFieldValue already run the
-                // replacer
-                AnalysisFuture<ImageHeapObject> objectFuture = markConstantReachable(transformedValue, reason);
-                /* Notify the points-to analysis of the scan. */
-                if (objectFuture != null) {
-                    /* Add the transformed value to the image heap. */
-                    analysisModified = scanningObserver.forNonNullFieldValue(receiver, field, objectFuture.ensureDone().getObject(), reason);
-                }
-            }
+            /* Notify the points-to analysis of the scan. */
+            boolean analysisModified = notifyAnalysis(field, receiver, fieldValue, reason);
             if (analysisModified && onAnalysisModified != null) {
                 onAnalysisModified.run();
             }
         }
         /* Return the transformed value, but NOT the image heap object. */
-        return transformedValue;
+        return fieldValue;
+    }
+
+    private boolean notifyAnalysis(AnalysisField field, JavaConstant receiver, JavaConstant fieldValue, ScanReason reason) {
+        boolean analysisModified = false;
+        if (fieldValue.getJavaKind() == JavaKind.Object && hostVM.isRelocatedPointer(asObject(fieldValue))) {
+            analysisModified = scanningObserver.forRelocatedPointerFieldValue(receiver, field, fieldValue, reason);
+        } else if (fieldValue.isNull()) {
+            analysisModified = scanningObserver.forNullFieldValue(receiver, field, reason);
+        } else if (fieldValue.getJavaKind() == JavaKind.Object) {
+            analysisModified = scanningObserver.forNonNullFieldValue(receiver, field, fieldValue, reason);
+        }
+        return analysisModified;
     }
 
     @SuppressWarnings("unused")
@@ -382,26 +381,26 @@ public abstract class ImageHeapScanner {
     }
 
     protected JavaConstant onArrayElementReachable(JavaConstant array, AnalysisType arrayType, JavaConstant rawElementValue, int elementIndex, ScanReason reason, Runnable onAnalysisModified) {
-        AnalysisFuture<ImageHeapObject> objectFuture = markConstantReachable(rawElementValue, reason);
+        JavaConstant elementValue = markConstantReachable(rawElementValue, reason);
         if (scanningObserver != null && arrayType.getComponentType().getJavaKind() == JavaKind.Object) {
-            boolean analysisModified;
-            if (objectFuture == null) {
-                analysisModified = scanningObserver.forNullArrayElement(array, arrayType, elementIndex, reason);
-            } else {
-                ImageHeapObject element = objectFuture.ensureDone();
-                AnalysisType elementType = constantType(element.getObject());
-                markTypeInstantiated(elementType);
-                /* Process the array element. */
-                // TODO
-                analysisModified = scanningObserver.forNonNullArrayElement(array, arrayType, element.getObject(), elementType, elementIndex, reason);
-                return element.getObject();
-            }
+            /* Notify the points-to analysis of the scan. */
+            boolean analysisModified = notifyAnalysis(array, arrayType, elementValue, elementIndex, reason);
             if (analysisModified && onAnalysisModified != null) {
                 onAnalysisModified.run();
             }
-
         }
-        return null;
+        return elementValue;
+    }
+
+    private boolean notifyAnalysis(JavaConstant array, AnalysisType arrayType, JavaConstant elementValue, int elementIndex, ScanReason reason) {
+        boolean analysisModified;
+        if (elementValue.isNull()) {
+            analysisModified = scanningObserver.forNullArrayElement(array, arrayType, elementIndex, reason);
+        } else {
+            AnalysisType elementType = metaAccess.lookupJavaType(elementValue);
+            analysisModified = scanningObserver.forNonNullArrayElement(array, arrayType, elementValue, elementType, elementIndex, reason);
+        }
+        return analysisModified;
     }
 
     void onObjectReachable(ImageHeapObject imageHeapObject) {
