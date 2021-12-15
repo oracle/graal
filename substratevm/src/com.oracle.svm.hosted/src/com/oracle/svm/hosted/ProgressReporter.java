@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.reporting;
+package com.oracle.svm.hosted;
 
 import java.io.File;
 import java.io.PrintWriter;
@@ -66,9 +66,6 @@ import com.oracle.svm.core.VM;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.reflect.MethodMetadataDecoder;
-import com.oracle.svm.hosted.NativeImageGenerator;
-import com.oracle.svm.hosted.NativeImageSystemIOWrappers;
-import com.oracle.svm.hosted.StringAccess;
 import com.oracle.svm.hosted.code.CompileQueue.CompileTask;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.util.ImageBuildStatistics;
@@ -638,7 +635,7 @@ public class ProgressReporter {
      */
 
     private static void resetANSIMode() {
-        NativeImageSystemIOWrappers.singleton().originalOut().print(ANSIColors.RESET);
+        NativeImageSystemIOWrappers.singleton().getOut().print(ANSIColors.RESET);
     }
 
     private static String stringFilledWith(int size, String fill) {
@@ -838,7 +835,7 @@ public class ProgressReporter {
             if (printBuffer != null) {
                 textBuffer.forEach(printBuffer::append);
             } else {
-                textBuffer.forEach(builderIO.originalOut()::print);
+                textBuffer.forEach(builderIO.getOut()::print);
             }
             textBuffer.clear();
         }
@@ -850,7 +847,7 @@ public class ProgressReporter {
             if (printBuffer != null) {
                 printBuffer.append(value);
             } else {
-                builderIO.originalOut().print(value);
+                builderIO.getOut().print(value);
             }
         }
 
@@ -863,15 +860,15 @@ public class ProgressReporter {
                 return;
             }
             if (useOutputPrefix) {
-                builderIO.originalOut().print(outputPrefix);
+                builderIO.getOut().print(outputPrefix);
             }
             if (printBuffer != null) {
-                builderIO.originalOut().print(printBuffer);
+                builderIO.getOut().print(printBuffer);
                 printBuffer.setLength(0); // Clear buffer.
             }
-            textBuffer.forEach(builderIO.originalOut()::print);
+            textBuffer.forEach(builderIO.getOut()::print);
             textBuffer.clear();
-            builderIO.originalOut().println();
+            builderIO.getOut().println();
         }
 
         private void flushCenteredln() {

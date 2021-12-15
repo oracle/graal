@@ -27,6 +27,7 @@ package com.oracle.svm.hosted;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
+import java.util.Objects;
 
 import com.oracle.svm.core.util.UserError;
 
@@ -35,7 +36,7 @@ public class NativeImageSystemIOWrappers {
     final CapturingStdioWrapper outWrapper;
     final CapturingStdioWrapper errWrapper;
 
-    public boolean useCapturing;
+    boolean useCapturing;
 
     NativeImageSystemIOWrappers() {
         outWrapper = new CapturingStdioWrapper(System.out, new ByteArrayOutputStream(128));
@@ -53,12 +54,20 @@ public class NativeImageSystemIOWrappers {
         UserError.guarantee(System.err == errWrapper, "System.err" + msg);
     }
 
-    public PrintStream originalOut() {
+    public PrintStream getOut() {
         return outWrapper.delegate;
     }
 
-    public PrintStream originalErr() {
+    public void setOut(PrintStream customOut) {
+        outWrapper.delegate = Objects.requireNonNull(customOut);
+    }
+
+    public PrintStream getErr() {
         return errWrapper.delegate;
+    }
+
+    public void setErr(PrintStream customErr) {
+        errWrapper.delegate = Objects.requireNonNull(customErr);
     }
 
     public void flushCapturedContent() {
@@ -76,7 +85,7 @@ public class NativeImageSystemIOWrappers {
      */
     private final class CapturingStdioWrapper extends PrintStream {
         private final ByteArrayOutputStream buffer;
-        private final PrintStream delegate;
+        private PrintStream delegate;
 
         private CapturingStdioWrapper(PrintStream delegate, ByteArrayOutputStream buffer) {
             super(buffer);

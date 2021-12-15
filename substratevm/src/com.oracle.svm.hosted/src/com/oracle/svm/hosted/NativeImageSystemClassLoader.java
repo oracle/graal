@@ -52,8 +52,7 @@ import com.oracle.svm.util.ReflectionUtil;
 public final class NativeImageSystemClassLoader extends SecureClassLoader {
 
     public final ClassLoader defaultSystemClassLoader;
-
-    NativeImageSystemIOWrappers systemIOWrappers;
+    final NativeImageSystemIOWrappers systemIOWrappers;
 
     private volatile ClassLoader nativeImageClassLoader = null;
 
@@ -62,10 +61,6 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
     public NativeImageSystemClassLoader(ClassLoader defaultSystemClassLoader) {
         super(defaultSystemClassLoader);
         this.defaultSystemClassLoader = defaultSystemClassLoader;
-        resetSystemIOWrappers();
-    }
-
-    private void resetSystemIOWrappers() {
         systemIOWrappers = new NativeImageSystemIOWrappers();
         /* Image building console output requires custom System.out and System.err */
         systemIOWrappers.replaceSystemOutErr();
