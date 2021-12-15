@@ -721,8 +721,8 @@ public abstract class PointsToAnalysis implements BigBang {
                         System.out.println("Found pending operations, continuing analysis.");
                         continue;
                     }
-                    /* Outer analysis loop is done. Check if the heap snapshot is stable. */
-                    if (isHeapStable()) {
+                    /* Outer analysis loop is done. Check if heap verification modifies analysis. */
+                    if (!analysisModified()) {
                         return;
                     }
                 }
@@ -731,15 +731,15 @@ public abstract class PointsToAnalysis implements BigBang {
     }
 
     @SuppressWarnings("try")
-    private boolean isHeapStable() throws InterruptedException {
-        boolean foundMismatch;
+    private boolean analysisModified() throws InterruptedException {
+        boolean analysisModified;
         try (StopTimer ignored = verifyHeapTimer.start()) {
-            foundMismatch = universe.getHeapVerifier().verifyHeapSnapshot(executor);
-            System.out.println("Verification " + (foundMismatch ? " found " : " didn't find ") + " a mismatch.");
+            analysisModified = universe.getHeapVerifier().verifyHeapSnapshot(executor);
+            System.out.println("Heap verification " + (analysisModified ? "modified" : "didn't modify") + " analysis state.");
         }
         /* Initialize for the next iteration. */
         executor.init(timing);
-        return !foundMismatch;
+        return analysisModified;
     }
 
     @SuppressFBWarnings(value = "NP_NONNULL_PARAM_VIOLATION", justification = "ForkJoinPool does support null for the exception handler.")

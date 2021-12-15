@@ -59,7 +59,7 @@ public class HeapSnapshotVerifier {
 
     static class Options {
         @Option(help = "Control heap verifier verbosity level: 0 - quiet, 1 - print most, 2 - print all.", type = OptionType.Expert)//
-        public static final OptionKey<Integer> HeapVerifierVerbosity = new OptionKey<>(0);
+        public static final OptionKey<Integer> HeapVerifierVerbosity = new OptionKey<>(2);
     }
 
     protected final BigBang bb;
@@ -67,7 +67,8 @@ public class HeapSnapshotVerifier {
     protected final ImageHeap imageHeap;
 
     private ReusableSet scannedObjects;
-    private boolean foundMismatch;
+    private boolean heapPatched;
+    private boolean analysisModified;
 
     private final int verbosity;
 
@@ -117,7 +118,8 @@ public class HeapSnapshotVerifier {
     }
 
     public boolean verifyHeapSnapshot(CompletionExecutor executor) throws InterruptedException {
-        foundMismatch = false;
+        heapPatched = false;
+        analysisModified = false;
         scannedObjects.reset();
         ObjectScanner objectScanner = new ObjectScanner(bb, executor, scannedObjects, new ScanningObserver());
         executor.start();
@@ -125,7 +127,7 @@ public class HeapSnapshotVerifier {
         objectScanner.scanBootImageHeapRoots();
         executor.complete();
         executor.shutdown();
-        return foundMismatch;
+        return analysisModified || heapPatched;
     }
 
     protected void scanTypes(@SuppressWarnings("unused") ObjectScanner objectScanner) {
@@ -141,7 +143,7 @@ public class HeapSnapshotVerifier {
         public boolean forRelocatedPointerFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue, ScanReason reason) {
             boolean result = scanner.getScanningObserver().forRelocatedPointerFieldValue(receiver, field, fieldValue, reason);
             if (result) {
-                foundMismatch = true;
+                analysisModified = true;
             }
             return result;
         }
@@ -150,7 +152,7 @@ public class HeapSnapshotVerifier {
         public boolean forNullFieldValue(JavaConstant receiver, AnalysisField field, ScanReason reason) {
             boolean result = scanner.getScanningObserver().forNullFieldValue(receiver, field, reason);
             if (result) {
-                foundMismatch = true;
+                analysisModified = true;
             }
             return result;
         }
@@ -161,25 +163,27 @@ public class HeapSnapshotVerifier {
                 TypeData typeData = field.getDeclaringClass().getOrComputeData();
                 AnalysisFuture<JavaConstant> fieldValueTask = typeData.getFieldTask(field);
                 if (!fieldValueTask.isDone()) {
-                    warnStaticFieldNotComputed(field, fieldValue, reason);
+                    // warnStaticFieldNotComputed(field, fieldValue, reason);
                     fieldValueTask.ensureDone();
                 }
                 JavaConstant fieldSnapshot = fieldValueTask.guardedGet();
                 if (!Objects.equals(fieldSnapshot, fieldValue)) {
                     Runnable onAnalysisModified = () -> warnStaticFieldMismatch(field, fieldSnapshot, fieldValue, reason);
                     scanner.patchStaticField(typeData, field, fieldValue, reason, onAnalysisModified).ensureDone();
+                    heapPatched = true;
                 }
             } else {
                 ImageHeapInstance receiverObject = (ImageHeapInstance) getReceiverObject(receiver, reason);
                 AnalysisFuture<JavaConstant> fieldValueTask = receiverObject.getFieldTask(field);
                 if (!fieldValueTask.isDone()) {
-                    warnInstanceFieldNotComputed(field, fieldValue, reason);
+                    // warnInstanceFieldNotComputed(field, fieldValue, reason);
                     fieldValueTask.ensureDone();
                 }
                 JavaConstant fieldSnapshot = fieldValueTask.guardedGet();
                 if (!Objects.equals(fieldSnapshot, fieldValue)) {
                     Runnable onAnalysisModified = () -> warnInstanceFieldMismatch(field, fieldSnapshot, fieldValue, reason);
                     scanner.patchInstanceField(receiverObject, field, fieldValue, reason, onAnalysisModified).ensureDone();
+                    heapPatched = true;
                 }
             }
             return false;
@@ -189,7 +193,7 @@ public class HeapSnapshotVerifier {
         public boolean forNullArrayElement(JavaConstant array, AnalysisType arrayType, int elementIndex, ScanReason reason) {
             boolean result = scanner.getScanningObserver().forNullArrayElement(array, arrayType, elementIndex, reason);
             if (result) {
-                foundMismatch = true;
+                analysisModified = true;
             }
             return result;
         }
@@ -201,6 +205,7 @@ public class HeapSnapshotVerifier {
             if (!Objects.equals(elementSnapshot, elementValue)) {
                 Runnable onAnalysisModified = () -> warnArrayElementMismatch(arrayType, elementSnapshot, elementValue, reason);
                 arrayObject.setElement(index, scanner.onArrayElementReachable(array, arrayType, elementValue, index, reason, onAnalysisModified));
+                heapPatched = true;
             }
             return false;
         }
@@ -236,11 +241,13 @@ public class HeapSnapshotVerifier {
                 if (task == null) {
                     warnNoTaskForHub(value, reason);
                     scanner.toImageHeapObject(value, reason);
+                    heapPatched = true;
                 } else {
                     if (!task.isDone()) {
                         /* If there is a task for the hub it should have been triggered. */
                         warnNoTaskComputedForHub(value, reason);
                         task.ensureDone();
+                        heapPatched = true;
                     }
                     JavaConstant snapshot = task.guardedGet().getObject();
                     if (!Objects.equals(snapshot, value)) {
@@ -252,21 +259,21 @@ public class HeapSnapshotVerifier {
     }
 
     private void warnNoTaskForHub(JavaConstant value, ScanReason reason) {
-        foundMismatch = true;
+        analysisModified = true;
         if (!skipWarning()) {
             warning(reason, "No snapshot task found for hub %s %n", value);
         }
     }
 
     private void warnNoTaskComputedForHub(JavaConstant value, ScanReason reason) {
-        foundMismatch = true;
+        analysisModified = true;
         if (!skipWarning()) {
             warning(reason, "Snapshot not yet computed for hub %n new value: %s %n", value);
         }
     }
 
     private void warnArrayElementMismatch(AnalysisType arrayType, JavaConstant elementSnapshot, JavaConstant elementValue, ScanReason reason) {
-        foundMismatch = true;
+        analysisModified = true;
         if (skipWarning(() -> skipArrayTypes.contains(arrayType))) {
             return;
         }
@@ -274,28 +281,28 @@ public class HeapSnapshotVerifier {
     }
 
     private void warnStaticFieldMismatch(AnalysisField field, JavaConstant fieldSnapshot, JavaConstant fieldValue, ScanReason reason) {
-        foundMismatch = true;
+        analysisModified = true;
         if (!skipWarning(() -> internalFields.contains(field))) {
             warning(reason, "Value mismatch for static field %s %n snapshot: %s %n new value: %s %n", field, fieldSnapshot, fieldValue);
         }
     }
 
+    @SuppressWarnings("unused")
     private void warnStaticFieldNotComputed(AnalysisField field, JavaConstant fieldValue, ScanReason reason) {
-        foundMismatch = true;
         if (!skipWarning(() -> internalFields.contains(field))) {
             warning(reason, "Snapshot not yet computed for static field %s %n new value: %s %n", field, fieldValue);
         }
     }
 
     private void warnInstanceFieldMismatch(AnalysisField field, JavaConstant fieldSnapshot, JavaConstant fieldValue, ScanReason reason) {
-        foundMismatch = true;
+        analysisModified = true;
         if (!skipWarning(() -> internalFields.contains(field))) {
             warning(reason, "Value mismatch for instance field %s %n snapshot: %s %n new value: %s %n", field, fieldSnapshot, fieldValue);
         }
     }
 
+    @SuppressWarnings("unused")
     private void warnInstanceFieldNotComputed(AnalysisField field, JavaConstant fieldValue, ScanReason reason) {
-        foundMismatch = true;
         if (!skipWarning(() -> internalFields.contains(field) || externalFields.contains(field))) {
             warning(reason, "Snapshot not yet computed for instance field %s %n new value: %s %n", field, fieldValue);
         }
