@@ -23,7 +23,7 @@
  * questions.
  */
 
-package com.oracle.svm.hosted.reporting;
+package com.oracle.svm.hosted;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -33,7 +33,7 @@ import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 public final class ProgressReporterCHelper {
     private static final int DEFAULT_CHARACTERS_PER_LINE = 80;
-    public static final int MAX_CHARACTERS_PER_LINE = 120;
+    static final int MAX_CHARACTERS_PER_LINE = 120;
 
     static {
         loadCHelperLibrary();
