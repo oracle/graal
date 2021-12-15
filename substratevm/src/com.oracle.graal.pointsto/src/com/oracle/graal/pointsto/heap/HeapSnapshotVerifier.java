@@ -156,7 +156,7 @@ public class HeapSnapshotVerifier {
         }
 
         @Override
-        public void forNonNullFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue, ScanReason reason) {
+        public boolean forNonNullFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue, ScanReason reason) {
             if (field.isStatic()) {
                 TypeData typeData = field.getDeclaringClass().getOrComputeData();
                 AnalysisFuture<JavaConstant> fieldValueTask = typeData.getFieldTask(field);
@@ -166,8 +166,8 @@ public class HeapSnapshotVerifier {
                 }
                 JavaConstant fieldSnapshot = fieldValueTask.guardedGet();
                 if (!Objects.equals(fieldSnapshot, fieldValue)) {
-                    warnStaticFieldMismatch(field, fieldSnapshot, fieldValue, reason);
-                    scanner.patchStaticField(typeData, field, fieldValue, reason).ensureDone();
+                    Runnable onAnalysisModified = () -> warnStaticFieldMismatch(field, fieldSnapshot, fieldValue, reason);
+                    scanner.patchStaticField(typeData, field, fieldValue, reason, onAnalysisModified).ensureDone();
                 }
             } else {
                 ImageHeapInstance receiverObject = (ImageHeapInstance) getReceiverObject(receiver, reason);
@@ -178,10 +178,11 @@ public class HeapSnapshotVerifier {
                 }
                 JavaConstant fieldSnapshot = fieldValueTask.guardedGet();
                 if (!Objects.equals(fieldSnapshot, fieldValue)) {
-                    warnInstanceFieldMismatch(field, fieldSnapshot, fieldValue, reason);
-                    scanner.patchInstanceField(receiverObject, field, fieldValue, reason).ensureDone();
+                    Runnable onAnalysisModified = () -> warnInstanceFieldMismatch(field, fieldSnapshot, fieldValue, reason);
+                    scanner.patchInstanceField(receiverObject, field, fieldValue, reason, onAnalysisModified).ensureDone();
                 }
             }
+            return false;
         }
 
         @Override
@@ -194,13 +195,14 @@ public class HeapSnapshotVerifier {
         }
 
         @Override
-        public void forNonNullArrayElement(JavaConstant array, AnalysisType arrayType, JavaConstant elementValue, AnalysisType elementType, int index, ScanReason reason) {
+        public boolean forNonNullArrayElement(JavaConstant array, AnalysisType arrayType, JavaConstant elementValue, AnalysisType elementType, int index, ScanReason reason) {
             ImageHeapArray arrayObject = (ImageHeapArray) getReceiverObject(array, reason);
             JavaConstant elementSnapshot = arrayObject.getElement(index);
             if (!Objects.equals(elementSnapshot, elementValue)) {
-                warnArrayElementMismatch(arrayType, elementSnapshot, elementValue, reason);
-                arrayObject.setElement(index, scanner.onArrayElementReachable(array, arrayType, elementValue, index, reason));
+                Runnable onAnalysisModified = () -> warnArrayElementMismatch(arrayType, elementSnapshot, elementValue, reason);
+                arrayObject.setElement(index, scanner.onArrayElementReachable(array, arrayType, elementValue, index, reason, onAnalysisModified));
             }
+            return false;
         }
 
         private ImageHeapObject getReceiverObject(JavaConstant constant, ScanReason reason) {

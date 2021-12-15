@@ -339,11 +339,11 @@ public final class ObjectTreePrinter extends ObjectScanner {
         }
 
         @Override
-        public void forNonNullFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue, ScanReason reason) {
+        public boolean forNonNullFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue, ScanReason reason) {
 
             if (receiver == null) {
                 // static field
-                return;
+                return false;
             }
 
             if (constantToNode.containsKey(receiver) && constantToNode.containsKey(fieldValue)) {
@@ -351,6 +351,7 @@ public final class ObjectTreePrinter extends ObjectScanner {
                 ObjectNodeBase valueNode = constantToNode.get(fieldValue);
                 receiverNode.addField(field, valueNode);
             }
+            return true;
         }
 
         @Override
@@ -363,12 +364,14 @@ public final class ObjectTreePrinter extends ObjectScanner {
         }
 
         @Override
-        public void forNonNullArrayElement(JavaConstant array, AnalysisType arrayType, JavaConstant elementConstant, AnalysisType elementType, int index, ScanReason reason) {
+        public boolean forNonNullArrayElement(JavaConstant array, AnalysisType arrayType, JavaConstant elementConstant, AnalysisType elementType, int index, ScanReason reason) {
             if (constantToNode.containsKey(array) && constantToNode.containsKey(elementConstant)) {
                 ArrayObjectNode arrayNode = (ArrayObjectNode) constantToNode.get(array);
                 ObjectNodeBase valueNode = constantToNode.get(elementConstant);
                 arrayNode.addElement(index, valueNode);
+                return true;
             }
+            return false;
         }
 
         @Override

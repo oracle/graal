@@ -61,7 +61,7 @@ public class AnalysisObjectScanningObserver implements ObjectScanningObserver {
     }
 
     @Override
-    public void forNonNullFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue, ScanReason reason) {
+    public boolean forNonNullFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue, ScanReason reason) {
         PointsToAnalysis analysis = getAnalysis();
         AnalysisType fieldType = analysis.getMetaAccess().lookupJavaType(analysis.getSnippetReflectionProvider().asObject(Object.class, fieldValue).getClass());
         assert fieldType.isInstantiated() : fieldType;
@@ -72,8 +72,9 @@ public class AnalysisObjectScanningObserver implements ObjectScanningObserver {
         if (!fieldTypeFlow.getState().containsObject(constantObject)) {
             /* Add the new constant to the field's flow state. */
             TypeState constantTypeState = TypeState.forNonNullObject(analysis, constantObject);
-            fieldTypeFlow.addState(analysis, constantTypeState);
+            return fieldTypeFlow.addState(analysis, constantTypeState);
         }
+        return false;
     }
 
     /**
@@ -107,7 +108,7 @@ public class AnalysisObjectScanningObserver implements ObjectScanningObserver {
     }
 
     @Override
-    public void forNonNullArrayElement(JavaConstant array, AnalysisType arrayType, JavaConstant elementConstant, AnalysisType elementType, int elementIndex, ScanReason reason) {
+    public boolean forNonNullArrayElement(JavaConstant array, AnalysisType arrayType, JavaConstant elementConstant, AnalysisType elementType, int elementIndex, ScanReason reason) {
         assert elementType.isInstantiated() : elementType;
         ArrayElementsTypeFlow arrayObjElementsFlow = getArrayElementsFlow(array, arrayType);
         PointsToAnalysis analysis = getAnalysis();
@@ -115,8 +116,9 @@ public class AnalysisObjectScanningObserver implements ObjectScanningObserver {
         if (!arrayObjElementsFlow.getState().containsObject(constantObject)) {
             /* Add the constant element to the constant's array type flow. */
             TypeState elementTypeState = TypeState.forNonNullObject(analysis, constantObject);
-            arrayObjElementsFlow.addState(analysis, elementTypeState);
+            return arrayObjElementsFlow.addState(analysis, elementTypeState);
         }
+        return false;
     }
 
     /**

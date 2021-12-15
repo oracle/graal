@@ -101,7 +101,8 @@ public final class AnalysisHeapHistogramPrinter extends ObjectScanner {
         }
 
         @Override
-        public void forNonNullFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue, ScanReason reason) {
+        public boolean forNonNullFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue, ScanReason reason) {
+            return false;
         }
 
         @Override
@@ -110,7 +111,8 @@ public final class AnalysisHeapHistogramPrinter extends ObjectScanner {
         }
 
         @Override
-        public void forNonNullArrayElement(JavaConstant array, AnalysisType arrayType, JavaConstant elementConstant, AnalysisType elementType, int index, ScanReason reason) {
+        public boolean forNonNullArrayElement(JavaConstant array, AnalysisType arrayType, JavaConstant elementConstant, AnalysisType elementType, int index, ScanReason reason) {
+            return false;
         }
     }
 }

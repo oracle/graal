@@ -60,8 +60,11 @@ public interface ObjectScanningObserver {
 
     /**
      * Hook for scanned non-null field value.
+     * 
+     * @return true if value is consumed, false otherwise
      */
-    default void forNonNullFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue, ScanReason reason) {
+    default boolean forNonNullFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue, ScanReason reason) {
+        return false;
     }
 
     /**
@@ -73,8 +76,11 @@ public interface ObjectScanningObserver {
 
     /**
      * Hook for scanned non-null element value.
+     * 
+     * @return true if value is consumed, false otherwise
      */
-    default void forNonNullArrayElement(JavaConstant array, AnalysisType arrayType, JavaConstant elementConstant, AnalysisType elementType, int elementIndex, ScanReason reason) {
+    default boolean forNonNullArrayElement(JavaConstant array, AnalysisType arrayType, JavaConstant elementConstant, AnalysisType elementType, int elementIndex, ScanReason reason) {
+        return false;
     }
 
     /**

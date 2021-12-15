@@ -30,6 +30,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.graal.pointsto.ObjectScanner;
+import com.oracle.graal.pointsto.heap.value.ValueSupplier;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
@@ -117,7 +118,7 @@ public class ImageHeap {
 
         /**
          * Return a task for transforming and snapshotting the field value, effectively a future for
-         * {@link ImageHeapScanner#onFieldValueReachable(AnalysisField, JavaConstant, JavaConstant, ObjectScanner.ScanReason)}.
+         * {@link ImageHeapScanner#onFieldValueReachable(AnalysisField, JavaConstant, ValueSupplier, ObjectScanner.ScanReason)}.
          */
         public AnalysisFuture<JavaConstant> getFieldTask(AnalysisField field) {
             return objectFieldValues[field.getPosition()];

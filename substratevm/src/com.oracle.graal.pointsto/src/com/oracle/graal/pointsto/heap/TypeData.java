@@ -27,6 +27,7 @@ package com.oracle.graal.pointsto.heap;
 import java.util.Map;
 
 import com.oracle.graal.pointsto.ObjectScanner;
+import com.oracle.graal.pointsto.heap.value.ValueSupplier;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
@@ -46,7 +47,7 @@ public final class TypeData {
     /**
      * The raw values of all static fields, regardless of field reachability status. Evaluating the
      * {@link AnalysisFuture} runs
-     * {@link ImageHeapScanner#onFieldValueReachable(AnalysisField, JavaConstant, JavaConstant, ObjectScanner.ScanReason)}
+     * {@link ImageHeapScanner#onFieldValueReachable(AnalysisField, JavaConstant, ValueSupplier, ObjectScanner.ScanReason)}
      * adds the result to the image heap}.
      */
     final Map<ResolvedJavaField, AnalysisFuture<JavaConstant>> staticFieldValues;
@@ -62,7 +63,7 @@ public final class TypeData {
 
     /**
      * Return a task for transforming and snapshotting the field value, effectively a future for
-     * {@link ImageHeapScanner#onFieldValueReachable(AnalysisField, JavaConstant, JavaConstant, ObjectScanner.ScanReason)}.
+     * {@link ImageHeapScanner#onFieldValueReachable(AnalysisField, JavaConstant, ValueSupplier, ObjectScanner.ScanReason)}.
      */
     public AnalysisFuture<JavaConstant> getFieldTask(AnalysisField field) {
         return staticFieldValues.get(field);
