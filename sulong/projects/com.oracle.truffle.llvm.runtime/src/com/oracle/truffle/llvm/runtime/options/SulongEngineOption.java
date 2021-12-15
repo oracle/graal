@@ -85,11 +85,12 @@ public final class SulongEngineOption {
             help = "Enable fusing of instructions producing values with instructions consuming values.")
     public static final OptionKey<Boolean> OPTIMIZE_FRAME_SLOTS = new OptionKey<>(true);
 
-    @Option(name = "llvm.printAST",
+    @Option(name = "llvm.printASTFilter",
             category = OptionCategory.INTERNAL,
-            help = "Prints the Truffle AST of functions when it is created. " +
+            help = "Restricts which functions should have their abstract syntax tree printed on creation. " +
+                   "Printing is enabled by setting '--log.llvm.AST.level=FINEST. " +
                    "A comma-separated list of regular expressions that will be matched against function names.")
-    public static final OptionKey<String> PRINT_AST = new OptionKey<>("");
+    public static final OptionKey<String> PRINT_AST_FILTER = new OptionKey<>(".*");
 
     @Option(name = "llvm.parseOnly",
             category = OptionCategory.EXPERT,
