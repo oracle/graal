@@ -42,16 +42,21 @@ public class LLVMScope implements TruffleObject {
     private final ArrayList<String> functionKeys;
     // TODO (pichristoph) remove 'static'
     private static final HashMap<String, String> linkageNames = new HashMap<>();
-    private static final HashMap<String, long[]> symbolOffsets = new HashMap<>();
+    private final HashMap<String, long[]> symbolOffsets;
+    private static final HashMap<String, HashMap<String, String>> linkageScopeNames = new HashMap<>();
 
     public LLVMScope() {
         this.symbols = new HashMap<>();
         this.functionKeys = new ArrayList<>();
+        // this.linkageScopeNames = new HashMap<>();
+        this.symbolOffsets = new HashMap<>();
     }
 
-    public LLVMScope(HashMap<String, LLVMSymbol> symbols, ArrayList<String> functionKeys) {
+    public LLVMScope(HashMap<String, LLVMSymbol> symbols, ArrayList<String> functionKeys, HashMap<String, HashMap<String, String>> linkageScopeNames, HashMap<String, long[]> symbolOffsets) {
         this.symbols = symbols;
         this.functionKeys = functionKeys;
+        // this.linkageScopeNames = linkageScopeNames;
+        this.symbolOffsets = symbolOffsets;
     }
 
     @TruffleBoundary
@@ -88,7 +93,21 @@ public class LLVMScope implements TruffleObject {
     }
 
     public String getMangledName(String name) {
+        // return linkageNames.get(name);
+        for (HashMap<String, String> scope : linkageScopeNames.values()) {
+            if (scope.containsKey(name)) {
+                return scope.get(name);
+            }
+        }
         return linkageNames.get(name);
+    }
+
+    public String getMangledName(String scope, String name) {
+        HashMap<String, String> scopeMap = linkageScopeNames.get(scope);
+        if (scopeMap == null) {
+            return null;
+        }
+        return scopeMap.get(name);
     }
 
     public long[] getSymbolOffsets(String symbolName) {
@@ -108,6 +127,17 @@ public class LLVMScope implements TruffleObject {
      */
     public void registerLinkageName(String name, String linkageName) {
         linkageNames.put(name, linkageName);
+    }
+
+    public void registerLinkageName(String scope, String name, String linkageName) {
+        if (scope == null) {
+            registerLinkageName(name, linkageName);
+        } else {
+            if (linkageScopeNames.get(scope) == null) {
+                linkageScopeNames.put(scope, new HashMap<>());
+            }
+            linkageScopeNames.get(scope).put(name, linkageName);
+        }
     }
 
     /**
