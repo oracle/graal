@@ -587,7 +587,7 @@ public class AnalysisUniverse implements Universe {
     public static Set<AnalysisMethod> getMethodImplementations(BigBang bb, AnalysisMethod method, boolean includeInlinedMethods) {
         Set<AnalysisMethod> implementations = new LinkedHashSet<>();
         if (method.wrapped.canBeStaticallyBound() || method.isConstructor()) {
-            if (method.isImplementationInvoked()) {
+            if (includeInlinedMethods ? method.isReachable() : method.isImplementationInvoked()) {
                 implementations.add(method);
             }
         } else {
