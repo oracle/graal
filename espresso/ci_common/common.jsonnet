@@ -55,7 +55,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
       // for compatibility with macOS High Sierra
       MACOSX_DEPLOYMENT_TARGET: '10.13',
     },
-    capabilities: ['darwin', 'amd64'],
+    capabilities: ['darwin_mojave', 'amd64'],
   },
 
   // generic targets
