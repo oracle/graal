@@ -32,11 +32,14 @@ import org.graalvm.nativeimage.ImageSingletons;
 public interface VirtualThreads {
     @Fold
     static VirtualThreads get() {
+        ContinuationsFeature.abortIfUnsupported();
         return ImageSingletons.lookup(VirtualThreads.class);
     }
 
     @Fold
-    boolean isSupported();
+    static boolean isSupported() {
+        return ImageSingletons.contains(VirtualThreads.class);
+    }
 
     ThreadFactory createFactory();
 

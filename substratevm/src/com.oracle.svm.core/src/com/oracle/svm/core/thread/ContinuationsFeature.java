@@ -45,19 +45,18 @@ import com.oracle.svm.util.ReflectionUtil;
 public class ContinuationsFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        VirtualThreads impl;
         if (Continuation.isSupported()) {
+            VirtualThreads impl;
             if (LoomSupport.isEnabled()) {
                 impl = new LoomVirtualThreads();
             } else {
                 impl = new SubstrateVirtualThreads();
             }
+            ImageSingletons.add(VirtualThreads.class, impl);
         } else {
-            impl = new NoVirtualThreads();
             UserError.guarantee(!SubstrateOptions.UseLoom.getValue(), SubstrateOptionsParser.commandArgument(SubstrateOptions.UseLoom, "+") + " cannot be enabled without option " +
                             SubstrateOptionsParser.commandArgument(SubstrateOptions.SupportContinuations, "+"));
         }
-        ImageSingletons.add(VirtualThreads.class, impl);
     }
 
     @Override
@@ -69,12 +68,15 @@ public class ContinuationsFeature implements Feature {
                 RuntimeReflection.register(ReflectionUtil.lookupMethod(ForkJoinPool.class, "compensatedBlock", ForkJoinPool.ManagedBlocker.class));
             }
         } else {
-            access.registerReachabilityHandler(a -> UserError.abort(
-                            "Continuation support is used, but not enabled. Use options " +
-                                            SubstrateOptionsParser.commandArgument(SubstrateOptions.SupportContinuations, "+") +
-                                            " or " + SubstrateOptionsParser.commandArgument(SubstrateOptions.UseLoom, "+") + "."),
-                            StoredContinuationImpl.class,
-                            ReflectionUtil.lookupMethod(NoVirtualThreads.class, "unreachable"));
+            access.registerReachabilityHandler(a -> abortIfUnsupported(), StoredContinuationImpl.class);
+        }
+    }
+
+    static void abortIfUnsupported() {
+        if (!Continuation.isSupported()) {
+            throw UserError.abort("Continuation support is used, but not enabled. Use options " +
+                            SubstrateOptionsParser.commandArgument(SubstrateOptions.SupportContinuations, "+") +
+                            " or " + SubstrateOptionsParser.commandArgument(SubstrateOptions.UseLoom, "+") + ".");
         }
     }
 }

@@ -28,28 +28,20 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 
 import java.util.concurrent.ThreadFactory;
 
-import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.AlwaysInline;
 import com.oracle.svm.core.util.VMError;
 
 /**
  * Code specific to virtual threads is part of the {@link Thread} methods, e.g. {@code yield} or
  * {@code sleep}, and the implementation for platform threads generally in {@code yield0} or
  * {@code sleep0}, so we only substitute this platform thread code in
- * {@link Target_java_lang_Thread}, and never expect these methods to be reachable, therefore
- * extending {@link NoVirtualThreads}.
+ * {@link Target_java_lang_Thread}, and never expect these methods to be reachable.
  */
-final class LoomVirtualThreads extends NoVirtualThreads {
+final class LoomVirtualThreads implements VirtualThreads {
     private static Target_java_lang_VirtualThread cast(Thread thread) {
         return SubstrateUtil.cast(thread, Target_java_lang_VirtualThread.class);
-    }
-
-    @Fold
-    @Override
-    public boolean isSupported() {
-        return true;
     }
 
     @Override
@@ -57,7 +49,6 @@ final class LoomVirtualThreads extends NoVirtualThreads {
         throw VMError.unimplemented();
     }
 
-    @AlwaysInline("Eliminate code handling virtual threads.")
     @Override
     public boolean isVirtual(Thread thread) {
         return Target_java_lang_VirtualThread.class.isInstance(thread);
@@ -69,5 +60,60 @@ final class LoomVirtualThreads extends NoVirtualThreads {
             long nanos = MILLISECONDS.toNanos(millis);
             cast(thread).joinNanos(nanos);
         }
+    }
+
+    @Platforms({}) // error if reachable
+    private static RuntimeException unreachable() {
+        return VMError.shouldNotReachHere();
+    }
+
+    @Override
+    public boolean getAndClearInterrupt(Thread thread) {
+        throw unreachable();
+    }
+
+    @Override
+    public void yield() {
+        throw unreachable();
+    }
+
+    @Override
+    public void sleepMillis(long millis) {
+        throw unreachable();
+    }
+
+    @Override
+    public boolean isAlive(Thread thread) {
+        throw unreachable();
+    }
+
+    @Override
+    public void unpark(Thread thread) {
+        throw unreachable();
+    }
+
+    @Override
+    public void park() {
+        throw unreachable();
+    }
+
+    @Override
+    public void parkNanos(long nanos) {
+        throw unreachable();
+    }
+
+    @Override
+    public void parkUntil(long deadline) {
+        throw unreachable();
+    }
+
+    @Override
+    public void pinCurrent() {
+        throw unreachable();
+    }
+
+    @Override
+    public void unpinCurrent() {
+        throw unreachable();
     }
 }

@@ -112,7 +112,7 @@ public class LayoutEncoding {
         guaranteeEncoding(type, size > LAST_SPECIAL_VALUE, "Instance type size must be above special values for encoding: " + size);
         int encoding = size;
         guaranteeEncoding(type, isInstance(encoding), "Instance type encoding must denote an instance");
-        guaranteeEncoding(type, !isStoredContinuation(encoding), "Instance type encoding must not denote a stored continuation");
+        guaranteeEncoding(type, !Continuation.isSupported() || !isStoredContinuation(encoding), "Instance type encoding must not denote a stored continuation");
         guaranteeEncoding(type, !isArray(encoding), "Instance type encoding must not denote an array");
         guaranteeEncoding(type, !isObjectArray(encoding), "Instance type encoding must not denote an object array");
         guaranteeEncoding(type, !isPrimitiveArray(encoding), "Instance type encoding must not denote a primitive array");
@@ -159,7 +159,7 @@ public class LayoutEncoding {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isStoredContinuation(int encoding) {
-        return Continuation.isSupported() && encoding == STORED_CONTINUATION_VALUE;
+        return encoding == STORED_CONTINUATION_VALUE;
     }
 
     // May be inlined because it does not deal in Pointers.
@@ -221,7 +221,7 @@ public class LayoutEncoding {
         int encoding = KnownIntrinsics.readHub(obj).getLayoutEncoding();
         if (isArray(encoding)) {
             return getArraySize(encoding, ArrayLengthNode.arrayLength(obj));
-        } else if (isStoredContinuation(encoding)) {
+        } else if (Continuation.isSupported() && isStoredContinuation(encoding)) {
             return WordFactory.unsigned(StoredContinuationImpl.readSize((StoredContinuation) obj));
         } else {
             return getInstanceSize(encoding);
