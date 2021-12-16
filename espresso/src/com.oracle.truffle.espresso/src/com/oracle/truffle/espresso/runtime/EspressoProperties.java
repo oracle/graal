@@ -505,6 +505,7 @@ final class LinuxBuilder extends PlatformBuilder {
         Path graalJavaHome = findGraalVMJavaHome(espressoHome());
         paths.add(graalJavaHome.resolve("lib").resolve(CPU_ARCH).resolve("truffle"));
         paths.add(graalJavaHome.resolve("lib").resolve("truffle"));
+        paths.add(espressoHome().resolve("lib"));
         return paths;
     }
 
