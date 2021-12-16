@@ -1,4 +1,4 @@
-# Embedding Insight into Java Applications
+# Embedding Insight into Applications
 
 [GraalVM](http://graalvm.org) languages can be embedded into custom Java applications via polyglot
 [Context](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.html) API.

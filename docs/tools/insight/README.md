@@ -12,7 +12,7 @@ permalink: /tools/graalvm-insight/
 * [Inspecting Values](#inspecting-values)
 * [What to Read Next](#what-to-read-next)
 
-GraalVM Insight is a multipurpose, flexible tool for writing reliable microservices solutions that traces program runtime behavior and gathers insights.
+GraalVM Insight is a multipurpose, flexible tool that traces program runtime behavior and gathers insights.
 
 The dynamic nature of the tool helps users to selectively apply tracing pointcuts on already running applications with no loss of performance.
 GraalVM Insight also provides detailed access to runtime behavior of a program, allowing users to inspect values and types at invocation or allocation sites.
@@ -216,13 +216,13 @@ That provides ultimate insights into execution and behavior of one's application
 
 To continue learning and deep dive into GraalVM Insight, proceed to the [Insight Manual](Insight-Manual.md) which starts with an obligatory _HelloWorld_ example and then demonstrates more challenging tasks.
 
-### Embeddeding Insight into Applications
+### Embeddeding GraalVM Insight into Applications
 
 GraalVM languages (languages implemented with the Truffle framework) can be embedded into custom applications via [Polyglot Context API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.html). GraalVM Insight can also be controlled via the same API.
 
 Read the [embedding documentation](Insight-Embedding.md) to learn how to integrate GraalVM Insight capabilities into applications in a secure way.
 
-### Tracing with Insight
+### Tracing with GraalVM Insight
 
 GraalVM Insight dynamically adds tracing capabilities into existing code.
 Write your application as normally and apply [Open Telemetry](https://opentelemetry.io/) traces dynamically when needed.

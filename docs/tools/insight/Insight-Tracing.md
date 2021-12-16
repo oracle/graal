@@ -1,20 +1,17 @@
-# [GraalVM Insight](Insight.md): with OpenTracing API on top!
+# Tracing with GraalVM Insight
+<!-- GraalVM Insight with OpenTracing API on top -->
 
-It is possible to use the GraalVM [Insight](Insight.md) system to implement smooth, declarative,
-adhoc tracing via standard OpenTracing API. The traces can be added into running
-application and customized on the fly to extract the right information needed
-to investigate any misbehavior incident.
+It is possible to use the GraalVM Insight to implement smooth, declarative, ad hoc tracing via standard [`OpenTracing API`](https://github.com/opentracing/opentracing-javascript).
+The traces can be added into running application and customized on the fly to extract the right information needed to investigate any misbehavior incident.
 
-Let's demonstrate the [Insight](Insight.md) tracing capabilities on following showcase.
-First of all use the `npm` command to install one of the JavaScript libraries for tracing:
+The following examples will demonstrate the racing capabilities with GraalVM Insight.
+To start, install the Jaeger's client side instrumentation library for Node.js:
 
 ```bash
-$ graalvm/bin/npm install jaeger-client@3.17.1
+graalvm/bin/npm install jaeger-client@3.17.1
 ```
 
-Now you can use the [OpenTracing API](https://github.com/opentracing/opentracing-javascript)
-provided by the `jaeger-client` module in your instrument `agent.js` via the `tracer` object
-(once it becomes available - discussed later in this document):
+Now you can use the [OpenTracing API](https://github.com/opentracing/opentracing-javascript) provided by the `jaeger-client` module in your instrument `agent.js` via the `tracer` object, once it becomes available (discussed later in this guide):
 
 ```js
 let initialize = function(tracer) {
@@ -46,7 +43,7 @@ let initialize = function(tracer) {
             res.span.finish();
             console.log(`agent: finished #${res.id} request`);
         } else {
-            // OK, caused for example by Tracer itself connecting to Jaeger server
+            //Caused, for example, by Tracer itself connecting to the Jaeger server
         }
     }, {
         roots: true,
@@ -57,23 +54,18 @@ let initialize = function(tracer) {
 };
 ```
 
-The system hooks into `emit('request', ...)` and `res.end()` functions
-which are used to initialize a response to an HTTP request and finish it.
-Because the `res` object is a dynamic JavaScript object, it is possible to
-add `id` and `span` attributes to it in the `enter` handler of the `emit` function
-from the source `events.js`. Then it is possible to use these attributes
-in the `return` handler of the `end` function.
+The system hooks into `emit('request', ...)` and `res.end()` functions which are used to initialize a response to an HTTP request and finish it.
+Because the `res` object is a dynamic JavaScript object, it is possible to add `id` and `span` attributes to it in the `enter` handler of the `emit` function from the source `events.js`.
+Then it is possible to use these attributes in the `return` handler of the `end` function.
 
-The GraalVM [Insight](Insight.md) provides access to `frame` variables and their fields.
-As such the instrument can read value of `req.url` or `req.method` and provide
-them as `span.setTag` values to the OpenTracing server.
+GraalVM Insight provides access to `frame` variables and their fields.
+As such, the instrument can read value of `req.url` or `req.method` and provide them as `span.setTag` values to the OpenTracing server.
 
-With such instrument, it is just a matter of being able to enable it
-at the right time. See [embedding into node.js](Insight-Embedding.md)
-section to see how to create an *admin server* and apply any trace scripts
-(including OpenTracing based ones) dynamically - when needed.
-For purposes of this documentation, let's use something simpler. Let's enable
-the instrument when the `jaeger` object is provided to it:
+With this instrument, it is just a matter of being able to enable it at the right time.
+Check the [Embedding Insight into Node.js Application](Insight-Embedding.md) section to see how to create an admin server and apply any trace scripts (including OpenTracing based ones) dynamically when needed.
+For purposes of this guide, something simpler will be used.
+
+Enable the instrument when the `jaeger` object is provided to it:
 
 ```js
 let initializeJaeger = function (ctx, frame) {
@@ -88,7 +80,7 @@ let initializeJaeger = function (ctx, frame) {
     var config = {
       serviceName: 'insight-demo',
       reporter: {
-        // Provide the traces endpoint; this forces the client to connect directly to the Collector and send
+        // Provide the traces endpoint. This forces the client to connect directly to the Collector and send
         // spans over HTTP
         collectorEndpoint: 'http://localhost:14268/api/traces',
         // Provide username and password if authentication is enabled in the Collector
@@ -122,9 +114,10 @@ insight.on('return', initializeJaeger, {
 });
 ```
 
-This instrument needs a little help from the main server script. Let the `server.js` obtain
-the `jaeger-client` module and *pass it* to the agent via the `jaegerAvailable`
-function. Then it creates a typical HTTP server. The content of `server.js` is:
+This instrument needs help from the main server script.
+Let the `server.js` obtain the `jaeger-client` module and pass it to the agent via the `jaegerAvailable` function.
+Then it creates a typical HTTP server.
+The content of `server.js` is:
 
 ```js
 function jaegerAvailable(jaeger) {
@@ -144,40 +137,35 @@ const srv = http.createServer((req, res) => {
 srv.listen(8080);
 ```
 
-With these two files we are ready to launch the node application as well as
-the agent. But first of all let's start the Jaeger server:
+With these two files you can launch the node application as well as the agent.
+But, first of all, start the Jaeger server:
 
 ```bash
-$ docker run -d --name jaeger \
-  -e COLLECTOR_ZIPKIN_HTTP_PORT=9411 \
-  -p 5775:5775/udp   -p 6831:6831/udp   -p 6832:6832/udp \
-  -p 5778:5778   -p 16686:16686   -p 14268:14268   -p 9411:9411 \
-  jaegertracing/all-in-one:latest
+docker run -d --name jaeger \
+-e COLLECTOR_ZIPKIN_HTTP_PORT=9411 \
+-p 5775:5775/udp   -p 6831:6831/udp   -p 6832:6832/udp \
+-p 5778:5778   -p 16686:16686   -p 14268:14268   -p 9411:9411 \
+jaegertracing/all-in-one:latest
 
-$ graalvm/bin/node --insight=agent.js server.js
+graalvm/bin/node --insight=agent.js server.js
 Providing Jaeger object to the agent
 agent: Jaeger tracer obtained
 Initializing Jaeger Tracer with RemoteReporter and ConstSampler(always)
 agent: ready
 ```
 
-Now we can connect to the Jaeger UI available at http://localhost:16686/ and
-put our server under some load:
+Now you can connect to the Jaeger UI available at [http://localhost:16686/](http://localhost:16686/) and put the server under some load:
 
 ```bash
-$ ab -c 10 -n 10000 http://localhost:8080/
+ab -c 10 -n 10000 http://localhost:8080/
 ```
 
-The server console prints a lot of detailed information while handling the requests
-and the Jaeger UI fills with the traces:
-
+The server prints to the console detailed information while handling the requests and the Jaeger UI fills with the traces:
 
 ![Jaeger UI](img/Insight-Jaeger.png)
 
-We have successfully enhanced a plain nodejs application with tracing. The
-traces remain separated in its own `agent.js` file and can be applied
-at start time (demonstrated here) or [dynamically](Insight-Embedding.md) when
-really needed.
+This completes the guide how to enhance a plain Node.js application with tracing. 
+The traces remain separated in its own `agent.js` file and can be applied at start time (demonstrated here) or [dynamically](Insight-Embedding.md) when needed.
 
 ### What to Read Rext
 
