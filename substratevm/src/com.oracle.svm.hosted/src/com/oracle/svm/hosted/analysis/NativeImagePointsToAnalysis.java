@@ -26,7 +26,6 @@ package com.oracle.svm.hosted.analysis;
 
 import java.util.concurrent.ForkJoinPool;
 
-import com.oracle.graal.pointsto.util.TimerManager;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.options.OptionValues;
 
@@ -56,8 +55,8 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
     private final CallChecker callChecker;
 
     public NativeImagePointsToAnalysis(OptionValues options, AnalysisUniverse universe, HostedProviders providers, AnnotationSubstitutionProcessor annotationSubstitutionProcessor,
-                    ForkJoinPool executor, Runnable heartbeatCallback, UnsupportedFeatures unsupportedFeatures, TimerManager timerManager) {
-        super(options, universe, providers, universe.hostVM(), executor, heartbeatCallback, unsupportedFeatures, SubstrateOptions.parseOnce(), timerManager);
+                    ForkJoinPool executor, Runnable heartbeatCallback, UnsupportedFeatures unsupportedFeatures) {
+        super(options, universe, providers, universe.hostVM(), executor, heartbeatCallback, unsupportedFeatures, SubstrateOptions.parseOnce());
         this.annotationSubstitutionProcessor = annotationSubstitutionProcessor;
 
         dynamicHubInitializer = new DynamicHubInitializer(this);

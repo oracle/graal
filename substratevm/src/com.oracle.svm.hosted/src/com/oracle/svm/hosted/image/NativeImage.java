@@ -50,7 +50,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import com.oracle.graal.pointsto.util.TimerManager;
+import com.oracle.graal.pointsto.util.TimerCollection;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
 import org.graalvm.compiler.code.CompilationResult;
@@ -468,8 +468,8 @@ public abstract class NativeImage extends AbstractImage {
              * If we constructed debug info give the object file a chance to install it
              */
             if (SubstrateOptions.GenerateDebugInfo.getValue(HostedOptionValues.singleton()) > 0) {
-                TimerManager timerManager = universe.getBigBang().getTimerManager();
-                Timer timer = timerManager.register(new Timer(imageName, "dbginfo"));
+                TimerCollection timerCollection = TimerCollection.singleton();
+                Timer timer = timerCollection.createTimer(imageName, "dbginfo");
                 try (Timer.StopTimer t = timer.start()) {
                     ImageSingletons.add(SourceManager.class, new SourceManager());
                     DebugInfoProvider provider = new NativeImageDebugInfoProvider(debug, codeCache, heap);

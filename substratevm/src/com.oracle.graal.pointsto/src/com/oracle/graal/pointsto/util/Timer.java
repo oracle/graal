@@ -40,19 +40,7 @@ public class Timer {
     /** Total VM memory in bytes recorded when the timer is printed. */
     private long totalMemory;
 
-    public Timer(String name) {
-        this(null, name, true);
-    }
-
-    public Timer(String prefix, String name) {
-        this(prefix, name, true);
-    }
-
-    public Timer(String name, boolean autoPrint) {
-        this(null, name, autoPrint);
-    }
-
-    public Timer(String prefix, String name, boolean autoPrint) {
+    Timer(String prefix, String name, boolean autoPrint) {
         this.prefix = prefix;
         this.name = name;
         this.autoPrint = autoPrint;
