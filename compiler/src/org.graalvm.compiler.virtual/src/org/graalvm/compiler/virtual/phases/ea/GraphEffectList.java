@@ -48,7 +48,7 @@ import org.graalvm.compiler.nodes.debug.WeakCounterNode;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.EscapeObjectState;
-import org.graalvm.compiler.nodes.virtual.VirtualObjectState;
+import org.graalvm.compiler.virtual.nodes.VirtualObjectState;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 
 public final class GraphEffectList extends EffectList {
