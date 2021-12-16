@@ -1,11 +1,10 @@
-# Embedding Insight into Applications
+# Embedding Insight
 
-[GraalVM](http://graalvm.org) languages can be embedded into custom Java applications via polyglot
-[Context](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.html) API.
-[Insight](Insight-Manual.md) isn't an exception and it can also be
-controlled via the same API as well. See
-[formal Insight documentation](https://www.graalvm.org/tools/javadoc/org/graalvm/tools/insight/Insight.html)
-for more details:
+## Embedding Insight into Java Applications
+
+GraalVM languages (languages implemented with the Truffle framework, i.e., JavaScript, Python, Ruby, R) can be embedded into custom Java applications via [Polyglot Context API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.html).
+GraalVM Insight can also be controlled via the same API.
+For example:
 
 ```java
 final Engine engine = context.getEngine();
@@ -14,26 +13,23 @@ Function<Source, AutoCloseable> access = instrument.lookup(Function.class);
 AutoCloseable handle = access.apply(agentSrc);
 ```
 
-Obtain `Engine` for your `Context` and ask for `insight` instrument. Then create
-`Source` with your [Insight](Insight-Manual.md) script and apply it while obtaining
-its *instrumentation handle*. Use `handle.close()` to disable all the script's
-instrumentations when when no longer needed.
+Obtain `Engine` for `Context` and ask for `insight` instrument.
+Then create `Source` with GraalVM Insight script and apply it while obtaining its instrumentation handle.
+Use `handle.close()` to disable all the script's instrumentations when when no longer needed.
 
 ### Ignoring Internal Scripts
 
-Often one wants to treat certain code written in a dynamic language as a
-priviledged one - imagine various bindings to OS concepts or other features
-of one's application. Such scripts are better to remain blackboxed and hidden
-from [Insight](Insight-Manual.md) instrumentation capabilities.
+Often one wants to treat certain code written in a dynamic language as a priviledged one.
+Imagine various bindings to OS concepts or other features of one's application.
+Such scripts are better to remain blackboxed and hidden from GraalVM Insight instrumentation capabilities.
 
-To hide priviledged scripts from [Insight](Insight.md) sight
-[mark such scripts as internal](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Source.Builder.html#internal-boolean-). By default [Insight](Insight.md) ignores and doesn't process *internal* scripts.
+To hide priviledged scripts from sight [mark them as internal](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Source.Builder.html#internal-boolean-).
+By default GraalVM Insight ignores and does not process internal scripts.
 
 ### Extending Functionality of Insight Scripts
 
-When [embedding Insight](Insight-Embedding.md#Embedding_Insight_into_Java_Application) into
-Java application one can make additional objects available to the Insight
-scripts being evaluated:
+When embedding GraalVM Insight into a Java application, you can make additional objects available to the Insight scripts being evaluated.
+For example:
 
 ```java
 @TruffleInstrument.Registration(
@@ -50,28 +46,24 @@ public final class MeaningOfWorldInstrument extends TruffleInstrument {
 }
 ```
 
-The previous Java code creates an instrument which registers new symbol `meaning`
-to every Insight script evaluated then. Each script can then reference it and use it for example
-for limiting number of method invocations:
+The previous Java code creates an instrument which registers a new symbol `meaning` to every Insight script evaluated then.
+Each script can then reference it and use it, for example, to limit the number of method invocations:
 
-```js
+```java
 insight.on('enter', (ctx, frames) => { if (--meaning <= 0) throw 'Stop!' }, { roots : true });
 ```
 
-It is possible to expose simple values, as well as complex objects. See the
-[javadoc](https://www.graalvm.org/tools/javadoc/org/graalvm/tools/insight/Insight.SymbolProvider.html)
-for more detailed information - take care when writing your instruments - they
-can alter many aspects of program execution and aren't subject to any security
-sandbox.
+It is possible to expose simple values, as well as complex objects.
+See the [javadoc](https://www.graalvm.org/tools/javadoc/org/graalvm/tools/insight/Insight.SymbolProvider.html) for more detailed information.
+Note that instrumentation can alter many aspects of program execution and are not subject to any security sandbox.
 
-### Embedding Insight into node.js Application
+## Embedding Insight into Node.js Application
 
-The [Insight hacker's manual](Insight-Manual.md) shows many examples of using
-[Insight](Insight.md) with `node` - however most of them rely on the command
-line option `--insight` and don't benefit from the dynamic nature of
-[Insight](Insight.md) much. Let's fix that by showing how to create an
-*admin server*. Define `adminserver.js`:
+The [Insight Manual](Insight-Manual.md) shows many examples of using GraalVM Insight with `node`.
+However most of them rely on the command line option `--insight` and do not benefit from the dynamic nature of the tool.
+The next example shows how to create an admin server.
 
+Save this code to `adminserver.js`:
 ```js
 function initialize(insight, require) {
     const http = require("http");
@@ -107,27 +99,28 @@ let waitForRequire = function (event) {
 insight.on('source', waitForRequire, { roots: true });
 ```
 
-which opens an HTTP server at port `9999` and listens for incoming scripts to
-be applied any time later. Invoke your application as
+The program opens an HTTP server at port `9999` and listens for incoming scripts to be applied any time later.
+Invoke the application:
 
 ```bash
-$ node --insight=adminserver.js yourapp.js
+node --insight=adminserver.js yourapp.js
 Admin ready at 9999
 ```
 
-and while it is running connect to the admin port. Send in any *Insight* script you want.
-For example following script is going to observe who calls `process.exit`:
+While it is running, connect to the admin port.
+Send in any GraalVM Insight script to it.
+For example, the following script is going to observe who calls `process.exit`:
 
 ```bash
-$ curl --data \
-  'insight.on("enter", (ctx, frame) => { console.log(new Error("call to exit").stack); }, \
-  { roots: true, rootNameFilter: "exit" });' \
-  -X POST http://localhost:9999/
+curl --data \
+'insight.on("enter", (ctx, frame) => { console.log(new Error("call to exit").stack); }, \
+{ roots: true, rootNameFilter: "exit" });' \
+-X POST http://localhost:9999/
 ```
 
-When writing your own `adminserver.js` pay attention to security. [Insight](Insight.md)
-scripts are very powerful and you want only authorized persons to apply arbitrary
-hooks to your application. Don't open the admin server port to everybody.
+When writing your own `adminserver.js`, pay attention to security.
+Only an authorized person should apply arbitrary hooks to your application.
+Do not open the admin server port to everybody.
 
 ### What to Read Rext
 
