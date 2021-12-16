@@ -63,8 +63,7 @@ public final class RedefineAddedField extends Field {
         return compatibleField;
     }
 
-    @Override
-    public StaticShape<ExtensionFieldObject.ExtensionFieldObjectFactory> getExtensionShape() {
+    StaticShape<ExtensionFieldObject.ExtensionFieldObjectFactory> getExtensionShape() {
         return extensionShape;
     }
 

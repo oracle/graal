@@ -49,7 +49,7 @@ public final class ExtensionFieldObject {
         return (FieldStorageObject) LIBRARY.getOrDefault(fieldStorage, slot, NULL_OBJECT);
     }
 
-    private FieldStorageObject getOrCreateFieldAndValue(Field field) {
+    private FieldStorageObject getOrCreateFieldAndValue(RedefineAddedField field) {
         // fetch to check if exists to avoid producing garbage
         FieldStorageObject result = getFieldAndValue(field.getSlot());
         if (result == NULL_OBJECT) {
@@ -65,7 +65,7 @@ public final class ExtensionFieldObject {
     }
 
     // region field value read/write/CAS
-    public StaticObject getObject(Field field, boolean forceVolatile) {
+    public StaticObject getObject(RedefineAddedField field, boolean forceVolatile) {
         FieldStorageObject fieldAndValue = getOrCreateFieldAndValue(field);
         Object result;
         if (forceVolatile) {
@@ -76,7 +76,7 @@ public final class ExtensionFieldObject {
         return result == null ? StaticObject.NULL : (StaticObject) result;
     }
 
-    public void setObject(Field field, Object value, boolean forceVolatile) {
+    public void setObject(RedefineAddedField field, Object value, boolean forceVolatile) {
         FieldStorageObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
             field.linkedField.setObjectVolatile(fieldAndValue, value);
@@ -85,21 +85,21 @@ public final class ExtensionFieldObject {
         }
     }
 
-    public StaticObject getAndSetObject(Field field, StaticObject value) {
+    public StaticObject getAndSetObject(RedefineAddedField field, StaticObject value) {
         Object result = field.linkedField.getAndSetObject(getOrCreateFieldAndValue(field), value);
         return result == null ? StaticObject.NULL : (StaticObject) result;
     }
 
-    public boolean compareAndSwapObject(Field field, Object before, Object after) {
+    public boolean compareAndSwapObject(RedefineAddedField field, Object before, Object after) {
         return field.linkedField.compareAndSwapObject(getOrCreateFieldAndValue(field), before, after);
     }
 
-    public StaticObject compareAndExchangeObject(Field field, Object before, Object after) {
+    public StaticObject compareAndExchangeObject(RedefineAddedField field, Object before, Object after) {
         Object result = field.linkedField.compareAndExchangeObject(getOrCreateFieldAndValue(field), before, after);
         return result == null ? StaticObject.NULL : (StaticObject) result;
     }
 
-    public boolean getBoolean(Field field, boolean forceVolatile) {
+    public boolean getBoolean(RedefineAddedField field, boolean forceVolatile) {
         FieldStorageObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
             return field.linkedField.getBooleanVolatile(fieldAndValue);
@@ -108,7 +108,7 @@ public final class ExtensionFieldObject {
         }
     }
 
-    public void setBoolean(Field field, boolean value, boolean forceVolatile) {
+    public void setBoolean(RedefineAddedField field, boolean value, boolean forceVolatile) {
         FieldStorageObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
             field.linkedField.setBooleanVolatile(fieldAndValue, value);
@@ -117,15 +117,15 @@ public final class ExtensionFieldObject {
         }
     }
 
-    public boolean compareAndSwapBoolean(Field field, boolean before, boolean after) {
+    public boolean compareAndSwapBoolean(RedefineAddedField field, boolean before, boolean after) {
         return field.linkedField.compareAndSwapBoolean(getOrCreateFieldAndValue(field), before, after);
     }
 
-    public boolean compareAndExchangeBoolean(Field field, boolean before, boolean after) {
+    public boolean compareAndExchangeBoolean(RedefineAddedField field, boolean before, boolean after) {
         return field.linkedField.compareAndExchangeBoolean(getOrCreateFieldAndValue(field), before, after);
     }
 
-    public byte getByte(Field field, boolean forceVolatile) {
+    public byte getByte(RedefineAddedField field, boolean forceVolatile) {
         FieldStorageObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
             return field.linkedField.getByteVolatile(fieldAndValue);
@@ -134,7 +134,7 @@ public final class ExtensionFieldObject {
         }
     }
 
-    public void setByte(Field field, byte value, boolean forceVolatile) {
+    public void setByte(RedefineAddedField field, byte value, boolean forceVolatile) {
         FieldStorageObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
             field.linkedField.setByteVolatile(fieldAndValue, value);
@@ -143,15 +143,15 @@ public final class ExtensionFieldObject {
         }
     }
 
-    public boolean compareAndSwapByte(Field field, byte before, byte after) {
+    public boolean compareAndSwapByte(RedefineAddedField field, byte before, byte after) {
         return field.linkedField.compareAndSwapByte(getOrCreateFieldAndValue(field), before, after);
     }
 
-    public byte compareAndExchangeByte(Field field, byte before, byte after) {
+    public byte compareAndExchangeByte(RedefineAddedField field, byte before, byte after) {
         return field.linkedField.compareAndExchangeByte(getOrCreateFieldAndValue(field), before, after);
     }
 
-    public char getChar(Field field, boolean forceVolatile) {
+    public char getChar(RedefineAddedField field, boolean forceVolatile) {
         FieldStorageObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
             return field.linkedField.getCharVolatile(fieldAndValue);
@@ -160,7 +160,7 @@ public final class ExtensionFieldObject {
         }
     }
 
-    public void setChar(Field field, char value, boolean forceVolatile) {
+    public void setChar(RedefineAddedField field, char value, boolean forceVolatile) {
         FieldStorageObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
             field.linkedField.setCharVolatile(fieldAndValue, value);
@@ -169,15 +169,15 @@ public final class ExtensionFieldObject {
         }
     }
 
-    public boolean compareAndSwapChar(Field field, char before, char after) {
+    public boolean compareAndSwapChar(RedefineAddedField field, char before, char after) {
         return field.linkedField.compareAndSwapChar(getOrCreateFieldAndValue(field), before, after);
     }
 
-    public char compareAndExchangeChar(Field field, char before, char after) {
+    public char compareAndExchangeChar(RedefineAddedField field, char before, char after) {
         return field.linkedField.compareAndExchangeChar(getOrCreateFieldAndValue(field), before, after);
     }
 
-    public double getDouble(Field field, boolean forceVolatile) {
+    public double getDouble(RedefineAddedField field, boolean forceVolatile) {
         FieldStorageObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
             return field.linkedField.getDoubleVolatile(fieldAndValue);
@@ -186,7 +186,7 @@ public final class ExtensionFieldObject {
         }
     }
 
-    public void setDouble(Field field, double value, boolean forceVolatile) {
+    public void setDouble(RedefineAddedField field, double value, boolean forceVolatile) {
         FieldStorageObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
             field.linkedField.setDoubleVolatile(fieldAndValue, value);
@@ -195,15 +195,15 @@ public final class ExtensionFieldObject {
         }
     }
 
-    public boolean compareAndSwapDouble(Field field, double before, double after) {
+    public boolean compareAndSwapDouble(RedefineAddedField field, double before, double after) {
         return field.linkedField.compareAndSwapDouble(getOrCreateFieldAndValue(field), before, after);
     }
 
-    public double compareAndExchangeDouble(Field field, double before, double after) {
+    public double compareAndExchangeDouble(RedefineAddedField field, double before, double after) {
         return field.linkedField.compareAndExchangeDouble(getOrCreateFieldAndValue(field), before, after);
     }
 
-    public float getFloat(Field field, boolean forceVolatile) {
+    public float getFloat(RedefineAddedField field, boolean forceVolatile) {
         FieldStorageObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
             return field.linkedField.getFloatVolatile(fieldAndValue);
@@ -212,7 +212,7 @@ public final class ExtensionFieldObject {
         }
     }
 
-    public void setFloat(Field field, float value, boolean forceVolatile) {
+    public void setFloat(RedefineAddedField field, float value, boolean forceVolatile) {
         FieldStorageObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
             field.linkedField.setFloatVolatile(fieldAndValue, value);
@@ -221,15 +221,15 @@ public final class ExtensionFieldObject {
         }
     }
 
-    public boolean compareAndSwapFloat(Field field, float before, float after) {
+    public boolean compareAndSwapFloat(RedefineAddedField field, float before, float after) {
         return field.linkedField.compareAndSwapFloat(getOrCreateFieldAndValue(field), before, after);
     }
 
-    public float compareAndExchangeFloat(Field field, float before, float after) {
+    public float compareAndExchangeFloat(RedefineAddedField field, float before, float after) {
         return field.linkedField.compareAndExchangeFloat(getOrCreateFieldAndValue(field), before, after);
     }
 
-    public int getInt(Field field, boolean forceVolatile) {
+    public int getInt(RedefineAddedField field, boolean forceVolatile) {
         FieldStorageObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
             return field.linkedField.getIntVolatile(fieldAndValue);
@@ -238,7 +238,7 @@ public final class ExtensionFieldObject {
         }
     }
 
-    public void setInt(Field field, int value, boolean forceVolatile) {
+    public void setInt(RedefineAddedField field, int value, boolean forceVolatile) {
         FieldStorageObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
             field.linkedField.setIntVolatile(fieldAndValue, value);
@@ -247,15 +247,15 @@ public final class ExtensionFieldObject {
         }
     }
 
-    public boolean compareAndSwapInt(Field field, int before, int after) {
+    public boolean compareAndSwapInt(RedefineAddedField field, int before, int after) {
         return field.linkedField.compareAndSwapInt(getOrCreateFieldAndValue(field), before, after);
     }
 
-    public int compareAndExchangeInt(Field field, int before, int after) {
+    public int compareAndExchangeInt(RedefineAddedField field, int before, int after) {
         return field.linkedField.compareAndExchangeInt(getOrCreateFieldAndValue(field), before, after);
     }
 
-    public long getLong(Field field, boolean forceVolatile) {
+    public long getLong(RedefineAddedField field, boolean forceVolatile) {
         FieldStorageObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
             return field.linkedField.getLongVolatile(fieldAndValue);
@@ -264,7 +264,7 @@ public final class ExtensionFieldObject {
         }
     }
 
-    public void setLong(Field field, long value, boolean forceVolatile) {
+    public void setLong(RedefineAddedField field, long value, boolean forceVolatile) {
         FieldStorageObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
             field.linkedField.setLongVolatile(fieldAndValue, value);
@@ -273,15 +273,15 @@ public final class ExtensionFieldObject {
         }
     }
 
-    public boolean compareAndSwapLong(Field field, long before, long after) {
+    public boolean compareAndSwapLong(RedefineAddedField field, long before, long after) {
         return field.linkedField.compareAndSwapLong(getOrCreateFieldAndValue(field), before, after);
     }
 
-    public long compareAndExchangeLong(Field field, long before, long after) {
+    public long compareAndExchangeLong(RedefineAddedField field, long before, long after) {
         return field.linkedField.compareAndExchangeLong(getOrCreateFieldAndValue(field), before, after);
     }
 
-    public short getShort(Field field, boolean forceVolatile) {
+    public short getShort(RedefineAddedField field, boolean forceVolatile) {
         FieldStorageObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
             return field.linkedField.getShortVolatile(fieldAndValue);
@@ -290,7 +290,7 @@ public final class ExtensionFieldObject {
         }
     }
 
-    public void setShort(Field field, short value, boolean forceVolatile) {
+    public void setShort(RedefineAddedField field, short value, boolean forceVolatile) {
         FieldStorageObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
             field.linkedField.setShortVolatile(fieldAndValue, value);
@@ -299,11 +299,11 @@ public final class ExtensionFieldObject {
         }
     }
 
-    public boolean compareAndSwapShort(Field field, short before, short after) {
+    public boolean compareAndSwapShort(RedefineAddedField field, short before, short after) {
         return field.linkedField.compareAndSwapShort(getOrCreateFieldAndValue(field), before, after);
     }
 
-    public short compareAndExchangeShort(Field field, short before, short after) {
+    public short compareAndExchangeShort(RedefineAddedField field, short before, short after) {
         return field.linkedField.compareAndExchangeShort(getOrCreateFieldAndValue(field), before, after);
     }
     // endregion field value read/write/CAS

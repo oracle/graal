@@ -27,7 +27,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.staticobject.StaticShape;
 import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.attributes.SignatureAttribute;
@@ -864,10 +863,6 @@ public class Field extends Member<Type> implements FieldRef {
     }
 
     public Field getCompatibleField() {
-        return null;
-    }
-
-    public StaticShape<ExtensionFieldObject.ExtensionFieldObjectFactory> getExtensionShape() {
         return null;
     }
 
