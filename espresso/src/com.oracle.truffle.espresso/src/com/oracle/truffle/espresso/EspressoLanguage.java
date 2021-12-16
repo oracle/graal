@@ -25,7 +25,6 @@ package com.oracle.truffle.espresso;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
-import com.oracle.truffle.espresso.runtime.JavaVersion;
 import org.graalvm.home.Version;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Engine;
@@ -51,7 +50,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Symbols;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.descriptors.Utf8ConstantTable;
-import com.oracle.truffle.espresso.impl.EspressoKlassCache;
+import com.oracle.truffle.espresso.impl.EspressoLanguageCache;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.nodes.interop.DestroyVMNode;
 import com.oracle.truffle.espresso.nodes.interop.ExitCodeNode;
@@ -183,9 +182,9 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     @Override
     protected boolean patchContext(EspressoContext context, TruffleLanguage.Env newEnv) {
         if (!optionsAllowPreInitializedContext(context, newEnv)) {
-            context.getCache().reset();
             return false;
         }
+        context.setLanguageCache(EspressoLanguageCache.preInitialized());
         context.setEnv(newEnv);
         context.setMainArguments(newEnv.getApplicationArguments());
         if (!context.isInitialized()) {
@@ -194,7 +193,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         return true;
     }
 
-    private boolean optionsAllowPreInitializedContext(EspressoContext context, TruffleLanguage.Env newEnv) {
+    private static boolean optionsAllowPreInitializedContext(EspressoContext context, TruffleLanguage.Env newEnv) {
         if (newEnv.getOptions().get(EspressoOptions.DropPreInitializedContext)) {
             return false;
         }
@@ -253,10 +252,6 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     public Signatures getSignatures() {
         return signatures;
-    }
-
-    public EspressoKlassCache getKlassCache(JavaVersion version) {
-        return EspressoKlassCache.forVersion(version);
     }
 
     @Override

@@ -394,7 +394,7 @@ public abstract class ClassRegistry implements ContextAccess {
 
     private ParserKlass getParserKlass(byte[] bytes, Symbol<Type> typeOrNull, ClassDefinitionInfo info) {
         // May throw guest ClassFormatError, NoClassDefFoundError.
-        ParserKlass parserKlass = context.getCache().getOrCreateParserKlass(getClassLoader(), typeOrNull, bytes, context, info);
+        ParserKlass parserKlass = context.getLanguageCache().getOrCreateParserKlass(getClassLoader(), typeOrNull, bytes, context, info);
         Meta meta = getMeta();
         if (!loaderIsBootOrPlatform(getClassLoader(), meta) && parserKlass.getName().toString().startsWith("java/")) {
             throw meta.throwExceptionWithMessage(meta.java_lang_SecurityException, "Define class in prohibited package name: " + parserKlass.getName());
@@ -459,7 +459,7 @@ public abstract class ClassRegistry implements ContextAccess {
         try (DebugCloseable define = KLASS_DEFINE.scope(context.getTimers())) {
             ContextDescription description = new ContextDescription(context.getLanguage(), context.getJavaVersion(), context.advancedRedefinitionEnabled());
             LinkedKlass linkedSuperKlass = superKlass == null ? null : superKlass.getLinkedKlass();
-            LinkedKlass linkedKlass = context.getCache().getOrCreateLinkedKlass(description, parserKlass, linkedSuperKlass, linkedInterfaces, info);
+            LinkedKlass linkedKlass = context.getLanguageCache().getOrCreateLinkedKlass(context.getLanguageCacheEnv(), description, parserKlass, linkedSuperKlass, linkedInterfaces, info);
             klass = new ObjectKlass(context, linkedKlass, superKlass, superInterfaces, getClassLoader(), info);
         }
 

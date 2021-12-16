@@ -54,32 +54,25 @@ import java.util.logging.Level;
  * by superclass and implemented interfaces. Therefore, when caching {@link LinkedKlass}es,
  * a composite key needs to be used (see {@link LinkedKlassCacheKey}).
  */
-public final class EspressoKlassCache {
-    private static final Map<Integer, EspressoKlassCache> instances = new HashMap<>();
+public final class EspressoLanguageCache {
+    private static final EspressoLanguageCache instance = create();
 
-    public static EspressoKlassCache forVersion(JavaVersion version) {
-        int id = version.klassCacheId();
-        return instances.computeIfAbsent(id, k -> new EspressoKlassCache());
+    public static EspressoLanguageCache preInitialized() {
+        return instance;
     }
 
-    private boolean isParserKlassCacheEnabled = EspressoOptions.UseParserKlassCache.getDefaultValue();
-    private boolean shouldReportParserKlassCacheMisses = EspressoOptions.ReportParserKlassCacheMisses.getDefaultValue();
-    private boolean isLinkedKlassCacheEnabled = EspressoOptions.UseLinkedKlassCache.getDefaultValue();
+    public static EspressoLanguageCache create() {
+        return new EspressoLanguageCache();
+    }
 
-    private final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, EspressoKlassCache.class);
+    private final TruffleLogger logger = TruffleLogger.getLogger(EspressoLanguage.ID, EspressoLanguageCache.class);
     private final Map<Symbol<Symbol.Type>, ParserKlass> bootParserKlassCache = new ConcurrentHashMap<>();
     private final Map<ParserKlassCacheKey, ParserKlass> appParserKlassCache = new ConcurrentHashMap<>();
     private final Map<LinkedKlassCacheKey, LinkedKlass> linkedKlassCache = new ConcurrentHashMap<>();
 
     private boolean sealed = false;
 
-    private EspressoKlassCache() {
-    }
-
-    public void updateEnv(final TruffleLanguage.Env env) {
-        shouldReportParserKlassCacheMisses = env.getOptions().get(EspressoOptions.ReportParserKlassCacheMisses);
-        isParserKlassCacheEnabled = env.getOptions().get(EspressoOptions.UseParserKlassCache);
-        isLinkedKlassCacheEnabled = env.getOptions().get(EspressoOptions.UseLinkedKlassCache);
+    private EspressoLanguageCache() {
     }
 
     public int getBootParserKlassCacheSize() {
@@ -95,8 +88,9 @@ public final class EspressoKlassCache {
     }
 
     public ParserKlass getOrCreateParserKlass(StaticObject loader, Symbol<Symbol.Type> typeOrNull, byte[] bytes, EspressoContext context, ClassRegistry.ClassDefinitionInfo info) {
+        Env env = context.getLanguageCacheEnv();
         assert (info.isAnonymousClass() && typeOrNull == null) || (!info.isAnonymousClass() && typeOrNull != null);
-        if (isParserKlassCacheEnabled && (!info.isAnonymousClass() || sealed)) {
+        if (env.isParserKlassCacheEnabled && (!info.isAnonymousClass() || sealed)) {
             ParserKlassCacheKey key = null;
             ParserKlass parserKlass = null;
 
@@ -113,7 +107,7 @@ public final class EspressoKlassCache {
 
             // If both queries failed, add a new entry to the appropriate cache
             if (parserKlass == null) {
-                if (shouldReportParserKlassCacheMisses && !info.isAnonymousClass()) {
+                if (env.shouldReportParserKlassCacheMisses && !info.isAnonymousClass()) {
                     logger.info("Cache miss: " + typeOrNull);
                 }
                 parserKlass = createParserKlass(loader, typeOrNull, bytes, context, info);
@@ -132,8 +126,8 @@ public final class EspressoKlassCache {
         }
     }
 
-    public LinkedKlass getOrCreateLinkedKlass(ContextDescription description, ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces, ClassRegistry.ClassDefinitionInfo info) {
-        if (isLinkedKlassCacheEnabled && !info.isAnonymousClass()) {
+    public LinkedKlass getOrCreateLinkedKlass(Env env, ContextDescription description, ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces, ClassRegistry.ClassDefinitionInfo info) {
+        if (env.isLinkedKlassCacheEnabled && !info.isAnonymousClass()) {
             LinkedKlassCacheKey key = new LinkedKlassCacheKey(parserKlass, superKlass, interfaces);
             LinkedKlass linkedKlass = linkedKlassCache.get(key);
             if (linkedKlass == null) {
@@ -167,13 +161,28 @@ public final class EspressoKlassCache {
         this.sealed = false;
     }
 
-    private ParserKlass createParserKlass(StaticObject loader, Symbol<Symbol.Type> typeOrNull, byte[] bytes, EspressoContext context, ClassRegistry.ClassDefinitionInfo info) {
+    private static ParserKlass createParserKlass(StaticObject loader, Symbol<Symbol.Type> typeOrNull, byte[] bytes, EspressoContext context, ClassRegistry.ClassDefinitionInfo info) {
         // May throw guest ClassFormatError, NoClassDefFoundError.
         return ClassfileParser.parse(new ClassfileStream(bytes, null), loader, typeOrNull, context, info);
     }
 
-    private LinkedKlass createLinkedKlass(ContextDescription description, ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces) {
+    private static LinkedKlass createLinkedKlass(ContextDescription description, ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces) {
         return LinkedKlass.create(description, parserKlass, superKlass, interfaces);
+    }
+
+    public static final class Env {
+        boolean isParserKlassCacheEnabled = EspressoOptions.UseParserKlassCache.getDefaultValue();
+        boolean shouldReportParserKlassCacheMisses = EspressoOptions.ReportParserKlassCacheMisses.getDefaultValue();
+        boolean isLinkedKlassCacheEnabled = EspressoOptions.UseLinkedKlassCache.getDefaultValue();
+
+        public Env(final TruffleLanguage.Env env) {
+            shouldReportParserKlassCacheMisses = env.getOptions().get(EspressoOptions.ReportParserKlassCacheMisses);
+            isParserKlassCacheEnabled = env.getOptions().get(EspressoOptions.UseParserKlassCache);
+            isLinkedKlassCacheEnabled = env.getOptions().get(EspressoOptions.UseLinkedKlassCache);
+        }
+
+        public Env() {
+        }
     }
 
     private static final class ParserKlassCacheKey {

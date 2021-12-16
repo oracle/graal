@@ -120,10 +120,6 @@ public final class JavaVersion {
         return java9OrLater();
     }
 
-    public int klassCacheId() {
-        return version;
-    }
-
     public int classFileVersion() {
         return version + 44;
     }
@@ -133,7 +129,7 @@ public final class JavaVersion {
         return Integer.toString(version);
     }
 
-    public boolean matchesVersion(int version) {
-        return this.version == version;
+    public boolean matchesVersion(int versionNumber) {
+        return this.version == versionNumber;
     }
 }

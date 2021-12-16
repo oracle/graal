@@ -82,11 +82,10 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.ffi.NativeAccessCollector;
-import com.oracle.truffle.espresso.impl.EspressoKlassCache;
+import com.oracle.truffle.espresso.impl.EspressoLanguageCache;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.jdwp.api.Ids;
-import com.oracle.truffle.espresso.impl.ParserKlassCacheListSupport;
 import com.oracle.truffle.espresso.jdwp.api.VMEventListenerImpl;
 import com.oracle.truffle.espresso.jni.JniEnv;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -95,7 +94,6 @@ import com.oracle.truffle.espresso.perf.DebugCloseable;
 import com.oracle.truffle.espresso.perf.DebugTimer;
 import com.oracle.truffle.espresso.perf.TimerCollection;
 import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
-import com.oracle.truffle.espresso.redefinition.plugins.api.InternalRedefinitionPlugin;
 import com.oracle.truffle.espresso.redefinition.plugins.impl.RedefinitionPluginHandler;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.threads.EspressoThreadRegistry;
@@ -103,8 +101,6 @@ import com.oracle.truffle.espresso.threads.ThreadsAccess;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.UnsafeAccess;
 import com.oracle.truffle.espresso.vm.VM;
-import org.graalvm.options.OptionMap;
-import org.graalvm.polyglot.Engine;
 import sun.misc.SignalHandler;
 
 public final class EspressoContext {
@@ -127,7 +123,8 @@ public final class EspressoContext {
     private String[] mainArguments;
     private String[] vmArguments;
     private long startupClockNanos;
-    private EspressoKlassCache languageCache;
+    private EspressoLanguageCache languageCache;
+    private EspressoLanguageCache.Env languageCacheEnv;
 
     // region Debug
     @CompilationFinal private TimerCollection timers;
@@ -265,6 +262,8 @@ public final class EspressoContext {
         this.substitutions = new Substitutions(this);
         this.methodHandleIntrinsics = new MethodHandleIntrinsics(this);
 
+        setLanguageCache(EspressoLanguageCache.create());
+        setLanguageCacheEnv(new EspressoLanguageCache.Env());
         setEnv(env);
     }
 
@@ -375,11 +374,20 @@ public final class EspressoContext {
         return language;
     }
 
-    public EspressoKlassCache getCache() {
-        if (languageCache == null) {
-            languageCache = getLanguage().getKlassCache(getJavaVersion());
-        }
+    public EspressoLanguageCache getLanguageCache() {
         return languageCache;
+    }
+
+    public EspressoLanguageCache.Env getLanguageCacheEnv() {
+        return languageCacheEnv;
+    }
+
+    public void setLanguageCache(EspressoLanguageCache cache) {
+        languageCache = cache;
+    }
+
+    public void setLanguageCacheEnv(EspressoLanguageCache.Env cacheEnv) {
+        languageCacheEnv = cacheEnv;
     }
 
     public boolean multiThreadingEnabled() {
@@ -470,6 +478,9 @@ public final class EspressoContext {
         // After patching of the pre-initialized context in runtime, we have to drop the old boot classpath
         this.bootClasspath = null;
 
+        if (getEnv().isPreInitialization()) {
+            setLanguageCache(EspressoLanguageCache.preInitialized());
+        }
         spawnVM();
         if (getEnv().isPreInitialization()) {
             populateParserKlassCache();
@@ -524,7 +535,7 @@ public final class EspressoContext {
         StaticObject systemClassLoader = null;
         Path classListPath = getEnv().getOptions().get(EspressoOptions.BootKlassCacheList);
         if (!classListPath.toString().isEmpty()) {
-            getCache().logCacheStatus();
+            getLanguageCache().logCacheStatus();
             getLogger().log(Level.FINE, "Populating boot parser cache with user-specified classes from: " + classListPath);
 
             systemClassLoader = (StaticObject) meta.java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);
@@ -533,11 +544,11 @@ public final class EspressoContext {
             }
         }
 
-        getCache().seal();
+        getLanguageCache().seal();
 
         classListPath = getEnv().getOptions().get(EspressoOptions.AppKlassCacheList);
         if (!classListPath.toString().isEmpty()) {
-            getCache().logCacheStatus();
+            getLanguageCache().logCacheStatus();
             getLogger().log(Level.FINE, "Populating application parser cache with user-specified classes from: " + classListPath);
 
             if (systemClassLoader == null) {
@@ -552,7 +563,7 @@ public final class EspressoContext {
         initDoneTimeNanos = System.nanoTime();
         long elapsedNanos = initDoneTimeNanos - initStartTimeNanos;
         getLogger().log(Level.FINE, "Populated parser cache in {0} ms", TimeUnit.NANOSECONDS.toMillis(elapsedNanos));
-        getCache().logCacheStatus();
+        getLanguageCache().logCacheStatus();
     }
 
     private void addEntryToKlassCache(Symbol<Type> type, boolean isBoot, StaticObject loader) {
@@ -816,7 +827,7 @@ public final class EspressoContext {
         builder.javaHome(Engine.findHome());
         vmProperties = EspressoProperties.processOptions(builder, getEnv().getOptions()).build();
         javaVersion = new JavaVersion(vmProperties.bootClassPathType().getJavaVersion());
-        getCache().updateEnv(getEnv());
+        setLanguageCacheEnv(new EspressoLanguageCache.Env(getEnv()));
     }
 
     private void initializeKnownClass(Symbol<Type> type) {
