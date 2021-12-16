@@ -558,7 +558,7 @@ found new prime number 3
 found new prime number 5
 ```
 
-The mixture of `lli`, polyglot and GraalVM Insight opens enormous possibilities in tracing, controlling and interactive or batch debugging of native programs. 
+The mixture of `lli`, polyglot and GraalVM Insight opens enormous possibilities in tracing, controlling and interactive or batch debugging of native programs.
 
 ## Minimal Overhead
 
