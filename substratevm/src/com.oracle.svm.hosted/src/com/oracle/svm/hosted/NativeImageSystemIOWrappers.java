@@ -44,14 +44,24 @@ public class NativeImageSystemIOWrappers {
         useCapturing = false;
     }
 
-    public static NativeImageSystemIOWrappers singleton() {
-        return NativeImageSystemClassLoader.singleton().systemIOWrappers;
-    }
-
-    public void verifySystemOutErrReplacement() {
+    void verifySystemOutErrReplacement() {
         String format = "%s was changed during image building. This is not allowed.";
         UserError.guarantee(System.out == outWrapper, format, "System.out");
         UserError.guarantee(System.err == errWrapper, format, "System.err");
+    }
+
+    void flushCapturedContent() {
+        outWrapper.flushCapturedContent();
+        errWrapper.flushCapturedContent();
+    }
+
+    void replaceSystemOutErr() {
+        System.setOut(outWrapper);
+        System.setErr(errWrapper);
+    }
+
+    public static NativeImageSystemIOWrappers singleton() {
+        return NativeImageSystemClassLoader.singleton().systemIOWrappers;
     }
 
     public PrintStream getOut() {
@@ -68,16 +78,6 @@ public class NativeImageSystemIOWrappers {
 
     public void setErr(PrintStream customErr) {
         errWrapper.delegate = Objects.requireNonNull(customErr);
-    }
-
-    public void flushCapturedContent() {
-        outWrapper.flushCapturedContent();
-        errWrapper.flushCapturedContent();
-    }
-
-    void replaceSystemOutErr() {
-        System.setOut(outWrapper);
-        System.setErr(errWrapper);
     }
 
     /**
