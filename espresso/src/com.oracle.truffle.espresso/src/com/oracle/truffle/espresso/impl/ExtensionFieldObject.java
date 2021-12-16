@@ -22,44 +22,45 @@
  */
 package com.oracle.truffle.espresso.impl;
 
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-// This class models the data in fields that were added by class redefinition
-// each instance of this class maps to one guest instance. Either a class object
-// for which static field state is maintained or a regular object for which
-// instance field state is managed.
+// This class maintains the data in fields that were added by class redefinition.
 public final class ExtensionFieldObject {
 
-    private static final FieldStorageObject NULL_OBJECT = new FieldStorageObject();
-    private static final DynamicObjectLibrary LIBRARY = DynamicObjectLibrary.getUncached();
-    private static final Shape fieldsHolderObjectShape = Shape.newBuilder().layout(FieldsHolderObject.class).build();
-
-    // expandable object that manages the storage of each added field
-    private final DynamicObject fieldStorage;
-
-    public ExtensionFieldObject() {
-        this.fieldStorage = new FieldsHolderObject(fieldsHolderObjectShape);
-    }
-
-    private FieldStorageObject getFieldAndValue(int slot) {
-        return (FieldStorageObject) LIBRARY.getOrDefault(fieldStorage, slot, NULL_OBJECT);
-    }
+    // chained linear list of field values
+    @CompilationFinal private volatile FieldStorageObject storage;
 
     private FieldStorageObject getOrCreateFieldAndValue(RedefineAddedField field) {
-        // fetch to check if exists to avoid producing garbage
-        FieldStorageObject result = getFieldAndValue(field.getSlot());
-        if (result == NULL_OBJECT) {
-            synchronized (fieldStorage) {
-                result = getFieldAndValue(field.getSlot());
-                if (result == NULL_OBJECT) {
-                    result = field.getExtensionShape().getFactory().create();
-                    LIBRARY.put(fieldStorage, field.getSlot(), result);
+        FieldStorageObject result = storage;
+        if (result == null) {
+            // establish first storage object
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            synchronized (this) {
+                result = storage;
+                if (result == null) {
+                    storage = result = field.getExtensionShape().getFactory().create(field.getSlot());
+                    // first added field, so no further actions required
+                    return result;
                 }
             }
+        }
+        // search by slot
+        while (result.slot != field.getSlot()) {
+            FieldStorageObject delegate = result.next;
+            if (delegate == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                synchronized (this) {
+                    delegate = result.next;
+                    if (delegate == null) {
+                        // field not seen before, so add to chain
+                        delegate = field.getExtensionShape().getFactory().create(field.getSlot());
+                        result.next = delegate;
+                    }
+                }
+            }
+            result = delegate;
         }
         return result;
     }
@@ -308,17 +309,17 @@ public final class ExtensionFieldObject {
     }
     // endregion field value read/write/CAS
 
-    private static final class FieldsHolderObject extends DynamicObject implements TruffleObject {
-        FieldsHolderObject(Shape shape) {
-            super(shape);
+    public static class FieldStorageObject {
+        private final int slot;
+        // TODO(Gregersen) - avoid chained linear search
+        @CompilationFinal private volatile FieldStorageObject next;
+
+        public FieldStorageObject(int slot) {
+            this.slot = slot;
         }
     }
 
-    public static class FieldStorageObject {
-
-    }
-
     public interface ExtensionFieldObjectFactory {
-        FieldStorageObject create();
+        FieldStorageObject create(int slot);
     }
 }
