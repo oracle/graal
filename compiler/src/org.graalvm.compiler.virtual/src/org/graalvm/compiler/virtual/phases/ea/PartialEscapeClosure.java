@@ -43,6 +43,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
+import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.graph.Position;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.AbstractEndNode;
@@ -74,6 +75,7 @@ import org.graalvm.compiler.nodes.spi.VirtualizableAllocation;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
 import org.graalvm.compiler.nodes.virtual.EnsureVirtualizedNode;
+import org.graalvm.compiler.nodes.virtual.EscapeObjectState;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.virtual.nodes.VirtualObjectState;
 
@@ -440,7 +442,30 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
     }
 
     private void addVirtualMappings(FrameState frameState, EconomicSet<VirtualObjectNode> virtual, BlockT state, GraphEffectList effects) {
-        for (VirtualObjectNode obj : virtual) {
+        object: for (VirtualObjectNode obj : virtual) {
+            /*
+             * Look for existing mappings: Update a virtual object mapping for the given {@link
+             * VirtualObjectState} with a new value. This can be necessary in iterative escape
+             * analysis where a previous iteration already virtualized an object. We must not update
+             * such mappings if no new virtualization occurred. Updating them would create invalid
+             * framestate - virtualization mappings of constructor written fields.
+             */
+            for (int i = 0; i < frameState.virtualObjectMappingCount(); i++) {
+                EscapeObjectState mapping = frameState.virtualObjectMappingAt(i);
+                if (mapping.object() == obj && mapping instanceof VirtualObjectState) {
+                    VirtualObjectState virtualState = (VirtualObjectState) mapping;
+                    NodeInputList<ValueNode> values = virtualState.values();
+                    for (int v = 0; v < values.size(); v++) {
+                        ValueNode value = values.get(v);
+                        ValueNode alias = getAlias(value);
+                        if (alias != value) {
+                            effects.updateVirtualMapping(virtualState, v, alias);
+                        }
+                    }
+                    continue object;
+                }
+            }
+
             effects.addVirtualMapping(frameState, state.getObjectState(obj).createEscapeObjectState(debug, tool.getMetaAccessExtensionProvider(), obj));
         }
     }
