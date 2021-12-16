@@ -1,6 +1,6 @@
-# Embedding Insight
+# Embedding GraalVM Insight into Applications
 
-## Embedding Insight into Java Applications
+## Embedding Insight into Java
 
 GraalVM languages (languages implemented with the Truffle framework, i.e., JavaScript, Python, Ruby, R) can be embedded into custom Java applications via [Polyglot Context API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.html).
 GraalVM Insight can also be controlled via the same API.
@@ -57,7 +57,7 @@ It is possible to expose simple values, as well as complex objects.
 See the [javadoc](https://www.graalvm.org/tools/javadoc/org/graalvm/tools/insight/Insight.SymbolProvider.html) for more detailed information.
 Note that instrumentation can alter many aspects of program execution and are not subject to any security sandbox.
 
-## Embedding Insight into Node.js Application
+## Embedding Insight into Node.js
 
 The [Insight Manual](Insight-Manual.md) shows many examples of using GraalVM Insight with `node`.
 However most of them rely on the command line option `--insight` and do not benefit from the dynamic nature of the tool.
