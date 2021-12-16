@@ -109,6 +109,7 @@ public class ProgressReporter {
     private int numJNIFields = -1;
     private int numJNIMethods = -1;
     private Timer debugInfoTimer;
+    private boolean initializeStageEndCompleted = false;
 
     private enum BuildStage {
         INITIALIZING("Initializing"),
@@ -199,7 +200,11 @@ public class ProgressReporter {
     }
 
     public void printInitializeEnd(Timer classlistTimer, Timer setupTimer) {
+        if (initializeStageEndCompleted) {
+            return;
+        }
         printStageEnd(classlistTimer.getTotalTime() + setupTimer.getTotalTime());
+        initializeStageEndCompleted = true;
     }
 
     public void printInitializeEnd(Timer classlistTimer, Timer setupTimer, Collection<String> libraries) {
