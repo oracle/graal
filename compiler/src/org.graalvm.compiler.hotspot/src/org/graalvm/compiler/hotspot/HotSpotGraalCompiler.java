@@ -188,6 +188,14 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
         if (speculationLog != null) {
             speculationLog.collectFailedSpeculations();
         }
+        /*
+         * For methods that have plugins it would be possible to produces graphs from those plugins
+         * instead of the bytecodees but it's somewhat complicated to cover all the possible cases
+         * and doesn't seem worth the complexity as plugins are already processed at call sites. In
+         * HotSpot plugins are just optimized implementations of the method so compiling them as
+         * root methods isn't required for correctness.
+         */
+
         // @formatter:off
         return new StructuredGraph.Builder(options, debug, allowAssumptions).
                                    method(method).
