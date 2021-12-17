@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import org.graalvm.collections.EconomicSet;
@@ -53,7 +52,9 @@ public class LLVMAlias extends LLVMSymbol {
         this.target = value;
         if (target instanceof LLVMAlias) {
             EconomicSet<LLVMAlias> visited = EconomicSet.create(Equivalence.IDENTITY);
-            checkForCycle(this, visited);
+            LLVMSymbol result = checkForCycle(this, visited);
+            assert !result.isAlias();
+            this.target = result;
         }
     }
 
@@ -87,30 +88,22 @@ public class LLVMAlias extends LLVMSymbol {
         return super.getName() + " -> " + target.toString();
     }
 
-    private static void checkForCycle(LLVMAlias alias, EconomicSet<LLVMAlias> visited) {
+    private static LLVMSymbol checkForCycle(LLVMAlias alias, EconomicSet<LLVMAlias> visited) {
         if (visited.contains(alias)) {
             throw new LLVMLinkerException("Found a cycle between the following aliases: " + visited.toString());
         }
         visited.add(alias);
         if (alias.getTarget() instanceof LLVMAlias) {
-            checkForCycle((LLVMAlias) alias.getTarget(), visited);
+            return checkForCycle((LLVMAlias) alias.getTarget(), visited);
         }
+        return alias;
     }
 
-    @ExplodeLoop
     public static LLVMSymbol resolveAlias(LLVMSymbol symbol) {
-        if (symbol == null) {
-            return null;
+        if (symbol.isAlias()) {
+            return ((LLVMAlias) symbol).getTarget();
         }
-        LLVMSymbol temp = symbol;
-        if (temp instanceof LLVMAlias) {
-            EconomicSet<LLVMAlias> visited = EconomicSet.create(Equivalence.IDENTITY);
-            checkForCycle((LLVMAlias) temp, visited);
-            while (temp.isAlias()) {
-                temp = ((LLVMAlias) temp).getTarget();
-            }
-        }
-        return temp;
+        return symbol;
     }
 
     @Override
