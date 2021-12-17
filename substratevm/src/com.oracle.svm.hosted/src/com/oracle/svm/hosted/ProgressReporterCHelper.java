@@ -29,8 +29,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-
 import com.oracle.svm.core.util.VMError;
 
 public final class ProgressReporterCHelper {
@@ -42,11 +40,9 @@ public final class ProgressReporterCHelper {
     }
 
     private static void loadCHelperLibrary() {
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            return; // TODO: remove as part of JDK8 removal (GR-35238).
-        }
+        Path javaHome = Paths.get(System.getProperty("java.home"));
         String libName = System.mapLibraryName("reporterchelper");
-        Path libRSSHelperPath = Paths.get(System.getProperty("java.home"), "lib", "svm", "builder", "lib", libName);
+        Path libRSSHelperPath = javaHome.resolve(Paths.get("lib", "svm", "builder", "lib", libName));
         if (Files.exists(libRSSHelperPath)) {
             System.load(libRSSHelperPath.toString());
         } else {
