@@ -77,7 +77,7 @@ public class NFITestBackend extends TruffleLanguage<Env> {
     public static final class EnvType {
     }
 
-    @ExportLibrary(value = NFIBackendLibrary.class, useForAOT = false)
+    @ExportLibrary(NFIBackendLibrary.class)
     @SuppressWarnings("static-method")
     static final class NFITestBackendImpl implements NFIBackend {
 

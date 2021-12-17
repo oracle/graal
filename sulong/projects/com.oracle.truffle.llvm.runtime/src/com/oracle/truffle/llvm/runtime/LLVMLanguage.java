@@ -536,7 +536,6 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
      * @return calltarget of the library
      */
     @Override
-    @CompilerDirectives.TruffleBoundary
     protected CallTarget parse(ParsingRequest request) {
         if (LLVMContext.get(null).getEnv().isPreInitialization()) {
             throw new UnsupportedOperationException("Parsing not supported during context pre-initialization");

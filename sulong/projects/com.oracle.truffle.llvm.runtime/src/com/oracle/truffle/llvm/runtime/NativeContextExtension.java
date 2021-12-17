@@ -111,10 +111,6 @@ public abstract class NativeContextExtension implements ContextExtension {
 
     public abstract Object createSignature(Source signatureSource);
 
-    public abstract CallTarget createSignatureCallTarget(Source signatureSource);
-
-    public abstract Object createSignature(Source signatureSource, CallTarget createSignatureCallTarget);
-
     public abstract Object bindSignature(LLVMFunctionCode function, Source signatureSource);
 
     public abstract Object bindSignature(long fnPtr, Source signatureSource);

@@ -364,7 +364,7 @@ final class LibFFISignature {
         }
     }
 
-    @ExportLibrary(value = NFIBackendSignatureBuilderLibrary.class, useForAOT = true, useForAOTPriority = 1)
+    @ExportLibrary(NFIBackendSignatureBuilderLibrary.class)
     static final class SignatureBuilder {
 
         static final int NOT_VARARGS = -1;

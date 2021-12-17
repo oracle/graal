@@ -48,7 +48,7 @@ import com.oracle.truffle.nfi.backend.spi.NFIBackendSignatureBuilderLibrary;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendSignatureLibrary;
 import java.util.ArrayList;
 
-@ExportLibrary(value = NFIBackendSignatureBuilderLibrary.class, useForAOT = false)
+@ExportLibrary(NFIBackendSignatureBuilderLibrary.class)
 @ExportLibrary(value = NFIBackendSignatureLibrary.class, useForAOT = false)
 public class TestSignature implements TruffleObject {
 

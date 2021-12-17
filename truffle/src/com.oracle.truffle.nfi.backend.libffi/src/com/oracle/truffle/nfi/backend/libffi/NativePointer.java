@@ -40,60 +40,9 @@
  */
 package com.oracle.truffle.nfi.backend.libffi;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.nfi.backend.spi.BackendNativePointerLibrary;
-
-@SuppressWarnings("unused")
-@ExportLibrary(InteropLibrary.class)
-abstract class AbstractNativePointer implements TruffleObject {
-
-    final long nativePointer;
-
-    AbstractNativePointer(long nativePointer) {
-        this.nativePointer = nativePointer;
-    }
-
-    @Override
-    public String toString() {
-        return String.valueOf(nativePointer);
-    }
-
-    @ExportMessage
-    boolean isPointer() {
-        return true;
-    }
-
-    @ExportMessage
-    long asPointer() {
-        return nativePointer;
-    }
-
-    @ExportMessage
-    boolean isNull() {
-        return nativePointer == 0;
-    }
-
-    @ExportMessage
-    boolean hasLanguage() {
-        return true;
-    }
-
-    @ExportMessage
-    Class<? extends TruffleLanguage<?>> getLanguage() {
-        return LibFFILanguage.class;
-    }
-
-    @ExportMessage
-    @TruffleBoundary
-    Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
-        return "NativePointer(" + nativePointer + ")";
-    }
-}
 
 @ExportLibrary(value = BackendNativePointerLibrary.class, useForAOT = true, useForAOTPriority = 1)
 final class NativePointer extends AbstractNativePointer {

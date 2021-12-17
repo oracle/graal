@@ -38,22 +38,58 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.nfi;
+package com.oracle.truffle.nfi.backend.libffi;
 
-import com.oracle.truffle.api.dsl.GenerateAOT;
-import com.oracle.truffle.api.library.GenerateLibrary;
-import com.oracle.truffle.api.library.Library;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
-@GenerateLibrary
-@GenerateAOT
-public abstract class NFISignatureBuilderLibrary extends Library {
+@SuppressWarnings("unused")
+@ExportLibrary(InteropLibrary.class)
+abstract class AbstractNativePointer implements TruffleObject {
 
-    public abstract void setReturnType(Object builder, Object type);
+    final long nativePointer;
 
-    public abstract void addArgument(Object builder, Object type);
-
-    public void makeVarargs(@SuppressWarnings("unused") Object builder) {
+    AbstractNativePointer(long nativePointer) {
+        this.nativePointer = nativePointer;
     }
 
-    public abstract Object build(Object builder);
+    @Override
+    public String toString() {
+        return String.valueOf(nativePointer);
+    }
+
+    @ExportMessage
+    boolean isPointer() {
+        return true;
+    }
+
+    @ExportMessage
+    long asPointer() {
+        return nativePointer;
+    }
+
+    @ExportMessage
+    boolean isNull() {
+        return nativePointer == 0;
+    }
+
+    @ExportMessage
+    boolean hasLanguage() {
+        return true;
+    }
+
+    @ExportMessage
+    Class<? extends TruffleLanguage<?>> getLanguage() {
+        return LibFFILanguage.class;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        return "NativePointer(" + nativePointer + ")";
+    }
 }

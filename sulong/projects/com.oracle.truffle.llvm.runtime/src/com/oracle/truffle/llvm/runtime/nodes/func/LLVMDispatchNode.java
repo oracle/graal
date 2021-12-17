@@ -79,9 +79,8 @@ public abstract class LLVMDispatchNode extends LLVMNode {
 
     protected final FunctionType type;
 
-    @CompilationFinal private Source signatureSource;
+    @CompilationFinal protected Source signatureSource;
     @CompilationFinal private ContextExtension.Key<NativeContextExtension> nativeCtxExtKey;
-    @CompilationFinal protected DirectCallNode createSignature;
 
     protected LLVMDispatchNode(FunctionType type, LLVMFunction llvmFunction) {
         this.type = type;
@@ -94,11 +93,6 @@ public abstract class LLVMDispatchNode extends LLVMNode {
                 if (nativeCtxExtKey != null) {
                     NativeContextExtension nativeContextExtension = nativeCtxExtKey.get(context);
                     signatureSource = nativeContextExtension.getNativeSignatureSourceSkipStackArg(type);
-                    if (context.isAOTCacheStore()) {
-                        createSignature = DirectCallNode.create(nativeContextExtension.createSignatureCallTarget(signatureSource));
-                        createSignature.call(); // profile the AST (esp. ArrayBuilderFactory)
-                        createSignature.cloneCallTarget(); // create the clone used in doNativeAOT
-                    }
                 }
             } catch (UnsupportedNativeTypeException e) {
                 // ignore it
@@ -273,7 +267,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
         return type.getReturnType() instanceof PointerType;
     }
 
-    @Specialization(guards = {"createSignature != null", "descriptor.getFunctionCode().isNativeFunction(resolve)"})
+    @Specialization(guards = {"signatureSource != null", "descriptor.getFunctionCode().isNativeFunction(resolve)"})
     protected Object doNativeAOT(LLVMFunctionDescriptor descriptor, Object[] arguments,
                     @Cached("createToNativeNodes()") LLVMNativeConvertNode[] toNative,
                     @Cached("createFromNativeNode()") LLVMNativeConvertNode fromNative,
@@ -282,7 +276,7 @@ public abstract class LLVMDispatchNode extends LLVMNode {
                     @CachedLibrary(limit = "1") NativePointerLibrary nfiNativePointerLibrary,
                     @Cached @SuppressWarnings("unused") ResolveFunctionNode resolve) {
         try {
-            Object signature = getNativeCtxExt().createSignature(signatureSource, createSignature.getClonedCallTarget());
+            Object signature = getNativeCtxExt().createSignature(signatureSource);
             Object nativeFunction = descriptor.getFunctionCode().getNativeFunction(resolve);
             Object[] nativeArgs = prepareNativeArguments(arguments, toNative);
             Object returnValue = signatureLibrary.call(signature, nativeFunction, nativeArgs);
