@@ -640,16 +640,18 @@ public final class EspressoContext {
         if (!UseBindingsLoader) {
             return systemClassLoader;
         }
-        Klass k = getMeta().loadKlassOrNull(Type.com_oracle_truffle_espresso_loader_BindingsLoader, StaticObject.NULL, StaticObject.NULL);
+        Klass k = getMeta().loadKlassOrNull(Type.java_net_URLClassLoader, StaticObject.NULL, StaticObject.NULL);
         if (k == null) {
             return systemClassLoader;
         }
-        Method init = k.lookupDeclaredMethod(Name._init_, Signature._void_ClassLoader);
+        Method init = k.lookupDeclaredMethod(Name._init_, Signature._void_URL_array_ClassLoader);
         if (init == null) {
             return systemClassLoader;
         }
         StaticObject bindingsLoader = k.allocateInstance();
-        init.invokeDirect(bindingsLoader, /* parent */systemClassLoader);
+        init.invokeDirect(bindingsLoader,
+                        /* URLs */ getMeta().java_net_URL.allocateReferenceArray(0),
+                        /* parent */ systemClassLoader);
         return bindingsLoader;
     }
 

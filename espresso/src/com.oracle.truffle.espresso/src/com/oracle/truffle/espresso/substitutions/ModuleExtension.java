@@ -37,7 +37,6 @@ public final class ModuleExtension {
     private static final ModuleExtension[] ESPRESSO_EXTENSION_MODULES = new ModuleExtension[]{
                     new ModuleExtension("espresso.hotswap", "hotswap.jar", (context) -> context.JDWPOptions != null),
                     new ModuleExtension("espresso.polyglot", "polyglot.jar", (context) -> context.Polyglot),
-                    new ModuleExtension("espresso.loader", "loader.jar", (context) -> context.UseBindingsLoader),
     };
 
     private final String moduleName;
