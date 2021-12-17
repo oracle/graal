@@ -125,10 +125,26 @@ public final class NativeIsolate {
         return "NativeIsolate[" + uuid + " for 0x" + Long.toHexString(isolateId) + "]";
     }
 
+    /**
+     * Gets the NativeIsolate object for the entered isolate with the specified isolateId.
+     * IMPORTANT: Must be used only when the isolate with the specified isolateId is entered.
+     *
+     * @param isolateId id of an entered isolate
+     * @return NativeIsolate object for the entered isolate with the specified isolateId
+     */
+    public static NativeIsolate get(long isolateId) {
+        NativeIsolate res = isolates.get(isolateId);
+        if (res == null) {
+            throw new IllegalStateException("NativeIsolate for isolate 0x" + Long.toHexString(isolateId) + " does not exist.");
+        }
+        return res;
+    }
+
     public static NativeIsolate forIsolateId(long isolateId, JNIConfig config) {
-        NativeIsolate res = isolates.computeIfAbsent(isolateId, id -> new NativeIsolate(id, config));
-        if (!res.config.equals(config)) {
-            throw new IllegalStateException("NativeIsolate already exists with different config.");
+        NativeIsolate res = new NativeIsolate(isolateId, config);
+        NativeIsolate previous = isolates.put(isolateId, res);
+        if (previous != null && previous.state != State.DISPOSED) {
+            throw new IllegalStateException("NativeIsolate for isolate 0x" + Long.toHexString(isolateId) + " already exists and is not disposed.");
         }
         return res;
     }
@@ -213,7 +229,7 @@ public final class NativeIsolate {
             }
         } finally {
             if (success) {
-                isolates.remove(isolateId);
+                isolates.computeIfPresent(isolateId, (id, nativeIsolate) -> (nativeIsolate == NativeIsolate.this ? null : nativeIsolate));
             }
         }
         return success;
