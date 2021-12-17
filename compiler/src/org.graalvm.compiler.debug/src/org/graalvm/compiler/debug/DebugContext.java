@@ -115,6 +115,11 @@ public final class DebugContext implements AutoCloseable {
      */
     boolean metricsEnabled;
 
+    /**
+     * Determines whether debug context was closed.
+     */
+    boolean closed;
+
     DebugConfigImpl currentConfig;
     ScopeImpl currentScope;
     CloseableCounter currentTimer;
@@ -984,7 +989,7 @@ public final class DebugContext implements AutoCloseable {
         if (immutable.scopesEnabled) {
             if (currentScope == null) {
                 // In an active DisabledScope
-                return true;
+                return !closed;
             }
             return !currentScope.isTopLevel();
         } else {
@@ -2207,6 +2212,10 @@ public final class DebugContext implements AutoCloseable {
             }
         }
         prototypeOutput = null;
+        lastClosedScope = null;
+        currentScope = null;
+        currentConfig = null;
+        closed = true;
     }
 
     public void closeDumpHandlers(boolean ignoreErrors) {
