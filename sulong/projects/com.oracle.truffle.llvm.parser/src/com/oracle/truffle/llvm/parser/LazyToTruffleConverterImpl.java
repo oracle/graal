@@ -167,7 +167,7 @@ public class LazyToTruffleConverterImpl implements LazyToTruffleConverter {
         // prepare the phis
         final Map<InstructionBlock, List<Phi>> phis = LLVMPhiManager.getPhis(method);
 
-        LLVMLivenessAnalysisResult liveness = LLVMLivenessAnalysis.computeLiveness(phis, method, LLVMLanguage.getContext().lifetimeAnalysisStream());
+        LLVMLivenessAnalysisResult liveness = LLVMLivenessAnalysis.computeLiveness(phis, method);
 
         // setup the frameDescriptor
         FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
