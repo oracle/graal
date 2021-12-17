@@ -806,9 +806,16 @@ public abstract class JavaThreads {
      */
     protected abstract void setNativeName(Thread thread, String name);
 
-    protected abstract void platformYield();
+    protected void platformYield() {
+        this.yield();
+    }
 
-    void yield() {
+    /** Legacy: remove once subclasses have been changed to implement {@link #platformYield()}. */
+    protected void yield() {
+        throw VMError.shouldNotReachHere("Implement method platformYield.");
+    }
+
+    void yieldCurrent() {
         if (supportsVirtual() && isVirtualDisallowLoom(Thread.currentThread())) {
             VirtualThreads.get().yield();
         } else {

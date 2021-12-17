@@ -485,14 +485,14 @@ public final class Target_java_lang_Thread {
     @Substitute
     @TargetElement(onlyWith = NotLoomJDK.class)
     private static void yield() {
-        JavaThreads.singleton().yield();
+        JavaThreads.singleton().yieldCurrent();
     }
 
     @Substitute
     @TargetElement(onlyWith = LoomJDK.class)
     private static void yield0() {
         // Loom virtual threads are handled in yield()
-        JavaThreads.singleton().yield();
+        JavaThreads.singleton().yieldCurrent();
     }
 
     @Substitute
