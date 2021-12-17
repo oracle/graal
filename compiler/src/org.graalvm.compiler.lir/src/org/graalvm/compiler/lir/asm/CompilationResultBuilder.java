@@ -26,6 +26,7 @@ package org.graalvm.compiler.lir.asm;
 
 import static jdk.vm.ci.code.ValueUtil.asStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
+import static org.graalvm.compiler.core.common.GraalOptions.IsolatedLoopHeaderAlignment;
 import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
 import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 
@@ -56,6 +57,7 @@ import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRInstructionVerifier;
 import org.graalvm.compiler.lir.LabelRef;
+import org.graalvm.compiler.lir.StandardOp;
 import org.graalvm.compiler.lir.StandardOp.LabelHoldingOp;
 import org.graalvm.compiler.lir.framemap.FrameMap;
 import org.graalvm.compiler.options.Option;
@@ -563,9 +565,19 @@ public class CompilationResultBuilder {
         this.currentBlockIndex = 0;
         this.lastImplicitExceptionOffset = Integer.MIN_VALUE;
         frameContext.enter(this);
+        AbstractBlockBase<?> previousBlock = null;
         for (AbstractBlockBase<?> b : lir.codeEmittingOrder()) {
             assert (b == null && lir.codeEmittingOrder()[currentBlockIndex] == null) || lir.codeEmittingOrder()[currentBlockIndex].equals(b);
-            emitBlock(b);
+            if (b != null) {
+                if (b.isAligned() && previousBlock != null && Arrays.stream(previousBlock.getSuccessors()).noneMatch((x) -> x == b)) {
+                    ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(b);
+                    assert instructions.get(0) instanceof StandardOp.LabelOp : "first instruction must always be a label";
+                    StandardOp.LabelOp label = (StandardOp.LabelOp) instructions.get(0);
+                    label.setAlignment(IsolatedLoopHeaderAlignment.getValue(options));
+                }
+                emitBlock(b);
+                previousBlock = b;
+            }
             currentBlockIndex++;
         }
         this.lir = null;
