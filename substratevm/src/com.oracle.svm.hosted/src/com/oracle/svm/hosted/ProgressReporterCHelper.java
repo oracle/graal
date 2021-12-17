@@ -31,6 +31,8 @@ import java.nio.file.Paths;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
+import com.oracle.svm.core.util.VMError;
+
 public final class ProgressReporterCHelper {
     private static final int DEFAULT_CHARACTERS_PER_LINE = 80;
     static final int MAX_CHARACTERS_PER_LINE = 120;
@@ -47,6 +49,8 @@ public final class ProgressReporterCHelper {
         Path libRSSHelperPath = Paths.get(System.getProperty("java.home"), "lib", "svm", "builder", "lib", libName);
         if (Files.exists(libRSSHelperPath)) {
             System.load(libRSSHelperPath.toString());
+        } else {
+            System.load(Paths.get(System.getProperty("substratevm.reporterchelper.path"), libName).toString());
         }
     }
 
@@ -64,7 +68,7 @@ public final class ProgressReporterCHelper {
         try {
             return getTerminalWindowColumns0();
         } catch (UnsatisfiedLinkError e) {
-            return DEFAULT_CHARACTERS_PER_LINE;
+            throw VMError.shouldNotReachHere("ProgressReporterCHelper.getTerminalWindowColumns0 native method not available");
         }
     }
 
@@ -75,7 +79,7 @@ public final class ProgressReporterCHelper {
         try {
             return getPeakRSS0();
         } catch (UnsatisfiedLinkError e) {
-            return -1;
+            throw VMError.shouldNotReachHere("ProgressReporterCHelper.getPeakRSS0 native method not available");
         }
     }
 
