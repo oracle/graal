@@ -28,11 +28,12 @@ import com.oracle.svm.core.jdk.InternalVMMethod;
 
 /**
  * Holder class for generated factory methods (methods that combine object allocation and invocation
- * of a constructor).
+ * of a constructor) that then immediately throw the allocated objects (which must be an exception
+ * type).
  */
 @InternalVMMethod
 @FactoryMethodMarker
-public final class FactoryMethodHolder {
-    private FactoryMethodHolder() {
+public final class FactoryThrowMethodHolder {
+    private FactoryThrowMethodHolder() {
     }
 }

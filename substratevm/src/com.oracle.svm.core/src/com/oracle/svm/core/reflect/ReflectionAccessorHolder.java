@@ -53,7 +53,7 @@ public final class ReflectionAccessorHolder {
 
     /**
      * Signature prototype for allocating a new instance via a {@link SubstrateConstructorAccessor}.
-     * Must match * the signature of {@link ConstructorNewInstanceFunctionPointer#invoke}
+     * Must match the signature of {@link ConstructorNewInstanceFunctionPointer#invoke}
      */
     static Object newInstancePrototype(Object[] args) {
         throw VMError.shouldNotReachHere("Only used as a prototype for generated methods");
@@ -95,7 +95,7 @@ public final class ReflectionAccessorHolder {
     }
 
     /**
-     * We do not know which check in the generated metod caused the exception, so we cannot print
+     * We do not know which check in the generated method caused the exception, so we cannot print
      * detailed information about that. But printing the signature of the method and all the types
      * of the actual arguments should make it obvious what the problem is.
      */

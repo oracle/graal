@@ -24,15 +24,12 @@
  */
 package com.oracle.svm.core.code;
 
-import com.oracle.svm.core.jdk.InternalVMMethod;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
-/**
- * Holder class for generated factory methods (methods that combine object allocation and invocation
- * of a constructor).
- */
-@InternalVMMethod
-@FactoryMethodMarker
-public final class FactoryMethodHolder {
-    private FactoryMethodHolder() {
-    }
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.TYPE)
+public @interface FactoryMethodMarker {
 }

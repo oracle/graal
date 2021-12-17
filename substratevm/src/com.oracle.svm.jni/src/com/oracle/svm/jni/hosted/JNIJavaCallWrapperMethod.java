@@ -331,7 +331,7 @@ public final class JNIJavaCallWrapperMethod extends EntryPointCallStubMethod {
     private static ValueNode createNewObjectCall(UniverseMetaAccess metaAccess, JNIGraphKit kit, ResolvedJavaMethod constructor, FrameStateBuilder state, ValueNode... argsWithReceiver) {
         assert constructor.isConstructor() : "Cannot create a NewObject call to the non-constructor method " + constructor;
 
-        ResolvedJavaMethod factoryMethod = FactoryMethodSupport.singleton().lookup(metaAccess, constructor);
+        ResolvedJavaMethod factoryMethod = FactoryMethodSupport.singleton().lookup(metaAccess, constructor, false);
 
         int bci = kit.bci();
         ValueNode[] argsWithoutReceiver = Arrays.copyOfRange(argsWithReceiver, 1, argsWithReceiver.length);

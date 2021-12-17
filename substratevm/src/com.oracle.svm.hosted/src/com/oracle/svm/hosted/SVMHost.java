@@ -559,6 +559,11 @@ public class SVMHost implements HostVM {
 
             if (parseOnce) {
                 optimizeAfterParsing(bb, graph);
+                /*
+                 * Do a complete Canonicalizer run once before graph encoding, to clean up any
+                 * leftover uncanonicalized nodes.
+                 */
+                CanonicalizerPhase.create().apply(graph, bb.getProviders());
             }
 
             for (BiConsumer<AnalysisMethod, StructuredGraph> methodAfterParsingHook : methodAfterParsingHooks) {
@@ -571,11 +576,6 @@ public class SVMHost implements HostVM {
         new ImplicitAssertionsPhase().apply(graph, bb.getProviders());
         new BoxNodeIdentityPhase().apply(graph, bb.getProviders());
         new PartialEscapePhase(false, false, CanonicalizerPhase.create(), null, options).apply(graph, bb.getProviders());
-        /*
-         * Do a complete Canonicalizer run once before graph encoding, to clean up any leftover
-         * uncanonicalized nodes.
-         */
-        CanonicalizerPhase.create().apply(graph, bb.getProviders());
     }
 
     @Override
