@@ -141,10 +141,10 @@ jobs:
     - name: Style dependencies
       if: ${{ contains(matrix.env.GATE, 'style') }}
       run: |
-        sudo apt install python-pip python-setuptools 
+        sudo apt install python3-pip python3-setuptools 
         cat common.json |
           jq -r '.deps.common.packages | to_entries[] | select(.key | startswith("pip:")) | (.key | split(":")[1]) + .value' |
-          xargs sudo pip install
+          xargs sudo pip3 install
     - name: Build GraalVM and run gate
       env: ${{ matrix.env }}
       run: |
