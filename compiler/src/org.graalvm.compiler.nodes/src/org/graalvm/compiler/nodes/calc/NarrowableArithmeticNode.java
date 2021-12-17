@@ -24,12 +24,14 @@
  */
 package org.graalvm.compiler.nodes.calc;
 
+import org.graalvm.compiler.nodes.ArithmeticOperation;
+
 /**
  * Marker interface for nodes where it is valid to apply a {@link NarrowNode} to its inputs and do a
  * narrow operation instead of doing the wide operation and applying the {@link NarrowNode} to the
  * result.
  */
-public interface NarrowableArithmeticNode {
+public interface NarrowableArithmeticNode extends ArithmeticOperation {
 
     /**
      * Check whether this operation can be narrowed to {@code resultBits} bit without loss of
