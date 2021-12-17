@@ -1,4 +1,4 @@
-# Embedding GraalVM Insight into Applications
+# Embedding Insight into Applications
 
 ## Embedding Insight into Java
 
@@ -13,8 +13,8 @@ Function<Source, AutoCloseable> access = instrument.lookup(Function.class);
 AutoCloseable handle = access.apply(agentSrc);
 ```
 
-Obtain `Engine` for `Context` and ask for `insight` instrument.
-Then create `Source` with GraalVM Insight script and apply it while obtaining its instrumentation handle.
+Obtain `Engine` for `Context` and ask for the `insight` instrument.
+Then create `Source` with the GraalVM Insight script and apply it while obtaining its instrumentation handle.
 Use `handle.close()` to disable all the script's instrumentations when when no longer needed.
 
 ### Ignoring Internal Scripts
@@ -23,7 +23,7 @@ Often one wants to treat certain code written in a dynamic language as a privile
 Imagine various bindings to OS concepts or other features of one's application.
 Such scripts are better to remain blackboxed and hidden from GraalVM Insight instrumentation capabilities.
 
-To hide priviledged scripts from sight [mark them as internal](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Source.Builder.html#internal-boolean-).
+To hide priviledged scripts from sight, [mark them as internal](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Source.Builder.html#internal-boolean-).
 By default GraalVM Insight ignores and does not process internal scripts.
 
 ### Extending Functionality of Insight Scripts
@@ -46,7 +46,7 @@ public final class MeaningOfWorldInstrument extends TruffleInstrument {
 }
 ```
 
-The previous Java code creates an instrument which registers a new symbol `meaning` to every Insight script evaluated then.
+The previous Java code creates an instrument which registers a new symbol `meaning` to every Insight script evaluated.
 Each script can then reference it and use it, for example, to limit the number of method invocations:
 
 ```java

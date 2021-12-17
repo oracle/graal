@@ -7,7 +7,6 @@ The dynamic nature of the tool helps to selectively apply complex insights by ga
 Find out more about Insight from its [formal API specification](https://www.graalvm.org/tools/javadoc/org/graalvm/tools/insight/Insight.html) and the [Insight Manual](Insight-Manual.md).
 
 ## Motivation Behind Insight
-<!-- ## Any Language and any Framework! -->
 
 The traditional tracing solution requires every developer to modify their own code with manually added traces.
 Insight brings such experience to another level.

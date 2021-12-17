@@ -209,7 +209,7 @@ Two is the result 2
 
 ## What to Read Next
 
-### "Hacker's Manual"
+### Insight Deep Dive
 
 Any moderately skilled developer can easily create own so called "hooks" and dynamically apply them to the actual programs.
 That provides ultimate insights into execution and behavior of one's application without compromising the execution speed.
@@ -218,15 +218,16 @@ To continue learning and deep dive into GraalVM Insight, proceed to the [Insight
 
 ### Embeddeding GraalVM Insight into Applications
 
-GraalVM languages (languages implemented with the Truffle framework) can be embedded into custom applications via [Polyglot Context API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.html). GraalVM Insight can also be controlled via the same API.
+GraalVM languages (languages implemented with the Truffle framework) can be embedded into custom applications via [Polyglot Context API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.html).
+GraalVM Insight can also be controlled via the same API.
 
 Read the [embedding documentation](Insight-Embedding.md) to learn how to integrate GraalVM Insight capabilities into applications in a secure way.
 
 ### Tracing with GraalVM Insight
 
 GraalVM Insight dynamically adds tracing capabilities into existing code.
-Write your application as normally and apply [Open Telemetry](https://opentelemetry.io/) traces dynamically when needed.
-Read more about Insight and Jaeger integration in a dedicated [guide](Insight-Tracing.md).
+Write your application as normally and apply [Open Telemetry](https://opentelemetry.io/) traces dynamicall when needed.
+Read more about Insight and Jaeger integration in a [dedicated guide](Insight-Tracing.md).
 
 ### API Specification
 

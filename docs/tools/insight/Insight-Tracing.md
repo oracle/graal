@@ -1,17 +1,16 @@
-# Tracing with GraalVM Insight
-<!-- GraalVM Insight with OpenTracing API on top -->
+# Tracing with Insight
 
 It is possible to use the GraalVM Insight to implement smooth, declarative, ad hoc tracing via standard [`OpenTracing API`](https://github.com/opentracing/opentracing-javascript).
 The traces can be added into running application and customized on the fly to extract the right information needed to investigate any misbehavior incident.
 
-The following examples will demonstrate the racing capabilities with GraalVM Insight.
+The following examples will demonstrate the tracing capabilities with GraalVM Insight.
 To start, install the Jaeger's client side instrumentation library for Node.js:
 
 ```bash
 graalvm/bin/npm install jaeger-client@3.17.1
 ```
 
-Now you can use the [OpenTracing API](https://github.com/opentracing/opentracing-javascript) provided by the `jaeger-client` module in your instrument `agent.js` via the `tracer` object, once it becomes available (discussed later in this guide):
+Now you can use the [OpenTracing API](https://github.com/opentracing/opentracing-javascript) provided by the `jaeger-client` module in your instrument `agent.js` via the `tracer` object (once it becomes available, it will discussed later in this guide):
 
 ```js
 let initialize = function(tracer) {
@@ -164,7 +163,7 @@ The server prints to the console detailed information while handling the request
 
 ![Jaeger UI](img/Insight-Jaeger.png)
 
-This completes the guide how to enhance a plain Node.js application with tracing. 
+This completes the guide how to enhance a plain Node.js application with tracing.
 The traces remain separated in its own `agent.js` file and can be applied at start time (demonstrated here) or [dynamically](Insight-Embedding.md) when needed.
 
 ### What to Read Rext
