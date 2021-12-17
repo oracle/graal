@@ -285,7 +285,9 @@ public class ThreadingSupportImpl implements ThreadingSupport {
 
     @Uninterruptible(reason = "Called by uninterruptible code.", mayBeInlined = true)
     static boolean needsNativeToJavaSlowpath() {
-        return ActionOnTransitionToJavaSupport.isActionPending() || (isRecurringCallbackSupported() && Options.CheckRecurringCallbackOnNativeToJavaTransition.getValue() && activeTimer.get() != null);
+        return ActionOnTransitionToJavaSupport.isActionPending() ||
+                        (isRecurringCallbackSupported() && Options.CheckRecurringCallbackOnNativeToJavaTransition.getValue() &&
+                                        activeTimer.get() != null && !isRecurringCallbackPaused());
     }
 
     /**
