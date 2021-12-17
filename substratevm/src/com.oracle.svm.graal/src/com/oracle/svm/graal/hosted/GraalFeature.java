@@ -888,7 +888,7 @@ public final class GraalFeature implements Feature {
         CompilationAccessImpl config = (CompilationAccessImpl) a;
 
         HostedMetaAccess hMetaAccess = config.getMetaAccess();
-        HostedUniverse hUniverse = (HostedUniverse) hMetaAccess.getUniverse();
+        HostedUniverse hUniverse = hMetaAccess.getUniverse();
         objectReplacer.updateSubstrateDataAfterCompilation(hUniverse, config.getProviders().getConstantFieldProvider());
 
         objectReplacer.registerImmutableObjects(config);
@@ -900,7 +900,7 @@ public final class GraalFeature implements Feature {
     public void afterHeapLayout(AfterHeapLayoutAccess a) {
         AfterHeapLayoutAccessImpl config = (AfterHeapLayoutAccessImpl) a;
         HostedMetaAccess hMetaAccess = config.getMetaAccess();
-        HostedUniverse hUniverse = (HostedUniverse) hMetaAccess.getUniverse();
+        HostedUniverse hUniverse = hMetaAccess.getUniverse();
         objectReplacer.updateSubstrateDataAfterHeapLayout(hUniverse);
     }
 }

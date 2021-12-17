@@ -67,7 +67,7 @@ public class FactoryMethodSupport {
             hUniverse = null;
             aMetaAccess = (AnalysisMetaAccess) metaAccess;
         }
-        AnalysisUniverse aUniverse = (AnalysisUniverse) aMetaAccess.getUniverse();
+        AnalysisUniverse aUniverse = aMetaAccess.getUniverse();
         MetaAccessProvider unwrappedMetaAccess = aMetaAccess.getWrapped();
 
         AnalysisMethod aConstructor = constructor instanceof HostedMethod ? ((HostedMethod) constructor).getWrapped() : (AnalysisMethod) constructor;

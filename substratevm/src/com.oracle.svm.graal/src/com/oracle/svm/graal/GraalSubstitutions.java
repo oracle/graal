@@ -72,7 +72,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.VMError;
@@ -141,6 +140,10 @@ final class Target_org_graalvm_compiler_debug_DebugContext_Invariants {
 @TargetClass(value = DebugContext.class, innerClass = "Immutable", onlyWith = GraalFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_debug_DebugContext_Immutable {
     static class ClearImmutableCache implements RecomputeFieldValue.CustomFieldValueComputer {
+        @Override
+        public RecomputeFieldValue.ValueAvailability valueAvailability() {
+            return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+        }
 
         @Override
         public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
@@ -169,6 +172,10 @@ final class Target_org_graalvm_compiler_debug_DebugContext_Immutable {
 @TargetClass(value = DebugHandlersFactory.class, onlyWith = GraalFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_debug_DebugHandlersFactory {
     static class CachedFactories implements RecomputeFieldValue.CustomFieldValueComputer {
+        @Override
+        public RecomputeFieldValue.ValueAvailability valueAvailability() {
+            return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+        }
 
         @Override
         public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
@@ -314,7 +321,7 @@ final class Target_org_graalvm_compiler_graph_NodeClass {
     @SuppressWarnings("unlikely-arg-type")
     @SuppressFBWarnings(value = {"GC_UNRELATED_TYPES"}, justification = "Class is DynamicHub")
     public static NodeClass<?> get(Class<?> clazz) {
-        NodeClass<?> nodeClass = GraalSupport.get().nodeClasses.get(DynamicHub.fromClass(clazz));
+        NodeClass<?> nodeClass = GraalSupport.get().nodeClasses.get(clazz);
         if (nodeClass == null) {
             throw VMError.shouldNotReachHere("Unknown node class: " + clazz.getName() + "\n");
         }
@@ -338,7 +345,7 @@ final class Target_org_graalvm_compiler_lir_LIRInstructionClass {
     @SuppressWarnings("unlikely-arg-type")
     @SuppressFBWarnings(value = {"GC_UNRELATED_TYPES"}, justification = "Class is DynamicHub")
     public static LIRInstructionClass<?> get(Class<? extends LIRInstruction> clazz) {
-        LIRInstructionClass<?> instructionClass = GraalSupport.get().instructionClasses.get(DynamicHub.fromClass(clazz));
+        LIRInstructionClass<?> instructionClass = GraalSupport.get().instructionClasses.get(clazz);
         if (instructionClass == null) {
             throw VMError.shouldNotReachHere("Unknown instruction class: " + clazz.getName() + "\n");
         }
@@ -353,7 +360,7 @@ final class Target_org_graalvm_compiler_lir_CompositeValueClass {
     @SuppressWarnings("unlikely-arg-type")
     @SuppressFBWarnings(value = {"GC_UNRELATED_TYPES"}, justification = "Class is DynamicHub")
     public static CompositeValueClass<?> get(Class<? extends CompositeValue> clazz) {
-        CompositeValueClass<?> compositeValueClass = GraalSupport.get().compositeValueClasses.get(DynamicHub.fromClass(clazz));
+        CompositeValueClass<?> compositeValueClass = GraalSupport.get().compositeValueClasses.get(clazz);
         if (compositeValueClass == null) {
             throw VMError.shouldNotReachHere("Unknown composite value class: " + clazz.getName() + "\n");
         }

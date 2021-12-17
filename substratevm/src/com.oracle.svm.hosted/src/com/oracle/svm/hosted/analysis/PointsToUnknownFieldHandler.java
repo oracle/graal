@@ -29,11 +29,12 @@ import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+
 import jdk.vm.ci.meta.JavaKind;
 
 public class PointsToUnknownFieldHandler extends UnknownFieldHandler {
-    public PointsToUnknownFieldHandler(AnalysisMetaAccess metaAccess) {
-        super(metaAccess);
+    public PointsToUnknownFieldHandler(BigBang bb, AnalysisMetaAccess metaAccess) {
+        super(bb, metaAccess);
     }
 
     /**
@@ -41,7 +42,7 @@ public class PointsToUnknownFieldHandler extends UnknownFieldHandler {
      * code. It can have multiple declared types provided via annotation.
      */
     @Override
-    protected void handleUnknownObjectField(BigBang bb, AnalysisField aField, AnalysisType... declaredTypes) {
+    protected void handleUnknownObjectField(AnalysisField aField, AnalysisType... declaredTypes) {
         NativeImagePointsToAnalysis analysis = (NativeImagePointsToAnalysis) bb;
         assert aField.getJavaKind() == JavaKind.Object;
 

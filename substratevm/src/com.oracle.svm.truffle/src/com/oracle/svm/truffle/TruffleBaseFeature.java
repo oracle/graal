@@ -645,12 +645,17 @@ final class Target_com_oracle_truffle_api_staticobject_StaticProperty {
          * We have to use reflection to access private members instead of aliasing them in the
          * substitution class since substitutions are present only at runtime
          */
-        private static final Method GET_PROPERTY_TYPE;
 
+        private static final Method GET_PROPERTY_TYPE;
         static {
             // Checkstyle: stop
             GET_PROPERTY_TYPE = ReflectionUtil.lookupMethod(StaticProperty.class, "getPropertyType");
             // Checkstyle: resume
+        }
+
+        @Override
+        public RecomputeFieldValue.ValueAvailability valueAvailability() {
+            return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
         }
 
         @Override
@@ -724,6 +729,11 @@ final class Target_com_oracle_truffle_api_staticobject_ArrayBasedShapeGenerator 
                 throw VMError.shouldNotReachHere(e);
             }
             // Checkstyle: resume
+        }
+
+        @Override
+        public RecomputeFieldValue.ValueAvailability valueAvailability() {
+            return RecomputeFieldValue.ValueAvailability.AfterAnalysis;
         }
 
         @Override

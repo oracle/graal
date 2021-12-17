@@ -48,6 +48,11 @@ public final class Target_org_junit_runners_model_TestClass {
 
     public static final class OnlyConstructorComputer implements CustomFieldValueComputer {
         @Override
+        public RecomputeFieldValue.ValueAvailability valueAvailability() {
+            return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+        }
+
+        @Override
         public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
             TestClass testClass = (TestClass) receiver;
             if (testClass.getJavaClass() != null) {

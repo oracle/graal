@@ -46,8 +46,6 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -67,6 +65,8 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
 // Checkstyle: stop
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import sun.security.jca.ProviderList;
 import sun.security.util.SecurityConstants;
 // Checkstyle: resume
@@ -375,6 +375,11 @@ final class Target_javax_crypto_JceSecurity {
 
     private static class VerificationCacheTransformer implements RecomputeFieldValue.CustomFieldValueTransformer {
         @Override
+        public RecomputeFieldValue.ValueAvailability valueAvailability() {
+            return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+        }
+
+        @Override
         public Object transform(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver, Object originalValue) {
             return SecurityProvidersFilter.instance().cleanVerificationCache(originalValue);
         }
@@ -663,6 +668,11 @@ final class Target_sun_security_jca_Providers {
     private static ProviderList providerList;
 
     private static class ProviderListTransformer implements RecomputeFieldValue.CustomFieldValueTransformer {
+        @Override
+        public RecomputeFieldValue.ValueAvailability valueAvailability() {
+            return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+        }
+
         @Override
         public Object transform(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver, Object originalValue) {
             ProviderList originalProviderList = (ProviderList) originalValue;

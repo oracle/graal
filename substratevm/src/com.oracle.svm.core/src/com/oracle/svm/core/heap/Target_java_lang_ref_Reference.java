@@ -228,6 +228,11 @@ class ComputeReferenceValue implements CustomFieldValueComputer {
     private static final Field REFERENT_FIELD = ReflectionUtil.lookupField(Reference.class, "referent");
 
     @Override
+    public RecomputeFieldValue.ValueAvailability valueAvailability() {
+        return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+    }
+
+    @Override
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
         if (receiver instanceof PhantomReference) {
             /*
@@ -253,6 +258,11 @@ class ComputeReferenceValue implements CustomFieldValueComputer {
 class ComputeQueueValue implements CustomFieldValueComputer {
 
     private static final Field QUEUE_FIELD = ReflectionUtil.lookupField(Reference.class, "queue");
+
+    @Override
+    public RecomputeFieldValue.ValueAvailability valueAvailability() {
+        return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+    }
 
     @Override
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {

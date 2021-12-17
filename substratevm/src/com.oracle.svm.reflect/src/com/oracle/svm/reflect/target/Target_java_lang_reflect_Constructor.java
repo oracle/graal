@@ -151,6 +151,10 @@ public final class Target_java_lang_reflect_Constructor {
      * Executable.getAnnotatedReceiverType().
      */
     public static final class ConstructorAnnotatedReceiverTypeComputer implements CustomFieldValueComputer {
+        @Override
+        public RecomputeFieldValue.ValueAvailability valueAvailability() {
+            return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+        }
 
         @Override
         public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {

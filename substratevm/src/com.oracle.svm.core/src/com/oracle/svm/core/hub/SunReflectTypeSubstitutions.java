@@ -123,6 +123,11 @@ final class Target_sun_reflect_generics_reflectiveObjects_LazyReflectiveObjectGe
 
 class TypeVariableBoundsComputer implements RecomputeFieldValue.CustomFieldValueComputer {
     @Override
+    public RecomputeFieldValue.ValueAvailability valueAvailability() {
+        return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+    }
+
+    @Override
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
         return GuardedBoundsAccess.getBounds((TypeVariableImpl<?>) receiver);
     }
@@ -130,12 +135,21 @@ class TypeVariableBoundsComputer implements RecomputeFieldValue.CustomFieldValue
 
 class TypeVariableAnnotatedBoundsComputer implements CustomFieldValueComputer {
     @Override
+    public RecomputeFieldValue.ValueAvailability valueAvailability() {
+        return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+    }
+
+    @Override
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
         return GuardedBoundsAccess.getAnnotatedBounds((TypeVariableImpl<?>) receiver);
     }
 }
 
 class TypeVariableAnnotationsComputer implements CustomFieldValueComputer {
+    @Override
+    public RecomputeFieldValue.ValueAvailability valueAvailability() {
+        return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+    }
 
     @Override
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
@@ -201,12 +215,22 @@ final class Target_sun_reflect_generics_reflectiveObjects_WildcardTypeImpl {
 
 class WildcardTypeImplUpperBoundsComputer implements RecomputeFieldValue.CustomFieldValueComputer {
     @Override
+    public RecomputeFieldValue.ValueAvailability valueAvailability() {
+        return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+    }
+
+    @Override
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
         return GuardedBoundsAccess.getUpperBounds((WildcardTypeImpl) receiver);
     }
 }
 
 class WildcardTypeImplLowerBoundsComputer implements RecomputeFieldValue.CustomFieldValueComputer {
+    @Override
+    public RecomputeFieldValue.ValueAvailability valueAvailability() {
+        return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+    }
+
     @Override
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
         return GuardedBoundsAccess.getLowerBounds((WildcardTypeImpl) receiver);
