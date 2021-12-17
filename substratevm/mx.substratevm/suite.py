@@ -507,6 +507,32 @@ suite = {
             "workingSets": "SVM",
         },
 
+        "com.oracle.graal.pointsto.standalone.test": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "mx:JUNIT_TOOL",
+                "sdk:GRAAL_SDK",
+                "STANDALONE_POINTSTO"
+            ],
+            "requires": [
+                "jdk.unsupported",
+                "java.compiler",
+            ],
+            "requiresConcealed": {
+                "jdk.internal.vm.ci": [
+                    "jdk.vm.ci.meta",
+                ]
+            },
+            "checkstyle": "com.oracle.svm.test",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+            ],
+            "javaCompliance": "11+",
+            "spotbugs": "false",
+        },
+
         "com.oracle.graal.reachability": {
             "subDir": "src",
             "sourceDirs": ["src"],
@@ -1636,6 +1662,20 @@ suite = {
                     ]
                 }
             },
+        },
+
+        "STANDALONE_POINTSTO_TESTS" : {
+            "subDir": "src",
+            "relpath" : True,
+            "dependencies" : [
+                "com.oracle.graal.pointsto.standalone.test",
+            ],
+            "distDependencies": [
+                "mx:JUNIT_TOOL",
+                "sdk:GRAAL_SDK",
+                "STANDALONE_POINTSTO",
+            ],
+            "testDistribution" : True,
         },
 
         "SVM_TESTS" : {
