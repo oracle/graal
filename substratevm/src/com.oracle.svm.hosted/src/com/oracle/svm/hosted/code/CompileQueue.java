@@ -157,6 +157,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureHandler;
 import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.NativeImageOptions;
+import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedType;
@@ -166,8 +167,6 @@ import com.oracle.svm.hosted.phases.HostedGraphBuilderPhase;
 import com.oracle.svm.hosted.phases.ImageBuildStatisticsCounterPhase;
 import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
 import com.oracle.svm.hosted.phases.StrengthenStampsPhase;
-import com.oracle.svm.hosted.reporting.ProgressReporter;
-import com.oracle.svm.hosted.reporting.ProgressReporter.ReporterClosable;
 import com.oracle.svm.hosted.substitute.DeletedMethod;
 import com.oracle.svm.util.ImageBuildStatistics;
 
@@ -372,7 +371,7 @@ public class CompileQueue {
         ProgressReporter reporter = ProgressReporter.singleton();
         try {
             String imageName = universe.getBigBang().getHostVM().getImageName();
-            try (ReporterClosable ac = reporter.printParsing(new Timer(imageName, "(parse)"))) {
+            try (ProgressReporter.ReporterClosable ac = reporter.printParsing(new Timer(imageName, "(parse)"))) {
                 parseAll();
             }
             // Checking @Uninterruptible annotations does not take long enough to justify a timer.
@@ -391,7 +390,7 @@ public class CompileQueue {
             }
 
             if (SubstrateOptions.AOTInline.getValue() && SubstrateOptions.AOTTrivialInline.getValue()) {
-                try (ReporterClosable ac = reporter.printInlining(new Timer(imageName, "(inline)"))) {
+                try (ProgressReporter.ReporterClosable ac = reporter.printInlining(new Timer(imageName, "(inline)"))) {
                     inlineTrivialMethods(debug);
                 }
             } else {
@@ -400,7 +399,7 @@ public class CompileQueue {
 
             assert suitesNotCreated();
             createSuites();
-            try (ReporterClosable ac = reporter.printCompiling(new Timer(imageName, "(compile)"))) {
+            try (ProgressReporter.ReporterClosable ac = reporter.printCompiling(new Timer(imageName, "(compile)"))) {
                 compileAll();
             }
         } catch (InterruptedException ie) {
