@@ -96,21 +96,14 @@ Native Image provides two options for that: `-H:DynamicProxyConfigurationFiles=<
 
 ```json
 [
-    ["java.lang.AutoCloseable", "java.util.Comparator"],
-    ["java.util.Comparator"],
-    ["java.util.List"]
+ { "interfaces": [ "java.lang.AutoCloseable", "java.util.Comparator" ] },
+ { "interfaces": [ "java.util.Comparator" ] },
+ { "interfaces": [ "java.util.List" ] }
 ]
 ```
-
 Note that the order of the specified proxy interfaces is significant: two requests for a `Proxy` class with the same combination of interfaces but in a different order will result in two distinct behaviours (for more detailed information, refer to [`Proxy Class `javadoc](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/reflect/Proxy.html).
 
-The `java.lang.reflect.Proxy` API also allows creation of a dynamic proxy that does not implement any user provided interfaces. Therefore the following is a valid configuration:
-```json
-[
-    []
-]
-```
-
+The `java.lang.reflect.Proxy` API also allows creation of a dynamic proxy that does not implement any user provided interfaces.
 In this case the generated dynamic proxy class only implements `java.lang.reflect.Proxy`.
 
 ## Dynamic Proxy Classes in Static Initializers
