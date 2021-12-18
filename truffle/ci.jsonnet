@@ -34,7 +34,7 @@
     }
   },
 
-  local gate_lite = truffle_common + {
+  local gate_lite = truffle_common + truffle_unittest + {
     name: 'gate-truffle-mac-lite-oraclejdk-' + self.jdk_version,
     run: [
       ["mx", "build"],
