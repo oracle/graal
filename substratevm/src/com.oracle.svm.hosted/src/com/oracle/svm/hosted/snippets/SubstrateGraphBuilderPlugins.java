@@ -186,8 +186,6 @@ public class SubstrateGraphBuilderPlugins {
         registerArrayPlugins(plugins, snippetReflection, parsingReason);
         registerClassPlugins(plugins, snippetReflection);
         registerEdgesPlugins(metaAccess, plugins);
-        registerJFRThrowablePlugins(plugins, replacements);
-        registerJFREventTokenPlugins(plugins, replacements);
         registerVMConfigurationPlugins(snippetReflection, plugins);
         registerPlatformPlugins(snippetReflection, plugins);
         registerAWTPlugins(plugins);
@@ -964,39 +962,6 @@ public class SubstrateGraphBuilderPlugins {
             throw b.bailout("parameter " + name + " is not a compile time constant for call to " + targetMethod.format("%H.%n(%p)") + " in " + b.getMethod().asStackTraceElement(b.bci()));
         }
         return node.asJavaConstant().asLong();
-    }
-
-    /*
-     * When Java Flight Recorder is enabled during image generation, the bytecodes of some methods
-     * get instrumented. Undo the instrumentation so that it does not end up in the generated image.
-     */
-
-    private static void registerJFRThrowablePlugins(InvocationPlugins plugins, Replacements replacements) {
-        Registration r = new Registration(plugins, "oracle.jrockit.jfr.jdkevents.ThrowableTracer", replacements).setAllowOverwrite(true);
-        r.register2("traceError", Error.class, String.class, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode throwable, ValueNode message) {
-                return true;
-            }
-        });
-        r.register2("traceThrowable", Throwable.class, String.class, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode throwable, ValueNode message) {
-                return true;
-            }
-        });
-    }
-
-    private static void registerJFREventTokenPlugins(InvocationPlugins plugins, Replacements replacements) {
-        Registration r = new Registration(plugins, "com.oracle.jrockit.jfr.EventToken", replacements);
-        r.register1("isEnabled", Receiver.class, new InvocationPlugin() {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                receiver.get();
-                b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(false));
-                return true;
-            }
-        });
     }
 
     private static void registerVMConfigurationPlugins(SnippetReflectionProvider snippetReflection, InvocationPlugins plugins) {

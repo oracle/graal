@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,22 +24,20 @@
  */
 package com.oracle.svm.jfr;
 
-import java.util.function.BooleanSupplier;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.TargetClass;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.nativeimage.ImageSingletons;
+@TargetClass(className = "com.sun.jmx.mbeanserver.MXBeanIntrospector", onlyWith = JfrFeature.JfrHostedEnabled.class)
+final class Target_com_sun_jmx_mbeanserver_MXBeanIntrospector {
 
-/**
- * Used to include/exclude JFR feature and substitutions.
- */
-public class JfrEnabled implements BooleanSupplier {
-    @Override
-    public boolean getAsBoolean() {
-        return get();
-    }
+    /* Reset caches that are used at image build time when FlightRecorder is enabled. */
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "com.sun.jmx.mbeanserver.MXBeanIntrospector") //
+    private static Target_com_sun_jmx_mbeanserver_MXBeanIntrospector instance;
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "com.sun.jmx.mbeanserver.MBeanIntrospector$MBeanInfoMap") //
+    private static Target_com_sun_jmx_mbeanserver_MBeanIntrospector_MBeanInfoMap mbeanInfoMap;
+}
 
-    @Fold
-    public static boolean get() {
-        return ImageSingletons.contains(JfrFeature.class);
-    }
+@TargetClass(className = "com.sun.jmx.mbeanserver.MBeanIntrospector", innerClass = "MBeanInfoMap")
+final class Target_com_sun_jmx_mbeanserver_MBeanIntrospector_MBeanInfoMap {
 }

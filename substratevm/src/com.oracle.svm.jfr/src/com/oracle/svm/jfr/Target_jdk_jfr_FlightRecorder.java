@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,22 +24,20 @@
  */
 package com.oracle.svm.jfr;
 
-import java.util.function.BooleanSupplier;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.jfr.JfrFeature.JfrHostedEnabled;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.nativeimage.ImageSingletons;
+import jdk.jfr.FlightRecorder;
 
-/**
- * Used to include/exclude JFR feature and substitutions.
- */
-public class JfrEnabled implements BooleanSupplier {
-    @Override
-    public boolean getAsBoolean() {
-        return get();
-    }
-
-    @Fold
-    public static boolean get() {
-        return ImageSingletons.contains(JfrFeature.class);
-    }
+@TargetClass(value = jdk.jfr.FlightRecorder.class, onlyWith = JfrHostedEnabled.class)
+final class Target_jdk_jfr_FlightRecorder {
+    /*
+     * Ignore all state of the FlightRecorder maintained when profiling the image generator itself.
+     */
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    private static FlightRecorder platformRecorder;
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    private static boolean initialized;
 }
