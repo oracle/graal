@@ -2056,6 +2056,11 @@ public final class MethodVerifier implements ContextAccess {
             UninitReferenceOperand toInit = (UninitReferenceOperand) stack.popUninitRef(methodHolderOp);
             if (toInit.isUninitThis()) {
                 verifyGuarantee(Name._init_.equals(methodName), "Encountered UninitializedThis outside of Constructor: " + toInit);
+                boolean isValidInitThis = toInit.getType() == methodHolder ||
+                                // Here, the superKlass cannot be null, as the j.l.Object case would
+                                // have been handled by the previous check.
+                                toInit.getKlass().getSuperKlass().getType() == methodHolder;
+                verifyGuarantee(isValidInitThis, "<init> method must call this.<init> or super.<init>");
                 calledConstructor = true;
             } else {
                 verifyGuarantee(code.opcode(toInit.newBCI) == NEW, "There is no NEW bytecode at bci: " + toInit.newBCI);
