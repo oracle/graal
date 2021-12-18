@@ -183,33 +183,28 @@ public class HotSpotGraalCompiler implements GraalJVMCICompiler, Cancellable, JV
     }
 
     public StructuredGraph createGraph(ResolvedJavaMethod method, int entryBCI, boolean useProfilingInfo, CompilationIdentifier compilationId, OptionValues options, DebugContext debug) {
-        HotSpotBackend backend = graalRuntime.getHostBackend();
-        HotSpotProviders providers = backend.getProviders();
-        final boolean isOSR = entryBCI != JVMCICompiler.INVOCATION_ENTRY_BCI;
         AllowAssumptions allowAssumptions = AllowAssumptions.ifTrue(OptAssumptions.getValue(options));
-        StructuredGraph graph = method.isNative() || isOSR ? null : providers.getReplacements().getIntrinsicGraph(method, compilationId, debug, allowAssumptions, this);
-
-        if (graph == null) {
-            SpeculationLog speculationLog = method.getSpeculationLog();
-            if (speculationLog != null) {
-                speculationLog.collectFailedSpeculations();
-            }
-            // @formatter:off
-            graph = new StructuredGraph.Builder(options, debug, allowAssumptions).
-                            method(method).
-                            cancellable(this).
-                            entryBCI(entryBCI).
-                            speculationLog(speculationLog).
-                            useProfilingInfo(useProfilingInfo).
-                            compilationId(compilationId).build();
-            // @formatter:on
+        SpeculationLog speculationLog = method.getSpeculationLog();
+        if (speculationLog != null) {
+            speculationLog.collectFailedSpeculations();
         }
-        return graph;
-    }
+        /*
+         * For methods that have plugins it would be possible to produces graphs from those plugins
+         * instead of the bytecodees but it's somewhat complicated to cover all the possible cases
+         * and doesn't seem worth the complexity as plugins are already processed at call sites. In
+         * HotSpot plugins are just optimized implementations of the method so compiling them as
+         * root methods isn't required for correctness.
+         */
 
-    public CompilationResult compileHelper(CompilationResultBuilderFactory crbf, CompilationResult result, StructuredGraph graph, ResolvedJavaMethod method, int entryBCI, boolean useProfilingInfo,
-                    OptionValues options) {
-        return compileHelper(crbf, result, graph, method, entryBCI, useProfilingInfo, false, options);
+        // @formatter:off
+        return new StructuredGraph.Builder(options, debug, allowAssumptions).
+                                   method(method).
+                                   cancellable(this).
+                                   entryBCI(entryBCI).
+                                   speculationLog(speculationLog).
+                                   useProfilingInfo(useProfilingInfo).
+                                   compilationId(compilationId).build();
+        // @formatter:on
     }
 
     public CompilationResult compileHelper(CompilationResultBuilderFactory crbf, CompilationResult result, StructuredGraph graph, ResolvedJavaMethod method, int entryBCI, boolean useProfilingInfo,
