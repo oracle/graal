@@ -148,9 +148,21 @@ public final class NFAState extends BasicState<NFAState, NFAStateTransition> imp
         return forward ? transitionToAnchoredFinalState : revTransitionToAnchoredFinalState;
     }
 
+    /**
+     * If the transition to the unanchored final state dominates the transition to the anchored
+     * final state, then this will return the transition to the anchored final state instead of the
+     * transition to the unanchored final state.
+     */
     public NFAStateTransition getTransitionToAnchoredFinalState(boolean forward) {
         assert hasTransitionToAnchoredFinalState(forward);
-        return forward ? getSuccessors()[transitionToAnchoredFinalState] : getPredecessors()[revTransitionToAnchoredFinalState];
+        NFAStateTransition[] transitions = forward ? getSuccessors() : getPredecessors();
+        int transitionToAFS = forward ? transitionToAnchoredFinalState : revTransitionToAnchoredFinalState;
+        int transitionToUFS = forward ? transitionToUnAnchoredFinalState : revTransitionToUnAnchoredFinalState;
+        if (transitionToUFS >= 0 && transitionToUFS < transitionToAFS) {
+            return transitions[transitionToUFS];
+        } else {
+            return transitions[transitionToAFS];
+        }
     }
 
     @Override

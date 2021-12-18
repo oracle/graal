@@ -264,6 +264,9 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
                 return false;
             }
         }
+        if (a.getLastGroup() != b.getLastGroup()) {
+            return false;
+        }
         return true;
     }
 
@@ -446,8 +449,8 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
 
         private RegexResult executeForward(Object input, int fromIndexArg, int inputLength) {
             if (getForwardExecutor().isSimpleCG()) {
-                int[] result = (int[]) forwardEntryNode.execute(input, fromIndexArg, fromIndexArg, inputLength);
-                return result == null ? RegexResult.getNoMatchInstance() : RegexResult.create(result);
+                Object result = forwardEntryNode.execute(input, fromIndexArg, fromIndexArg, inputLength);
+                return RegexResult.createFromExecutorResult(result);
             }
             final int end = (int) forwardEntryNode.execute(input, fromIndexArg, fromIndexArg, inputLength);
             if (end == TRegexDFAExecutorNode.NO_MATCH) {
@@ -475,8 +478,8 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
 
         private RegexResult executeBackwardAnchored(Object input, int fromIndexArg, int inputLength) {
             if (getBackwardExecutor().isSimpleCG()) {
-                int[] result = (int[]) backwardEntryNode.execute(input, fromIndexArg, inputLength, inputLength);
-                return result == null ? RegexResult.getNoMatchInstance() : RegexResult.create(result);
+                Object result = backwardEntryNode.execute(input, fromIndexArg, inputLength, inputLength);
+                return RegexResult.createFromExecutorResult(result);
             }
             final int backwardResult = (int) backwardEntryNode.execute(input, fromIndexArg, inputLength, inputLength);
             if (backwardResult == TRegexDFAExecutorNode.NO_MATCH) {
@@ -490,9 +493,9 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
                 return preCalculatedResults[0].createFromStart(start);
             }
             if (getForwardExecutor().isSimpleCG()) {
-                int[] result = (int[]) forwardEntryNode.execute(input, fromIndexArg, start, inputLength);
+                Object result = forwardEntryNode.execute(input, fromIndexArg, start, inputLength);
                 assert result != null;
-                return RegexResult.create(result);
+                return RegexResult.createFromExecutorResult(result);
             }
             if (captureGroupEntryNode != null) {
                 return RegexResult.createLazy(input, start, start, inputLength, captureGroupCallTarget);
@@ -517,13 +520,14 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
             this.entryNode = entryNode;
         }
 
+        public TRegexExecutorNode getExecutor() {
+            return entryNode.getExecutor();
+        }
+
         @Override
         protected RegexResult runInternal(Object input, int fromIndexArg, int inputLength) {
-            final int[] resultArray = (int[]) entryNode.execute(input, fromIndexArg, fromIndexArg, inputLength);
-            if (resultArray == null) {
-                return RegexResult.getNoMatchInstance();
-            }
-            return RegexResult.create(input, resultArray);
+            Object result = entryNode.execute(input, fromIndexArg, fromIndexArg, inputLength);
+            return RegexResult.createFromExecutorResult(result);
         }
     }
 
@@ -541,11 +545,8 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
 
         @Override
         protected RegexResult runInternal(Object input, int fromIndexArg, int inputLength) {
-            final int[] resultArray = (int[]) entryNode.execute(input, fromIndexArg, fromIndexArg, inputLength);
-            if (resultArray == null) {
-                return RegexResult.getNoMatchInstance();
-            }
-            return RegexResult.create(resultArray);
+            Object result = entryNode.execute(input, fromIndexArg, fromIndexArg, inputLength);
+            return RegexResult.createFromExecutorResult(result);
         }
     }
 }

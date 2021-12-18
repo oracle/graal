@@ -75,7 +75,8 @@ public final class PythonFlavor extends RegexFlavor {
     private final PythonREMode mode;
 
     private PythonFlavor(PythonREMode mode) {
-        super(BACKREFERENCES_TO_UNMATCHED_GROUPS_FAIL | NESTED_CAPTURE_GROUPS_KEPT_ON_LOOP_REENTRY | FAILING_EMPTY_CHECKS_DONT_BACKTRACK);
+        super(BACKREFERENCES_TO_UNMATCHED_GROUPS_FAIL | NESTED_CAPTURE_GROUPS_KEPT_ON_LOOP_REENTRY | FAILING_EMPTY_CHECKS_DONT_BACKTRACK | USES_LAST_GROUP_RESULT_FIELD |
+                        LOOKBEHINDS_RUN_LEFT_TO_RIGHT);
         this.mode = mode;
     }
 
