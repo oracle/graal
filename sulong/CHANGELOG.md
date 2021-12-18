@@ -1,8 +1,9 @@
 # Version 22.1.0
 
-Changes;
+Changes:
 
 * Option `--llvm.printLifetimeAnalysisStats` is replaced by `--log.llvm.LifetimeAnalysis.level=FINER`.
+* Option `--llvm.debugLoader` is replaced by `--log.llvm.Loader.level=FINER`.
 
 # Version 22.0.0
 
