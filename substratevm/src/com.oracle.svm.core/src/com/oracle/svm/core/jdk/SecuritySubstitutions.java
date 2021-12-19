@@ -658,7 +658,7 @@ final class Target_sun_security_jca_ProviderConfig {
      * cache of providers loaded during the image build. The contents of this cache can vary even
      * when building the same image due to the way services are loaded on Java 11. This cache can
      * increase the final image size substantially (if it contains, for example,
-     * {@link org.jcp.xml.dsig.internal.dom.XMLDSigRI}.
+     * {@code org.jcp.xml.dsig.internal.dom.XMLDSigRI}.
      */
     @Substitute
     @TargetElement(name = "doLoadProvider", onlyWith = JDK11OrLater.class)

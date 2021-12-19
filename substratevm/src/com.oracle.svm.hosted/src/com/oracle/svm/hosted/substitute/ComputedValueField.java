@@ -81,7 +81,7 @@ import sun.misc.Unsafe;
 public class ComputedValueField implements ReadableJavaField, OriginalFieldProvider, ComputedValue {
 
     private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
-    private static final EnumSet<?> offsetComputationKinds = EnumSet.of(FieldOffset, TranslateFieldOffset, AtomicFieldUpdaterOffset);
+    private static final EnumSet<RecomputeFieldValue.Kind> offsetComputationKinds = EnumSet.of(FieldOffset, TranslateFieldOffset, AtomicFieldUpdaterOffset);
     private final ResolvedJavaField original;
     private final ResolvedJavaField annotated;
 

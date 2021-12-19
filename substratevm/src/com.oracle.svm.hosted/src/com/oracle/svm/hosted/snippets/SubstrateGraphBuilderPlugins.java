@@ -672,7 +672,7 @@ public class SubstrateGraphBuilderPlugins {
         }
 
         /* Usage of lambdas is not allowed in Graal nodes, so need explicit inner class. */
-        Function<CoreProviders, JavaConstant> fieldOffsetConstantProvider = new Function<CoreProviders, JavaConstant>() {
+        Function<CoreProviders, JavaConstant> fieldOffsetConstantProvider = new Function<>() {
             @Override
             public JavaConstant apply(CoreProviders providers) {
                 ResolvedJavaField rField = providers.getMetaAccess().lookupJavaField(targetField);

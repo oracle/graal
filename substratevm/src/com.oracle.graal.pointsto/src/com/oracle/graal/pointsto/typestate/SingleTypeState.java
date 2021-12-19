@@ -107,7 +107,7 @@ public class SingleTypeState extends TypeState {
 
     @Override
     protected Iterator<AnalysisType> typesIterator(BigBang bb) {
-        return new Iterator<AnalysisType>() {
+        return new Iterator<>() {
 
             boolean hasNext = true;
 
@@ -146,7 +146,7 @@ public class SingleTypeState extends TypeState {
 
     @Override
     protected Iterator<AnalysisObject> objectsIterator(AnalysisType type) {
-        return new Iterator<AnalysisObject>() {
+        return new Iterator<>() {
             private boolean typesEqual = exactType().equals(type);
             private int idx = 0;
 

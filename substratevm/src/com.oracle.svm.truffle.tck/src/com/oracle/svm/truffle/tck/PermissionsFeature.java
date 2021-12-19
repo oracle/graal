@@ -622,16 +622,16 @@ public class PermissionsFeature implements Feature {
     private final class SafePrivilegedRecognizer implements CallGraphFilter {
 
         private final SVMHost hostVM;
-        private final Set<AnalysisMethod> dopriviledged;
+        private final Set<AnalysisMethod> doPrivileged;
 
         SafePrivilegedRecognizer(BigBang bb) {
             this.hostVM = (SVMHost) bb.getHostVM();
-            this.dopriviledged = findMethods(bb, java.security.AccessController.class, (m) -> m.getName().equals("doPrivileged") || m.getName().equals("doPrivilegedWithCombiner"));
+            this.doPrivileged = findMethods(bb, java.security.AccessController.class, (m) -> m.getName().equals("doPrivileged") || m.getName().equals("doPrivilegedWithCombiner"));
         }
 
         @Override
         public boolean test(AnalysisMethod method, AnalysisMethod caller, LinkedHashSet<AnalysisMethod> trace) {
-            if (!dopriviledged.contains(method)) {
+            if (!doPrivileged.contains(method)) {
                 return false;
             }
             boolean safeClass = isCompilerClass(caller) || isSystemClass(caller);
@@ -663,12 +663,12 @@ public class PermissionsFeature implements Feature {
         }
 
         /**
-         * Finds an entry point to {@code PrivilegedAction} called by {@code dopriviledgedMethod}.
+         * Finds an entry point to {@code PrivilegedAction} called by {@code doPrivilegedMethod}.
          */
-        private AnalysisMethod findPrivilegedEntryPoint(AnalysisMethod dopriviledgedMethod, LinkedHashSet<AnalysisMethod> trace) {
+        private AnalysisMethod findPrivilegedEntryPoint(AnalysisMethod doPrivilegedMethod, LinkedHashSet<AnalysisMethod> trace) {
             AnalysisMethod ep = null;
             for (AnalysisMethod m : trace) {
-                if (dopriviledgedMethod.equals(m)) {
+                if (doPrivilegedMethod.equals(m)) {
                     return ep;
                 }
                 ep = m;
@@ -679,25 +679,25 @@ public class PermissionsFeature implements Feature {
 
     private final class SafeServiceLoaderRecognizer implements CallGraphFilter {
 
-        private final ResolvedJavaMethod nextService;
+        private final ResolvedJavaMethod providerImplGet;
         private final ImageClassLoader imageClassLoader;
 
         SafeServiceLoaderRecognizer(BigBang bb, ImageClassLoader imageClassLoader) {
-            AnalysisType serviceLoaderIterator = bb.getMetaAccess().lookupJavaType(loadClassOrFail("java.util.ServiceLoader$LazyIterator"));
-            Set<AnalysisMethod> methods = findMethods(bb, serviceLoaderIterator, (m) -> m.getName().equals("nextService"));
+            AnalysisType serviceLoaderIterator = bb.getMetaAccess().lookupJavaType(loadClassOrFail("java.util.ServiceLoader$ProviderImpl"));
+            Set<AnalysisMethod> methods = findMethods(bb, serviceLoaderIterator, (m) -> m.getName().equals("get"));
             if (methods.size() != 1) {
-                throw new IllegalStateException("Failed to lookup ServiceLoader$LazyIterator.nextService().");
+                throw new IllegalStateException("Failed to lookup ServiceLoader$ProviderImpl.get().");
             }
-            this.nextService = methods.iterator().next();
+            this.providerImplGet = methods.iterator().next();
             this.imageClassLoader = imageClassLoader;
         }
 
         @Override
         public boolean test(AnalysisMethod method, AnalysisMethod caller, LinkedHashSet<AnalysisMethod> trace) {
-            if (nextService.equals(method)) {
+            if (providerImplGet.equals(method)) {
                 AnalysisType instantiatedType = findInstantiatedType(trace);
                 if (instantiatedType != null) {
-                    if (!isRegiseredInServiceLoader(instantiatedType)) {
+                    if (!isRegisteredInServiceLoader(instantiatedType)) {
                         return true;
                     }
                 }
@@ -721,19 +721,19 @@ public class PermissionsFeature implements Feature {
         /**
          * Finds if the given type may be instantiated by ServiceLoader.
          */
-        private boolean isRegiseredInServiceLoader(AnalysisType type) {
+        private boolean isRegisteredInServiceLoader(AnalysisType type) {
             String resource = String.format("META-INF/services/%s", type.toClassName());
             if (imageClassLoader.getClassLoader().getResource(resource) != null) {
                 return true;
             }
             for (AnalysisType ifc : type.getInterfaces()) {
-                if (isRegiseredInServiceLoader(ifc)) {
+                if (isRegisteredInServiceLoader(ifc)) {
                     return true;
                 }
             }
             AnalysisType superClz = type.getSuperclass();
             if (superClz != null) {
-                return isRegiseredInServiceLoader(superClz);
+                return isRegisteredInServiceLoader(superClz);
             }
             return false;
         }
@@ -890,5 +890,17 @@ final class Target_java_lang_System {
     @Substitute
     private static SecurityManager getSecurityManager() {
         return SecurityManagerHolder.SECURITY_MANAGER;
+    }
+}
+
+final class LoggerFinderHolder {
+    static final System.LoggerFinder LOGGER_FINDER = System.LoggerFinder.getLoggerFinder();
+}
+
+@TargetClass(value = java.lang.System.LoggerFinder.class, onlyWith = PermissionsFeature.IsEnabled.class)
+final class Target_java_lang_System_LoggerFinder {
+    @Substitute
+    private static System.LoggerFinder getLoggerFinder() {
+        return LoggerFinderHolder.LOGGER_FINDER;
     }
 }
