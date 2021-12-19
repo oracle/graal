@@ -983,7 +983,7 @@ public class SubstrateDiagnostics {
 
     public static class Options {
         @Option(help = "Execute an endless loop before printing diagnostics for a fatal error.", type = OptionType.Debug)//
-        public static final RuntimeOptionKey<Boolean> LoopOnFatalError = new RuntimeOptionKey<Boolean>(false, RelevantForCompilationIsolates) {
+        public static final RuntimeOptionKey<Boolean> LoopOnFatalError = new RuntimeOptionKey<>(false, RelevantForCompilationIsolates) {
             @Override
             protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
                 super.onValueUpdate(values, oldValue, newValue);

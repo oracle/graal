@@ -236,7 +236,7 @@ public abstract class AbstractNativeImageClassLoaderSupport {
         protected static final String CLASS_EXTENSION = ".class";
 
         private void loadClassesFromPath(Path root, Set<Path> excludes) {
-            FileVisitor<Path> visitor = new SimpleFileVisitor<Path>() {
+            FileVisitor<Path> visitor = new SimpleFileVisitor<>() {
                 private final char fileSystemSeparatorChar = root.getFileSystem().getSeparator().charAt(0);
 
                 @Override

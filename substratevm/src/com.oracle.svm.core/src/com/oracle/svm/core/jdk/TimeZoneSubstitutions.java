@@ -125,7 +125,7 @@ final class TimeZoneSupport {
 final class TimeZoneFeature implements Feature {
     static class Options {
         @Option(help = "When true, all time zones will be pre-initialized in the image.")//
-        public static final HostedOptionKey<Boolean> IncludeAllTimeZones = new HostedOptionKey<Boolean>(false) {
+        public static final HostedOptionKey<Boolean> IncludeAllTimeZones = new HostedOptionKey<>(false) {
             @Override
             protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
                 super.onValueUpdate(values, oldValue, newValue);
@@ -134,7 +134,7 @@ final class TimeZoneFeature implements Feature {
         };
 
         @Option(help = "The time zones, in addition to the default zone of the host, that will be pre-initialized in the image.")//
-        public static final HostedOptionKey<String> IncludeTimeZones = new HostedOptionKey<String>("") {
+        public static final HostedOptionKey<String> IncludeTimeZones = new HostedOptionKey<>("") {
             @Override
             protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
                 super.onValueUpdate(values, oldValue, newValue);

@@ -46,7 +46,7 @@ import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.SpeculationLog.Speculation;
 
 public class UniverseMetaAccess implements WrappedMetaAccess {
-    private final Function<Class<?>, ResolvedJavaType> computeJavaType = new Function<Class<?>, ResolvedJavaType>() {
+    private final Function<Class<?>, ResolvedJavaType> computeJavaType = new Function<>() {
         @Override
         public ResolvedJavaType apply(Class<?> clazz) {
             return universe.lookup(wrapped.lookupJavaType(clazz));
