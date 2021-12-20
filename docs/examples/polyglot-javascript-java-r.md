@@ -17,7 +17,7 @@ git clone https://github.com/graalvm/graalvm-demos
 cd graalvm-demos/polyglot-javascript-java-r
 ```
 
-2&#46; [Install GraalVM](/docs/getting-started/#install-graalvm) on your platform.
+2&#46; [Install GraalVM](../getting-started/graalvm-community/get-started-graalvm-community.md#install-graalvm) on your platform.
 
 3&#46; To run the demo, you need to enable Node.js support in GraalVM:
 ```shell

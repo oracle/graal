@@ -1,7 +1,7 @@
 ---
 layout: docs
 toc_group: truffle
-link_title: On-Stack Replacement 
+link_title: On-Stack Replacement
 permalink: /graalvm-as-a-platform/language-implementation-framework/OnStackReplacement/
 ---
 # On-Stack Replacement (OSR)
@@ -15,7 +15,7 @@ On-stack replacement (OSR) is a technique used in Truffle to "break out" of the 
 Truffle supports OSR for both AST interpreters (i.e., ASTs with `LoopNode`s) and bytecode interpreters (i.e., nodes with dispatch loops).
 In either case, Truffle uses heuristics to detect when a long-running loop is being interpreted and can perform OSR to speed up execution.
 
-## OSR for AST interpreters 
+## OSR for AST Interpreters
 
 Languages using standard Truffle APIs get OSR for free on Graal.
 The runtime tracks the number of times a `LoopNode` (created using `TruffleRuntime.createLoopNode(RepeatingNode)`) executes in the interpreter.
@@ -25,7 +25,7 @@ When the loop exits in the OSR execution, it returns to the interpreted executio
 
 See the `LoopNode` [javadoc](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/LoopNode.html) for more details.
 
-## OSR for bytecode interpreters
+## OSR for Bytecode Interpreters
 
 OSR for bytecode interpreters requires slightly more cooperation from the language.
 A bytecode dispatch node typically looks something like the following:
@@ -33,9 +33,9 @@ A bytecode dispatch node typically looks something like the following:
 ```java
 class BytecodeDispatchNode extends Node {
   @CompilationFinal byte[] bytecode;
-  
+
   ...
-  
+
   @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
   Object execute(VirtualFrame frame) {
     int bci = 0;
@@ -81,7 +81,7 @@ The example above can be refactored to support OSR as follows:
 class BytecodeDispatchNode extends Node implements BytecodeOSRNode {
   @CompilationFinal byte[] bytecode;
   @CompilationFinal private Object osrMetadata;
-  
+
   ...
 
   Object execute(VirtualFrame frame) {
@@ -161,12 +161,14 @@ Bytecode-based OSR can be tricky to implement. Some debugging tips:
 
 See the `BytecodeOSRNode` [javadoc](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/nodes/BytecodeOSRNode.html) for more details.
 
-## Command-line options
+## Command-line Options
+
 There are two (experimental) options which can be used to configure OSR:
 - `engine.OSR`: whether to perform OSR (default: `true`)
 - `engine.OSRCompilationThreshold`: the number of loop iterations/back-edges required to trigger OSR compilation (default: `100,352`).
 
 ## Debugging
+
 OSR compilation targets are marked with `<OSR>` (or `<OSR@n>` where `n` is the dispatch target, in the case of bytecode OSR).
 These targets can be seen and debugged using standard debugging tools like the compilation log and IGV.
 For example, in the compilation log, a bytecode OSR entry may look something like:
@@ -176,4 +178,3 @@ For example, in the compilation log, a bytecode OSR entry may look something lik
 ```
 
 See [Debugging](https://github.com/oracle/graal/blob/master/compiler/docs/Debugging.md) for more details on debugging Graal compilations.
-
