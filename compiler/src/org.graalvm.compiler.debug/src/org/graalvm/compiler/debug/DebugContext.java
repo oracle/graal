@@ -1363,6 +1363,12 @@ public final class DebugContext implements AutoCloseable {
         }
     }
 
+    public void dump(int dumpLevel, Object object, String format, Object arg1, Object arg2, Object arg3, Object arg4) {
+        if (currentScope != null && currentScope.isDumpEnabled(dumpLevel)) {
+            currentScope.dump(dumpLevel, object, format, arg1, arg2, arg3, arg4);
+        }
+    }
+
     /**
      * This override exists to catch cases when {@link #dump(int, Object, String, Object)} is called
      * with one argument bound to a varargs method parameter. It will bind to this method instead of
