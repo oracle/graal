@@ -9,51 +9,52 @@ permalink: /reference-manual/native-image/BuildOutput/
 This page provides documentation for the build output of GraalVM Native Image.
 
 ## HelloWorld Example Output
-```
+```text
 ================================================================================
 GraalVM Native Image: Generating 'helloworld'...
 ================================================================================
-[1/7] Initializing...                                            (4.8s @ 0.21GB)
+[1/7] Initializing...                                            (2.5s @ 0.21GB)
  Version info: 'GraalVM dev Java 11 CE'
- 1 user-provided feature(s)
-  - HelloWorld$MyFeature
-[2/7] Performing analysis...  [*******]                         (11.1s @ 0.48GB)
-   2,546 (83.20%) of  3,060 classes reachable
-   3,187 (60.39%) of  5,277 fields reachable
-  11,554 (72.39%) of 15,960 methods reachable
+[2/7] Performing analysis...  [*******]                          (5.6s @ 0.46GB)
+   2,565 (82.61%) of  3,105 classes reachable
+   3,216 (60.42%) of  5,323 fields reachable
+  11,652 (72.44%) of 16,086 methods reachable
       27 classes,     0 fields, and   135 methods registered for reflection
-      57 classes,    60 fields, and    51 methods registered for JNI access
-[3/7] Building universe...                                       (0.7s @ 0.64GB)
-[4/7] Parsing methods...      [*]                                (0.7s @ 0.86GB)
-[5/7] Inlining methods...     [****]                             (1.5s @ 0.75GB)
-[6/7] Compiling methods...    [***]                              (8.1s @ 2.37GB)
-[7/7] Creating image...                                          (1.7s @ 2.68GB)
-  10.27MB in total (35.5% code area, 57.0% image heap, and 7.5% other data)
-   3.65MB for code area:    6,913 compilation units
-   5.85MB for image heap:   1,530 classes and 80,316 objects
- 790.29KB for other data
+      57 classes,    59 fields, and    51 methods registered for JNI access
+[3/7] Building universe...                                       (0.5s @ 0.61GB)
+[4/7] Parsing methods...      [*]                                (0.5s @ 0.86GB)
+[5/7] Inlining methods...     [****]                             (0.5s @ 0.73GB)
+[6/7] Compiling methods...    [**]                               (3.7s @ 2.38GB)
+[7/7] Creating image...                                          (2.1s @ 1.04GB)
+   3.69MB (27.19%) for code area:    6,955 compilation units
+   5.86MB (43.18%) for image heap:   1,545 classes and 80,528 objects
+   3.05MB (22.46%) for debug info generated in 1.0s
+ 997.25KB ( 7.18%) for other data
+  13.57MB in total
 --------------------------------------------------------------------------------
 Top 10 packages in code area:           Top 10 object types in image heap:
- 606.18KB java.util                        1.64MB byte[] for general heap data
- 282.69KB java.lang                      713.25KB java.lang.String
- 222.47KB java.util.regex                544.73KB java.lang.Class
- 219.55KB java.text                      449.33KB byte[] for java.lang.String
- 193.17KB com.oracle.svm.jni             363.56KB java.util.HashMap$Node
- 149.84KB java.util.concurrent           192.14KB java.util.HashMap$Node[]
- 113.51KB java.math                      139.14KB java.lang.String[]
- 103.51KB com.oracle.svm.core.reflect    139.04KB char[]
+ 606.23KB java.util                        1.64MB byte[] for general heap data
+ 282.34KB java.lang                      715.56KB java.lang.String
+ 222.47KB java.util.regex                549.46KB java.lang.Class
+ 219.55KB java.text                      451.79KB byte[] for java.lang.String
+ 193.17KB com.oracle.svm.jni             363.23KB java.util.HashMap$Node
+ 149.80KB java.util.concurrent           192.00KB java.util.HashMap$Node[]
+ 118.07KB java.math                      139.83KB java.lang.String[]
+ 103.60KB com.oracle.svm.core.reflect    139.04KB char[]
   97.83KB sun.text.normalizer            130.59KB j.u.c.ConcurrentHashMap$Node
-  88.63KB c.oracle.svm.core.genscavenge  103.92KB s.u.l.LocaleObjec~e$CacheEntry
-      ... 108 additional packages             ... 719 additional object types
+  88.78KB c.oracle.svm.core.genscavenge  103.92KB s.u.l.LocaleObjec~e$CacheEntry
+      ... 111 additional packages             ... 723 additional object types
                        (use GraalVM Dashboard to see all)
 --------------------------------------------------------------------------------
-          1.0s spent in 15 GCs | Peak RSS: 3.00GB | CPU load: ~606.03%
+    0.9s (5.6% of total time) in 17 GCs | Peak RSS: 3.22GB | CPU load: 10.87
 --------------------------------------------------------------------------------
 Produced artifacts:
- /Users/janedoe/helloworld/helloworld (executable)
- /Users/janedoe/helloworld/helloworld.build_artifacts.txt
+ /home/janedoe/helloworld/helloworld (executable)
+ /home/janedoe/helloworld/sources (debug_info)
+ /home/janedoe/helloworld/helloworld (debug_info)
+ /home/janedoe/helloworld/helloworld.build_artifacts.txt
 ================================================================================
-Finished generating 'helloworld' in 30.1s.
+Finished generating 'helloworld' in 16.2s.
 ```
 
 ## Build Stages
@@ -138,7 +139,7 @@ This data typically contains internal information for Native Image but it can al
 ### Resource Usage Statistics
 
 #### <a name="glossary-garbage-collection"></a>Garbage Collections
-The total number of garbage collections and total time spent in all garbage collectors.
+The total time spent in all garbage collectors, total GC time divided by the total process time in percent, and the total number of garbage collections.
 A large number of collections or time spent in collectors usually indicates that the system is under memory pressure.
 Increase the amount of available memory to reduce the time to build the image.
 
@@ -148,7 +149,7 @@ This value indicates the maximum amount of memory consumed by the build process.
 If the [GC statistics](#glossary-garbage-collection) do not show any problems, the amount of available memory of the system can be reduced to a value closer to the peak RSS.
 
 #### <a name="glossary-cpu-load"></a>CPU load
-The CPU time used by the process divided by the total time to build the image in percent.
+The CPU time used by the process divided by the total process time.
 Increase the number of CPU threads to reduce the time to build the image.
 
 ## Build Output Options

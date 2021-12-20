@@ -23,31 +23,30 @@
  * questions.
  */
 
-package com.oracle.svm.hosted.reporting;
+package com.oracle.svm.hosted;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-
-import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
+import com.oracle.svm.core.util.VMError;
 
 public final class ProgressReporterCHelper {
     private static final int DEFAULT_CHARACTERS_PER_LINE = 80;
-    public static final int MAX_CHARACTERS_PER_LINE = 120;
+    static final int MAX_CHARACTERS_PER_LINE = 120;
 
     static {
         loadCHelperLibrary();
     }
 
     private static void loadCHelperLibrary() {
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            return; // TODO: remove as part of JDK8 removal (GR-35238).
-        }
-        Path libRSSHelperPath = Paths.get(System.getProperty("java.home"), "lib", "svm", "builder", "lib", "libreporterchelper" + NativeImageKind.SHARED_LIBRARY.getFilenameSuffix());
+        Path javaHome = Paths.get(System.getProperty("java.home"));
+        String libName = System.mapLibraryName("reporterchelper");
+        Path libRSSHelperPath = javaHome.resolve(Paths.get("lib", "svm", "builder", "lib", libName));
         if (Files.exists(libRSSHelperPath)) {
             System.load(libRSSHelperPath.toString());
+        } else {
+            System.load(Paths.get(System.getProperty("substratevm.reporterchelper.path"), libName).toString());
         }
     }
 
@@ -65,7 +64,7 @@ public final class ProgressReporterCHelper {
         try {
             return getTerminalWindowColumns0();
         } catch (UnsatisfiedLinkError e) {
-            return DEFAULT_CHARACTERS_PER_LINE;
+            throw VMError.shouldNotReachHere("ProgressReporterCHelper.getTerminalWindowColumns0 native method not available");
         }
     }
 
@@ -76,7 +75,7 @@ public final class ProgressReporterCHelper {
         try {
             return getPeakRSS0();
         } catch (UnsatisfiedLinkError e) {
-            return -1;
+            throw VMError.shouldNotReachHere("ProgressReporterCHelper.getPeakRSS0 native method not available");
         }
     }
 
