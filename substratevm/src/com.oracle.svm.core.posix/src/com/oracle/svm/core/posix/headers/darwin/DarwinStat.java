@@ -56,11 +56,11 @@ public class DarwinStat {
     }
 
     @CFunction("fstat$INODE64")
-    @Platforms({Platform.DARWIN_AMD64.class})
+    @Platforms(Platform.DARWIN_AMD64.class)
     public static native int fstat_amd64(int fd, stat buf);
 
     @CFunction("fstat")
-    @Platforms({Platform.DARWIN_AARCH64.class})
+    @Platforms(Platform.DARWIN_AARCH64.class)
     public static native int fstat_aarch64(int fd, stat buf);
 
     @Platforms(Platform.DARWIN.class)
@@ -76,11 +76,11 @@ public class DarwinStat {
 
     public static class NoTransitions {
         @CFunction(value = "fstat$INODE64", transition = CFunction.Transition.NO_TRANSITION)
-        @Platforms({Platform.DARWIN_AMD64.class})
+        @Platforms(Platform.DARWIN_AMD64.class)
         public static native int fstat_amd64(int fd, stat buf);
 
         @CFunction(value = "fstat", transition = CFunction.Transition.NO_TRANSITION)
-        @Platforms({Platform.DARWIN_AARCH64.class})
+        @Platforms(Platform.DARWIN_AARCH64.class)
         public static native int fstat_aarch64(int fd, stat buf);
 
         @Platforms(Platform.DARWIN.class)
