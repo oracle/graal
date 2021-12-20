@@ -32,8 +32,8 @@ public class AgentSupport {
     public static ClassFileTransformer createClassInstrumentationTransformer(TransformerInterface applyTransformation) {
         return new ClassFileTransformer() {
             @Override
-            public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined, ProtectionDomain protectionDomain, byte[] classfileBuffer) {
-                return applyTransformation.apply(null, loader, className, classfileBuffer);
+            public byte[] transform(Module module, ClassLoader loader, String className, Class<?> classBeingRedefined, ProtectionDomain protectionDomain, byte[] classfileBuffer) {
+                return applyTransformation.apply(module.getName(), loader, className, classfileBuffer);
             }
         };
     }
