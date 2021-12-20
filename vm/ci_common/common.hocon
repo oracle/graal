@@ -235,27 +235,27 @@ deploy_vm_linux_aarch64: ${vm_linux_aarch64} {
 }
 
 deploy_daily_vm_linux: ${vm_linux} {
-  targets: [deploy, daily]
+  targets: [deploy, post-merge]
 }
 
 deploy_daily_vm_linux_aarch64: ${vm_linux_aarch64} {
-  targets: [deploy, daily]
+  targets: [deploy, post-merge]
 }
 
 deploy_daily_vm_darwin: ${vm_darwin} {
-  targets: [deploy, daily]
+  targets: [deploy, post-merge]
 }
 
 deploy_daily_vm_windows: ${vm_windows} {
-  targets: [deploy, daily]
+  targets: [deploy, post-merge]
 }
 
 deploy_daily_vm_windows-jdk11: ${vm_windows-jdk11} {
-  targets: [deploy, daily]
+  targets: [deploy, post-merge]
 }
 
 deploy_daily_vm_windows-jdk17: ${vm_windows-jdk17} {
-  targets: [deploy, daily]
+  targets: [deploy, post-merge]
 }
 
 postmerge_vm_linux: ${vm_linux} {
