@@ -1378,6 +1378,10 @@ public final class IntegerStamp extends PrimitiveStamp {
                                 if (shiftAmount == 0) {
                                     return value;
                                 }
+                                if (shiftAmount >= bits) {
+                                    IntegerStamp result = IntegerStamp.create(bits, 0, 0, 0, 0);
+                                    return result;
+                                }
                                 // the mask of bits that will be lost or shifted into the sign bit
                                 if (testNoSignChangeAfterShifting(bits, value.lowerBound(), shiftAmount) && testNoSignChangeAfterShifting(bits, value.upperBound(), shiftAmount)) {
                                     /*
