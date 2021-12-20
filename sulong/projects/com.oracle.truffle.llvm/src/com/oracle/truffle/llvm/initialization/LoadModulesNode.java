@@ -336,7 +336,10 @@ public final class LoadModulesNode extends LLVMRootNode {
                 if (!visited.get(id)) {
                     visited.set(id);
                     for (LoadDependencyNode libraryDependency : libraryDependencies) {
-                        callDependencies.call(libraryDependency.execute(), LLVMLoadingPhase.BUILD_DEPENDENCY, visited, dependencies);
+                        CallTarget lib = libraryDependency.execute();
+                        if (lib != null) {
+                            callDependencies.call(lib, LLVMLoadingPhase.BUILD_DEPENDENCY, visited, dependencies);
+                        }
                     }
                     dependencies.add(this.getCallTarget());
                 }
@@ -398,45 +401,31 @@ public final class LoadModulesNode extends LLVMRootNode {
     private void executeInitialiseAllPhase(ArrayList<CallTarget> dependencies, RTLDFlags rtldFlags, LLVMScopeChain scopeChain) {
         assert dependencies != null;
         for (CallTarget callTarget : dependencies) {
-            if (callTarget != null) {
-                callDependencies.call(callTarget, LLVMLoadingPhase.INIT_SYMBOLS);
-            }
+            callDependencies.call(callTarget, LLVMLoadingPhase.INIT_SYMBOLS);
         }
 
         for (CallTarget callTarget : dependencies) {
-            if (callTarget != null) {
-                callDependencies.call(callTarget, LLVMLoadingPhase.INIT_EXTERNALS, rtldFlags, scopeChain);
-            }
+            callDependencies.call(callTarget, LLVMLoadingPhase.INIT_EXTERNALS, rtldFlags, scopeChain);
         }
 
         for (CallTarget callTarget : dependencies) {
-            if (callTarget != null) {
-                callDependencies.call(callTarget, LLVMLoadingPhase.INIT_GLOBALS);
-            }
+            callDependencies.call(callTarget, LLVMLoadingPhase.INIT_GLOBALS);
         }
 
         for (CallTarget callTarget : dependencies) {
-            if (callTarget != null) {
-                callDependencies.call(callTarget, LLVMLoadingPhase.INIT_OVERWRITE, rtldFlags, scopeChain);
-            }
+            callDependencies.call(callTarget, LLVMLoadingPhase.INIT_OVERWRITE, rtldFlags, scopeChain);
         }
 
         for (CallTarget callTarget : dependencies) {
-            if (callTarget != null) {
-                callDependencies.call(callTarget, LLVMLoadingPhase.INIT_CONTEXT);
-            }
+            callDependencies.call(callTarget, LLVMLoadingPhase.INIT_CONTEXT);
         }
 
         for (CallTarget callTarget : dependencies) {
-            if (callTarget != null) {
-                callDependencies.call(callTarget, LLVMLoadingPhase.INIT_MODULE);
-            }
+            callDependencies.call(callTarget, LLVMLoadingPhase.INIT_MODULE);
         }
 
         for (CallTarget callTarget : dependencies) {
-            if (callTarget != null) {
-                callDependencies.call(callTarget, LLVMLoadingPhase.INIT_DONE);
-            }
+            callDependencies.call(callTarget, LLVMLoadingPhase.INIT_DONE);
         }
     }
 

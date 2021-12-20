@@ -329,6 +329,7 @@ class ExternalTestSuite(ExternalTestSuiteMixin, SulongTestSuiteMixin, mx.NativeP
 class BootstrapToolchainLauncherProject(mx.Project):  # pylint: disable=too-many-ancestors
     def __init__(self, suite, name, deps, workingSets, theLicense, **kwArgs):
         super(BootstrapToolchainLauncherProject, self).__init__(suite, name, srcDirs=[], deps=deps, workingSets=workingSets, d=suite.dir, theLicense=theLicense, **kwArgs)
+        self.buildDependencies += ['mx:GCC_NINJA_TOOLCHAIN']
 
     def launchers(self):
         for tool in self.suite.toolchain._supported_tools():
@@ -338,9 +339,16 @@ class BootstrapToolchainLauncherProject(mx.Project):  # pylint: disable=too-many
                 result = os.path.join(self.get_output_root(), exe)
                 yield result, tool, exe
 
+    def ninja_toolchain_path(self):
+        return os.path.join(self.get_output_root(), 'toolchain.ninja')
+
     def getArchivableResults(self, use_relpath=True, single=False):
+        if single:
+            raise ValueError("Cannot produce single result for BootstrapToolchainLauncherProject")
         for result, _, exe in self.launchers():
             yield result, os.path.join('bin', exe)
+        toolchain_path = self.ninja_toolchain_path()
+        yield toolchain_path, os.path.basename(toolchain_path)
 
     def getBuildTask(self, args):
         return BootstrapToolchainLauncherBuildTask(self, args, 1)
@@ -388,6 +396,8 @@ class BootstrapToolchainLauncherBuildTask(mx.BuildTask):
             with open(result, "w") as f:
                 f.write(self.contents(tool, exe))
             os.chmod(result, 0o755)
+        with open(self.subject.ninja_toolchain_path(), "w") as f:
+            f.write(self.ninja_toolchain_contents())
 
     def clean(self, forBuild=False):
         if os.path.exists(self.subject.get_output_root()):
@@ -414,6 +424,20 @@ class BootstrapToolchainLauncherBuildTask(mx.BuildTask):
             return "@echo off\n" + " ".join(command) + "\n"
         else:
             return "#!/usr/bin/env bash\n" + "exec " + " ".join(command) + "\n"
+
+    def ninja_toolchain_contents(self):
+        gcc_ninja_toolchain = mx.distribution('mx:GCC_NINJA_TOOLCHAIN')
+        assert isinstance(gcc_ninja_toolchain, mx.AbstractDistribution) and gcc_ninja_toolchain.get_output()
+        return """# Ninja rules for the LLVM toolchain
+include {gcc_toolchain}
+CC = {CC}
+CXX = {CXX}
+AR = {AR}
+
+""".format(gcc_toolchain=os.path.join(gcc_ninja_toolchain.get_output(), 'toolchain.ninja'),
+           CC=self.subject.suite.toolchain.get_toolchain_tool('CC'),
+           CXX=self.subject.suite.toolchain.get_toolchain_tool('CXX'),
+           AR=self.subject.suite.toolchain.get_toolchain_tool('AR'))
 
 
 class AbstractSulongNativeProject(mx.NativeProject):  # pylint: disable=too-many-ancestors

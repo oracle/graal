@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.305.3",
+  "mxversion" : "5.317.0",
   "name" : "sulong",
   "versionConflictResolution" : "latest",
 
@@ -1533,6 +1533,7 @@ suite = {
       "layout": {
         "./": "dependency:bootstrap-toolchain-launchers/*",
       },
+      "asm_requires_cpp": False,
       "buildDependencies" : [
         "SULONG_TOOLCHAIN_LAUNCHERS",
       ],

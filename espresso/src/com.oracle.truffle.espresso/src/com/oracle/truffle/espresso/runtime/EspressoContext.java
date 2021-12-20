@@ -44,6 +44,9 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.espresso.ffi.nfi.NFIIsolatedNativeAccess;
+import com.oracle.truffle.espresso.ffi.nfi.NFINativeAccess;
+import com.oracle.truffle.espresso.ffi.nfi.NFISulongNativeAccess;
 import org.graalvm.options.OptionMap;
 import org.graalvm.polyglot.Engine;
 
@@ -170,6 +173,9 @@ public final class EspressoContext {
     // endregion JDWP
 
     private Map<Class<? extends InternalRedefinitionPlugin>, InternalRedefinitionPlugin> redefinitionPlugins;
+
+    // After a context is finalized, guest code cannot be executed.
+    private volatile boolean isFinalized;
 
     // region Options
     // Checkstyle: stop field name check
@@ -474,11 +480,11 @@ public final class EspressoContext {
 
             long initStartTimeNanos = System.nanoTime();
 
+            this.nativeAccess = spawnNativeAccess();
             initVmProperties();
 
             // Spawn JNI first, then the VM.
             try (DebugCloseable vmInit = VM_INIT.scope(timers)) {
-                this.nativeAccess = spawnNativeAccess();
                 this.vm = VM.create(getJNI()); // Mokapot is loaded
                 vm.attachThread(Thread.currentThread());
             }
@@ -603,13 +609,14 @@ public final class EspressoContext {
         if (getEnv().getOptions().hasBeenSet(EspressoOptions.NativeBackend)) {
             nativeBackend = getEnv().getOptions().get(EspressoOptions.NativeBackend);
         } else {
+            // Pick a sane "default" native backend depending on the platform.
             if (EspressoOptions.RUNNING_ON_SVM) {
-                nativeBackend = "nfi-native";
+                nativeBackend = NFINativeAccess.Provider.ID;
             } else {
                 if (OS.getCurrent() == OS.Linux) {
-                    nativeBackend = "nfi-dlmopen";
+                    nativeBackend = NFIIsolatedNativeAccess.Provider.ID;
                 } else {
-                    nativeBackend = "nfi-sulong";
+                    nativeBackend = NFISulongNativeAccess.Provider.ID;
                 }
             }
         }
@@ -650,7 +657,9 @@ public final class EspressoContext {
         // If --java.JavaHome is not specified, Espresso tries to use the same (jars and native)
         // libraries bundled with GraalVM.
         builder.javaHome(Engine.findHome());
-        vmProperties = EspressoProperties.processOptions(builder, getEnv().getOptions()).build();
+        EspressoProperties.processOptions(builder, getEnv().getOptions());
+        getNativeAccess().updateEspressoProperties(builder, getEnv().getOptions());
+        vmProperties = builder.build();
     }
 
     private void initializeKnownClass(Symbol<Type> type) {
@@ -822,6 +831,10 @@ public final class EspressoContext {
         if (hostThread != Thread.currentThread()) {
             String guestName = threads.getThreadName(guestThread);
             getLogger().warning("unimplemented: disposeThread for non-current thread: " + hostThread + " / " + guestName);
+            return;
+        }
+        // Cannot run guest code after finalizeContext was called (GR-35712).
+        if (isFinalized()) {
             return;
         }
         if (vm.DetachCurrentThread(this) != JNI_OK) {
@@ -1062,5 +1075,13 @@ public final class EspressoContext {
 
     public ClassHierarchyOracle getClassHierarchyOracle() {
         return classHierarchyOracle;
+    }
+
+    public boolean isFinalized() {
+        return isFinalized;
+    }
+
+    public void setFinalized() {
+        isFinalized = true;
     }
 }
