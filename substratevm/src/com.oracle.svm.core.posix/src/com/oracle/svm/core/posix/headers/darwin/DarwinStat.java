@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.word.PointerBase;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.posix.headers.PosixDirectives;
 
 // Checkstyle: stop
@@ -84,6 +85,7 @@ public class DarwinStat {
         public static native int fstat_aarch64(int fd, stat buf);
 
         @Platforms(Platform.DARWIN.class)
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static int fstat(int fd, stat buf) {
             if (Platform.includedIn(Platform.AMD64.class)) {
                 return fstat_amd64(fd, buf);
