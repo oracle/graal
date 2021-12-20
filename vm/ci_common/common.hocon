@@ -161,11 +161,11 @@ vm_darwin: ${common_vm_darwin} {
 }
 
 vm_windows: ${common_vm_windows} ${devkits.windows-openjdk8} {
-  capabilities: [windows, amd64]
+  capabilities: [windows_server_2016, amd64]
 }
 
 vm_windows-jdk11: ${common_vm_windows-jdk11} {
-  capabilities: [windows, amd64]
+  capabilities: [windows_server_2016, amd64]
 }
 
 gate_vm_linux: ${vm_linux} {
@@ -378,7 +378,7 @@ builds += [
     name: deploy-vm-installable-java11-darwin-amd64
   }
   # Windows
-  ${vm_java_8} ${deploy_daily_vm_windows} ${js_windows} ${svm-common-windows} {
+  ${vm_java_8} ${svm-common-windows} ${deploy_daily_vm_windows} ${js_windows} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-win"]
       ${mx_vm_common} [build]
@@ -388,7 +388,7 @@ builds += [
     timelimit: "1:30:00"
     name: deploy-vm-base-java8-windows-amd64
   }
-  ${vm_java_11} ${deploy_daily_vm_windows-jdk11} ${svm-common-windows-jdk11} ${js_windows_jdk11} {
+  ${vm_java_11} ${svm-common-windows-jdk11} ${deploy_daily_vm_windows-jdk11} ${js_windows_jdk11} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-win"]
       ${mx_vm_common} [build]
@@ -398,7 +398,7 @@ builds += [
     timelimit: "1:30:00"
     name: deploy-vm-base-java11-windows-amd64
   }
-  ${vm_java_8} ${deploy_daily_vm_windows} ${js_windows} ${svm-common-windows} {
+  ${vm_java_8} ${svm-common-windows} ${deploy_daily_vm_windows} ${js_windows} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-win"]
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites_windows}, "--exclude-components="${non-product-vm-components-windows}, build]
@@ -408,7 +408,7 @@ builds += [
     timelimit: "1:30:00"
     name: deploy-vm-installable-java8-windows-amd64
   }
-  ${vm_java_11} ${deploy_daily_vm_windows-jdk11} ${svm-common-windows-jdk11} ${js_windows_jdk11} {
+  ${vm_java_11} ${svm-common-windows-jdk11} ${deploy_daily_vm_windows-jdk11} ${js_windows_jdk11} {
     run: [
       [set-export, VM_ENV, "${VM_ENV}-win"]
       ${mx_vm_installables} [--dynamicimports, ${vm_extra_suites_windows}, "--exclude-components="${non-product-vm-components-windows}, build]
