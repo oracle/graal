@@ -67,6 +67,7 @@ import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posix.headers.darwin.DarwinPthread;
 import com.oracle.svm.core.posix.headers.linux.LinuxPthread;
 import com.oracle.svm.core.posix.pthread.PthreadConditionUtils;
+import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.ParkEvent;
 import com.oracle.svm.core.thread.ParkEvent.ParkEventFactory;
@@ -246,56 +247,71 @@ class PosixParkEvent extends ParkEvent {
 
     @Override
     protected void condWait() {
-        PosixUtils.checkStatusIs0(Pthread.pthread_mutex_lock(mutex), "park(): mutex lock");
+        StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {
-            while (!event) {
-                int status = Pthread.pthread_cond_wait(cond, mutex);
-                PosixUtils.checkStatusIs0(status, "park(): condition variable wait");
+            PosixUtils.checkStatusIs0(Pthread.pthread_mutex_lock(mutex), "park(): mutex lock");
+            try {
+                while (!event) {
+                    int status = Pthread.pthread_cond_wait(cond, mutex);
+                    PosixUtils.checkStatusIs0(status, "park(): condition variable wait");
+                }
+                event = false;
+            } finally {
+                PosixUtils.checkStatusIs0(Pthread.pthread_mutex_unlock(mutex), "park(): mutex unlock");
             }
-            event = false;
         } finally {
-            PosixUtils.checkStatusIs0(Pthread.pthread_mutex_unlock(mutex), "park(): mutex unlock");
+            StackOverflowCheck.singleton().protectYellowZone();
         }
     }
 
     @Override
     protected void condTimedWait(long delayNanos) {
-        /* Encode the delay as a deadline in a Time.timespec. */
-        Time.timespec deadlineTimespec = StackValue.get(Time.timespec.class);
-        PthreadConditionUtils.delayNanosToDeadlineTimespec(delayNanos, deadlineTimespec);
-
-        PosixUtils.checkStatusIs0(Pthread.pthread_mutex_lock(mutex), "park(long): mutex lock");
+        StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {
-            while (!event) {
-                int status = Pthread.pthread_cond_timedwait(cond, mutex, deadlineTimespec);
-                if (status == Errno.ETIMEDOUT()) {
-                    break;
-                } else if (status != 0) {
-                    Log.log().newline()
-                                    .string("[PosixParkEvent.condTimedWait(delayNanos: ").signed(delayNanos).string("): Should not reach here.")
-                                    .string("  mutex: ").hex(mutex)
-                                    .string("  cond: ").hex(cond)
-                                    .string("  deadlineTimeSpec.tv_sec: ").signed(deadlineTimespec.tv_sec())
-                                    .string("  deadlineTimespec.tv_nsec: ").signed(deadlineTimespec.tv_nsec())
-                                    .string("  status: ").signed(status).string(" ").string(Errno.strerror(status))
-                                    .string("]").newline();
-                    PosixUtils.checkStatusIs0(status, "park(long): condition variable timed wait");
+            /* Encode the delay as a deadline in a Time.timespec. */
+            Time.timespec deadlineTimespec = StackValue.get(Time.timespec.class);
+            PthreadConditionUtils.delayNanosToDeadlineTimespec(delayNanos, deadlineTimespec);
+
+            PosixUtils.checkStatusIs0(Pthread.pthread_mutex_lock(mutex), "park(long): mutex lock");
+            try {
+                while (!event) {
+                    int status = Pthread.pthread_cond_timedwait(cond, mutex, deadlineTimespec);
+                    if (status == Errno.ETIMEDOUT()) {
+                        break;
+                    } else if (status != 0) {
+                        Log.log().newline()
+                                        .string("[PosixParkEvent.condTimedWait(delayNanos: ").signed(delayNanos).string("): Should not reach here.")
+                                        .string("  mutex: ").hex(mutex)
+                                        .string("  cond: ").hex(cond)
+                                        .string("  deadlineTimeSpec.tv_sec: ").signed(deadlineTimespec.tv_sec())
+                                        .string("  deadlineTimespec.tv_nsec: ").signed(deadlineTimespec.tv_nsec())
+                                        .string("  status: ").signed(status).string(" ").string(Errno.strerror(status))
+                                        .string("]").newline();
+                        PosixUtils.checkStatusIs0(status, "park(long): condition variable timed wait");
+                    }
                 }
+                event = false;
+            } finally {
+                PosixUtils.checkStatusIs0(Pthread.pthread_mutex_unlock(mutex), "park(long): mutex unlock");
             }
-            event = false;
         } finally {
-            PosixUtils.checkStatusIs0(Pthread.pthread_mutex_unlock(mutex), "park(long): mutex unlock");
+            StackOverflowCheck.singleton().protectYellowZone();
         }
     }
 
     @Override
     protected void unpark() {
-        PosixUtils.checkStatusIs0(Pthread.pthread_mutex_lock(mutex), "PosixParkEvent.unpark(): mutex lock");
+        StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {
-            event = true;
-            PosixUtils.checkStatusIs0(Pthread.pthread_cond_broadcast(cond), "PosixParkEvent.unpark(): condition variable broadcast");
+            PosixUtils.checkStatusIs0(Pthread.pthread_mutex_lock(mutex), "PosixParkEvent.unpark(): mutex lock");
+            try {
+                event = true;
+                PosixUtils.checkStatusIs0(Pthread.pthread_cond_broadcast(cond), "PosixParkEvent.unpark(): condition variable broadcast");
+            } finally {
+                PosixUtils.checkStatusIs0(Pthread.pthread_mutex_unlock(mutex), "PosixParkEvent.unpark(): mutex unlock");
+            }
         } finally {
-            PosixUtils.checkStatusIs0(Pthread.pthread_mutex_unlock(mutex), "PosixParkEvent.unpark(): mutex unlock");
+            StackOverflowCheck.singleton().protectYellowZone();
         }
     }
 }
