@@ -55,6 +55,11 @@ import com.oracle.svm.core.util.VMError;
 @SuppressWarnings({"unused"})
 public final class Target_java_lang_Thread {
 
+    // Checkstyle: stop
+    @Alias //
+    static StackTraceElement[] EMPTY_STACK_TRACE;
+    // Checkstyle: resume
+
     @Inject //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     IsolateThread isolateThread;
