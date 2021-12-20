@@ -45,7 +45,7 @@ public final class PosixStat {
             result = LinuxStat.fstat64(fd, stat);
         } else if (Platform.includedIn(Platform.DARWIN.class)) {
             DarwinStat.stat stat = StackValue.get(DarwinStat.stat.class);
-            result = DarwinStat.fstat_aarch64(fd, stat);
+            result = DarwinStat.fstat(fd, stat);
         } else {
             throw VMError.shouldNotReachHere("Unsupported platform");
         }
