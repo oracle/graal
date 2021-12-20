@@ -355,6 +355,16 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         }
 
         @Override
+        public void emitReturn(JavaKind kind, Value input) {
+            AllocatableValue operand = Value.ILLEGAL;
+            if (input != null) {
+                operand = resultOperandFor(kind, input.getValueKind());
+                emitMove(operand, input);
+            }
+            append(new AMD64ReturnOp(operand));
+        }
+
+        @Override
         public SubstrateLIRGenerationResult getResult() {
             return (SubstrateLIRGenerationResult) super.getResult();
         }
