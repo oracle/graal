@@ -28,10 +28,9 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.invoke.MethodHandleUtils.MethodHandlesSupported;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 
-@TargetClass(className = "java.lang.invoke.LambdaForm", onlyWith = MethodHandlesSupported.class)
+@TargetClass(className = "java.lang.invoke.LambdaForm")
 public final class Target_java_lang_invoke_LambdaForm {
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
@@ -65,7 +64,7 @@ public final class Target_java_lang_invoke_LambdaForm {
     native Object interpretWithArguments(Object... argumentValues) throws Throwable;
 }
 
-@TargetClass(className = "java.lang.invoke.LambdaForm", innerClass = "NamedFunction", onlyWith = MethodHandlesSupported.class)
+@TargetClass(className = "java.lang.invoke.LambdaForm", innerClass = "NamedFunction")
 final class Target_java_lang_invoke_LambdaForm_NamedFunction {
     @Alias
     native Target_java_lang_invoke_MethodHandle resolvedHandle();

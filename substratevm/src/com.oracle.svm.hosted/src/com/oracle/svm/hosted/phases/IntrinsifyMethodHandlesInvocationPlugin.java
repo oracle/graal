@@ -31,10 +31,8 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.Pair;
@@ -102,21 +100,16 @@ import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.WordOperationPlugin;
 import org.graalvm.nativeimage.ImageSingletons;
 
-import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.ParsingReason;
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.graal.phases.TrustedInterfaceTypePlugin;
 import com.oracle.svm.core.graal.word.SubstrateWordTypes;
 import com.oracle.svm.core.jdk.VarHandleFeature;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.NativeImageUtil;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.meta.HostedType;
@@ -181,7 +174,6 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
     private final IntrinsificationRegistry intrinsificationRegistry;
 
     private final ResolvedJavaType methodHandleType;
-    private final Set<String> methodHandleInvokeMethodNames;
 
     private final Class<?> varHandleClass;
     private final Class<?> varHandleAccessModeClass;
@@ -212,10 +204,6 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         }
 
         methodHandleType = universeProviders.getMetaAccess().lookupJavaType(java.lang.invoke.MethodHandle.class);
-        methodHandleInvokeMethodNames = new HashSet<>();
-        if (!SubstrateOptions.areMethodHandlesSupported()) {
-            methodHandleInvokeMethodNames.addAll(Arrays.asList("invokeExact", "invoke", "invokeBasic", "linkToVirtual", "linkToStatic", "linkToSpecial", "linkToInterface"));
-        }
 
         if (JavaVersionUtil.JAVA_SPEC >= 11) {
             try {
@@ -270,7 +258,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                 /*
                  * If we capture duplication of the bci, we don't process invoke.
                  */
-                return reportUnsupportedFeature(b, method);
+                return false;
             } else {
                 if (receiverForNullCheck != null) {
                     b.nullCheckedValue(receiverForNullCheck);
@@ -278,7 +266,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                 return processInvokeWithMethodHandle(b, universeProviders.getReplacements(), method, args);
             }
 
-        } else if (methodHandleType.equals(method.getDeclaringClass()) && methodHandleInvokeMethodNames.contains(method.getName())) {
+        } else if (methodHandleType.equals(method.getDeclaringClass())) {
             /*
              * The native methods defined in the class MethodHandle are currently not implemented at
              * all. Normally, we would mark them as @Delete to give the user a good error message.
@@ -286,7 +274,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
              * signature polymorphic, i.e., they exist in every possible signature. Therefore, we
              * must only look at the declaring class and the method name here.
              */
-            return reportUnsupportedFeature(b, method);
+            return false;
 
         } else {
             return false;
@@ -336,7 +324,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
          */
         if (isVarHandleGuards(method)) {
             if (args.length < 1 || !args[0].isJavaConstant() || !isVarHandle(args[0])) {
-                return reportUnsupportedFeature(b, method);
+                return false;
             }
 
             try {
@@ -540,7 +528,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
          * static analysis would be compiled.
          */
         if (reason != ParsingReason.PointsToAnalysis && intrinsificationRegistry.get(b.getMethod(), b.bci()) != Boolean.TRUE) {
-            return reportUnsupportedFeature(b, methodHandleMethod);
+            return false;
         }
         Plugins graphBuilderPlugins = new Plugins(parsingProviders.getReplacements().getGraphBuilderPlugins());
 
@@ -917,7 +905,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
         }
 
         private RuntimeException bailout() throws AbortTransplantException {
-            boolean handled = reportUnsupportedFeature(b, methodHandleMethod);
+            boolean handled = false;
             /*
              * We need to get out of recursive transplant methods. Easier to use an exception than
              * to explicitly check every method invocation for a possible abort.
@@ -932,36 +920,6 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
         AbortTransplantException(boolean handled) {
             this.handled = handled;
-        }
-    }
-
-    private static boolean reportUnsupportedFeature(GraphBuilderContext b, ResolvedJavaMethod methodHandleMethod) {
-        if (SubstrateOptions.areMethodHandlesSupported()) {
-            /* Do nothing, the method will be compiled elsewhere */
-            return false;
-        }
-
-        String message = "Invoke with MethodHandle argument could not be reduced to at most a single call or single field access. " +
-                        "The method handle must be a compile time constant, e.g., be loaded from a `static final` field. " +
-                        "Method that contains the method handle invocation: " + methodHandleMethod.format("%H.%n(%p)");
-
-        if (NativeImageOptions.ReportUnsupportedElementsAtRuntime.getValue()) {
-            /*
-             * Ensure that we have space on the expression stack for the (unused) return value of
-             * the invoke.
-             */
-            ((BytecodeParser) b).getFrameStateBuilder().clearStack();
-            b.handleReplacedInvoke(InvokeKind.Static, b.getMetaAccess().lookupJavaMethod(unsupportedFeatureMethod),
-                            new ValueNode[]{ConstantNode.forConstant(SubstrateObjectConstant.forObject(message), b.getMetaAccess(), b.getGraph())}, false);
-            /* The invoked method throws an exception and therefore never returns. */
-            b.append(new LoweredDeadEndNode());
-            return true;
-
-        } else {
-            throw new UnsupportedFeatureException(message + System.lineSeparator() +
-                            "To enable method handles that do not require LambdaForm interpretation (e.g. because of a call to MethodHandle.bindTo()) or to diagnose the issue, you can add the option " +
-                            SubstrateOptionsParser.commandArgument(NativeImageOptions.ReportUnsupportedElementsAtRuntime, "+") +
-                            ". The error is then reported at run time when the invoke is executed and the method handle has to be interpreted.");
         }
     }
 

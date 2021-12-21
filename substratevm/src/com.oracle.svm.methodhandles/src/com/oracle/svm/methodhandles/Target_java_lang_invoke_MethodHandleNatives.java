@@ -51,8 +51,6 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.invoke.MethodHandleUtils.MethodHandlesNotSupported;
-import com.oracle.svm.core.invoke.MethodHandleUtils.MethodHandlesSupported;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrLater;
@@ -67,7 +65,7 @@ import sun.invoke.util.VerifyAccess;
  * try to stay as close as the original implementation unless required by some design decision.
  */
 @SuppressWarnings("unused")
-@TargetClass(className = "java.lang.invoke.MethodHandleNatives", onlyWith = MethodHandlesSupported.class)
+@TargetClass(className = "java.lang.invoke.MethodHandleNatives")
 final class Target_java_lang_invoke_MethodHandleNatives {
 
     /*
@@ -356,7 +354,7 @@ final class Util_java_lang_invoke_MethodHandleNatives {
     }
 }
 
-@TargetClass(className = "java.lang.invoke.MethodHandleNatives", innerClass = "Constants", onlyWith = MethodHandlesSupported.class)
+@TargetClass(className = "java.lang.invoke.MethodHandleNatives", innerClass = "Constants")
 final class Target_java_lang_invoke_MethodHandleNatives_Constants {
     // Checkstyle: stop
     @Alias static int MN_IS_METHOD;
@@ -389,66 +387,4 @@ final class Target_java_lang_invoke_MethodHandleNatives_Constants {
 
 @TargetClass(className = "java.lang.invoke.MethodHandleNatives", innerClass = "CallSiteContext")
 final class Target_java_lang_invoke_MethodHandleNatives_CallSiteContext {
-}
-
-@TargetClass(className = "java.lang.invoke.MethodHandleNatives", onlyWith = MethodHandlesNotSupported.class)
-final class Target_java_lang_invoke_MethodHandleNatives_NotSupported {
-
-    /*
-     * We are defensive and handle native methods by marking them as deleted. If they are reachable,
-     * the user is certainly doing something wrong. But we do not want to fail with a linking error.
-     */
-
-    @Delete
-    private static native void init(Target_java_lang_invoke_MemberName_NotSupported self, Object ref);
-
-    @Delete
-    private static native void expand(Target_java_lang_invoke_MemberName_NotSupported self);
-
-    @Delete
-    private static native int getMembers(Class<?> defc, String matchName, String matchSig, int matchFlags, Class<?> caller, int skip, Target_java_lang_invoke_MemberName_NotSupported[] results);
-
-    @Delete
-    private static native long objectFieldOffset(Target_java_lang_invoke_MemberName_NotSupported self);
-
-    @Delete
-    private static native long staticFieldOffset(Target_java_lang_invoke_MemberName_NotSupported self);
-
-    @Delete
-    private static native Object staticFieldBase(Target_java_lang_invoke_MemberName_NotSupported self);
-
-    @Delete
-    private static native Object getMemberVMInfo(Target_java_lang_invoke_MemberName_NotSupported self);
-
-    @Delete
-    private static native void setCallSiteTargetNormal(CallSite site, MethodHandle target);
-
-    @Delete
-    private static native void setCallSiteTargetVolatile(CallSite site, MethodHandle target);
-
-    @Delete
-    private static native void registerNatives();
-
-    @Delete
-    private static native int getNamedCon(int which, Object[] name);
-
-    // JDK 11
-
-    @Delete
-    @TargetElement(onlyWith = JDK11OrEarlier.class)
-    private static native Target_java_lang_invoke_MemberName_NotSupported resolve(Target_java_lang_invoke_MemberName_NotSupported self, Class<?> caller, boolean speculativeResolve)
-                    throws LinkageError, ClassNotFoundException;
-
-    @Delete
-    private static native void copyOutBootstrapArguments(Class<?> caller, int[] indexInfo, int start, int end, Object[] buf, int pos, boolean resolve, Object ifNotAvailable);
-
-    @Delete
-    private static native void clearCallSiteContext(Target_java_lang_invoke_MethodHandleNatives_CallSiteContext context);
-
-    // JDK 17
-
-    @Delete
-    @TargetElement(onlyWith = JDK17OrLater.class)
-    private static native Target_java_lang_invoke_MemberName_NotSupported resolve(Target_java_lang_invoke_MemberName_NotSupported self, Class<?> caller, int lookupMode, boolean speculativeResolve)
-                    throws LinkageError, ClassNotFoundException;
 }
