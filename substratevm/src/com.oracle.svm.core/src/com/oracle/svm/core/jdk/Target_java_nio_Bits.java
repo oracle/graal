@@ -22,19 +22,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.util;
+package com.oracle.svm.core.jdk;
 
-import java.lang.instrument.ClassFileTransformer;
-import java.security.ProtectionDomain;
+import java.util.concurrent.atomic.AtomicLong;
 
-public class AgentSupport {
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
+import com.oracle.svm.core.annotate.TargetClass;
 
-    public static ClassFileTransformer createClassInstrumentationTransformer(TransformerInterface applyTransformation) {
-        return new ClassFileTransformer() {
-            @Override
-            public byte[] transform(Module module, ClassLoader loader, String className, Class<?> classBeingRedefined, ProtectionDomain protectionDomain, byte[] classfileBuffer) {
-                return applyTransformation.apply(module.getName(), loader, className, classfileBuffer);
-            }
-        };
-    }
+@TargetClass(className = "java.nio.Bits")
+final class Target_java_nio_Bits {
+
+    // Checkstyle: stop
+
+    @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
+    private static int PAGE_SIZE = -1;
+
+    @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
+    private static boolean MEMORY_LIMIT_SET = false;
+    @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
+    private static long MAX_MEMORY = -1;
+
+    @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
+    private static AtomicLong RESERVED_MEMORY = new AtomicLong();
+    @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
+    private static AtomicLong TOTAL_CAPACITY = new AtomicLong();
+    @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
+    private static AtomicLong COUNT = new AtomicLong();
+
+    // Checkstyle: resume
 }

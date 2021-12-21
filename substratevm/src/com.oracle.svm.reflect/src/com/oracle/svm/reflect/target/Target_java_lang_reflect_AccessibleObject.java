@@ -25,6 +25,7 @@
 package com.oracle.svm.reflect.target;
 
 // Checkstyle: stop
+
 import java.lang.reflect.AccessibleObject;
 // Checkstyle: resume
 
@@ -33,7 +34,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
-import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK17OrLater;
 
 @TargetClass(value = AccessibleObject.class)
@@ -50,6 +50,5 @@ public final class Target_java_lang_reflect_AccessibleObject {
     volatile Object accessCheckCache;
 
     @Alias //
-    @TargetElement(onlyWith = JDK11OrLater.class)
     native Target_java_lang_reflect_AccessibleObject getRoot();
 }

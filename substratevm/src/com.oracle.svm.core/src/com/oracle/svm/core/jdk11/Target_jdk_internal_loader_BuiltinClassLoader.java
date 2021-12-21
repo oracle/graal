@@ -22,39 +22,47 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.core.jdk11;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.lang.module.ModuleReference;
 import java.net.URL;
 import java.util.Enumeration;
 import java.util.List;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.ResourcesHelper;
 
-@TargetClass(className = "jdk.internal.loader.Loader")
+@TargetClass(value = jdk.internal.loader.BuiltinClassLoader.class)
 @SuppressWarnings({"unused", "static-method"})
-final class Target_jdk_internal_loader_Loader {
+final class Target_jdk_internal_loader_BuiltinClassLoader {
 
     @Substitute
     protected Class<?> findClass(String name) throws ClassNotFoundException {
-        // Reading class files from modules is currently not supported
         throw new ClassNotFoundException(name);
     }
 
     @Substitute
-    protected Class<?> findClass(String moduleName, String name) throws ClassNotFoundException {
-        return null; // reading class files from modules is currently not supported
+    protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
+        Target_java_lang_ClassLoader self = SubstrateUtil.cast(this, Target_java_lang_ClassLoader.class);
+        Class<?> clazz = self.findLoadedClass(name);
+        if (clazz == null) {
+            throw new ClassNotFoundException(name);
+        }
+        return clazz;
     }
 
     @Substitute
-    private Class<?> findClassInModuleOrNull(Target_jdk_internal_loader_Loader_LoadedModule loadedModule, String name) {
-        return null; // reading class files from modules is currently not supported
-    }
-
-    @Substitute
-    protected URL findResource(String mn, String name) {
+    public URL findResource(String mn, String name) {
         return ResourcesHelper.nameToResourceURL(mn, name);
+    }
+
+    @Substitute
+    public InputStream findResourceAsStream(String mn, String name) throws IOException {
+        return ResourcesHelper.nameToResourceInputStream(name);
     }
 
     @Substitute
@@ -68,21 +76,22 @@ final class Target_jdk_internal_loader_Loader {
     }
 
     @Substitute
-    public URL getResource(String name) {
+    private List<URL> findMiscResource(String name) {
+        return ResourcesHelper.nameToResourceListURLs(name);
+    }
+
+    @Substitute
+    private URL findResource(ModuleReference mref, String name) {
+        return ResourcesHelper.nameToResourceURL(mref.descriptor().name(), name);
+    }
+
+    @Substitute
+    private URL findResourceOnClassPath(String name) {
         return ResourcesHelper.nameToResourceURL(name);
     }
 
     @Substitute
-    public Enumeration<URL> getResources(String name) throws IOException {
+    private Enumeration<URL> findResourcesOnClassPath(String name) {
         return ResourcesHelper.nameToResourceEnumerationURLs(name);
     }
-
-    @Substitute
-    private List<URL> findResourcesAsList(String name) {
-        return ResourcesHelper.nameToResourceListURLs(name);
-    }
-}
-
-@TargetClass(className = "jdk.internal.loader.Loader", innerClass = "LoadedModule")
-final class Target_jdk_internal_loader_Loader_LoadedModule {
 }

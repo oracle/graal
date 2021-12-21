@@ -55,9 +55,7 @@ import com.oracle.svm.core.invoke.MethodHandleUtils.MethodHandlesNotSupported;
 import com.oracle.svm.core.invoke.MethodHandleUtils.MethodHandlesSupported;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
-import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK17OrLater;
-import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.reflect.target.Target_java_lang_reflect_Field;
 
 // Checkstyle: stop
@@ -196,30 +194,18 @@ final class Target_java_lang_invoke_MethodHandleNatives {
     @Delete
     private static native int getNamedCon(int which, Object[] name);
 
-    // JDK 8 only
-
-    @Delete
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private static native Target_java_lang_invoke_MemberName resolve(Target_java_lang_invoke_MemberName self, Class<?> caller) throws LinkageError, ClassNotFoundException;
-
-    @Delete
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private static native int getConstant(int which);
-
     // JDK 11
 
     @Substitute
-    @TargetElement(onlyWith = {JDK11OrLater.class, JDK11OrEarlier.class})
+    @TargetElement(onlyWith = JDK11OrEarlier.class)
     static Target_java_lang_invoke_MemberName resolve(Target_java_lang_invoke_MemberName self, Class<?> caller, boolean speculativeResolve) throws LinkageError, ClassNotFoundException {
         return Util_java_lang_invoke_MethodHandleNatives.resolve(self, caller, speculativeResolve);
     }
 
     @Delete
-    @TargetElement(onlyWith = JDK11OrLater.class)
     private static native void copyOutBootstrapArguments(Class<?> caller, int[] indexInfo, int start, int end, Object[] buf, int pos, boolean resolve, Object ifNotAvailable);
 
     @Substitute
-    @TargetElement(onlyWith = JDK11OrLater.class)
     private static void clearCallSiteContext(Target_java_lang_invoke_MethodHandleNatives_CallSiteContext context) {
         throw unimplemented("CallSiteContext not supported");
     }
@@ -401,7 +387,7 @@ final class Target_java_lang_invoke_MethodHandleNatives_Constants {
     // Checkstyle: resume
 }
 
-@TargetClass(className = "java.lang.invoke.MethodHandleNatives", innerClass = "CallSiteContext", onlyWith = JDK11OrLater.class)
+@TargetClass(className = "java.lang.invoke.MethodHandleNatives", innerClass = "CallSiteContext")
 final class Target_java_lang_invoke_MethodHandleNatives_CallSiteContext {
 }
 
@@ -446,29 +432,17 @@ final class Target_java_lang_invoke_MethodHandleNatives_NotSupported {
     @Delete
     private static native int getNamedCon(int which, Object[] name);
 
-    // JDK 8 only
-
-    @Delete
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private static native Target_java_lang_invoke_MemberName_NotSupported resolve(Target_java_lang_invoke_MemberName_NotSupported self, Class<?> caller) throws LinkageError, ClassNotFoundException;
-
-    @Delete
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private static native int getConstant(int which);
-
     // JDK 11
 
     @Delete
-    @TargetElement(onlyWith = {JDK11OrLater.class, JDK11OrEarlier.class})
+    @TargetElement(onlyWith = JDK11OrEarlier.class)
     private static native Target_java_lang_invoke_MemberName_NotSupported resolve(Target_java_lang_invoke_MemberName_NotSupported self, Class<?> caller, boolean speculativeResolve)
                     throws LinkageError, ClassNotFoundException;
 
     @Delete
-    @TargetElement(onlyWith = JDK11OrLater.class)
     private static native void copyOutBootstrapArguments(Class<?> caller, int[] indexInfo, int start, int end, Object[] buf, int pos, boolean resolve, Object ifNotAvailable);
 
     @Delete
-    @TargetElement(onlyWith = JDK11OrLater.class)
     private static native void clearCallSiteContext(Target_java_lang_invoke_MethodHandleNatives_CallSiteContext context);
 
     // JDK 17

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,19 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.util;
 
-import java.lang.instrument.ClassFileTransformer;
-import java.security.ProtectionDomain;
+package com.oracle.svm.core.jdk.resources;
 
-public class AgentSupport {
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.TargetClass;
 
-    public static ClassFileTransformer createClassInstrumentationTransformer(TransformerInterface applyTransformation) {
-        return new ClassFileTransformer() {
-            @Override
-            public byte[] transform(Module module, ClassLoader loader, String className, Class<?> classBeingRedefined, ProtectionDomain protectionDomain, byte[] classfileBuffer) {
-                return applyTransformation.apply(module.getName(), loader, className, classfileBuffer);
-            }
-        };
-    }
+@TargetClass(className = "jdk.nio.zipfs.ZipUtils")
+@SuppressWarnings({"unused", "static-method"})
+final class Target_jdk_nio_zipfs_ZipUtils {
+
+    @Alias
+    public static native String toRegexPattern(String globPattern);
 }

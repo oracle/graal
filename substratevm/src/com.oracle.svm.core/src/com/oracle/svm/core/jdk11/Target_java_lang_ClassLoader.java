@@ -22,29 +22,44 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.core.jdk11;
+
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Stream;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.util.LazyFinalReference;
 
-/**
- * Avoid making the code for logging reachable. We do not need it, and it only increases code size.
- * If we ever want to enable logging, we also need to define a way to create the logger at run time,
- * in the JDK the logger is created as part of the module system bootstrapping.
- *
- * The logging code is only present in JDK 11, all logging was removed for JDK 17.
- */
-@TargetClass(className = "jdk.internal.module.IllegalAccessLogger", onlyWith = JDK11OrEarlier.class)
-final class Target_jdk_internal_module_IllegalAccessLogger {
+@SuppressWarnings({"unused"})
+@TargetClass(value = ClassLoader.class)
+public final class Target_java_lang_ClassLoader {
 
-    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
-    private static Target_jdk_internal_module_IllegalAccessLogger logger;
+    /**
+     * All ClassLoaderValue are reset at run time for now. See also
+     * {@link Target_jdk_internal_loader_BootLoader#CLASS_LOADER_VALUE_MAP} for resetting of the
+     * boot class loader.
+     */
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = ConcurrentHashMap.class)//
+    ConcurrentHashMap<?, ?> classLoaderValueMap;
 
+    @Alias
+    native Stream<Package> packages();
+
+    @SuppressWarnings("static-method")
     @Substitute
-    private static Target_jdk_internal_module_IllegalAccessLogger illegalAccessLogger() {
-        return null;
+    public Target_java_lang_Module getUnnamedModule() {
+        return ClassLoaderUtil.unnamedModuleReference.get();
     }
+
+    @Alias
+    protected native Class<?> findLoadedClass(String name);
+
+}
+
+final class ClassLoaderUtil {
+
+    public static final LazyFinalReference<Target_java_lang_Module> unnamedModuleReference = new LazyFinalReference<>(Target_java_lang_Module::new);
 }

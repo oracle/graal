@@ -37,7 +37,7 @@ import com.oracle.svm.core.annotate.TargetElement;
  * same methods also used to initialize the system properties.
  */
 @Substitute
-@TargetClass(className = "jdk.internal.util.StaticProperty", onlyWith = JDK11OrLater.class)
+@TargetClass(className = "jdk.internal.util.StaticProperty")
 @SuppressWarnings("unused")
 final class Target_jdk_internal_util_StaticProperty {
 

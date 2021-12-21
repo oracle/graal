@@ -43,32 +43,26 @@ import com.oracle.svm.core.annotate.TargetClass;
 @SuppressWarnings({"static-method", "unused"})
 public final class JavaAWTSubstitutions {
     // Checkstyle: stop
-    @TargetClass(className = "sun.awt.DebugSettings", onlyWith = JDK11OrLater.class)
+    @TargetClass(className = "sun.awt.DebugSettings")
     static final class Target_sun_awt_DebugSettings {
 
-        // Could not link with Java_sun_awt_DebugSettings_setCTracingOn__Z JNI method
         @Substitute
         void setCTracingOn(boolean enabled) {
             throw new UnsupportedOperationException();
         }
 
-        // Could not link with
-        // Java_sun_awt_DebugSettings_setCTracingOn_JDK11OrLater.class_ZLjava_lang_String_2 JNI
-        // method
         @Substitute
         void setCTracingOn(boolean enabled, String file) {
             throw new UnsupportedOperationException();
         }
 
-        // Could not link with Java_sun_awt_DebugSettings_setCTracingOn__ZLjava_lang_String_2I JNI
-        // method
         @Substitute
         void setCTracingOn(boolean enabled, String file, int line) {
             throw new UnsupportedOperationException();
         }
     }
 
-    @TargetClass(className = "sun.java2d.loops.TransformBlit", onlyWith = JDK11OrLater.class)
+    @TargetClass(className = "sun.java2d.loops.TransformBlit")
     static final class Target_sun_java2d_loops_TransformBlit {
 
         // Could not find JNI method Java_sun_java2d_loops_TransformBlit_Transform
@@ -82,7 +76,7 @@ public final class JavaAWTSubstitutions {
         }
     }
 
-    @TargetClass(className = "sun.font.FileFontStrike", onlyWith = JDK11OrLater.class)
+    @TargetClass(className = "sun.font.FileFontStrike")
     static final class Target_sun_font_FileFontStrike {
 
         // Java_sun_font_FileFontStrike_initNative belongs to Windows static lib
@@ -103,7 +97,7 @@ public final class JavaAWTSubstitutions {
         }
     }
 
-    @TargetClass(className = "sun.awt.FontConfiguration", onlyWith = JDK11OrLater.class)
+    @TargetClass(className = "sun.awt.FontConfiguration")
     static final class Target_sun_awt_FontConfiguration {
 
         // To prevent an attempt to load fonts from java.home
@@ -123,7 +117,7 @@ public final class JavaAWTSubstitutions {
     }
 
     // Used in Target_sun_font_FcFontConfiguration#init()
-    @TargetClass(className = "sun.font.FontConfigManager", innerClass = "FcCompFont", onlyWith = JDK11OrLater.class)
+    @TargetClass(className = "sun.font.FontConfigManager", innerClass = "FcCompFont")
     static final class Target_sun_font_FontConfigManager_FcCompFont {
     }
 
@@ -131,7 +125,7 @@ public final class JavaAWTSubstitutions {
 
         @Override
         public boolean getAsBoolean() {
-            return new JDK11OrLater().getAsBoolean() && !SubstrateOptions.StaticExecutable.getValue();
+            return !SubstrateOptions.StaticExecutable.getValue();
         }
 
     }
@@ -142,7 +136,7 @@ public final class JavaAWTSubstitutions {
     }
 
     // Used in Target_sun_font_FcFontConfiguration#init()
-    @TargetClass(className = "sun.awt.FcFontManager", onlyWith = JDK11OrLater.class)
+    @TargetClass(className = "sun.awt.FcFontManager")
     static final class Target_sun_awt_FcFontManager {
         // Called from Target_sun_font_FcFontConfiguration#init()
         @Alias
@@ -150,7 +144,7 @@ public final class JavaAWTSubstitutions {
     }
 
     // Used in Target_sun_font_FcFontConfiguration#init()
-    @TargetClass(className = "sun.font.FontConfigManager", onlyWith = JDK11OrLater.class)
+    @TargetClass(className = "sun.font.FontConfigManager")
     static final class Target_sun_font_FontConfigManager {
         // Called from Target_sun_font_FcFontConfiguration#init() - original method not visible
         @Alias
@@ -162,14 +156,14 @@ public final class JavaAWTSubstitutions {
     }
 
     // Used in Target_sun_font_FcFontConfiguration#init()
-    @TargetClass(className = "sun.font.FontUtilities", onlyWith = JDK11OrLater.class)
+    @TargetClass(className = "sun.font.FontUtilities")
     static final class Target_sun_font_FontUtilities {
         // Called from Target_sun_font_FcFontConfiguration#init()
         @Alias
         public static native boolean debugFonts();
     }
 
-    @TargetClass(className = "sun.font.FcFontConfiguration", onlyWith = JDK11OrLater.class)
+    @TargetClass(className = "sun.font.FcFontConfiguration")
     static final class Target_sun_font_FcFontConfiguration {
         // Accessed from #init() - original field is private
         @Alias//
@@ -976,7 +970,7 @@ public final class JavaAWTSubstitutions {
     static class FontsDisabled implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
-            return new JDK11OrLater().getAsBoolean() && SubstrateOptions.StaticExecutable.getValue();
+            return SubstrateOptions.StaticExecutable.getValue();
         }
 
         public static final String FONTS_DISABLED_REASON = "AWT uses fontconfig to implement font related functionality on Linux. All fontconfig uses happen through dlsym which doesn't work in a static executable. " +

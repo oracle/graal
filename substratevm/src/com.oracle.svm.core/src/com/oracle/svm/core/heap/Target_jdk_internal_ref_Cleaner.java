@@ -36,7 +36,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
-import com.oracle.svm.core.jdk.JDK11OrLater;
 
 @Platforms(Platform.HOSTED_ONLY.class)
 class Package_jdk_internal_ref implements Function<TargetClass, String> {
@@ -74,25 +73,25 @@ public final class Target_jdk_internal_ref_Cleaner {
  * handling is the same as on JDK 8.
  * </ul>
  */
-@TargetClass(className = "jdk.internal.ref.CleanerFactory", onlyWith = JDK11OrLater.class)
+@TargetClass(className = "jdk.internal.ref.CleanerFactory")
 final class Target_jdk_internal_ref_CleanerFactory {
     @Alias
     public static native Target_java_lang_ref_Cleaner cleaner();
 }
 
-@TargetClass(className = "java.lang.ref.Cleaner", onlyWith = JDK11OrLater.class)
+@TargetClass(className = "java.lang.ref.Cleaner")
 final class Target_java_lang_ref_Cleaner {
     @Alias//
     public Target_jdk_internal_ref_CleanerImpl impl;
 }
 
-@TargetClass(className = "java.lang.ref.Cleaner$Cleanable", onlyWith = JDK11OrLater.class)
+@TargetClass(className = "java.lang.ref.Cleaner$Cleanable")
 final class Target_java_lang_ref_Cleaner_Cleanable {
     @Alias
     native void clean();
 }
 
-@TargetClass(className = "jdk.internal.ref.CleanerImpl", onlyWith = JDK11OrLater.class)
+@TargetClass(className = "jdk.internal.ref.CleanerImpl")
 final class Target_jdk_internal_ref_CleanerImpl {
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "jdk.internal.ref.CleanerImpl$PhantomCleanableRef")//
@@ -110,16 +109,16 @@ final class Target_jdk_internal_ref_CleanerImpl {
     public ReferenceQueue<Object> queue;
 }
 
-@TargetClass(className = "jdk.internal.ref.PhantomCleanable", onlyWith = JDK11OrLater.class)
+@TargetClass(className = "jdk.internal.ref.PhantomCleanable")
 final class Target_jdk_internal_ref_PhantomCleanable {
 }
 
 // Removed by JDK-8251861
-@TargetClass(className = "jdk.internal.ref.WeakCleanable", onlyWith = {JDK11OrLater.class, JDK11OrEarlier.class})
+@TargetClass(className = "jdk.internal.ref.WeakCleanable", onlyWith = JDK11OrEarlier.class)
 final class Target_jdk_internal_ref_WeakCleanable {
 }
 
 // Removed by JDK-8251861
-@TargetClass(className = "jdk.internal.ref.SoftCleanable", onlyWith = {JDK11OrLater.class, JDK11OrEarlier.class})
+@TargetClass(className = "jdk.internal.ref.SoftCleanable", onlyWith = JDK11OrEarlier.class)
 final class Target_jdk_internal_ref_SoftCleanable {
 }

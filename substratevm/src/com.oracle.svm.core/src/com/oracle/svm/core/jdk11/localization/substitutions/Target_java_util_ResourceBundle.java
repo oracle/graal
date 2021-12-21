@@ -22,29 +22,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.core.jdk11.localization.substitutions;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
+import java.util.Locale;
+import java.util.ResourceBundle;
+
+import org.graalvm.nativeimage.ImageSingletons;
+
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.localization.LocalizationSupport;
+import com.oracle.svm.core.jdk.localization.substitutions.modes.OptimizedLocaleMode;
+import com.oracle.svm.core.jdk11.Target_java_lang_Module;
 
-/**
- * Avoid making the code for logging reachable. We do not need it, and it only increases code size.
- * If we ever want to enable logging, we also need to define a way to create the logger at run time,
- * in the JDK the logger is created as part of the module system bootstrapping.
- *
- * The logging code is only present in JDK 11, all logging was removed for JDK 17.
- */
-@TargetClass(className = "jdk.internal.module.IllegalAccessLogger", onlyWith = JDK11OrEarlier.class)
-final class Target_jdk_internal_module_IllegalAccessLogger {
+@TargetClass(value = java.util.ResourceBundle.class, onlyWith = OptimizedLocaleMode.class)
+public final class Target_java_util_ResourceBundle {
 
-    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
-    private static Target_jdk_internal_module_IllegalAccessLogger logger;
+    /**
+     * Currently there is no support for the module system at run time. Module arguments are
+     * therefore ignored.
+     */
 
     @Substitute
-    private static Target_jdk_internal_module_IllegalAccessLogger illegalAccessLogger() {
-        return null;
+    private static ResourceBundle getBundle(String baseName, @SuppressWarnings("unused") Target_java_lang_Module module) {
+        return ImageSingletons.lookup(LocalizationSupport.class).asOptimizedSupport().getCached(baseName, Locale.getDefault());
+    }
+
+    @Substitute
+    private static ResourceBundle getBundle(String baseName, Locale targetLocale, @SuppressWarnings("unused") Target_java_lang_Module module) {
+        return ImageSingletons.lookup(LocalizationSupport.class).asOptimizedSupport().getCached(baseName, targetLocale);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,19 +22,10 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.util;
+package com.oracle.svm.core.jdk11;
 
-import java.lang.instrument.ClassFileTransformer;
-import java.security.ProtectionDomain;
+import com.oracle.svm.core.annotate.TargetClass;
 
-public class AgentSupport {
-
-    public static ClassFileTransformer createClassInstrumentationTransformer(TransformerInterface applyTransformation) {
-        return new ClassFileTransformer() {
-            @Override
-            public byte[] transform(Module module, ClassLoader loader, String className, Class<?> classBeingRedefined, ProtectionDomain protectionDomain, byte[] classfileBuffer) {
-                return applyTransformation.apply(module.getName(), loader, className, classfileBuffer);
-            }
-        };
-    }
+@TargetClass(className = "java.lang.WeakPairMap")
+final class Target_java_lang_WeakPairMap<K1, K2, V> {
 }

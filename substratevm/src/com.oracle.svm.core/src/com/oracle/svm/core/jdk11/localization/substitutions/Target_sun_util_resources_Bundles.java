@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,29 +22,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.core.jdk11.localization.substitutions;
+
+import java.util.Locale;
+import java.util.ResourceBundle;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+
+import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.localization.LocalizationSupport;
+import com.oracle.svm.core.jdk.localization.substitutions.modes.OptimizedLocaleMode;
 
-/**
- * Avoid making the code for logging reachable. We do not need it, and it only increases code size.
- * If we ever want to enable logging, we also need to define a way to create the logger at run time,
- * in the JDK the logger is created as part of the module system bootstrapping.
- *
- * The logging code is only present in JDK 11, all logging was removed for JDK 17.
- */
-@TargetClass(className = "jdk.internal.module.IllegalAccessLogger", onlyWith = JDK11OrEarlier.class)
-final class Target_jdk_internal_module_IllegalAccessLogger {
+// Checkstyle: stop
+import sun.util.resources.Bundles.Strategy;
+// Checkstyle: resume
 
-    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
-    private static Target_jdk_internal_module_IllegalAccessLogger logger;
+@TargetClass(value = sun.util.resources.Bundles.class)
+@SuppressWarnings({"unused"})
+final class Target_sun_util_resources_Bundles {
 
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias)//
+    private static ConcurrentMap<?, ?> cacheList = new ConcurrentHashMap<>();
+
+    @TargetElement(onlyWith = OptimizedLocaleMode.class)
     @Substitute
-    private static Target_jdk_internal_module_IllegalAccessLogger illegalAccessLogger() {
-        return null;
+    private static ResourceBundle loadBundleOf(String baseName, Locale targetLocale, Strategy strategy) {
+        return ImageSingletons.lookup(LocalizationSupport.class).asOptimizedSupport().getCached(baseName, targetLocale);
     }
 }
