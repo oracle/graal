@@ -70,6 +70,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.ClassLoaderSupport;
+import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.jdk.localization.BundleContentSubstitutedLocalizationSupport;
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
@@ -87,6 +88,7 @@ import com.oracle.svm.util.ReflectionUtil;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import sun.text.spi.JavaTimeDateTimePatternProvider;
 import sun.util.locale.provider.LocaleProviderAdapter;
 import sun.util.locale.provider.ResourceBundleBasedAdapter;
 import sun.util.resources.LocaleData;
@@ -121,7 +123,8 @@ import sun.util.resources.LocaleData;
  * @see OptimizedLocalizationSupport
  * @see BundleContentSubstitutedLocalizationSupport
  */
-public abstract class LocalizationFeature implements Feature {
+@AutomaticFeature
+public class LocalizationFeature implements Feature {
 
     protected final boolean optimizedMode = Options.LocalizationOptimizedMode.getValue();
 
@@ -248,7 +251,6 @@ public abstract class LocalizationFeature implements Feature {
         allLocales.add(defaultLocale);
         support = selectLocalizationSupport();
         ImageSingletons.add(LocalizationSupport.class, support);
-        ImageSingletons.add(LocalizationFeature.class, this);
 
         addCharsets();
         if (optimizedMode) {
@@ -390,18 +392,14 @@ public abstract class LocalizationFeature implements Feature {
                     CurrencyNameProvider.class,
                     LocaleNameProvider.class,
                     TimeZoneNameProvider.class,
+                    JavaTimeDateTimePatternProvider.class,
                     CalendarDataProvider.class,
                     CalendarNameProvider.class);
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected List<Class<? extends LocaleServiceProvider>> getSpiClasses() {
-        return spiClasses;
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
     private void addProviders() {
         OptimizedLocalizationSupport optimizedLocalizationSupport = support.asOptimizedSupport();
-        for (Class<? extends LocaleServiceProvider> providerClass : getSpiClasses()) {
+        for (Class<? extends LocaleServiceProvider> providerClass : spiClasses) {
             LocaleProviderAdapter adapter = Objects.requireNonNull(LocaleProviderAdapter.getAdapter(providerClass, defaultLocale));
             LocaleServiceProvider provider = Objects.requireNonNull(adapter.getLocaleServiceProvider(providerClass));
             optimizedLocalizationSupport.providerPools.put(providerClass, new Target_sun_util_locale_provider_LocaleServiceProviderPool_OptimizedLocaleMode(provider));
@@ -409,7 +407,7 @@ public abstract class LocalizationFeature implements Feature {
 
         for (Locale locale : allLocales) {
             for (Locale candidateLocale : optimizedLocalizationSupport.control.getCandidateLocales("", locale)) {
-                for (Class<? extends LocaleServiceProvider> providerClass : getSpiClasses()) {
+                for (Class<? extends LocaleServiceProvider> providerClass : spiClasses) {
                     LocaleProviderAdapter adapter = Objects.requireNonNull(LocaleProviderAdapter.getAdapter(providerClass, candidateLocale));
 
                     optimizedLocalizationSupport.adaptersByClass.put(Pair.create(providerClass, candidateLocale), adapter);
@@ -432,10 +430,11 @@ public abstract class LocalizationFeature implements Feature {
             prepareBundle(localeData(java.text.spi.BreakIteratorProvider.class, locale).getCollationData(locale), locale);
             prepareBundle(localeData(java.text.spi.DateFormatProvider.class, locale).getDateFormatData(locale), locale);
             prepareBundle(localeData(java.text.spi.NumberFormatProvider.class, locale).getNumberFormatData(locale), locale);
-            /* Note that JDK 11 support overrides this method to register more bundles. */
+            prepareBundle(localeData(java.text.spi.BreakIteratorProvider.class, locale).getBreakIteratorResources(locale), locale);
         }
 
         final String[] alwaysRegisteredResourceBundles = new String[]{
+                        "sun.text.resources.FormatData",
                         "sun.util.logging.resources.logging",
                         "sun.util.resources.TimeZoneNames"
         };
