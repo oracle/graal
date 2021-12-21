@@ -2866,19 +2866,45 @@ def has_svm_launchers(components, fatalIfMissing=False):
     return all((has_svm_launcher(component, fatalIfMissing=fatalIfMissing) for component in components))
 
 
-def get_native_image_locations(name, image_name, fatal_if_missing=True):
-    c = name if isinstance(name, mx_sdk.GraalVmComponent) else get_component(name)
-    configs = _get_library_configs(c) + _get_launcher_configs(c)
-    libgraal_libs = [l for l in configs if image_name in basename(l.destination)]
-    if libgraal_libs:
-        library_config = libgraal_libs[0]
-        dist = get_final_graalvm_distribution()
-        source_type = 'skip' if _skip_libraries(library_config) else 'dependency'
-        source_location = dist.find_single_source_location(
-            source_type + ':' + GraalVmLibrary.project_name(library_config), fatal_if_missing=fatal_if_missing)
-        if source_location:
-            return join(graalvm_output_root(), source_location)
-    return None
+def get_native_image_locations(component, image_name, fatal_if_missing=True):
+    """
+    :type component: mx_sdk.GraalVmComponent | str
+    :type image_name: str
+    :type fatal_if_missing: bool
+    :rtype: str | None
+    """
+    def _get_library_config():
+        name = mx.add_lib_prefix(mx.add_lib_suffix(remove_lib_prefix_suffix(image_name, require_suffix_prefix=False)))
+        configs = _get_library_configs(component)
+        return _get_config(name, configs)
+
+    def _get_launcher_config():
+        name = mx.exe_suffix(remove_exe_suffix(image_name, require_suffix=False))
+        configs = _get_launcher_configs(component)
+        return _get_config(name, configs)
+
+    def _get_config(name, configs):
+        configs = [c for c in configs if basename(c.destination) == name]
+        if configs:
+            if len(configs) > 1:
+                raise mx.abort("Found multiple locations for '{}' in '{}': {}".format(image_name, component.name, configs))
+            return configs[0]
+        return None
+
+    component = component if isinstance(component, mx_sdk.GraalVmComponent) else get_component(component)
+    graalvm_dist = get_final_graalvm_distribution()
+    source_location = None
+    lib_config = _get_library_config()
+    if lib_config:
+        source_type = 'skip' if _skip_libraries(lib_config) else 'dependency'
+        source_location = graalvm_dist.find_single_source_location(source_type + ':' + GraalVmLibrary.project_name(lib_config), abort_on_multiple=True)
+    if source_location is None:
+        launcher_config = _get_launcher_config()
+        if launcher_config:
+            source_location = graalvm_dist.find_single_source_location('dependency:' + GraalVmNativeImage.project_name(launcher_config), fatal_if_missing=False, abort_on_multiple=True)
+    if source_location is None and fatal_if_missing:
+        raise mx.abort("Cannot find native image location of '{}' in '{}'".format(image_name, component.name))
+    return source_location if source_location is None else join(graalvm_output_root(), source_location)
 
 
 def get_component(name, fatalIfMissing=False, stage1=False):
