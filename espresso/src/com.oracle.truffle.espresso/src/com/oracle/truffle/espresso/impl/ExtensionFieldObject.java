@@ -26,6 +26,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
@@ -93,6 +94,20 @@ public final class ExtensionFieldObject {
     }
 
     public void setObject(Field field, Object value, boolean forceVolatile) {
+        if (field.getDeclaringKlass().getContext().anyHierarchyChanged()) {
+            if (value != StaticObject.NULL && value instanceof StaticObject) {
+                Klass klass = null;
+                try {
+                    klass = field.resolveTypeKlass();
+                } catch (EspressoException e) {
+                    // ignore if type klass cannot be resolved
+                }
+                if (klass != null && !klass.isAssignableFrom(((StaticObject) value).getKlass())) {
+                    Meta meta = field.getDeclaringKlass().getMeta();
+                    throw meta.throwException(meta.java_lang_IncompatibleClassChangeError);
+                }
+            }
+        }
         FieldStorageObject fieldAndValue = getOrCreateFieldAndValue(field);
         if (forceVolatile) {
             field.linkedField.setObjectVolatile(fieldAndValue, value);
