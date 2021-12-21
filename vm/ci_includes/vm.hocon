@@ -166,14 +166,14 @@ builds += [
     ]
     name: deploy-vm-maven-darwin-amd64
   }
-  ${gate_vm_windows} ${vm_common_windows_jdk8} ${maven_base_8_native} {
+  ${vm_common_windows_jdk8} ${gate_vm_windows} ${maven_base_8_native} {
     run: [
       ${maven_base_8_native.build}
       ${maven_base_8_native.deploy} [--dry-run, "lafo-maven"]
     ]
     name: gate-vm-maven-dry-run-windows-amd64
   }
-  ${deploy_daily_vm_windows} ${vm_common_windows_jdk8} ${maven_base_8_native} {
+  ${vm_common_windows_jdk8} ${deploy_daily_vm_windows} ${maven_base_8_native} {
     run: [
       ${maven_base_8_native.build}
       ${maven_base_8_native.deploy} ["lafo-maven"]
