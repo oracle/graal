@@ -26,6 +26,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 // This class models the data in fields that were added by class redefinition
@@ -73,7 +74,22 @@ public final class ExtensionFieldObject {
         } else {
             result = field.linkedField.getObject(fieldAndValue);
         }
-        return result == null ? StaticObject.NULL : (StaticObject) result;
+        StaticObject finalResult = result == null ? StaticObject.NULL : (StaticObject) result;
+
+        if (field.getDeclaringKlass().getContext().anyHierarchyChanged()) {
+            if (finalResult == StaticObject.NULL) {
+                return finalResult;
+            }
+            try {
+                Klass klass = field.resolveTypeKlass();
+                if (klass != null && !klass.isAssignableFrom(finalResult.getKlass())) {
+                    finalResult = StaticObject.NULL;
+                }
+            } catch (EspressoException e) {
+                // ignore if type klass cannot be resolved
+            }
+        }
+        return finalResult;
     }
 
     public void setObject(Field field, Object value, boolean forceVolatile) {
