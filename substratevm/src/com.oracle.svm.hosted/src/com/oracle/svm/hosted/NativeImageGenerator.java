@@ -1347,7 +1347,7 @@ public class NativeImageGenerator {
         lowTier.addBeforeLast(new OptimizeExceptionPathsPhase());
 
         BasePhase<CoreProviders> addressLoweringPhase = backend.newAddressLoweringPhase(runtimeCallProviders.getCodeCache());
-        if (firstTier) {
+        if (firstTier || SubstrateOptions.DevMode.getValue()) {
             lowTier.findPhase(ExpandLogicPhase.class, true).add(addressLoweringPhase);
         } else {
             lowTier.findPhase(UseTrappingNullChecksPhase.class).add(addressLoweringPhase);
@@ -1371,11 +1371,13 @@ public class NativeImageGenerator {
             highTier.removePhase(InliningPhase.class);
 
             /* Remove phases that are not suitable for AOT compilation. */
-            highTier.findPhase(ConvertDeoptimizeToGuardPhase.class, true).remove();
-            midTier.findPhase(DeoptimizationGroupingPhase.class).remove();
+            if (!SubstrateOptions.DevMode.getValue()) {
+                highTier.findPhase(ConvertDeoptimizeToGuardPhase.class, true).remove();
+                midTier.findPhase(DeoptimizationGroupingPhase.class).remove();
+            }
 
         } else {
-            if (firstTier) {
+            if (firstTier || SubstrateOptions.DevMode.getValue()) {
                 ListIterator<BasePhase<? super MidTierContext>> it = midTier.findPhase(FrameStateAssignmentPhase.class);
                 it.add(new CollectDeoptimizationSourcePositionsPhase());
 

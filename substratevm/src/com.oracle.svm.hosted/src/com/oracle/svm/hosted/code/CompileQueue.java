@@ -33,6 +33,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Objects;
@@ -74,7 +75,9 @@ import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
 import org.graalvm.compiler.lir.asm.DataBuilder;
 import org.graalvm.compiler.lir.asm.FrameContext;
 import org.graalvm.compiler.lir.framemap.FrameMap;
+import org.graalvm.compiler.lir.phases.LIRPhase;
 import org.graalvm.compiler.lir.phases.LIRSuites;
+import org.graalvm.compiler.lir.phases.PostAllocationOptimizationPhase.PostAllocationOptimizationContext;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedNode;
@@ -102,6 +105,7 @@ import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectState;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.common.BoxNodeOptimizationPhase;
@@ -1395,11 +1399,17 @@ public class CompileQueue {
         PhaseSuite<MidTierContext> midTier = suites.getMidTier();
         midTier.removePhase(FloatingReadPhase.class);
         PhaseSuite<LowTierContext> lowTier = suites.getLowTier();
-        ((FixReadsPhase) lowTier.findPhase(FixReadsPhase.class).previous()).setReplaceInputsWithConstants(false);
+        ListIterator<BasePhase<? super LowTierContext>> it = lowTier.findPhase(FixReadsPhase.class);
+        if (it != null) {
+            ((FixReadsPhase) it.previous()).setReplaceInputsWithConstants(false);
+        }
     }
 
     private static void removeDeoptTargetOptimizations(LIRSuites lirSuites) {
-        lirSuites.getPostAllocationOptimizationStage().findPhase(RedundantMoveElimination.class).remove();
+        ListIterator<LIRPhase<PostAllocationOptimizationContext>> it = lirSuites.getPostAllocationOptimizationStage().findPhase(RedundantMoveElimination.class);
+        if (it != null) {
+            it.remove();
+        }
         lirSuites.getAllocationStage().findPhaseInstance(RegisterAllocationPhase.class).setNeverSpillConstants(true);
     }
 
