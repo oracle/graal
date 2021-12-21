@@ -2907,6 +2907,18 @@ def get_native_image_locations(component, image_name, fatal_if_missing=True):
     return source_location if source_location is None else join(graalvm_output_root(), source_location)
 
 
+def get_all_native_image_locations(abs_path=False):
+    configs = []
+    for component in mx_sdk_vm.graalvm_components():
+        configs += [c for c in _get_library_configs(component) if not _skip_libraries(c)]
+        configs += [c for c in _get_launcher_configs(component) if not _force_bash_launchers(c)]
+    graalvm_dist = get_final_graalvm_distribution()
+    locations = [graalvm_dist.find_single_source_location('dependency:' + GraalVmNativeImage.project_name(config)) for config in configs]
+    if abs_path:
+        locations = [join(graalvm_output_root(), location) for location in locations]
+    return locations
+
+
 def get_component(name, fatalIfMissing=False, stage1=False):
     """
     :type name: str
