@@ -147,14 +147,14 @@ public final class ThreadData extends UnacquiredThreadData {
     }
 
     /**
-     * May only be called by a detaching thread. If the {@link ThreadData} is not used by any other
-     * threads, then this method frees the thread data right away. Otherwise, it marks the data as
-     * ready to be freed so that it can be freed once the reference count reaches zero.
+     * If the {@link ThreadData} is not used by any other threads, then this method frees the thread
+     * data right away. Otherwise, it marks the data as ready to be freed so that it can be freed
+     * once the reference count reaches zero.
      */
     @Override
     @Uninterruptible(reason = "Locking without transition requires that the whole critical section is uninterruptible.")
     public void detach() {
-        assert isForCurrentThread() : "may only be called by the detaching thread";
+        assert isForCurrentThread() || VMOperation.isInProgressAtSafepoint() : "may only be called by the detaching thread or at a safepoint";
         assert !detached : "may only be called once";
 
         SpinLockUtils.lockNoTransition(this, LOCK_OFFSET);
