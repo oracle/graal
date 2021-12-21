@@ -232,6 +232,7 @@ public final class ClassRedefinition {
                     }
                 case CLASS_HIERARCHY_CHANGED:
                     if (context.arbitraryChangesSupported()) {
+                        context.markChangedHierarchy();
                         doRedefineClass(packet, invalidatedClasses, redefinedClasses);
                         return 0;
                     } else {
