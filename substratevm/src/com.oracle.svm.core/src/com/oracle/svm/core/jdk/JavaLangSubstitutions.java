@@ -167,7 +167,6 @@ final class Target_java_lang_String {
     }
 
     @AnnotateOriginal
-    @TargetElement(onlyWith = JDK11OrLater.class)
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     native boolean isLatin1();
 
@@ -176,16 +175,14 @@ final class Target_java_lang_String {
     public native int length();
 
     @AnnotateOriginal
-    @TargetElement(onlyWith = JDK11OrLater.class)
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     native byte coder();
 
-    @Alias @TargetElement(name = "value", onlyWith = JDK11OrLater.class) byte[] valueJDK11;
-
-    @Alias @TargetElement(name = "value", onlyWith = JDK8OrEarlier.class) char[] valueJDK8;
+    @Alias //
+    byte[] value;
 }
 
-@TargetClass(className = "java.lang.StringUTF16", onlyWith = JDK11OrLater.class)
+@TargetClass(className = "java.lang.StringUTF16")
 final class Target_java_lang_StringUTF16 {
 
     @AnnotateOriginal
@@ -219,24 +216,6 @@ final class Target_java_lang_Throwable {
         } else {
             return new StackTraceElement[0];
         }
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    int getStackTraceDepth() {
-        if (stackTrace != null) {
-            return stackTrace.length;
-        }
-        return 0;
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    StackTraceElement getStackTraceElement(int index) {
-        if (stackTrace == null) {
-            throw new IndexOutOfBoundsException();
-        }
-        return stackTrace[index];
     }
 }
 
@@ -450,12 +429,6 @@ final class Target_java_lang_StrictMath {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private static double exp(double a) {
-        return StrictMathInvoker.exp(WordFactory.nullPointer(), WordFactory.nullPointer(), a);
-    }
-
-    @Substitute
     private static double log(double a) {
         return StrictMathInvoker.log(WordFactory.nullPointer(), WordFactory.nullPointer(), a);
     }
@@ -468,12 +441,6 @@ final class Target_java_lang_StrictMath {
     @Substitute
     private static double sqrt(double a) {
         return StrictMathInvoker.sqrt(WordFactory.nullPointer(), WordFactory.nullPointer(), a);
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private static double cbrt(double a) {
-        return StrictMathInvoker.cbrt(WordFactory.nullPointer(), WordFactory.nullPointer(), a);
     }
 
     // Checkstyle: stop
@@ -489,12 +456,6 @@ final class Target_java_lang_StrictMath {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private static double pow(double a, double b) {
-        return StrictMathInvoker.pow(WordFactory.nullPointer(), WordFactory.nullPointer(), a, b);
-    }
-
-    @Substitute
     private static double sinh(double x) {
         return StrictMathInvoker.sinh(WordFactory.nullPointer(), WordFactory.nullPointer(), x);
     }
@@ -507,12 +468,6 @@ final class Target_java_lang_StrictMath {
     @Substitute
     private static double tanh(double x) {
         return StrictMathInvoker.tanh(WordFactory.nullPointer(), WordFactory.nullPointer(), x);
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private static double hypot(double x, double y) {
-        return StrictMathInvoker.hypot(WordFactory.nullPointer(), WordFactory.nullPointer(), x, y);
     }
 
     @Substitute
@@ -685,7 +640,7 @@ final class Target_java_lang_NullPointerException {
     }
 }
 
-@TargetClass(className = "jdk.internal.loader.ClassLoaders", onlyWith = JDK11OrLater.class)
+@TargetClass(className = "jdk.internal.loader.ClassLoaders")
 final class Target_jdk_internal_loader_ClassLoaders {
     @Alias
     public static native ClassLoader platformClassLoader();
@@ -696,7 +651,7 @@ public final class JavaLangSubstitutions {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static byte[] getBytes(String string) {
-        return SubstrateUtil.cast(string, Target_java_lang_String.class).valueJDK11;
+        return SubstrateUtil.cast(string, Target_java_lang_String.class).value;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

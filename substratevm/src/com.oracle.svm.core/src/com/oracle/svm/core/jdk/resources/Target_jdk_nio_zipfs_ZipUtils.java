@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,15 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
 
-import java.util.function.BooleanSupplier;
+package com.oracle.svm.core.jdk.resources;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.TargetClass;
 
-public class JDK11OrLater implements BooleanSupplier {
-    @Override
-    public boolean getAsBoolean() {
-        return JavaVersionUtil.JAVA_SPEC >= 11;
-    }
+@TargetClass(className = "jdk.nio.zipfs.ZipUtils")
+@SuppressWarnings({"unused", "static-method"})
+final class Target_jdk_nio_zipfs_ZipUtils {
+
+    @Alias
+    public static native String toRegexPattern(String globPattern);
 }

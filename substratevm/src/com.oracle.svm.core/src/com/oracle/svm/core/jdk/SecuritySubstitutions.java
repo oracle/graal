@@ -24,8 +24,12 @@
  */
 package com.oracle.svm.core.jdk;
 
+// Checkstyle: stop
+
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
 import java.security.AccessControlContext;
 import java.security.AccessControlException;
@@ -43,7 +47,6 @@ import java.security.Provider;
 import java.security.SecureRandom;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -64,13 +67,11 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
-// Checkstyle: stop
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import sun.security.jca.ProviderList;
 import sun.security.util.SecurityConstants;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
+
 // Checkstyle: resume
 
 // Checkstyle: allow reflection
@@ -320,7 +321,7 @@ final class ProviderUtil {
     }
 }
 
-@TargetClass(className = "javax.crypto.ProviderVerifier", onlyWith = JDK11OrLater.class)
+@TargetClass(className = "javax.crypto.ProviderVerifier")
 @SuppressWarnings({"unused"})
 final class Target_javax_crypto_ProviderVerifier {
 
@@ -373,13 +374,6 @@ final class Target_javax_crypto_JceSecurity {
     private static Map<Provider, Object> verifyingProviders;
 
     @Substitute
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    static void verifyProviderJar(URL var0) {
-        throw JceSecurityUtil.shouldNotReach("javax.crypto.JceSecurity.verifyProviderJar(URL)");
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDK11OrLater.class)
     static void verifyProvider(URL codeBase, Provider p) {
         throw JceSecurityUtil.shouldNotReach("javax.crypto.JceSecurity.verifyProviderJar(URL, Provider)");
     }
@@ -536,10 +530,7 @@ final class Target_java_security_Policy_PolicyInfo {
 @TargetClass(java.security.Policy.class)
 final class Target_java_security_Policy {
 
-    @Delete @TargetElement(onlyWith = JDK8OrEarlier.class) //
-    private static AtomicReference<?> policy;
-
-    @Delete @TargetElement(onlyWith = JDK11OrLater.class) //
+    @Delete //
     private static Target_java_security_Policy_PolicyInfo policyInfo;
 
     @Substitute
@@ -644,11 +635,8 @@ final class Target_sun_security_provider_PolicyFile {
 @SuppressWarnings({"unused", "static-method"})
 final class Target_sun_security_jca_ProviderConfig {
 
-    @Alias @TargetElement(onlyWith = JDK11OrLater.class) //
+    @Alias //
     private String provName;
-
-    @Alias @TargetElement(onlyWith = JDK8OrEarlier.class) //
-    private String className;
 
     /**
      * All security providers used in a native-image must be registered during image build time. At
@@ -661,20 +649,13 @@ final class Target_sun_security_jca_ProviderConfig {
      * {@code org.jcp.xml.dsig.internal.dom.XMLDSigRI}.
      */
     @Substitute
-    @TargetElement(name = "doLoadProvider", onlyWith = JDK11OrLater.class)
-    private Provider doLoadProviderJDK11OrLater() {
+    private Provider doLoadProvider() {
         throw VMError.unsupportedFeature("Cannot load new security provider at runtime: " + provName + ".");
-    }
-
-    @Substitute
-    @TargetElement(name = "doLoadProvider", onlyWith = JDK8OrEarlier.class)
-    private Provider doLoadProviderJDK8OrEarlier() {
-        throw VMError.unsupportedFeature("Cannot load new security provider at runtime: " + className + ".");
     }
 }
 
 @SuppressWarnings("unused")
-@TargetClass(className = "sun.security.jca.ProviderConfig", innerClass = "ProviderLoader", onlyWith = JDK11OrLater.class)
+@TargetClass(className = "sun.security.jca.ProviderConfig", innerClass = "ProviderLoader")
 final class Target_sun_security_jca_ProviderConfig_ProviderLoader {
     @Alias//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, isFinal = true)//

@@ -36,13 +36,12 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
-import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
 
 @SuppressWarnings("unused")
-@TargetClass(value = java.lang.Module.class, onlyWith = JDK11OrLater.class)
-public final class Target_java_lang_Module_JDK11OrLater {
+@TargetClass(value = java.lang.Module.class)
+public final class Target_java_lang_Module {
 
     @Alias private String name;
 
@@ -54,7 +53,7 @@ public final class Target_java_lang_Module_JDK11OrLater {
     }
 
     @Substitute //
-    @TargetElement(onlyWith = {JDK11OrLater.class, JDK11OrEarlier.class})
+    @TargetElement(onlyWith = JDK11OrEarlier.class)
     private static void defineModule0(Module module, boolean isOpen, String version, String location, String[] pns) {
         ModuleUtil.defineModule(module, isOpen, Arrays.asList(pns));
     }
@@ -90,7 +89,7 @@ public final class Target_java_lang_Module_JDK11OrLater {
         }
     }
 
-    @TargetClass(className = "java.lang.Module", innerClass = "ReflectionData", onlyWith = JDK11OrLater.class) //
+    @TargetClass(className = "java.lang.Module", innerClass = "ReflectionData") //
     private static final class Target_java_lang_Module_ReflectionData {
 
         @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "java.lang.WeakPairMap") //

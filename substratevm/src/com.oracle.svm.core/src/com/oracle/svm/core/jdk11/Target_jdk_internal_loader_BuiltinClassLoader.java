@@ -34,10 +34,9 @@ import java.util.List;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.ResourcesHelper;
 
-@TargetClass(value = jdk.internal.loader.BuiltinClassLoader.class, onlyWith = JDK11OrLater.class)
+@TargetClass(value = jdk.internal.loader.BuiltinClassLoader.class)
 @SuppressWarnings({"unused", "static-method"})
 final class Target_jdk_internal_loader_BuiltinClassLoader {
 
@@ -48,7 +47,7 @@ final class Target_jdk_internal_loader_BuiltinClassLoader {
 
     @Substitute
     protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
-        Target_java_lang_ClassLoader_JDK11OrLater self = SubstrateUtil.cast(this, Target_java_lang_ClassLoader_JDK11OrLater.class);
+        Target_java_lang_ClassLoader self = SubstrateUtil.cast(this, Target_java_lang_ClassLoader.class);
         Class<?> clazz = self.findLoadedClass(name);
         if (clazz == null) {
             throw new ClassNotFoundException(name);

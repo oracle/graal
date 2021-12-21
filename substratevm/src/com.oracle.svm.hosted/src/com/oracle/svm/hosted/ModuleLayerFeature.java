@@ -59,7 +59,6 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk11.BootModuleLayerSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.jdk.NativeImageClassLoaderSupportJDK11OrLater;
@@ -104,11 +103,6 @@ public final class ModuleLayerFeature implements Feature {
     private Field moduleLayerNameToModuleField;
     private Field moduleLayerParentsField;
     private ModuleLayerFeatureUtils moduleLayerFeatureUtils;
-
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return new JDK11OrLater().getAsBoolean();
-    }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {

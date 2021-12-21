@@ -43,8 +43,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.NativeImageOptions;
@@ -91,10 +89,6 @@ public final class Target_java_lang_reflect_Executable {
 
     @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = AnnotatedExceptionTypesComputer.class) //
     Object[] annotatedExceptionTypes;
-
-    @Alias //
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    native Target_java_lang_reflect_Executable getRoot();
 
     @Alias //
     public native int getModifiers();

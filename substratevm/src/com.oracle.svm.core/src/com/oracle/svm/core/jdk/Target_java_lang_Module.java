@@ -28,7 +28,7 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 
 @SuppressWarnings("unused")
-@TargetClass(className = "java.lang.Module", onlyWith = JDK11OrLater.class)
+@TargetClass(className = "java.lang.Module")
 public final class Target_java_lang_Module {
     @Alias //
     public String name;

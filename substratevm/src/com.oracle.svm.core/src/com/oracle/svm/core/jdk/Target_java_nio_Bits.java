@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,13 +24,32 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.util.function.BooleanSupplier;
+import java.util.concurrent.atomic.AtomicLong;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
+import com.oracle.svm.core.annotate.TargetClass;
 
-public class JDK8OrEarlier implements BooleanSupplier {
-    @Override
-    public boolean getAsBoolean() {
-        return JavaVersionUtil.JAVA_SPEC <= 8;
-    }
+@TargetClass(className = "java.nio.Bits")
+final class Target_java_nio_Bits {
+
+    // Checkstyle: stop
+
+    @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
+    private static int PAGE_SIZE = -1;
+
+    @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
+    private static boolean MEMORY_LIMIT_SET = false;
+    @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
+    private static long MAX_MEMORY = -1;
+
+    @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
+    private static AtomicLong RESERVED_MEMORY = new AtomicLong();
+    @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
+    private static AtomicLong TOTAL_CAPACITY = new AtomicLong();
+    @Alias @RecomputeFieldValue(kind = Kind.FromAlias) //
+    private static AtomicLong COUNT = new AtomicLong();
+
+    // Checkstyle: resume
 }

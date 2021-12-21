@@ -42,10 +42,7 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.headers.LibC;
-import com.oracle.svm.core.jdk.JDK11OrLater;
-import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.IsDefined;
@@ -72,14 +69,7 @@ class Package_jdk_internal_misc implements Function<TargetClass, String> {
 final class Target_jdk_internal_misc_Signal {
 
     @Substitute
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private static /* native */ int findSignal(String signalName) {
-        return Util_jdk_internal_misc_Signal.numberFromName(signalName);
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDK11OrLater.class)
-    private static /* native */ int findSignal0(String signalName) {
+    private static int findSignal0(String signalName) {
         return Util_jdk_internal_misc_Signal.numberFromName(signalName);
     }
 
@@ -416,7 +406,7 @@ final class IgnoreSIGPIPEStartupHook implements Runnable {
     }
 }
 
-@TargetClass(className = "jdk.internal.misc.VM", onlyWith = JDK11OrLater.class)
+@TargetClass(className = "jdk.internal.misc.VM")
 final class Target_jdk_internal_misc_VM {
 
     /* Implementation from src/hotspot/share/prims/jvm.cpp#L286 translated to Java. */

@@ -26,10 +26,9 @@ package com.oracle.svm.core.jdk11;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDK11OrLater;
 
 @SuppressWarnings("unused")
-@TargetClass(value = java.lang.ModuleLayer.class, onlyWith = JDK11OrLater.class)
+@TargetClass(value = java.lang.ModuleLayer.class)
 final class Target_java_lang_ModuleLayer {
 
     @SuppressWarnings("unused")

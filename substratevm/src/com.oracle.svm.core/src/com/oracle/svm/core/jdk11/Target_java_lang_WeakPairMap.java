@@ -25,8 +25,7 @@
 package com.oracle.svm.core.jdk11;
 
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDK11OrLater;
 
-@TargetClass(className = "java.lang.WeakPairMap", onlyWith = JDK11OrLater.class)
+@TargetClass(className = "java.lang.WeakPairMap")
 final class Target_java_lang_WeakPairMap<K1, K2, V> {
 }

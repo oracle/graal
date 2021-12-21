@@ -25,6 +25,9 @@
  */
 package com.oracle.svm.core.jdk11;
 
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Stream;
+
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
@@ -32,14 +35,10 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.hub.ClassForNameSupport;
-import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.Target_java_lang_Package;
 
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Stream;
-
-@TargetClass(value = jdk.internal.loader.ClassLoaders.class, onlyWith = JDK11OrLater.class)
-final class Target_jdk_internal_loader_ClassLoaders_JDK11OrLater {
+@TargetClass(value = jdk.internal.loader.ClassLoaders.class)
+final class Target_jdk_internal_loader_ClassLoaders {
     @Alias
     static native Target_jdk_internal_loader_BuiltinClassLoader bootLoader();
 
@@ -47,8 +46,8 @@ final class Target_jdk_internal_loader_ClassLoaders_JDK11OrLater {
     public static native ClassLoader platformClassLoader();
 }
 
-@TargetClass(value = jdk.internal.loader.BootLoader.class, onlyWith = JDK11OrLater.class)
-final class Target_jdk_internal_loader_BootLoader_JDK11OrLater {
+@TargetClass(value = jdk.internal.loader.BootLoader.class)
+final class Target_jdk_internal_loader_BootLoader {
 
     @Substitute
     static Package getDefinedPackage(String name) {
@@ -63,8 +62,8 @@ final class Target_jdk_internal_loader_BootLoader_JDK11OrLater {
 
     @Substitute
     public static Stream<Package> packages() {
-        Target_jdk_internal_loader_BuiltinClassLoader bootClassLoader = Target_jdk_internal_loader_ClassLoaders_JDK11OrLater.bootLoader();
-        Target_java_lang_ClassLoader_JDK11OrLater systemClassLoader = SubstrateUtil.cast(bootClassLoader, Target_java_lang_ClassLoader_JDK11OrLater.class);
+        Target_jdk_internal_loader_BuiltinClassLoader bootClassLoader = Target_jdk_internal_loader_ClassLoaders.bootLoader();
+        Target_java_lang_ClassLoader systemClassLoader = SubstrateUtil.cast(bootClassLoader, Target_java_lang_ClassLoader.class);
         return systemClassLoader.packages();
     }
 
@@ -78,7 +77,7 @@ final class Target_jdk_internal_loader_BootLoader_JDK11OrLater {
 
     @SuppressWarnings("unused")
     @Substitute
-    private static Class<?> loadClass(Target_java_lang_Module_JDK11OrLater module, String name) {
+    private static Class<?> loadClass(Target_java_lang_Module module, String name) {
         /* The module system is not supported for now, therefore the module parameter is ignored. */
         return ClassForNameSupport.forNameOrNull(name, null);
     }
@@ -90,8 +89,8 @@ final class Target_jdk_internal_loader_BootLoader_JDK11OrLater {
 
     /**
      * All ClassLoaderValue are reset at run time for now. See also
-     * {@link Target_java_lang_ClassLoader_JDK11OrLater#classLoaderValueMap} for resetting of
-     * individual class loaders.
+     * {@link Target_java_lang_ClassLoader#classLoaderValueMap} for resetting of individual class
+     * loaders.
      */
     // Checkstyle: stop
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = ConcurrentHashMap.class)//
@@ -100,6 +99,6 @@ final class Target_jdk_internal_loader_BootLoader_JDK11OrLater {
 }
 
 /** Dummy class to have a class with the file's name. */
-public final class JavaLangSubstitutions_JDK11OrLater {
+public final class JavaLangSubstitutions {
 
 }

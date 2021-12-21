@@ -24,25 +24,23 @@
  */
 package com.oracle.svm.core.jdk.localization.substitutions;
 
+import java.util.Locale;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+
+import org.graalvm.nativeimage.ImageSingletons;
+
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
-import com.oracle.svm.core.util.VMError;
-import org.graalvm.nativeimage.ImageSingletons;
 
 // Checkstyle: stop
 import sun.util.locale.provider.JRELocaleProviderAdapter;
 import sun.util.locale.provider.LocaleResources;
 // Checkstyle: resume
-
-import java.util.Locale;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 @TargetClass(JRELocaleProviderAdapter.class)
 final class Target_sun_util_locale_provider_JRELocaleProviderAdapter {
@@ -53,22 +51,6 @@ final class Target_sun_util_locale_provider_JRELocaleProviderAdapter {
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = ConcurrentHashMap.class)//
     @Alias//
     private ConcurrentMap<Locale, LocaleResources> localeResourcesMap;
-
-    @Alias //
-    @TargetElement(onlyWith = JDK8OrEarlier.class) //
-    static Boolean isNonENSupported;
-
-    @Substitute //
-    @TargetElement(onlyWith = JDK8OrEarlier.class) //
-    private static boolean isNonENLangSupported() {
-        /*
-         * The original implementation performs lazily initialization that looks at the file system
-         * (a certain .jar file being present). That cannot work in a native image, and even worse
-         * it makes file access methods reachable in very basic images.
-         */
-        VMError.guarantee(isNonENSupported != null, "isNonENSupported must be initialized during image generation");
-        return isNonENSupported;
-    }
 
     @Substitute
     @SuppressWarnings({"unused", "static-method"})

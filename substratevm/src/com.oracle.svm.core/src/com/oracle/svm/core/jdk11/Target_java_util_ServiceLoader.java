@@ -38,13 +38,12 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK11OrLater;
 
 /**
  * Disable the module based iteration in favour of classpath based iteration. See
  * ServiceLoaderFeature for explanation why.
  */
-@TargetClass(value = java.util.ServiceLoader.class, onlyWith = JDK11OrLater.class)
+@TargetClass(value = java.util.ServiceLoader.class)
 final class Target_java_util_ServiceLoader {
     @Alias Class<?> service;
 
@@ -57,7 +56,7 @@ final class Target_java_util_ServiceLoader {
     native Constructor<?> getConstructor(Class<?> clazz);
 }
 
-@TargetClass(value = java.util.ServiceLoader.class, innerClass = "ModuleServicesLookupIterator", onlyWith = JDK11OrLater.class)
+@TargetClass(value = java.util.ServiceLoader.class, innerClass = "ModuleServicesLookupIterator")
 final class Target_java_util_ServiceLoader_ModuleServicesLookupIterator {
     @SuppressWarnings("unused")
     @Substitute
@@ -71,7 +70,7 @@ final class Target_java_util_ServiceLoader_ModuleServicesLookupIterator {
     }
 }
 
-@TargetClass(value = java.util.ServiceLoader.class, innerClass = "LazyClassPathLookupIterator", onlyWith = JDK11OrLater.class)
+@TargetClass(value = java.util.ServiceLoader.class, innerClass = "LazyClassPathLookupIterator")
 final class Target_java_util_ServiceLoader_LazyClassPathLookupIterator {
     @Alias//
     ServiceLoader.Provider<?> nextProvider;

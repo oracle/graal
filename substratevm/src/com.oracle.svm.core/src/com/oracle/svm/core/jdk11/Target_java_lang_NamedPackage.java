@@ -26,9 +26,8 @@ package com.oracle.svm.core.jdk11;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDK11OrLater;
 
-@TargetClass(className = "java.lang.NamedPackage", onlyWith = JDK11OrLater.class) //
+@TargetClass(className = "java.lang.NamedPackage") //
 final class Target_java_lang_NamedPackage {
     @Alias Module module;
 }

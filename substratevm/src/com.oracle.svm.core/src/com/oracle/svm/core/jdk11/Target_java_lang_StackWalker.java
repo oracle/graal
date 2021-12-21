@@ -34,18 +34,6 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.heap.StoredContinuation;
-import com.oracle.svm.core.heap.StoredContinuationImpl;
-import com.oracle.svm.core.jdk.JDK11OrLater;
-import com.oracle.svm.core.jdk.LoomJDK;
-import com.oracle.svm.core.jdk.StackTraceUtils;
-import com.oracle.svm.core.thread.JavaContinuations;
-import com.oracle.svm.core.thread.JavaThreads;
-import com.oracle.svm.core.thread.Target_java_lang_Continuation;
-import com.oracle.svm.core.thread.Target_java_lang_ContinuationScope;
-import com.oracle.svm.core.thread.Target_java_lang_VirtualThread;
-import com.oracle.svm.core.util.VMError;
 import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
@@ -58,6 +46,7 @@ import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
@@ -66,12 +55,22 @@ import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.UntetheredCodeInfo;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
+import com.oracle.svm.core.heap.StoredContinuation;
+import com.oracle.svm.core.heap.StoredContinuationImpl;
+import com.oracle.svm.core.jdk.LoomJDK;
+import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackFrameVisitor;
 import com.oracle.svm.core.stack.JavaStackWalk;
 import com.oracle.svm.core.stack.JavaStackWalker;
+import com.oracle.svm.core.thread.JavaContinuations;
+import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.thread.Target_java_lang_Continuation;
+import com.oracle.svm.core.thread.Target_java_lang_ContinuationScope;
+import com.oracle.svm.core.thread.Target_java_lang_VirtualThread;
+import com.oracle.svm.core.util.VMError;
 
-@TargetClass(value = java.lang.StackWalker.class, onlyWith = JDK11OrLater.class)
+@TargetClass(value = java.lang.StackWalker.class)
 final class Target_java_lang_StackWalker {
 
     /**
@@ -477,12 +476,12 @@ final class Target_java_lang_StackWalker {
     }
 }
 
-@TargetClass(className = "java.lang.StackFrameInfo", onlyWith = JDK11OrLater.class)
+@TargetClass(className = "java.lang.StackFrameInfo")
 @Delete
 final class Target_java_lang_StackFrameInfo {
 }
 
-@TargetClass(className = "java.lang.StackStreamFactory", onlyWith = JDK11OrLater.class)
+@TargetClass(className = "java.lang.StackStreamFactory")
 @Delete
 final class Target_java_lang_StackStreamFactory {
 }

@@ -31,7 +31,6 @@ import java.util.logging.LogManager;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDK11OrLater;
 
 import jdk.internal.logger.SurrogateLogger;
 
@@ -63,7 +62,7 @@ class FormatAccessors {
     }
 }
 
-@TargetClass(value = java.util.logging.SimpleFormatter.class, onlyWith = JDK11OrLater.class)
+@TargetClass(value = java.util.logging.SimpleFormatter.class)
 public final class Target_java_util_logging_SimpleFormatter {
 
     @Alias @InjectAccessors(FormatAccessors.class)//

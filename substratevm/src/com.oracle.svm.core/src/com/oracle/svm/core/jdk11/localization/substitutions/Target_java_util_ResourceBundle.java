@@ -24,18 +24,18 @@
  */
 package com.oracle.svm.core.jdk11.localization.substitutions;
 
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDK11OrLater;
-import com.oracle.svm.core.jdk11.Target_java_lang_Module_JDK11OrLater;
-import com.oracle.svm.core.jdk.localization.LocalizationSupport;
-import com.oracle.svm.core.jdk.localization.substitutions.modes.OptimizedLocaleMode;
-import org.graalvm.nativeimage.ImageSingletons;
-
 import java.util.Locale;
 import java.util.ResourceBundle;
 
-@TargetClass(value = java.util.ResourceBundle.class, onlyWith = {JDK11OrLater.class, OptimizedLocaleMode.class})
+import org.graalvm.nativeimage.ImageSingletons;
+
+import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.localization.LocalizationSupport;
+import com.oracle.svm.core.jdk.localization.substitutions.modes.OptimizedLocaleMode;
+import com.oracle.svm.core.jdk11.Target_java_lang_Module;
+
+@TargetClass(value = java.util.ResourceBundle.class, onlyWith = OptimizedLocaleMode.class)
 public final class Target_java_util_ResourceBundle {
 
     /**
@@ -44,12 +44,12 @@ public final class Target_java_util_ResourceBundle {
      */
 
     @Substitute
-    private static ResourceBundle getBundle(String baseName, @SuppressWarnings("unused") Target_java_lang_Module_JDK11OrLater module) {
+    private static ResourceBundle getBundle(String baseName, @SuppressWarnings("unused") Target_java_lang_Module module) {
         return ImageSingletons.lookup(LocalizationSupport.class).asOptimizedSupport().getCached(baseName, Locale.getDefault());
     }
 
     @Substitute
-    private static ResourceBundle getBundle(String baseName, Locale targetLocale, @SuppressWarnings("unused") Target_java_lang_Module_JDK11OrLater module) {
+    private static ResourceBundle getBundle(String baseName, Locale targetLocale, @SuppressWarnings("unused") Target_java_lang_Module module) {
         return ImageSingletons.lookup(LocalizationSupport.class).asOptimizedSupport().getCached(baseName, targetLocale);
     }
 }

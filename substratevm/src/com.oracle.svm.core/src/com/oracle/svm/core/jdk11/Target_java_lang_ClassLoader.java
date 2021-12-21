@@ -22,17 +22,44 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.core.jdk11;
 
-package com.oracle.svm.core.jdk.resources;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Stream;
 
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDK11OrLater;
+import com.oracle.svm.core.util.LazyFinalReference;
 
-@TargetClass(className = "jdk.nio.zipfs.ZipUtils", onlyWith = JDK11OrLater.class)
-@SuppressWarnings({"unused", "static-method"})
-final class Target_jdk_nio_zipfs_ZipUtils_JDK11OrLater {
+@SuppressWarnings({"unused"})
+@TargetClass(value = ClassLoader.class)
+public final class Target_java_lang_ClassLoader {
+
+    /**
+     * All ClassLoaderValue are reset at run time for now. See also
+     * {@link Target_jdk_internal_loader_BootLoader#CLASS_LOADER_VALUE_MAP} for resetting of the
+     * boot class loader.
+     */
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = ConcurrentHashMap.class)//
+    ConcurrentHashMap<?, ?> classLoaderValueMap;
 
     @Alias
-    public static native String toRegexPattern(String globPattern);
+    native Stream<Package> packages();
+
+    @SuppressWarnings("static-method")
+    @Substitute
+    public Target_java_lang_Module getUnnamedModule() {
+        return ClassLoaderUtil.unnamedModuleReference.get();
+    }
+
+    @Alias
+    protected native Class<?> findLoadedClass(String name);
+
+}
+
+final class ClassLoaderUtil {
+
+    public static final LazyFinalReference<Target_java_lang_Module> unnamedModuleReference = new LazyFinalReference<>(Target_java_lang_Module::new);
 }
