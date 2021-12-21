@@ -114,6 +114,8 @@ public final class RegexOptions {
     private static final String GENERATE_DFA_IMMEDIATELY_NAME = "GenerateDFAImmediately";
     private static final int BOOLEAN_MATCH = 1 << 9;
     private static final String BOOLEAN_MATCH_NAME = "BooleanMatch";
+    private static final int MUST_ADVANCE = 1 << 10;
+    public static final String MUST_ADVANCE_NAME = "MustAdvance";
 
     public static final String FLAVOR_NAME = "Flavor";
     public static final String FLAVOR_PYTHON = "Python";
@@ -211,6 +213,15 @@ public final class RegexOptions {
         return isBitSet(IGNORE_ATOMIC_GROUPS);
     }
 
+    /**
+     * Do not return zero-width matches at the beginning of the search string. The matcher must
+     * advance by at least one character by either finding a match of non-zero width or finding a
+     * match after advancing skipping several characters.
+     */
+    public boolean isMustAdvance() {
+        return isBitSet(MUST_ADVANCE);
+    }
+
     public RegexFlavor getFlavor() {
         return flavor;
     }
@@ -224,11 +235,11 @@ public final class RegexOptions {
     }
 
     public RegexOptions withBooleanMatch() {
-        return new RegexOptions(options | BOOLEAN_MATCH, flavor, encoding);
+        return new RegexOptions(options | BOOLEAN_MATCH, flavor, encoding, pythonMethod);
     }
 
     public RegexOptions withoutBooleanMatch() {
-        return new RegexOptions(options & ~BOOLEAN_MATCH, flavor, encoding);
+        return new RegexOptions(options & ~BOOLEAN_MATCH, flavor, encoding, pythonMethod);
     }
 
     @Override
@@ -285,6 +296,9 @@ public final class RegexOptions {
         if (isBooleanMatch()) {
             sb.append(BOOLEAN_MATCH_NAME + "=true,");
         }
+        if (isMustAdvance()) {
+            sb.append(MUST_ADVANCE_NAME + "=true,");
+        }
         if (flavor == PythonFlavor.STR_INSTANCE) {
             sb.append(FLAVOR_NAME + "=" + FLAVOR_PYTHON_STR + ",");
         } else if (flavor == PythonFlavor.BYTES_INSTANCE) {
@@ -335,6 +349,9 @@ public final class RegexOptions {
                         break;
                     case 'I':
                         i = parseBooleanOption(i, IGNORE_ATOMIC_GROUPS_NAME, IGNORE_ATOMIC_GROUPS);
+                        break;
+                    case 'M':
+                        i = parseBooleanOption(i, MUST_ADVANCE_NAME, MUST_ADVANCE);
                         break;
                     case 'R':
                         i = parseBooleanOption(i, REGRESSION_TEST_MODE_NAME, REGRESSION_TEST_MODE);
@@ -539,6 +556,11 @@ public final class RegexOptions {
 
         public Builder booleanMatch(boolean enabled) {
             updateOption(enabled, BOOLEAN_MATCH);
+            return this;
+        }
+
+        public Builder mustAdvance(boolean enabled) {
+            updateOption(enabled, MUST_ADVANCE);
             return this;
         }
 
