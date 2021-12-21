@@ -74,6 +74,6 @@ class JNICallWrapperFeature implements Feature {
     @Override
     public void duringSetup(DuringSetupAccess access) {
         DuringSetupAccessImpl config = (DuringSetupAccessImpl) access;
-        config.registerNativeSubstitutionProcessor(new JNINativeCallWrapperSubstitutionProcessor());
+        config.registerNativeSubstitutionProcessor(new JNINativeCallWrapperSubstitutionProcessor(config));
     }
 }

@@ -41,6 +41,9 @@ public final class JNIJavaCallTrampolines {
         return metaAccess.lookupJavaType(JNIJavaCallWrappers.class).getDeclaredConstructors()[0].getConstantPool();
     }
 
+    private JNIJavaCallTrampolines() {
+    }
+
     public static String getTrampolineName(CallVariant variant, boolean nonVirtual) {
         StringBuilder name = new StringBuilder(48);
         if (variant == CallVariant.VARARGS) {
@@ -59,7 +62,21 @@ public final class JNIJavaCallTrampolines {
         return name.toString();
     }
 
-    private JNIJavaCallTrampolines() {
+    public static boolean isNonVirtual(String trampolineName) {
+        return trampolineName.endsWith("NonvirtualJavaCallTrampoline");
+    }
+
+    public static CallVariant getVariant(String trampolineName) {
+        if (trampolineName.startsWith("varargs")) {
+            return CallVariant.VARARGS;
+        }
+        if (trampolineName.startsWith("array")) {
+            return CallVariant.ARRAY;
+        }
+        if (trampolineName.startsWith("valist")) {
+            return CallVariant.VA_LIST;
+        }
+        throw VMError.shouldNotReachHere();
     }
 
     private native void varargsJavaCallTrampoline();

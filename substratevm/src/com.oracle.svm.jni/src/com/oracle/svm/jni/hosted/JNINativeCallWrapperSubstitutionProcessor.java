@@ -29,6 +29,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 
+import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.jni.JNIJavaCallTrampolines;
 import com.oracle.svm.jni.access.JNIAccessFeature;
 import jdk.vm.ci.meta.MetaUtil;
@@ -40,6 +41,12 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 class JNINativeCallWrapperSubstitutionProcessor extends SubstitutionProcessor {
     private final Map<ResolvedJavaMethod, JNINativeCallWrapperMethod> callWrappers = new ConcurrentHashMap<>();
+    private final DuringSetupAccessImpl access;
+
+    JNINativeCallWrapperSubstitutionProcessor(DuringSetupAccessImpl access) {
+        super();
+        this.access = access;
+    }
 
     @Override
     public ResolvedJavaMethod lookup(ResolvedJavaMethod method) {
@@ -47,10 +54,7 @@ class JNINativeCallWrapperSubstitutionProcessor extends SubstitutionProcessor {
         String jniJavaCallWrappersInternalName = MetaUtil.toInternalName(JNIJavaCallTrampolines.class.getTypeName());
         if (method.getDeclaringClass().getName().equals(jniJavaCallWrappersInternalName)) {
             // Avoid generating JNINativeCallWrapperMethods for trampolines
-            JNICallTrampolineMethod callTrampolineMethod = JNIAccessFeature.singleton().getCallTrampolineMethod(method.getName());
-            if (callTrampolineMethod != null) {
-                return callTrampolineMethod;
-            }
+            return JNIAccessFeature.singleton().getOrCreateCallTrampolineMethod(access, method.getName());
         }
         return callWrappers.computeIfAbsent(method, JNINativeCallWrapperMethod::new);
     }
