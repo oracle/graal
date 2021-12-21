@@ -1077,7 +1077,7 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
 
 class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
     SZ_MSG_PATTERN = "== binary size == {} is {} bytes, path = {}\n"
-    SZ_RGX_PATTERN = r"== binary size == (?P<image_name>[a-zA-Z0-9_\-\.]+) is (?P<value>[0-9]+) bytes, path = (?P<path>.*)"
+    SZ_RGX_PATTERN = r"== binary size == (?P<image_name>[a-zA-Z0-9_\-\.:]+) is (?P<value>[0-9]+) bytes, path = (?P<path>.*)"
 
 
     def group(self):
@@ -1117,8 +1117,16 @@ class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
 
         out = ""
         output_root = mx_sdk_vm_impl.get_final_graalvm_distribution().get_output_root()
-        for location in mx_sdk_vm_impl.get_all_native_image_locations(abs_path=False):
-            out += FileSizeBenchmarkSuite.SZ_MSG_PATTERN.format(basename(location), getsize(join(output_root, location)), location, output_root)
+
+        def get_size_message(image_name, image_location):
+            return FileSizeBenchmarkSuite.SZ_MSG_PATTERN.format(image_name, getsize(join(output_root, image_location)), image_location, output_root)
+
+        for location in mx_sdk_vm_impl.get_all_native_image_locations(include_libraries=True, include_launchers=False, abs_path=False):
+            lib_name = 'lib:' + mx_sdk_vm_impl.remove_lib_prefix_suffix(basename(location))
+            out += get_size_message(lib_name, location)
+        for location in mx_sdk_vm_impl.get_all_native_image_locations(include_libraries=False, include_launchers=True, abs_path=False):
+            launcher_name = mx_sdk_vm_impl.remove_exe_suffix(basename(location))
+            out += get_size_message(launcher_name, location)
         if out:
             mx.log(out, end='')
         return 0, out, dims
