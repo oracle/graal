@@ -1,7 +1,7 @@
 ---
 layout: docs
 toc_group: docs
-title: GraalVM Documentation
+title: Architecture Overview
 permalink: /docs/introduction/
 ---
 
