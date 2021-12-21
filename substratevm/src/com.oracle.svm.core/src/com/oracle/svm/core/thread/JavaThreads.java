@@ -172,6 +172,53 @@ public abstract class JavaThreads {
         JavaContinuations.LoomCompatibilityUtil.setThreadStatus(toTarget(thread), threadStatus);
     }
 
+    @Uninterruptible(reason = "Thread locks/holds the THREAD_MUTEX.")
+    public static long getThreadAllocatedBytes(long javaThreadId) {
+        // Accessing the value for the current thread is fast.
+        Thread curThread = JavaThreads.currentThread.get();
+        if (curThread != null && curThread.getId() == javaThreadId) {
+            return Heap.getHeap().getThreadAllocatedMemory(CurrentIsolate.getCurrentThread());
+        }
+
+        // If the value of another thread is accessed, then we need to do a slow lookup.
+        VMThreads.lockVMMutexInNativeCode();
+        try {
+            IsolateThread isolateThread = VMThreads.firstThread();
+            while (isolateThread.isNonNull()) {
+                Thread javaThread = JavaThreads.currentThread.get(isolateThread);
+                if (javaThread != null && javaThread.getId() == javaThreadId) {
+                    return Heap.getHeap().getThreadAllocatedMemory(isolateThread);
+                }
+                isolateThread = VMThreads.nextThread(isolateThread);
+            }
+            return -1;
+        } finally {
+            VMThreads.THREAD_MUTEX.unlock();
+        }
+    }
+
+    @Uninterruptible(reason = "Thread locks/holds the THREAD_MUTEX.")
+    public static void getThreadAllocatedBytes(long[] javaThreadIds, long[] result) {
+        VMThreads.lockVMMutexInNativeCode();
+        try {
+            IsolateThread isolateThread = VMThreads.firstThread();
+            while (isolateThread.isNonNull()) {
+                Thread javaThread = JavaThreads.currentThread.get(isolateThread);
+                if (javaThread != null) {
+                    for (int i = 0; i < javaThreadIds.length; i++) {
+                        if (javaThread.getId() == javaThreadIds[i]) {
+                            result[i] = Heap.getHeap().getThreadAllocatedMemory(isolateThread);
+                            break;
+                        }
+                    }
+                }
+                isolateThread = VMThreads.nextThread(isolateThread);
+            }
+        } finally {
+            VMThreads.THREAD_MUTEX.unlock();
+        }
+    }
+
     /**
      * Safe method to check whether a thread has been interrupted.
      *

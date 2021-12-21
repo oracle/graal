@@ -28,9 +28,11 @@ import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.TLA
 import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.TLAB_TOP_IDENTITY;
 
 import com.oracle.svm.core.SubstrateGCOptions;
+import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.replacements.AllocationSnippets.FillContent;
 import org.graalvm.compiler.word.Word;
+import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -66,9 +68,12 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.util.VMError;
 
 /**
- * Bump-pointer allocation from thread-local top and end Pointers.
- *
- * Many of these methods are called from allocation snippets, so they can not do anything fancy.
+ * Bump-pointer allocation from thread-local top and end Pointers. Many of these methods are called
+ * from allocation snippets, so they can not do anything fancy.
+ * 
+ * It happens that prefetch instructions access memory outside the TLAB. At the moment, this is not
+ * an issue as we only support architectures where the prefetch instructions never cause a segfault,
+ * even if they try to access memory that is not accessible.
  */
 public final class ThreadLocalAllocation {
     @RawStructure
@@ -109,6 +114,13 @@ public final class ThreadLocalAllocation {
         @RawField
         void setAllocationEnd(Pointer end, LocationIdentity endIdentity);
     }
+
+    /*
+     * Stores the number of bytes that this thread allocated in the past on the Java heap. This
+     * excludes allocations that were done in the latest not yet retired {@link AlignedHeapChunk} of
+     * the TLAB.
+     */
+    public static final FastThreadLocalWord<UnsignedWord> allocatedBytes = FastThreadLocalFactory.createWord("ThreadLocalAllocation.allocatedBytes");
 
     /**
      * Don't read this value directly, use the {@link Uninterruptible} accessor methods instead.
@@ -276,6 +288,8 @@ public final class ThreadLocalAllocation {
 
         HeapChunk.setNext(newTlabChunk, tlab.getUnalignedChunk());
         tlab.setUnalignedChunk(newTlabChunk);
+
+        allocatedBytes.set(allocatedBytes.get().add(size));
         HeapImpl.getHeapImpl().getAccounting().increaseEdenUsedBytes(size);
 
         Pointer memory = UnalignedHeapChunk.allocateMemory(newTlabChunk, size);
@@ -296,10 +310,9 @@ public final class ThreadLocalAllocation {
 
     @Uninterruptible(reason = "Returns uninitialized memory, modifies TLAB", callerMustBe = true)
     private static Pointer allocateRawMemoryInNewTlab(UnsignedWord size, AlignedHeader newTlabChunk) {
-        ThreadLocalAllocation.Descriptor tlab = getTlab();
-        assert DeoptTester.enabled() || availableTlabMemory(tlab).belowThan(size) : "Slowpath allocation was used even though TLAB had sufficient space";
+        assert DeoptTester.enabled() || availableTlabMemory(getTlab()).belowThan(size) : "Slowpath allocation was used even though TLAB had sufficient space";
 
-        retireCurrentAllocationChunk(tlab);
+        Descriptor tlab = retireCurrentAllocationChunk(CurrentIsolate.getCurrentThread());
         registerNewAllocationChunk(tlab, newTlabChunk);
 
         return allocateRawMemoryInTlab(size, tlab);
@@ -351,7 +364,7 @@ public final class ThreadLocalAllocation {
 
     @Uninterruptible(reason = "Accesses TLAB")
     static void disableAndFlushForThread(IsolateThread vmThread) {
-        retireToSpace(getTlab(vmThread), HeapImpl.getHeapImpl().getYoungGeneration().getEden());
+        retireTlabToEden(vmThread);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -373,52 +386,52 @@ public final class ThreadLocalAllocation {
 
     @Uninterruptible(reason = "Accesses TLAB")
     static void suspendInCurrentThread() {
-        retireCurrentAllocationChunk(getTlab());
+        retireCurrentAllocationChunk(CurrentIsolate.getCurrentThread());
     }
 
     @Uninterruptible(reason = "Accesses TLAB")
-    static void resumeInCurrentThread() {
-        resumeAllocationInCurrentChunk(getTlab());
-    }
-
-    @Uninterruptible(reason = "Accesses TLAB")
-    static void retireToSpace(Descriptor tlab, Space space) {
+    private static void retireTlabToEden(IsolateThread thread) {
         VMThreads.guaranteeOwnsThreadMutex("Otherwise, we wouldn't be allowed to access the space.");
-        assert !space.isOldSpace() : "must not be moved to the old gen - otherwise a remembered set would have to be constructed";
 
-        retireCurrentAllocationChunk(tlab);
-
+        Descriptor tlab = retireCurrentAllocationChunk(thread);
         AlignedHeader alignedChunk = tlab.getAlignedChunk();
         UnalignedHeader unalignedChunk = tlab.getUnalignedChunk();
         tlab.setAlignedChunk(WordFactory.nullPointer());
         tlab.setUnalignedChunk(WordFactory.nullPointer());
 
+        Space eden = HeapImpl.getHeapImpl().getYoungGeneration().getEden();
         while (alignedChunk.isNonNull()) {
             AlignedHeader next = HeapChunk.getNext(alignedChunk);
             HeapChunk.setNext(alignedChunk, WordFactory.nullPointer());
-            space.appendAlignedHeapChunk(alignedChunk);
+            eden.appendAlignedHeapChunk(alignedChunk);
             alignedChunk = next;
         }
 
         while (unalignedChunk.isNonNull()) {
             UnalignedHeader next = HeapChunk.getNext(unalignedChunk);
             HeapChunk.setNext(unalignedChunk, WordFactory.nullPointer());
-            space.appendUnalignedHeapChunk(unalignedChunk);
+            eden.appendUnalignedHeapChunk(unalignedChunk);
             unalignedChunk = next;
         }
     }
 
     @Uninterruptible(reason = "Modifies TLAB")
     private static void registerNewAllocationChunk(Descriptor tlab, AlignedHeader newChunk) {
+        assert tlab.getAllocationTop(TLAB_TOP_IDENTITY).isNull();
+        assert tlab.getAllocationEnd(TLAB_END_IDENTITY).isNull();
+
         HeapChunk.setNext(newChunk, tlab.getAlignedChunk());
         tlab.setAlignedChunk(newChunk);
         HeapImpl.getHeapImpl().getAccounting().increaseEdenUsedBytes(HeapParameters.getAlignedHeapChunkSize());
 
-        resumeAllocationInCurrentChunk(tlab);
+        tlab.setAllocationTop(HeapChunk.getTopPointer(newChunk), TLAB_TOP_IDENTITY);
+        tlab.setAllocationEnd(HeapChunk.getEndPointer(newChunk), TLAB_END_IDENTITY);
+        HeapChunk.setTopPointer(newChunk, WordFactory.nullPointer());
     }
 
-    @Uninterruptible(reason = "Modifies TLAB")
-    private static void retireCurrentAllocationChunk(Descriptor tlab) {
+    @Uninterruptible(reason = "Modifies and returns TLAB", callerMustBe = true)
+    private static Descriptor retireCurrentAllocationChunk(IsolateThread thread) {
+        Descriptor tlab = getTlab(thread);
         Pointer allocationTop = tlab.getAllocationTop(TLAB_TOP_IDENTITY);
         if (allocationTop.isNonNull()) {
             AlignedHeader alignedChunk = tlab.getAlignedChunk();
@@ -434,24 +447,10 @@ public final class ThreadLocalAllocation {
             HeapChunk.setTopPointer(alignedChunk, allocationTop);
             tlab.setAllocationTop(WordFactory.nullPointer(), TLAB_TOP_IDENTITY);
             tlab.setAllocationEnd(WordFactory.nullPointer(), TLAB_END_IDENTITY);
-        }
-    }
 
-    @Uninterruptible(reason = "Modifies TLAB.")
-    static void resumeAllocationInCurrentChunk(Descriptor tlab) {
-        assert tlab.getAllocationTop(TLAB_TOP_IDENTITY).isNull();
-        assert tlab.getAllocationEnd(TLAB_END_IDENTITY).isNull();
-
-        AlignedHeader alignedChunk = tlab.getAlignedChunk();
-        if (alignedChunk.isNonNull()) {
-            tlab.setAllocationTop(HeapChunk.getTopPointer(alignedChunk), TLAB_TOP_IDENTITY);
-            /*
-             * It happens that prefetch instructions access memory outside the TLAB. At the moment,
-             * this is not an issue as we only support architectures where the prefetch instructions
-             * never cause a segfault, even if they try to access memory that is not accessible.
-             */
-            tlab.setAllocationEnd(HeapChunk.getEndPointer(alignedChunk), TLAB_END_IDENTITY);
-            HeapChunk.setTopPointer(alignedChunk, WordFactory.nullPointer());
+            UnsignedWord usedTlabSize = HeapChunk.getTopPointer(alignedChunk).subtract(AlignedHeapChunk.getObjectsStart(alignedChunk));
+            allocatedBytes.set(thread, allocatedBytes.get(thread).add(usedTlabSize));
         }
+        return tlab;
     }
 }

@@ -58,6 +58,7 @@ public final class Target_java_lang_Thread {
     static StackTraceElement[] EMPTY_STACK_TRACE;
     // Checkstyle: resume
 
+    /** This field is initialized when the thread actually starts executing. */
     @Inject //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     IsolateThread isolateThread;
