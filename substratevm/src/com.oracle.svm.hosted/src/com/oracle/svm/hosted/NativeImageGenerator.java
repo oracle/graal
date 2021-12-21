@@ -63,6 +63,8 @@ import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
+import org.graalvm.compiler.core.phases.CommunityCompilerConfiguration;
+import org.graalvm.compiler.core.phases.EconomyCompilerConfiguration;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Builder;
@@ -94,6 +96,7 @@ import org.graalvm.compiler.phases.common.FrameStateAssignmentPhase;
 import org.graalvm.compiler.phases.common.LoopSafepointInsertionPhase;
 import org.graalvm.compiler.phases.common.UseTrappingNullChecksPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningPhase;
+import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.tiers.LowTierContext;
 import org.graalvm.compiler.phases.tiers.MidTierContext;
@@ -813,6 +816,15 @@ public class NativeImageGenerator {
                 if (ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(options)) {
                     ImageSingletons.add(ImageBuildStatistics.class, new ImageBuildStatistics());
                 }
+
+                // Register the correct compiler configuration for non-first-tier compilation.
+                CompilerConfiguration compilerConfiguration;
+                if (SubstrateOptions.DevMode.getValue(options)) {
+                    compilerConfiguration = new EconomyCompilerConfiguration();
+                } else {
+                    compilerConfiguration = new CommunityCompilerConfiguration();
+                }
+                ImageSingletons.add(CompilerConfiguration.class, compilerConfiguration);
 
                 /* Init the BuildPhaseProvider before any features need it. */
                 BuildPhaseProvider.init();

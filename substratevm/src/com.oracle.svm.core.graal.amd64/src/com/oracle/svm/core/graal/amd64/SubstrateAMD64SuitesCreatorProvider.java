@@ -25,14 +25,15 @@
 package com.oracle.svm.core.graal.amd64;
 
 import org.graalvm.compiler.core.amd64.AMD64SuitesCreator;
-import org.graalvm.compiler.core.phases.CommunityCompilerConfiguration;
 import org.graalvm.compiler.core.phases.EconomyCompilerConfiguration;
+import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
+import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.graal.code.SubstrateSuitesCreatorProvider;
 
 public class SubstrateAMD64SuitesCreatorProvider extends SubstrateSuitesCreatorProvider {
     public SubstrateAMD64SuitesCreatorProvider() {
-        super(new AMD64SuitesCreator(new CommunityCompilerConfiguration()),
+        super(new AMD64SuitesCreator(ImageSingletons.lookup(CompilerConfiguration.class)),
                         new AMD64SuitesCreator(new EconomyCompilerConfiguration()));
     }
 }

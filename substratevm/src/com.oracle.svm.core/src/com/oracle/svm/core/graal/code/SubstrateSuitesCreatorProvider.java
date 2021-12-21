@@ -25,10 +25,11 @@
  */
 package com.oracle.svm.core.graal.code;
 
-import org.graalvm.compiler.core.phases.CommunityCompilerConfiguration;
 import org.graalvm.compiler.core.phases.EconomyCompilerConfiguration;
 import org.graalvm.compiler.java.DefaultSuitesCreator;
+import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 import org.graalvm.compiler.phases.tiers.SuitesCreator;
+import org.graalvm.nativeimage.ImageSingletons;
 
 public class SubstrateSuitesCreatorProvider {
     private final SuitesCreator suitesCreator;
@@ -41,7 +42,7 @@ public class SubstrateSuitesCreatorProvider {
     }
 
     public SubstrateSuitesCreatorProvider() {
-        this(new DefaultSuitesCreator(new CommunityCompilerConfiguration()), new DefaultSuitesCreator(new EconomyCompilerConfiguration()));
+        this(new DefaultSuitesCreator(ImageSingletons.lookup(CompilerConfiguration.class)), new DefaultSuitesCreator(new EconomyCompilerConfiguration()));
     }
 
     public final SuitesCreator getSuitesCreator() {

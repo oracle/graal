@@ -62,6 +62,9 @@ import com.oracle.svm.core.util.UserError;
 
 public class SubstrateOptions {
 
+    @Option(help = "Build the native image using the economy compiler configuration.", type = OptionType.User)//
+    public static final HostedOptionKey<Boolean> DevMode = new HostedOptionKey<>(false);
+
     @Option(help = "When true, compiler graphs are parsed only once before static analysis. When false, compiler graphs are parsed for static analysis and again for AOT compilation.")//
     public static final HostedOptionKey<Boolean> ParseOnce = new HostedOptionKey<>(true);
 

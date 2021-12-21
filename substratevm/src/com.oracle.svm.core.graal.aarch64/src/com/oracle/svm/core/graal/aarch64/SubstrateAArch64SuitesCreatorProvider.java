@@ -29,6 +29,8 @@ import org.graalvm.compiler.core.aarch64.AArch64SuitesCreator;
 import org.graalvm.compiler.core.phases.CommunityCompilerConfiguration;
 import org.graalvm.compiler.core.phases.EconomyCompilerConfiguration;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
+import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
+import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.graal.code.SubstrateSuitesCreatorProvider;
 
@@ -36,7 +38,7 @@ import java.util.Arrays;
 
 public class SubstrateAArch64SuitesCreatorProvider extends SubstrateSuitesCreatorProvider {
     public SubstrateAArch64SuitesCreatorProvider() {
-        super(new AArch64SuitesCreator(new CommunityCompilerConfiguration(), Arrays.asList(SchedulePhase.class)),
+        super(new AArch64SuitesCreator(ImageSingletons.lookup(CompilerConfiguration.class), Arrays.asList(SchedulePhase.class)),
                         new AArch64SuitesCreator(new EconomyCompilerConfiguration(), Arrays.asList(SchedulePhase.class)));
     }
 }
