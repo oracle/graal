@@ -230,4 +230,12 @@ public class PythonTests extends RegexTestBase {
         test("a(b)(?<=(a)b)", "", "ab", 0, true, 0, 2, 1, 2, 0, 1, 2);
         test("a(b)(?<=a(b))", "", "ab", 0, true, 0, 2, 1, 2, 1, 2, 2);
     }
+
+    @Test
+    public void gr28565() {
+        test("\\b|:", "", "MustAdvance=false", "a:", 0, true, 0, 0, -1);
+        test("\\b|:", "", "MustAdvance=true", "a:", 0, true, 1, 1, -1);
+        test("\\b|:", "", "MustAdvance=true", "a:", 1, true, 1, 2, -1);
+        test("\\b|:", "", "MustAdvance=false", "a:", 2, false);
+    }
 }
