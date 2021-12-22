@@ -276,9 +276,7 @@ public abstract class AllocationSnippets implements Snippets {
         } else if (REPLACEMENTS_ASSERTIONS_ENABLED && fillContents == FillContent.WITH_GARBAGE_IF_ASSERTIONS_ENABLED) {
             fillWithGarbage(memory, headerSize, size, constantSize, false, false, snippetCounters);
         }
-        if (emitMemoryBarrier) {
-            MembarNode.memoryBarrier(MembarNode.FenceKind.ALLOCATION_INIT, LocationIdentity.init());
-        }
+        emitMemoryBarrierIf(emitMemoryBarrier);
         return memory.toObjectNonNull();
     }
 
@@ -306,10 +304,14 @@ public abstract class AllocationSnippets implements Snippets {
         } else if (REPLACEMENTS_ASSERTIONS_ENABLED && fillContents == FillContent.WITH_GARBAGE_IF_ASSERTIONS_ENABLED) {
             fillWithGarbage(memory, fillStartOffset, allocationSize, false, maybeUnroll, supportsOptimizedFilling, snippetCounters);
         }
+        emitMemoryBarrierIf(emitMemoryBarrier);
+        return memory.toObjectNonNull();
+    }
+
+    protected void emitMemoryBarrierIf(boolean emitMemoryBarrier) {
         if (emitMemoryBarrier) {
             MembarNode.memoryBarrier(MembarNode.FenceKind.ALLOCATION_INIT, LocationIdentity.init());
         }
-        return memory.toObjectNonNull();
     }
 
     public void emitPrefetchAllocate(Word address, boolean isArray) {

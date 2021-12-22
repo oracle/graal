@@ -24,9 +24,11 @@
  */
 package com.oracle.svm.core.hub;
 
+import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.calc.UnsignedMath;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
+import org.graalvm.compiler.replacements.ReplacementsUtil;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -154,6 +156,12 @@ public class LayoutEncoding {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getInstanceSize(int encoding) {
+        boolean isStoredContinuation = Continuation.isSupported() && isStoredContinuation(encoding);
+        if (GraalDirectives.inIntrinsic()) {
+            ReplacementsUtil.dynamicAssert(!isStoredContinuation, "size cannot be determined from encoding");
+        } else {
+            assert !isStoredContinuation : "size cannot be determined from encoding";
+        }
         return WordFactory.unsigned(encoding);
     }
 

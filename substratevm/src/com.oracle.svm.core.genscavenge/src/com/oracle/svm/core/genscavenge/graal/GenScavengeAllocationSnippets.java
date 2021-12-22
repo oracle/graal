@@ -35,6 +35,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.replacements.ReplacementsUtil;
 import org.graalvm.compiler.replacements.SnippetCounter;
 import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
@@ -54,10 +55,12 @@ import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
+import com.oracle.svm.core.thread.Continuation;
 
 final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
     private static final SubstrateForeignCallDescriptor SLOW_NEW_INSTANCE = SnippetRuntime.findForeignCall(ThreadLocalAllocation.class, "slowPathNewInstance", true);
@@ -78,13 +81,18 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
     }
 
     @Snippet
-    public Object formatObjectSnippet(Word memory, DynamicHub hub, boolean rememberedSet, FillContent fillContents, boolean emitMemoryBarrier,
-                    @ConstantParameter AllocationSnippetCounters snippetCounters) {
+    public Object formatObjectSnippet(Word memory, DynamicHub hub, UnsignedWord size, boolean rememberedSet, FillContent fillContents,
+                    boolean emitMemoryBarrier, @ConstantParameter AllocationSnippetCounters snippetCounters) {
         DynamicHub hubNonNull = (DynamicHub) PiNode.piCastNonNull(hub, SnippetAnchorNode.anchor());
-        int layoutEncoding = hubNonNull.getLayoutEncoding();
-        UnsignedWord size = LayoutEncoding.getInstanceSize(layoutEncoding);
         Word objectHeader = encodeAsObjectHeader(hubNonNull, rememberedSet, false);
-        return formatObject(objectHeader, WordFactory.nullPointer(), size, memory, fillContents, emitMemoryBarrier, false, snippetCounters);
+        Object obj = formatObject(objectHeader, WordFactory.nullPointer(), size, memory, fillContents, false, false, snippetCounters);
+        if (Continuation.isSupported() && hub == DynamicHub.fromClass(StoredContinuation.class)) {
+            finishFormatStoredContinuation(obj, size.rawValue());
+        } else {
+            ReplacementsUtil.dynamicAssert(size.equal(LayoutEncoding.getInstanceSize(hubNonNull.getLayoutEncoding())), "unexpected size");
+        }
+        emitMemoryBarrierIf(emitMemoryBarrier);
+        return obj;
     }
 
     @Snippet
@@ -179,6 +187,7 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
                 Arguments args = new Arguments(formatObject, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("memory", node.getMemory());
                 args.add("hub", node.getHub());
+                args.add("size", node.getSize());
                 args.add("rememberedSet", node.getRememberedSet());
                 args.add("fillContents", node.getFillContents());
                 args.add("emitMemoryBarrier", node.getEmitMemoryBarrier());

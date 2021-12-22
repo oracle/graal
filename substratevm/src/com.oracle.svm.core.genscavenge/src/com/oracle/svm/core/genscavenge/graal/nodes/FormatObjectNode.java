@@ -35,6 +35,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.replacements.AllocationSnippets.FillContent;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.UnsignedWord;
 
 @NodeInfo(cycles = CYCLES_64, size = SIZE_64)
 public class FormatObjectNode extends FixedWithNextNode implements Lowerable {
@@ -42,14 +43,16 @@ public class FormatObjectNode extends FixedWithNextNode implements Lowerable {
 
     @Input protected ValueNode memory;
     @Input protected ValueNode hub;
+    @Input protected ValueNode size;
     @Input protected ValueNode rememberedSet;
     @Input protected ValueNode fillContents;
     @Input protected ValueNode emitMemoryBarrier;
 
-    public FormatObjectNode(ValueNode memory, ValueNode hub, ValueNode rememberedSet, ValueNode fillContents, ValueNode emitMemoryBarrier) {
+    public FormatObjectNode(ValueNode memory, ValueNode hub, ValueNode size, ValueNode rememberedSet, ValueNode fillContents, ValueNode emitMemoryBarrier) {
         super(TYPE, StampFactory.objectNonNull());
         this.memory = memory;
         this.hub = hub;
+        this.size = size;
         this.rememberedSet = rememberedSet;
         this.fillContents = fillContents;
         this.emitMemoryBarrier = emitMemoryBarrier;
@@ -61,6 +64,10 @@ public class FormatObjectNode extends FixedWithNextNode implements Lowerable {
 
     public ValueNode getHub() {
         return hub;
+    }
+
+    public ValueNode getSize() {
+        return size;
     }
 
     public ValueNode getRememberedSet() {
@@ -76,5 +83,5 @@ public class FormatObjectNode extends FixedWithNextNode implements Lowerable {
     }
 
     @NodeIntrinsic
-    public static native Object formatObject(Pointer memory, Class<?> hub, boolean rememberedSet, FillContent fillContents, boolean emitMemoryBarrier);
+    public static native Object formatObject(Pointer memory, Class<?> hub, UnsignedWord size, boolean rememberedSet, FillContent fillContents, boolean emitMemoryBarrier);
 }

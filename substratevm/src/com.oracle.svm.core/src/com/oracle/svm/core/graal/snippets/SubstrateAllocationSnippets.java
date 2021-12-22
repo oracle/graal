@@ -83,6 +83,7 @@ import com.oracle.svm.core.graal.nodes.NewStoredContinuationNode;
 import com.oracle.svm.core.graal.nodes.SubstrateNewHybridInstanceNode;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.StoredContinuation;
+import com.oracle.svm.core.heap.StoredContinuationImpl;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.meta.SharedType;
@@ -128,8 +129,14 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
                     long size,
                     @ConstantParameter AllocationProfilingData profilingData) {
         Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(hub), WordFactory.nullPointer(), WordFactory.unsigned(size),
-                        FillContent.WITH_GARBAGE_IF_ASSERTIONS_ENABLED, true, false, profilingData);
+                        FillContent.WITH_GARBAGE_IF_ASSERTIONS_ENABLED, false, false, profilingData);
+        finishFormatStoredContinuation(result, size);
+        emitMemoryBarrierIf(true);
         return piCastToSnippetReplaceeStamp(result);
+    }
+
+    protected void finishFormatStoredContinuation(Object obj, long size) {
+        StoredContinuationImpl.initializeNewlyAllocated(obj, size);
     }
 
     @Snippet

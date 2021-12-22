@@ -33,6 +33,7 @@ import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
@@ -90,18 +91,19 @@ public final class StoredContinuationImpl {
     // use for hard-coded size calculation
     private static final int HEADER_SIZE = PAYLOAD_OFFSET;
 
-    private static StoredContinuation allocate(long size) {
-        return NewStoredContinuationNode.allocate(size);
+    @Uninterruptible(reason = "in allocation of StoredContinuation instance")
+    public static void initializeNewlyAllocated(Object obj, long size) {
+        Pointer p = Word.objectToUntrackedPointer(obj).add(PAYLOAD_OFFSET);
+        p.writeLong(SIZE_OFFSET_TO_PAYLOAD, size - HEADER_SIZE, LocationIdentity.init());
+        // Keep GC from taking a closer look until frames are initialized
+        p.writeInt(FRAME_COUNT_OFFSET_TO_PAYLOAD, 0, LocationIdentity.init());
     }
 
     /* All method calls in this function except `allocate` should be `@Uninterruptible` */
-    @Uninterruptible(reason = "allocates StoredContinuation instance", calleeMustBe = false)
-    private static StoredContinuation allocateWriteFrameCount(long payloadSize, int frameCount) {
+    private static StoredContinuation allocate(long payloadSize) {
         assert payloadSize % 8 == 0;
-        StoredContinuation f = allocate(payloadSize + HEADER_SIZE);
-        Pointer payload = payloadLocation(f);
-        payload.writeLong(SIZE_OFFSET_TO_PAYLOAD, payloadSize);
-        payload.writeInt(FRAME_COUNT_OFFSET_TO_PAYLOAD, frameCount);
+        StoredContinuation f = NewStoredContinuationNode.allocate(payloadSize + HEADER_SIZE);
+        assert readPayloadSize(f) == payloadSize;
         return f;
     }
 
@@ -260,7 +262,12 @@ public final class StoredContinuationImpl {
         int frameCount = visitor.frameSizeReferenceMapIndex.size();
         long payloadSize = SHARED_REFERENCE_MAP_ENCODING_SIZE + FRAME_META_SIZE * frameCount + rootSp.subtract(resultLeafSP).rawValue();
 
-        cont.stored = allocateWriteFrameCount(payloadSize, frameCount);
+        cont.stored = allocate(payloadSize);
+        /*
+         * At this point, the object contains all zeros, which includes the frame count, so if we
+         * are interrupted by a GC, it will not attempt to make sense of it. Only at the end of this
+         * method we uninterruptibly initialize the frame count and copy the stack frames.
+         */
 
         writePayloadLong(cont.stored, SHARED_REFERENCE_MAP_ENCODING_OFFSET, visitor.referenceMapEncoding.rawValue());
 
@@ -274,12 +281,17 @@ public final class StoredContinuationImpl {
             allFrameSize += frameSizeRefMapInxPair.getLeft();
         }
 
-        Pointer frameStart = payloadFrameStart(cont.stored);
-        long frameSize = readAllFrameSize(cont.stored);
-        VMError.guarantee(frameSize == allFrameSize);
-        UnmanagedMemoryUtil.copy(resultLeafSP, frameStart, WordFactory.unsigned(frameSize));
-
+        copyUninterruptibly(cont, resultLeafSP, allFrameSize, frameCount);
         return Continuation.YIELD_SUCCESS;
+    }
+
+    @Uninterruptible(reason = "Prevent modifications to the stack while copying.")
+    private static void copyUninterruptibly(Continuation cont, Pointer sp, long size, int frameCount) {
+        payloadLocation(cont.stored).writeInt(FRAME_COUNT_OFFSET_TO_PAYLOAD, frameCount);
+
+        VMError.guarantee(size == readAllFrameSize(cont.stored));
+        Pointer frameStart = payloadFrameStart(cont.stored);
+        UnmanagedMemoryUtil.copy(sp, frameStart, WordFactory.unsigned(size));
     }
 
     /**
@@ -313,7 +325,8 @@ public final class StoredContinuationImpl {
         }
 
         assert frameIndex == frameCount;
-        assert curFrame.subtract(payloadStart).rawValue() == size;
+        // NOTE: frameCount can be 0 if the object has just been allocated but not filled yet
+        assert frameCount == 0 || curFrame.subtract(payloadStart).rawValue() == size;
 
         return true;
     }
