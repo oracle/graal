@@ -37,6 +37,7 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationImpl;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
+import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -63,6 +64,7 @@ public final class Continuation {
     Pointer sp;
     CodePointer ip;
     private boolean done;
+    private int overflowCheckState;
 
     Continuation(Runnable target) {
         this.target = target;
@@ -73,7 +75,19 @@ public final class Continuation {
     }
 
     void enter() {
-        enter0(ip.isNonNull());
+        int stateBefore = StackOverflowCheck.singleton().getState();
+        VMError.guarantee(!StackOverflowCheck.singleton().isYellowZoneAvailable(), "Stack overflow checks must be active when entering a continuation");
+
+        boolean isContinue = ip.isNonNull();
+        if (isContinue) {
+            StackOverflowCheck.singleton().setState(overflowCheckState);
+        }
+        try {
+            enter0(isContinue);
+        } finally {
+            overflowCheckState = StackOverflowCheck.singleton().getState();
+            StackOverflowCheck.singleton().setState(stateBefore);
+        }
     }
 
     @NeverInline("access stack pointer")
