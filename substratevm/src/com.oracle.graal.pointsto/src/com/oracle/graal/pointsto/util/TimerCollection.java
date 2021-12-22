@@ -59,6 +59,7 @@ public class TimerCollection implements ImageBuildStatistics.TimerCollectionPrin
         return timer;
     }
 
+    @Override
     public void printTimerStats(PrintWriter out) {
         for (int i = 0; i < timers.size(); i++) {
             Timer timer = timers.get(i);

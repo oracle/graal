@@ -109,10 +109,6 @@ public class ImageBuildStatistics {
         }
 
         static final String INDENT = "   ";
-
-        protected String fixLast(StringBuilder json) {
-            return json.toString().replace("," + System.lineSeparator() + "}", System.lineSeparator() + "}");
-        }
     }
 
     public interface TimerCollectionPrinter {
