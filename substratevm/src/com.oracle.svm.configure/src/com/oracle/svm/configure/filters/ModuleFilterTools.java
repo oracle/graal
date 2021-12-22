@@ -22,17 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.configure.jdk11.filters;
+package com.oracle.svm.configure.filters;
 
 import java.lang.module.ModuleDescriptor;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
-import com.oracle.svm.configure.filters.RuleNode;
 import com.oracle.svm.configure.filters.RuleNode.Inclusion;
 
-@SuppressWarnings("unused")
 public class ModuleFilterTools {
 
     public static RuleNode generateFromModules(String[] moduleNames, Inclusion rootInclusion, Inclusion exportedInclusion, Inclusion unexportedInclusion, boolean reduce) {
