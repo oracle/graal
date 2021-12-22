@@ -35,6 +35,7 @@ import org.graalvm.compiler.debug.DebugContext.CompilerPhaseScope;
 import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.debug.MemUseTrackerKey;
 import org.graalvm.compiler.debug.MethodFilter;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Graph.Mark;
@@ -65,7 +66,12 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         public static final OptionKey<Boolean> VerifyGraalPhasesSize = new OptionKey<>(false);
         @Option(help = "Minimal size in NodeSize to check the graph size increases of phases.", type = OptionType.Debug)
         public static final OptionKey<Integer> MinimalGraphNodeSizeCheckSize = new OptionKey<>(1000);
-        @Option(help = "Exclude certain phases from compilation, either unconditionally or with a method filter", type = OptionType.Debug)
+        @Option(help = "Exclude certain phases from compilation, either unconditionally or with a " +
+                        "method filter. Multiple exclusions can be specified separated by ':'. " +
+                        "Phase names are matched as substrings, e.g.: " +
+                        "CompilationExcludePhases=PartialEscape:Loop=A.*,B.foo excludes PartialEscapePhase " +
+                        "from all compilations and any phase containing 'Loop' in its name from " +
+                        "compilations of all methods in class A and of method B.foo.", type = OptionType.Debug)
         public static final OptionKey<String> CompilationExcludePhases = new OptionKey<>(null);
         // @formatter:on
     }
@@ -188,6 +194,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
     @SuppressWarnings("try")
     public final void apply(final StructuredGraph graph, final C context, final boolean dumpGraph) {
         if (ExcludePhaseFilter.exclude(graph.getOptions(), this, graph.asJavaMethod())) {
+            TTY.println("excluding " + getName() + " during compilation of " + graph.asJavaMethod().format("%H.%n(%p)"));
             return;
         }
 

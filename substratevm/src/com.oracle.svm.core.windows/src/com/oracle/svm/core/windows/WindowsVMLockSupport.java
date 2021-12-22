@@ -68,14 +68,14 @@ import jdk.vm.ci.meta.JavaKind;
 @Platforms(Platform.WINDOWS.class)
 final class WindowsVMLockFeature implements Feature {
 
-    private final ClassInstanceReplacer<VMMutex, WindowsVMMutex> mutexReplacer = new ClassInstanceReplacer<VMMutex, WindowsVMMutex>(VMMutex.class) {
+    private final ClassInstanceReplacer<VMMutex, WindowsVMMutex> mutexReplacer = new ClassInstanceReplacer<>(VMMutex.class) {
         @Override
         protected WindowsVMMutex createReplacement(VMMutex source) {
             return new WindowsVMMutex(source.getName());
         }
     };
 
-    private final ClassInstanceReplacer<VMCondition, WindowsVMCondition> conditionReplacer = new ClassInstanceReplacer<VMCondition, WindowsVMCondition>(VMCondition.class) {
+    private final ClassInstanceReplacer<VMCondition, WindowsVMCondition> conditionReplacer = new ClassInstanceReplacer<>(VMCondition.class) {
         @Override
         protected WindowsVMCondition createReplacement(VMCondition source) {
             return new WindowsVMCondition((WindowsVMMutex) mutexReplacer.apply(source.getMutex()));

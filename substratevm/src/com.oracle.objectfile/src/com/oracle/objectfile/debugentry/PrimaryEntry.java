@@ -75,7 +75,7 @@ public class PrimaryEntry {
      * @return the iterator
      */
     public Iterator<Range> topDownRangeIterator() {
-        return new Iterator<Range>() {
+        return new Iterator<>() {
             final ArrayDeque<Range> workStack = new ArrayDeque<>();
             Range current = primary.getFirstCallee();
 
@@ -123,7 +123,7 @@ public class PrimaryEntry {
      */
     public Iterator<Range> leafRangeIterator() {
         final Iterator<Range> iter = topDownRangeIterator();
-        return new Iterator<Range>() {
+        return new Iterator<>() {
             Range current = forwardLeaf(iter);
 
             @Override

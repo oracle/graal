@@ -405,7 +405,6 @@ class WindowsFileSystemAccessors {
 final class Target_java_io_UnixFileSystem {
 
     @Alias @InjectAccessors(UserDirAccessors.class) //
-    @TargetElement(onlyWith = JDK11OrLater.class)//
     private String userDir;
 
     @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClassName = "java.io.ExpiringCache") //
@@ -459,7 +458,6 @@ class UserDirAccessors {
 final class Target_java_io_WinNTFileSystem {
 
     @Alias @InjectAccessors(UserDirAccessors.class) //
-    @TargetElement(onlyWith = JDK11OrLater.class) //
     private String userDir;
 
     @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClassName = "java.io.ExpiringCache") //

@@ -49,9 +49,10 @@ import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
 public final class TRegexNFAExecutorLocals extends TRegexExecutorLocals {
 
     /**
-     * Frame size = 1 (state ID) + 2 * nCaptureGroups (start and end indices).
+     * Frame size = 1 (state ID) + 2 * nCaptureGroups (start and end indices) + 1 (last group).
      */
     private final int frameSize;
+    private final int nCaptureGroups;
     private final int maxSize;
     /**
      * A record of the paths that we are considering for our optimal match. Every path is
@@ -82,14 +83,25 @@ public final class TRegexNFAExecutorLocals extends TRegexExecutorLocals {
      * path.
      */
     private boolean resultPushed = false;
+    private final boolean trackLastGroup;
 
-    public TRegexNFAExecutorLocals(Object input, int fromIndex, int index, int maxIndex, int nCaptureGroups, int nStates) {
+    public TRegexNFAExecutorLocals(Object input, int fromIndex, int index, int maxIndex, int nCaptureGroups, int nStates, boolean trackLastGroup) {
         super(input, fromIndex, maxIndex, index);
-        this.frameSize = 1 + nCaptureGroups * 2;
+        this.frameSize = 1 + nCaptureGroups * 2 + (trackLastGroup ? 1 : 0);
+        this.nCaptureGroups = nCaptureGroups;
         this.maxSize = nStates * frameSize;
         this.curStates = new int[frameSize * 8];
         this.nextStates = new int[frameSize * 8];
         this.marks = new long[((nStates - 1) >> 6) + 1];
+        this.trackLastGroup = trackLastGroup;
+    }
+
+    private static int offsetCaptureGroups(int recordOffset) {
+        return recordOffset + 1;
+    }
+
+    private int offsetLastGroup(int recordOffset) {
+        return trackLastGroup ? recordOffset + 1 + nCaptureGroups * 2 : -1;
     }
 
     public void addInitialState(int stateId) {
@@ -125,11 +137,11 @@ public final class TRegexNFAExecutorLocals extends TRegexExecutorLocals {
         }
         nextStates[nextStatesLength] = t.getTarget().getId();
         if (copy) {
-            System.arraycopy(curStates, iCurStates - frameSize + 1, nextStates, nextStatesLength + 1, frameSize - 1);
+            System.arraycopy(curStates, offsetCaptureGroups(iCurStates - frameSize), nextStates, offsetCaptureGroups(nextStatesLength), frameSize - 1);
         } else {
-            Arrays.fill(nextStates, nextStatesLength + 1, nextStatesLength + frameSize, -1);
+            Arrays.fill(nextStates, offsetCaptureGroups(nextStatesLength), nextStatesLength + frameSize, -1);
         }
-        t.getGroupBoundaries().apply(nextStates, nextStatesLength + 1, getIndex());
+        t.getGroupBoundaries().apply(nextStates, offsetCaptureGroups(nextStatesLength), offsetLastGroup(nextStatesLength), getIndex(), trackLastGroup);
         nextStatesLength += frameSize;
     }
 
@@ -147,14 +159,14 @@ public final class TRegexNFAExecutorLocals extends TRegexExecutorLocals {
     public void pushResult(NFAStateTransition t, boolean copy) {
         resultPushed = true;
         if (result == null) {
-            result = new int[frameSize - 1];
+            result = new int[nCaptureGroups * 2 + (trackLastGroup ? 1 : 0)];
         }
         if (copy) {
-            System.arraycopy(curStates, iCurStates + 1 - frameSize, result, 0, frameSize - 1);
+            System.arraycopy(curStates, offsetCaptureGroups(iCurStates - frameSize), result, 0, result.length);
         } else {
             Arrays.fill(result, -1);
         }
-        t.getGroupBoundaries().apply(result, 0, getIndex());
+        t.getGroupBoundaries().apply(result, 0, nCaptureGroups * 2, getIndex(), trackLastGroup);
     }
 
     public boolean hasResult() {

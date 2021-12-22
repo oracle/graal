@@ -36,31 +36,15 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK11OrLater;
-import com.oracle.svm.core.jdk.JDK8OrEarlier;
 
 @TargetClass(java.lang.reflect.Proxy.class)
 final class Target_java_lang_reflect_Proxy {
 
     /** We have our own proxy cache so mark the original one as deleted. */
     @Delete //
-    @TargetElement(onlyWith = JDK8OrEarlier.class) //
-    private static Target_java_lang_reflect_WeakCache proxyClassCache;
-
-    @Substitute
-    @TargetElement(onlyWith = JDK8OrEarlier.class) //
-    private static Class<?> getProxyClass0(@SuppressWarnings("unused") ClassLoader loader, Class<?>... interfaces) {
-        return ImageSingletons.lookup(DynamicProxyRegistry.class).getProxyClass(loader, interfaces);
-    }
-
-    /** We have our own proxy cache so mark the original one as deleted. */
-    @Delete //
-    @TargetElement(onlyWith = JDK11OrLater.class) //
     private static Target_jdk_internal_loader_ClassLoaderValue proxyCache;
 
     @Substitute
-    @TargetElement(onlyWith = JDK11OrLater.class)
     @SuppressWarnings("unused")
     private static Constructor<?> getProxyConstructor(Class<?> caller, ClassLoader loader, Class<?>... interfaces) {
         final Class<?> cl = ImageSingletons.lookup(DynamicProxyRegistry.class).getProxyClass(loader, interfaces);
@@ -79,21 +63,9 @@ final class Target_java_lang_reflect_Proxy {
     public static boolean isProxyClass(Class<?> cl) {
         return Proxy.class.isAssignableFrom(cl) && ImageSingletons.lookup(DynamicProxyRegistry.class).isProxyClass(cl);
     }
-
-    /*
-     * We are defensive and handle native methods by marking them as deleted. If they are reachable,
-     * the user is certainly doing something wrong. But we do not want to fail with a linking error.
-     */
-    @Delete //
-    @TargetElement(onlyWith = JDK8OrEarlier.class) //
-    private static native Class<?> defineClass0(ClassLoader loader, String name, byte[] b, int off, int len);
 }
 
-@TargetClass(className = "java.lang.reflect.WeakCache", onlyWith = JDK8OrEarlier.class)
-final class Target_java_lang_reflect_WeakCache {
-}
-
-@TargetClass(className = "jdk.internal.loader.ClassLoaderValue", onlyWith = JDK11OrLater.class)
+@TargetClass(className = "jdk.internal.loader.ClassLoaderValue")
 final class Target_jdk_internal_loader_ClassLoaderValue {
 }
 

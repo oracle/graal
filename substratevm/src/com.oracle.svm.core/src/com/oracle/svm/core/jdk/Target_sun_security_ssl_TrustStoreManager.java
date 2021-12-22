@@ -31,7 +31,7 @@ import java.util.Set;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
+import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -89,13 +89,14 @@ final class TrustStoreManagerFeature implements Feature {
          * Note when a runtime certificate file is specified, we still honor/use the build time
          * lib/security/blacklisted.certs file
          */
-        RuntimeClassInitialization.initializeAtBuildTime(sun.security.util.UntrustedCertificates.class);
+        RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
+        rci.initializeAtBuildTime("sun.security.util.UntrustedCertificates", "Required for TrustStoreManager");
         /*
          * All security providers must be registered (and initialized) at buildtime (see
          * SecuritySubstitutions.java). XMLDSigRI is used for validating XML Signatures from
          * certificate files while generating X509Certificates.
          */
-        RuntimeClassInitialization.initializeAtBuildTime(org.jcp.xml.dsig.internal.dom.XMLDSigRI.class);
+        rci.initializeAtBuildTime("org.jcp.xml.dsig.internal.dom.XMLDSigRI", "Required for TrustStoreManager");
     }
 }
 

@@ -24,19 +24,18 @@
  */
 package com.oracle.svm.core.jdk.localization.substitutions;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK8OrEarlier;
-import com.oracle.svm.core.jdk.localization.LocalizationSupport;
-import org.graalvm.nativeimage.ImageSingletons;
-
 import java.nio.charset.Charset;
 import java.util.Collections;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.TreeMap;
+
+import org.graalvm.nativeimage.ImageSingletons;
+
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.localization.LocalizationSupport;
 
 @TargetClass(java.nio.charset.Charset.class)
 @SuppressWarnings({"unused"})
@@ -75,10 +74,4 @@ final class Target_java_nio_charset_Charset {
 
     @Alias
     private static native void checkName(String s);
-
-    @Substitute
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private static boolean atBugLevel(String bl) {
-        return false;
-    }
 }

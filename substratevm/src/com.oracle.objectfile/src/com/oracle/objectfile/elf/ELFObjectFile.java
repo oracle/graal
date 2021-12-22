@@ -139,7 +139,7 @@ public class ELFObjectFile extends ObjectFile {
                 @Override
                 public Iterator<String> iterator() {
                     final Iterator<Section> underlyingIterator = elements.sectionsIterator();
-                    return new Iterator<String>() {
+                    return new Iterator<>() {
 
                         @Override
                         public boolean hasNext() {

@@ -46,12 +46,10 @@ import java.net.URL;
 import java.security.ProtectionDomain;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.StringJoiner;
 
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
@@ -70,9 +68,7 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
-import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK17OrLater;
-import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.Target_java_lang_Module;
@@ -97,7 +93,6 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     static final Object NO_CLASS_LOADER = new Object();
 
     @Substitute //
-    @TargetElement(onlyWith = JDK11OrLater.class) //
     private static final Class<?>[] EMPTY_CLASS_ARRAY = new Class<?>[0];
 
     @Platforms(Platform.HOSTED_ONLY.class) //
@@ -697,7 +692,6 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private native String resolveName(String resourceName);
 
     @KeepOriginal
-    @TargetElement(name = "isOpenToCaller", onlyWith = JDK11OrLater.class)
     private native boolean isOpenToCaller(String resourceName, Class<?> caller);
 
     @KeepOriginal
@@ -719,43 +713,27 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         companion.get().setClassLoader(loader);
     }
 
-    @KeepOriginal
-    @TargetElement(name = "getSimpleName", onlyWith = JDK8OrEarlier.class)
-    private native String getSimpleNameJDK8OrEarlier();
-
     @Substitute
-    @TargetElement(name = "getSimpleName", onlyWith = JDK11OrLater.class)
-    private String getSimpleNameJDK11OrLater() {
+    private String getSimpleName() {
         return getSimpleName0();
     }
 
     @KeepOriginal //
-    @TargetElement(onlyWith = JDK11OrLater.class)
     private native String getSimpleName0();
-
-    @KeepOriginal
-    @TargetElement(name = "getCanonicalName", onlyWith = JDK8OrEarlier.class)
-    private native String getCanonicalNameJDK8OrEarlier();
 
     @SuppressFBWarnings(value = "ES_COMPARING_STRINGS_WITH_EQ", justification = "sentinel string comparison")
     @Substitute
-    @TargetElement(name = "getCanonicalName", onlyWith = JDK11OrLater.class)
-    private String getCanonicalNameJDK11OrLater() {
+    private String getCanonicalName() {
         String canonicalName = getCanonicalName0();
         return canonicalName == Target_java_lang_Class_ReflectionData.NULL_SENTINEL ? null : canonicalName;
     }
 
     @KeepOriginal
-    @TargetElement(onlyWith = JDK11OrLater.class)
     private native String getCanonicalName0();
 
     @KeepOriginal
     @Override
     public native String getTypeName();
-
-    @KeepOriginal
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private static native boolean isAsciiDigit(char c);
 
     @KeepOriginal
     private native String getSimpleBinaryName();
@@ -818,18 +796,10 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @KeepOriginal
-    @TargetElement(name = "getDeclaringClass", onlyWith = JDK11OrLater.class)
-    private native Object getDeclaringClassJDK11OrLater();
-
-    @Substitute //
-    @TargetElement(onlyWith = JDK11OrLater.class)
-    private Object getDeclaringClass0() {
-        return getDeclaringClassInternal();
-    }
+    private native Object getDeclaringClass();
 
     @Substitute
-    @TargetElement(name = "getDeclaringClass", onlyWith = JDK8OrEarlier.class)
-    private Object getDeclaringClassJDK8OrEarlier() {
+    private Object getDeclaringClass0() {
         return getDeclaringClassInternal();
     }
 
@@ -847,7 +817,6 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK11OrLater.class)
     private DynamicHub[] getInterfaces(boolean cloneArray) {
         return getInterfaces(this, cloneArray);
     }
@@ -874,13 +843,8 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         ensureInitialized();
         final Constructor<?> nullaryConstructor = rd.nullaryConstructor;
         if (nullaryConstructor == null) {
-            if (JavaVersionUtil.JAVA_SPEC <= 8) {
-                throw new InstantiationException("Type `" + this.getCanonicalNameJDK8OrEarlier() +
-                                "` can not be instantiated reflectively as it does not have a no-parameter constructor or the no-parameter constructor has not been added explicitly to the native image.");
-            } else {
-                throw new InstantiationException("Type `" + this.getCanonicalNameJDK11OrLater() +
-                                "` can not be instantiated reflectively as it does not have a no-parameter constructor or the no-parameter constructor has not been added explicitly to the native image.");
-            }
+            throw new InstantiationException("Type `" + this.getCanonicalName() +
+                            "` can not be instantiated reflectively as it does not have a no-parameter constructor or the no-parameter constructor has not been added explicitly to the native image.");
         }
         try {
             return nullaryConstructor.newInstance((Object[]) null);
@@ -1059,10 +1023,6 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         }
     }
 
-    @TargetClass(value = java.lang.Class.class, innerClass = "MethodArray", onlyWith = JDK8OrEarlier.class)
-    static final class Target_java_lang_Class_MethodArray {
-    }
-
     ReflectionData rd = ReflectionData.EMPTY;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -1169,14 +1129,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @Substitute
-    @TargetElement(name = "privateGetPublicFields", onlyWith = JDK8OrEarlier.class)
-    private Field[] privateGetPublicFieldsJDK8OrEarlier(@SuppressWarnings("unused") Set<Class<?>> traversedInterfaces) {
-        return rd.publicFields;
-    }
-
-    @Substitute
-    @TargetElement(name = "privateGetPublicFields", onlyWith = JDK11OrLater.class)
-    private Field[] privateGetPublicFieldsJDK11OrLater() {
+    private Field[] privateGetPublicFields() {
         return rd.publicFields;
     }
 
@@ -1218,16 +1171,14 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @Substitute
-    @TargetElement(name = "checkMemberAccess", onlyWith = JDK8OrEarlier.class)
     @SuppressWarnings("unused")
-    private void checkMemberAccessJDK8OrEarlier(int which, Class<?> caller, boolean checkProxyInterfaces) {
+    private void checkMemberAccess(SecurityManager sm, int which, Class<?> caller, boolean checkProxyInterfaces) {
         /* No runtime access checks. */
     }
 
     @Substitute
-    @TargetElement(name = "checkMemberAccess", onlyWith = JDK11OrLater.class)
-    @SuppressWarnings("unused")
-    private void checkMemberAccessJDK11OrLater(SecurityManager sm, int which, Class<?> caller, boolean checkProxyInterfaces) {
+    @SuppressWarnings({"deprecation", "unused"})
+    private void checkPackageAccess(SecurityManager sm, ClassLoader ccl, boolean checkProxyInterfaces) {
         /* No runtime access checks. */
     }
 
@@ -1256,12 +1207,6 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @KeepOriginal
     private static native <U> Constructor<U>[] copyConstructors(Constructor<U>[] arg);
-
-    @Substitute
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private static String argumentTypesToString(Class<?>[] argTypes) {
-        return describeMethod("(", argTypes, ")");
-    }
 
     @Substitute
     @Override
@@ -1314,7 +1259,6 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @Substitute //
-    @TargetElement(onlyWith = JDK11OrLater.class) //
     public static Class<?> forName(@SuppressWarnings("unused") Target_java_lang_Module module, String className) {
         /*
          * The module system is not supported for now, therefore the module parameter is ignored and
@@ -1347,7 +1291,6 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private native Package getPackage();
 
     @Substitute //
-    @TargetElement(onlyWith = JDK11OrLater.class)
     public String getPackageName() {
         if (SubstrateUtil.HOSTED) { // avoid eager initialization in image heap
             return computePackageName();
@@ -1409,13 +1352,11 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @Substitute //
-    @TargetElement(name = "getModule", onlyWith = JDK11OrLater.class)
     public Target_java_lang_Module getModule() {
         return (Target_java_lang_Module) module;
     }
 
     @Substitute //
-    @TargetElement(onlyWith = JDK11OrLater.class)
     public String methodToString(String nameArg, Class<?>[] argTypes) {
         return describeMethod(name + "." + nameArg + "(", argTypes, ")");
     }
@@ -1432,15 +1373,13 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Substitute //
     private <T> Target_java_lang_Class_ReflectionData<T> reflectionData() {
-        throw VMError.unsupportedFeature("JDK11OrLater: DynamicHub.reflectionData()");
+        throw VMError.unsupportedFeature("DynamicHub.reflectionData()");
     }
 
     @KeepOriginal
-    @TargetElement(onlyWith = JDK11OrLater.class)
     private native boolean isTopLevelClass();
 
     @Substitute //
-    @TargetElement(onlyWith = JDK11OrLater.class)
     private String getSimpleBinaryName0() {
         if (isAnonymousClass() || enclosingClass == null) {
             return null;
@@ -1460,24 +1399,20 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @KeepOriginal //
-    @TargetElement(onlyWith = JDK11OrLater.class) //
     @SuppressWarnings({"unused"})
     private native List<Method> getDeclaredPublicMethods(String nameArg, Class<?>... parameterTypes);
 
     @Substitute
-    @TargetElement(onlyWith = JDK11OrLater.class)
     public Class<?> getNestHost() {
         return nestHost;
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK11OrLater.class)
     public boolean isNestmateOf(Class<?> c) {
         return nestHost == DynamicHub.fromClass(c).nestHost;
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK11OrLater.class)
     private Class<?>[] getNestMembers() {
         /*
          * Supporting all nest members is not as easy as supporting only the nest host. It is not
@@ -1588,19 +1523,12 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private static native boolean desiredAssertionStatus0(Class<?> clazz);
 
     @Delete
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private native String getName0();
-
-    @Delete
-    @TargetElement(onlyWith = JDK11OrLater.class)
     private native Class<?> getNestHost0();
 
     @Delete
-    @TargetElement(onlyWith = JDK11OrLater.class)
     private native Class<?>[] getNestMembers0();
 
     @Delete
-    @TargetElement(onlyWith = JDK11OrLater.class)
     private native String initClassName();
 }
 
@@ -1647,14 +1575,13 @@ interface Target_java_lang_invoke_TypeDescriptor_OfField extends Target_java_lan
     DynamicHub arrayType();
 }
 
-/** FIXME: How to handle java.lang.Class.ReflectionData? */
-// Checkstyle: stop
-@TargetClass(className = "java.lang.Class", innerClass = "ReflectionData", onlyWith = JDK11OrLater.class)
+@TargetClass(className = "java.lang.Class", innerClass = "ReflectionData")
 final class Target_java_lang_Class_ReflectionData<T> {
+    // Checkstyle: stop
     @Alias //
     static String NULL_SENTINEL;
+    // Checkstyle: resume
 }
-// Checkstyle: resume
 
 @TargetClass(classNameProvider = Package_jdk_internal_reflect.class, className = "ReflectionFactory")
 final class Target_jdk_internal_reflect_ReflectionFactory {

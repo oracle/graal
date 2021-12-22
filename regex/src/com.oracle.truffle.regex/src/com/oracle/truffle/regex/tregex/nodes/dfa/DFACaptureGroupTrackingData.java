@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,15 +47,16 @@ public final class DFACaptureGroupTrackingData {
     public final int[] currentResultOrder;
     public final int[] currentResult;
 
-    public DFACaptureGroupTrackingData(int maxNumberOfNFAStates, int getNumberOfCaptureGroups, TRegexDFAExecutorProperties props) {
+    public DFACaptureGroupTrackingData(int maxNumberOfNFAStates, int numberOfCaptureGroups, TRegexDFAExecutorProperties props) {
+        int resultLength = numberOfCaptureGroups * 2 + (props.tracksLastGroup() ? 1 : 0);
         if (props.isSimpleCG()) {
-            results = new int[getNumberOfCaptureGroups * 2];
+            results = new int[resultLength];
             currentResultOrder = null;
-            currentResult = props.isSimpleCGMustCopy() ? new int[getNumberOfCaptureGroups * 2] : null;
+            currentResult = props.isSimpleCGMustCopy() ? new int[resultLength] : null;
         } else {
-            results = new int[maxNumberOfNFAStates * getNumberOfCaptureGroups * 2];
+            results = new int[maxNumberOfNFAStates * resultLength];
             currentResultOrder = new int[maxNumberOfNFAStates];
-            currentResult = new int[getNumberOfCaptureGroups * 2];
+            currentResult = new int[resultLength];
         }
     }
 

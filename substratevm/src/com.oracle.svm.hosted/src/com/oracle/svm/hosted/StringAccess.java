@@ -24,9 +24,23 @@
  */
 package com.oracle.svm.hosted;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
+
 /* TODO: Added as a temporary workaround to provide compatibility with JDK8 (GR-35238). */
 public class StringAccess {
-    public static int getInternalByteArrayLength(@SuppressWarnings("unused") String string) {
-        return 0; // not supported
+
+    private static final VarHandle STRING_VALUE;
+    static {
+        try {
+            MethodHandles.Lookup privateLookup = MethodHandles.privateLookupIn(String.class, MethodHandles.lookup());
+            STRING_VALUE = privateLookup.unreflectVarHandle(String.class.getDeclaredField("value"));
+        } catch (ReflectiveOperationException e) {
+            throw new ExceptionInInitializerError(e);
+        }
+    }
+
+    public static int getInternalByteArrayLength(String string) {
+        return ((byte[]) STRING_VALUE.get(string)).length;
     }
 }

@@ -72,7 +72,7 @@ public final class CAnnotationProcessorCache {
 
     public static class Options {
         @Option(help = "Indicate the C Annotation Processor to use previously cached native information when generating C Type information.")//
-        public static final HostedOptionKey<Boolean> UseCAPCache = new HostedOptionKey<Boolean>(false) {
+        public static final HostedOptionKey<Boolean> UseCAPCache = new HostedOptionKey<>(false) {
             @Override
             public Boolean getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
                 if (!values.containsKey(this)) {

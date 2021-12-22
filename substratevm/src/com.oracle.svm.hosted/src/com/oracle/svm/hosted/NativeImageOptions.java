@@ -98,7 +98,7 @@ public class NativeImageOptions {
 
     @APIOption(name = "allow-incomplete-classpath")//
     @Option(help = "Allow image building with an incomplete class path: report type resolution errors at run time when they are accessed the first time, instead of during image building", type = User)//
-    public static final HostedOptionKey<Boolean> AllowIncompleteClasspath = new HostedOptionKey<Boolean>(false) {
+    public static final HostedOptionKey<Boolean> AllowIncompleteClasspath = new HostedOptionKey<>(false) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
             PointstoOptions.UnresolvedIsError.update(values, !newValue);
@@ -182,7 +182,7 @@ public class NativeImageOptions {
                     Paths.get("reports", ReportUtils.timeStampedFileName("diagnostics", "")).toString());
 
     @Option(help = "Enables the diagnostic mode.")//
-    public static final HostedOptionKey<Boolean> DiagnosticsMode = new HostedOptionKey<Boolean>(false) {
+    public static final HostedOptionKey<Boolean> DiagnosticsMode = new HostedOptionKey<>(false) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
             if (newValue) {

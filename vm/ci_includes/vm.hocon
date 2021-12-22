@@ -45,9 +45,6 @@ maven_base_8_11: {
   mx_cmd_base: [mx, --dynamicimports, "/tools,/compiler,/graal-js,/espresso", "--disable-installables=true"]
   build: ${maven_base_8_11.mx_cmd_base} [build]
   deploy: ${maven_base_8_11.mx_cmd_base} [--suite, compiler, --suite, truffle, --suite, sdk, --suite, tools, --suite, regex, --suite, graal-js, --suite, espresso, maven-deploy, "--tags=default", --all-distribution-types, --validate, full, --licenses, "GPLv2-CPE,UPL,MIT"]
-  mx_cmd_base_svm: [mx, --dynamicimports, "/tools,/compiler,/graal-js,/substratevm", "--disable-installables=true", "--force-bash-launcher=true", "--skip-libraries=true"]
-  build_svm: ${maven_base_8_11.mx_cmd_base_svm} [build]
-  deploy_svm: ${maven_base_8_11.mx_cmd_base_svm} [--suite, substratevm, maven-deploy, "--tags=default", --all-distribution-types, --validate, full, --licenses, "GPLv2-CPE,UPL,MIT"]
 }
 
 maven_base_native: {
@@ -106,9 +103,6 @@ builds += [
     run: [
       ${maven_base_8_11.build}
       ${maven_base_8_11.deploy} [--dry-run, "lafo-maven"]
-      [unset, EXTRA_JAVA_HOMES]
-      ${maven_base_8_11.build_svm}
-      ${maven_base_8_11.deploy_svm} [--dry-run, "lafo-maven"]
     ]
     name: gate-vm-maven-dry-run-linux-amd64
   }
@@ -131,9 +125,6 @@ builds += [
     run: [
       ${maven_base_8_11.build}
       ${maven_base_8_11.deploy} ["lafo-maven"]
-      [unset, EXTRA_JAVA_HOMES]
-      ${maven_base_8_11.build_svm}
-      ${maven_base_8_11.deploy_svm} ["lafo-maven"]
     ]
     name: deploy-vm-maven-linux-amd64
     timelimit: "45:00"

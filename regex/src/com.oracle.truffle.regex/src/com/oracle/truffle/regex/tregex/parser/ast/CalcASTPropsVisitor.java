@@ -348,6 +348,9 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
         if (isForward() && !assertion.isDead()) {
             ast.getLookArounds().add(assertion);
         }
+        if (assertion.hasCaptureGroups()) {
+            ast.getProperties().setCaptureGroupsInLookAroundAssertions();
+        }
         int flags = assertion.isNegated() || assertion.isLookBehindAssertion() ? assertion.getFlags(OR_FLAGS | RegexASTNode.FLAG_DEAD) : assertion.getFlags(CHANGED_FLAGS);
         assertion.getParent().setFlags(flags | assertion.getParent().getFlags(CHANGED_FLAGS), CHANGED_FLAGS);
     }

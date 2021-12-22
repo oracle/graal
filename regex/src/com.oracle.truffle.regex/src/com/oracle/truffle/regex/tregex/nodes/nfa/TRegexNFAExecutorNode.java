@@ -62,9 +62,10 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
 
     private final NFA nfa;
     private final boolean searching;
+    private final boolean trackLastGroup;
     private boolean dfaGeneratorBailedOut;
 
-    public TRegexNFAExecutorNode(NFA nfa) {
+    public TRegexNFAExecutorNode(NFA nfa, boolean trackLastGroup) {
         this.nfa = nfa;
         nfa.setInitialLoopBack(false);
         this.searching = !nfa.getAst().getFlags().isSticky() && !nfa.getAst().getRoot().startsWithCaret();
@@ -73,6 +74,7 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
                 nfa.getTransitions()[i].getGroupBoundaries().materializeArrays();
             }
         }
+        this.trackLastGroup = trackLastGroup;
     }
 
     public NFA getNFA() {
@@ -95,7 +97,7 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
 
     @Override
     public TRegexExecutorLocals createLocals(Object input, int fromIndex, int index, int maxIndex) {
-        return new TRegexNFAExecutorLocals(input, fromIndex, index, maxIndex, getNumberOfCaptureGroups(), nfa.getNumberOfStates());
+        return new TRegexNFAExecutorLocals(input, fromIndex, index, maxIndex, getNumberOfCaptureGroups(), nfa.getNumberOfStates(), trackLastGroup);
     }
 
     @Override

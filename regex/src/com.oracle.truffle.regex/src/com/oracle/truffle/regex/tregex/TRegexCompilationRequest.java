@@ -166,7 +166,7 @@ public final class TRegexCompilationRequest {
                 if (nfa.isDead()) {
                     return new DeadRegexExecNode(language, source);
                 }
-                return new TRegexExecNode(ast, new TRegexNFAExecutorNode(nfa));
+                return new TRegexExecNode(ast, new TRegexNFAExecutorNode(nfa, ast.getOptions().getFlavor().usesLastGroupResultField()));
             } catch (UnsupportedRegexException e) {
                 // fall back to backtracking executor
             }
@@ -215,16 +215,18 @@ public final class TRegexCompilationRequest {
                 // assigning preCalculatedResults
             }
         }
-        executorNodeForward = createDFAExecutor(nfa, true, true, false, allowSimpleCG && preCalculatedResults == null && !(ast.getRoot().startsWithCaret() && !properties.hasCaptureGroups()));
+        final boolean trackLastGroup = ast.getOptions().getFlavor().usesLastGroupResultField();
+        executorNodeForward = createDFAExecutor(nfa, true, true, false, allowSimpleCG && preCalculatedResults == null && !(ast.getRoot().startsWithCaret() && !properties.hasCaptureGroups()),
+                        trackLastGroup);
         final boolean createCaptureGroupTracker = !executorNodeForward.isSimpleCG() && (properties.hasCaptureGroups() || properties.hasLookAroundAssertions()) &&
                         preCalculatedResults == null;
         if (createCaptureGroupTracker) {
-            executorNodeCaptureGroups = createDFAExecutor(nfa, true, false, true, false);
+            executorNodeCaptureGroups = createDFAExecutor(nfa, true, false, true, false, trackLastGroup);
         }
         if (preCalculatedResults != null && preCalculatedResults.length > 1) {
-            executorNodeBackward = createDFAExecutor(traceFinderNFA, false, false, false, false);
+            executorNodeBackward = createDFAExecutor(traceFinderNFA, false, false, false, false, false);
         } else if (!executorNodeForward.isAnchored() && !executorNodeForward.isSimpleCG() && (preCalculatedResults == null || !nfa.hasReverseUnAnchoredEntry())) {
-            executorNodeBackward = createDFAExecutor(nfa, false, false, false, allowSimpleCG && !(ast.getRoot().endsWithDollar() && !properties.hasCaptureGroups()));
+            executorNodeBackward = createDFAExecutor(nfa, false, false, false, allowSimpleCG && !(ast.getRoot().endsWithDollar() && !properties.hasCaptureGroups()), trackLastGroup);
         }
         logAutomatonSizes(rootNode);
         return new TRegexExecNode.LazyCaptureGroupRegexSearchNode(
@@ -243,11 +245,12 @@ public final class TRegexCompilationRequest {
         assert properties.hasCaptureGroups() || properties.hasLookAroundAssertions();
         assert !ast.getRoot().isDead();
         createNFA();
-        return createDFAExecutor(nfa, true, true, true, false);
+        return createDFAExecutor(nfa, true, true, true, false, ast.getOptions().getFlavor().usesLastGroupResultField());
     }
 
     private static boolean canTransformToDFA(RegexAST ast) throws UnsupportedRegexException {
         RegexProperties p = ast.getProperties();
+        boolean couldCalculateLastGroup = !ast.getOptions().getFlavor().usesLastGroupResultField() || !p.hasCaptureGroupsInLookAroundAssertions();
         return ast.getNumberOfNodes() <= TRegexOptions.TRegexMaxParseTreeSizeForDFA &&
                         ast.getNumberOfCaptureGroups() <= TRegexOptions.TRegexMaxNumberOfCaptureGroupsForDFA &&
                         !(ast.getRoot().hasBackReferences() ||
@@ -255,7 +258,8 @@ public final class TRegexCompilationRequest {
                                         p.hasNegativeLookAheadAssertions() ||
                                         p.hasNonLiteralLookBehindAssertions() ||
                                         p.hasNegativeLookBehindAssertions() ||
-                                        ast.getRoot().hasQuantifiers());
+                                        ast.getRoot().hasQuantifiers()) &&
+                        couldCalculateLastGroup;
     }
 
     private void createAST() {
@@ -284,9 +288,9 @@ public final class TRegexCompilationRequest {
         debugNFA();
     }
 
-    private TRegexDFAExecutorNode createDFAExecutor(NFA nfaArg, boolean forward, boolean searching, boolean genericCG, boolean allowSimpleCG) {
+    private TRegexDFAExecutorNode createDFAExecutor(NFA nfaArg, boolean forward, boolean searching, boolean genericCG, boolean allowSimpleCG, boolean trackLastGroup) {
         return createDFAExecutor(nfaArg, new TRegexDFAExecutorProperties(forward, searching, genericCG, allowSimpleCG,
-                        source.getOptions().isRegressionTestMode(), nfaArg.getAst().getRoot().getMinPath()), null);
+                        source.getOptions().isRegressionTestMode(), trackLastGroup, nfaArg.getAst().getRoot().getMinPath()), null);
     }
 
     public TRegexDFAExecutorNode createDFAExecutor(NFA nfaArg, TRegexDFAExecutorProperties props, String debugDumpName) {

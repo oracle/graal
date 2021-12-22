@@ -33,7 +33,6 @@ import java.lang.reflect.MalformedParameterizedTypeException;
 import java.lang.reflect.Type;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.util.GuardedAnnotationAccess;
 
 import com.oracle.svm.core.SubstrateUtil;
@@ -44,9 +43,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK11OrLater;
-import com.oracle.svm.core.jdk.JDK8OrEarlier;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -66,13 +62,8 @@ final class Target_sun_reflect_generics_reflectiveObjects_TypeVariableImpl {
 
     /* Cache the bounds value. */
 
-    @TargetElement(name = "bounds", onlyWith = JDK8OrEarlier.class) //
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = TypeVariableBoundsComputer.class) //
-    private Type[] boundsJDK8OrEarlier;
-
-    @TargetElement(name = "bounds", onlyWith = JDK11OrLater.class) //
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = TypeVariableBoundsComputer.class) //
-    private Object[] boundsJDK11OrLater;
+    private Object[] bounds;
 
     @Alias GenericDeclaration genericDeclaration;
 
@@ -113,11 +104,10 @@ final class Util_sun_reflect_generics_reflectiveObjects_TypeVariableImpl {
     }
 }
 
-@TargetClass(className = "sun.reflect.generics.reflectiveObjects.LazyReflectiveObjectGenerator", onlyWith = JDK11OrLater.class)
+@TargetClass(className = "sun.reflect.generics.reflectiveObjects.LazyReflectiveObjectGenerator")
 final class Target_sun_reflect_generics_reflectiveObjects_LazyReflectiveObjectGenerator {
 
     @Alias
-    @TargetElement(onlyWith = JDK11OrLater.class)
     native Type[] reifyBounds(FieldTypeSignature[] boundASTs);
 }
 
@@ -161,55 +151,33 @@ class TypeVariableAnnotationsComputer implements CustomFieldValueComputer {
 final class Target_sun_reflect_generics_reflectiveObjects_WildcardTypeImpl {
 
     /* Cache the upperBounds value. */
-
     @Alias //
     @RecomputeFieldValue(kind = Kind.Custom, declClass = WildcardTypeImplUpperBoundsComputer.class) //
-    @TargetElement(name = "upperBounds", onlyWith = JDK8OrEarlier.class) //
-    private Type[] upperBoundsJDK8OrEarlier;
-
-    @Alias //
-    @RecomputeFieldValue(kind = Kind.Custom, declClass = WildcardTypeImplUpperBoundsComputer.class) //
-    @TargetElement(name = "upperBounds", onlyWith = JDK11OrLater.class) //
-    private Object[] upperBoundsJDK11OrLater;
+    private Object[] upperBounds;
 
     /* Cache the lowerBounds value. */
-
     @Alias //
     @RecomputeFieldValue(kind = Kind.Custom, declClass = WildcardTypeImplLowerBoundsComputer.class) //
-    @TargetElement(name = "lowerBounds", onlyWith = JDK8OrEarlier.class) //
-    private Type[] lowerBoundsJDK8OrEarlier;
-
-    @Alias //
-    @RecomputeFieldValue(kind = Kind.Custom, declClass = WildcardTypeImplLowerBoundsComputer.class) //
-    @TargetElement(name = "lowerBounds", onlyWith = JDK11OrLater.class) //
-    private Object[] lowerBoundsJDK11OrLater;
+    private Object[] lowerBounds;
 
     @Substitute
     public Type[] getUpperBounds() {
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            return upperBoundsJDK8OrEarlier;
-        } else {
-            Object[] value = upperBoundsJDK11OrLater;
-            if (value instanceof FieldTypeSignature[]) {
-                value = Util_sun_reflect_generics_reflectiveObjects_WildcardTypeImpl.reifyBounds(this, (FieldTypeSignature[]) value);
-                upperBoundsJDK11OrLater = value;
-            }
-            return (Type[]) value.clone();
+        Object[] value = upperBounds;
+        if (value instanceof FieldTypeSignature[]) {
+            value = Util_sun_reflect_generics_reflectiveObjects_WildcardTypeImpl.reifyBounds(this, (FieldTypeSignature[]) value);
+            upperBounds = value;
         }
+        return (Type[]) value.clone();
     }
 
     @Substitute
     public Type[] getLowerBounds() {
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            return lowerBoundsJDK8OrEarlier;
-        } else {
-            Object[] value = lowerBoundsJDK11OrLater;
-            if (value instanceof FieldTypeSignature[]) {
-                value = Util_sun_reflect_generics_reflectiveObjects_WildcardTypeImpl.reifyBounds(this, (FieldTypeSignature[]) value);
-                lowerBoundsJDK11OrLater = value;
-            }
-            return (Type[]) value.clone();
+        Object[] value = lowerBounds;
+        if (value instanceof FieldTypeSignature[]) {
+            value = Util_sun_reflect_generics_reflectiveObjects_WildcardTypeImpl.reifyBounds(this, (FieldTypeSignature[]) value);
+            lowerBounds = value;
         }
+        return (Type[]) value.clone();
     }
 }
 

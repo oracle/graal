@@ -169,7 +169,7 @@ public final class LLVMContext {
 
     protected boolean initialized;
     protected boolean cleanupNecessary;
-    private boolean initializeContextCalled;
+    private State contextState;
     private final LLVMLanguage language;
 
     private LLVMTracerInstrument tracer;    // effectively final after initialization
@@ -230,15 +230,30 @@ public final class LLVMContext {
         symbolFinalStorage = symbolDynamicStorage = new LLVMPointer[10][];
         libraryLoaded = new boolean[10];
         destructorFunctions = new RootCallTarget[10];
+        contextState = State.CREATED;
     }
 
-    boolean patchContext(Env newEnv) {
-        if (this.initializeContextCalled) {
-            return false;
+    /**
+     * Marks a context whose initialization was requested at context pre-initialization time and was
+     * deferred to {@link #patchContext(Env, ContextExtension[])} .
+     */
+    void initializationDeferred() {
+        contextState = State.INITIALIZATION_DEFERRED;
+    }
+
+    boolean patchContext(Env newEnv, ContextExtension[] contextExtens) {
+        if (contextState == State.INITIALIZED) {
+            // Context already initialized.
+            throw CompilerDirectives.shouldNotReachHere("Context cannot be initialized during context pre-initialization");
         }
         this.env = newEnv;
         this.nativeCallStatistics = SulongEngineOption.optionEnabled(this.env.getOptions().get(SulongEngineOption.NATIVE_CALL_STATS)) ? new ConcurrentHashMap<>() : null;
         this.mainArguments = getMainArguments(newEnv);
+        if (contextState == State.INITIALIZATION_DEFERRED) {
+            // Context initialization was requested at context pre-initialization time and was
+            // deferred to image execution time. Perform it now.
+            initialize(contextExtens);
+        }
         return true;
     }
 
@@ -249,13 +264,11 @@ public final class LLVMContext {
 
     @SuppressWarnings("unchecked")
     void initialize(ContextExtension[] contextExtens) {
-        this.initializeContextCalled = true;
+        contextState = State.INITIALIZED;
         assert this.threadingStack == null;
         this.contextExtensions = contextExtens;
 
-        String opt = env.getOptions().get(SulongEngineOption.LD_DEBUG);
-        this.loaderTraceStream = SulongEngineOption.optionEnabled(opt) ? new TargetStream(env, opt) : null;
-        opt = env.getOptions().get(SulongEngineOption.DEBUG_SYSCALLS);
+        String opt = env.getOptions().get(SulongEngineOption.DEBUG_SYSCALLS);
         this.syscallTraceStream = SulongEngineOption.optionEnabled(opt) ? new TargetStream(env, opt) : null;
         opt = env.getOptions().get(SulongEngineOption.NATIVE_CALL_STATS);
         this.nativeCallStatsStream = SulongEngineOption.optionEnabled(opt) ? new TargetStream(env, opt) : null;
@@ -551,10 +564,6 @@ public final class LLVMContext {
 
         if (tracer != null) {
             tracer.dispose();
-        }
-
-        if (loaderTraceStream != null) {
-            loaderTraceStream.dispose();
         }
 
         if (syscallTraceStream != null) {
@@ -1111,10 +1120,10 @@ public final class LLVMContext {
         }
     }
 
-    @CompilationFinal private TargetStream loaderTraceStream;
+    private static final TruffleLogger loaderLogger = TruffleLogger.getLogger("llvm", "Loader");
 
-    public TargetStream loaderTraceStream() {
-        return loaderTraceStream;
+    public static TruffleLogger loaderLogger() {
+        return loaderLogger;
     }
 
     @CompilationFinal private TargetStream syscallTraceStream;
@@ -1139,5 +1148,26 @@ public final class LLVMContext {
 
     public TargetStream llDebugVerboseStream() {
         return llDebugVerboseStream;
+    }
+
+    /**
+     * Context initialization state.
+     */
+    private enum State {
+        /**
+         * {@link LLVMContext} is created but not initialized.
+         */
+        CREATED,
+
+        /**
+         * The initialization was requested during context pre-initialization and was deferred into
+         * {@link LLVMContext#patchContext(Env, ContextExtension[])}.
+         */
+        INITIALIZATION_DEFERRED,
+
+        /**
+         * {@link LLVMContext} is initialized.
+         */
+        INITIALIZED
     }
 }

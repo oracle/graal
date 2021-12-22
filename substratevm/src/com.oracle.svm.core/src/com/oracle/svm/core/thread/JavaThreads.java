@@ -236,6 +236,7 @@ public abstract class JavaThreads {
      */
     public static IsolateThread getIsolateThread(Thread t) {
         VMThreads.guaranteeOwnsThreadMutex("Threads mutex must be locked before accessing/iterating the thread list.");
+        VMError.guarantee(t.isAlive(), "Only running java.lang.Thread objects have a IsolateThread");
         return getIsolateThreadUnsafe(t);
     }
 
@@ -631,7 +632,11 @@ public abstract class JavaThreads {
 
         StackTraceElement[][] result = new StackTraceElement[1][0];
         JavaVMOperation.enqueueBlockingSafepoint("getStackTrace", () -> {
-            result[0] = getStackTrace(getIsolateThread(thread));
+            if (thread.isAlive()) {
+                result[0] = getStackTrace(getIsolateThread(thread));
+            } else {
+                result[0] = Target_java_lang_Thread.EMPTY_STACK_TRACE;
+            }
         });
         return result[0];
     }

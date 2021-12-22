@@ -3861,7 +3861,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         Object[] doEspressoNoUnwrap(
                         @SuppressWarnings("unused") boolean unwrapArguments,
                         @JavaType(Object[].class) StaticObject arguments) {
-            return arguments.<Object[]> unwrap();
+            return arguments.<StaticObject[]> unwrap();
         }
 
         @Specialization(guards = {

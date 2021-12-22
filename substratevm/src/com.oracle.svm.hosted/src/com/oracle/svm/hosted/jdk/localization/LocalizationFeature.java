@@ -107,11 +107,11 @@ import sun.util.resources.LocaleData;
  * simpler implementation leads to image size savings for smaller images such as hello world, but
  * could cause compatibility issues and maintenance overhead. It is implemented in
  * {@link OptimizedLocalizationSupport}.
- * 
+ *
  * The second approach relies on the original JVM implementation instead. This approach is
  * consistent by design, which solves compatibility issues and reduces maintenance overhead.
  * Unfortunately, the default way of storing bundle data in getContents methods, see
- * {@link sun.text.resources.FormatData} for example, is not very AOT friendly. Compiling these
+ * {@code sun.text.resources.FormatData} for example, is not very AOT friendly. Compiling these
  * methods is time consuming and results in a bloated image (183 MB HelloWorld with all locales).
  * Therefore, the bundle content itself is again stored in the image heap by default and furthermore
  * is compressed to reduce the image size, see {@link BundleContentSubstitutedLocalizationSupport}

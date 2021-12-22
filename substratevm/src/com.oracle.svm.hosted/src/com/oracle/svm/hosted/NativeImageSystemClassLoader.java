@@ -52,6 +52,8 @@ import com.oracle.svm.util.ReflectionUtil;
 public final class NativeImageSystemClassLoader extends SecureClassLoader {
 
     public final ClassLoader defaultSystemClassLoader;
+    final NativeImageSystemIOWrappers systemIOWrappers;
+
     private volatile ClassLoader nativeImageClassLoader = null;
 
     private Set<ClassLoader> disallowedClassLoaders = Collections.newSetFromMap(new WeakHashMap<>());
@@ -59,6 +61,9 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
     public NativeImageSystemClassLoader(ClassLoader defaultSystemClassLoader) {
         super(defaultSystemClassLoader);
         this.defaultSystemClassLoader = defaultSystemClassLoader;
+        systemIOWrappers = new NativeImageSystemIOWrappers();
+        /* Image building console output requires custom System.out and System.err */
+        systemIOWrappers.replaceSystemOutErr();
     }
 
     public static NativeImageSystemClassLoader singleton() {
@@ -243,4 +248,5 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
             VMError.shouldNotReachHere(message, e);
         }
     }
+
 }

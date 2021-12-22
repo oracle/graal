@@ -139,6 +139,8 @@ final class Target_java_lang_invoke_BoundMethodHandle_Species_L {
 
 @TargetClass(className = "java.lang.invoke.BoundMethodHandle", innerClass = "SpeciesData", onlyWith = MethodHandlesSupported.class)
 final class Target_java_lang_invoke_BoundMethodHandle_SpeciesData {
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = RecomputeFieldValue.NewEmptyArrayTransformer.class) //
+    private Target_java_lang_invoke_BoundMethodHandle_SpeciesData[] extensions;
 }
 
 @TargetClass(className = "java.lang.invoke.BoundMethodHandle", innerClass = "Specializer", onlyWith = MethodHandlesSupported.class)

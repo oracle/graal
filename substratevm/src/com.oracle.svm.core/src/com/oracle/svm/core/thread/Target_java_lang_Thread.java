@@ -43,9 +43,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
-import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK17OrLater;
-import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.jdk.LoomJDK;
 import com.oracle.svm.core.jdk.NotLoomJDK;
 import com.oracle.svm.core.monitor.MonitorSupport;
@@ -54,6 +52,11 @@ import com.oracle.svm.core.util.VMError;
 @TargetClass(Thread.class)
 @SuppressWarnings({"unused"})
 public final class Target_java_lang_Thread {
+
+    // Checkstyle: stop
+    @Alias //
+    static StackTraceElement[] EMPTY_STACK_TRACE;
+    // Checkstyle: resume
 
     @Inject //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
@@ -272,22 +275,13 @@ public final class Target_java_lang_Thread {
         }
     }
 
-    @Substitute
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private void init(ThreadGroup groupArg, Runnable targetArg, String nameArg, long stackSizeArg) {
-        /* Injected Target_java_lang_Thread instance field initialization. */
-        this.threadData = new ThreadData();
-        /* Initialize the rest of the Thread object. */
-        JavaThreads.initializeNewThread(this, groupArg, targetArg, nameArg, stackSizeArg);
-    }
-
     @Alias
     @TargetElement(onlyWith = LoomJDK.class)
     private static native void checkCharacteristics(int characteristics);
 
     @Substitute
     @SuppressWarnings({"unused"})
-    @TargetElement(onlyWith = {JDK11OrLater.class, NotLoomJDK.class})
+    @TargetElement(onlyWith = NotLoomJDK.class)
     private Target_java_lang_Thread(
                     ThreadGroup g,
                     Runnable target,

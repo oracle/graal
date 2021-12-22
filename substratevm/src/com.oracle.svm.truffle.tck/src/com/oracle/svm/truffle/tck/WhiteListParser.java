@@ -185,6 +185,9 @@ final class WhiteListParser extends ConfigurationParser {
             useType = type;
         }
         Class<?> clz = imageClassLoader.findClass(useType).get();
+        if (clz == null) {
+            return null;
+        }
         verifySupportedOnActivePlatform(clz);
         return bb.getMetaAccess().lookupJavaType(clz);
     }

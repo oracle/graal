@@ -31,14 +31,17 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.function.BooleanSupplier;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
+import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
+import com.oracle.svm.core.OS;
+import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -47,12 +50,16 @@ import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.thread.ThreadListenerFeature;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.jfr.traceid.JfrTraceId;
 import com.oracle.svm.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.jfr.traceid.JfrTraceIdMap;
 import com.oracle.svm.util.ModuleSupport;
+import com.oracle.svm.util.ReflectionUtil;
+import com.sun.management.HotSpotDiagnosticMXBean;
+import com.sun.management.internal.PlatformMBeanProviderImpl;
 
 import jdk.jfr.Configuration;
 import jdk.jfr.Event;
@@ -100,13 +107,59 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  * consistent state).</li>
  * </ul>
  */
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
 @AutomaticFeature
 public class JfrFeature implements Feature {
 
+    public static final class JfrHostedEnabled implements BooleanSupplier {
+        @Override
+        public boolean getAsBoolean() {
+            return ImageSingletons.contains(JfrFeature.class) && ImageSingletons.lookup(JfrFeature.class).hostedEnabled;
+        }
+    }
+
+    private final boolean hostedEnabled;
+
+    public JfrFeature() {
+        hostedEnabled = Boolean.valueOf(getDiagnosticBean().getVMOption("FlightRecorder").getValue());
+    }
+
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return JfrEnabled.get();
+        boolean systemSupported = jvmVersionSupported() && osSupported();
+        if (hostedEnabled && !systemSupported) {
+            throw UserError.abort("FlightRecorder cannot be used to profile the image generator on this platform. " +
+                            "The image generator can only be profiled on platforms where FlightRecoder is also supported at run time.");
+        }
+        boolean runtimeEnabled = VMInspectionOptions.AllowVMInspection.getValue();
+        if (hostedEnabled && !runtimeEnabled) {
+            // Checkstyle: stop
+            System.err.println("Warning: When FlightRecoder is used to profile the image generator, it is also automatically enabled in the native image at run time. " +
+                            "This can affect the measurements because it can can make the image larger and image build time longer.");
+            // Checkstyle: resume
+            runtimeEnabled = true;
+        }
+        return runtimeEnabled && systemSupported;
+    }
+
+    private static boolean jvmVersionSupported() {
+        return JavaVersionUtil.JAVA_SPEC >= 11;
+    }
+
+    private static boolean osSupported() {
+        return OS.getCurrent() == OS.LINUX || OS.getCurrent() == OS.DARWIN;
+    }
+
+    /**
+     * We cannot use the proper way of looking up the bean via
+     * {@link java.lang.management.ManagementFactory} because that initializes too many classes at
+     * image build time that we want to initialize only at run time.
+     */
+    private static HotSpotDiagnosticMXBean getDiagnosticBean() {
+        try {
+            return (HotSpotDiagnosticMXBean) ReflectionUtil.lookupMethod(PlatformMBeanProviderImpl.class, "getDiagnosticMXBean").invoke(null);
+        } catch (ReflectiveOperationException ex) {
+            throw VMError.shouldNotReachHere(ex);
+        }
     }
 
     @Override
@@ -134,6 +187,14 @@ public class JfrFeature implements Feature {
         JfrSerializerSupport.get().register(new JfrFrameTypeSerializer());
         JfrSerializerSupport.get().register(new JfrThreadStateSerializer());
         ThreadListenerSupport.get().register(SubstrateJVM.getThreadLocal());
+
+        if (hostedEnabled) {
+            RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
+            rci.initializeAtBuildTime("jdk.management.jfr", "Allow FlightRecorder to be used at image build time");
+            rci.initializeAtBuildTime("com.sun.jmx.mbeanserver", "Allow FlightRecorder to be used at image build time");
+            rci.initializeAtBuildTime("com.sun.jmx.defaults", "Allow FlightRecorder to be used at image build time");
+            rci.initializeAtBuildTime("java.beans", "Allow FlightRecorder to be used at image build time");
+        }
     }
 
     @Override
