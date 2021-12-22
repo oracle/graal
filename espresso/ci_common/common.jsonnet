@@ -183,14 +183,14 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
         that._mx(env, ['benchmark', '--results-file', 'bench-results.json'] +
           (if (fork_file != null) then ['--fork-count-file', fork_file] else []) + [
             suite,
-              '--',
-              '--jvm=' + if host_jvm == null then _host_jvm(env, self.jdk_version) else host_jvm,
-              '--jvm-config=' + host_jvm_config,
-              '--guest',
-              '--jvm=' + guest_jvm,
-              '--jvm-config=' + guest_jvm_config,
-              '--vm.Xss32m'
-            ] + extra_args
+            '--',
+            '--jvm=' + if host_jvm == null then _host_jvm(env, self.jdk_version) else host_jvm,
+            '--jvm-config=' + host_jvm_config,
+            '--guest',
+            '--jvm=' + guest_jvm,
+            '--jvm-config=' + guest_jvm_config,
+            '--vm.Xss32m'
+          ] + extra_args
         ),
       ],
       timelimit: timelimit,
@@ -236,13 +236,14 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
     self.build_espresso(env) +
     {
       run+: [
-          that._mx(env, ['benchmark',
-              '--results-file', 'bench-results.json',
-              suite,
-              '--',
-              '--jvm=' + host_jvm, '--jvm-config=' + host_jvm_config,
-            ] + extra_args
-          ),
+        that._mx(env, [
+            'benchmark',
+            '--results-file', 'bench-results.json',
+            suite,
+            '--',
+            '--jvm=' + host_jvm, '--jvm-config=' + host_jvm_config,
+          ] + extra_args
+        ),
       ],
       timelimit: '1:00:00',
     }
@@ -257,15 +258,15 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
     then 'dacapo:*[avrora,h2,fop,jython,luindex,sunflow,xalan]'
     # exclude fop on native
     else if env == 'native-ce'
-        # additionally exclude luindex on native-ce: it gets stuck on the first interation
-        then 'dacapo:*[avrora,h2,jython,lusearch,pmd,sunflow,xalan]'
-        else 'dacapo:*[avrora,h2,jython,luindex,lusearch,pmd,sunflow,xalan]',
+      # additionally exclude luindex on native-ce: it gets stuck on the first interation
+      then 'dacapo:*[avrora,h2,jython,lusearch,pmd,sunflow,xalan]'
+      else 'dacapo:*[avrora,h2,jython,luindex,lusearch,pmd,sunflow,xalan]',
 
   # exclude scalatest, which goes into deopt loop and becomes slower on every subsequent operation
   scala_dacapo_fast: 'scala-dacapo:*[apparat,factorie,kiama,scalac,scaladoc,scalap,scalariform,scalaxb,tmt]',
 
   builds: [
-        // Gates
-        that.jdk11_gate_linux + that.eclipse + that.jdt + that.espresso_gate(allow_warnings=false, tags='style,fullbuild,jackpot', timelimit='25:00', name='gate-espresso-style-jdk11-linux-amd64'),
+    // Gates
+    that.jdk11_gate_linux + that.eclipse + that.jdt + that.espresso_gate(allow_warnings=false, tags='style,fullbuild,jackpot', timelimit='25:00', name='gate-espresso-style-jdk11-linux-amd64'),
   ],
 }
