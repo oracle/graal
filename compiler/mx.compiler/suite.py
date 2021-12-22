@@ -779,6 +779,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.core.amd64",
+        "org.graalvm.compiler.replacements.amd64",
         "org.graalvm.compiler.hotspot",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
@@ -1158,6 +1159,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.replacements",
+        "org.graalvm.compiler.lir.amd64",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
@@ -1463,7 +1465,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "org.graalvm.compiler.replacements.amd64",
+        "org.graalvm.compiler.replacements",
         "org.graalvm.compiler.lir.amd64",
         "org.graalvm.compiler.core",
       ],
@@ -1836,6 +1838,7 @@ suite = {
         "org.graalvm.compiler.truffle.compiler.amd64",
         "org.graalvm.compiler.truffle.runtime",
         "org.graalvm.compiler.core.test",
+        "org.graalvm.compiler.replacements.test",
         "truffle:TRUFFLE_SL_TEST",
         "truffle:TRUFFLE_TEST",
       ],

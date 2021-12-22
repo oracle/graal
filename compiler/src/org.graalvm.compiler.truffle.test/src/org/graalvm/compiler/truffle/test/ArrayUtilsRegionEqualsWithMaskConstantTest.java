@@ -27,7 +27,6 @@ package org.graalvm.compiler.truffle.test;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
-import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -42,6 +41,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.ArrayUtils;
 
+import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class ArrayUtilsRegionEqualsWithMaskConstantTest extends GraalCompilerTest {
@@ -137,15 +137,7 @@ public class ArrayUtilsRegionEqualsWithMaskConstantTest extends GraalCompilerTes
 
     @Override
     protected StructuredGraph parseForCompile(ResolvedJavaMethod method, CompilationIdentifier compilationId, OptionValues options) {
-        StructuredGraph graph = super.parseForCompile(method, compilationId, options);
-        // Mimic @Stable array constants.
-        for (ConstantNode constantNode : graph.getNodes().filter(ConstantNode.class).snapshot()) {
-            if (getConstantReflection().readArrayLength(constantNode.asJavaConstant()) != null) {
-                ConstantNode newConstantNode = graph.unique(ConstantNode.forConstant(constantNode.asJavaConstant(), 1, true, getMetaAccess()));
-                constantNode.replaceAndDelete(newConstantNode);
-            }
-        }
-        return graph;
+        return makeAllArraysStable(super.parseForCompile(method, compilationId, options));
     }
 
     @Override
@@ -162,6 +154,7 @@ public class ArrayUtilsRegionEqualsWithMaskConstantTest extends GraalCompilerTes
 
     @Test
     public void testConstantArrays() {
+        Assume.assumeTrue("array region equals with mask is AMD64-exclusive at the moment", getArchitecture() instanceof AMD64);
         test("equalShiftedSuffixSnippet");
         test("equalShiftedSuffixFlippedSnippet");
         test("unequalSuffixSnippet");
@@ -173,6 +166,7 @@ public class ArrayUtilsRegionEqualsWithMaskConstantTest extends GraalCompilerTes
 
     @Test
     public void testConstantStrings() {
+        Assume.assumeTrue("array region equals with mask is AMD64-exclusive at the moment", getArchitecture() instanceof AMD64);
         test("equalShiftedSuffixStringSnippet");
         test("equalShiftedSuffixFlippedStringSnippet");
         test("unequalSuffixStringSnippet");
@@ -184,6 +178,7 @@ public class ArrayUtilsRegionEqualsWithMaskConstantTest extends GraalCompilerTes
 
     @Test
     public void testMixedConstantStrings() {
+        Assume.assumeTrue("array region equals with mask is AMD64-exclusive at the moment", getArchitecture() instanceof AMD64);
         Assume.assumeTrue("compact String test", JavaVersionUtil.JAVA_SPEC > 8);
 
         test("equalCompactWidePrefixStringSnippet");

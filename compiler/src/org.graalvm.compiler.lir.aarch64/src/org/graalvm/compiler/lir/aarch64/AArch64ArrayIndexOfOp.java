@@ -39,7 +39,6 @@ import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ShiftType;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
 import org.graalvm.compiler.core.common.LIRKind;
-import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
@@ -60,9 +59,10 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
 
     @Def({REG}) protected AllocatableValue resultValue;
     @Alive({REG}) protected AllocatableValue arrayPtrValue;
+    @Alive({REG}) protected AllocatableValue arrayOffsetValue;
     @Alive({REG}) protected AllocatableValue arrayLengthValue;
     @Alive({REG}) protected AllocatableValue fromIndexValue;
-    @Alive({REG}) protected AllocatableValue searchValue;
+    @Alive({REG}) protected AllocatableValue[] searchValues;
     @Temp({REG}) protected AllocatableValue temp1;
     @Temp({REG}) protected AllocatableValue temp2;
     @Temp({REG}) protected AllocatableValue temp3;
@@ -73,17 +73,19 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
     @Temp({REG}) protected AllocatableValue vectorTemp3;
     @Temp({REG}) protected AllocatableValue vectorTemp4;
 
-    public AArch64ArrayIndexOfOp(int arrayBaseOffset, JavaKind valueKind, boolean findTwoConsecutive, LIRGeneratorTool tool, AllocatableValue result, AllocatableValue arrayPtr,
-                    AllocatableValue arrayLength, AllocatableValue fromIndex, AllocatableValue searchValue) {
+    public AArch64ArrayIndexOfOp(int arrayBaseOffset, JavaKind valueKind, boolean findTwoConsecutive, LIRGeneratorTool tool,
+                    AllocatableValue result, AllocatableValue arrayPtr, AllocatableValue arrayOffset, AllocatableValue arrayLength, AllocatableValue fromIndex,
+                    AllocatableValue[] searchValues) {
         super(TYPE);
         this.arrayBaseOffset = arrayBaseOffset;
         this.elementByteSize = getElementByteSize(valueKind);
         this.findTwoConsecutive = findTwoConsecutive;
         resultValue = result;
         arrayPtrValue = arrayPtr;
+        arrayOffsetValue = arrayOffset;
         arrayLengthValue = arrayLength;
         fromIndexValue = fromIndex;
-        this.searchValue = searchValue;
+        this.searchValues = searchValues;
         LIRKind archWordKind = LIRKind.value(tool.target().arch.getWordKind());
         temp1 = tool.newVariable(archWordKind);
         temp2 = tool.newVariable(archWordKind);
@@ -141,14 +143,13 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
          */
         final int memAccessSize = (findTwoConsecutive ? 2 : 1) * elementByteSize * Byte.SIZE;
         Register searchValueReg;
-        int compareSize;
-        if (memAccessSize < 32) {
-            compareSize = 32;
+        int compareSize = Math.max(32, memAccessSize);
+        if (findTwoConsecutive) {
             searchValueReg = asRegister(temp4);
-            masm.and(32, searchValueReg, asRegister(searchValue), NumUtil.getNbitNumberLong(memAccessSize));
+            masm.lsl(compareSize, searchValueReg, asRegister(searchValues[1]), (long) elementByteSize * Byte.SIZE);
+            masm.orr(compareSize, searchValueReg, searchValueReg, asRegister(searchValues[0]));
         } else {
-            compareSize = memAccessSize;
-            searchValueReg = asRegister(searchValue);
+            searchValueReg = asRegister(searchValues[0]);
         }
 
         /*
@@ -232,7 +233,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
         Register result = asRegister(resultValue);
         Register arrayLength = asRegister(arrayLengthValue);
         Register fromIndex = asRegister(fromIndexValue);
-        Register searchElement = asRegister(searchValue);
+        Register searchElement = asRegister(searchValues[0]);
         Register currOffset = asRegister(temp2);
         Register endOfString = asRegister(temp3);
         Register refAddress = asRegister(temp4);
@@ -371,6 +372,7 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
 
         /* Load address of first array element */
         masm.add(64, baseAddress, asRegister(arrayPtrValue), arrayBaseOffset);
+        masm.add(64, baseAddress, baseAddress, asRegister(arrayOffsetValue));
 
         /*
          * Search element-by-element for small arrays (with search space size of less than 32 bytes,

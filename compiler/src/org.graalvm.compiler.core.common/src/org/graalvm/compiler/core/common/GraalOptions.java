@@ -278,8 +278,11 @@ public final class GraalOptions {
     @Option(help = "Alignment in bytes for loop header blocks that have no fall through paths.", type = OptionType.Expert)
     public static final OptionKey<Integer> IsolatedLoopHeaderAlignment = new OptionKey<>(32);
 
-    @Option(help = "String.indexOf invocations will be evaluated at compile time if the receiver is a constant and its length is lower than this value.", type = OptionType.Expert)
-    public static final OptionKey<Integer> StringIndexOfLimit = new OptionKey<>(4096);
+    @Option(help = "Array region equality checks will be evaluated at compile time if the receiver is a constant and its length is smaller than this value.", type = OptionType.Expert)
+    public static final OptionKey<Integer> ArrayRegionEqualsConstantLimit = new OptionKey<>(4096);
+
+    @Option(help = "String.indexOf invocations will be evaluated at compile time if the receiver is a constant and its length is smaller than this value.", type = OptionType.Expert)
+    public static final OptionKey<Integer> StringIndexOfConstantLimit = new OptionKey<>(4096);
 
     @Option(help = "Emit substitutions for String methods", type = OptionType.Debug)
     public static final OptionKey<Boolean> EmitStringSubstitutions = new OptionKey<>(true);

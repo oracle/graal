@@ -27,7 +27,7 @@ package com.oracle.svm.graal;
 
 import java.util.Arrays;
 
-import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.replacements.ArrayIndexOf;
 import org.graalvm.compiler.replacements.ArrayIndexOfNode;
 import org.graalvm.nativeimage.Platform.AARCH64;
@@ -45,7 +45,10 @@ import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescripto
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 
-import jdk.vm.ci.meta.JavaKind;
+import static org.graalvm.compiler.replacements.ArrayIndexOf.NONE;
+import static org.graalvm.compiler.replacements.ArrayIndexOf.S1;
+import static org.graalvm.compiler.replacements.ArrayIndexOf.S2;
+import static org.graalvm.compiler.replacements.ArrayIndexOf.S4;
 
 @AutomaticFeature
 @Platforms(AARCH64.class)
@@ -73,11 +76,20 @@ class AArch64ArrayIndexOfForeignCallsFeature implements GraalFeature {
 
 @Platforms(AARCH64.class)
 class AArch64ArrayIndexOfForeignCalls {
-    private static final ForeignCallSignature[] ORIGINAL_FOREIGN_CALLS = {
-                    ArrayIndexOf.STUB_INDEX_OF_1_BYTE,
-                    ArrayIndexOf.STUB_INDEX_OF_1_CHAR_COMPACT,
-                    ArrayIndexOf.STUB_INDEX_OF_TWO_CONSECUTIVE_BYTES,
-                    ArrayIndexOf.STUB_INDEX_OF_TWO_CONSECUTIVE_CHARS_COMPACT
+    private static final ForeignCallDescriptor[] ORIGINAL_FOREIGN_CALLS = {
+                    ArrayIndexOf.STUB_INDEX_OF_TWO_CONSECUTIVE_B_S1,
+                    ArrayIndexOf.STUB_INDEX_OF_TWO_CONSECUTIVE_B_S2,
+                    ArrayIndexOf.STUB_INDEX_OF_TWO_CONSECUTIVE_C_S2,
+                    ArrayIndexOf.STUB_INDEX_OF_B_1_S1,
+                    ArrayIndexOf.STUB_INDEX_OF_B_1_S2,
+                    ArrayIndexOf.STUB_INDEX_OF_C_1_S2,
+
+                    ArrayIndexOf.STUB_INDEX_OF_TWO_CONSECUTIVE_S1,
+                    ArrayIndexOf.STUB_INDEX_OF_TWO_CONSECUTIVE_S2,
+                    ArrayIndexOf.STUB_INDEX_OF_TWO_CONSECUTIVE_S4,
+                    ArrayIndexOf.STUB_INDEX_OF_1_S1,
+                    ArrayIndexOf.STUB_INDEX_OF_1_S2,
+                    ArrayIndexOf.STUB_INDEX_OF_1_S4,
     };
 
     static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = Arrays.stream(ORIGINAL_FOREIGN_CALLS)
@@ -86,25 +98,73 @@ class AArch64ArrayIndexOfForeignCalls {
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static int indexOf1Byte(byte[] array, int arrayLength, int fromIndex, byte b) {
-        return ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, JavaKind.Byte, false, array, arrayLength, fromIndex, b);
+    private static int indexOfTwoConsecutiveBS1(byte[] array, long offset, int arrayLength, int fromIndex, int v1, int v2) {
+        return ArrayIndexOfNode.optimizedArrayIndexOf(S1, S1, true, false, array, offset, arrayLength, fromIndex, v1, v2);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static int indexOf1CharCompact(byte[] array, int arrayLength, int fromIndex, char ch) {
-        return ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, JavaKind.Char, false, array, arrayLength, fromIndex, ch);
+    private static int indexOfTwoConsecutiveBS2(byte[] array, long offset, int arrayLength, int fromIndex, int v1, int v2) {
+        return ArrayIndexOfNode.optimizedArrayIndexOf(S1, S2, true, false, array, offset, arrayLength, fromIndex, v1, v2);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static int indexOfTwoConsecutiveBytes(byte[] array, int arrayLength, int fromIndex, int searchValue) {
-        return ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, JavaKind.Byte, true, array, arrayLength, fromIndex, searchValue);
+    private static int indexOfTwoConsecutiveCS2(char[] array, long offset, int arrayLength, int fromIndex, int v1, int v2) {
+        return ArrayIndexOfNode.optimizedArrayIndexOf(S2, S2, true, false, array, offset, arrayLength, fromIndex, v1, v2);
     }
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
     @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
-    private static int indexOfTwoConsecutiveCharsCompact(byte[] array, int arrayLength, int fromIndex, int searchValue) {
-        return ArrayIndexOfNode.optimizedArrayIndexOf(JavaKind.Byte, JavaKind.Char, true, array, arrayLength, fromIndex, searchValue);
+    private static int indexOfB1S1(byte[] array, long offset, int arrayLength, int fromIndex, int v1) {
+        return ArrayIndexOfNode.optimizedArrayIndexOf(S1, S1, false, false, array, offset, arrayLength, fromIndex, v1);
+    }
+
+    @Uninterruptible(reason = "Must not do a safepoint check.")
+    @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
+    private static int indexOfB1S2(byte[] array, long offset, int arrayLength, int fromIndex, int v1) {
+        return ArrayIndexOfNode.optimizedArrayIndexOf(S1, S2, false, false, array, offset, arrayLength, fromIndex, v1);
+    }
+
+    @Uninterruptible(reason = "Must not do a safepoint check.")
+    @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
+    private static int indexOfC1S2(char[] array, long offset, int arrayLength, int fromIndex, int v1) {
+        return ArrayIndexOfNode.optimizedArrayIndexOf(S2, S2, false, false, array, offset, arrayLength, fromIndex, v1);
+    }
+
+    @Uninterruptible(reason = "Must not do a safepoint check.")
+    @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
+    private static int indexOfTwoConsecutiveS1(Object array, long offset, int arrayLength, int fromIndex, int v1, int v2) {
+        return ArrayIndexOfNode.optimizedArrayIndexOf(NONE, S1, true, false, array, offset, arrayLength, fromIndex, v1, v2);
+    }
+
+    @Uninterruptible(reason = "Must not do a safepoint check.")
+    @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
+    private static int indexOfTwoConsecutiveS2(Object array, long offset, int arrayLength, int fromIndex, int v1, int v2) {
+        return ArrayIndexOfNode.optimizedArrayIndexOf(NONE, S2, true, false, array, offset, arrayLength, fromIndex, v1, v2);
+    }
+
+    @Uninterruptible(reason = "Must not do a safepoint check.")
+    @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
+    private static int indexOfTwoConsecutiveS4(Object array, long offset, int arrayLength, int fromIndex, int v1, int v2) {
+        return ArrayIndexOfNode.optimizedArrayIndexOf(NONE, S4, true, false, array, offset, arrayLength, fromIndex, v1, v2);
+    }
+
+    @Uninterruptible(reason = "Must not do a safepoint check.")
+    @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
+    private static int indexOf1S1(Object array, long offset, int arrayLength, int fromIndex, int v1) {
+        return ArrayIndexOfNode.optimizedArrayIndexOf(NONE, S1, false, false, array, offset, arrayLength, fromIndex, v1);
+    }
+
+    @Uninterruptible(reason = "Must not do a safepoint check.")
+    @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
+    private static int indexOf1S2(Object array, long offset, int arrayLength, int fromIndex, int v1) {
+        return ArrayIndexOfNode.optimizedArrayIndexOf(NONE, S2, false, false, array, offset, arrayLength, fromIndex, v1);
+    }
+
+    @Uninterruptible(reason = "Must not do a safepoint check.")
+    @SubstrateForeignCallTarget(stubCallingConvention = false, fullyUninterruptible = true)
+    private static int indexOf1S4(Object array, long offset, int arrayLength, int fromIndex, int v1) {
+        return ArrayIndexOfNode.optimizedArrayIndexOf(NONE, S4, false, false, array, offset, arrayLength, fromIndex, v1);
     }
 }

@@ -193,6 +193,9 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
         double trueLabelProbability = x.probability(x.trueSuccessor());
         AMD64Kind kind = getMemoryKind(access);
         OperandSize size = kind == AMD64Kind.QWORD ? QWORD : DWORD;
+        if (kind.getVectorLength() > 1) {
+            return null;
+        }
         if (value.isJavaConstant()) {
             JavaConstant constant = value.asJavaConstant();
             if (kind == AMD64Kind.QWORD && !NumUtil.isInt(constant.asLong())) {
