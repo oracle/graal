@@ -42,24 +42,26 @@ package com.oracle.truffle.polyglot;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Set;
 
 import org.graalvm.polyglot.Source;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.polyglot.PolyglotContextConfig.PreinitConfig;
 
 /**
  * A sharing layer is a set of language instances that share code within one or more polyglot
@@ -99,6 +101,11 @@ final class PolyglotSharingLayer {
         @CompilationFinal ContextPolicy contextPolicy;
         Map<PolyglotLanguage, OptionValuesImpl> previousLanguageOptions;
         final WeakAssumedValue<PolyglotContextImpl> singleContextValue = new WeakAssumedValue<>("single context");
+        /*
+         * Configuration that is common to all contexts created from this layer.
+         */
+        volatile PreinitConfig preinitConfig;
+        volatile PolyglotContextImpl preInitializedContext;
 
         int claimedCount;
 
@@ -108,15 +115,25 @@ final class PolyglotSharingLayer {
             this.previousLanguageOptions = previousLanguageOptions;
         }
 
+        void updatePreinitConfig(PolyglotContextConfig config) {
+            PreinitConfig newConfig = new PreinitConfig(config);
+            PreinitConfig prev = preinitConfig;
+            if (prev == null) {
+                newConfig = new PreinitConfig(config);
+            } else {
+                newConfig = new PreinitConfig(prev, config);
+            }
+            this.preinitConfig = newConfig;
+        }
+
     }
 
     PolyglotSharingLayer(PolyglotEngineImpl engine) {
         this.engine = engine;
     }
 
-    public boolean claimLayerForContext(PolyglotSharingLayer sharableLayer, PolyglotContextImpl context, PolyglotLanguage firstLanguage) {
+    public boolean claimLayerForContext(PolyglotSharingLayer sharableLayer, PolyglotContextImpl context, Set<PolyglotLanguage> requestingLanguages) {
         assert Thread.holdsLock(engine.lock);
-        assert !firstLanguage.isHost() : "cannot claim context for a host language";
         assert !isClaimed() : "already claimed";
         assert sharableLayer == null || (sharableLayer.isClaimed() && sharableLayer.getContextPolicy() != ContextPolicy.EXCLUSIVE);
 
@@ -146,7 +163,7 @@ final class PolyglotSharingLayer {
 
         // try reuse the shared layer by checking all previous options
 
-        Map<PolyglotLanguage, OptionValuesImpl> newLanguageOptions = collectLanguageOptions(context.config, firstLanguage);
+        Map<PolyglotLanguage, OptionValuesImpl> newLanguageOptions = collectLanguageOptions(context.config, requestingLanguages);
 
         // determine new requested policy
         ContextPolicy newPolicy;
@@ -185,7 +202,7 @@ final class PolyglotSharingLayer {
 
             if (!isContextPolicyCompatible(s.contextPolicy, newPolicy)) {
                 if (engine.getEngineOptionValues().get(PolyglotEngineOptions.TraceCodeSharing)) {
-                    traceClaimLayer(false, s, context, firstLanguage, previousLanguageOptions);
+                    traceClaimLayer(false, s, context, requestingLanguages, previousLanguageOptions);
                 }
                 return false;
             }
@@ -199,7 +216,7 @@ final class PolyglotSharingLayer {
 
             if (!areLanguageOptionsCompatible(s, previousLanguageOptions, newLanguageOptions)) {
                 if (engine.getEngineOptionValues().get(PolyglotEngineOptions.TraceCodeSharing)) {
-                    traceClaimLayer(false, s, context, firstLanguage, previousLanguageOptions);
+                    traceClaimLayer(false, s, context, requestingLanguages, previousLanguageOptions);
                 }
                 return false;
             }
@@ -216,6 +233,8 @@ final class PolyglotSharingLayer {
             context.getHostContext().patchInstance(hostInstance);
         }
 
+        s.updatePreinitConfig(context.config);
+
         assert this.shared == null || this.shared == s;
         this.shared = s;
 
@@ -228,7 +247,7 @@ final class PolyglotSharingLayer {
         s.claimedCount++;
 
         if (engine.getEngineOptionValues().get(PolyglotEngineOptions.TraceCodeSharing)) {
-            traceClaimLayer(true, s, context, firstLanguage, previousLanguageOptions);
+            traceClaimLayer(true, s, context, requestingLanguages, previousLanguageOptions);
         }
         return true;
     }
@@ -236,6 +255,69 @@ final class PolyglotSharingLayer {
     boolean isSingleContext() {
         Shared s = this.shared;
         return (s == null || s.contextPolicy == ContextPolicy.EXCLUSIVE) && !engine.isStoreEngine();
+    }
+
+    public void preInitialize() {
+        assert Thread.holdsLock(engine.lock);
+        assert engine.isSharingEnabled();
+        if (!isClaimed()) {
+            // preinitialization does not make sense for layers without initialized languages.
+            return;
+        }
+        Shared s = this.shared;
+        PreinitConfig preinitConfig = s.preinitConfig;
+        assert preinitConfig != null : "preinit config must be initialized";
+
+        Set<PolyglotLanguage> toInitialize = new HashSet<>();
+        for (PolyglotLanguageInstance instance : s.instances) {
+            if (instance != null && !instance.language.isHost()) {
+                toInitialize.add(instance.language);
+            }
+        }
+        s.preInitializedContext = PolyglotContextImpl.preinitialize(engine, preinitConfig, this, toInitialize, false);
+        assert s.preInitializedContext.layer.equals(this) : "invalid resulting layer";
+    }
+
+    public PolyglotContextImpl loadPreinitializedContext(PolyglotContextConfig config) {
+        assert Thread.holdsLock(engine.lock);
+        assert engine.isSharingEnabled();
+
+        Shared s = this.shared;
+        if (s == null) {
+            return null;
+        }
+
+        PolyglotContextImpl preinitContext = s.preInitializedContext;
+        if (preinitContext == null) {
+            return null;
+        }
+
+        Set<PolyglotLanguage> usedLanguages = new LinkedHashSet<>();
+        for (PolyglotLanguageInstance instance : s.instances) {
+            if (instance != null && !instance.language.isHost()) {
+                usedLanguages.add(instance.language);
+            }
+        }
+
+        Map<PolyglotLanguage, OptionValuesImpl> newLanguageOptions = collectLanguageOptions(config, usedLanguages);
+        // we eagerly check options to avoid that patching later on fails.
+        if (!areLanguageOptionsCompatible(s, s.previousLanguageOptions, newLanguageOptions)) {
+
+            if (engine.getEngineOptionValues().get(PolyglotEngineOptions.TraceCodeSharing)) {
+                traceContextPreinit(false, s, preinitContext, s.previousLanguageOptions, newLanguageOptions);
+            }
+
+            return null;
+        }
+
+        if (engine.getEngineOptionValues().get(PolyglotEngineOptions.TraceCodeSharing)) {
+            traceContextPreinit(true, s, preinitContext, s.previousLanguageOptions, newLanguageOptions);
+        }
+
+        assert s.preInitializedContext == preinitContext : "must only be mutated while engine lock is held";
+        // a context can only be used once.
+        s.preInitializedContext = null;
+        return preinitContext;
     }
 
     public void freeSharingLayer(PolyglotContextImpl context) {
@@ -482,18 +564,18 @@ final class PolyglotSharingLayer {
         return instance;
     }
 
-    private Map<PolyglotLanguage, OptionValuesImpl> collectLanguageOptions(PolyglotContextConfig config, PolyglotLanguage firstLanguage) {
+    private Map<PolyglotLanguage, OptionValuesImpl> collectLanguageOptions(PolyglotContextConfig config, Set<PolyglotLanguage> forcedLanguages) {
         Map<PolyglotLanguage, OptionValuesImpl> newOptions = new HashMap<>();
         Set<PolyglotLanguage> languages = config.getConfiguredLanguages();
-        if (!languages.contains(firstLanguage)) {
-            // we need to also resolve the dependent languages of the first language
-            // if it was not yet configured. We do not know generally whether the first language
-            // was also configured.
-            languages = new HashSet<>(config.getConfiguredLanguages());
-            config.addConfiguredLanguage(this.engine, languages, firstLanguage);
+        if (!languages.containsAll(forcedLanguages)) {
+            // we need to resolve dependencies of forces languages
+            // the set of configured languages is already resolved.
+            languages = new HashSet<>(languages);
+            for (PolyglotLanguage language : forcedLanguages) {
+                config.addConfiguredLanguage(this.engine, languages, language);
+            }
         }
 
-        newOptions.put(firstLanguage, config.getLanguageOptionValues(firstLanguage));
         for (PolyglotLanguage language : languages) {
             newOptions.put(language, config.getLanguageOptionValues(language));
         }
@@ -604,31 +686,47 @@ final class PolyglotSharingLayer {
     /*
      * Tracing code.
      */
-    private void traceClaimLayer(boolean success, Shared s, PolyglotContextImpl context, PolyglotLanguage firstLanguage, Map<PolyglotLanguage, OptionValuesImpl> previousOptions) {
+
+    private void traceContextPreinit(boolean success, Shared s, PolyglotContextImpl context, Map<PolyglotLanguage, OptionValuesImpl> previousOptions,
+                    Map<PolyglotLanguage, OptionValuesImpl> newLanguageOptions) {
+        trace(context, s, "loading pre-init", String.format("claimedCount:%s sharingEnabled:%s ",
+                        success ? (s.claimedCount - 1) : s.claimedCount,
+                        engine.isSharingEnabled()));
+        for (Entry<PolyglotLanguage, OptionValuesImpl> entry : newLanguageOptions.entrySet()) {
+            traceCompatibility(s, context, previousOptions, entry);
+        }
+        trace(context, s, success ? "loaded" : "failed to load pre-init", "");
+    }
+
+    private void traceClaimLayer(boolean success, Shared s, PolyglotContextImpl context, Set<PolyglotLanguage> requestingLangauges, Map<PolyglotLanguage, OptionValuesImpl> previousOptions) {
         trace(context, s, "claiming", String.format("claimedCount:%s sharingEnabled:%s ",
                         success ? (s.claimedCount - 1) : s.claimedCount,
                         engine.isSharingEnabled()));
 
-        Map<PolyglotLanguage, OptionValuesImpl> newLanguageOptions = collectLanguageOptions(context.config, firstLanguage);
+        Map<PolyglotLanguage, OptionValuesImpl> newLanguageOptions = collectLanguageOptions(context.config, requestingLangauges);
         for (Entry<PolyglotLanguage, OptionValuesImpl> entry : newLanguageOptions.entrySet()) {
-            StringBuilder languageInfos = new StringBuilder();
-            PolyglotLanguage language = entry.getKey();
-            ContextPolicy policy = language.cache.getPolicy();
-            languageInfos.append(String.format("%s registration-policy:%s  ", language.getId(), policy));
-            boolean optionsCompatible = isContextPolicyCompatible(s.contextPolicy, policy);
-            if (optionsCompatible && engine.isSharingEnabled()) {
-                OptionValuesImpl newOptions = entry.getValue();
-                OptionValuesImpl prevOptions = previousOptions != null ? previousOptions.get(language) : newOptions;
-                if (prevOptions == null) {
-                    prevOptions = language.getOptionValues();
-                }
-                optionsCompatible = areOptionsCompatible(s, language, prevOptions, newOptions);
-                languageInfos.append(
-                                String.format("%s.areOptionsCompatibleWith(%s, %s) == %s", resolveInstance(s, language).spi.getClass().getSimpleName(), prevOptions, newOptions, optionsCompatible));
-            }
-            trace(context, s, optionsCompatible ? "  compatible" : "  incompatible", languageInfos.toString());
+            traceCompatibility(s, context, previousOptions, entry);
         }
         trace(context, s, success ? "claimed" : "failed to claim", String.format("claimedCount:%s layer-policy:%s", s.claimedCount, s.contextPolicy));
+    }
+
+    private void traceCompatibility(Shared s, PolyglotContextImpl context, Map<PolyglotLanguage, OptionValuesImpl> previousOptions, Entry<PolyglotLanguage, OptionValuesImpl> entry) {
+        StringBuilder languageInfos = new StringBuilder();
+        PolyglotLanguage language = entry.getKey();
+        ContextPolicy policy = language.cache.getPolicy();
+        languageInfos.append(String.format("%s registration-policy:%s  ", language.getId(), policy));
+        boolean optionsCompatible = isContextPolicyCompatible(s.contextPolicy, policy);
+        if (optionsCompatible && engine.isSharingEnabled()) {
+            OptionValuesImpl newOptions = entry.getValue();
+            OptionValuesImpl prevOptions = previousOptions != null ? previousOptions.get(language) : newOptions;
+            if (prevOptions == null) {
+                prevOptions = language.getOptionValues();
+            }
+            optionsCompatible = areOptionsCompatible(s, language, prevOptions, newOptions);
+            languageInfos.append(
+                            String.format("%s.areOptionsCompatibleWith(%s, %s) == %s", resolveInstance(s, language).spi.getClass().getSimpleName(), prevOptions, newOptions, optionsCompatible));
+        }
+        trace(context, s, optionsCompatible ? "  compatible" : "  incompatible", languageInfos.toString());
     }
 
     private void traceFreeLayer(PolyglotContextImpl context) {

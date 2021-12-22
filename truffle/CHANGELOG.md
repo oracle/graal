@@ -2,6 +2,10 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 22.1.0
+
+* GR-35924 Context preinitialization in combination with auxiliary engine caching now preinitializes a context for each sharing layer with the common configuration of previously created contexts.
+
 ## Version 22.0.0
 * Truffle DSL generated code now inherits all annotations on constructor parameters to the static create factory method.
 * Added a [Message#getId()](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/library/Message.html#getId--) method returning a unique message id within a library.

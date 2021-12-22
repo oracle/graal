@@ -50,6 +50,7 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.logging.Handler;
@@ -79,6 +80,7 @@ final class PolyglotContextConfig {
     final Predicate<String> classFilter;
     private final Map<String, String[]> applicationArguments;
     final Set<String> allowedPublicLanguages;
+    private final Map<String, String> originalOptions;
     private final Map<String, OptionValuesImpl> optionsById;
     @CompilationFinal FileSystem fileSystem;
     @CompilationFinal FileSystem internalFileSystem;
@@ -89,7 +91,7 @@ final class PolyglotContextConfig {
     private final EnvironmentAccess environmentAccess;
     private final Map<String, String> environment;
     private volatile Map<String, String> configuredEnvironement;
-    private volatile ZoneId timeZone;
+    private final ZoneId timeZone;
     final PolyglotLimits limits;
     final ClassLoader hostClassLoader;
     private final List<PolyglotInstrument> configuredInstruments;
@@ -97,6 +99,119 @@ final class PolyglotContextConfig {
     final HostAccess hostAccess;
     final boolean allowValueSharing;
     final boolean useSystemExit;
+
+    /**
+     * Contains all data of a polyglot context config that can be remembered safely without causing
+     * memory leaks. Any predicate from the host must not be remembered. This subset determines what
+     * config is remembered for engine caching context preinitialization.
+     */
+    static class PreinitConfig {
+
+        /**
+         * Default configuration used for context preinitialization without code sharing.
+         */
+        static final PreinitConfig DEFAULT = new PreinitConfig();
+
+        final boolean nativeAccessAllowed;
+        final boolean createThreadAllowed;
+        final boolean createProcessAllowed;
+        final Map<String, String> originalOptions;
+        final PolyglotAccess polyglotAccess;
+        final ZoneId timeZone;
+        final boolean allowValueSharing;
+        final boolean useSystemExit;
+
+        private PreinitConfig() {
+            this.nativeAccessAllowed = false;
+            this.createThreadAllowed = false;
+            this.createProcessAllowed = false;
+            this.originalOptions = Collections.emptyMap();
+            this.polyglotAccess = PolyglotAccess.ALL; // TODO change this to NONE with GR-14657
+            this.timeZone = null;
+            this.allowValueSharing = true;
+            this.useSystemExit = false;
+        }
+
+        /**
+         * Creates the initial preinit configuration with code sharing.
+         */
+        PreinitConfig(PolyglotContextConfig config) {
+            this.nativeAccessAllowed = config.nativeAccessAllowed;
+            this.createThreadAllowed = config.createThreadAllowed;
+            this.createProcessAllowed = config.createProcessAllowed;
+            this.originalOptions = config.originalOptions;
+            this.polyglotAccess = config.polyglotAccess;
+            this.timeZone = config.timeZone;
+            this.allowValueSharing = config.allowValueSharing;
+            this.useSystemExit = config.useSystemExit;
+        }
+
+        /**
+         * Creates the common configuration with code sharing between two contexts. For access
+         * privileges we turn them off for preinitialization if it was turned off for one of the
+         * contexts seen. We only preinitialize using options that were set for all contexts.
+         */
+        PreinitConfig(PreinitConfig prev, PolyglotContextConfig config) {
+            this.nativeAccessAllowed = prev.nativeAccessAllowed == config.nativeAccessAllowed ? config.nativeAccessAllowed : DEFAULT.nativeAccessAllowed;
+            this.createThreadAllowed = prev.createThreadAllowed == config.createThreadAllowed ? config.createThreadAllowed : DEFAULT.createThreadAllowed;
+            this.createProcessAllowed = prev.createProcessAllowed == config.createProcessAllowed ? config.createProcessAllowed : DEFAULT.createProcessAllowed;
+            this.originalOptions = Objects.equals(prev.originalOptions, config.originalOptions) ? config.originalOptions : computeCommonOptions(prev.originalOptions, config.originalOptions);
+            this.polyglotAccess = Objects.equals(prev.polyglotAccess, config.polyglotAccess) ? config.polyglotAccess : DEFAULT.polyglotAccess;
+            this.timeZone = Objects.equals(prev.timeZone, config.timeZone) ? config.timeZone : DEFAULT.timeZone;
+            this.allowValueSharing = prev.allowValueSharing == config.allowValueSharing ? config.allowValueSharing : DEFAULT.allowValueSharing;
+            this.useSystemExit = prev.useSystemExit == config.useSystemExit ? config.useSystemExit : DEFAULT.useSystemExit;
+        }
+
+        private static Map<String, String> computeCommonOptions(Map<String, String> options1, Map<String, String> options2) {
+            if (options1.isEmpty() || options2.isEmpty()) {
+                return DEFAULT.originalOptions;
+            }
+            Map<String, String> commonOptions = new HashMap<>();
+            for (Map.Entry<String, String> entry1 : options1.entrySet()) {
+                String key1 = entry1.getKey();
+                String value2 = options2.get(key1);
+                if (value2 == null) {
+                    continue;
+                }
+                if (Objects.equals(entry1.getValue(), value2)) {
+                    commonOptions.put(key1, value2);
+                }
+            }
+            return commonOptions;
+        }
+
+    }
+
+    PolyglotContextConfig(PolyglotEngineImpl engine, FileSystem fs, FileSystem internalFs,
+                    PreinitConfig sharableConfig) {
+        this(engine,
+                        System.out,
+                        System.err,
+                        System.in,
+                        false, // never any host lookup should be allowed in context preinit
+                        sharableConfig.polyglotAccess, // TODO change this to NONE with GR-14657
+                        sharableConfig.nativeAccessAllowed,
+                        sharableConfig.createThreadAllowed,
+                        false,
+                        false,
+                        null,
+                        Collections.emptyMap(),
+                        Collections.emptySet(),
+                        sharableConfig.originalOptions,
+                        fs,
+                        internalFs,
+                        engine.logHandler,
+                        sharableConfig.createProcessAllowed,
+                        null,
+                        EnvironmentAccess.INHERIT,
+                        null,
+                        sharableConfig.timeZone,
+                        null,
+                        null,
+                        null,
+                        sharableConfig.allowValueSharing,
+                        sharableConfig.useSystemExit);
+    }
 
     PolyglotContextConfig(PolyglotEngineImpl engine, OutputStream out, OutputStream err, InputStream in,
                     boolean hostLookupAllowed, PolyglotAccess polyglotAccess, boolean nativeAccessAllowed, boolean createThreadAllowed,
@@ -129,6 +244,7 @@ final class PolyglotContextConfig {
         this.limits = limits;
         this.logLevels = new HashMap<>(engine.logLevels);
         this.allowValueSharing = allowValueSharing;
+        this.originalOptions = options;
         List<PolyglotInstrument> instruments = null;
         final Set<PolyglotLanguage> languages = new LinkedHashSet<>();
 
@@ -193,10 +309,10 @@ final class PolyglotContextConfig {
         }
     }
 
-    public ZoneId getTimeZone() {
+    ZoneId getTimeZone() {
         ZoneId zone = this.timeZone;
         if (zone == null) {
-            zone = timeZone = ZoneId.systemDefault();
+            zone = ZoneId.systemDefault();
         }
         return zone;
     }

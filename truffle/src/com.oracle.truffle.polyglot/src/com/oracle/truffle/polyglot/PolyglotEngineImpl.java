@@ -124,6 +124,7 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.polyglot.PolyglotContextConfig.PreinitConfig;
 import com.oracle.truffle.polyglot.PolyglotContextImpl.ContextWeakReference;
 import com.oracle.truffle.polyglot.PolyglotLimits.EngineLimits;
 import com.oracle.truffle.polyglot.PolyglotLocals.AbstractContextLocal;
@@ -190,6 +191,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     final Exception createdLocation = DEBUG_MISSING_CLOSE ? new Exception() : null;
     private final EconomicSet<ContextWeakReference> contexts = EconomicSet.create(Equivalence.IDENTITY);
     final ReferenceQueue<PolyglotContextImpl> contextsReferenceQueue = new ReferenceQueue<>();
+
     private final AtomicReference<PolyglotContextImpl> preInitializedContext = new AtomicReference<>();
 
     final Assumption singleThreadPerContext = Truffle.getRuntime().createAssumption("Single thread per context of an engine.");
@@ -349,12 +351,12 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         assert !layer.isClaimed();
 
         for (PolyglotSharingLayer sharableLayer : sharedLayers) {
-            if (layer.claimLayerForContext(sharableLayer, context, requestingLanguage)) {
+            if (layer.claimLayerForContext(sharableLayer, context, Collections.singleton(requestingLanguage))) {
                 assert layer.isClaimed();
                 return;
             }
         }
-        boolean result = layer.claimLayerForContext(null, context, requestingLanguage);
+        boolean result = layer.claimLayerForContext(null, context, Collections.singleton(requestingLanguage));
         assert result : "new layer must be compatible";
         switch (layer.getContextPolicy()) {
             case EXCLUSIVE:
@@ -612,7 +614,11 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         this.logHandler = newLogHandler;
         this.engineOptionValues = engineOptions;
         this.logLevels = newLogConfig.logLevels;
-        this.storeEngine = RUNTIME.isStoreEnabled(engineOptions);
+        /*
+         * Store must only go from false to true, and never back. As it is used for
+         * isSharingEnabled().
+         */
+        this.storeEngine = this.storeEngine || RUNTIME.isStoreEnabled(engineOptions);
         this.engineLoggerSupplier = logSupplier;
         this.engineLogger = null;
 
@@ -1332,7 +1338,37 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
     void preInitialize() {
         synchronized (this.lock) {
-            this.preInitializedContext.set(PolyglotContextImpl.preInitialize(this));
+            if (isSharingEnabled()) {
+                for (PolyglotSharingLayer layer : sharedLayers) {
+                    if (!layer.isClaimed()) {
+                        continue;
+                    }
+                    layer.preInitialize();
+                }
+            } else {
+                final String oldOption = engineOptionValues.get(PolyglotEngineOptions.PreinitializeContexts);
+                final String newOption = ImageBuildTimeOptions.get(ImageBuildTimeOptions.PREINITIALIZE_CONTEXTS_NAME);
+                final String optionValue;
+                if (!oldOption.isEmpty() && !newOption.isEmpty()) {
+                    optionValue = oldOption + "," + newOption;
+                } else {
+                    optionValue = oldOption + newOption;
+                }
+
+                final Set<String> languageIds = new HashSet<>();
+                if (!optionValue.isEmpty()) {
+                    Collections.addAll(languageIds, optionValue.split(","));
+                }
+                final Set<PolyglotLanguage> preinitLanguages = new HashSet<>();
+                for (String id : languageIds) {
+                    PolyglotLanguage language = this.idToLanguage.get(id);
+                    if (language != null && !language.cache.isInternal()) {
+                        preinitLanguages.add(language);
+                    }
+                }
+
+                this.preInitializedContext.set(PolyglotContextImpl.preinitialize(this, PreinitConfig.DEFAULT, null, preinitLanguages, true));
+            }
         }
     }
 
@@ -1796,51 +1832,73 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     }
 
     private PolyglotContextImpl loadPreinitializedContext(PolyglotContextConfig config) {
-        PolyglotContextImpl context = preInitializedContext.getAndSet(null);
-        if (!getEngineOptionValues().get(PolyglotEngineOptions.UsePreInitializedContext)) {
-            context = null;
-        }
-        if (context != null) {
-            FileSystems.PreInitializeContextFileSystem preInitFs = (FileSystems.PreInitializeContextFileSystem) context.config.fileSystem;
-            preInitFs.onLoadPreinitializedContext(config.fileSystem);
-            FileSystem oldFileSystem = config.fileSystem;
-            config.fileSystem = preInitFs;
-
-            preInitFs = (FileSystems.PreInitializeContextFileSystem) context.config.internalFileSystem;
-            preInitFs.onLoadPreinitializedContext(config.internalFileSystem);
-            FileSystem oldInternalFileSystem = config.internalFileSystem;
-            config.internalFileSystem = preInitFs;
-
-            boolean patchResult = false;
+        PolyglotContextImpl context = null;
+        final boolean sharing = isSharingEnabled();
+        if (sharing) {
+            assert preInitializedContext.get() == null : "sharing enabled with preinitialized regular context. sharing requires context preinit per layer.";
             synchronized (this.lock) {
-                addContext(context);
-            }
-            try {
-                patchResult = context.patch(config);
-            } finally {
-                synchronized (this.lock) {
-                    removeContext(context);
+                for (PolyglotSharingLayer sharedLayer : sharedLayers) {
+                    context = sharedLayer.loadPreinitializedContext(config);
+                    if (context != null) {
+                        break;
+                    }
                 }
-                if (patchResult && arePreInitializedLanguagesCompatible(context, config)) {
-                    Collection<PolyglotInstrument> toCreate = null;
-                    for (PolyglotInstrument instrument : idToInstrument.values()) {
-                        if (instrument.getOptionValuesIfExists() != null) {
-                            if (toCreate == null) {
-                                toCreate = new HashSet<>();
-                            }
-                            toCreate.add(instrument);
+            }
+        } else {
+            context = preInitializedContext.getAndSet(null);
+        }
+
+        if (context == null) {
+            return null;
+        }
+
+        if (!getEngineOptionValues().get(PolyglotEngineOptions.UsePreInitializedContext)) {
+            return null;
+        }
+
+        FileSystems.PreInitializeContextFileSystem preInitFs = (FileSystems.PreInitializeContextFileSystem) context.config.fileSystem;
+        preInitFs.onLoadPreinitializedContext(config.fileSystem);
+        FileSystem oldFileSystem = config.fileSystem;
+        config.fileSystem = preInitFs;
+
+        preInitFs = (FileSystems.PreInitializeContextFileSystem) context.config.internalFileSystem;
+        preInitFs.onLoadPreinitializedContext(config.internalFileSystem);
+        FileSystem oldInternalFileSystem = config.internalFileSystem;
+        config.internalFileSystem = preInitFs;
+
+        boolean patchResult = false;
+        synchronized (this.lock) {
+            addContext(context);
+        }
+        try {
+            patchResult = context.patch(config);
+        } finally {
+            synchronized (this.lock) {
+                removeContext(context);
+            }
+            if (patchResult && arePreInitializedLanguagesCompatible(context, config)) {
+                Collection<PolyglotInstrument> toCreate = null;
+                for (PolyglotInstrument instrument : idToInstrument.values()) {
+                    if (instrument.getOptionValuesIfExists() != null) {
+                        if (toCreate == null) {
+                            toCreate = new HashSet<>();
                         }
+                        toCreate.add(instrument);
                     }
-                    if (toCreate != null) {
-                        ensureInstrumentsCreated(toCreate);
-                    }
-                    synchronized (this.lock) {
-                        addContext(context);
-                    }
+                }
+                if (toCreate != null) {
+                    ensureInstrumentsCreated(toCreate);
+                }
+                synchronized (this.lock) {
+                    addContext(context);
+                }
+            } else {
+                context.closeImpl(false);
+                config.fileSystem = oldFileSystem;
+                config.internalFileSystem = oldInternalFileSystem;
+                if (sharing) {
+                    context = null;
                 } else {
-                    context.closeImpl(false);
-                    config.fileSystem = oldFileSystem;
-                    config.internalFileSystem = oldInternalFileSystem;
                     PolyglotEngineImpl engine = new PolyglotEngineImpl(this);
                     ensureClosed(true, false);
                     synchronized (engine.lock) {
