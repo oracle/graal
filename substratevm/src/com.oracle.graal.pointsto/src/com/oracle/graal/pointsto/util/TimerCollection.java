@@ -25,6 +25,7 @@
 package com.oracle.graal.pointsto.util;
 
 import com.oracle.graal.pointsto.reports.StatisticsPrinter;
+import com.oracle.svm.util.ImageBuildStatistics;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import java.io.PrintWriter;
@@ -32,7 +33,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class TimerCollection {
+public class TimerCollection implements ImageBuildStatistics.TimerCollectionPrinter {
 
     public static TimerCollection singleton() {
         return ImageSingletons.lookup(TimerCollection.class);
@@ -58,8 +59,7 @@ public class TimerCollection {
         return timer;
     }
 
-    private void printTimerStatistics(PrintWriter out) {
-        StatisticsPrinter.beginObject(out);
+    public void printTimerStats(PrintWriter out) {
         for (int i = 0; i < timers.size(); i++) {
             Timer timer = timers.get(i);
             StatisticsPrinter.print(out, timer.getName() + "_time", ((int) timer.getTotalTime()));
@@ -69,6 +69,5 @@ public class TimerCollection {
                 StatisticsPrinter.printLast(out, timer.getName() + "_memory", ((int) timer.getTotalMemory()));
             }
         }
-        StatisticsPrinter.endObject(out);
     }
 }
