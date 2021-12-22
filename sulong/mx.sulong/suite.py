@@ -999,6 +999,25 @@ suite = {
       "testProject" : True,
       "defaultBuild" : False,
     },
+    "com.oracle.truffle.llvm.tests.embedded.pthread.native" : {
+      "subDir" : "tests",
+      "class" : "SulongCMakeTestSuite",
+      "variants" : ["toolchain-plain"],
+      "buildRef" : False,
+      "buildSharedObject" : True,
+      "bundledLLVMOnly" : True,
+      "cmakeConfig" : {
+        "CMAKE_C_FLAGS" : "-pthread",
+        "CMAKE_C_LINK_FLAGS" : "-pthread",
+        "TOOLCHAIN_CLANG" : "<toolchainGetToolPath:native,CC>",
+        "TOOLCHAIN_CLANGXX" : "<toolchainGetToolPath:native,CXX>",
+      },
+      "dependencies" : [
+        "SULONG_TEST",
+      ],
+      "testProject" : True,
+      "defaultBuild" : False,
+    },
     "com.oracle.truffle.llvm.tests.sulongcpp.native" : {
       "subDir" : "tests",
       "class" : "SulongCMakeTestSuite",
@@ -1683,6 +1702,7 @@ suite = {
           "dependency:com.oracle.truffle.llvm.tests.debugexpr.native/*",
           "dependency:com.oracle.truffle.llvm.tests.irdebug.native/*",
           "dependency:com.oracle.truffle.llvm.tests.embedded.custom.native/*",
+          "dependency:com.oracle.truffle.llvm.tests.embedded.pthread.native/*",
           "dependency:com.oracle.truffle.llvm.tests.bitcode.other.native/*",
           # the reload tests are not only ran as standalone test (SulongSuite) but also as embedded test (LoaderTest)
           "dependency:com.oracle.truffle.llvm.tests.linker.native/reload",
