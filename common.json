@@ -46,6 +46,7 @@
         "pip:isort": "==4.3.19",
         "pip:logilab-common": "==1.4.4",
         "pip:pylint": "==1.9.3",
+        "pip:lazy-object-proxy": "==1.6.0",
         "pip:ninja_syntax": "==1.7.2"
       }
     },
