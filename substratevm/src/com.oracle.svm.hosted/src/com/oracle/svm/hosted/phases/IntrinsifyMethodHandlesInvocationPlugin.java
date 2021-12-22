@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.phases;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
 
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.VarHandle;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -96,7 +97,6 @@ import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.MethodHandlePlugin;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.WordOperationPlugin;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -160,6 +160,19 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  */
 public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
+    private static final Field varHandleVFormField;
+    private static final Method varFormInitMethod;
+
+    static {
+        varHandleVFormField = ReflectionUtil.lookupField(VarHandle.class, "vform");
+        try {
+            Class<?> varFormClass = Class.forName("java.lang.invoke.VarForm");
+            varFormInitMethod = ReflectionUtil.lookupMethod(varFormClass, "getMethodType_V", int.class);
+        } catch (ClassNotFoundException ex) {
+            throw VMError.shouldNotReachHere(ex);
+        }
+    }
+
     public static class IntrinsificationRegistry extends IntrinsificationPluginRegistry {
     }
 
@@ -174,14 +187,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
     private final IntrinsificationRegistry intrinsificationRegistry;
 
     private final ResolvedJavaType methodHandleType;
-
-    private final Class<?> varHandleClass;
-    private final Class<?> varHandleAccessModeClass;
     private final ResolvedJavaType varHandleType;
-    private final Field varHandleVFormField;
-    private final Method varFormInitMethod;
-    private final Method varHandleIsAccessModeSupportedMethod;
-    private final Method varHandleAccessModeTypeMethod;
 
     public IntrinsifyMethodHandlesInvocationPlugin(ParsingReason reason, Providers providers, AnalysisUniverse aUniverse, HostedUniverse hUniverse) {
         this.reason = reason;
@@ -201,30 +207,8 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
             intrinsificationRegistry = ImageSingletons.lookup(IntrinsificationRegistry.class);
         }
 
-        methodHandleType = universeProviders.getMetaAccess().lookupJavaType(java.lang.invoke.MethodHandle.class);
-
-        if (JavaVersionUtil.JAVA_SPEC >= 11) {
-            try {
-                varHandleClass = Class.forName("java.lang.invoke.VarHandle");
-                varHandleAccessModeClass = Class.forName("java.lang.invoke.VarHandle$AccessMode");
-                varHandleType = universeProviders.getMetaAccess().lookupJavaType(varHandleClass);
-                varHandleVFormField = ReflectionUtil.lookupField(varHandleClass, "vform");
-                Class<?> varFormClass = Class.forName("java.lang.invoke.VarForm");
-                varFormInitMethod = ReflectionUtil.lookupMethod(varFormClass, "getMethodType_V", int.class);
-                varHandleIsAccessModeSupportedMethod = ReflectionUtil.lookupMethod(varHandleClass, "isAccessModeSupported", varHandleAccessModeClass);
-                varHandleAccessModeTypeMethod = ReflectionUtil.lookupMethod(varHandleClass, "accessModeType", varHandleAccessModeClass);
-            } catch (ClassNotFoundException ex) {
-                throw VMError.shouldNotReachHere(ex);
-            }
-        } else {
-            varHandleClass = null;
-            varHandleAccessModeClass = null;
-            varHandleType = null;
-            varHandleVFormField = null;
-            varFormInitMethod = null;
-            varHandleIsAccessModeSupportedMethod = null;
-            varHandleAccessModeTypeMethod = null;
-        }
+        methodHandleType = universeProviders.getMetaAccess().lookupJavaType(MethodHandle.class);
+        varHandleType = universeProviders.getMetaAccess().lookupJavaType(VarHandle.class);
     }
 
     @Override
@@ -332,7 +316,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                  * initialization has happened. We force initialization by invoking the method
                  * VarHandle.vform.getMethodType_V(0).
                  */
-                Object varHandle = SubstrateObjectConstant.asObject(args[0].asJavaConstant());
+                VarHandle varHandle = (VarHandle) SubstrateObjectConstant.asObject(args[0].asJavaConstant());
                 Object varForm = varHandleVFormField.get(varHandle);
                 varFormInitMethod.invoke(varForm, 0);
 
@@ -342,17 +326,17 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                  * method. Initializing all AccessMode enum values is easier than trying to extract
                  * the actual AccessMode.
                  */
-                for (Object accessMode : varHandleAccessModeClass.getEnumConstants()) {
+                for (VarHandle.AccessMode accessMode : VarHandle.AccessMode.values()) {
                     /*
                      * Force initialization of the @Stable field VarHandle.vform.memberName_table.
                      * Starting with JDK 17, this field is lazily initialized.
                      */
-                    varHandleIsAccessModeSupportedMethod.invoke(varHandle, accessMode);
+                    varHandle.isAccessModeSupported(accessMode);
                     /*
                      * Force initialization of the @Stable field
                      * VarHandle.typesAndInvokers.methodType_table.
                      */
-                    varHandleAccessModeTypeMethod.invoke(varHandle, accessMode);
+                    varHandle.accessModeType(accessMode);
                 }
             } catch (ReflectiveOperationException ex) {
                 throw VMError.shouldNotReachHere(ex);
