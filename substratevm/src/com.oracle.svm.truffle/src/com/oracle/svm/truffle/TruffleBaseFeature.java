@@ -42,6 +42,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
 
+import com.oracle.svm.core.configure.ResourcesRegistry;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -108,6 +109,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import sun.misc.Unsafe;
 
 /**
@@ -148,6 +150,7 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
     private GraalObjectReplacer graalObjectReplacer;
     private final Set<Class<?>> registeredClasses = new HashSet<>();
     private boolean profilingEnabled;
+    private boolean needsAllEncodings;
 
     private static void initializeTruffleReflectively(ClassLoader imageClassLoader) {
         invokeStaticMethod("com.oracle.truffle.api.impl.Accessor", "getTVMCI", Collections.emptyList());
@@ -196,6 +199,8 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
             RuntimeClassInitialization.initializeAtBuildTime(provider.getClass());
         }
         initializeTruffleReflectively(imageClassLoader);
+        needsAllEncodings = invokeStaticMethod("com.oracle.truffle.polyglot.LanguageCache", "getNeedsAllEncodings",
+                        Collections.emptyList());
 
         // reinitialize language cache
         invokeStaticMethod("com.oracle.truffle.api.library.LibraryFactory", "reinitializeNativeImageState",
@@ -315,6 +320,10 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
                         LibraryFactory.class);
         config.registerSubtypeReachabilityHandler(TruffleBaseFeature::registerTruffleLibrariesAsInHeap,
                         LibraryExport.class);
+
+        if (needsAllEncodings) {
+            ImageSingletons.lookup(ResourcesRegistry.class).addResources(ConfigurationCondition.alwaysTrue(), "org/graalvm/shadowed/org/jcodings/tables/.*bin$");
+        }
     }
 
     public static void preInitializeEngine() {

@@ -43,6 +43,7 @@ package com.oracle.truffle.sl.nodes.util;
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
@@ -51,6 +52,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.nodes.SLTypes;
 import com.oracle.truffle.sl.runtime.SLBigNumber;
 
@@ -69,6 +71,12 @@ public abstract class SLToMemberNode extends Node {
     @Specialization
     protected static String fromString(String value) {
         return value;
+    }
+
+    @Specialization
+    protected static String fromTruffleString(TruffleString value,
+                    @Cached TruffleString.ToJavaStringNode toJavaStringNode) {
+        return toJavaStringNode.execute(value);
     }
 
     @Specialization

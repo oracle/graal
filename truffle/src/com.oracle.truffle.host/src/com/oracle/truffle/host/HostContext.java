@@ -51,6 +51,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
+import com.oracle.truffle.api.strings.TruffleString;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
@@ -282,7 +283,7 @@ final class HostContext {
                         || receiver instanceof Long || receiver instanceof Float //
                         || receiver instanceof Boolean || receiver instanceof Character //
                         || receiver instanceof Byte || receiver instanceof Short //
-                        || receiver instanceof String;
+                        || receiver instanceof String || receiver instanceof TruffleString;
     }
 
     private static final ContextReference<HostContext> REFERENCE = ContextReference.create(HostLanguage.class);

@@ -72,6 +72,7 @@ import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.interop.InteropLibrary.Asserts;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary.Abstract;
@@ -186,6 +187,7 @@ import com.oracle.truffle.api.utilities.TriState;
 @DefaultExport(DefaultDoubleExports.class)
 @DefaultExport(DefaultCharacterExports.class)
 @DefaultExport(DefaultStringExports.class)
+@DefaultExport(DefaultTStringExports.class)
 @SuppressWarnings("unused")
 public abstract class InteropLibrary extends Library {
 
@@ -364,7 +366,7 @@ public abstract class InteropLibrary extends Library {
      * @see #asString(Object)
      * @since 19.0
      */
-    @Abstract(ifExported = "asString")
+    @Abstract(ifExported = {"asString", "asTruffleString"})
     public boolean isString(Object receiver) {
         return false;
     }
@@ -381,6 +383,19 @@ public abstract class InteropLibrary extends Library {
     @Abstract(ifExported = "isString")
     public String asString(Object receiver) throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Returns the {@link TruffleString} value if the receiver represents a {@link #isString(Object)
+     * string} like value.
+     *
+     * @throws UnsupportedMessageException if and only if {@link #isString(Object)} returns
+     *             <code>false</code> for the same receiver.
+     * @see #isString(Object)
+     * @since 21.3
+     */
+    public TruffleString asTruffleString(Object receiver) throws UnsupportedMessageException {
+        return TruffleString.fromJavaStringUncached(asString(receiver), TruffleString.Encoding.UTF_16);
     }
 
     // Number Messages
@@ -2867,7 +2882,8 @@ public abstract class InteropLibrary extends Library {
                         || receiver instanceof Long //
                         || receiver instanceof Float //
                         || receiver instanceof Double //
-                        || receiver instanceof String;
+                        || receiver instanceof String //
+                        || receiver instanceof TruffleString;
     }
 
     /**
@@ -3071,6 +3087,24 @@ public abstract class InteropLibrary extends Library {
                 String result = delegate.asString(receiver);
                 assert wasString : violationInvariant(receiver);
                 assert validProtocolReturn(receiver, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
+                assert !wasString : violationInvariant(receiver);
+                throw e;
+            }
+        }
+
+        @Override
+        public TruffleString asTruffleString(Object receiver) throws UnsupportedMessageException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.asTruffleString(receiver);
+            }
+            assert preCondition(receiver);
+            boolean wasString = delegate.isString(receiver);
+            try {
+                TruffleString result = delegate.asTruffleString(receiver);
+                assert wasString : violationInvariant(receiver);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationInvariant(receiver);

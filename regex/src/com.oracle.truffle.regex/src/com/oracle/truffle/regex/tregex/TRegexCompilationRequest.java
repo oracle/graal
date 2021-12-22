@@ -154,22 +154,28 @@ public final class TRegexCompilationRequest {
         }
         debugAST();
         if (ast.getRoot().isDead()) {
+            Loggers.LOG_MATCHING_STRATEGY.fine(() -> "regex cannot match, using dummy matcher");
             return new DeadRegexExecNode(language, source);
         }
         LiteralRegexExecNode literal = LiteralRegexEngine.createNode(language, ast);
         if (literal != null) {
+            Loggers.LOG_MATCHING_STRATEGY.fine(() -> "using literal matcher " + literal.getClass().getSimpleName());
             return literal;
         }
         if (canTransformToDFA(ast)) {
             try {
                 createNFA();
                 if (nfa.isDead()) {
+                    Loggers.LOG_MATCHING_STRATEGY.fine(() -> "regex cannot match, using dummy matcher");
                     return new DeadRegexExecNode(language, source);
                 }
                 return new TRegexExecNode(ast, new TRegexNFAExecutorNode(nfa, ast.getOptions().getFlavor().usesLastGroupResultField()));
             } catch (UnsupportedRegexException e) {
                 // fall back to backtracking executor
+                Loggers.LOG_MATCHING_STRATEGY.fine(() -> "NFA generator bailout: " + e.getReason() + ", using back-tracking matcher");
             }
+        } else {
+            Loggers.LOG_MATCHING_STRATEGY.fine(() -> "using back-tracking matcher, reason: " + canTransformToDFAFailureReason(ast));
         }
         return new TRegexExecNode(ast, compileBacktrackingExecutor());
     }
@@ -260,6 +266,52 @@ public final class TRegexCompilationRequest {
                                         p.hasNegativeLookBehindAssertions() ||
                                         ast.getRoot().hasQuantifiers()) &&
                         couldCalculateLastGroup;
+    }
+
+    @TruffleBoundary
+    private static String canTransformToDFAFailureReason(RegexAST ast) throws UnsupportedRegexException {
+        RegexProperties p = ast.getProperties();
+        StringBuilder sb = new StringBuilder();
+        if (ast.getNumberOfNodes() > TRegexOptions.TRegexMaxParseTreeSizeForDFA) {
+            sb.append("Parser tree has too many nodes: ").append(ast.getNumberOfNodes()).append(" (threshold: ").append(TRegexOptions.TRegexMaxParseTreeSizeForDFA).append(")");
+        }
+        if (ast.getNumberOfCaptureGroups() > TRegexOptions.TRegexMaxNumberOfCaptureGroupsForDFA) {
+            stringBuilderAppendComma(sb);
+            sb.append("regex has too many capture groups: ").append(ast.getNumberOfCaptureGroups()).append(" (threshold: ").append(TRegexOptions.TRegexMaxNumberOfCaptureGroupsForDFA).append(")");
+        }
+        if (ast.getRoot().hasBackReferences()) {
+            stringBuilderAppendComma(sb);
+            sb.append("regex has back-references");
+        }
+        if (p.hasLargeCountedRepetitions()) {
+            stringBuilderAppendComma(sb);
+            sb.append("regex has large counted repetitions").append(" (threshold: ").append(TRegexOptions.TRegexQuantifierUnrollThresholdSingleCC).append(" for single CC, ").append(
+                            TRegexOptions.TRegexQuantifierUnrollThresholdGroup).append(" for groups)");
+        }
+        if (p.hasNegativeLookAheadAssertions()) {
+            stringBuilderAppendComma(sb);
+            sb.append("regex has negative look-ahead assertions");
+        }
+        if (p.hasNegativeLookBehindAssertions()) {
+            stringBuilderAppendComma(sb);
+            sb.append("regex has negative look-behind assertions");
+        }
+        if (p.hasNonLiteralLookBehindAssertions()) {
+            stringBuilderAppendComma(sb);
+            sb.append("regex has non-literal look-behind assertions");
+        }
+        if (ast.getRoot().hasQuantifiers()) {
+            stringBuilderAppendComma(sb);
+            sb.append("could not unroll all quantifiers");
+        }
+        return sb.toString();
+    }
+
+    @TruffleBoundary
+    private static void stringBuilderAppendComma(StringBuilder sb) {
+        if (sb.length() > 0) {
+            sb.append(", ");
+        }
     }
 
     private void createAST() {

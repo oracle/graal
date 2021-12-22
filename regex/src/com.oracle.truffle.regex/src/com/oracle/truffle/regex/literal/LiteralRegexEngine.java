@@ -93,29 +93,29 @@ public final class LiteralRegexEngine {
         if (ast.getRoot().getMinPath() == 0) {
             if (caret) {
                 if (dollar) {
-                    return new EmptyEquals(language, ast, preCalcResultVisitor);
+                    return LiteralRegexExecNode.create(language, ast, new EmptyEquals(preCalcResultVisitor));
                 }
-                return new EmptyStartsWith(language, ast, preCalcResultVisitor);
+                return LiteralRegexExecNode.create(language, ast, new EmptyStartsWith(preCalcResultVisitor));
             }
             if (dollar) {
-                return new EmptyEndsWith(language, ast, preCalcResultVisitor);
+                return LiteralRegexExecNode.create(language, ast, new EmptyEndsWith(preCalcResultVisitor, ast.getFlags().isSticky()));
             }
-            return new EmptyIndexOf(language, ast, preCalcResultVisitor);
+            return LiteralRegexExecNode.create(language, ast, new EmptyIndexOf(preCalcResultVisitor));
         }
         if (caret) {
             if (dollar) {
-                return new Equals(language, ast, preCalcResultVisitor);
+                return LiteralRegexExecNode.create(language, ast, new Equals(preCalcResultVisitor));
             }
-            return new StartsWith(language, ast, preCalcResultVisitor);
+            return LiteralRegexExecNode.create(language, ast, new StartsWith(preCalcResultVisitor));
         }
         if (dollar) {
-            return new EndsWith(language, ast, preCalcResultVisitor);
+            return LiteralRegexExecNode.create(language, ast, new EndsWith(preCalcResultVisitor, ast.getFlags().isSticky()));
         }
         if (ast.getFlags().isSticky()) {
-            return new RegionMatches(language, ast, preCalcResultVisitor);
+            return LiteralRegexExecNode.create(language, ast, new RegionMatches(preCalcResultVisitor));
         }
         if (preCalcResultVisitor.getLiteral().encodedLength() <= 64) {
-            return new IndexOfString(language, ast, preCalcResultVisitor);
+            return LiteralRegexExecNode.create(language, ast, new IndexOfString(preCalcResultVisitor));
         }
         return null;
     }

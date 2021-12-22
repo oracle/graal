@@ -620,6 +620,16 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
+        public boolean isCurrentNativeAccessAllowed(Node node) {
+            PolyglotContextImpl context = PolyglotFastThreadLocals.getContext(PolyglotFastThreadLocals.resolveLayer(node));
+            if (context == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw new IllegalStateException("No current context entered.");
+            }
+            return context.config.nativeAccessAllowed;
+        }
+
+        @Override
         public boolean inContextPreInitialization(Object polyglotObject) {
             PolyglotContextImpl polyglotContext;
             if (polyglotObject instanceof PolyglotContextImpl) {
@@ -1568,6 +1578,24 @@ final class EngineAccessor extends Accessor {
         @Override
         public Object getPolyglotSharingLayer(Object polyglotLanguageInstance) {
             return ((PolyglotLanguageInstance) polyglotLanguageInstance).sharing;
+        }
+
+        @Override
+        public boolean getNeedsAllEncodings() {
+            return LanguageCache.getNeedsAllEncodings();
+        }
+
+        @Override
+        public boolean currentContextHasNeedsAllEncodings() {
+            PolyglotContextImpl context = PolyglotContextImpl.requireContext();
+            assert context.contexts != null;
+            assert context.engine != null;
+            for (String languageName : context.config.allowedPublicLanguages) {
+                if (Objects.requireNonNull(context.engine.idToLanguage.get(languageName).cache).isNeedsAllEncodings()) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         @Override

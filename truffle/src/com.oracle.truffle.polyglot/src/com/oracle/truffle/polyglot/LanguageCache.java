@@ -65,12 +65,12 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Supplier;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.TruffleOptions;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.polyglot.EngineAccessor.AbstractClassLoaderSupplier;
@@ -98,6 +98,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
     private final String version;
     private final boolean interactive;
     private final boolean internal;
+    private final boolean needsAllEncodings;
     private final Set<String> services;
     private final ContextPolicy contextPolicy;
     private final TruffleLanguage.Provider provider;
@@ -114,7 +115,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
     private LanguageCache(String id, String name, String implementationName, String version, String className,
                     String languageHome, Set<String> characterMimeTypes, Set<String> byteMimeTypes, String defaultMimeType,
-                    Set<String> dependentLanguages, boolean interactive, boolean internal, Set<String> services,
+                    Set<String> dependentLanguages, boolean interactive, boolean internal, boolean needsAllEncodings, Set<String> services,
                     ContextPolicy contextPolicy, TruffleLanguage.Provider provider) {
         assert provider != null : "Provider must be non null";
         this.className = className;
@@ -130,6 +131,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
         this.id = id;
         this.interactive = interactive;
         this.internal = internal;
+        this.needsAllEncodings = needsAllEncodings;
         this.languageHome = languageHome;
         this.services = services;
         this.contextPolicy = contextPolicy;
@@ -165,7 +167,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
                         Collections.emptySet(),
                         null,
                         Collections.emptySet(),
-                        false, false, hostLanguageProvider.getServicesClassNames(),
+                        false, false, false, hostLanguageProvider.getServicesClassNames(),
                         ContextPolicy.SHARED, hostLanguageProvider);
         cache.staticIndex = PolyglotEngineImpl.HOST_LANGUAGE_INDEX;
         return cache;
@@ -195,6 +197,21 @@ final class LanguageCache implements Comparable<LanguageCache> {
             }
         }
         return mimes;
+    }
+
+    /**
+     * Returns {@code true} if any registered language has {@link Registration#needsAllEncodings()}
+     * set.
+     *
+     * NOTE: this method is called reflectively by downstream projects.
+     */
+    @SuppressWarnings("unused")
+    public static boolean getNeedsAllEncodings() {
+        boolean ret = false;
+        for (LanguageCache cache : languages().values()) {
+            ret |= cache.isNeedsAllEncodings();
+        }
+        return ret;
     }
 
     static Map<String, LanguageCache> languages() {
@@ -321,12 +338,13 @@ final class LanguageCache implements Comparable<LanguageCache> {
         Collections.addAll(dependentLanguages, reg.dependentLanguages());
         boolean interactive = reg.interactive();
         boolean internal = reg.internal();
+        boolean needsAllEncodings = reg.needsAllEncodings();
         Set<String> servicesClassNames = new TreeSet<>();
         for (String service : provider.getServicesClassNames()) {
             servicesClassNames.add(service);
         }
         into.add(new LanguageCache(id, name, implementationName, version, className, languageHome,
-                        characterMimes, byteMimeTypes, defaultMime, dependentLanguages, interactive, internal,
+                        characterMimes, byteMimeTypes, defaultMime, dependentLanguages, interactive, internal, needsAllEncodings,
                         servicesClassNames, reg.contextPolicy(), provider));
     }
 
@@ -421,6 +439,10 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
     boolean isInteractive() {
         return interactive;
+    }
+
+    public boolean isNeedsAllEncodings() {
+        return needsAllEncodings;
     }
 
     String getLanguageHome() {

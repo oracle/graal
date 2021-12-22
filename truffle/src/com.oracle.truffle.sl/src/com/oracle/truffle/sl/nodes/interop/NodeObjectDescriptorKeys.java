@@ -47,13 +47,14 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 
 @ExportLibrary(InteropLibrary.class)
 public final class NodeObjectDescriptorKeys implements TruffleObject {
 
-    private final String keyName;
+    private final TruffleString keyName;
 
-    NodeObjectDescriptorKeys(String keyName) {
+    NodeObjectDescriptorKeys(TruffleString keyName) {
         this.keyName = keyName;
     }
 

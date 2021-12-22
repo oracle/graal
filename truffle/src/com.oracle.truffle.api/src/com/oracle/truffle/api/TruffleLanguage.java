@@ -460,6 +460,22 @@ public abstract class TruffleLanguage<C> {
          * @since 19.0
          */
         Class<? extends TruffleFile.FileTypeDetector>[] fileTypeDetectors() default {};
+
+        /**
+         * Returns {@code true} if the language uses {@code TruffleString}s with encodings not
+         * present in the following list.
+         * <ul>
+         * <li>{@code UTF-8}</li>
+         * <li>{@code UTF-16}</li>
+         * <li>{@code UTF-32}</li>
+         * <li>{@code ISO-8859-1}</li>
+         * <li>{@code US-ASCII}</li>
+         * <li>{@code BYTES}</li>
+         * </ul>
+         *
+         * @since 22.1
+         */
+        boolean needsAllEncodings() default false;
     }
 
     /**

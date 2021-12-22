@@ -43,6 +43,7 @@ package com.oracle.truffle.regex.tregex.string;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.strings.TruffleString;
 
 public final class StringASCII implements AbstractString {
 
@@ -84,6 +85,16 @@ public final class StringASCII implements AbstractString {
             }
         }
         return true;
+    }
+
+    @Override
+    public TruffleString asTString() {
+        return TruffleString.fromByteArrayUncached(str, 0, str.length, TruffleString.Encoding.US_ASCII, false);
+    }
+
+    @Override
+    public TruffleString.WithMask asTStringMask(TruffleString pattern) {
+        return TruffleString.WithMask.create(pattern, str, TruffleString.Encoding.US_ASCII);
     }
 
     @Override

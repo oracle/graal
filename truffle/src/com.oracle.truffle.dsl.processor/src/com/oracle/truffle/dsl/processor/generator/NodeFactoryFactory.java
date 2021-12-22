@@ -87,7 +87,7 @@ public class NodeFactoryFactory {
     }
 
     public CodeTypeElement create() {
-        Modifier visibility = ElementUtils.getVisibility(node.getTemplateType().getModifiers());
+        Modifier visibility = node.getVisibility();
         TypeMirror nodeFactory = ElementUtils.getDeclaredType(ElementUtils.fromTypeMirror(context.getTypes().NodeFactory), node.getNodeType());
 
         CodeTypeElement clazz = GeneratorUtils.createClass(node, null, modifiers(), factoryClassName(node.getTemplateType()), null);

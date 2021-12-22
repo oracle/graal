@@ -820,7 +820,7 @@ class LibffiBuildTask(mx.AbstractNativeBuildTask):
 
         mx.log('Applying patches...')
         git_apply = ['git', 'apply', '--whitespace=nowarn', '--unsafe-paths', '--directory',
-                     os.path.relpath(self.subject.delegate.dir, self.subject.suite.vc_dir)]
+                     os.path.realpath(self.subject.delegate.dir)]
         for patch in self.subject.patches:
             mx.run(git_apply + [patch], cwd=self.subject.suite.vc_dir)
 

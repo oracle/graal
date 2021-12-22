@@ -110,6 +110,8 @@ public final class RegexOptions {
     public static final String VALIDATE_NAME = "Validate";
     private static final int IGNORE_ATOMIC_GROUPS = 1 << 7;
     public static final String IGNORE_ATOMIC_GROUPS_NAME = "IgnoreAtomicGroups";
+    private static final int GENERATE_DFA_IMMEDIATELY = 1 << 8;
+    private static final String GENERATE_DFA_IMMEDIATELY_NAME = "GenerateDFAImmediately";
 
     public static final String FLAVOR_NAME = "Flavor";
     public static final String FLAVOR_PYTHON = "Python";
@@ -161,6 +163,13 @@ public final class RegexOptions {
      */
     public boolean isStepExecution() {
         return isBitSet(STEP_EXECUTION);
+    }
+
+    /**
+     * Generate DFA matchers immediately after parsing the expression.
+     */
+    public boolean isGenerateDFAImmediately() {
+        return isBitSet(GENERATE_DFA_IMMEDIATELY);
     }
 
     /**
@@ -253,6 +262,9 @@ public final class RegexOptions {
         if (isIgnoreAtomicGroups()) {
             sb.append(IGNORE_ATOMIC_GROUPS_NAME + "=true,");
         }
+        if (isGenerateDFAImmediately()) {
+            sb.append(GENERATE_DFA_IMMEDIATELY_NAME + "=true,");
+        }
         if (flavor == PythonFlavor.STR_INSTANCE) {
             sb.append(FLAVOR_NAME + "=" + FLAVOR_PYTHON_STR + ",");
         } else if (flavor == PythonFlavor.BYTES_INSTANCE) {
@@ -294,6 +306,9 @@ public final class RegexOptions {
                         break;
                     case 'F':
                         i = parseFlavor(i);
+                        break;
+                    case 'G':
+                        i = parseBooleanOption(i, GENERATE_DFA_IMMEDIATELY_NAME, GENERATE_DFA_IMMEDIATELY);
                         break;
                     case 'I':
                         i = parseBooleanOption(i, IGNORE_ATOMIC_GROUPS_NAME, IGNORE_ATOMIC_GROUPS);

@@ -43,6 +43,7 @@ package com.oracle.truffle.regex.tregex.nodes.nfa;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.LoopNode;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.nfa.NFA;
@@ -101,7 +102,7 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
     }
 
     @Override
-    public Object execute(TRegexExecutorLocals abstractLocals, boolean compactString) {
+    public Object execute(TRegexExecutorLocals abstractLocals, TruffleString.CodeRange codeRange) {
         TRegexNFAExecutorLocals locals = (TRegexNFAExecutorLocals) abstractLocals;
         CompilerDirectives.ensureVirtualized(locals);
 

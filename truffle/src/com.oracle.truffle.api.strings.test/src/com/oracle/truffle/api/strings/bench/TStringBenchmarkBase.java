@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,19 +38,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.tregex.util;
+package com.oracle.truffle.api.strings.bench;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import org.openjdk.jmh.annotations.Fork;
+import org.openjdk.jmh.annotations.Measurement;
+import org.openjdk.jmh.annotations.Warmup;
 
-public class Boundaries {
+@Warmup(iterations = TStringBenchmarkBase.Defaults.WARMUP_ITERATIONS, time = 2)
+@Measurement(iterations = TStringBenchmarkBase.Defaults.MEASUREMENT_ITERATIONS, time = 2)
+@Fork(TStringBenchmarkBase.Defaults.FORKS)
+public class TStringBenchmarkBase {
 
-    @TruffleBoundary
-    public static int stringIndexOf(String s, char c, int fromIndex) {
-        return s.indexOf(c, fromIndex);
-    }
-
-    @TruffleBoundary
-    public static int stringLastIndexOf(String s, char c, int fromIndex) {
-        return s.lastIndexOf(c, fromIndex);
+    public static class Defaults {
+        public static final int MEASUREMENT_ITERATIONS = 3;
+        public static final int WARMUP_ITERATIONS = 5;
+        public static final int FORKS = 1;
     }
 }
