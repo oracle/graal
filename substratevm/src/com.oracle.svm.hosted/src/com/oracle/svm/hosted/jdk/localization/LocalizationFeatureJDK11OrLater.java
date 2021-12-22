@@ -25,19 +25,19 @@
 
 package com.oracle.svm.hosted.jdk.localization;
 
+// Checkstyle: stop
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.spi.LocaleServiceProvider;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-
 import com.oracle.svm.core.annotate.AutomaticFeature;
 
-//Checkstyle: stop
 import sun.text.spi.JavaTimeDateTimePatternProvider;
-//Checkstyle: resume
+
+// Checkstyle: resume
 
 /**
  * @see LocalizationFeature
@@ -47,11 +47,6 @@ final class LocalizationFeatureJDK11OrLater extends LocalizationFeature {
 
     private static final List<Class<? extends LocaleServiceProvider>> jdk9PlusClasses = Collections.singletonList(
                     JavaTimeDateTimePatternProvider.class);
-
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return JavaVersionUtil.JAVA_SPEC >= 11;
-    }
 
     @Override
     protected void addResourceBundles() {

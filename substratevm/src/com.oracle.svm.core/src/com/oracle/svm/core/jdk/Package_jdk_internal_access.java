@@ -37,9 +37,7 @@ public class Package_jdk_internal_access implements Function<TargetClass, String
 
     @Override
     public String apply(TargetClass annotation) {
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            return "sun.misc." + annotation.className();
-        } else if (JavaVersionUtil.JAVA_SPEC == 11) {
+        if (JavaVersionUtil.JAVA_SPEC == 11) {
             try {
                 String name = "jdk.internal.misc." + annotation.className();
                 // Checkstyle: stop

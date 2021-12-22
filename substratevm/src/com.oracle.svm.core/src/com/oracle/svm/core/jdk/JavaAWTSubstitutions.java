@@ -28,7 +28,6 @@ import java.awt.GraphicsEnvironment;
 import java.io.FilenameFilter;
 import java.util.function.BooleanSupplier;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -962,7 +961,7 @@ public final class JavaAWTSubstitutions {
     static class IsHeadless implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
-            return GraphicsEnvironment.isHeadless() && JavaVersionUtil.JAVA_SPEC >= 11;
+            return GraphicsEnvironment.isHeadless();
         }
     }
     // Checkstyle: resume

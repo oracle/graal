@@ -427,7 +427,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
 
     static {
         try {
-            CLEANER_CLASS = Class.forName((JavaVersionUtil.JAVA_SPEC <= 8 ? "sun.misc." : "jdk.internal.ref.") + "Cleaner");
+            CLEANER_CLASS = Class.forName("jdk.internal.ref.Cleaner");
         } catch (ClassNotFoundException ex) {
             throw VMError.shouldNotReachHere(ex);
         }

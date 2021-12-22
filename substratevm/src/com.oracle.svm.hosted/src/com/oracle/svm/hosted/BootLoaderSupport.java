@@ -28,8 +28,6 @@ package com.oracle.svm.hosted;
 
 import java.lang.reflect.Method;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -39,10 +37,6 @@ public class BootLoaderSupport {
      * Gets the boot loader or {@code null} if it does not exist.
      */
     public static ClassLoader getBootLoader() {
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            // In JDK 8 there is not boot class loader class
-            return null;
-        }
         Class<?> classLoadersClass;
         try {
             // Checkstyle: stop

@@ -209,7 +209,8 @@ suite = {
                     "jdk.internal.loader",
                     "sun.text.spi",
                     "jdk.internal.perf",
-                    "jdk.internal.loader"
+                    "jdk.internal.loader",
+                    "jdk.internal.ref",
                 ],
                 "java.desktop": [
                     "sun.java2d",
@@ -731,6 +732,7 @@ suite = {
                     "sun.invoke.util",
                     "sun.reflect.annotation",
                     "sun.reflect.generics.repository",
+                    "jdk.internal.reflect",
                 ],
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.code",

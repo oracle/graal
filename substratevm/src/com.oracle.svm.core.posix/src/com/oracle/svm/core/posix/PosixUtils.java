@@ -26,12 +26,9 @@ package com.oracle.svm.core.posix;
 
 import java.io.FileDescriptor;
 import java.io.IOException;
-import java.util.function.Function;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
@@ -151,25 +148,13 @@ public class PosixUtils {
         return Unistd.getpid();
     }
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    private static final class ProcessNameProvider implements Function<TargetClass, String> {
-        @Override
-        public String apply(TargetClass annotation) {
-            if (JavaVersionUtil.JAVA_SPEC <= 8) {
-                return "java.lang.UNIXProcess";
-            } else {
-                return "java.lang.ProcessImpl";
-            }
-        }
-    }
-
-    @TargetClass(classNameProvider = ProcessNameProvider.class)
-    private static final class Target_java_lang_UNIXProcess {
+    @TargetClass(className = "java.lang.ProcessImpl")
+    private static final class Target_java_lang_ProcessImpl {
         @Alias int pid;
     }
 
     public static int getpid(Process process) {
-        Target_java_lang_UNIXProcess instance = SubstrateUtil.cast(process, Target_java_lang_UNIXProcess.class);
+        Target_java_lang_ProcessImpl instance = SubstrateUtil.cast(process, Target_java_lang_ProcessImpl.class);
         return instance.pid;
     }
 

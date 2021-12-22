@@ -30,7 +30,6 @@ import java.io.InputStream;
 import java.net.URL;
 import java.net.URLConnection;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -75,11 +74,6 @@ public class JDKVersionSpecificResourceBuilderJDK11OrLater implements JDKVersion
 
 @AutomaticFeature
 final class JDKVersionSpecificResourceBuilderFeature implements Feature {
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return JavaVersionUtil.JAVA_SPEC >= 11;
-    }
-
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(JDKVersionSpecificResourceBuilder.class, new JDKVersionSpecificResourceBuilderJDK11OrLater());

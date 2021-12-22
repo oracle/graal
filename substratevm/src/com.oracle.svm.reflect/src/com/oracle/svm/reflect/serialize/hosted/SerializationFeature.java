@@ -50,7 +50,6 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.SerializationConfigurationParser;
-import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
 import com.oracle.svm.core.jdk.RecordSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -82,7 +81,7 @@ public class SerializationFeature implements Feature {
         ImageClassLoader imageClassLoader = access.getImageClassLoader();
         ConfigurationTypeResolver typeResolver = new ConfigurationTypeResolver("serialization configuration", imageClassLoader, NativeImageOptions.AllowIncompleteClasspath.getValue());
         SerializationDenyRegistry serializationDenyRegistry = new SerializationDenyRegistry(typeResolver);
-        serializationBuilder = new SerializationBuilder(serializationDenyRegistry, access, typeResolver);
+        serializationBuilder = new SerializationBuilder(serializationDenyRegistry, typeResolver);
         ImageSingletons.add(RuntimeSerializationSupport.class, serializationBuilder);
 
         SerializationConfigurationParser denyCollectorParser = new SerializationConfigurationParser(serializationDenyRegistry, ConfigurationFiles.Options.StrictConfiguration.getValue());
@@ -181,9 +180,9 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
 
     private boolean sealed;
 
-    SerializationBuilder(SerializationDenyRegistry serializationDenyRegistry, FeatureImpl.DuringSetupAccessImpl access, ConfigurationTypeResolver typeResolver) {
+    SerializationBuilder(SerializationDenyRegistry serializationDenyRegistry, ConfigurationTypeResolver typeResolver) {
         try {
-            Class<?> reflectionFactoryClass = access.findClassByName(Package_jdk_internal_reflect.getQualifiedName() + ".ReflectionFactory");
+            Class<?> reflectionFactoryClass = jdk.internal.reflect.ReflectionFactory.class;
             Method getReflectionFactoryMethod = ReflectionUtil.lookupMethod(reflectionFactoryClass, "getReflectionFactory");
             reflectionFactory = getReflectionFactoryMethod.invoke(null);
             newConstructorForSerializationMethod1 = ReflectionUtil.lookupMethod(reflectionFactoryClass, "newConstructorForSerialization", Class.class);

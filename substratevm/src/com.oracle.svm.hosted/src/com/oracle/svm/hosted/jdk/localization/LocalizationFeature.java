@@ -58,19 +58,12 @@ import java.util.spi.LocaleNameProvider;
 import java.util.spi.LocaleServiceProvider;
 import java.util.spi.TimeZoneNameProvider;
 
-import com.oracle.svm.core.jdk.localization.BundleContentSubstitutedLocalizationSupport;
-import com.oracle.svm.core.jdk.localization.LocalizationSupport;
-import com.oracle.svm.core.jdk.localization.OptimizedLocalizationSupport;
-import com.oracle.svm.hosted.NativeImageOptions;
-import com.oracle.svm.core.jdk.localization.compression.GzipBundleCompression;
-import com.oracle.svm.core.jdk.localization.substitutions.Target_sun_util_locale_provider_LocaleServiceProviderPool_OptimizedLocaleMode;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -78,11 +71,17 @@ import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.jdk.localization.BundleContentSubstitutedLocalizationSupport;
+import com.oracle.svm.core.jdk.localization.LocalizationSupport;
+import com.oracle.svm.core.jdk.localization.OptimizedLocalizationSupport;
+import com.oracle.svm.core.jdk.localization.compression.GzipBundleCompression;
+import com.oracle.svm.core.jdk.localization.substitutions.Target_sun_util_locale_provider_LocaleServiceProviderPool_OptimizedLocaleMode;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -166,7 +165,7 @@ public abstract class LocalizationFeature implements Feature {
         public static final HostedOptionKey<Boolean> IncludeAllLocales = new HostedOptionKey<>(false);
 
         @Option(help = "Optimize the resource bundle lookup using a simple map.", type = OptionType.User)//
-        public static final HostedOptionKey<Boolean> LocalizationOptimizedMode = new HostedOptionKey<>(JavaVersionUtil.JAVA_SPEC == 8);
+        public static final HostedOptionKey<Boolean> LocalizationOptimizedMode = new HostedOptionKey<>(false);
 
         @Option(help = "Store the resource bundle content more efficiently in the fallback mode.", type = OptionType.User)//
         public static final HostedOptionKey<Boolean> LocalizationSubstituteLoadLookup = new HostedOptionKey<>(true);

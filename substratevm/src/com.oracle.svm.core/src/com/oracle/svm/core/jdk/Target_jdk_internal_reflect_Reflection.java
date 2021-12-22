@@ -30,7 +30,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
-@TargetClass(classNameProvider = Package_jdk_internal_reflect.class, className = "Reflection")
+@TargetClass(className = "jdk.internal.reflect.Reflection")
 public final class Target_jdk_internal_reflect_Reflection {
 
     @Substitute

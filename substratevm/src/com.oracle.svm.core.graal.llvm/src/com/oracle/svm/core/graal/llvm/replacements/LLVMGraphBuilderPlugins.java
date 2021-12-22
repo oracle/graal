@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.core.graal.llvm.replacements;
 
+// Checkstyle: stop
+
+import java.lang.reflect.Type;
 import java.util.Arrays;
 
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -42,7 +45,6 @@ import org.graalvm.compiler.replacements.nodes.BitCountNode;
 import org.graalvm.compiler.replacements.nodes.FusedMultiplyAddNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import com.oracle.svm.core.graal.llvm.replacements.LLVMIntrinsicNode.LLVMIntrinsicOperation;
 
@@ -50,8 +52,6 @@ import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-// Checkstyle: stop
-import java.lang.reflect.Type;
 // Checkstyle: resume
 
 public class LLVMGraphBuilderPlugins implements TargetGraphBuilderPlugins {
@@ -100,9 +100,7 @@ public class LLVMGraphBuilderPlugins implements TargetGraphBuilderPlugins {
             registerBinaryLLVMIntrinsic(r, "copySign", LLVMIntrinsicOperation.COPYSIGN, kind, kind.toJavaClass(), kind.toJavaClass());
         }
 
-        if (JavaVersionUtil.JAVA_SPEC > 8) {
-            registerFMA(r);
-        }
+        registerFMA(r);
     }
 
     private static void registerUnaryMath(Registration r, String name, UnaryOperation operation) {

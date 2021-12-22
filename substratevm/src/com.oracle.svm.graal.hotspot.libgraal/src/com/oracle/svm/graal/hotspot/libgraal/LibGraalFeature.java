@@ -25,7 +25,6 @@
 package com.oracle.svm.graal.hotspot.libgraal;
 
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
-import static org.graalvm.compiler.serviceprovider.JavaVersionUtil.JAVA_SPEC;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -485,12 +484,10 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
             filterArchitectureServices(archPackage, servicesCache);
             servicesCache.remove(GeneratedPluginFactory.class);
 
-            if (JAVA_SPEC > 8) {
-                final Field graalServicesCacheField = ReflectionUtil.lookupField(GraalServices.class, "servicesCache");
-                Map<Class<?>, List<?>> graalServicesCache = (Map<Class<?>, List<?>>) graalServicesCacheField.get(null);
-                filterArchitectureServices(archPackage, graalServicesCache);
-                graalServicesCache.remove(GeneratedPluginFactory.class);
-            }
+            final Field graalServicesCacheField = ReflectionUtil.lookupField(GraalServices.class, "servicesCache");
+            Map<Class<?>, List<?>> graalServicesCache = (Map<Class<?>, List<?>>) graalServicesCacheField.get(null);
+            filterArchitectureServices(archPackage, graalServicesCache);
+            graalServicesCache.remove(GeneratedPluginFactory.class);
 
             Field cachedHotSpotJVMCIBackendFactoriesField = ReflectionUtil.lookupField(HotSpotJVMCIRuntime.class, "cachedHotSpotJVMCIBackendFactories");
             List<HotSpotJVMCIBackendFactory> cachedHotSpotJVMCIBackendFactories = (List<HotSpotJVMCIBackendFactory>) cachedHotSpotJVMCIBackendFactoriesField.get(null);

@@ -46,7 +46,6 @@ import org.graalvm.compiler.options.OptionStability;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -388,10 +387,8 @@ public class SubstrateOptions {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
             if ("llvm".equals(newValue)) {
-                if (JavaVersionUtil.JAVA_SPEC >= 11) {
-                    /* See GR-14405, https://github.com/oracle/graal/issues/1056 */
-                    GraalOptions.EmitStringSubstitutions.update(values, false);
-                }
+                /* See GR-14405, https://github.com/oracle/graal/issues/1056 */
+                GraalOptions.EmitStringSubstitutions.update(values, false);
                 /*
                  * The code information is filled before linking, which means that stripping dead
                  * functions makes it incoherent with the executable.

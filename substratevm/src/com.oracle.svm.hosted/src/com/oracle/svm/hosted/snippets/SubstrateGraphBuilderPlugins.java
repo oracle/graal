@@ -160,16 +160,6 @@ public class SubstrateGraphBuilderPlugins {
         public static final HostedOptionKey<Boolean> DynamicProxyTracing = new HostedOptionKey<>(false);
     }
 
-    private static final String reflectionClass;
-
-    static {
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            reflectionClass = "sun.reflect.Reflection";
-        } else {
-            reflectionClass = "jdk.internal.reflect.Reflection";
-        }
-    }
-
     public static void registerInvocationPlugins(AnnotationSubstitutionProcessor annotationSubstitutions, MetaAccessProvider metaAccess,
                     SnippetReflectionProvider snippetReflection, InvocationPlugins plugins, Replacements replacements, ParsingReason parsingReason) {
 
@@ -216,7 +206,7 @@ public class SubstrateGraphBuilderPlugins {
     }
 
     private static void registerReflectionPlugins(InvocationPlugins plugins, Replacements replacements) {
-        Registration r = new Registration(plugins, reflectionClass, replacements);
+        Registration r = new Registration(plugins, "jdk.internal.reflect.Reflection", replacements);
         r.register0("getCallerClass", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
@@ -550,54 +540,52 @@ public class SubstrateGraphBuilderPlugins {
 
     private static void registerUnsafePlugins(MetaAccessProvider metaAccess, InvocationPlugins plugins, SnippetReflectionProvider snippetReflection, ParsingReason reason) {
         registerUnsafePlugins(metaAccess, new Registration(plugins, sun.misc.Unsafe.class), snippetReflection, reason, true);
-        if (JavaVersionUtil.JAVA_SPEC > 8) {
-            Registration r = new Registration(plugins, "jdk.internal.misc.Unsafe");
-            registerUnsafePlugins(metaAccess, r, snippetReflection, reason, false);
+        Registration r = new Registration(plugins, "jdk.internal.misc.Unsafe");
+        registerUnsafePlugins(metaAccess, r, snippetReflection, reason, false);
 
-            r.register3("objectFieldOffset", Receiver.class, Class.class, String.class, new InvocationPlugin() {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode classNode, ValueNode nameNode) {
-                    if (classNode.isConstant() && nameNode.isConstant()) {
-                        /* If the class and field name arguments are constant. */
-                        Class<?> clazz = snippetReflection.asObject(Class.class, classNode.asJavaConstant());
-                        String fieldName = snippetReflection.asObject(String.class, nameNode.asJavaConstant());
-                        try {
-                            Field targetField = clazz.getDeclaredField(fieldName);
-                            return processFieldOffset(b, targetField, reason, metaAccess, false);
-                        } catch (NoSuchFieldException | LinkageError e) {
-                            return false;
-                        }
+        r.register3("objectFieldOffset", Receiver.class, Class.class, String.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode classNode, ValueNode nameNode) {
+                if (classNode.isConstant() && nameNode.isConstant()) {
+                    /* If the class and field name arguments are constant. */
+                    Class<?> clazz = snippetReflection.asObject(Class.class, classNode.asJavaConstant());
+                    String fieldName = snippetReflection.asObject(String.class, nameNode.asJavaConstant());
+                    try {
+                        Field targetField = clazz.getDeclaredField(fieldName);
+                        return processFieldOffset(b, targetField, reason, metaAccess, false);
+                    } catch (NoSuchFieldException | LinkageError e) {
+                        return false;
                     }
+                }
+                return false;
+            }
+        });
+        r.register3("allocateUninitializedArray", Receiver.class, Class.class, int.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode componentTypeNode, ValueNode lengthNode) {
+                /*
+                 * For simplicity, we only intrinsify if the componentType is a compile-time
+                 * constant. That also allows us to constant-fold the required check that the
+                 * component type is a primitive type.
+                 */
+                if (!componentTypeNode.isJavaConstant() || componentTypeNode.asJavaConstant().isNull()) {
                     return false;
                 }
-            });
-            r.register3("allocateUninitializedArray", Receiver.class, Class.class, int.class, new InvocationPlugin() {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode componentTypeNode, ValueNode lengthNode) {
-                    /*
-                     * For simplicity, we only intrinsify if the componentType is a compile-time
-                     * constant. That also allows us to constant-fold the required check that the
-                     * component type is a primitive type.
-                     */
-                    if (!componentTypeNode.isJavaConstant() || componentTypeNode.asJavaConstant().isNull()) {
-                        return false;
-                    }
-                    ResolvedJavaType componentType = b.getConstantReflection().asJavaType(componentTypeNode.asJavaConstant());
-                    if (componentType == null || !componentType.isPrimitive()) {
-                        return false;
-                    }
-                    /* Emits a null-check for the otherwise unused receiver. */
-                    unsafe.get();
-                    /*
-                     * Note that allocateUninitializedArray must throw a IllegalArgumentException,
-                     * and not a NegativeArraySizeException, when the length is negative.
-                     */
-                    ValueNode lengthPositive = b.maybeEmitExplicitNegativeArraySizeCheck(lengthNode, BytecodeExceptionNode.BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_NEGATIVE_LENGTH);
-                    b.addPush(JavaKind.Object, new NewArrayNode(componentType, lengthPositive, false));
-                    return true;
+                ResolvedJavaType componentType = b.getConstantReflection().asJavaType(componentTypeNode.asJavaConstant());
+                if (componentType == null || !componentType.isPrimitive()) {
+                    return false;
                 }
-            });
-        }
+                /* Emits a null-check for the otherwise unused receiver. */
+                unsafe.get();
+                /*
+                 * Note that allocateUninitializedArray must throw a IllegalArgumentException, and
+                 * not a NegativeArraySizeException, when the length is negative.
+                 */
+                ValueNode lengthPositive = b.maybeEmitExplicitNegativeArraySizeCheck(lengthNode, BytecodeExceptionNode.BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_NEGATIVE_LENGTH);
+                b.addPush(JavaKind.Object, new NewArrayNode(componentType, lengthPositive, false));
+                return true;
+            }
+        });
     }
 
     private static void registerUnsafePlugins(MetaAccessProvider metaAccess, Registration r, SnippetReflectionProvider snippetReflection, ParsingReason reason, boolean isSunMiscUnsafe) {

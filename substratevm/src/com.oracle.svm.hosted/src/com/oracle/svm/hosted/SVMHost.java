@@ -29,7 +29,6 @@ import java.lang.ref.Reference;
 import java.lang.ref.SoftReference;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.AnnotatedElement;
-import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -115,7 +114,6 @@ import com.oracle.svm.hosted.phases.AnalysisGraphBuilderPhase;
 import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyImpl;
 import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
-import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -150,8 +148,6 @@ public class SVMHost implements HostVM {
     private final ConcurrentMap<AnalysisMethod, Boolean> classInitializerSideEffect = new ConcurrentHashMap<>();
     private final ConcurrentMap<AnalysisMethod, Set<AnalysisType>> initializedClasses = new ConcurrentHashMap<>();
     private final ConcurrentMap<AnalysisMethod, Boolean> analysisTrivialMethods = new ConcurrentHashMap<>();
-
-    private static final Method getNestHostMethod = JavaVersionUtil.JAVA_SPEC >= 11 ? ReflectionUtil.lookupMethod(Class.class, "getNestHost") : null;
 
     public SVMHost(OptionValues options, ClassLoader classLoader, ClassInitializationSupport classInitializationSupport,
                     UnsafeAutomaticSubstitutionProcessor automaticSubstitutions, Platform platform, SnippetReflectionProvider originalSnippetReflection) {
@@ -398,15 +394,7 @@ public class SVMHost implements HostVM {
          */
         String sourceFileName = stringTable.deduplicate(type.getSourceFileName(), true);
 
-        Class<?> nestHost = null;
-        if (JavaVersionUtil.JAVA_SPEC >= 11) {
-            try {
-                nestHost = (Class<?>) getNestHostMethod.invoke(javaClass);
-            } catch (ReflectiveOperationException ex) {
-                throw VMError.shouldNotReachHere(ex);
-            }
-        }
-
+        Class<?> nestHost = javaClass.getNestHost();
         boolean isHidden = SubstrateUtil.isHiddenClass(javaClass);
         boolean isRecord = RecordSupport.singleton().isRecord(javaClass);
         boolean assertionStatus = RuntimeAssertionsSupport.singleton().desiredAssertionStatus(javaClass);

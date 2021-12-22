@@ -183,8 +183,6 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
     private final Method varHandleIsAccessModeSupportedMethod;
     private final Method varHandleAccessModeTypeMethod;
 
-    private static final Method unsupportedFeatureMethod = ReflectionUtil.lookupMethod(VMError.class, "unsupportedFeature", String.class);
-
     public IntrinsifyMethodHandlesInvocationPlugin(ParsingReason reason, Providers providers, AnalysisUniverse aUniverse, HostedUniverse hUniverse) {
         this.reason = reason;
         this.aUniverse = aUniverse;
@@ -253,7 +251,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
          * We want to process invokes that have a constant MethodHandle parameter. And we need a
          * direct call, otherwise we do not have a single target method.
          */
-        if (b.getInvokeKind().isDirect() && (hasMethodHandleArgument(args) || isVarHandleMethod(b, method, args)) && !ignoreMethod(method)) {
+        if (b.getInvokeKind().isDirect() && (hasMethodHandleArgument(args) || isVarHandleMethod(method, args)) && !ignoreMethod(method)) {
             if (b.bciCanBeDuplicated()) {
                 /*
                  * If we capture duplication of the bci, we don't process invoke.
@@ -314,7 +312,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
      * See the documentation in {@link VarHandleFeature} for more information on the overall
      * VarHandle support.
      */
-    private boolean isVarHandleMethod(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
+    private boolean isVarHandleMethod(ResolvedJavaMethod method, ValueNode[] args) {
         /*
          * We do the check by class name because then we 1) do not need an explicit Java version
          * check (VarHandle was introduced with JDK 9), 2) VarHandleGuards is a non-public class
@@ -568,7 +566,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                 transplanted.put(oParam, methodHandleArguments[oParam.index()]);
             }
 
-            Transplanter transplanter = new Transplanter(b, methodHandleMethod, transplanted);
+            Transplanter transplanter = new Transplanter(b, transplanted);
             try {
                 transplanter.graph(graph);
 
@@ -616,13 +614,11 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
      */
     class Transplanter {
         private final BytecodeParser b;
-        private final ResolvedJavaMethod methodHandleMethod;
         private final NodeMap<Node> transplanted;
         private JavaKind tempFrameStackValue;
 
-        Transplanter(GraphBuilderContext b, ResolvedJavaMethod methodHandleMethod, NodeMap<Node> transplanted) {
+        Transplanter(GraphBuilderContext b, NodeMap<Node> transplanted) {
             this.b = (BytecodeParser) b;
-            this.methodHandleMethod = methodHandleMethod;
             this.transplanted = transplanted;
             this.tempFrameStackValue = null;
         }

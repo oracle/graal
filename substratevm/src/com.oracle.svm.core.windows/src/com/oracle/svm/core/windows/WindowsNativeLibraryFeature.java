@@ -68,7 +68,6 @@ class WindowsNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
     public boolean initializeBuiltinLibraries() {
         try {
             loadJavaLibrary();
-            loadZipLibrary();
             loadNetLibrary();
         } catch (UnsatisfiedLinkError e) {
             Log.log().string("System.loadLibrary failed, " + e).newline();
