@@ -238,4 +238,13 @@ public class PythonTests extends RegexTestBase {
         test("\\b|:", "", "MustAdvance=true", "a:", 1, true, 1, 2, -1);
         test("\\b|:", "", "MustAdvance=false", "a:", 2, false);
     }
+
+    @Test
+    public void mustAdvanceLiteralEngineTests() {
+        test("", "", "MustAdvance=true", "", 0, false);
+        test("", "", "MustAdvance=true", "a", 0, true, 1, 1, -1);
+        test("\\A", "", "MustAdvance=true", "", 0, false);
+        test("\\Z", "", "MustAdvance=true", "", 0, false);
+        test("\\A\\Z", "", "MustAdvance=true", "", 0, false);
+    }
 }
