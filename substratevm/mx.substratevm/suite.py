@@ -209,7 +209,6 @@ suite = {
                     "jdk.internal.loader",
                     "sun.text.spi",
                     "jdk.internal.perf",
-                    "jdk.internal.loader",
                     "jdk.internal.ref",
                 ],
                 "java.desktop": [

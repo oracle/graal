@@ -25,9 +25,7 @@
 package com.oracle.svm.hosted.jdk;
 
 import java.awt.GraphicsEnvironment;
-import java.util.Optional;
 
-import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -45,15 +43,10 @@ import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
 
-import jdk.vm.ci.services.Services;
-
 @Platforms({InternalPlatform.PLATFORM_JNI.class})
 @AutomaticFeature
 @SuppressWarnings({"unused"})
 public class JNIRegistrationAwt extends JNIRegistrationUtil implements Feature {
-
-    private static final int JDK_UPDATE = GraalServices.getJavaUpdateVersion();
-    private static final boolean IS_OPENJDK = Optional.ofNullable(Services.getSavedProperties().get("java.vm.name")).orElse("").startsWith("OpenJDK");
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {

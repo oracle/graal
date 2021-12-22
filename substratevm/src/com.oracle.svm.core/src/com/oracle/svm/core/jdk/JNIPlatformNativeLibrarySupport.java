@@ -36,8 +36,6 @@ import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.c.CGlobalData;
-import com.oracle.svm.core.c.CGlobalDataFactory;
 
 public abstract class JNIPlatformNativeLibrarySupport extends PlatformNativeLibrarySupport {
 
@@ -86,15 +84,6 @@ public abstract class JNIPlatformNativeLibrarySupport extends PlatformNativeLibr
 
     @CFunction("InitializeEncoding")
     private static native void nativeInitializeEncoding(PointerBase env, CCharPointer name);
-
-    private static final CGlobalData<CCharPointer> EMPTY_C_STRING = CGlobalDataFactory.createCString("");
-
-    /**
-     * Converts a C string to a Java String using the platform encoding. On JDK 8, initializes the
-     * platform encoding first by reading the {@code sun.jnu.encoding} system property.
-     */
-    @CFunction("JNU_NewStringPlatform")
-    private static native void nativeNewStringPlatform(PointerBase env, CCharPointer str);
 }
 
 @Platforms(InternalPlatform.PLATFORM_JNI.class)
