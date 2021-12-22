@@ -48,7 +48,9 @@ import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.util.GuardedAnnotationAccess;
 
+import com.oracle.svm.core.code.FactoryMethodMarker;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -71,10 +73,10 @@ public class ImplicitAssertionsPhase extends BasePhase<CoreProviders> {
 
     @Override
     protected void run(StructuredGraph graph, CoreProviders context) {
-        if (graph.method().getDeclaringClass().equals(context.getMetaAccess().lookupJavaType(ImplicitExceptions.class))) {
+        if (GuardedAnnotationAccess.isAnnotationPresent(graph.method().getDeclaringClass(), FactoryMethodMarker.class)) {
             /*
-             * ImplicitExceptions contains final target methods invoked by the intrinsification,
-             * i.e., the methods that actually will perform the allocations at run time.
+             * Factory methods, which includes methods in ImplicitExceptions, are the methods that
+             * actually perform the allocations at run time.
              */
             return;
         }

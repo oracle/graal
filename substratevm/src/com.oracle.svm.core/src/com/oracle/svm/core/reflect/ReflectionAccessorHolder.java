@@ -30,7 +30,6 @@ import java.lang.reflect.InvocationTargetException;
 
 import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.jdk.InternalVMMethod;
-import com.oracle.svm.core.reflect.SubstrateConstructorAccessor.ConstructorNewInstanceFunctionPointer;
 import com.oracle.svm.core.reflect.SubstrateMethodAccessor.MethodInvokeFunctionPointer;
 import com.oracle.svm.core.util.VMError;
 
@@ -47,21 +46,13 @@ public final class ReflectionAccessorHolder {
      * Signature prototype for invoking a method via a {@link SubstrateMethodAccessor}. Must match
      * the signature of {@link MethodInvokeFunctionPointer#invoke}
      */
-    static Object invokePrototype(boolean invokeSpecial, Object obj, Object[] args) {
-        throw VMError.shouldNotReachHere("Only used as a prototype for generated methods");
-    }
-
-    /**
-     * Signature prototype for allocating a new instance via a {@link SubstrateConstructorAccessor}.
-     * Must match * the signature of {@link ConstructorNewInstanceFunctionPointer#invoke}
-     */
-    static Object newInstancePrototype(Object[] args) {
+    private static Object invokePrototype(boolean invokeSpecial, Object obj, Object[] args) {
         throw VMError.shouldNotReachHere("Only used as a prototype for generated methods");
     }
 
     /*
      * Methods for throwing exceptions when a method or constructor is used in an illegal way. These
-     * methods are invoked via function pointers, so must have the same signature as the prototypes
+     * methods are invoked via function pointers, so must have the same signature as the prototype
      * above.
      */
 
@@ -70,7 +61,7 @@ public final class ReflectionAccessorHolder {
         throw new InvocationTargetException(new UnsupportedOperationException("MethodHandle.invoke() and MethodHandle.invokeExact() cannot be invoked through reflection"));
     }
 
-    private static Object newInstanceError(Object[] args) throws InstantiationException {
+    private static Object newInstanceError(boolean invokeSpecial, Object obj, Object[] args) throws InstantiationException {
         throw new InstantiationException("Only non-abstract instance classes can be instantiated using reflection");
     }
 
@@ -80,30 +71,25 @@ public final class ReflectionAccessorHolder {
      */
 
     @NeverInline("Exception slow path")
-    private static InvocationTargetException throwInvocationTargetException(Throwable target) throws InvocationTargetException {
-        throw new InvocationTargetException(target);
+    private static void throwIllegalArgumentExceptionWithReceiver(Object member, Object obj, Object[] args) {
+        throwIllegalArgumentException(member, true, obj, args);
     }
 
     @NeverInline("Exception slow path")
-    private static void throwIllegalArgumentExceptionForMethod(Object member, Object obj, Object[] args) {
-        throwIllegalArgumentException(member, false, obj, args);
-    }
-
-    @NeverInline("Exception slow path")
-    private static void throwIllegalArgumentExceptionForConstructor(Object member, Object[] args) {
-        throwIllegalArgumentException(member, true, null, args);
+    private static void throwIllegalArgumentExceptionWithoutReceiver(Object member, Object[] args) {
+        throwIllegalArgumentException(member, false, null, args);
     }
 
     /**
-     * We do not know which check in the generated metod caused the exception, so we cannot print
+     * We do not know which check in the generated method caused the exception, so we cannot print
      * detailed information about that. But printing the signature of the method and all the types
      * of the actual arguments should make it obvious what the problem is.
      */
-    private static void throwIllegalArgumentException(Object member, boolean constructor, Object obj, Object[] args) {
+    private static void throwIllegalArgumentException(Object member, boolean withReceiver, Object obj, Object[] args) {
         String sep = System.lineSeparator();
         StringBuilder msg = new StringBuilder();
         msg.append("Illegal arguments for invoking ").append(member);
-        if (!constructor) {
+        if (withReceiver) {
             msg.append(sep).append("  obj: ").append(obj == null ? "null" : obj.getClass().getTypeName());
         }
         if (args == null) {

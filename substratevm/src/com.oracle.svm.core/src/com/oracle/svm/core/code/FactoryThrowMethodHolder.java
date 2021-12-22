@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,18 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.core.code;
 
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
+import com.oracle.svm.core.jdk.InternalVMMethod;
 
 /**
- * Annotation for types whose methods must be ignored for certain kinds of stack walks, such as by
- * Reflection.getCallerClass(). All methods in the annotated type have the same level of visibility.
+ * Holder class for generated factory methods (methods that combine object allocation and invocation
+ * of a constructor) that then immediately throw the allocated objects (which must be an exception
+ * type).
  */
-@Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.TYPE)
-public @interface InternalVMMethod {
+@InternalVMMethod
+@FactoryMethodMarker
+public final class FactoryThrowMethodHolder {
+    private FactoryThrowMethodHolder() {
+    }
 }

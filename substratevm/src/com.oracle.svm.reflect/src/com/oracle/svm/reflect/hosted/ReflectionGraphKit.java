@@ -26,7 +26,9 @@ package com.oracle.svm.reflect.hosted;
 
 // Checkstyle: allow reflection
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -60,12 +62,15 @@ import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.type.StampTool;
 
+import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.reflect.ReflectionAccessorHolder;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.code.FactoryMethodSupport;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -137,20 +142,23 @@ public class ReflectionGraphKit extends HostedGraphKit {
         ResolvedJavaMethod targetMethod;
         ValueNode[] arguments;
         if (obj == null) {
-            targetMethod = findMethod(ReflectionAccessorHolder.class, "throwIllegalArgumentExceptionForConstructor", true);
+            targetMethod = findMethod(ReflectionAccessorHolder.class, "throwIllegalArgumentExceptionWithoutReceiver", true);
             arguments = new ValueNode[]{memberNode, args};
         } else {
-            targetMethod = findMethod(ReflectionAccessorHolder.class, "throwIllegalArgumentExceptionForMethod", true);
+            targetMethod = findMethod(ReflectionAccessorHolder.class, "throwIllegalArgumentExceptionWithReceiver", true);
             arguments = new ValueNode[]{memberNode, obj, args};
         }
         createJavaCallWithExceptionAndUnwind(CallTargetNode.InvokeKind.Static, targetMethod, arguments);
         append(new LoweredDeadEndNode());
     }
 
+    private static final Constructor<InvocationTargetException> invocationTargetExceptionConstructor = ReflectionUtil.lookupConstructor(InvocationTargetException.class, Throwable.class);
+
     public void emitInvocationTargetException() {
         AbstractMergeNode merge = continueWithMerge(invocationTargetExceptionPaths);
         ValueNode exception = createPhi(invocationTargetExceptionPaths, merge);
-        ResolvedJavaMethod throwInvocationTargetException = findMethod(ReflectionAccessorHolder.class, "throwInvocationTargetException", true);
+        ResolvedJavaMethod throwInvocationTargetException = FactoryMethodSupport.singleton().lookup((UniverseMetaAccess) getMetaAccess(),
+                        getMetaAccess().lookupJavaMethod(invocationTargetExceptionConstructor), true);
         createJavaCallWithExceptionAndUnwind(CallTargetNode.InvokeKind.Static, throwInvocationTargetException, exception);
         append(new LoweredDeadEndNode());
     }

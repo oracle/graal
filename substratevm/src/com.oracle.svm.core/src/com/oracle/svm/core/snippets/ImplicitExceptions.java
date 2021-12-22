@@ -30,6 +30,7 @@ import java.lang.reflect.GenericSignatureFormatError;
 
 import com.oracle.svm.core.SubstrateDiagnostics;
 import com.oracle.svm.core.annotate.RestrictHeapAccess;
+import com.oracle.svm.core.code.FactoryMethodMarker;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
@@ -45,6 +46,7 @@ import com.oracle.svm.core.util.VMError;
  * therefore these methods are filtered in exception stack traces (see {@link StackTraceUtils}).
  */
 @InternalVMMethod
+@FactoryMethodMarker
 public class ImplicitExceptions {
     public static final String NO_STACK_MSG = "[no exception stack trace available because exception is thrown from code that must be allocation free]";
 
