@@ -425,6 +425,7 @@ suite = {
                     "sun.util.resources",
                     "jdk.internal.module",
                     "sun.text.spi",
+                    "jdk.internal.reflect",
                 ],
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.runtime",
@@ -756,6 +757,7 @@ suite = {
             "requiresConcealed" : {
                 "java.base" : [
                     "sun.invoke.util",
+                    "jdk.internal.reflect",
                 ],
             },
             "checkstyle": "com.oracle.svm.core",
