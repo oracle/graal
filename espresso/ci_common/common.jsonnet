@@ -160,7 +160,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   + (if timelimit != null then {timelimit: timelimit} else {})
   + (if name != null then {name: name} else {}),
 
-  espresso_benchmark(env, suite, host_jvm=_host_jvm(env, java_version), host_jvm_config=_host_jvm_config(env), guest_jvm='espresso', guest_jvm_config='default', java_version=8, fork_file=null, extra_args=[], timelimit='3:00:00'):
+  espresso_benchmark(env, suite, host_jvm=_host_jvm(env, java_version), host_jvm_config=_host_jvm_config(env), guest_jvm='espresso', guest_jvm_config='default', java_version=11, fork_file=null, extra_args=[], timelimit='3:00:00'):
     self.build_espresso(env) +
     {
       run+: that.maybe_set_ld_debug_flag(env) + [
@@ -181,10 +181,10 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   espresso_minheap_benchmark(env, suite, guest_jvm_config):
     self.espresso_benchmark(env, suite, host_jvm='server', host_jvm_config='hosted', guest_jvm='espresso-minheap', guest_jvm_config=guest_jvm_config, extra_args=['--', '--iterations', '1']),
 
-  espresso_interpreter_benchmark(env, suite, host_jvm=_host_jvm(env)):
-    self.espresso_benchmark(env, suite, host_jvm=host_jvm, guest_jvm_config='interpreter', extra_args=['--', '--iterations', '1']),
+  espresso_interpreter_benchmark(env, suite, host_jvm=_host_jvm(env, java_version), java_version=11):
+    self.espresso_benchmark(env, suite, host_jvm=host_jvm, guest_jvm_config='interpreter', java_version=java_version, extra_args=['--', '--iterations', '1']),
 
-  scala_dacapo_warmup_benchmark(env, guest_jvm_config='default', java_version=8, extra_args=[]):
+  scala_dacapo_warmup_benchmark(env, guest_jvm_config='default', java_version=11, extra_args=[]):
     self.espresso_benchmark(
       env,
       self.scala_dacapo_jvm_warmup,
