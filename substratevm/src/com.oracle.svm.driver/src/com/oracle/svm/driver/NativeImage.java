@@ -93,7 +93,7 @@ import com.oracle.svm.util.ModuleSupport;
 public class NativeImage {
 
     private static final String DEFAULT_GENERATOR_CLASS_NAME = NativeImageGeneratorRunner.class.getName();
-    private static final String DEFAULT_GENERATOR_MODULE_NAME = ModuleSupport.getModuleName(NativeImageGeneratorRunner.class);
+    private static final String DEFAULT_GENERATOR_MODULE_NAME = NativeImageGeneratorRunner.class.getModule().getName();
 
     private static final String DEFAULT_GENERATOR_9PLUS_SUFFIX = "$JDK9Plus";
     private static final String CUSTOM_SYSTEM_CLASS_LOADER = NativeImageSystemClassLoader.class.getCanonicalName();

@@ -47,7 +47,6 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
-import com.oracle.svm.util.ModuleSupport;
 
 /**
  * An abstract cache manager for some subspace of the JDK, GraalVM or application source file space.
@@ -297,7 +296,7 @@ public class SourceCache {
         String moduleName = null;
         if (clazz != null) {
             /* Paths require the module name as prefix */
-            moduleName = ModuleSupport.getModuleName(clazz);
+            moduleName = clazz.getModule().getName();
         }
 
         if (moduleName != null) {
@@ -361,7 +360,7 @@ public class SourceCache {
         String moduleName = null;
         if (clazz != null) {
             /* Paths require the module name as prefix */
-            moduleName = ModuleSupport.getModuleName(clazz);
+            moduleName = clazz.getModule().getName();
         }
 
         if (moduleName != null) {
