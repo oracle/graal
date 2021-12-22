@@ -353,6 +353,12 @@ libgraal_truffle: ${svm-common-linux-amd64} ${custom_vm_linux} ${vm_linux} {
 record_file_sizes: ["benchmark", "file-size:*", "--results-file", "sizes.json"]
 upload_file_sizes: [bench-uploader.py, "sizes.json"]
 
+# These dummy artifacts are required by notify-releaser-build in order to trigger the releaser service
+# after the deploy jobs have completed.
+create_releaser_notifier_artifact: [
+  [echo, "deployed successfully", >, "../$BUILD_NAME"]
+]
+
 deploy_graalvm_linux_amd64: {
   run: [
     ${mx_vm_installables} [graalvm-show]
@@ -368,7 +374,7 @@ deploy_graalvm_linux_amd64: {
     ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
     ${notify-nexus-deploy}
     [set-export, GRAALVM_HOME, ${mx_vm_common} [--quiet, --no-warning, graalvm-home]]
-  ]
+  ] ${create_releaser_notifier_artifact}
   logs: ${common_vm.logs}
   notify_emails: ["gilles.m.duboscq@oracle.com"]
   timelimit: "1:30:00"
@@ -389,7 +395,7 @@ deploy_graalvm_linux_aarch64: {
     ${upload_file_sizes}
     ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
     ${notify-nexus-deploy}
-  ]
+  ] ${create_releaser_notifier_artifact}
   logs: ${common_vm.logs}
   notify_emails: ["gilles.m.duboscq@oracle.com"]
   timelimit: "1:30:00"
@@ -403,7 +409,7 @@ deploy_graalvm_base_darwin_amd64: {
     ${upload_file_sizes}
     ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
     ${notify-nexus-deploy}
-  ]
+  ] ${create_releaser_notifier_artifact}
   notify_emails: ["gilles.m.duboscq@oracle.com"]
   timelimit: "1:45:00"
 }
@@ -416,8 +422,7 @@ deploy_graalvm_installables_darwin_amd64: {
     ${notify-nexus-deploy}
     ${mx_vm_installables} ${record_file_sizes}
     ${upload_file_sizes}
-    ${notify-releaser}
-  ]
+  ] ${create_releaser_notifier_artifact}
   notify_emails: ["gilles.m.duboscq@oracle.com"]
   timelimit: "3:00:00"
 }
@@ -431,7 +436,7 @@ deploy_graalvm_base_windows_amd64: {
     ${upload_file_sizes}
     ${mx_vm_common} ${maven_deploy_sdk_base}
     ${notify-nexus-deploy}
-  ]
+  ] ${create_releaser_notifier_artifact}
   notify_emails: ["gilles.m.duboscq@oracle.com"]
   timelimit: "1:30:00"
 }
@@ -445,7 +450,7 @@ deploy_graalvm_installables_windows_amd64: {
     ${notify-nexus-deploy}
     ${mx_vm_installables} ${record_file_sizes}
     ${upload_file_sizes}
-  ]
+  ] ${create_releaser_notifier_artifact}
   notify_emails: ["gilles.m.duboscq@oracle.com"]
   timelimit: "1:30:00"
 }
@@ -458,7 +463,7 @@ deploy_graalvm_ruby: {
     ${mx_vm_common} ${vm_profiles} ${maven_deploy_sdk_base}
     ${notify-nexus-deploy}
     [set-export, GRAALVM_HOME, ${mx_vm_common} [--quiet, --no-warning, graalvm-home]]
-  ]
+  ] ${create_releaser_notifier_artifact}
   logs: ${common_vm.logs}
   notify_emails: ["benoit.daloze@oracle.com", "gilles.m.duboscq@oracle.com"]
   timelimit: "1:45:00"
@@ -495,31 +500,31 @@ builds += [
   #
 
   # Linux/AMD64
-  ${vm_java_11} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} ${deploy_graalvm_linux_amd64} {name: deploy-vm-java11-linux-amd64}
-  ${vm_java_17} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} ${deploy_graalvm_linux_amd64} {name: deploy-vm-java17-linux-amd64}
+  ${vm_java_11} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} ${deploy_graalvm_linux_amd64} {name: deploy-vm-java11-linux-amd64} {publishArtifacts: [{name: deploy-vm-java11-linux-amd64, patterns: [deploy-vm-java11-linux-amd64]}]}
+  ${vm_java_17} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} ${deploy_graalvm_linux_amd64} {name: deploy-vm-java17-linux-amd64} {publishArtifacts: [{name: deploy-vm-java17-linux-amd64, patterns: [deploy-vm-java17-linux-amd64]}]}
 
   # Linux/AARCH64
-  ${vm_java_11} ${full_vm_build_linux_aarch64} ${linux-deploy} ${deploy_daily_vm_linux_aarch64} ${deploy_graalvm_linux_aarch64} {name: deploy-vm-java11-linux-aarch64}
-  ${vm_java_17} ${full_vm_build_linux_aarch64} ${linux-deploy} ${deploy_daily_vm_linux_aarch64} ${deploy_graalvm_linux_aarch64} {name: deploy-vm-java17-linux-aarch64}
+  ${vm_java_11} ${full_vm_build_linux_aarch64} ${linux-deploy} ${deploy_daily_vm_linux_aarch64} ${deploy_graalvm_linux_aarch64} {name: deploy-vm-java11-linux-aarch64} {publishArtifacts: [{name: deploy-vm-java11-linux-aarch64, patterns: [deploy-vm-java11-linux-aarch64]}]}
+  ${vm_java_17} ${full_vm_build_linux_aarch64} ${linux-deploy} ${deploy_daily_vm_linux_aarch64} ${deploy_graalvm_linux_aarch64} {name: deploy-vm-java17-linux-aarch64} {publishArtifacts: [{name: deploy-vm-java17-linux-aarch64, patterns: [deploy-vm-java17-linux-aarch64]}]}
 
   # Darwin/AMD64
-  ${vm_java_11} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} ${deploy_graalvm_base_darwin_amd64}         {name: deploy-vm-base-java11-darwin-amd64}
-  ${vm_java_11} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} ${deploy_graalvm_installables_darwin_amd64} {name: deploy-vm-installable-java11-darwin-amd64}
-  ${vm_java_17} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} ${deploy_graalvm_base_darwin_amd64}         {name: deploy-vm-base-java17-darwin-amd64}
-  ${vm_java_17} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} ${deploy_graalvm_installables_darwin_amd64} {name: deploy-vm-installable-java17-darwin-amd64}
+  ${vm_java_11} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} ${deploy_graalvm_base_darwin_amd64}         {name: deploy-vm-base-java11-darwin-amd64} {publishArtifacts: [{name: deploy-vm-base-java11-darwin-amd64, patterns: [deploy-vm-base-java11-darwin-amd64]}]}
+  ${vm_java_11} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} ${deploy_graalvm_installables_darwin_amd64} {name: deploy-vm-installable-java11-darwin-amd64} {publishArtifacts: [{name: deploy-vm-installable-java11-darwin-amd64, patterns: [deploy-vm-installable-java11-darwin-amd64]}]}
+  ${vm_java_17} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} ${deploy_graalvm_base_darwin_amd64}         {name: deploy-vm-base-java17-darwin-amd64} {publishArtifacts: [{name: deploy-vm-base-java17-darwin-amd64, patterns: [deploy-vm-base-java17-darwin-amd64]}]}
+  ${vm_java_17} ${full_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} ${deploy_graalvm_installables_darwin_amd64} {name: deploy-vm-installable-java17-darwin-amd64} {publishArtifacts: [{name: deploy-vm-installable-java17-darwin-amd64, patterns: [deploy-vm-installable-java17-darwin-amd64]}]}
 
   # Windows/AMD64
-  ${vm_java_11} ${svm-common-windows-jdk11} ${deploy_daily_vm_windows-jdk11} ${js_windows_jdk11} ${deploy_graalvm_base_windows_amd64}         {name: deploy-vm-base-java11-windows-amd64}
-  ${vm_java_11} ${svm-common-windows-jdk11} ${deploy_daily_vm_windows-jdk11} ${js_windows_jdk11} ${deploy_graalvm_installables_windows_amd64} {name: deploy-vm-installable-java11-windows-amd64}
-  ${vm_java_17} ${svm-common-windows-jdk17} ${deploy_daily_vm_windows-jdk17} ${js_windows_jdk17} ${deploy_graalvm_base_windows_amd64}         {name: deploy-vm-base-java17-windows-amd64}
-  ${vm_java_17} ${svm-common-windows-jdk17} ${deploy_daily_vm_windows-jdk17} ${js_windows_jdk17} ${deploy_graalvm_installables_windows_amd64} {name: deploy-vm-installable-java17-windows-amd64}
+  ${vm_java_11} ${svm-common-windows-jdk11} ${deploy_daily_vm_windows-jdk11} ${js_windows_jdk11} ${deploy_graalvm_base_windows_amd64}         {name: deploy-vm-base-java11-windows-amd64} {publishArtifacts: [{name: deploy-vm-base-java11-windows-amd64, patterns: [deploy-vm-base-java11-windows-amd64]}]}
+  ${vm_java_11} ${svm-common-windows-jdk11} ${deploy_daily_vm_windows-jdk11} ${js_windows_jdk11} ${deploy_graalvm_installables_windows_amd64} {name: deploy-vm-installable-java11-windows-amd64} {publishArtifacts: [{name: deploy-vm-installable-java11-windows-amd64, patterns: [deploy-vm-installable-java11-windows-amd64]}]}
+  ${vm_java_17} ${svm-common-windows-jdk17} ${deploy_daily_vm_windows-jdk17} ${js_windows_jdk17} ${deploy_graalvm_base_windows_amd64}         {name: deploy-vm-base-java17-windows-amd64} {publishArtifacts: [{name: deploy-vm-base-java17-windows-amd64, patterns: [deploy-vm-base-java17-windows-amd64]}]}
+  ${vm_java_17} ${svm-common-windows-jdk17} ${deploy_daily_vm_windows-jdk17} ${js_windows_jdk17} ${deploy_graalvm_installables_windows_amd64} {name: deploy-vm-installable-java17-windows-amd64} {publishArtifacts: [{name: deploy-vm-installable-java17-windows-amd64, patterns: [deploy-vm-installable-java17-windows-amd64]}]}
 
   #
   # Deploy the GraalVM Ruby image (GraalVM Base + ruby - js)
   #
 
-  ${vm_java_11} ${ruby_vm_build_linux} ${linux-deploy} ${deploy_daily_vm_linux} ${deploy_graalvm_ruby} {name: deploy-vm-ruby-java11-linux-amd64}
-  ${vm_java_11} ${ruby_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} ${deploy_graalvm_ruby} {name: deploy-vm-ruby-java11-darwin-amd64}
+  ${vm_java_11} ${ruby_vm_build_linux} ${linux-deploy} ${deploy_daily_vm_linux} ${deploy_graalvm_ruby} {name: deploy-vm-ruby-java11-linux-amd64} {publishArtifacts: [{name: deploy-vm-ruby-java11-linux-amd64, patterns: [deploy-vm-ruby-java11-linux-amd64]}]}
+  ${vm_java_11} ${ruby_vm_build_darwin} ${darwin-deploy} ${deploy_daily_vm_darwin} ${deploy_graalvm_ruby} {name: deploy-vm-ruby-java11-darwin-amd64} {publishArtifacts: [{name: deploy-vm-ruby-java11-darwin-amd64, patterns: [deploy-vm-ruby-java11-darwin-amd64]}]}
 
   #
   # Deploy GraalVM Complete
@@ -547,5 +552,35 @@ builds += [
     ]
     timelimit: "2:30:00"
     name: deploy-vm-complete-java11-darwin-amd64
+  }
+
+  # Trigger the releaser service
+  {
+    name: notify-releaser-build
+    packages: {
+      curl: ">=7.50.1"
+      git: ">=1.8.3"
+    }
+    run: [
+      ${notify-releaser}
+    ]
+    capabilities: [linux, amd64]
+    requireArtifacts: [
+      {name: deploy-vm-java11-linux-amd64}
+      {name: deploy-vm-java17-linux-amd64}
+      {name: deploy-vm-java11-linux-aarch64}
+      {name: deploy-vm-java17-linux-aarch64}
+      {name: deploy-vm-base-java11-darwin-amd64}
+      {name: deploy-vm-installable-java11-darwin-amd64}
+      {name: deploy-vm-base-java17-darwin-amd64}
+      {name: deploy-vm-installable-java17-darwin-amd64}
+      {name: deploy-vm-base-java11-windows-amd64}
+      {name: deploy-vm-installable-java11-windows-amd64}
+      {name: deploy-vm-base-java17-windows-amd64}
+      {name: deploy-vm-installable-java17-windows-amd64}
+      {name: deploy-vm-ruby-java11-linux-amd64}
+      {name: deploy-vm-ruby-java11-darwin-amd64}
+    ]
+    targets: [daily]
   }
 ]
