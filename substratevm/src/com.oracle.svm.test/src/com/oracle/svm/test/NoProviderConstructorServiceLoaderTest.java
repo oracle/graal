@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.jdk11;
+package com.oracle.svm.test;
 
 import java.util.HashSet;
 import java.util.ServiceConfigurationError;

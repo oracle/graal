@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2021, 2021, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,17 +24,21 @@
  * questions.
  */
 
-package com.oracle.svm.test.jdk11.jfr;
+package com.oracle.svm.test.jfr;
 
-import jdk.jfr.Description;
-import jdk.jfr.Event;
-import jdk.jfr.Label;
-import jdk.jfr.StackTrace;
+import java.io.IOException;
 
-@Label("Class Event")
-@Description("An event with a class payload")
-@StackTrace(false)
-public class ClassEvent extends Event {
+import jdk.jfr.Recording;
 
-    @Label("Class") public Class<?> clazz;
+/**
+ * Utility class to handle recording.
+ */
+public interface JFR {
+    Recording startRecording(String recordingName) throws Exception;
+
+    Recording startRecording(String recordingName, String configName) throws Exception;
+
+    void endRecording(Recording recording) throws Exception;
+
+    void cleanupRecording(Recording recording) throws IOException;
 }

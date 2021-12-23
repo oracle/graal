@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,36 +23,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.jdk11;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.ServiceLoader;
+package com.oracle.svm.test.jfr;
 
-import javax.tools.JavaCompiler;
+import static org.junit.Assert.assertNotNull;
 
-import org.junit.Assert;
 import org.junit.Test;
 
-public class ServiceLoaderTest {
+import jdk.jfr.Recording;
+import jdk.jfr.consumer.RecordingFile;
 
+public class TestClassEvent extends JFRTest {
     @Test
-    public void test03JavaCompiler() {
-        ServiceLoader<JavaCompiler> loader = ServiceLoader.load(JavaCompiler.class, ClassLoader.getSystemClassLoader());
-        boolean foundJavacTool = false;
-        List<JavaCompiler> unexpected = new ArrayList<>();
+    public void test() throws Exception {
+        JFR jfr = new LocalJFR();
+        Recording recording = jfr.startRecording("TestClassEvent");
 
-        for (JavaCompiler javaCompiler : loader) {
-            if (javaCompiler.getClass().getName().equals("com.sun.tools.javac.api.JavacTool")) {
-                foundJavacTool = true;
-            } else {
-                unexpected.add(javaCompiler);
-            }
-        }
+        ClassEvent event = new ClassEvent();
+        event.clazz = TestClassEvent.class;
+        event.commit();
 
-        if (!unexpected.isEmpty()) {
-            Assert.fail("Found unexpected JavaCompiler providers: " + unexpected);
+        jfr.endRecording(recording);
+        try (RecordingFile recordingFile = new RecordingFile(recording.getDestination())) {
+            assertNotNull(recordingFile);
+        } finally {
+            jfr.cleanupRecording(recording);
         }
-        Assert.assertTrue("Did not find JavacTool", foundJavacTool);
     }
+
 }

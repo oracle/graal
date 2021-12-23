@@ -24,17 +24,24 @@
  * questions.
  */
 
-package com.oracle.svm.test.jdk11.jfr;
+package com.oracle.svm.test.jfr;
 
-import jdk.jfr.Description;
-import jdk.jfr.Event;
-import jdk.jfr.Label;
-import jdk.jfr.StackTrace;
+import org.junit.Test;
 
-@Label("String Event")
-@Description("An event with a string payload")
-@StackTrace(false)
-public class StringEvent extends Event {
+import jdk.jfr.Recording;
 
-    @Label("Message") public String message;
+public class TestJFRCompiles extends JFRTest {
+
+    @Test
+    public void test() throws Exception {
+        JFR jfr = new LocalJFR();
+        Recording recording = jfr.startRecording("TestSingleEvent");
+
+        StringEvent event = new StringEvent();
+        event.message = "Event has been generated!";
+        event.commit();
+
+        jfr.endRecording(recording);
+        jfr.cleanupRecording(recording);
+    }
 }

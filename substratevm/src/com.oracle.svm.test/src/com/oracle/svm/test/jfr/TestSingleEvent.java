@@ -24,14 +24,15 @@
  * questions.
  */
 
-package com.oracle.svm.test.jdk11.jfr;
-
-import jdk.jfr.Recording;
+package com.oracle.svm.test.jfr;
 
 import static org.junit.Assert.assertEquals;
-import org.junit.Test;
 
 import java.io.IOException;
+
+import org.junit.Test;
+
+import jdk.jfr.Recording;
 
 public class TestSingleEvent extends JFRTest {
     private static final long METADATA_TYPE_ID = 0;
