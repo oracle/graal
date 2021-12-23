@@ -78,7 +78,14 @@
   for suite in bench.groups.all_suites
   ]),
 
-  local all_builds = main_builds + weekly_forks_builds + profiling_builds + aarch64_builds,
+  local avx_builds = [
+    c.monthly + hw.x82 + jdk + cc.libgraal + avx + suite,
+  for avx in [cc.avx2_mode, cc.avx3_mode]
+  for jdk in cc.bench_jdks
+  for suite in bench.groups.main_suites
+  ],
+
+  local all_builds = main_builds + weekly_forks_builds + profiling_builds + avx_builds + aarch64_builds,
   local filtered_builds = [b for b in all_builds if b.is_jdk_supported(b.jdk_version)],
   // adds a "defined_in" field to all builds mentioning the location of this current file
   builds:: [{ defined_in: std.thisFile } + b for b in filtered_builds]

@@ -96,4 +96,18 @@
       "JVM_CONFIG"+: "-economy",
     }
   },
+
+  avx2_mode:: {
+    platform+:: "-avx2",
+    environment+: {
+      "JVM_CONFIG"+: "-avx2",
+    }
+  },
+
+  avx3_mode:: {
+    platform+:: "-avx3",
+    environment+: {
+      "JVM_CONFIG"+: "-avx3",
+    }
+  }
 }
