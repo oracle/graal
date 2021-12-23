@@ -2464,6 +2464,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void jccb(ConditionFlag cc, Label l) {
+        if (force4ByteNonZeroDisplacements) {
+            jcc(cc, l);
+            return;
+        }
         final int shortSize = 2;
         mitigateJCCErratum(shortSize);
         if (l.isBound()) {
@@ -2566,7 +2570,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
      * This method should be synchronized with
      * {@link AMD64BaseAssembler#emitOperandHelper(Register, AMD64Address, int)}}.
      */
-    protected static int addressInBytes(AMD64Address addr) {
+    protected int addressInBytes(AMD64Address addr) {
         Register base = addr.getBase();
         Register index = addr.getIndex();
         int disp = addr.getDisplacement();
@@ -2575,7 +2579,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
             return 5;
         } else if (base.isValid()) {
             final boolean isZeroDisplacement = addr.getDisplacementAnnotation() == null && disp == 0 && !base.equals(rbp) && !base.equals(r13);
-            boolean isByteDisplacement = addr.getDisplacementAnnotation() == null && isByte(disp);
+            boolean isByteDisplacement = addr.getDisplacementAnnotation() == null && isByte(disp) && !(force4ByteNonZeroDisplacements && disp != 0);
             if (index.isValid()) {
                 if (isZeroDisplacement) {
                     return 2;
@@ -2607,6 +2611,10 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void jmpb(Label l) {
+        if (force4ByteNonZeroDisplacements) {
+            jmp(l);
+            return;
+        }
         final int shortSize = 2;
         mitigateJCCErratum(shortSize);
         if (l.isBound()) {
