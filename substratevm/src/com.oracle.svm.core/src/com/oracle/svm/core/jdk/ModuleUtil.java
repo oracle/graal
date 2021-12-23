@@ -22,11 +22,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk11;
+package com.oracle.svm.core.jdk;
 
-import com.oracle.svm.core.SubstrateUtil;
-
-import javax.lang.model.SourceVersion;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -34,6 +31,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import javax.lang.model.SourceVersion;
+
+import com.oracle.svm.core.SubstrateUtil;
 
 public final class ModuleUtil {
     private ModuleUtil() {

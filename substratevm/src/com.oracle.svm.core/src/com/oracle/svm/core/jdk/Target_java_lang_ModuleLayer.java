@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,12 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk11;
+package com.oracle.svm.core.jdk;
 
-import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
-@TargetClass(className = "java.lang.NamedPackage") //
-final class Target_java_lang_NamedPackage {
-    @Alias Module module;
+@SuppressWarnings("unused")
+@TargetClass(value = java.lang.ModuleLayer.class)
+final class Target_java_lang_ModuleLayer {
+
+    @SuppressWarnings("unused")
+    @Substitute
+    public static ModuleLayer boot() {
+        return BootModuleLayerSupport.instance().getBootLayer();
+    }
 }

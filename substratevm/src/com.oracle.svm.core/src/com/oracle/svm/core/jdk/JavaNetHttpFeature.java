@@ -22,13 +22,12 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk11;
+package com.oracle.svm.core.jdk;
 
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 
 @AutomaticFeature
 public class JavaNetHttpFeature extends JNIRegistrationUtil implements Feature {

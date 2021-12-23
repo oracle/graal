@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.JDK17OrLater;
-import com.oracle.svm.core.jdk11.ModuleUtil;
+import com.oracle.svm.core.jdk.ModuleUtil;
 
 @SuppressWarnings("unused")
 @TargetClass(value = Module.class, onlyWith = JDK17OrLater.class)

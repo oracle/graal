@@ -36,6 +36,7 @@ import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.BooleanSupplier;
+import java.util.stream.Stream;
 
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
@@ -64,6 +65,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.JavaLangSubstitutions.ClassValueSupport;
 import com.oracle.svm.core.monitor.MonitorSupport;
@@ -640,10 +642,65 @@ final class Target_java_lang_NullPointerException {
     }
 }
 
-@TargetClass(className = "jdk.internal.loader.ClassLoaders")
+@TargetClass(value = jdk.internal.loader.ClassLoaders.class)
 final class Target_jdk_internal_loader_ClassLoaders {
     @Alias
+    static native Target_jdk_internal_loader_BuiltinClassLoader bootLoader();
+
+    @Alias
     public static native ClassLoader platformClassLoader();
+}
+
+@TargetClass(value = jdk.internal.loader.BootLoader.class)
+final class Target_jdk_internal_loader_BootLoader {
+
+    @Substitute
+    static Package getDefinedPackage(String name) {
+        if (name != null) {
+            Target_java_lang_Package pkg = new Target_java_lang_Package(name, null, null, null,
+                            null, null, null, null, null);
+            return SubstrateUtil.cast(pkg, Package.class);
+        } else {
+            return null;
+        }
+    }
+
+    @Substitute
+    public static Stream<Package> packages() {
+        Target_jdk_internal_loader_BuiltinClassLoader bootClassLoader = Target_jdk_internal_loader_ClassLoaders.bootLoader();
+        Target_java_lang_ClassLoader systemClassLoader = SubstrateUtil.cast(bootClassLoader, Target_java_lang_ClassLoader.class);
+        return systemClassLoader.packages();
+    }
+
+    @Delete("only used by #packages()")
+    private static native String[] getSystemPackageNames();
+
+    @Substitute
+    private static Class<?> loadClassOrNull(String name) {
+        return ClassForNameSupport.forNameOrNull(name, null);
+    }
+
+    @SuppressWarnings("unused")
+    @Substitute
+    private static Class<?> loadClass(Target_java_lang_Module module, String name) {
+        /* The module system is not supported for now, therefore the module parameter is ignored. */
+        return ClassForNameSupport.forNameOrNull(name, null);
+    }
+
+    @Substitute
+    private static boolean hasClassPath() {
+        return true;
+    }
+
+    /**
+     * All ClassLoaderValue are reset at run time for now. See also
+     * {@link Target_java_lang_ClassLoader#classLoaderValueMap} for resetting of individual class
+     * loaders.
+     */
+    // Checkstyle: stop
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = ConcurrentHashMap.class)//
+    static ConcurrentHashMap<?, ?> CLASS_LOADER_VALUE_MAP;
+    // Checkstyle: resume
 }
 
 /** Dummy class to have a class with the file's name. */

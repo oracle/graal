@@ -23,7 +23,7 @@
  * questions.
  */
 
-package com.oracle.svm.core.jdk11;
+package com.oracle.svm.core.jdk;
 
 import java.lang.StackWalker.Option;
 import java.lang.StackWalker.StackFrame;
@@ -57,8 +57,6 @@ import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationImpl;
-import com.oracle.svm.core.jdk.LoomJDK;
-import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackFrameVisitor;
 import com.oracle.svm.core.stack.JavaStackWalk;

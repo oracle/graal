@@ -23,7 +23,7 @@
  * questions.
  */
 
-package com.oracle.svm.core.jdk11;
+package com.oracle.svm.core.jdk;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -34,7 +34,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.jdk.JDKVersionSpecificResourceBuilder;
 
 public class JDKVersionSpecificResourceBuilderJDK11OrLater implements JDKVersionSpecificResourceBuilder {
 

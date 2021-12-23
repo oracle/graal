@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,18 +22,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk11;
+package com.oracle.svm.core.jdk;
 
-import com.oracle.svm.core.annotate.Substitute;
+import java.util.HashMap;
+import java.util.zip.ZipFile;
+
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
 
-@SuppressWarnings("unused")
-@TargetClass(value = java.lang.ModuleLayer.class)
-final class Target_java_lang_ModuleLayer {
+@TargetClass(value = ZipFile.class, innerClass = "Source")
+final class Target_java_util_zip_ZipFile_Source {
 
-    @SuppressWarnings("unused")
-    @Substitute
-    public static ModuleLayer boot() {
-        return BootModuleLayerSupport.instance().getBootLayer();
-    }
+    @Alias//
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = HashMap.class, isFinal = true)//
+    private static HashMap<Target_java_util_zip_ZipFile_Source_Key, Target_java_util_zip_ZipFile_Source> files;
+}
+
+@TargetClass(value = ZipFile.class, innerClass = {"Source", "Key"})
+final class Target_java_util_zip_ZipFile_Source_Key {
+}
+
+/* Dummy class to have the same name as the file. */
+public class Target_java_util_zip_ZipFile {
 }

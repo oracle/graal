@@ -23,7 +23,7 @@
  * questions.
  */
 
-package com.oracle.svm.core.jdk11;
+package com.oracle.svm.core.jdk;
 
 // Checkstyle: allow reflection
 
