@@ -682,7 +682,7 @@ final class Target_jdk_internal_loader_BootLoader {
 
     @SuppressWarnings("unused")
     @Substitute
-    private static Class<?> loadClass(Target_java_lang_Module module, String name) {
+    private static Class<?> loadClass(Module module, String name) {
         /* The module system is not supported for now, therefore the module parameter is ignored. */
         return ClassForNameSupport.forNameOrNull(name, null);
     }

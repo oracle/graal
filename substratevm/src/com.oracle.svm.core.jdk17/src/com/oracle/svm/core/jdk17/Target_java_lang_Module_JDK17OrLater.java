@@ -35,7 +35,7 @@ import com.oracle.svm.core.jdk.JDK17OrLater;
 import com.oracle.svm.core.jdk.ModuleUtil;
 
 @SuppressWarnings("unused")
-@TargetClass(value = Module.class, onlyWith = JDK17OrLater.class)
+@TargetClass(value = java.lang.Module.class, onlyWith = JDK17OrLater.class)
 public final class Target_java_lang_Module_JDK17OrLater {
 
     // Checkstyle: allow synchronization

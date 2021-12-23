@@ -178,7 +178,7 @@ public final class Target_java_lang_ClassLoader {
 
     @Substitute //
     @SuppressWarnings("unused")
-    Class<?> loadClass(Target_java_lang_Module module, String name) {
+    Class<?> loadClass(Module module, String name) {
         /* The module system is not supported for now, therefore the module parameter is ignored. */
         try {
             return loadClass(name, false);

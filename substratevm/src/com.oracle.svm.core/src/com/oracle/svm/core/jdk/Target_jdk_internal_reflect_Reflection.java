@@ -30,12 +30,12 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
-@TargetClass(className = "jdk.internal.reflect.Reflection")
-public final class Target_jdk_internal_reflect_Reflection {
+@TargetClass(value = jdk.internal.reflect.Reflection.class)
+final class Target_jdk_internal_reflect_Reflection {
 
     @Substitute
     @NeverInline("Starting a stack walk in the caller frame")
-    public static Class<?> getCallerClass() {
+    private static Class<?> getCallerClass() {
         return StackTraceUtils.getCallerClass(KnownIntrinsics.readCallerStackPointer(), true);
     }
 
@@ -44,7 +44,7 @@ public final class Target_jdk_internal_reflect_Reflection {
         return cls.getModifiers();
     }
 
-    @Substitute //
+    @Substitute
     private static boolean areNestMates(Class<?> currentClass, Class<?> memberClass) {
         return DynamicHub.fromClass(currentClass).isNestmateOf(memberClass);
     }

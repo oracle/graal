@@ -27,11 +27,9 @@ package com.oracle.svm.core.jdk;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.Arrays;
-import java.util.Map;
 import java.util.Objects;
 
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
@@ -39,14 +37,14 @@ import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
 
 @SuppressWarnings("unused")
 @TargetClass(value = java.lang.Module.class)
-public final class Target_java_lang_Module {
+final class Target_java_lang_Module {
 
     @Alias //
-    public String name;
+    private String name;
 
     @SuppressWarnings("static-method")
     @Substitute
-    public InputStream getResourceAsStream(String resourceName) {
+    private InputStream getResourceAsStream(String resourceName) {
         ResourceStorageEntry res = Resources.get(name, resourceName);
         return res == null ? null : new ByteArrayInputStream(res.getData().get(0));
     }
@@ -86,18 +84,5 @@ public final class Target_java_lang_Module {
         if (from.isNamed()) {
             ModuleUtil.checkIsPackageContainedInModule(pn, from);
         }
-    }
-
-    @TargetClass(className = "java.lang.Module", innerClass = "ReflectionData") //
-    private static final class Target_java_lang_Module_ReflectionData {
-
-        @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "java.lang.WeakPairMap") //
-        static Target_java_lang_WeakPairMap<Module, Module, Boolean> reads;
-
-        @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "java.lang.WeakPairMap") //
-        static Target_java_lang_WeakPairMap<Module, Module, Map<String, Boolean>> exports;
-
-        @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "java.lang.WeakPairMap") //
-        static Target_java_lang_WeakPairMap<Module, Class<?>, Boolean> uses;
     }
 }
