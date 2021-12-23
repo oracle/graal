@@ -599,7 +599,7 @@ public abstract class PlatformThreads {
     }
 
     @SuppressFBWarnings(value = "NN", justification = "notifyAll is necessary for Java semantics, no shared state needs to be modified beforehand")
-    protected static void exit(Thread thread) {
+    public static void exit(Thread thread) {
         /*
          * First call Thread.exit(). This allows waiters on the thread object to observe that a
          * daemon ThreadGroup is destroyed as well if this thread happens to be the last thread of a
