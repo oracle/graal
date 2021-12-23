@@ -7,14 +7,14 @@ local graal_suite_root = root_ci.graal_suite_root;
 {
   local jdks = (import "../../common.json").jdks,
   local mx = (import "../../graal-common.json").mx_version,
-  local labsjdk8 = jdks.oraclejdk8,
+  local labsjdk17 = jdks["labsjdk-ce-17"],
   local labsjdk11 = jdks["labsjdk-ce-11"],
 
   devkits: (import "../../common.json").devkits,
 
-  jdk8: {
+  jdk17: {
     downloads+: {
-      JAVA_HOME: labsjdk8,
+      JAVA_HOME: labsjdk17,
     },
     environment+: {
       JDK_JVMCI_ARGS: '--jdk=jvmci',
@@ -195,12 +195,12 @@ local graal_suite_root = root_ci.graal_suite_root;
     logs+: ["*/es-*.json"]
   },
 
-  jdk8_gate_linux_eclipse_jdt              : self.jdk8 + self.gate + self.linux + self.eclipse + self.jdt,
-  jdk8_gate_linux_wabt                     : self.jdk8 + self.gate + self.linux + self.wabt,
-  jdk8_gate_linux_wabt_emsdk               : self.jdk8 + self.gate + self.linux + self.wabt + self.emsdk,
-  jdk8_gate_linux_wabt_emsdk_ocamlbuild    : self.jdk8 + self.gate + self.linux + self.wabt + self.emsdk + self.ocamlbuild,
-  jdk8_bench_linux_wabt_emsdk              : self.jdk8 + self.bench + self.linux + self.wabt + self.emsdk,
-  jdk8_gate_windows_wabt                   : self.jdk8 + self.gate + self.windows + self.wabt,
+  jdk17_gate_linux_eclipse_jdt              : self.jdk17 + self.gate + self.linux + self.eclipse + self.jdt,
+  jdk17_gate_linux_wabt                     : self.jdk17 + self.gate + self.linux + self.wabt,
+  jdk17_gate_linux_wabt_emsdk               : self.jdk17 + self.gate + self.linux + self.wabt + self.emsdk,
+  jdk17_gate_linux_wabt_emsdk_ocamlbuild    : self.jdk17 + self.gate + self.linux + self.wabt + self.emsdk + self.ocamlbuild,
+  jdk17_bench_linux_wabt_emsdk              : self.jdk17 + self.bench + self.linux + self.wabt + self.emsdk,
+  jdk17_gate_windows_wabt                   : self.jdk17 + self.gate + self.windows + self.wabt,
 
   jdk11_gate_linux_wabt                    : self.jdk11 + self.gate + self.linux + self.wabt,
 }
