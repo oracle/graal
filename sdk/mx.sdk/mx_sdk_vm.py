@@ -1020,6 +1020,29 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
         pass
     return True
 
+
+def parse_release_file(release_file_path):
+    if not isfile(release_file_path):
+        raise mx.abort("Missing expected release file: " + release_file_path)
+    release_dict = OrderedDict()
+    with open(release_file_path, 'r') as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            assert line.count('=') > 0, "The release file of '{}' contains a line without the '=' sign: '{}'".format(release_file_path, line)
+            k, v = line.strip().split('=', 1)
+            if len(v) >= 2 and v[0] == '"' and v[-1] == '"':
+                v = v[1:-1]
+            release_dict[k] = v
+    return release_dict
+
+
+def format_release_file(release_dict, skip_quoting=None):
+    skip_quoting = skip_quoting or set()
+    return '\n'.join(('{}={}' if k in skip_quoting else '{}="{}"').format(k, v) for k, v in release_dict.items())
+
+
 def verify_graalvm_configs(suites=None):
     """
     Check the consistency of registered GraalVM configs.

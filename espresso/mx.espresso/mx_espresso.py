@@ -28,7 +28,7 @@ import mx_espresso_benchmarks  # pylint: disable=unused-import
 import mx_sdk_vm
 from mx_gate import Task, add_gate_runner
 from mx_jackpot import jackpot
-from os.path import join
+from os.path import join, isfile
 
 _suite = mx.suite('espresso')
 
@@ -211,6 +211,17 @@ To rebuild the polyglot library:
 ))
 
 if LLVM_JAVA_HOME:
+    release_dict = mx_sdk_vm.parse_release_file(join(LLVM_JAVA_HOME, 'release'))
+    implementor = release_dict.get('IMPLEMENTOR')
+    if implementor is not None:
+        if implementor == 'Oracle Corporation':
+            edition = 'ee'
+        else:
+            edition = 'ce'
+    else:
+        mx.warn('Release file for `LLVM_JAVA_HOME` ({}) is missing the IMPLEMENTOR field')
+        edition = 'ce'
+
     mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
         suite=_suite,
         name='Espresso LLVM Java libraries',
@@ -220,7 +231,7 @@ if LLVM_JAVA_HOME:
         truffle_jars=[],
         include_in_polyglot=False,
         dir_name='java',
-        installable_id='espresso-llvm',
+        installable_id='espresso-llvm-' + edition,
         installable=True,
         dependencies=['Java on Truffle', 'LLVM Runtime Native'],
         support_distributions=['espresso:ESPRESSO_LLVM_SUPPORT'],
