@@ -135,13 +135,12 @@ public abstract class PointsToAnalysis implements BigBang {
     private final boolean strengthenGraalGraphs;
 
     public PointsToAnalysis(OptionValues options, AnalysisUniverse universe, HostedProviders providers, HostVM hostVM, ForkJoinPool executorService, Runnable heartbeatCallback,
-                    UnsupportedFeatures unsupportedFeatures, boolean strengthenGraalGraphs) {
+                    UnsupportedFeatures unsupportedFeatures, TimerCollection timerCollection, boolean strengthenGraalGraphs) {
         this.options = options;
         this.debugHandlerFactories = Collections.singletonList(new GraalDebugHandlersFactory(providers.getSnippetReflection()));
         this.debug = new Builder(options, debugHandlerFactories).build();
         this.hostVM = hostVM;
         String imageName = hostVM.getImageName();
-        TimerCollection timerCollection = TimerCollection.singleton();
         this.typeFlowTimer = timerCollection.createTimer(imageName, "(typeflow)", false);
         this.verifyHeapTimer = timerCollection.createTimer(imageName, "(verify)", false);
         this.processFeaturesTimer = timerCollection.createTimer(imageName, "(features)", false);
