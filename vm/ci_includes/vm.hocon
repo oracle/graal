@@ -11,12 +11,18 @@ vm_java_11: ${labsjdk-ce-11} {
     BASE_JDK_VERSION: ${jdks.labsjdk-ce-11.version}
     BASE_JDK_SHORT_VERSION: "11"
   }
+  downloads: {
+    LLVM_JAVA_HOME: { name: "labsjdk", version: "ce-11.0.14+7-jvmci-22.0-b03-20211221152108-gd_sulong-master-e089567b06-sulong", platformspecific: true },
+  }
 }
 vm_java_17: ${labsjdk-ce-17} {
   environment: {
     BASE_JDK_NAME: ${jdks.labsjdk-ce-17.name}
     BASE_JDK_VERSION: ${jdks.labsjdk-ce-17.version}
     BASE_JDK_SHORT_VERSION: "17"
+  }
+  downloads: {
+    LLVM_JAVA_HOME: { name: "labsjdk", version: "ce-17.0.2+5-jvmci-22.0-b03-20211218084056-gd_sulong-master-9469074cbb-sulong", platformspecific: true },
   }
 }
 vm_common_windows_jdk8: ${svm-common-windows-openjdk8}
