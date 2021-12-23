@@ -83,6 +83,11 @@ suite = {
                             "ignore": True,
                         },
                     },
+                    "<others>": {
+                        "<others>": {
+                            "ignore": False,
+                        }
+                    }
                 }
             },
             {
