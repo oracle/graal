@@ -955,8 +955,12 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
 
     def runWrk1(self, wrkFlags):
         distro = self.getOS()
-        wrkDirectory = mx.library('WRK', True).get_path(True)
-        wrkPath = os.path.join(wrkDirectory, "wrk-{os}".format(os=distro))
+        arch = mx.get_arch()
+        wrkDirectory = mx.library('WRK_MULTIARCH', True).get_path(True)
+        wrkPath = os.path.join(wrkDirectory, "wrk-{os}-{arch}".format(os=distro, arch=arch))
+
+        if not os.path.exists(wrkPath):
+            raise ValueError("Unsupported OS or arch. Binary doesn't exist: {}".format(wrkPath))
 
         runWrkCmd = [wrkPath] + wrkFlags
         mx.log("Running Wrk: {0}".format(runWrkCmd))
@@ -966,8 +970,12 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
 
     def runWrk2(self, wrkFlags):
         distro = self.getOS()
-        wrkDirectory = mx.library('WRK2', True).get_path(True)
-        wrkPath = os.path.join(wrkDirectory, "wrk-{os}".format(os=distro))
+        arch = mx.get_arch()
+        wrkDirectory = mx.library('WRK2_MULTIARCH', True).get_path(True)
+        wrkPath = os.path.join(wrkDirectory, "wrk-{os}-{arch}".format(os=distro, arch=arch))
+
+        if not os.path.exists(wrkPath):
+            raise ValueError("Unsupported OS or arch. Binary doesn't exist: {}".format(wrkPath))
 
         runWrkCmd = [wrkPath] + wrkFlags
         mx.log("Running Wrk2: {0}".format(runWrkCmd))
