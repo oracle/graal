@@ -28,18 +28,10 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.jni.hosted.JNIJavaCallWrapperMethod;
 import com.oracle.svm.jni.hosted.JNIJavaCallWrapperMethod.CallVariant;
 
-import jdk.vm.ci.meta.ConstantPool;
-import jdk.vm.ci.meta.MetaAccessProvider;
-
 /**
  * Holder class for generated {@link JNIJavaCallWrapperMethod} code.
  */
 public final class JNIJavaCallTrampolines {
-    public static ConstantPool getConstantPool(MetaAccessProvider metaAccess) {
-        // Each generated call wrapper needs an actual constant pool, so we provide our
-        // private constructor's
-        return metaAccess.lookupJavaType(JNIJavaCallWrappers.class).getDeclaredConstructors()[0].getConstantPool();
-    }
 
     private JNIJavaCallTrampolines() {
     }

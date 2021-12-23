@@ -169,12 +169,12 @@ public class JNIAccessFeature implements Feature {
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) arg;
         this.nativeLibraries = access.getNativeLibraries();
 
-        createJavaCallTrampoline(access, CallVariant.VARARGS, false);
-        createJavaCallTrampoline(access, CallVariant.ARRAY, false);
-        createJavaCallTrampoline(access, CallVariant.VA_LIST, false);
-        createJavaCallTrampoline(access, CallVariant.VARARGS, true);
-        createJavaCallTrampoline(access, CallVariant.ARRAY, true);
-        createJavaCallTrampoline(access, CallVariant.VA_LIST, true);
+        registerJavaCallTrampoline(access, CallVariant.VARARGS, false);
+        registerJavaCallTrampoline(access, CallVariant.ARRAY, false);
+        registerJavaCallTrampoline(access, CallVariant.VA_LIST, false);
+        registerJavaCallTrampoline(access, CallVariant.VARARGS, true);
+        registerJavaCallTrampoline(access, CallVariant.ARRAY, true);
+        registerJavaCallTrampoline(access, CallVariant.VA_LIST, true);
 
         /* duplicated to reduce the number of analysis iterations */
         getConditionalConfigurationRegistry().flushConditionalConfiguration(access);
@@ -184,7 +184,7 @@ public class JNIAccessFeature implements Feature {
         return (ConditionalConfigurationRegistry) ImageSingletons.lookup(JNIRuntimeAccess.JNIRuntimeAccessibilitySupport.class);
     }
 
-    private void createJavaCallTrampoline(BeforeAnalysisAccessImpl access, CallVariant variant, boolean nonVirtual) {
+    private static void registerJavaCallTrampoline(BeforeAnalysisAccessImpl access, CallVariant variant, boolean nonVirtual) {
         AnalysisMetaAccess metaAccess = access.getMetaAccess();
         ResolvedJavaField field = JNIAccessibleMethod.getCallWrapperField(metaAccess.getWrapped(), variant, nonVirtual);
         access.getUniverse().lookup(field.getDeclaringClass()).registerAsReachable();
@@ -193,9 +193,8 @@ public class JNIAccessFeature implements Feature {
         Method reflectionMethod = ReflectionUtil.lookupMethod(JNIJavaCallTrampolines.class, trampolineName);
         // Look up the java method to ensure a JNICallTrampolineMethod gets created for it through
         // com.oracle.svm.jni.hosted.JNINativeCallWrapperSubstitutionProcessor.lookup
-        metaAccess.lookupJavaMethod(reflectionMethod);
-        JNICallTrampolineMethod trampoline = getCallTrampolineMethod(trampolineName);
-        access.registerAsCompiled(access.getUniverse().lookup(trampoline));
+        AnalysisMethod trampoline = metaAccess.lookupJavaMethod(reflectionMethod);
+        access.registerAsCompiled(trampoline);
     }
 
     public JNICallTrampolineMethod getCallTrampolineMethod(CallVariant variant, boolean nonVirtual) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,8 +32,8 @@ import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.jni.JNIJavaCallTrampolines;
 import com.oracle.svm.jni.access.JNIAccessFeature;
-import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Substitutes methods declared as {@code native} with {@link JNINativeCallWrapperMethod} instances
@@ -42,17 +42,17 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 class JNINativeCallWrapperSubstitutionProcessor extends SubstitutionProcessor {
     private final Map<ResolvedJavaMethod, JNINativeCallWrapperMethod> callWrappers = new ConcurrentHashMap<>();
     private final DuringSetupAccessImpl access;
+    private final ResolvedJavaType jniJavaCallTrampolinesType;
 
     JNINativeCallWrapperSubstitutionProcessor(DuringSetupAccessImpl access) {
-        super();
         this.access = access;
+        this.jniJavaCallTrampolinesType = access.getMetaAccess().lookupJavaType(JNIJavaCallTrampolines.class).getWrapped();
     }
 
     @Override
     public ResolvedJavaMethod lookup(ResolvedJavaMethod method) {
         assert method.isNative() : "Must have been registered as a native substitution processor";
-        String jniJavaCallWrappersInternalName = MetaUtil.toInternalName(JNIJavaCallTrampolines.class.getTypeName());
-        if (method.getDeclaringClass().getName().equals(jniJavaCallWrappersInternalName)) {
+        if (method.getDeclaringClass() == jniJavaCallTrampolinesType) {
             // Avoid generating JNINativeCallWrapperMethods for trampolines
             return JNIAccessFeature.singleton().getOrCreateCallTrampolineMethod(access, method.getName());
         }
