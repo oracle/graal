@@ -27,9 +27,7 @@ package com.oracle.svm.core.invoke;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.lang.invoke.MethodHandle;
-import java.util.function.BooleanSupplier;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AlwaysInline;
 
 // Checkstyle: stop
@@ -128,20 +126,6 @@ public class MethodHandleUtils {
                 return (short) retVal;
             default:
                 throw shouldNotReachHere("Unexpected type for unbox function");
-        }
-    }
-
-    public static class MethodHandlesSupported implements BooleanSupplier {
-        @Override
-        public boolean getAsBoolean() {
-            return SubstrateOptions.areMethodHandlesSupported();
-        }
-    }
-
-    public static class MethodHandlesNotSupported implements BooleanSupplier {
-        @Override
-        public boolean getAsBoolean() {
-            return !SubstrateOptions.areMethodHandlesSupported();
         }
     }
 }

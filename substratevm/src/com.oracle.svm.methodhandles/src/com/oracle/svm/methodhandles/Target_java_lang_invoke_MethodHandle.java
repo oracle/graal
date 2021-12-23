@@ -41,7 +41,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.invoke.MethodHandleUtils;
-import com.oracle.svm.core.invoke.MethodHandleUtils.MethodHandlesSupported;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
 import com.oracle.svm.core.util.VMError;
@@ -54,7 +53,7 @@ import sun.invoke.util.ValueConversions;
 import sun.invoke.util.Wrapper;
 // Checkstyle: resume
 
-@TargetClass(className = "java.lang.invoke.MethodHandle", onlyWith = MethodHandlesSupported.class)
+@TargetClass(className = "java.lang.invoke.MethodHandle")
 final class Target_java_lang_invoke_MethodHandle {
 
     /**
@@ -233,10 +232,10 @@ final class Util_java_lang_invoke_MethodHandle {
     }
 }
 
-@TargetClass(className = "java.lang.invoke.MethodHandleImpl", onlyWith = MethodHandlesSupported.class)
+@TargetClass(className = "java.lang.invoke.MethodHandleImpl")
 final class Target_java_lang_invoke_MethodHandleImpl {
 }
 
-@TargetClass(className = "java.lang.invoke.MethodHandleImpl", innerClass = "ArrayAccessor", onlyWith = MethodHandlesSupported.class)
+@TargetClass(className = "java.lang.invoke.MethodHandleImpl", innerClass = "ArrayAccessor")
 final class Target_java_lang_invoke_MethodHandleImpl_ArrayAccessor {
 }

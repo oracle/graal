@@ -55,7 +55,6 @@ import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.reflect.ReflectionAccessorHolder;
 import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
 import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
-import com.oracle.svm.core.reflect.SubstrateReflectionAccessorFactory;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.FeatureImpl;
@@ -126,7 +125,7 @@ public class ReflectionFeature implements GraalFeature {
             } else {
                 invokeMethod = new ReflectiveInvokeMethod(name, prototype, member);
             }
-            return ImageSingletons.lookup(SubstrateReflectionAccessorFactory.class).createMethodAccessor(member, register(invokeMethod));
+            return new SubstrateMethodAccessor(member, register(invokeMethod));
 
         } else {
             ResolvedJavaMethod newInstanceMethod;
@@ -142,7 +141,7 @@ public class ReflectionFeature implements GraalFeature {
             } else {
                 newInstanceMethod = new ReflectiveInvokeMethod(name, prototype, member);
             }
-            return ImageSingletons.lookup(SubstrateReflectionAccessorFactory.class).createConstructorAccessor(member, register(newInstanceMethod));
+            return new SubstrateConstructorAccessor(member, register(newInstanceMethod));
         }
     }
 

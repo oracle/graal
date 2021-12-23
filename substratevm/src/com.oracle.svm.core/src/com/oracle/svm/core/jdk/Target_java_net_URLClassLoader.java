@@ -39,7 +39,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
-@TargetClass(classNameProvider = Package_jdk_internal_loader.class, className = "URLClassPath")
+@TargetClass(className = "jdk.internal.loader.URLClassPath")
 @SuppressWarnings({"unused", "static-method"})
 final class Target_jdk_internal_loader_URLClassPath {
 

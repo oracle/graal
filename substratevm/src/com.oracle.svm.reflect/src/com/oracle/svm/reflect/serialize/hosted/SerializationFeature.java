@@ -50,7 +50,6 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.SerializationConfigurationParser;
-import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
 import com.oracle.svm.core.jdk.RecordSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -65,6 +64,8 @@ import com.oracle.svm.reflect.hosted.ReflectionFeature;
 import com.oracle.svm.reflect.serialize.SerializationRegistry;
 import com.oracle.svm.reflect.serialize.SerializationSupport;
 import com.oracle.svm.util.ReflectionUtil;
+
+import jdk.internal.reflect.ReflectionFactory;
 
 @AutomaticFeature
 public class SerializationFeature implements Feature {
@@ -82,7 +83,7 @@ public class SerializationFeature implements Feature {
         ImageClassLoader imageClassLoader = access.getImageClassLoader();
         ConfigurationTypeResolver typeResolver = new ConfigurationTypeResolver("serialization configuration", imageClassLoader, NativeImageOptions.AllowIncompleteClasspath.getValue());
         SerializationDenyRegistry serializationDenyRegistry = new SerializationDenyRegistry(typeResolver);
-        serializationBuilder = new SerializationBuilder(serializationDenyRegistry, access, typeResolver);
+        serializationBuilder = new SerializationBuilder(serializationDenyRegistry, typeResolver);
         ImageSingletons.add(RuntimeSerializationSupport.class, serializationBuilder);
 
         SerializationConfigurationParser denyCollectorParser = new SerializationConfigurationParser(serializationDenyRegistry, ConfigurationFiles.Options.StrictConfiguration.getValue());
@@ -168,11 +169,9 @@ final class SerializationDenyRegistry implements RuntimeSerializationSupport {
 
 final class SerializationBuilder extends ConditionalConfigurationRegistry implements RuntimeSerializationSupport {
 
-    private final Object reflectionFactory;
-    private final Method newConstructorForSerializationMethod1;
-    private final Method newConstructorForSerializationMethod2;
-    private final Method getConstructorAccessorMethod;
-    private final Method getExternalizableConstructorMethod;
+    private static final Method getConstructorAccessorMethod = ReflectionUtil.lookupMethod(Constructor.class, "getConstructorAccessor");
+    private static final Method getExternalizableConstructorMethod = ReflectionUtil.lookupMethod(ObjectStreamClass.class, "getExternalizableConstructor", Class.class);
+
     private final Constructor<?> stubConstructor;
 
     private final SerializationSupport serializationSupport;
@@ -181,18 +180,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
 
     private boolean sealed;
 
-    SerializationBuilder(SerializationDenyRegistry serializationDenyRegistry, FeatureImpl.DuringSetupAccessImpl access, ConfigurationTypeResolver typeResolver) {
-        try {
-            Class<?> reflectionFactoryClass = access.findClassByName(Package_jdk_internal_reflect.getQualifiedName() + ".ReflectionFactory");
-            Method getReflectionFactoryMethod = ReflectionUtil.lookupMethod(reflectionFactoryClass, "getReflectionFactory");
-            reflectionFactory = getReflectionFactoryMethod.invoke(null);
-            newConstructorForSerializationMethod1 = ReflectionUtil.lookupMethod(reflectionFactoryClass, "newConstructorForSerialization", Class.class);
-            newConstructorForSerializationMethod2 = ReflectionUtil.lookupMethod(reflectionFactoryClass, "newConstructorForSerialization", Class.class, Constructor.class);
-            getConstructorAccessorMethod = ReflectionUtil.lookupMethod(Constructor.class, "getConstructorAccessor");
-            getExternalizableConstructorMethod = ReflectionUtil.lookupMethod(ObjectStreamClass.class, "getExternalizableConstructor", Class.class);
-        } catch (ReflectiveOperationException e) {
-            throw VMError.shouldNotReachHere(e);
-        }
+    SerializationBuilder(SerializationDenyRegistry serializationDenyRegistry, ConfigurationTypeResolver typeResolver) {
         stubConstructor = newConstructorForSerialization(SerializationSupport.StubForAbstractClass.class, null);
         this.denyRegistry = serializationDenyRegistry;
         this.typeResolver = typeResolver;
@@ -301,19 +289,15 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         RuntimeReflection.register(serializationTargetClass.getDeclaredFields());
     }
 
-    private Constructor<?> newConstructorForSerialization(Class<?> serializationTargetClass, Constructor<?> customConstructorToCall) {
-        try {
-            if (customConstructorToCall == null) {
-                return (Constructor<?>) newConstructorForSerializationMethod1.invoke(reflectionFactory, serializationTargetClass);
-            } else {
-                return (Constructor<?>) newConstructorForSerializationMethod2.invoke(reflectionFactory, serializationTargetClass, customConstructorToCall);
-            }
-        } catch (ReflectiveOperationException e) {
-            throw VMError.shouldNotReachHere(e);
+    private static Constructor<?> newConstructorForSerialization(Class<?> serializationTargetClass, Constructor<?> customConstructorToCall) {
+        if (customConstructorToCall == null) {
+            return ReflectionFactory.getReflectionFactory().newConstructorForSerialization(serializationTargetClass);
+        } else {
+            return ReflectionFactory.getReflectionFactory().newConstructorForSerialization(serializationTargetClass, customConstructorToCall);
         }
     }
 
-    private Object getConstructorAccessor(Constructor<?> constructor) {
+    private static Object getConstructorAccessor(Constructor<?> constructor) {
         try {
             return getConstructorAccessorMethod.invoke(constructor);
         } catch (ReflectiveOperationException e) {
@@ -321,7 +305,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         }
     }
 
-    private Constructor<?> getExternalizableConstructor(Class<?> serializationTargetClass) {
+    private static Constructor<?> getExternalizableConstructor(Class<?> serializationTargetClass) {
         try {
             return (Constructor<?>) getExternalizableConstructorMethod.invoke(null, serializationTargetClass);
         } catch (ReflectiveOperationException e) {

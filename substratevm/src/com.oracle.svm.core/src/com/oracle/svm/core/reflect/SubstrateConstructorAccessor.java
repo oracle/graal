@@ -34,17 +34,20 @@ import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.reflect.SubstrateMethodAccessor.MethodInvokeFunctionPointer;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.internal.reflect.ConstructorAccessor;
+
 @InternalVMMethod
-public abstract class SubstrateConstructorAccessor {
+public final class SubstrateConstructorAccessor implements ConstructorAccessor {
 
     private final Executable member;
     private final CFunctionPointer newInstanceFunctionPointer;
 
-    protected SubstrateConstructorAccessor(Executable member, CFunctionPointer newInstanceFunctionPointer) {
+    public SubstrateConstructorAccessor(Executable member, CFunctionPointer newInstanceFunctionPointer) {
         this.member = member;
         this.newInstanceFunctionPointer = newInstanceFunctionPointer;
     }
 
+    @Override
     public Object newInstance(Object[] args) {
         MethodInvokeFunctionPointer functionPointer = (MethodInvokeFunctionPointer) this.newInstanceFunctionPointer;
         if (functionPointer.isNull()) {

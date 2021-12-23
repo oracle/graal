@@ -33,7 +33,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
@@ -125,7 +124,7 @@ public class JfrFeature implements Feature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        boolean systemSupported = jvmVersionSupported() && osSupported();
+        boolean systemSupported = osSupported();
         if (hostedEnabled && !systemSupported) {
             throw UserError.abort("FlightRecorder cannot be used to profile the image generator on this platform. " +
                             "The image generator can only be profiled on platforms where FlightRecoder is also supported at run time.");
@@ -139,10 +138,6 @@ public class JfrFeature implements Feature {
             runtimeEnabled = true;
         }
         return runtimeEnabled && systemSupported;
-    }
-
-    private static boolean jvmVersionSupported() {
-        return JavaVersionUtil.JAVA_SPEC >= 11;
     }
 
     private static boolean osSupported() {

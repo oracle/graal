@@ -42,7 +42,6 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.svm.core.BuildPhaseProvider;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.invoke.MethodHandleIntrinsic;
 import com.oracle.svm.core.util.VMError;
@@ -99,11 +98,6 @@ public class MethodHandleFeature implements Feature {
     private Field lambdaFormArity;
     private Field nameFunction;
     private Field namedFunctionMemberName;
-
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.areMethodHandlesSupported();
-    }
 
     @Override
     public void duringSetup(DuringSetupAccess access) {

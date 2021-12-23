@@ -26,7 +26,6 @@ package com.oracle.svm.core.jdk;
 
 import java.util.ArrayList;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.util.DirectAnnotationAccess;
 import org.graalvm.word.Pointer;
@@ -310,11 +309,6 @@ class GetLatestUserDefinedClassLoaderVisitor extends JavaStackFrameVisitor {
     }
 
     private static boolean isExtensionOrPlatformLoader(ClassLoader classLoader) {
-        if (JavaVersionUtil.JAVA_SPEC > 8) {
-            return classLoader == Target_jdk_internal_loader_ClassLoaders.platformClassLoader();
-        }
-
-        // We neither use sun.misc.Launcher nor ExtClassLoader in Native Image.
-        return false;
+        return classLoader == Target_jdk_internal_loader_ClassLoaders.platformClassLoader();
     }
 }

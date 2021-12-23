@@ -209,7 +209,7 @@ suite = {
                     "jdk.internal.loader",
                     "sun.text.spi",
                     "jdk.internal.perf",
-                    "jdk.internal.loader"
+                    "jdk.internal.ref",
                 ],
                 "java.desktop": [
                     "sun.java2d",
@@ -424,6 +424,7 @@ suite = {
                     "sun.util.resources",
                     "jdk.internal.module",
                     "sun.text.spi",
+                    "jdk.internal.reflect",
                 ],
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.runtime",
@@ -731,6 +732,7 @@ suite = {
                     "sun.invoke.util",
                     "sun.reflect.annotation",
                     "sun.reflect.generics.repository",
+                    "jdk.internal.reflect",
                 ],
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.code",
@@ -754,6 +756,7 @@ suite = {
             "requiresConcealed" : {
                 "java.base" : [
                     "sun.invoke.util",
+                    "jdk.internal.reflect",
                 ],
             },
             "checkstyle": "com.oracle.svm.core",

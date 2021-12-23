@@ -29,14 +29,13 @@ import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.invoke.MethodHandleUtils.MethodHandlesSupported;
 
 import java.lang.invoke.MethodType;
 // Checkstyle: stop
 import java.lang.reflect.Member;
 // Checkstyle: resume
 
-@TargetClass(className = "java.lang.invoke.MemberName", onlyWith = MethodHandlesSupported.class)
+@TargetClass(className = "java.lang.invoke.MemberName")
 public final class Target_java_lang_invoke_MemberName {
     @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     public Member reflectAccess;

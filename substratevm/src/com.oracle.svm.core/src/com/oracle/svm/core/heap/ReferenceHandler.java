@@ -26,8 +26,6 @@ package com.oracle.svm.core.heap;
 
 import java.lang.ref.Reference;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.JavaThreads;
@@ -62,19 +60,17 @@ public final class ReferenceHandler {
     static void processCleaners() {
         // Note: (sun.misc|jdk.internal).Cleaner objects are invoked in pending reference processing
 
-        if (JavaVersionUtil.JAVA_SPEC > 8) {
-            // Process the JDK's common cleaner, additional cleaners start their own threads
-            Target_java_lang_ref_Cleaner commonCleaner = Target_jdk_internal_ref_CleanerFactory.cleaner();
-            Reference<?> ref = commonCleaner.impl.queue.poll();
-            while (ref != null) {
-                try {
-                    Target_java_lang_ref_Cleaner_Cleanable cl = SubstrateUtil.cast(ref, Target_java_lang_ref_Cleaner_Cleanable.class);
-                    cl.clean();
-                } catch (Throwable e) {
-                    // ignore exceptions from the cleanup action and thread interrupts
-                }
-                ref = commonCleaner.impl.queue.poll();
+        // Process the JDK's common cleaner, additional cleaners start their own threads
+        Target_java_lang_ref_Cleaner commonCleaner = Target_jdk_internal_ref_CleanerFactory.cleaner();
+        Reference<?> ref = commonCleaner.impl.queue.poll();
+        while (ref != null) {
+            try {
+                Target_java_lang_ref_Cleaner_Cleanable cl = SubstrateUtil.cast(ref, Target_java_lang_ref_Cleaner_Cleanable.class);
+                cl.clean();
+            } catch (Throwable e) {
+                // ignore exceptions from the cleanup action and thread interrupts
             }
+            ref = commonCleaner.impl.queue.poll();
         }
     }
 

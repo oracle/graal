@@ -69,7 +69,6 @@ import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.jdk.JDK17OrLater;
-import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.Target_java_lang_Module;
 import com.oracle.svm.core.jdk.Target_jdk_internal_reflect_Reflection;
@@ -1583,7 +1582,7 @@ final class Target_java_lang_Class_ReflectionData<T> {
     // Checkstyle: resume
 }
 
-@TargetClass(classNameProvider = Package_jdk_internal_reflect.class, className = "ReflectionFactory")
+@TargetClass(className = "jdk.internal.reflect.ReflectionFactory")
 final class Target_jdk_internal_reflect_ReflectionFactory {
 
     @Alias //
@@ -1595,7 +1594,7 @@ final class Target_jdk_internal_reflect_ReflectionFactory {
     }
 }
 
-@TargetClass(classNameProvider = Package_jdk_internal_reflect.class, className = "ConstantPool")
+@TargetClass(className = "jdk.internal.reflect.ConstantPool")
 final class Target_jdk_internal_reflect_ConstantPool {
 }
 

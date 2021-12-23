@@ -320,4 +320,28 @@ public interface JvmtiInterface extends PointerBase {
         @InvokeCFunctionPointer
         JvmtiError invoke(JvmtiEnv jvmtiEnv, CIntPointer classCountPtr, WordPointer classesPtr);
     }
+
+    @CField("GetNamedModule")
+    GetNamedModuleFunctionPointer GetNamedModule();
+
+    interface GetNamedModuleFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JvmtiError invoke(JvmtiEnv jvmtiEnv, JNIObjectHandle classLoader, CCharPointer packageName, PointerBase modulePtr);
+    }
+
+    @CField("GetAllModules")
+    GetAllModulesFunctionPointer GetAllModules();
+
+    interface GetAllModulesFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JvmtiError invoke(JvmtiEnv jvmtiEnv, CIntPointer moduleCountPtr, PointerBase modulesPtr);
+    }
+
+    @CField("AddModuleOpens")
+    AddModuleOpensFunctionPointer AddModuleOpens();
+
+    interface AddModuleOpensFunctionPointer extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JvmtiError invoke(JvmtiEnv jvmtiEnv, JNIObjectHandle module, CCharPointer pkgName, JNIObjectHandle toModule);
+    }
 }

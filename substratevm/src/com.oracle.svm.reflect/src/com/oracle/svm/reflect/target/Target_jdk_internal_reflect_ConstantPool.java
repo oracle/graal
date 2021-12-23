@@ -37,7 +37,6 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
-import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
 
 /**
  * This class provides a "fake" constant pool to be used while parsing encoded annotation values in
@@ -48,7 +47,7 @@ import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
  * decoding logic for free.
  */
 @SuppressWarnings({"unused", "static-method", "hiding"})
-@TargetClass(classNameProvider = Package_jdk_internal_reflect.class, className = "ConstantPool")
+@TargetClass(className = "jdk.internal.reflect.ConstantPool")
 public final class Target_jdk_internal_reflect_ConstantPool {
     // Number of entries in this constant pool (= maximum valid constant pool index)
     @Substitute
@@ -205,6 +204,6 @@ public final class Target_jdk_internal_reflect_ConstantPool {
     private native byte getTagAt0(Object constantPoolOop, int index);
 }
 
-@TargetClass(classNameProvider = Package_jdk_internal_reflect.class, className = "ConstantPool", innerClass = "Tag")
+@TargetClass(className = "jdk.internal.reflect.ConstantPool", innerClass = "Tag")
 final class Target_jdk_internal_reflect_ConstantPool_Tag {
 }

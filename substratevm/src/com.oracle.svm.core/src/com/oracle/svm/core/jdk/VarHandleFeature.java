@@ -110,11 +110,6 @@ public class VarHandleFeature implements Feature {
     private Consumer<Field> markAsUnsafeAccessed;
 
     @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return JavaVersionUtil.JAVA_SPEC >= 11;
-    }
-
-    @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         try {
             for (String typeName : new String[]{"Booleans", "Bytes", "Chars", "Doubles", "Floats", "Ints", "Longs", "Shorts", OBJECT_SUFFIX}) {

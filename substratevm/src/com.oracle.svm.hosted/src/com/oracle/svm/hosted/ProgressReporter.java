@@ -29,6 +29,7 @@ import java.io.PrintWriter;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
 import java.lang.management.OperatingSystemMXBean;
+import java.lang.reflect.Field;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -66,9 +67,11 @@ import com.oracle.svm.core.VM;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.reflect.MethodMetadataDecoder;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.CompileQueue.CompileTask;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.util.ImageBuildStatistics;
+import com.oracle.svm.util.ReflectionUtil;
 
 public class ProgressReporter {
     private static final int CHARACTERS_PER_LINE;
@@ -441,6 +444,16 @@ public class ProgressReporter {
         return classNameToCodeSize;
     }
 
+    private static final Field STRING_VALUE = ReflectionUtil.lookupField(String.class, "value");
+
+    private static int getInternalByteArrayLength(String string) {
+        try {
+            return ((byte[]) STRING_VALUE.get(string)).length;
+        } catch (ReflectiveOperationException ex) {
+            throw VMError.shouldNotReachHere(ex);
+        }
+    }
+
     private Map<String, Long> calculateHeapBreakdown(Collection<ObjectInfo> heapObjects) {
         Map<String, Long> classNameToSize = new HashMap<>();
         long stringByteLength = 0;
@@ -448,7 +461,7 @@ public class ProgressReporter {
             classNameToSize.merge(o.getClazz().toJavaName(true), o.getSize(), Long::sum);
             Object javaObject = o.getObject();
             if (javaObject instanceof String) {
-                stringByteLength += StringAccess.getInternalByteArrayLength((String) javaObject);
+                stringByteLength += getInternalByteArrayLength((String) javaObject);
             }
         }
 

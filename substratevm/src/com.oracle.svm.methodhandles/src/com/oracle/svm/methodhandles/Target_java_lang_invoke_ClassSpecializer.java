@@ -27,15 +27,14 @@ package com.oracle.svm.methodhandles;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.invoke.MethodHandleUtils.MethodHandlesSupported;
 
-@TargetClass(className = "java.lang.invoke.ClassSpecializer", onlyWith = MethodHandlesSupported.class)
+@TargetClass(className = "java.lang.invoke.ClassSpecializer")
 final class Target_java_lang_invoke_ClassSpecializer {
     @Alias
     native Target_java_lang_invoke_BoundMethodHandle_SpeciesData findSpecies(Object ll);
 }
 
-@TargetClass(className = "java.lang.invoke.ClassSpecializer", innerClass = "SpeciesData", onlyWith = MethodHandlesSupported.class)
+@TargetClass(className = "java.lang.invoke.ClassSpecializer", innerClass = "SpeciesData")
 final class Target_java_lang_invoke_ClassSpecializer_SpeciesData {
     @Alias
     native String key();
@@ -47,7 +46,7 @@ final class Target_java_lang_invoke_ClassSpecializer_SpeciesData {
     protected native boolean isResolved();
 }
 
-@TargetClass(className = "java.lang.invoke.ClassSpecializer", innerClass = "Factory", onlyWith = MethodHandlesSupported.class)
+@TargetClass(className = "java.lang.invoke.ClassSpecializer", innerClass = "Factory")
 final class Target_java_lang_invoke_ClassSpecializer_Factory {
     @Alias
     protected native void linkSpeciesDataToCode(Target_java_lang_invoke_ClassSpecializer_SpeciesData speciesData, Class<?> speciesCode);
@@ -91,7 +90,7 @@ final class Target_java_lang_invoke_ClassSpecializer_Factory {
     }
 }
 
-@TargetClass(className = "java.lang.invoke.MethodHandleStatics", onlyWith = MethodHandlesSupported.class)
+@TargetClass(className = "java.lang.invoke.MethodHandleStatics")
 final class Target_java_lang_invoke_MethodHandleStatics {
     // Checkstyle: stop
     @Alias static boolean TRACE_RESOLVE;

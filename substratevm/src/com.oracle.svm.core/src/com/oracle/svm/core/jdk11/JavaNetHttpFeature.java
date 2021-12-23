@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.jdk11;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
@@ -33,10 +32,6 @@ import com.oracle.svm.core.jdk.JNIRegistrationUtil;
 
 @AutomaticFeature
 public class JavaNetHttpFeature extends JNIRegistrationUtil implements Feature {
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return JavaVersionUtil.JAVA_SPEC >= 11;
-    }
 
     @Override
     public void duringSetup(DuringSetupAccess access) {

@@ -42,7 +42,6 @@ import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -171,11 +170,6 @@ public final class ClassLoaderSupportImplJDK11OrLater extends ClassLoaderSupport
 
 @AutomaticFeature
 class ClassLoaderSupportFeatureJDK11OrLater implements Feature {
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return JavaVersionUtil.JAVA_SPEC >= 11;
-    }
-
     @Override
     public void afterRegistration(AfterRegistrationAccess a) {
         FeatureImpl.AfterRegistrationAccessImpl access = (FeatureImpl.AfterRegistrationAccessImpl) a;

@@ -40,7 +40,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
-@TargetClass(classNameProvider = Package_jdk_internal_misc.class, className = "VM")
+@TargetClass(className = "jdk.internal.misc.VM")
 public final class Target_jdk_internal_misc_VM {
     /** Ensure that we do not leak the full set of properties from the image generator. */
     @Delete //

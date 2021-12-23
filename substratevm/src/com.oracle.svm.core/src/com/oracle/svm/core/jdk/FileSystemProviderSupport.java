@@ -31,7 +31,6 @@ import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -389,13 +388,7 @@ class WindowsFileSystemAccessors {
             return;
         }
         that.needsReinitialization = NeedsReinitializationProvider.STATUS_IN_REINITIALIZATION;
-        /*
-         * On JDK 11, the `StaticProperty.userDir()` value is used when re-initializing a
-         * WindowsFileSystem (JDK-8066709).
-         */
-        that.originalConstructor(that.provider, JavaVersionUtil.JAVA_SPEC >= 11
-                        ? ImageSingletons.lookup(SystemPropertiesSupport.class).userDir()
-                        : System.getProperty("user.dir"));
+        that.originalConstructor(that.provider, ImageSingletons.lookup(SystemPropertiesSupport.class).userDir());
         that.needsReinitialization = NeedsReinitializationProvider.STATUS_REINITIALIZED;
     }
 }
