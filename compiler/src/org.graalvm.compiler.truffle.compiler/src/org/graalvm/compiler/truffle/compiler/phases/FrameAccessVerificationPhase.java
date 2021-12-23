@@ -35,8 +35,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.EconomicSet;
-import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
@@ -111,67 +109,98 @@ public final class FrameAccessVerificationPhase extends BasePhase<CoreProviders>
 
     private final CompilableTruffleAST compilable;
 
-    // Cached tag nodes that have already reported a performance warning.
-    private final EconomicSet<Node> reported = EconomicSet.create();
+    private abstract static class Effect {
+        final NewFrameNode frame;
+        final AbstractEndNode insertBefore;
+        final int index;
 
-    private final EconomicMap<NewFrameNode, HashMap<AbstractEndNode, Integer>> deoptEnds = EconomicMap.create();
-
-    public FrameAccessVerificationPhase(CompilableTruffleAST compilable) {
-        this.compilable = compilable;
-    }
-
-    @SuppressWarnings("try")
-    private void logPerformanceWarningClearIntroducedPhi(Node location, int index) {
-        if (PerformanceInformationHandler.isWarningEnabled(PolyglotCompilerOptions.PerformanceWarningKind.FRAME_INCOMPATIBLE_MERGE)) {
-            if (reported.contains(location)) {
-                return;
-            }
-            Graph graph = location.graph();
-            DebugContext debug = location.getDebug();
-            try (DebugContext.Scope s = debug.scope("TrufflePerformanceWarnings", graph)) {
-                Map<String, Object> properties = new LinkedHashMap<>();
-                properties.put("location", location);
-                properties.put("method", compilable.getName());
-                properties.put("index", index);
-                PerformanceInformationHandler.logPerformanceWarning(PolyglotCompilerOptions.PerformanceWarningKind.FRAME_INCOMPATIBLE_MERGE, compilable,
-                                Collections.emptyList(),
-                                "Incompatible frame slot types at merge: this disables the frame intrinsics optimization and potentially causes frames to be materialized. " +
-                                                "Ensure that frame slots are cleared before a control flow merge if they don't contain the same type of value.",
-                                properties);
-                debug.dump(DebugContext.VERBOSE_LEVEL, graph, "perf warn: Incompatible frame slot types for slot %d at %s", index, location);
-                reported.add(location);
-            } catch (Throwable t) {
-                debug.handle(t);
-            }
+        Effect(NewFrameNode frame, AbstractEndNode insertBefore, int index) {
+            this.frame = frame;
+            this.insertBefore = insertBefore;
+            this.index = index;
         }
+
+        abstract void apply();
     }
 
-    public void insertDeopts() {
-        MapCursor<NewFrameNode, HashMap<AbstractEndNode, Integer>> iterator = deoptEnds.getEntries();
-        while (iterator.advance()) {
-            NewFrameNode frame = iterator.getKey();
-            for (Map.Entry<AbstractEndNode, Integer> entry : iterator.getValue().entrySet()) {
-                AbstractEndNode node = entry.getKey();
-                if (node.isAlive()) {
-                    logPerformanceWarningClearIntroducedPhi(node.predecessor(), entry.getValue());
-                    FixedWithNextNode predecessor = (FixedWithNextNode) node.predecessor();
-                    predecessor.setNext(null);
-                    GraphUtil.killCFG(node);
-                    if (predecessor.isAlive()) {
-                        Speculation speculation = node.graph().getSpeculationLog().speculate(frame.getIntrinsifyAccessorsSpeculation());
-                        DeoptimizeNode deopt = new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.RuntimeConstraint, speculation);
-                        predecessor.setNext(node.graph().add(deopt));
-                    }
+    private final class DeoptEffect extends Effect {
+
+        DeoptEffect(NewFrameNode frame, AbstractEndNode insertBefore, int index) {
+            super(frame, insertBefore, index);
+        }
+
+        @SuppressWarnings("try")
+        private void logPerformanceWarningClearIntroducedPhi(Node location) {
+            if (PerformanceInformationHandler.isWarningEnabled(PolyglotCompilerOptions.PerformanceWarningKind.FRAME_INCOMPATIBLE_MERGE)) {
+                Graph graph = location.graph();
+                DebugContext debug = location.getDebug();
+                try (DebugContext.Scope s = debug.scope("TrufflePerformanceWarnings", graph)) {
+                    Map<String, Object> properties = new LinkedHashMap<>();
+                    properties.put("location", location);
+                    properties.put("method", compilable.getName());
+                    properties.put("index", index);
+                    PerformanceInformationHandler.logPerformanceWarning(PolyglotCompilerOptions.PerformanceWarningKind.FRAME_INCOMPATIBLE_MERGE, compilable,
+                                    Collections.emptyList(),
+                                    "Incompatible frame slot types at merge: this disables the frame intrinsics optimization and potentially causes frames to be materialized. " +
+                                                    "Ensure that frame slots are cleared before a control flow merge if they don't contain the same type of value.",
+                                    properties);
+                    debug.dump(DebugContext.VERBOSE_LEVEL, graph, "perf warn: Incompatible frame slot types for slot %d at %s", index, location);
+                } catch (Throwable t) {
+                    debug.handle(t);
                 }
             }
         }
+
+        @Override
+        void apply() {
+            if (insertBefore.isAlive()) {
+                StructuredGraph graph = insertBefore.graph();
+                FixedWithNextNode predecessor = (FixedWithNextNode) insertBefore.predecessor();
+                logPerformanceWarningClearIntroducedPhi(predecessor);
+                predecessor.setNext(null);
+                GraphUtil.killCFG(insertBefore);
+                if (predecessor.isAlive()) {
+                    Speculation speculation = graph.getSpeculationLog().speculate(frame.getIntrinsifyAccessorsSpeculation());
+                    DeoptimizeNode deopt = new DeoptimizeNode(DeoptimizationAction.InvalidateReprofile, DeoptimizationReason.RuntimeConstraint, speculation);
+                    predecessor.setNext(graph.add(deopt));
+                }
+            }
+        }
+    }
+
+    private static final class ClearPrimitiveEffect extends Effect {
+        final byte accessTag;
+        final VirtualFrameAccessType type;
+
+        ClearPrimitiveEffect(NewFrameNode frame, AbstractEndNode insertBefore, int index, byte accessTag, VirtualFrameAccessType type) {
+            super(frame, insertBefore, index);
+            this.accessTag = accessTag;
+            this.type = type;
+        }
+
+        @Override
+        void apply() {
+            if (insertBefore.isAlive()) {
+                StructuredGraph graph = insertBefore.graph();
+                ConstantNode defaultForKind = ConstantNode.defaultForKind(NewFrameNode.asJavaKind(accessTag), graph);
+                graph.addBeforeFixed(insertBefore, graph.add(new VirtualFrameSetNode(frame, index, accessTag, defaultForKind, type, false)));
+            }
+        }
+    }
+
+    private final ArrayList<Effect> effects = new ArrayList<>();
+
+    public FrameAccessVerificationPhase(CompilableTruffleAST compilable) {
+        this.compilable = compilable;
     }
 
     @Override
     protected void run(StructuredGraph graph, CoreProviders context) {
         if (graph.getNodes(NewFrameNode.TYPE).isNotEmpty()) {
             ReentrantNodeIterator.apply(new ReentrantIterator(), graph.start(), new State());
-            insertDeopts();
+            for (Effect effect : effects) {
+                effect.apply();
+            }
         }
     }
 
@@ -277,7 +306,10 @@ public final class FrameAccessVerificationPhase extends BasePhase<CoreProviders>
 
         @Override
         protected State merge(AbstractMergeNode merge, List<State> states) {
+            return merge(merge, states, effects);
+        }
 
+        private State merge(AbstractMergeNode merge, List<State> states, ArrayList<Effect> firstEndEffects) {
             State result = states.get(0).clone();
             // determine the set of frames that are alive after this merge
             HashSet<NewFrameNode> frames = new HashSet<>(result.states.keySet());
@@ -297,7 +329,7 @@ public final class FrameAccessVerificationPhase extends BasePhase<CoreProviders>
                     for (int i = 0; i < states.size(); i++) {
                         entries[i] = entryArrays[i][entryIndex];
                     }
-                    mergeEntries(merge, frame, resultEntries, entries, entryIndex, VirtualFrameAccessType.Legacy);
+                    mergeEntries(merge, frame, resultEntries, entries, entryIndex, VirtualFrameAccessType.Legacy, firstEndEffects);
                 }
                 for (int i = 0; i < states.size(); i++) {
                     entryArrays[i] = states.get(i).indexedStates.get(frame);
@@ -307,7 +339,7 @@ public final class FrameAccessVerificationPhase extends BasePhase<CoreProviders>
                     for (int i = 0; i < states.size(); i++) {
                         entries[i] = entryArrays[i][entryIndex];
                     }
-                    mergeEntries(merge, frame, resultEntries, entries, entryIndex, VirtualFrameAccessType.Indexed);
+                    mergeEntries(merge, frame, resultEntries, entries, entryIndex, VirtualFrameAccessType.Indexed, firstEndEffects);
                 }
             }
 
@@ -317,7 +349,8 @@ public final class FrameAccessVerificationPhase extends BasePhase<CoreProviders>
             return result;
         }
 
-        private void mergeEntries(AbstractMergeNode merge, NewFrameNode frame, byte[] resultEntries, byte[] entries, int entryIndex, VirtualFrameAccessType accessType) {
+        private void mergeEntries(AbstractMergeNode merge, NewFrameNode frame, byte[] resultEntries, byte[] entries, int entryIndex, VirtualFrameAccessType accessType,
+                        ArrayList<Effect> firstEndEffects) {
             byte result = entries[0];
             boolean allMatch = true;
             for (int i = 1; i < entries.length; i++) {
@@ -339,31 +372,21 @@ public final class FrameAccessVerificationPhase extends BasePhase<CoreProviders>
                             // match
                         } else {
                             // different definitive types at merge
-                            deoptAt(merge, frame, i, entryIndex);
+                            (i == 0 ? firstEndEffects : effects).add(new DeoptEffect(frame, merge.phiPredecessorAt(i), entryIndex));
                             entries[i] = withValue(definitiveType);
                         }
                     }
                 }
                 // insert VirtualFrameSetNodes as necessary to ensure similar types at phis
                 result = definitiveType == NONE ? NewFrameNode.FrameSlotKindLongTag : definitiveType;
-                StructuredGraph graph = merge.graph();
-                ConstantNode defaultForKind = ConstantNode.defaultForKind(NewFrameNode.asJavaKind(result), graph);
                 for (int i = 0; i < entries.length; i++) {
                     if (type(entries[i]) != result) {
-                        graph.addBeforeFixed(merge.phiPredecessorAt(i), graph.add(new VirtualFrameSetNode(frame, entryIndex, result, defaultForKind, accessType, false)));
+                        (i == 0 ? firstEndEffects : effects).add(new ClearPrimitiveEffect(frame, merge.phiPredecessorAt(i), entryIndex, result, accessType));
                     }
                 }
                 result = definitiveType == NONE ? cleared(result) : withValue(result);
             }
             resultEntries[entryIndex] = result;
-        }
-
-        private void deoptAt(AbstractMergeNode merge, NewFrameNode frame, int state, int index) {
-            HashMap<AbstractEndNode, Integer> set = deoptEnds.get(frame);
-            if (set == null) {
-                deoptEnds.put(frame, set = new HashMap<>());
-            }
-            set.put(merge.phiPredecessorAt(state), index);
         }
 
         @Override
@@ -375,7 +398,12 @@ public final class FrameAccessVerificationPhase extends BasePhase<CoreProviders>
         protected EconomicMap<LoopExitNode, State> processLoop(LoopBeginNode loop, State initial) {
             State initialState = initial;
             LoopInfo<State> info;
+            /*
+             * Loops are processed iteratively until the merged state is the same as the initial
+             * state.
+             */
             while (true) {
+                int sizeBeforeLoop = effects.size();
                 info = ReentrantNodeIterator.processLoop(this, loop, initialState.clone());
                 ArrayList<State> states = new ArrayList<>();
                 states.add(initialState);
@@ -383,11 +411,18 @@ public final class FrameAccessVerificationPhase extends BasePhase<CoreProviders>
                 for (int i = 1; i < loop.phiPredecessorCount(); i++) {
                     states.add(info.endStates.get((LoopEndNode) loop.phiPredecessorAt(i)));
                 }
-                State mergeResult = merge(loop, states);
+
+                ArrayList<Effect> preLoopEffects = new ArrayList<>();
+                State mergeResult = merge(loop, states, preLoopEffects);
                 if (mergeResult.equalsState(initialState)) {
+                    effects.addAll(preLoopEffects);
                     break;
                 }
                 initialState = mergeResult;
+                while (effects.size() > sizeBeforeLoop) {
+                    effects.remove(effects.size() - 1);
+                }
+                effects.addAll(preLoopEffects);
             }
             return info.exitStates;
         }
