@@ -432,9 +432,8 @@ public final class TRegexCompilationRequest {
                         Json.prop("dfaBckTransitions", executorNodeBackward == null ? 0 : executorNodeBackward.getNumberOfTransitions()),
                         Json.prop("dfaCGStates", executorNodeCaptureGroups == null ? 0 : executorNodeCaptureGroups.getNumberOfStates()),
                         Json.prop("dfaCGTransitions", executorNodeCaptureGroups == null ? 0 : executorNodeCaptureGroups.getNumberOfTransitions()),
-                        Json.prop("dfaCGTransitionsCG", executorNodeCaptureGroups == null ? 0 : executorNodeCaptureGroups.getNumberOfCGTransitions()),
                         Json.prop("traceFinder", traceFinderNFA != null),
-                        Json.prop("compilerResult", compilerResultToString(result))).toString() + ",");
+                        Json.prop("compilerResult", compilerResultToString(result))) + ",");
     }
 
     private static String compilerResultToString(RegexExecNode result) {

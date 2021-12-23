@@ -83,16 +83,15 @@ public final class TRegexDFAExecutorLocals extends TRegexExecutorLocals {
     }
 
     public void setLastTransition(short lastTransition) {
-        lastIndex = getIndex();
         this.lastTransition = lastTransition;
+    }
+
+    public void setLastIndex() {
+        lastIndex = getIndex();
     }
 
     public int getLastIndex() {
         return lastIndex;
-    }
-
-    public void setLastIndex(int lastIndex) {
-        this.lastIndex = lastIndex;
     }
 
     public int getResultInt() {

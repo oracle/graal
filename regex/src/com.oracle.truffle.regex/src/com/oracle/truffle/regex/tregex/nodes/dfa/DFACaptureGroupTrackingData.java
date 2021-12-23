@@ -41,26 +41,26 @@
 
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
+import com.oracle.truffle.api.CompilerAsserts;
+
 public final class DFACaptureGroupTrackingData {
 
-    public final int[] results;
     public final int[] currentResultOrder;
+    public final int[] results;
     public final int[] currentResult;
 
-    public DFACaptureGroupTrackingData(int maxNumberOfNFAStates, int numberOfCaptureGroups, TRegexDFAExecutorProperties props) {
-        int resultLength = numberOfCaptureGroups * 2 + (props.tracksLastGroup() ? 1 : 0);
-        if (props.isSimpleCG()) {
-            results = new int[resultLength];
-            currentResultOrder = null;
-            currentResult = props.isSimpleCGMustCopy() ? new int[resultLength] : null;
-        } else {
-            results = new int[maxNumberOfNFAStates * resultLength];
-            currentResultOrder = new int[maxNumberOfNFAStates];
-            currentResult = new int[resultLength];
-        }
+    public DFACaptureGroupTrackingData(int[] currentResultOrder, int[] results, int[] currentResult) {
+        this.currentResultOrder = currentResultOrder;
+        this.results = results;
+        this.currentResult = currentResult;
     }
 
-    public void exportResult(byte index) {
-        System.arraycopy(results, currentResultOrder[Byte.toUnsignedInt(index)], currentResult, 0, currentResult.length);
+    public void exportResult(TRegexDFAExecutorNode executor, byte index) {
+        CompilerAsserts.partialEvaluationConstant(executor);
+        if (executor.getMaxNumberOfNFAStates() == 1) {
+            System.arraycopy(results, 0, currentResult, 0, currentResult.length);
+        } else {
+            System.arraycopy(results, currentResultOrder[Byte.toUnsignedInt(index)], currentResult, 0, currentResult.length);
+        }
     }
 }

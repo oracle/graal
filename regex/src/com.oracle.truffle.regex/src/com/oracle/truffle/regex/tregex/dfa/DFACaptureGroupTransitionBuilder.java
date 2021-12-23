@@ -53,7 +53,6 @@ import com.oracle.truffle.regex.tregex.buffer.ObjectArrayBuffer;
 import com.oracle.truffle.regex.tregex.nfa.NFA;
 import com.oracle.truffle.regex.tregex.nfa.NFAState;
 import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
-import com.oracle.truffle.regex.tregex.nodes.dfa.DFACaptureGroupLazyTransition;
 import com.oracle.truffle.regex.tregex.nodes.dfa.DFACaptureGroupPartialTransition;
 import com.oracle.truffle.regex.tregex.nodes.dfa.DFACaptureGroupPartialTransition.IndexOperation;
 import com.oracle.truffle.regex.tregex.nodes.dfa.DFACaptureGroupPartialTransition.LastGroupUpdate;
@@ -67,7 +66,7 @@ public class DFACaptureGroupTransitionBuilder extends DFAStateTransitionBuilder 
     private final DFAGenerator dfaGen;
     private StateSet<NFA, NFAState> requiredStates = null;
     private int[] requiredStatesIndexMap = null;
-    private DFACaptureGroupLazyTransition lazyTransition = null;
+    private DFACaptureGroupLazyTransitionBuilder lazyTransition = null;
 
     DFACaptureGroupTransitionBuilder(NFAStateTransition[] transitions, StateSet<NFA, NFAState> targetStateSet, CodePointSet matcherBuilder, DFAGenerator dfaGen) {
         super(transitions, targetStateSet, matcherBuilder);
@@ -84,7 +83,7 @@ public class DFACaptureGroupTransitionBuilder extends DFAStateTransitionBuilder 
         return new DFACaptureGroupTransitionBuilder(getCodePointSet(), getTransitionSet(), dfaGen);
     }
 
-    public void setLazyTransition(DFACaptureGroupLazyTransition lazyTransition) {
+    public void setLazyTransition(DFACaptureGroupLazyTransitionBuilder lazyTransition) {
         this.lazyTransition = lazyTransition;
     }
 
@@ -210,7 +209,7 @@ public class DFACaptureGroupTransitionBuilder extends DFAStateTransitionBuilder 
         return swaps.toArray();
     }
 
-    public DFACaptureGroupLazyTransition toLazyTransition(CompilationBuffer compilationBuffer) {
+    public DFACaptureGroupLazyTransitionBuilder toLazyTransition(CompilationBuffer compilationBuffer) {
         if (lazyTransition == null) {
             DFAStateNodeBuilder successor = getTarget();
             DFACaptureGroupPartialTransition[] partialTransitions = new DFACaptureGroupPartialTransition[successor.getSuccessors().length];
@@ -232,7 +231,7 @@ public class DFACaptureGroupTransitionBuilder extends DFAStateTransitionBuilder 
             if (getId() > Short.MAX_VALUE) {
                 throw new UnsupportedRegexException("too many capture group transitions");
             }
-            lazyTransition = new DFACaptureGroupLazyTransition((short) getId(), partialTransitions, transitionToFinalState, transitionToAnchoredFinalState);
+            lazyTransition = new DFACaptureGroupLazyTransitionBuilder((short) getId(), partialTransitions, transitionToFinalState, transitionToAnchoredFinalState);
         }
         return lazyTransition;
     }

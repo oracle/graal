@@ -42,9 +42,12 @@ package com.oracle.truffle.regex.tregex.nodes.dfa;
 
 import java.util.Arrays;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
+
+import static com.oracle.truffle.api.CompilerDirectives.*;
 
 /**
  * This state node is responsible for selecting a DFA's initial state based on the index the search
@@ -55,17 +58,19 @@ import com.oracle.truffle.regex.tregex.util.json.JsonValue;
  */
 public class DFAInitialStateNode extends DFAAbstractStateNode {
 
-    private final boolean searching;
-    private final boolean genericCG;
+    @CompilationFinal(dimensions = 1) private final short[] cgLastTransition;
 
-    public DFAInitialStateNode(short[] successors, boolean searching, boolean genericCG) {
+    public DFAInitialStateNode(short[] successors, short[] cgLastTransition) {
         super((short) 0, successors);
-        this.searching = searching;
-        this.genericCG = genericCG;
+        this.cgLastTransition = cgLastTransition;
     }
 
     private DFAInitialStateNode(DFAInitialStateNode copy) {
-        this(Arrays.copyOf(copy.successors, copy.successors.length), copy.searching, copy.genericCG);
+        this(Arrays.copyOf(copy.successors, copy.successors.length), copy.cgLastTransition);
+    }
+
+    public short[] getCgLastTransition() {
+        return cgLastTransition;
     }
 
     public int getPrefixLength() {
