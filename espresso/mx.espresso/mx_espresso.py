@@ -81,7 +81,10 @@ def _run_java_truffle(args=None, cwd=None, nonZeroIsFatal=True):
 
 def _run_espresso_meta(args, nonZeroIsFatal=True):
     """Run Espresso (standalone) on Espresso (launcher)"""
-    return _run_espresso_launcher(['--vm.Xss4m'] + _espresso_standalone_command(args), nonZeroIsFatal=nonZeroIsFatal)
+    return _run_espresso_launcher([
+        '--vm.Xss4m',
+        '-Dtruffle.class.path.append=' + mx.dependency('ESPRESSO').path,  # on GraalVM the EspressoLanguageProvider must be visible to the GraalVMLocator
+    ] + _espresso_standalone_command(args), nonZeroIsFatal=nonZeroIsFatal)
 
 
 class EspressoTags:
