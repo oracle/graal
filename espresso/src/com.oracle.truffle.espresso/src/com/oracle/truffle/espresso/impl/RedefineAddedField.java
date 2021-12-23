@@ -22,14 +22,19 @@
  */
 package com.oracle.truffle.espresso.impl;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.staticobject.StaticShape;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import org.graalvm.collections.EconomicMap;
 
 public final class RedefineAddedField extends Field {
 
     private Field compatibleField;
     private StaticShape<ExtensionFieldObject.ExtensionFieldObjectFactory> extensionShape;
+
+    private EconomicMap<StaticObject, ExtensionFieldObject> extensionFieldsCache = EconomicMap.create();
+    private final ExtensionFieldObject staticExtensionObject;
 
     public RedefineAddedField(ObjectKlass.KlassVersion holder, LinkedField linkedField, RuntimeConstantPool pool, boolean isDelegation) {
         super(holder, linkedField, pool);
@@ -37,6 +42,12 @@ public final class RedefineAddedField extends Field {
             StaticShape.Builder shapeBuilder = StaticShape.newBuilder(getDeclaringKlass().getEspressoLanguage());
             shapeBuilder.property(linkedField, linkedField.getParserField().getPropertyType(), isFinalFlagSet());
             this.extensionShape = shapeBuilder.build(ExtensionFieldObject.FieldStorageObject.class, ExtensionFieldObject.ExtensionFieldObjectFactory.class);
+        }
+        if (isStatic()) {
+            // create the extension field object eagerly for static fields
+            staticExtensionObject = new ExtensionFieldObject();
+        } else {
+            staticExtensionObject = null;
         }
     }
 
@@ -67,26 +78,20 @@ public final class RedefineAddedField extends Field {
         return extensionShape;
     }
 
+    @TruffleBoundary
     private ExtensionFieldObject getExtensionObject(StaticObject instance) {
-        ExtensionFieldObject extensionFieldObject;
         if (isStatic()) {
-            extensionFieldObject = getDeclaringKlass().getStaticExtensionFieldObject();
-        } else {
-            Field extensionField = holder.getKlass().getMeta().HIDDEN_OBJECT_EXTENSION_FIELD;
-            Object object = extensionField.getHiddenObject(instance);
-            if (object == null) {
-                // create new instance Extension field object
-                synchronized (instance) {
-                    object = extensionField.getHiddenObject(instance);
-                    if (object == null) {
-                        extensionFieldObject = new ExtensionFieldObject();
-                        extensionField.setHiddenObject(instance, extensionFieldObject);
-                    } else {
-                        extensionFieldObject = (ExtensionFieldObject) object;
-                    }
+            return staticExtensionObject;
+        }
+
+        ExtensionFieldObject extensionFieldObject = extensionFieldsCache.get(instance);
+        if (extensionFieldObject == null) {
+            synchronized (extensionFieldsCache) {
+                extensionFieldObject = extensionFieldsCache.get(instance);
+                if (extensionFieldObject == null) {
+                    extensionFieldObject = new ExtensionFieldObject();
+                    extensionFieldsCache.put(instance, extensionFieldObject);
                 }
-            } else {
-                extensionFieldObject = (ExtensionFieldObject) object;
             }
         }
         return extensionFieldObject;
