@@ -28,7 +28,7 @@ import mx_espresso_benchmarks  # pylint: disable=unused-import
 import mx_sdk_vm
 from mx_gate import Task, add_gate_runner
 from mx_jackpot import jackpot
-from os.path import join, isfile
+from os.path import join
 
 _suite = mx.suite('espresso')
 
