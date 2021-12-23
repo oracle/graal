@@ -500,8 +500,8 @@ builds += [
   #
 
   # Linux/AMD64
-  ${vm_java_11} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} ${deploy_graalvm_linux_amd64} {name: deploy-vm-java11-linux-amd64} {publishArtifacts: [{name: deploy-vm-java11-linux-amd64, patterns: [deploy-vm-java11-linux-amd64]}]}
-  ${vm_java_17} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} ${deploy_graalvm_linux_amd64} {name: deploy-vm-java17-linux-amd64} {publishArtifacts: [{name: deploy-vm-java17-linux-amd64, patterns: [deploy-vm-java17-linux-amd64]}]}
+  ${vm_linux_amd64_java_11} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} ${deploy_graalvm_linux_amd64} {name: deploy-vm-java11-linux-amd64} {publishArtifacts: [{name: deploy-vm-java11-linux-amd64, patterns: [deploy-vm-java11-linux-amd64]}]}
+  ${vm_linux_amd64_java_17} ${full_vm_build_linux} ${linux-deploy} ${deploy_vm_linux} ${deploy_graalvm_linux_amd64} {name: deploy-vm-java17-linux-amd64} {publishArtifacts: [{name: deploy-vm-java17-linux-amd64, patterns: [deploy-vm-java17-linux-amd64]}]}
 
   # Linux/AARCH64
   ${vm_java_11} ${full_vm_build_linux_aarch64} ${linux-deploy} ${deploy_daily_vm_linux_aarch64} ${deploy_graalvm_linux_aarch64} {name: deploy-vm-java11-linux-aarch64} {publishArtifacts: [{name: deploy-vm-java11-linux-aarch64, patterns: [deploy-vm-java11-linux-aarch64]}]}
@@ -531,7 +531,7 @@ builds += [
   #
 
   # Linux/AMD64
-  ${vm_java_11} ${full_vm_build_linux} ${linux-deploy} ${ondemand_vm_linux} {
+  ${vm_linux_amd64_java_11} ${full_vm_build_linux} ${linux-deploy} ${ondemand_vm_linux} {
     run: [
       ${mx_vm_installables} [graalvm-show]
       ${mx_vm_installables} [build]
