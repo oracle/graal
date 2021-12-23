@@ -33,7 +33,7 @@ public final class RedefineAddedField extends Field {
     private Field compatibleField;
     private StaticShape<ExtensionFieldObject.ExtensionFieldObjectFactory> extensionShape;
 
-    private EconomicMap<StaticObject, ExtensionFieldObject> extensionFieldsCache = EconomicMap.create();
+    private final EconomicMap<StaticObject, ExtensionFieldObject> extensionFieldsCache = EconomicMap.create();
     private final ExtensionFieldObject staticExtensionObject;
 
     public RedefineAddedField(ObjectKlass.KlassVersion holder, LinkedField linkedField, RuntimeConstantPool pool, boolean isDelegation) {
@@ -107,7 +107,7 @@ public final class RedefineAddedField extends Field {
     }
 
     @Override
-    public final void setObject(StaticObject obj, Object value, boolean forceVolatile) {
+    public void setObject(StaticObject obj, Object value, boolean forceVolatile) {
         if (hasCompatibleField()) {
             getCompatibleField().setObject(obj, value, forceVolatile);
         } else {
