@@ -7,7 +7,7 @@
   local linux_amd64 = common.linux_amd64,
   local windows_amd64 = common.windows_amd64,
 
-  local truffle_common = {
+  local truffle_common = common.mx + {
     setup+: [
       ["cd", "./truffle"],
     ],
