@@ -51,6 +51,7 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.UnknownClass;
 import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK16OrLater;
+import com.oracle.svm.core.jdk.JDK17_0_2OrLater;
 import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
@@ -137,6 +138,10 @@ public final class Target_java_lang_ref_Reference<T> {
     private void clear0() {
         clear();
     }
+
+    @KeepOriginal
+    @TargetElement(onlyWith = JDK17_0_2OrLater.class)
+    native boolean refersToImpl(T obj);
 
     @KeepOriginal
     @TargetElement(onlyWith = JDK16OrLater.class)
