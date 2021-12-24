@@ -21,6 +21,18 @@ vm_java_17: ${labsjdk-ce-17} {
 }
 vm_common_windows_jdk8: ${svm-common-windows-openjdk8}
 
+vm_linux_amd64_java_11: ${vm_java_11} {
+  downloads: {
+    LLVM_JAVA_HOME: ${jdks.labsjdk-ce-11-llvm}
+  }
+}
+
+vm_linux_amd64_java_17: ${vm_java_17} {
+  downloads: {
+    LLVM_JAVA_HOME: ${jdks.labsjdk-ce-17-llvm}
+  }
+}
+
 svm_suite: /substratevm
 custom_vm_linux: {}
 custom_vm_darwin: {}
