@@ -8,14 +8,14 @@
 
     "openjdk11":          {"name": "openjdk",   "version": "11.0.11+9", "platformspecific": true },
     "oraclejdk11":        {"name": "oraclejdk", "version": "11.0.11+9", "platformspecific": true },
-    "labsjdk-ce-11":      {"name": "labsjdk",   "version": "ce-11.0.14+7-jvmci-21.3-b06-20211222224323-9287b99587", "platformspecific": true },
-    "labsjdk-ee-11":      {"name": "labsjdk",   "version": "ee-11.0.14+6-jvmci-21.3-b06-20211206130836-9916f78fe5+4de6fe3861", "platformspecific": true },
+    "labsjdk-ce-11":      {"name": "labsjdk",   "version": "ce-11.0.14+7-jvmci-21.3-b06", "platformspecific": true },
+    "labsjdk-ee-11":      {"name": "labsjdk",   "version": "ee-11.0.14+6-jvmci-21.3-b06", "platformspecific": true },
 
     "oraclejdk17":        {"name": "oraclejdk", "version": "17.0.1+2", "platformspecific": true },
-    "labsjdk-ce-17":      {"name": "labsjdk",   "version": "ce-17.0.2+5-jvmci-21.3-b06-20211209171241-e202966d42", "platformspecific": true },
-    "labsjdk-ce-17Debug": {"name": "labsjdk",   "version": "ce-17.0.2+5-jvmci-21.3-b06-20211209171241-e202966d42-debug", "platformspecific": true },
-    "labsjdk-ee-17":      {"name": "labsjdk",   "version": "ee-17.0.2+6-jvmci-21.3-b06-20211209193652-b933e19d32+870a99b159", "platformspecific": true },
-    "labsjdk-ee-17Debug": {"name": "labsjdk",   "version": "ee-17.0.2+6-jvmci-21.3-b06-20211209193652-b933e19d32+870a99b159-debug", "platformspecific": true }
+    "labsjdk-ce-17":      {"name": "labsjdk",   "version": "ce-17.0.2+5-jvmci-21.3-b06", "platformspecific": true },
+    "labsjdk-ce-17Debug": {"name": "labsjdk",   "version": "ce-17.0.2+5-jvmci-21.3-b06-debug", "platformspecific": true },
+    "labsjdk-ee-17":      {"name": "labsjdk",   "version": "ee-17.0.2+6-jvmci-21.3-b06", "platformspecific": true },
+    "labsjdk-ee-17Debug": {"name": "labsjdk",   "version": "ee-17.0.2+6-jvmci-21.3-b06-debug", "platformspecific": true }
   },
 
   "COMMENT" : "The devkits versions reflect those used to build the JVMCI JDKs (e.g., see devkit_platform_revisions in <jdk>/make/conf/jib-profiles.js)",
