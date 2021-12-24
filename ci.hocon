@@ -24,18 +24,6 @@ include "compiler/ci_common/gate_tasks.hocon"
 include "compiler/ci_common/gate_tasks_bootstrap.hocon"
 
 include "compiler/ci_common/bench.hocon"
-include "compiler/ci_common/bench-hwloc.hocon"
-include "compiler/ci_common/bench-weekly.hocon"
-include "compiler/ci_common/x52.hocon"
-include "compiler/ci_common/x52-jfr.hocon"
-include "compiler/ci_common/x82.hocon"
-include "compiler/ci_common/bench-aarch64.hocon"
-
-# C1 & C2 configs
-include "compiler/ci_includes/x52-c1.hocon"
-include "compiler/ci_includes/x52-c2.hocon"
-include "compiler/ci_includes/x52-c2-jfr.hocon"
-include "compiler/ci_includes/bench-aarch64-c2.hocon"
 
 # ------------------ SVM ----------------------
 include "substratevm/ci_includes/gate.hocon"
