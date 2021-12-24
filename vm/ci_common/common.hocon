@@ -356,7 +356,7 @@ upload_file_sizes: [bench-uploader.py, "sizes.json"]
 # These dummy artifacts are required by notify-releaser-build in order to trigger the releaser service
 # after the deploy jobs have completed.
 create_releaser_notifier_artifact: [
-  [echo, "deployed successfully", >, "../$BUILD_NAME"]
+  ["python3", "-c", "from os import environ; open('../' + environ['BUILD_NAME'], 'a').close()"]
 ]
 
 deploy_graalvm_linux_amd64: {
