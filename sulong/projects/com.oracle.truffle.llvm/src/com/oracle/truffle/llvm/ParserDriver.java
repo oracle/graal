@@ -29,6 +29,16 @@
  */
 package com.oracle.truffle.llvm;
 
+import java.nio.ByteOrder;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.stream.Collectors;
+
+import org.graalvm.polyglot.io.ByteSequence;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
@@ -44,6 +54,7 @@ import com.oracle.truffle.llvm.parser.LLVMParserResult;
 import com.oracle.truffle.llvm.parser.LLVMParserRuntime;
 import com.oracle.truffle.llvm.parser.binary.BinaryParser;
 import com.oracle.truffle.llvm.parser.binary.BinaryParserResult;
+import com.oracle.truffle.llvm.parser.model.GlobalSymbol;
 import com.oracle.truffle.llvm.parser.model.ModelModule;
 import com.oracle.truffle.llvm.parser.model.functions.FunctionSymbol;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
@@ -54,6 +65,7 @@ import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.DefaultLibraryLocator;
 import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
 import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
+import com.oracle.truffle.llvm.runtime.LLVMAlias;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMContext.InternalLibraryLocator;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
@@ -74,15 +86,6 @@ import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.options.SulongEngineOption;
 import com.oracle.truffle.llvm.runtime.target.TargetTriple;
-import org.graalvm.polyglot.io.ByteSequence;
-
-import java.nio.ByteOrder;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.stream.Collectors;
 
 /**
  * Drives a parsing request.
@@ -212,50 +215,64 @@ final class ParserDriver {
     static final String SULONG_RENAME_MARKER = "___sulong_import_";
     static final int SULONG_RENAME_MARKER_LEN = SULONG_RENAME_MARKER.length();
 
+    @FunctionalInterface
+    private interface RegisterRenamed {
+
+        void register(LLVMScope scope, String originalName, String lib);
+    }
+
+    /**
+     * An unresolved name has the form defined by the {@code _SULONG_IMPORT_SYMBOL(libName,
+     * symbolName)} macro defined in the {@code sulong-internal.h} header file. Check whether we
+     * have a symbol named "symbolName" in the library "libName". If it exists, introduce an alias.
+     * This can be used to explicitly call symbols from a certain standard library, in case the
+     * symbol is hidden (either using the "hidden" attribute, or because it is overridden).
+     */
+    private void registerRenamed(String name, GlobalSymbol external, RegisterRenamed result) {
+        int idx = name.indexOf('_', SULONG_RENAME_MARKER_LEN);
+        if (idx > 0) {
+            String lib = name.substring(SULONG_RENAME_MARKER_LEN, idx);
+            LLVMScope scope = language.getInternalFileScopes(getSimpleLibraryName(lib));
+            if (scope == null) {
+                try {
+                    // If the library that contains the function has not been parsed,
+                    // then the library will be lazily parse now.
+                    String libName = lib + "." + language.getCapability(PlatformCapability.class).getLibrarySuffix();
+                    TruffleFile file = createTruffleFile(libName, null, InternalLibraryLocator.INSTANCE, "<default bitcode library>");
+                    context.getEnv().parseInternal(Source.newBuilder("llvm", file).internal(context.isInternalLibraryFile(file)).build());
+                    scope = language.getInternalFileScopes(getSimpleLibraryName(lib));
+                } catch (Exception e) {
+                    throw new IllegalStateException(e);
+                }
+            }
+            if (scope == null) {
+                // The default internal libraries should be loaded when the context is
+                // initialised.
+                throw new LLVMLinkerException(String.format("The symbol %s could not be imported because library %s was not found during symbol renaming", external.getName(), lib));
+            }
+            String originalName = name.substring(idx + 1);
+            result.register(scope, originalName, lib);
+        }
+    }
+
     protected void resolveRenamedSymbols(LLVMParserResult parserResult) {
+        for (GlobalVariable external : parserResult.getExternalGlobals()) {
+            String name = external.getName();
+            if (name.startsWith(SULONG_RENAME_MARKER)) {
+                registerRenamed(name, external, (scope, originalName, lib) -> createNewGlobal(scope, originalName, parserResult, external, lib, name));
+            }
+        }
+
         ListIterator<FunctionSymbol> it = parserResult.getExternalFunctions().listIterator();
         while (it.hasNext()) {
             FunctionSymbol external = it.next();
             String name = external.getName();
-            LLVMScope scope;
-            String originalName;
-            String lib;
-            /*
-             * An unresolved name has the form defined by the {@code _SULONG_IMPORT_SYMBOL(libName,
-             * symbolName)} macro defined in the {@code sulong-internal.h} header file. Check
-             * whether we have a symbol named "symbolName" in the library "libName". If it exists,
-             * introduce an alias. This can be used to explicitly call symbols from a certain
-             * standard library, in case the symbol is hidden (either using the "hidden" attribute,
-             * or because it is overridden).
-             */
             if (name.startsWith(SULONG_RENAME_MARKER)) {
-                int idx = name.indexOf('_', SULONG_RENAME_MARKER_LEN);
-                if (idx > 0) {
-                    lib = name.substring(SULONG_RENAME_MARKER_LEN, idx);
-                    scope = language.getInternalFileScopes(getSimpleLibraryName(lib));
-                    if (scope == null) {
-                        try {
-                            // If the library that contains the function has not been parsed,
-                            // then the library will be lazily parse now.
-                            String libName = lib + "." + language.getCapability(PlatformCapability.class).getLibrarySuffix();
-                            TruffleFile file = createTruffleFile(libName, null, InternalLibraryLocator.INSTANCE, "<default bitcode library>");
-                            context.getEnv().parseInternal(Source.newBuilder("llvm", file).internal(context.isInternalLibraryFile(file)).build());
-                            scope = language.getInternalFileScopes(getSimpleLibraryName(lib));
-                        } catch (Exception e) {
-                            throw new IllegalStateException(e);
-                        }
-                    }
-                    if (scope == null) {
-                        // The default internal libraries should be loaded when the context is
-                        // initialised.
-                        throw new LLVMLinkerException(String.format("The symbol %s could not be imported because library %s was not found during symbol renaming", external.getName(), lib));
-                    }
-                    originalName = name.substring(idx + 1);
-                    createNewFunction(scope, originalName, parserResult, external, lib, name, it);
-                }
+                registerRenamed(name, external, (scope, originalName, lib) -> createNewFunction(scope, originalName, parserResult, external, lib, name, it));
             } else if (CXXDemangler.isRenamedNamespaceSymbol(name)) {
+                LLVMScope scope;
                 ArrayList<String> namespaces = CXXDemangler.decodeNamespace(name);
-                lib = CXXDemangler.getAndRemoveLibraryName(namespaces);
+                String lib = CXXDemangler.getAndRemoveLibraryName(namespaces);
                 scope = language.getInternalFileScopes(getSimpleLibraryName(lib));
                 if (scope == null) {
                     try {
@@ -274,7 +291,7 @@ final class ParserDriver {
                     // initialised.
                     throw new LLVMLinkerException(String.format("The symbol %s could not be imported because library %s was not found during symbol renaming", external.getName(), lib));
                 }
-                originalName = CXXDemangler.encodeNamespace(namespaces);
+                String originalName = CXXDemangler.encodeNamespace(namespaces);
                 createNewFunction(scope, originalName, parserResult, external, lib, name, it);
             }
         }
@@ -294,6 +311,16 @@ final class ParserDriver {
         }
         it.remove();
         parserResult.getDefinedFunctions().add(external);
+    }
+
+    private static void createNewGlobal(LLVMScope scope, String originalName, LLVMParserResult parserResult, GlobalVariable external, String lib, String name) {
+        LLVMGlobal originalSymbol = scope.getGlobalVariable(originalName);
+        if (originalSymbol == null) {
+            throw new LLVMLinkerException(
+                            String.format("The symbol %s could not be imported because the symbol %s was not found in library %s", external.getName(), originalName, lib));
+        }
+        LLVMAlias newGlobal = new LLVMAlias(name, originalSymbol, false);
+        parserResult.getRuntime().getFileScope().register(newGlobal);
     }
 
     /**
