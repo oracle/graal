@@ -44,20 +44,23 @@ public final class GraalDirectives {
     public static final double FASTPATH_PROBABILITY = 1.0 - SLOWPATH_PROBABILITY;
 
     /**
-     * Directive for the compiler to fall back to the bytecode interpreter at this point.
+     * Directive for the compiler to fall back to the bytecode interpreter at this point. All
+     * arguments to this method must be compile-time constant.
      *
      * @param action the action to take with respect to the code being deoptimized
      * @param reason the reason to use for the deoptimization
+     * @param withSpeculation if true, then a speculation will be attached to the deoptimization
      */
-    public static void deoptimize(DeoptimizationAction action, DeoptimizationReason reason) {
+    public static void deoptimize(DeoptimizationAction action, DeoptimizationReason reason, boolean withSpeculation) {
     }
 
     /**
      * Directive for the compiler to fall back to the bytecode interpreter at this point.
      *
-     * This is equivalent to calling {@link #deoptimize(DeoptimizationAction, DeoptimizationReason)}
-     * with {@link DeoptimizationAction#None} and {@link DeoptimizationReason#TransferToInterpreter}
-     * as arguments.
+     * This is equivalent to calling
+     * {@link #deoptimize(DeoptimizationAction, DeoptimizationReason, boolean)} with
+     * {@link DeoptimizationAction#None}, {@link DeoptimizationReason#TransferToInterpreter} and
+     * {@code false} as arguments.
      */
     public static void deoptimize() {
     }
@@ -65,18 +68,12 @@ public final class GraalDirectives {
     /**
      * Directive for the compiler to fall back to the bytecode interpreter at this point.
      *
-     * This is equivalent to calling {@link #deoptimize(DeoptimizationAction, DeoptimizationReason)}
-     * with {@link DeoptimizationAction#InvalidateReprofile} and
-     * {@link DeoptimizationReason#TransferToInterpreter} as arguments.
+     * This is equivalent to calling
+     * {@link #deoptimize(DeoptimizationAction, DeoptimizationReason, boolean)} with
+     * {@link DeoptimizationAction#InvalidateReprofile},
+     * {@link DeoptimizationReason#TransferToInterpreter} and {@code false} as arguments.
      */
     public static void deoptimizeAndInvalidate() {
-    }
-
-    /**
-     * Directive for the compiler to fall back to the bytecode interpreter at this point, invalidate
-     * the compiled code, record a speculation and reprofile the method.
-     */
-    public static void deoptimizeAndInvalidateWithSpeculation() {
     }
 
     /**

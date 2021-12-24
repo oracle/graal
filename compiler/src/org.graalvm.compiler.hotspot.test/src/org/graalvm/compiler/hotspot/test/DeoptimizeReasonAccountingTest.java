@@ -61,7 +61,7 @@ public class DeoptimizeReasonAccountingTest extends GraalCompilerTest {
      * compilation and again as an OSR compilation.
      */
     public static boolean deoptimizeSnippet() {
-        GraalDirectives.deoptimize(DeoptimizationAction.InvalidateRecompile, getReason());
+        GraalDirectives.deoptimize(DeoptimizationAction.InvalidateRecompile, getReason(), false);
         return GraalDirectives.inCompiledCode();
     }
 
