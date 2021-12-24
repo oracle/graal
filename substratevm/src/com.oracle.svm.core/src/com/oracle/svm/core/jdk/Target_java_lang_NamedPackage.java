@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,19 +24,10 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.net.URL;
-
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 
-@SuppressWarnings({"unused"})
-@TargetClass(Package.class)
-final class Target_java_lang_Package {
-
-    @Alias
-    Target_java_lang_Package(String name,
-                    String spectitle, String specversion, String specvendor,
-                    String impltitle, String implversion, String implvendor,
-                    URL sealbase, ClassLoader loader) {
-    }
+@TargetClass(className = "java.lang.NamedPackage") //
+final class Target_java_lang_NamedPackage {
+    @Alias Module module;
 }

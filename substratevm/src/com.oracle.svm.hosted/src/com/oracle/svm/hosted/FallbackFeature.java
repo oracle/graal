@@ -26,6 +26,9 @@ package com.oracle.svm.hosted;
 
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.lang.module.ModuleDescriptor;
+import java.lang.module.ModuleFinder;
+import java.lang.module.ModuleReference;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
@@ -34,6 +37,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -46,7 +50,6 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.AfterAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
-import com.oracle.svm.util.ModuleSupport;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -63,7 +66,9 @@ public class FallbackFeature implements Feature {
     private final List<String> proxyCalls = new ArrayList<>();
     private final List<String> serializationCalls = new ArrayList<>();
 
-    private final Set<Object> systemModuleDescriptors = ModuleSupport.getSystemModuleDescriptors();
+    private final Set<ModuleDescriptor> systemModuleDescriptors = ModuleFinder.ofSystem().findAll().stream()
+                    .map(ModuleReference::descriptor)
+                    .collect(Collectors.toSet());
 
     private static class AutoProxyInvoke {
         private final ResolvedJavaMethod method;
@@ -124,7 +129,7 @@ public class FallbackFeature implements Feature {
 
         void apply(BytecodePosition invokeLocation) {
             Class<?> javaClass = ((AnalysisMethod) invokeLocation.getMethod()).getDeclaringClass().getJavaClass();
-            if (systemModuleDescriptors.contains(ModuleSupport.getModuleDescriptor(javaClass))) {
+            if (systemModuleDescriptors.contains(javaClass.getModule().getDescriptor())) {
                 /* Ensure all JDK system modules are excluded from reporting reflection use. */
                 return;
             }

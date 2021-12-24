@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,19 +24,24 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.net.URL;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.TargetClass;
+public final class BootModuleLayerSupport {
 
-@SuppressWarnings({"unused"})
-@TargetClass(Package.class)
-final class Target_java_lang_Package {
+    public static BootModuleLayerSupport instance() {
+        return ImageSingletons.lookup(BootModuleLayerSupport.class);
+    }
 
-    @Alias
-    Target_java_lang_Package(String name,
-                    String spectitle, String specversion, String specvendor,
-                    String impltitle, String implversion, String implvendor,
-                    URL sealbase, ClassLoader loader) {
+    private ModuleLayer bootLayer;
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void setBootLayer(ModuleLayer bootLayer) {
+        this.bootLayer = bootLayer;
+    }
+
+    public ModuleLayer getBootLayer() {
+        return bootLayer;
     }
 }

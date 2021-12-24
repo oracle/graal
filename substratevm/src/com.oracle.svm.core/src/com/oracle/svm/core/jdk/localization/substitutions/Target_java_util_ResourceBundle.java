@@ -24,6 +24,13 @@
  */
 package com.oracle.svm.core.jdk.localization.substitutions;
 
+import java.util.Locale;
+import java.util.ResourceBundle;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+
+import org.graalvm.nativeimage.ImageSingletons;
+
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
@@ -31,12 +38,6 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
 import com.oracle.svm.core.jdk.localization.substitutions.modes.OptimizedLocaleMode;
-import org.graalvm.nativeimage.ImageSingletons;
-
-import java.util.Locale;
-import java.util.ResourceBundle;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 
 @TargetClass(java.util.ResourceBundle.class)
 @SuppressWarnings({"unused"})
@@ -78,6 +79,23 @@ final class Target_java_util_ResourceBundle {
     @TargetElement(onlyWith = OptimizedLocaleMode.class)
     @Substitute
     private static ResourceBundle getBundle(String baseName, Locale targetLocale, ClassLoader loader, ResourceBundle.Control control) {
+        return ImageSingletons.lookup(LocalizationSupport.class).asOptimizedSupport().getCached(baseName, targetLocale);
+    }
+
+    /**
+     * Currently there is no support for the module system at run time. Module arguments are
+     * therefore ignored.
+     */
+
+    @Substitute
+    @TargetElement(onlyWith = OptimizedLocaleMode.class)
+    private static ResourceBundle getBundle(String baseName, @SuppressWarnings("unused") Module module) {
+        return ImageSingletons.lookup(LocalizationSupport.class).asOptimizedSupport().getCached(baseName, Locale.getDefault());
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = OptimizedLocaleMode.class)
+    private static ResourceBundle getBundle(String baseName, Locale targetLocale, @SuppressWarnings("unused") Module module) {
         return ImageSingletons.lookup(LocalizationSupport.class).asOptimizedSupport().getCached(baseName, targetLocale);
     }
 }

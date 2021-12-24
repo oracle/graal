@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,21 +23,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
 
-import java.net.URL;
+package com.oracle.svm.test.jfr;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.TargetClass;
+import static org.junit.Assert.assertNotNull;
 
-@SuppressWarnings({"unused"})
-@TargetClass(Package.class)
-final class Target_java_lang_Package {
+import org.junit.Test;
 
-    @Alias
-    Target_java_lang_Package(String name,
-                    String spectitle, String specversion, String specvendor,
-                    String impltitle, String implversion, String implvendor,
-                    URL sealbase, ClassLoader loader) {
+import jdk.jfr.Recording;
+import jdk.jfr.consumer.RecordingFile;
+
+public class TestClassEvent extends JFRTest {
+    @Test
+    public void test() throws Exception {
+        JFR jfr = new LocalJFR();
+        Recording recording = jfr.startRecording("TestClassEvent");
+
+        ClassEvent event = new ClassEvent();
+        event.clazz = TestClassEvent.class;
+        event.commit();
+
+        jfr.endRecording(recording);
+        try (RecordingFile recordingFile = new RecordingFile(recording.getDestination())) {
+            assertNotNull(recordingFile);
+        } finally {
+            jfr.cleanupRecording(recording);
+        }
     }
+
 }

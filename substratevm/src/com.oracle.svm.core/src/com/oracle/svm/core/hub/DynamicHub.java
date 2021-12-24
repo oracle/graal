@@ -70,14 +70,14 @@ import com.oracle.svm.core.classinitialization.ClassInitializationInfo;
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.jdk.JDK17OrLater;
 import com.oracle.svm.core.jdk.Resources;
-import com.oracle.svm.core.jdk.Target_java_lang_Module;
-import com.oracle.svm.core.jdk.Target_jdk_internal_reflect_Reflection;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.util.LazyFinalReference;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 
+import jdk.internal.reflect.ConstantPool;
+import jdk.internal.reflect.Reflection;
 import jdk.vm.ci.meta.JavaKind;
 
 @Hybrid(canHybridFieldsBeDuplicated = false)
@@ -290,11 +290,9 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private AnnotatedSuperInfo annotatedSuperInfo;
 
     /**
-     * Field used for module information access at run-time The run time type of this field is
-     * java.lang.Module but can be casted to {@link Target_java_lang_Module} The module is of type
-     * Object to avoid ClassCastExceptions at image build time due to base module miss-match.
+     * Field used for module information access at run-time.
      */
-    private Object module;
+    private Module module;
 
     /**
      * JDK 11 and later: the class that serves as the host for the nest. All nestmates have the same
@@ -303,7 +301,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private final Class<?> nestHost;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setModule(Object module) {
+    public void setModule(Module module) {
         this.module = module;
     }
 
@@ -682,7 +680,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Substitute
     public InputStream getResourceAsStream(String resourceName) {
-        String moduleName = module == null ? null : SubstrateUtil.cast(module, Target_java_lang_Module.class).name;
+        String moduleName = module == null ? null : module.getName();
         String resolvedName = resolveName(resourceName);
         return Resources.createInputStream(moduleName, resolvedName);
     }
@@ -1253,17 +1251,17 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Substitute
     public static Class<?> forName(String className) throws ClassNotFoundException {
-        Class<?> caller = Target_jdk_internal_reflect_Reflection.getCallerClass();
+        Class<?> caller = Reflection.getCallerClass();
         return forName(className, true, caller.getClassLoader());
     }
 
     @Substitute //
-    public static Class<?> forName(@SuppressWarnings("unused") Target_java_lang_Module module, String className) {
+    public static Class<?> forName(@SuppressWarnings("unused") Module module, String className) {
         /*
          * The module system is not supported for now, therefore the module parameter is ignored and
          * we use the class loader of the caller class instead of the module's loader.
          */
-        Class<?> caller = Target_jdk_internal_reflect_Reflection.getCallerClass();
+        Class<?> caller = Reflection.getCallerClass();
         try {
             return forName(className, false, caller.getClassLoader());
         } catch (ClassNotFoundException e) {
@@ -1351,8 +1349,8 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @Substitute //
-    public Target_java_lang_Module getModule() {
-        return (Target_java_lang_Module) module;
+    public Module getModule() {
+        return module;
     }
 
     @Substitute //
@@ -1504,7 +1502,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     native byte[] getRawTypeAnnotations();
 
     @Delete
-    native Target_jdk_internal_reflect_ConstantPool getConstantPool();
+    native ConstantPool getConstantPool();
 
     @Delete
     private native Field[] getDeclaredFields0(boolean publicOnly);
@@ -1582,20 +1580,20 @@ final class Target_java_lang_Class_ReflectionData<T> {
     // Checkstyle: resume
 }
 
-@TargetClass(className = "jdk.internal.reflect.ReflectionFactory")
+@TargetClass(value = jdk.internal.reflect.ReflectionFactory.class)
 final class Target_jdk_internal_reflect_ReflectionFactory {
 
     @Alias //
     private static Target_jdk_internal_reflect_ReflectionFactory soleInstance;
 
+    /**
+     * This substitution eliminates the SecurityManager check in the original method, which would
+     * make some build-time verifications fail.
+     */
     @Substitute
     public static Target_jdk_internal_reflect_ReflectionFactory getReflectionFactory() {
         return soleInstance;
     }
-}
-
-@TargetClass(className = "jdk.internal.reflect.ConstantPool")
-final class Target_jdk_internal_reflect_ConstantPool {
 }
 
 @TargetClass(className = "java.lang.reflect.RecordComponent", onlyWith = JDK17OrLater.class)

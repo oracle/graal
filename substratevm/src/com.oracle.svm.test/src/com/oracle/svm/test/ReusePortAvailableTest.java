@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,21 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.test;
 
-import java.net.URL;
+import java.net.Socket;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.TargetClass;
+import org.junit.Assert;
+import org.junit.Test;
 
-@SuppressWarnings({"unused"})
-@TargetClass(Package.class)
-final class Target_java_lang_Package {
+public class ReusePortAvailableTest {
 
-    @Alias
-    Target_java_lang_Package(String name,
-                    String spectitle, String specversion, String specvendor,
-                    String impltitle, String implversion, String implvendor,
-                    URL sealbase, ClassLoader loader) {
+    @Test
+    public void testReusePortAvailable() throws Exception {
+        Socket s = new Socket();
+        try {
+            s.supportedOptions();
+        } catch (Exception e) {
+            Assert.fail("Call to supportedOptions() failed");
+        }
     }
 }

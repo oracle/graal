@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,21 +23,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
 
-import java.net.URL;
+package com.oracle.svm.test.jfr;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.TargetClass;
+import java.io.IOException;
 
-@SuppressWarnings({"unused"})
-@TargetClass(Package.class)
-final class Target_java_lang_Package {
+import jdk.jfr.Recording;
 
-    @Alias
-    Target_java_lang_Package(String name,
-                    String spectitle, String specversion, String specvendor,
-                    String impltitle, String implversion, String implvendor,
-                    URL sealbase, ClassLoader loader) {
-    }
+/**
+ * Utility class to handle recording.
+ */
+public interface JFR {
+    Recording startRecording(String recordingName) throws Exception;
+
+    Recording startRecording(String recordingName, String configName) throws Exception;
+
+    void endRecording(Recording recording) throws Exception;
+
+    void cleanupRecording(Recording recording) throws IOException;
 }

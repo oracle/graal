@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,21 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.test.jfr;
 
-import java.net.URL;
+import static org.junit.Assume.assumeTrue;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.TargetClass;
+import org.graalvm.nativeimage.ImageInfo;
+import org.junit.BeforeClass;
 
-@SuppressWarnings({"unused"})
-@TargetClass(Package.class)
-final class Target_java_lang_Package {
+import com.oracle.svm.jfr.JfrEnabled;
 
-    @Alias
-    Target_java_lang_Package(String name,
-                    String spectitle, String specversion, String specvendor,
-                    String impltitle, String implversion, String implvendor,
-                    URL sealbase, ClassLoader loader) {
+/** Base class for JFR unit tests. */
+public class JFRTest {
+    @BeforeClass
+    public static void checkForJFR() {
+        assumeTrue("skipping JFR tests", !ImageInfo.inImageCode() || JfrEnabled.get());
     }
 }
