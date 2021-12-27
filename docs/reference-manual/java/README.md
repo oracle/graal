@@ -28,8 +28,7 @@ This is the default and recommended mode of operation.
 - **jargraal**: the Graal compiler goes through the same warm-up phase that the rest of the Java application does. That is, it is first interpreted before its hot methods are compiled.
 This mode is selected with the `-XX:-UseJVMCINativeLibrary` command-line option.
 This will delay the time to reach peak performance as the compiler itself needs to be compiled before it produces code quickly.
-This mode allows you to [debug the GraalVM compiler with a Java debugger](Operations.md#troubleshooting-the-graalvm-compiler).
-
+This mode allows you to [debug the Graal compiler with a Java debugger](Operations.md#troubleshooting-the-graalvm-compiler).
 
 ## Interoperability
 
