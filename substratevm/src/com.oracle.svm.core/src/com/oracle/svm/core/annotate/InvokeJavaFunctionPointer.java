@@ -29,6 +29,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 /**
@@ -38,5 +40,6 @@ import org.graalvm.nativeimage.c.function.CFunctionPointer;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.METHOD})
+@Platforms(Platform.HOSTED_ONLY.class)
 public @interface InvokeJavaFunctionPointer {
 }

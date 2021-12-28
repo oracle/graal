@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.core.annotate;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -32,6 +35,7 @@ import java.lang.annotation.Target;
 /** For fields with this annotation no static analysis is done. */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD)
+@Platforms(Platform.HOSTED_ONLY.class)
 public @interface UnknownPrimitiveField {
 
 }
