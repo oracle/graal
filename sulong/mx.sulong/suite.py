@@ -320,6 +320,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "truffle:TRUFFLE_API",
+        "truffle:TRUFFLE_NFI",
         "com.oracle.truffle.llvm.api",
         "com.oracle.truffle.llvm.spi",
         "com.oracle.truffle.llvm.toolchain.config",
@@ -1396,6 +1397,7 @@ suite = {
       ],
       "distDependencies" : [
         "truffle:TRUFFLE_API",
+        "truffle:TRUFFLE_NFI",
         "truffle:ANTLR4",
         "SULONG_API",
         "SULONG_TOOLCHAIN_CONFIG",

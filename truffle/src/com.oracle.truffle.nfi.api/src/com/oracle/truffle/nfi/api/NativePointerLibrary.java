@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,34 +38,43 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.nfi.backend.libffi;
+package com.oracle.truffle.nfi.api;
 
+import com.oracle.truffle.api.dsl.GenerateAOT;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.nfi.backend.spi.BackendNativePointerLibrary;
+import com.oracle.truffle.api.library.GenerateLibrary;
+import com.oracle.truffle.api.library.Library;
 
-@ExportLibrary(value = BackendNativePointerLibrary.class, useForAOT = true, useForAOTPriority = 1)
-final class NativePointer extends AbstractNativePointer {
+@GenerateLibrary
+@GenerateAOT
+@GenerateLibrary.DefaultExport(NativePointerLibrary.LongNativePointerLibrary.class)
+public abstract class NativePointerLibrary extends Library {
 
-    static final NativePointer NULL = new NativePointer(0);
-
-    NativePointer(long nativePointer) {
-        super(nativePointer);
+    @GenerateLibrary.Abstract(ifExported = {"asPointer"})
+    public boolean isPointer(@SuppressWarnings("unused") Object receiver) {
+        return false;
     }
 
-    static Object create(LibFFILanguage language, long nativePointer) {
-        return language.getTools().createBindableSymbol(new NativePointer(nativePointer));
+    @GenerateLibrary.Abstract(ifExported = {"isPointer"})
+    public long asPointer(@SuppressWarnings("unused") Object receiver) throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
     }
 
-    @ExportMessage(library = BackendNativePointerLibrary.class)
-    @Override
-    boolean isPointer() {
-        return super.isPointer();
-    }
+    @ExportLibrary(value = NativePointerLibrary.class, receiverType = Long.class, useForAOT = true, useForAOTPriority = 1)
+    static final class LongNativePointerLibrary {
 
-    @ExportMessage(library = BackendNativePointerLibrary.class)
-    @Override
-    long asPointer() {
-        return super.asPointer();
+        @ExportMessage
+        public static boolean isPointer(Long receiver) {
+            assert receiver != null;
+            return true;
+        }
+
+        @ExportMessage
+        public static long asPointer(Long receiver) {
+            assert receiver != null;
+            return receiver;
+        }
     }
 }

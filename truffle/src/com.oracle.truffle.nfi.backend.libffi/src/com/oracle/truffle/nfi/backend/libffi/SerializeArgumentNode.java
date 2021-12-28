@@ -59,7 +59,6 @@ import com.oracle.truffle.nfi.backend.libffi.LibFFIType.NullableType;
 import com.oracle.truffle.nfi.backend.libffi.LibFFIType.ObjectType;
 import com.oracle.truffle.nfi.backend.libffi.LibFFIType.StringType;
 import com.oracle.truffle.nfi.backend.libffi.NativeArgumentBuffer.TypeTag;
-import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNode.UnwrapHostObjectNode;
 import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNodeFactory.SerializeByteArrayNodeGen;
 import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNodeFactory.SerializeDoubleArrayNodeGen;
 import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNodeFactory.SerializeFloatArrayNodeGen;

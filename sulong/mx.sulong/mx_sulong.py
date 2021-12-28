@@ -460,7 +460,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     dir_name='llvm',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['Truffle'],
+    dependencies=['Truffle', 'Truffle NFI'],
     truffle_jars=['sulong:SULONG_CORE', 'sulong:SULONG_API', 'sulong:SULONG_NFI'],
     support_distributions=[
         'sulong:SULONG_CORE_HOME',
@@ -476,7 +476,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     dir_name='llvm',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['Truffle NFI', 'LLVM Runtime Core'],
+    dependencies=['Truffle NFI LIBFFI', 'LLVM Runtime Core'],
     truffle_jars=['sulong:SULONG_NATIVE'],
     support_distributions=[
         'sulong:SULONG_NATIVE_HOME',

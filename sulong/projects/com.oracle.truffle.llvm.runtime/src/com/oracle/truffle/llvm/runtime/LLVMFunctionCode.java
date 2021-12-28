@@ -427,6 +427,16 @@ public final class LLVMFunctionCode {
         return nativeFunction;
     }
 
+    public Object getNativeFunction(ResolveFunctionNode resolveFunctionNode) {
+        Function fn = resolveFunctionNode.execute(getFunction(), this);
+        Object nativeFunction = ((NativeFunction) fn).nativeFunction;
+        if (nativeFunction == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new LLVMLinkerException("Native function " + fn.toString() + " not found");
+        }
+        return nativeFunction;
+    }
+
     // used for calls from foreign languages
     // includes boundary conversions
     private CallTarget foreignFunctionCallTarget;

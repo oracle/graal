@@ -40,7 +40,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendSignatureBuilderLibrary;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendSignatureLibrary;
 
-@ExportLibrary(value = NFIBackendSignatureLibrary.class, useForAOT = true, useForAOTPriority = 0)
+@ExportLibrary(value = NFIBackendSignatureLibrary.class, useForAOT = false)
 @SuppressWarnings("static-method")
 final class SulongNFISignature {
 
@@ -58,7 +58,7 @@ final class SulongNFISignature {
         return executable;
     }
 
-    @ExportLibrary(NFIBackendSignatureBuilderLibrary.class)
+    @ExportLibrary(value = NFIBackendSignatureBuilderLibrary.class, useForAOT = false)
     static final class SignatureBuilder {
 
         @ExportMessage
