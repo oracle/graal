@@ -43,6 +43,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.hub.AnnotationsEncoding;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.NativeImageOptions;
@@ -136,6 +137,8 @@ public final class Target_java_lang_reflect_Executable {
                                     holder.getAnnotationBytes(),
                                     new Target_jdk_internal_reflect_ConstantPool(),
                                     holder.getDeclaringClass());
+
+                    AnnotationsEncoding.filterHostedAnnotations(declAnnos.values());
                     declaredAnnotations = declAnnos;
                 }
             }

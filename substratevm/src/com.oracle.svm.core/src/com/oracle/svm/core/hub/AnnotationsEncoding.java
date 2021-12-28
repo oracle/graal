@@ -29,6 +29,7 @@ import com.oracle.svm.core.util.VMError;
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -120,6 +121,7 @@ public final class AnnotationsEncoding {
     }
 
     public static Object encodeAnnotations(Set<Annotation> allAnnotations, Set<Annotation> declaredAnnotations) {
+        filterHostedAnnotations(allAnnotations);
         if (allAnnotations == null || allAnnotations.isEmpty()) {
             return null;
         }
@@ -145,5 +147,11 @@ public final class AnnotationsEncoding {
         System.arraycopy(tail.toArray(new Annotation[0]), 0, encoding, position, tail.size());
 
         return new AnnotationsEncoding(encoding, position);
+    }
+
+    public static void filterHostedAnnotations(Collection<Annotation> annotations) {
+        if (annotations != null) {
+            annotations.removeIf(annotation -> annotation.toString().contains("com.oracle.svm.core.annotate"));
+        }
     }
 }
