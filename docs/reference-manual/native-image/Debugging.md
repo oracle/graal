@@ -2,7 +2,7 @@
 layout: docs
 toc_group: native-image
 link_title: Native Image Debugging
-permalink: /reference-manual/native-image/DebugInfo/
+permalink: /reference-manual/native-image/debugging/
 ---
 
 # Native Image Debugging
