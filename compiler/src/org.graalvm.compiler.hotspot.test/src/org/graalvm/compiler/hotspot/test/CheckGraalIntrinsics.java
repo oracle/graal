@@ -271,7 +271,9 @@ public class CheckGraalIntrinsics extends GraalTest {
                         // HotSpot MacroAssembler-based intrinsic
                         "sun/nio/cs/ISO_8859_1$Encoder.encodeISOArray([CI[BII)I",
                         // We have implemented implCompressMultiBlock0 on JDK9+.
-                        "sun/security/provider/DigestBase.implCompressMultiBlock([BII)I");
+                        "sun/security/provider/DigestBase.implCompressMultiBlock([BII)I",
+                        "java/lang/StringCoding.implEncodeAsciiArray([CI[BII)I"
+                );
 
         // See JDK-8207146.
         String oopName = isJDK12OrHigher() ? "Reference" : "Object";
