@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.impl;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.staticobject.StaticShape;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import org.graalvm.collections.EconomicMap;
 
@@ -90,11 +91,45 @@ public final class RedefineAddedField extends Field {
                 extensionFieldObject = extensionFieldsCache.get(instance);
                 if (extensionFieldObject == null) {
                     extensionFieldObject = new ExtensionFieldObject();
+                    if (getDeclaringKlass() != instance.getKlass()) {
+                        // we have to check if there's a field value
+                        // in a subclass field that was removed in order
+                        // to preserve the state of a pull-up field
+                        checkPullUpField(instance, extensionFieldObject);
+                    }
                     extensionFieldsCache.put(instance, extensionFieldObject);
                 }
             }
         }
         return extensionFieldObject;
+    }
+
+    private void checkPullUpField(StaticObject instance, ExtensionFieldObject extensionFieldObject) {
+        if (instance.getKlass() instanceof ObjectKlass) {
+            ObjectKlass current = (ObjectKlass) instance.getKlass();
+            while (current != getDeclaringKlass()) {
+                Field removedField = current.getRemovedField(this);
+                if (removedField != null) {
+                    // OK, copy the state to the extension object
+                    // @formatter:off
+                    switch (getKind()) {
+                        case Boolean: extensionFieldObject.setBoolean(this, removedField.linkedField.getBooleanVolatile(instance), true); break;
+                        case Byte: extensionFieldObject.setByte(this, removedField.linkedField.getByteVolatile(instance), true); break;
+                        case Short: extensionFieldObject.setShort(this, removedField.linkedField.getShortVolatile(instance), true); break;
+                        case Char: extensionFieldObject.setChar(this, removedField.linkedField.getCharVolatile(instance), true); break;
+                        case Int: extensionFieldObject.setInt(this, removedField.linkedField.getIntVolatile(instance), true); break;
+                        case Float: extensionFieldObject.setFloat(this, removedField.linkedField.getFloatVolatile(instance), true); break;
+                        case Long: extensionFieldObject.setLong(this, removedField.linkedField.getLongVolatile(instance), true); break;
+                        case Double: extensionFieldObject.setDouble(this, removedField.linkedField.getDoubleVolatile(instance), true); break;
+                        case Object: extensionFieldObject.setObject(this, removedField.linkedField.getObjectVolatile(instance), true); break;
+                        default: throw EspressoError.shouldNotReachHere();
+                    }
+                    // @formatter:on
+                    break;
+                }
+                current = current.getSuperKlass();
+            }
+        }
     }
 
     @Override

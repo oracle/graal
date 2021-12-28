@@ -1411,6 +1411,17 @@ public final class ObjectKlass extends Klass {
         return getKlassVersion().getNoConcreteSubclassesAssumption(assumptionAccessor);
     }
 
+    Field getRemovedField(Field other) {
+        for (Field field : fieldTable) {
+            if (field.isRemoved()) {
+                if (field.getName() == other.getName() && field.getType() == other.getType()) {
+                    return field;
+                }
+            }
+        }
+        return null;
+    }
+
     public final class KlassVersion {
         final Assumption assumption;
         final RuntimeConstantPool pool;
