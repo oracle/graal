@@ -1439,24 +1439,37 @@ public class StandardGraphBuilderPlugins {
         }
 
         @Override
-        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode actionValue, ValueNode reasonValue, ValueNode withSpeculationValue) {
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode actionValue, ValueNode reasonValue, ValueNode speculationValue) {
             DeoptimizationAction deoptAction = asConstant(DeoptimizationAction.class, actionValue);
             DeoptimizationReason deoptReason = asConstant(DeoptimizationReason.class, reasonValue);
-            boolean speculation = ((JavaConstant) Objects.requireNonNull(withSpeculationValue.asConstant(), withSpeculationValue + " must be a non-null compile time constant")).asInt() != 0;
-            add(b, deoptAction, deoptReason, speculation);
+            JavaConstant javaConstant = Objects.requireNonNull(speculationValue.asJavaConstant(), speculationValue + " must be a non-null compile time constant");
+            if (javaConstant.getJavaKind().isObject()) {
+                SpeculationReason speculationReason = snippetReflection.asObject(SpeculationReason.class, javaConstant);
+                add(b, deoptAction, deoptReason, speculationReason);
+            } else {
+                boolean speculation = javaConstant.asInt() != 0;
+                add(b, deoptAction, deoptReason, speculation);
+            }
             return true;
         }
 
         private <T> T asConstant(Class<T> type, ValueNode value) {
-            return Objects.requireNonNull(snippetReflection.asObject(type, (JavaConstant) value.asConstant()), value + " must be a non-null compile time constant");
+            return Objects.requireNonNull(snippetReflection.asObject(type, value.asJavaConstant()), value + " must be a non-null compile time constant");
         }
 
         static void add(GraphBuilderContext b, DeoptimizationAction action, DeoptimizationReason reason, boolean withSpeculation) {
-            Speculation speculation = SpeculationLog.NO_SPECULATION;
+            SpeculationReason speculationReason = null;
             if (withSpeculation) {
-                GraalError.guarantee(b.getGraph().getSpeculationLog() != null, "A speculation log is needed to use `deoptimize with speculation`");
                 BytecodePosition pos = new BytecodePosition(null, b.getMethod(), b.bci());
-                SpeculationReason speculationReason = DIRECTIVE_SPECULATIONS.createSpeculationReason(pos);
+                speculationReason = DIRECTIVE_SPECULATIONS.createSpeculationReason(pos);
+            }
+            add(b, action, reason, speculationReason);
+        }
+
+        static void add(GraphBuilderContext b, DeoptimizationAction action, DeoptimizationReason reason, SpeculationReason speculationReason) {
+            Speculation speculation = SpeculationLog.NO_SPECULATION;
+            if (speculationReason != null) {
+                GraalError.guarantee(b.getGraph().getSpeculationLog() != null, "A speculation log is needed to use `deoptimize with speculation`");
                 if (b.getGraph().getSpeculationLog().maySpeculate(speculationReason)) {
                     speculation = b.getGraph().getSpeculationLog().speculate(speculationReason);
                 }
@@ -1470,6 +1483,8 @@ public class StandardGraphBuilderPlugins {
         r.register0("deoptimize", new DeoptimizePlugin(snippetReflection, None, TransferToInterpreter, false));
         r.register0("deoptimizeAndInvalidate", new DeoptimizePlugin(snippetReflection, InvalidateReprofile, TransferToInterpreter, false));
         r.register3("deoptimize", DeoptimizationAction.class, DeoptimizationReason.class, boolean.class,
+                        new DeoptimizePlugin(snippetReflection, null, null, null));
+        r.register3("deoptimize", DeoptimizationAction.class, DeoptimizationReason.class, SpeculationReason.class,
                         new DeoptimizePlugin(snippetReflection, null, null, null));
 
         r.register0("inCompiledCode", new InvocationPlugin() {

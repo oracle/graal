@@ -26,6 +26,7 @@ package org.graalvm.compiler.api.directives;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
+import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 
 // JaCoCo Exclude
 
@@ -42,6 +43,17 @@ public final class GraalDirectives {
 
     public static final double SLOWPATH_PROBABILITY = 0.0001;
     public static final double FASTPATH_PROBABILITY = 1.0 - SLOWPATH_PROBABILITY;
+
+    /**
+     * Directive for the compiler to fall back to the bytecode interpreter at this point. All
+     * arguments to this method must be compile-time constant.
+     *
+     * @param action the action to take with respect to the code being deoptimized
+     * @param reason the reason to use for the deoptimization
+     * @param speculation a speculation to be attached to the deoptimization
+     */
+    public static void deoptimize(DeoptimizationAction action, DeoptimizationReason reason, SpeculationReason speculation) {
+    }
 
     /**
      * Directive for the compiler to fall back to the bytecode interpreter at this point. All
