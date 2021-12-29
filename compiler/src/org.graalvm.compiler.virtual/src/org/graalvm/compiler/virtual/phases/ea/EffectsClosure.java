@@ -55,6 +55,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
+import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.extended.BoxNode;
@@ -191,6 +192,7 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
                 apply(loopMergeEffects.get(loop));
                 return info.exitStates;
             }
+
         };
         ReentrantBlockIterator.apply(closure, cfg.getStartBlock());
         for (GraphEffectList effects : effectList) {
@@ -259,7 +261,19 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
                     }
                     processLoopExit(loopExit, loopEntryStates.get(loopExit.loopBegin()), state, blockEffects.get(block));
                 }
-                changed |= processNode(node, state, effects, lastFixedNode) && isSignificantNode(node);
+                Block exceptionEdgeToKill = node instanceof WithExceptionNode ? cfg.blockFor(((WithExceptionNode) node).exceptionEdge()) : null;
+                boolean lastNodeChanged = processNode(node, state, effects, lastFixedNode) && isSignificantNode(node);
+                changed |= lastNodeChanged;
+                if (lastNodeChanged && exceptionEdgeToKill != null) {
+                    /*
+                     * We deleted a exception node, per definition the exception edge died in that
+                     * process, no need to process the exception edge
+                     */
+                    if (state.exceptionEdgesToKill == null) {
+                        state.exceptionEdgesToKill = EconomicSet.create();
+                    }
+                    state.exceptionEdgesToKill.add(exceptionEdgeToKill);
+                }
                 if (node instanceof FixedWithNextNode) {
                     lastFixedNode = (FixedWithNextNode) node;
                 }
@@ -268,6 +282,15 @@ public abstract class EffectsClosure<BlockT extends EffectsBlockState<BlockT>> e
                 }
             }
             VirtualUtil.trace(options, debug, ")\n    end state: %s\n", state);
+        }
+        return state;
+    }
+
+    @Override
+    protected BlockT afterSplit(Block successor, BlockT oldState) {
+        BlockT state = oldState;
+        if (oldState.exceptionEdgesToKill != null && oldState.exceptionEdgesToKill.contains(successor)) {
+            state.markAsDead();
         }
         return state;
     }
