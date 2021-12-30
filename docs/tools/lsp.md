@@ -10,13 +10,12 @@ permalink: /tools/lsp/
 GraalVM supports [Language Server Protocol](https://microsoft.github.io/language-server-protocol/) (LSP) for guest languages.
 It provides features like code-completion, find usages and alike for the client tools -- IDEs like Visual Studio Code.
 
-To start the GraalVM Language Server, pass the `--lsp` option to the command
-line launcher as in the following example with a Node.js application.
+To start the GraalVM Language Server, pass the `--lsp` option to the command line launcher as in the following example with a Node.js application.
 
 Note: The GraalVM Language Server is offered as a technology preview and requires the user to pass the `--experimental-options` option for its activation.
 
 ```shell
-node --experimental-options --lsp app.js
+$JAVA_HOME/bin/node --experimental-options --lsp app.js
 [Graal LSP] Starting server and listening on localhost/127.0.0.1:8123
 Example app listening on port 3000!
 ```
