@@ -81,9 +81,10 @@ For more extensive documentation on running Java, proceed to [JVM Languages](../
 
 ## Run JavaScript and Node.js
 
-GraalVM can execute plain JavaScript code, both in REPL mode and by executing script files directly:
+As mentioned above, upon the GraalVM installation completion, the `<graalvm>/bin` directory already includes the `js` launcher to run JavaScript programs.
+It can execute plain JavaScript code, both in REPL mode and by executing script files directly:
 ```shell
-js
+$JAVA_HOME/bin/js
 > 1 + 2
 3
 ```
@@ -93,6 +94,9 @@ Node.js support is not installed by default, but can be easily added with GraalV
 ```shell
 gu install nodejs
 ```
+
+The `node` launcher becomes available in the `<graalvm>/bin` directory.
+
 ```shell
 $JAVA_HOME/bin/node -v
 v14.17.6
