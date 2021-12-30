@@ -265,6 +265,7 @@ public class CheckGraalIntrinsics extends GraalTest {
                         "java/lang/Math.negateExact(J)J",
                         // HotSpot MacroAssembler-based intrinsic
                         "java/lang/String.indexOf(Ljava/lang/String;)I",
+                        "java/lang/StringCoding.implEncodeAsciiArray([CI[BII)I",
                         // Can share most implementation parts with with
                         // Unsafe.allocateUninitializedArray0
                         "java/lang/reflect/Array.newArray(Ljava/lang/Class;I)Ljava/lang/Object;",
