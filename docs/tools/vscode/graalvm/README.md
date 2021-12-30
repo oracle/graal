@@ -196,35 +196,24 @@ Once the configuration for Native Image has been generated, follow the documenta
 
 ## Native Image Debugging
 
-GraalVM Extension Pack for Java provides Java like debugging of platform native executables produced by [GraalVM Native Image](https://www.graalvm.org/reference-manual/native-image/).
-It is provided using the GNU Debugger (GDB) and via a new Run configuration named __Launch Native Image__.
-GraalVM Enterprise Edition is required as it produces full debug information for a native image.
+GraalVM Extension Pack for Java provides Java like debugging of native executables produced by [GraalVM Native Image](https://www.graalvm.org/reference-manual/native-image/).
+You can set breakpoints, create watches and inspect the state of your application running as a native image, etc.
 
-![Native Image debugging](images/ni_debugging.png)
+There are two ways to debug a native image:
+  * using the GNU Debugger, `gdb`, from the command line
+  * debugging a running native image process directly from within [Visual Studio Code](https://code.visualstudio.com/)
 
-> Note: Native Image debugging requires `gdb` debugger (GDB 7.11 or GDB 10.1+), it currently works only on Linux. The feature is experimental.
+To use the GNU Debugger, the native image should contain debug information in a format `gdb` understands.
+Read more how to gebug a Native Image with GDB [here](../../../reference-manual/native-image/Debugging.md).
 
-In order to debug native images of Java applications, it is necessary to build such images with debug information available.
-It can be done by providing following switches for the `native-image` builder:
-- `-g -O0` or
-- `-H:Debug=2 -H:Optimize=0`.
+Since recently you can attach the debugger to a native image process in VS Code and step over the application source code!
+Attaching of debugger is done by adding a separate configuration **Native Image: launch** into the _launch.json_ file.
+VS Code will execute your native image, attach to the application process, open the Java source file, letting you debug it.
 
+You can set breakpoints, step over the code, explore local variables, specify expressions to be evaluated, etc., everything as you would do to debug a Java application.
+Read more about this and find a demo application in the [Native Image Debugging guide](../../../reference-manual/native-image/Debugging.md).
 
-The resulting images will contain debug records in a format `gdb` debugger understands.
-
-### Debug Native Image “Real” Code
-
-Since recently you can attach the debugger to a Native Image process and step over the image “real” code.
-
-Attaching of debugger to a Native Image process is done via adding a configuration into the _launch.json_ file.
-
-1. Select **Native Image: Attach to Process** from the configurations autocompletion in _launch.json_. It generates the **Attach to Native Image** configuration. When that configuration is selected and executed, a list of running processes opens.
-2. Select the running process that corresponds to the Native Image you intend to debug.
-3. when the source file opens, start debugging:
-   ![Native Image debugging source code](images/NativeImageExecutableLocations.png)
-
-The step over the image “real” code” is mostly about UI differentiation of code which is compiled in the native image and which is not used.
-The shaded code is not a part of the Native Image.
+![Native Image Debugging in VS Code](images/debugging_ni_vscode.png)
 
 ## Integration with VisualVM
 
