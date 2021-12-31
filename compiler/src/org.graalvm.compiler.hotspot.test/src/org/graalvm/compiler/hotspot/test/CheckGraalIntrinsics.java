@@ -299,6 +299,7 @@ public class CheckGraalIntrinsics extends GraalTest {
             // Compact string support - HotSpot MacroAssembler-based intrinsic or complex C2 logic.
             add(toBeInvestigated,
                             "java/lang/StringCoding.hasNegatives([BII)Z",
+                            "java/lang/StringCoding.implEncodeAsciiArray([CI[BII)I",
                             "java/lang/StringCoding.implEncodeISOArray([BI[BII)I");
             add(ignore,
                             // handled through an intrinsic for String.equals itself
