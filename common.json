@@ -9,17 +9,17 @@
     "openjdk11":          {"name": "openjdk",   "version": "11.0.11+9", "platformspecific": true },
     "oraclejdk11":        {"name": "oraclejdk", "version": "11.0.11+9", "platformspecific": true },
     "labsjdk-ce-11":      {"name": "labsjdk",   "version": "ce-11.0.13+8-jvmci-22.0-b02", "platformspecific": true },
-    "labsjdk-ce-11-llvm": {"name": "labsjdk",   "version": "ce-11.0.14+7-jvmci-22.0-b03-20211221152108-gd_sulong-master-e089567b06-sulong", "platformspecific": true },
+    "labsjdk-ce-11-llvm": {"name": "labsjdk",   "version": "ce-11.0.14+7-jvmci-22.1-b00-sulong", "platformspecific": true },
     "labsjdk-ee-11":      {"name": "labsjdk",   "version": "ee-11.0.14+5-jvmci-22.0-b02", "platformspecific": true },
-    "labsjdk-ee-11-llvm": {"name": "labsjdk",   "version": "ee-11.0.14+6-jvmci-22.0-b03-20211221103623-gd_sulong-master-3deb7f32b2+1ad8a8e006-sulong", "platformspecific": true },
+    "labsjdk-ee-11-llvm": {"name": "labsjdk",   "version": "ee-11.0.14+6-jvmci-22.1-b00-sulong", "platformspecific": true },
 
     "oraclejdk17":        {"name": "oraclejdk", "version": "17.0.1+12", "platformspecific": true },
     "labsjdk-ce-17":      {"name": "labsjdk",   "version": "ce-17.0.2+5-jvmci-22.0-b02", "platformspecific": true },
     "labsjdk-ce-17Debug": {"name": "labsjdk",   "version": "ce-17.0.2+5-jvmci-22.0-b02-debug", "platformspecific": true },
-    "labsjdk-ce-17-llvm": {"name": "labsjdk",   "version": "ce-17.0.2+5-jvmci-22.0-b03-20211218084056-gd_sulong-master-9469074cbb-sulong", "platformspecific": true },
+    "labsjdk-ce-17-llvm": {"name": "labsjdk",   "version": "ce-17.0.2+6-jvmci-22.1-b00-sulong", "platformspecific": true },
     "labsjdk-ee-17":      {"name": "labsjdk",   "version": "ee-17.0.2+5-jvmci-22.0-b02", "platformspecific": true },
     "labsjdk-ee-17Debug": {"name": "labsjdk",   "version": "ee-17.0.2+5-jvmci-22.0-b02-debug", "platformspecific": true },
-    "labsjdk-ee-17-llvm": {"name": "labsjdk",   "version": "ee-17.0.2+6-jvmci-22.0-b03-20211218082030-gd_sulong-master-e3bdd2d6ad+6327832011-sulong", "platformspecific": true }
+    "labsjdk-ee-17-llvm": {"name": "labsjdk",   "version": "ee-17.0.2+6-jvmci-22.1-b00-sulong", "platformspecific": true }
   },
 
   "COMMENT.devkits" : "The devkits versions reflect those used to build the JVMCI JDKs (e.g., see devkit_platform_revisions in <jdk>/make/conf/jib-profiles.js)",
