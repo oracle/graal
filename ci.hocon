@@ -23,9 +23,3 @@ include "compiler/ci_common/bench.hocon"
 # ------------------ SVM ----------------------
 include "substratevm/ci_includes/gate.hocon"
 
-# ------------------- VM ----------------------
-include "vm/ci_common/common.hocon"
-include "vm/ci_common/common-bench.hocon"
-include "vm/ci_includes/vm.hocon"
-include "vm/ci_includes/vm-native.hocon"
-include "vm/ci_includes/vm-bench.hocon"
