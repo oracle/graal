@@ -1,4 +1,4 @@
-- `--cpusampler=false|true|<Output>` : Enable/Disable the CPU sampler, or enable with specific Output - as specified by the Output option (default: false). Choosing an output with this options defaults to printing the output to std out, except for the flamegraph which is printed to a flamegraph.svg file.
+- `--cpusampler=true|false|<Output>` : Enable/Disable the CPU sampler, or enable with specific Output - as specified by the Output option (default: false). Choosing an output with this options defaults to printing the output to std out, except for the flamegraph which is printed to a flamegraph.svg file.
 - `--cpusampler.Delay=<ms>` : Delay the sampling for this many milliseconds (default: 0).
 - `--cpusampler.FilterFile=*` : Wildcard filter for source file paths. (eg. *program*.sl) (default: no filter).
 - `--cpusampler.FilterLanguage=<languageId>` : Only profile the language with given ID. (eg. js) (default: profile all).

@@ -13,20 +13,8 @@ The options are a best effort approach to limiting resource usage of guest appli
 
 The resource limits may be configured using the following options:
 
-* `--sandbox.MaxStatements=<long>` Limit the maximum number of guest language statements.
-* `--sandbox.MaxStatementsIncludeInternal=<boolean>` Whether to include internal sources in the max statements computation.
-* `--sandbox.MaxCPUTime=<duration>` Limit the total maximum CPU time that was spent running the application.
-* `--sandbox.MaxCPUTimeCheckInterval=<duration>` Time interval to check the active CPU time for a context.
-* `--sandbox.MaxStackFrames=<int>` Limits the maximum number of guest stack frames.
-* `--sandbox.MaxThreads=<int>` Limit the number of threads that can be concurrently used by a context.
-* `--sandbox.MaxASTDepth=<int>` Limit the maximum depth of AST nodes for a guest language function.
-* `--sandbox.MaxHeapMemory=<size>` Specifies the maximum heap memory that can be retained by the application during its run.
-* `--sandbox.AllocatedBytesCheckInterval=<duration>` Time interval to check allocated bytes for an execution context. Exceeding certain number of allocated bytes triggers computation of bytes retained in the heap by the context.
-* `--sandbox.AllocatedBytesCheckEnabled=<boolean>` Specifies whether checking of allocated bytes for an execution context is enabled. If disabled, retained size checking for the context can be triggered only by the low memory trigger.
-* `--sandbox.AllocatedBytesCheckFactor=<factor>` Specifies a factor of MaxHeapMemory the allocation of which triggers retained heap memory computation. When allocated bytes for an execution context reach the specified factor, computation of bytes retained in the heap by the context is initiated.
-* `--sandbox.RetainedBytesCheckInterval=<duration>` Specifies the minimum time interval between two computations of retained bytes in the heap for a single execution context.
-* `--sandbox.RetainedBytesCheckFactor=<factor>` Specifies a factor of total heap memory of the host VM the exceeding of which stops the world. When the total number of bytes allocated in the heap for the whole host VM exceeds the factor, the following process is initiated. Execution for all engines with at least one memory-limited execution context (one with `sandbox.MaxHeapMemory` set) is paused. Retained bytes in the heap for each memory-limited context are computed. Contexts exceeding their limits are cancelled. The execution is resumed. All contexts using the `sandbox.MaxHeapMemory` option must use the same value for `sandbox.RetainedBytesCheckFactor`.
-* `--sandbox.UseLowMemoryTrigger=<boolean>` Specifies whether stopping the world is enabled. If enabled, engines with at least one memory-limited execution context are paused when the total number of bytes allocated in the heap for the whole host VM exceeds the specified factor of total heap memory of the host VM. If disabled, retained size checking for memory-limited execution contexts can be triggered only by the allocated bytes checker. All contexts using the `sandbox.MaxHeapMemory` option must use the same value for `sandbox.UseLowMemoryTrigger`.
+{% include_relative sandbox.txt %}
+
 
 Different configurations may be provided for each polyglot embedding `Context` instance.
 In addition to that the limits may be reset at any point of time during the execution. Resetting is only aplicable to `sandbox.MaxStatements` and `sandbox.MaxCPUTime`.
