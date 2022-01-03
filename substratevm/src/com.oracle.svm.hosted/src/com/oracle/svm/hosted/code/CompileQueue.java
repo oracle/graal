@@ -43,7 +43,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ForkJoinPool;
 
 import com.oracle.graal.pointsto.util.TimerCollection;
-import com.oracle.svm.hosted.analysis.Inflation;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -399,9 +398,7 @@ public class CompileQueue {
         ProgressReporter reporter = ProgressReporter.singleton();
         TimerCollection timerCollection = TimerCollection.singleton();
         try {
-            Inflation bigBang = universe.getBigBang();
-            String imageName = bigBang.getHostVM().getImageName();
-            try (ProgressReporter.ReporterClosable ac = reporter.printParsing(timerCollection.createTimer(imageName, "(parse)"))) {
+            try (ProgressReporter.ReporterClosable ac = reporter.printParsing(timerCollection.get(TimerCollection.Registry.PARSE))) {
                 parseAll();
             }
             // Checking @Uninterruptible annotations does not take long enough to justify a timer.
@@ -420,7 +417,7 @@ public class CompileQueue {
             }
 
             if (SubstrateOptions.AOTInline.getValue() && SubstrateOptions.AOTTrivialInline.getValue()) {
-                try (ProgressReporter.ReporterClosable ac = reporter.printInlining(timerCollection.createTimer(imageName, "(inline)"))) {
+                try (ProgressReporter.ReporterClosable ac = reporter.printInlining(timerCollection.get(TimerCollection.Registry.INLINE))) {
                     inlineTrivialMethods(debug);
                 }
             } else {
@@ -429,7 +426,7 @@ public class CompileQueue {
 
             assert suitesNotCreated();
             createSuites();
-            try (ProgressReporter.ReporterClosable ac = reporter.printCompiling(timerCollection.createTimer(imageName, "(compile)"))) {
+            try (ProgressReporter.ReporterClosable ac = reporter.printCompiling(timerCollection.get(TimerCollection.Registry.COMPILE))) {
                 compileAll();
             }
         } catch (InterruptedException ie) {

@@ -26,12 +26,14 @@ package com.oracle.graal.pointsto.util;
 
 import com.oracle.graal.pointsto.reports.StatisticsPrinter;
 import com.oracle.svm.util.ImageBuildStatistics;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import java.io.PrintWriter;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.Collection;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class TimerCollection implements ImageBuildStatistics.TimerCollectionPrinter {
 
@@ -39,7 +41,64 @@ public class TimerCollection implements ImageBuildStatistics.TimerCollectionPrin
         return ImageSingletons.lookup(TimerCollection.class);
     }
 
-    private final List<Timer> timers = Collections.synchronizedList(new ArrayList<>());
+    public enum Registry {
+        TOTAL("[total]"),
+        SETUP("setup"),
+        CLASSLIST("classlist"),
+        CLINIT("(clinit)"),
+        FEATURES("(features)"),
+        OBJECTS("(objects)"),
+        ANALYSIS("analysis"),
+        UNIVERSE("universe"),
+        COMPILE_MAIN("compile"),
+        PARSE("(parse)"),
+        INLINE("(inline)"),
+        COMPILE("(compile)"),
+        DEBUG_INFO("dbginfo"),
+        IMAGE("image"),
+        WRITE("write");
+
+        public final String name;
+
+        Registry(String name) {
+            this.name = name;
+        }
+    }
+
+    private final Map<String, Timer> timers = new ConcurrentHashMap<>();
+
+    public void initDefaultTimers(String imageName) {
+        add(new Timer(imageName, Registry.TOTAL.name, false));
+        add(new Timer(imageName, Registry.SETUP.name, true));
+        add(new Timer(imageName, Registry.CLASSLIST.name, false));
+        add(new Timer(imageName, Registry.CLINIT.name, true));
+        add(new Timer(imageName, Registry.ANALYSIS.name, true));
+        add(new Timer(imageName, Registry.FEATURES.name, false));
+        add(new Timer(imageName, Registry.OBJECTS.name, false));
+        add(new Timer(imageName, Registry.UNIVERSE.name, true));
+        add(new Timer(imageName, Registry.COMPILE_MAIN.name, true));
+        add(new Timer(imageName, Registry.PARSE.name, true));
+        add(new Timer(imageName, Registry.INLINE.name, true));
+        add(new Timer(imageName, Registry.COMPILE.name, true));
+        add(new Timer(imageName, Registry.DEBUG_INFO.name, true));
+        add(new Timer(imageName, Registry.IMAGE.name, true));
+        add(new Timer(imageName, Registry.WRITE.name, true));
+    }
+
+    private void add(Timer timer) {
+        GraalError.guarantee(!timers.containsKey(timer.getName()), "Name %s for a timer is already taken.", timer.getName());
+        timers.put(timer.getName(), timer);
+    }
+
+    public Timer get(String name) {
+        Timer timer = timers.get(name);
+        GraalError.guarantee(timer != null, "Timer with name %s not found.", name);
+        return timer;
+    }
+
+    public Timer get(TimerCollection.Registry type) {
+        return get(type.name);
+    }
 
     public Timer createTimer(String name) {
         return createTimer(null, name, true);
@@ -55,20 +114,22 @@ public class TimerCollection implements ImageBuildStatistics.TimerCollectionPrin
 
     public Timer createTimer(String prefix, String name, boolean autoPrint) {
         Timer timer = new Timer(prefix, name, autoPrint);
-        timers.add(timer);
+        add(timer);
         return timer;
     }
 
     @Override
     public void printTimerStats(PrintWriter out) {
-        for (int i = 0; i < timers.size(); i++) {
-            Timer timer = timers.get(i);
+        Collection<Timer> timers = new ArrayList<>(this.timers.values());
+        int i = 0;
+        for (Timer timer : timers) {
             StatisticsPrinter.print(out, timer.getName() + "_time", ((int) timer.getTotalTime()));
             if (i != timers.size() - 1) {
                 StatisticsPrinter.print(out, timer.getName() + "_memory", ((int) timer.getTotalMemory()));
             } else {
                 StatisticsPrinter.printLast(out, timer.getName() + "_memory", ((int) timer.getTotalMemory()));
             }
+            i++;
         }
     }
 }

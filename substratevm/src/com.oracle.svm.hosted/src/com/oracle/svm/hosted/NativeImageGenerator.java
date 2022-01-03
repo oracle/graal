@@ -564,8 +564,7 @@ public class NativeImageGenerator {
             HostedMetaAccess hMetaAccess;
             SharedRuntimeConfigurationBuilder runtime;
             TimerCollection timerCollection = TimerCollection.singleton();
-            Timer universeTimer = timerCollection.createTimer(imageName, "universe");
-            try (ReporterClosable c = reporter.printUniverse(universeTimer)) {
+            try (ReporterClosable c = reporter.printUniverse(timerCollection.get(TimerCollection.Registry.UNIVERSE))) {
                 bb.getHeartbeatCallback().run();
 
                 hUniverse = new HostedUniverse(bb);
@@ -629,8 +628,7 @@ public class NativeImageGenerator {
 
             NativeImageCodeCache codeCache;
             CompileQueue compileQueue;
-            Timer compileTimer = timerCollection.createTimer(imageName, "compile");
-            try (StopTimer t = compileTimer.start()) {
+            try (StopTimer t = timerCollection.get(TimerCollection.Registry.COMPILE_MAIN).start()) {
                 compileQueue = HostedConfiguration.instance().createCompileQueue(debug, featureHandler, hUniverse, runtime, DeoptTester.enabled(), bb.getProviders().getSnippetReflection(),
                                 compilationExecutor);
                 compileQueue.finish(debug);
@@ -648,10 +646,9 @@ public class NativeImageGenerator {
             }
             CodeCacheProvider codeCacheProvider = runtime.getRuntimeConfig().getBackendForNormalMethod().getProviders().getCodeCache();
             reporter.printCreationStart();
-            Timer imageTimer = timerCollection.createTimer(imageName, "image");
             try (Indent indent = debug.logAndIndent("create native image")) {
                 try (DebugContext.Scope buildScope = debug.scope("CreateImage", codeCacheProvider)) {
-                    try (StopTimer t = imageTimer.start()) {
+                    try (StopTimer t = timerCollection.get(TimerCollection.Registry.IMAGE).start()) {
                         bb.getHeartbeatCallback().run();
 
                         // Start building the model of the native image heap.
@@ -682,8 +679,7 @@ public class NativeImageGenerator {
                 }
             }
 
-            Timer writeTimer = timerCollection.createTimer(imageName, "write");
-            try (StopTimer t = writeTimer.start()) {
+            try (StopTimer t = timerCollection.get(TimerCollection.Registry.WRITE).start()) {
                 bb.getHeartbeatCallback().run();
                 BeforeImageWriteAccessImpl beforeConfig = new BeforeImageWriteAccessImpl(featureHandler, loader, imageName, image,
                                 runtime.getRuntimeConfig(), aUniverse, hUniverse, optionProvider, hMetaAccess, debug);
@@ -704,7 +700,8 @@ public class NativeImageGenerator {
                 AfterImageWriteAccessImpl afterConfig = new AfterImageWriteAccessImpl(featureHandler, loader, hUniverse, inv, tmpDir, image.getImageKind(), debug);
                 featureHandler.forEachFeature(feature -> feature.afterImageWrite(afterConfig));
             }
-            reporter.printCreationEnd(imageTimer, writeTimer, image.getImageSize(), bb.getUniverse(), heap.getObjectCount(), image.getImageHeapSize(), codeCache.getCodeCacheSize(),
+            reporter.printCreationEnd(timerCollection.get(TimerCollection.Registry.IMAGE), timerCollection.get(TimerCollection.Registry.WRITE), image.getImageSize(), bb.getUniverse(),
+                            heap.getObjectCount(), image.getImageHeapSize(), codeCache.getCodeCacheSize(),
                             codeCache.getCompilations().size(), image.getDebugInfoSize());
             if (SubstrateOptions.BuildOutputBreakdowns.getValue()) {
                 ProgressReporter.singleton().printBreakdowns(compileQueue.getCompilationTasks(), image.getHeap().getObjects());
@@ -798,7 +795,8 @@ public class NativeImageGenerator {
                     SubstitutionProcessor harnessSubstitutions,
                     ForkJoinPool analysisExecutor, SnippetReflectionProvider originalSnippetReflection, DebugContext debug) {
         try (Indent ignored = debug.logAndIndent("setup native-image builder")) {
-            Timer setupTimer = TimerCollection.singleton().createTimer(imageName, "setup");
+            TimerCollection timerCollection = TimerCollection.singleton();
+            Timer setupTimer = timerCollection.get(TimerCollection.Registry.SETUP);
             try (StopTimer ignored1 = setupTimer.start()) {
                 SubstrateTargetDescription target = createTarget(loader.platform);
                 ImageSingletons.add(Platform.class, loader.platform);
