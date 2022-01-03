@@ -122,6 +122,10 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
         return result;
     }
 
+    public boolean isBooleanMatch() {
+        return ast.getSource().getOptions().isBooleanMatch();
+    }
+
     @Override
     protected void visit(BackReference backReference) {
         throw CompilerDirectives.shouldNotReachHere();

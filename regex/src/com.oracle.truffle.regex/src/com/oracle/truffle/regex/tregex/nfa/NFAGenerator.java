@@ -147,7 +147,7 @@ public final class NFAGenerator {
             expandNFAState(expansionQueue.pop());
         }
         for (NFAState s : nfaStates.values()) {
-            if (s != dummyInitialState && ast.getHardPrefixNodes().isDisjoint(s.getStateSet())) {
+            if (s != dummyInitialState && (ast.getHardPrefixNodes().isDisjoint(s.getStateSet()) || ast.getFlags().isSticky())) {
                 s.linkPredecessors();
             }
         }
@@ -162,6 +162,13 @@ public final class NFAGenerator {
                 for (NFAState prefixState : hardPrefixStates) {
                     prefixState.removeSuccessor(state);
                 }
+                for (NFAState initialState : initialStates) {
+                    initialState.removeSuccessor(state);
+                }
+                for (NFAState initialState : anchoredInitialStates) {
+                    initialState.removeSuccessor(state);
+                }
+                dummyInitialState.removeSuccessor(state);
                 nfaStates.remove(state.getStateSet());
             }
             deadStates.clear();
@@ -170,7 +177,7 @@ public final class NFAGenerator {
         assert transitionGBUpdateIndices.isEmpty() && transitionGBClearIndices.isEmpty();
         for (int i = 1; i < initialStates.length; i++) {
             // check if state was eliminated by findDeadStates
-            if (nfaStates.containsKey(initialStates[i].getStateSet())) {
+            if (nfaStates.containsKey(initialStates[i].getStateSet()) && nfaStates.containsKey(initialStates[i - 1].getStateSet())) {
                 initialStates[i].addLoopBackNext(createTransition(initialStates[i], initialStates[i - 1], ast.getEncoding().getFullSet(), -1));
             }
         }
@@ -193,7 +200,7 @@ public final class NFAGenerator {
         if (isHardPrefixState) {
             hardPrefixStates.add(curState);
         }
-        curState.setSuccessors(createNFATransitions(curState, nextStep), !isHardPrefixState);
+        curState.setSuccessors(createNFATransitions(curState, nextStep), !isHardPrefixState || ast.getFlags().isSticky());
     }
 
     private NFAStateTransition[] createNFATransitions(NFAState sourceState, ASTStep nextStep) {

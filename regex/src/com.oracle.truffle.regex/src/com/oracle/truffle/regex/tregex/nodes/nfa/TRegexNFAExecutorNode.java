@@ -108,7 +108,7 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
         final int offset = rewindUpTo(locals, 0, nfa.getAnchoredEntry().length - 1);
         int anchoredInitialState = nfa.getAnchoredEntry()[offset].getTarget().getId();
         int unAnchoredInitialState = nfa.getUnAnchoredEntry()[offset].getTarget().getId();
-        if (unAnchoredInitialState != anchoredInitialState && inputAtBegin(locals)) {
+        if (unAnchoredInitialState != anchoredInitialState && nfa.getState(anchoredInitialState) != null && inputAtBegin(locals)) {
             locals.addInitialState(anchoredInitialState);
         }
         if (nfa.getState(unAnchoredInitialState) != null) {

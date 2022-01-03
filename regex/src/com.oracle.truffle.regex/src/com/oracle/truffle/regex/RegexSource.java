@@ -84,6 +84,14 @@ public final class RegexSource implements JsonConvertible {
         return source;
     }
 
+    public RegexSource withBooleanMatch() {
+        return new RegexSource(pattern, flags, options.withBooleanMatch(), source);
+    }
+
+    public RegexSource withoutBooleanMatch() {
+        return new RegexSource(pattern, flags, options.withoutBooleanMatch(), source);
+    }
+
     @Override
     public int hashCode() {
         if (!hashComputed) {

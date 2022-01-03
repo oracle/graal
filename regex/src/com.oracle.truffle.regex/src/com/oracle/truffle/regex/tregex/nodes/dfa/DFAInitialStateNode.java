@@ -59,10 +59,21 @@ import static com.oracle.truffle.api.CompilerDirectives.*;
 public class DFAInitialStateNode extends DFAAbstractStateNode {
 
     @CompilationFinal(dimensions = 1) private final short[] cgLastTransition;
+    private final boolean hasUnanchoredEntry;
 
     public DFAInitialStateNode(short[] successors, short[] cgLastTransition) {
         super((short) 0, successors);
         this.cgLastTransition = cgLastTransition;
+        this.hasUnanchoredEntry = initUnanchoredEntry(successors);
+    }
+
+    private static boolean initUnanchoredEntry(short[] successors) {
+        for (int i = successors.length / 2; i < successors.length; i++) {
+            if (successors[i] != -1) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private DFAInitialStateNode(DFAInitialStateNode copy) {
@@ -78,7 +89,7 @@ public class DFAInitialStateNode extends DFAAbstractStateNode {
     }
 
     public boolean hasUnAnchoredEntry() {
-        return successors[successors.length / 2] != -1;
+        return hasUnanchoredEntry;
     }
 
     /**

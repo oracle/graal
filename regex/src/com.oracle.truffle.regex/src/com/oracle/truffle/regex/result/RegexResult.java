@@ -63,6 +63,7 @@ import com.oracle.truffle.regex.AbstractRegexObject;
 import com.oracle.truffle.regex.RegexObject;
 import com.oracle.truffle.regex.runtime.nodes.DispatchNode;
 import com.oracle.truffle.regex.runtime.nodes.ToIntNode;
+import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorNode;
 import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 
 import java.util.Arrays;
@@ -117,9 +118,14 @@ public final class RegexResult extends AbstractConstantKeysObject {
     }
 
     private static final RegexResult NO_MATCH_RESULT = new RegexResult(null, -1, -1, -1, new int[]{}, null);
+    private static final RegexResult BOOLEAN_MATCH_RESULT = new RegexResult(null, -1, -1, -1, new int[]{}, null);
 
     public static RegexResult getNoMatchInstance() {
         return NO_MATCH_RESULT;
+    }
+
+    public static RegexResult getBooleanMatchInstance() {
+        return BOOLEAN_MATCH_RESULT;
     }
 
     public static RegexResult create(int start, int end) {
@@ -517,6 +523,10 @@ public final class RegexResult extends AbstractConstantKeysObject {
             }
             int i = groupNumber * 2;
             return i < 0 || i >= receiver.result.length ? INVALID_RESULT_INDEX : receiver.result[i];
+        }
+
+        public static RegexResultGetStartNode getUncached() {
+            return RegexResultFactory.RegexResultGetStartNodeGen.getUncached();
         }
     }
 

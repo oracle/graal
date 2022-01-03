@@ -104,7 +104,7 @@ public final class TRegexCompilationRequest {
     private TRegexDFAExecutorNode executorNodeCaptureGroups = null;
     private final CompilationBuffer compilationBuffer;
 
-    TRegexCompilationRequest(RegexLanguage language, RegexSource source) {
+    public TRegexCompilationRequest(RegexLanguage language, RegexSource source) {
         this.language = language;
         this.source = source;
         this.compilationBuffer = new CompilationBuffer(source.getEncoding());
@@ -129,7 +129,7 @@ public final class TRegexCompilationRequest {
     }
 
     @TruffleBoundary
-    RegexExecNode compile() {
+    public RegexExecNode compile() {
         try {
             RegexExecNode compiledRegex = compileInternal();
             logAutomatonSizes(compiledRegex);
@@ -222,17 +222,16 @@ public final class TRegexCompilationRequest {
                 // assigning preCalculatedResults
             }
         }
+        boolean traceFinder = preCalculatedResults != null;
         final boolean trackLastGroup = ast.getOptions().getFlavor().usesLastGroupResultField();
-        executorNodeForward = createDFAExecutor(nfa, true, true, false, allowSimpleCG && preCalculatedResults == null && !(ast.getRoot().startsWithCaret() && !properties.hasCaptureGroups()),
-                        trackLastGroup);
-        final boolean createCaptureGroupTracker = !executorNodeForward.isSimpleCG() && (properties.hasCaptureGroups() || properties.hasLookAroundAssertions()) &&
-                        preCalculatedResults == null;
+        executorNodeForward = createDFAExecutor(nfa, true, true, false, allowSimpleCG && !traceFinder && !(ast.getRoot().startsWithCaret() && !properties.hasCaptureGroups()), trackLastGroup);
+        final boolean createCaptureGroupTracker = !executorNodeForward.isSimpleCG() && (properties.hasCaptureGroups() || properties.hasLookAroundAssertions()) && !traceFinder;
         if (createCaptureGroupTracker) {
             executorNodeCaptureGroups = createDFAExecutor(nfa, true, false, true, false, trackLastGroup);
         }
-        if (preCalculatedResults != null && preCalculatedResults.length > 1) {
+        if (traceFinder && preCalculatedResults.length > 1) {
             executorNodeBackward = createDFAExecutor(traceFinderNFA, false, false, false, false, false);
-        } else if (!executorNodeForward.isAnchored() && !executorNodeForward.isSimpleCG() && (preCalculatedResults == null || !nfa.hasReverseUnAnchoredEntry())) {
+        } else if (!executorNodeForward.isAnchored() && !executorNodeForward.isSimpleCG() && (!traceFinder || !nfa.hasReverseUnAnchoredEntry())) {
             executorNodeBackward = createDFAExecutor(nfa, false, false, false, allowSimpleCG && !(ast.getRoot().endsWithDollar() && !properties.hasCaptureGroups()), trackLastGroup);
         }
         logAutomatonSizes(rootNode);

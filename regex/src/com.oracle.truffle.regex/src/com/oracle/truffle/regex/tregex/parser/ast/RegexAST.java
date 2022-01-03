@@ -85,7 +85,8 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
     private final Counter.ThresholdCounter groupCount = new Counter.ThresholdCounter(TRegexOptions.TRegexMaxNumberOfCaptureGroups, "too many capture groups");
     private final Counter quantifierCount = new Counter();
     private final RegexProperties properties = new RegexProperties();
-    private Map<String, Integer> namedCaputureGroups;
+    private int realGroupCount;
+    private Map<String, Integer> namedCaptureGroups;
     private RegexASTNode[] nodes;
     /**
      * AST as parsed from the expression.
@@ -133,12 +134,12 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         return source.getEncoding();
     }
 
-    public void setNamedCaputureGroups(Map<String, Integer> namedCaputureGroups) {
-        this.namedCaputureGroups = namedCaputureGroups;
+    public void setNamedCaptureGroups(Map<String, Integer> namedCaptureGroups) {
+        this.namedCaptureGroups = namedCaptureGroups;
     }
 
-    public Map<String, Integer> getNamedCaputureGroups() {
-        return namedCaputureGroups;
+    public Map<String, Integer> getNamedCaptureGroups() {
+        return namedCaptureGroups;
     }
 
     public Group getRoot() {
@@ -174,6 +175,14 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
      */
     public int getNumberOfCaptureGroups() {
         return groupCount.getCount();
+    }
+
+    public int getRealGroupCount() {
+        return realGroupCount;
+    }
+
+    public void setRealGroupCount(int realGroupCount) {
+        this.realGroupCount = realGroupCount;
     }
 
     public Counter getQuantifierCount() {
@@ -239,7 +248,7 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
             // The single alternative in the wrappedRoot is composed of N non-optional prefix
             // matchers, 1 group of optional matchers and the original root. By
             // taking size() - 2, we get the number of non-optional prefix matchers.
-            return wrappedRoot.getFirstAlternative().size() - 2;
+            return wrappedRoot.getFirstAlternative().size() - (flags.isSticky() ? 1 : 2);
         }
         return 0;
     }
@@ -454,23 +463,25 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         for (int i = 0; i < prefixLength; i++) {
             wrapRootSeq.add(createPrefixAnyMatcher());
         }
-        Group prevOpt = null;
-        // create optional matchers ((?:|[_any_](?:|[_any_]))...)
-        for (int i = 0; i < prefixLength; i++) {
-            Group opt = createGroup();
-            opt.setPrefix();
-            opt.add(createSequence());
-            opt.add(createSequence());
-            opt.getFirstAlternative().setPrefix();
-            opt.getAlternatives().get(1).setPrefix();
-            opt.getAlternatives().get(1).add(createPrefixAnyMatcher());
-            if (prevOpt != null) {
-                opt.getAlternatives().get(1).add(prevOpt);
+        if (!flags.isSticky()) {
+            Group prevOpt = null;
+            // create optional matchers ((?:|[_any_](?:|[_any_]))...)
+            for (int i = 0; i < prefixLength; i++) {
+                Group opt = createGroup();
+                opt.setPrefix();
+                opt.add(createSequence());
+                opt.add(createSequence());
+                opt.getFirstAlternative().setPrefix();
+                opt.getAlternatives().get(1).setPrefix();
+                opt.getAlternatives().get(1).add(createPrefixAnyMatcher());
+                if (prevOpt != null) {
+                    opt.getAlternatives().get(1).add(prevOpt);
+                }
+                prevOpt = opt;
             }
-            prevOpt = opt;
+            wrapRootSeq.add(prevOpt);
         }
         root.getSubTreeParent().setGroup(wrapRoot);
-        wrapRootSeq.add(prevOpt);
         wrapRootSeq.add(root);
         wrappedRoot = wrapRoot;
     }

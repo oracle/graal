@@ -96,7 +96,7 @@ public final class NFAState extends BasicState<NFAState, NFAStateTransition> imp
 
     private NFAState(short id,
                     StateSet<RegexAST, ? extends RegexASTNode> stateSet,
-                    byte flags,
+                    short flags,
                     CodePointSet matcherBuilder,
                     Set<LookBehindAssertion> finishedLookBehinds) {
         this(id, stateSet, flags, null, matcherBuilder, finishedLookBehinds);
@@ -104,7 +104,7 @@ public final class NFAState extends BasicState<NFAState, NFAStateTransition> imp
 
     private NFAState(short id,
                     StateSet<RegexAST, ? extends RegexASTNode> stateSet,
-                    byte flags,
+                    short flags,
                     TBitSet possibleResults,
                     CodePointSet matcherBuilder,
                     Set<LookBehindAssertion> finishedLookBehinds) {

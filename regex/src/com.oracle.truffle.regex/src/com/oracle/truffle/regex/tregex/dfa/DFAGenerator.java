@@ -155,7 +155,7 @@ public final class DFAGenerator implements JsonConvertible {
         this.bfsTraversalCur = needBFSTraversalLists() ? new ArrayList<>() : null;
         this.bfsTraversalNext = needBFSTraversalLists() ? new ArrayList<>() : null;
         this.cgPartialTransitionIDCounter.inc(); // zero is reserved for static empty instance
-        this.lookupDummyState = new DFAStateNodeBuilder((short) -1, null, false, false, isForward());
+        this.lookupDummyState = new DFAStateNodeBuilder((short) -1, null, false, false, isForward(), isForward() && !isBooleanMatch());
         if (debugMode()) {
             registerCGPartialTransitionDebugInfo(new DFACaptureGroupTransitionBuilder.PartialTransitionDebugInfo(DFACaptureGroupPartialTransition.getEmptyInstance()));
         }
@@ -202,6 +202,10 @@ public final class DFAGenerator implements JsonConvertible {
 
     private Encoding getEncoding() {
         return nfa.getAst().getEncoding();
+    }
+
+    private boolean isBooleanMatch() {
+        return getOptions().isBooleanMatch();
     }
 
     public CompilationBuffer getCompilationBuffer() {
@@ -535,7 +539,7 @@ public final class DFAGenerator implements JsonConvertible {
 
     private DFAStateNodeBuilder createState(TransitionSet<NFA, NFAState, NFAStateTransition> transitionSet, boolean isBackwardPrefixState, boolean isInitialState) {
         assert stateIndexMap == null : "state index map created before dfa generation!";
-        DFAStateNodeBuilder dfaState = new DFAStateNodeBuilder(nextID++, transitionSet, isBackwardPrefixState, isInitialState, isForward());
+        DFAStateNodeBuilder dfaState = new DFAStateNodeBuilder(nextID++, transitionSet, isBackwardPrefixState, isInitialState, isForward(), isForward() && !isBooleanMatch());
         stateMap.put(dfaState, dfaState);
         if (stateMap.size() + (isForward() ? expansionQueue.size() : 0) > TRegexOptions.TRegexMaxDFASize) {
             throw new UnsupportedRegexException((isForward() ? (isGenericCG() ? "CG" : "Forward") : "Backward") + " DFA explosion");
@@ -543,7 +547,9 @@ public final class DFAGenerator implements JsonConvertible {
         if (!hasAmbiguousStates && (transitionSet.size() > 2 || (transitionSet.size() == 2 && transitionSet.getTransition(1) != nfa.getInitialLoopBackTransition()))) {
             hasAmbiguousStates = true;
         }
-        expansionQueue.push(dfaState);
+        if (!(isBooleanMatch() && dfaState.updateFinalStateData(this).isUnAnchoredFinalState())) {
+            expansionQueue.push(dfaState);
+        }
         return dfaState;
     }
 
@@ -551,6 +557,7 @@ public final class DFAGenerator implements JsonConvertible {
         RegexProperties props = nfa.getAst().getProperties();
 
         doSimpleCG = (isForward() || !nfa.getAst().getRoot().hasLoops()) &&
+                        !isBooleanMatch() &&
                         executorProps.isAllowSimpleCG() &&
                         !hasAmbiguousStates &&
                         !nfa.isTraceFinderNFA() &&
@@ -893,7 +900,7 @@ public final class DFAGenerator implements JsonConvertible {
                     }
                     maxDedupSize = Math.max(maxDedupSize, dedup.size());
                 }
-                if (maxDedupSize == 1) {
+                if (nMaps == 0 || maxDedupSize == 1) {
                     for (DFAStateTransitionBuilder p : s.getPredecessors()) {
                         getLazyTransition(p).setLastTransitionIndex(DFACaptureGroupLazyTransitionBuilder.DO_NOT_SET_LAST_TRANSITION);
                     }

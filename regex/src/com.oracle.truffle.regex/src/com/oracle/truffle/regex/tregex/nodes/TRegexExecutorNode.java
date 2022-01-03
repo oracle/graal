@@ -343,6 +343,10 @@ public abstract class TRegexExecutorNode extends Node {
         return root.getNumberOfCaptureGroups();
     }
 
+    public boolean isBooleanMatch() {
+        return root.isBooleanMatch();
+    }
+
     public abstract boolean isForward();
 
     /**
