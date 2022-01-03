@@ -170,7 +170,7 @@ class CPUSamplerCLI extends ProfilerCLI {
                     });
 
     @Option(name = "", help = "Enable/Disable the CPU sampler, or enable with specific Output - as specified by the Output option (default: false). Choosing an output with this options defaults to printing the output to std out, " +
-                    "except for the flamegraph which is printed to a flamegraph.svg file.", usageSyntax = "false|true|<Output>", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+                    "except for the flamegraph which is printed to a flamegraph.svg file.", usageSyntax = "true|false|<Output>", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<EnableOptionData> ENABLED = new OptionKey<>(new EnableOptionData(false, null), ENABLE_OPTION_TYPE);
 
     @Option(name = "Period", help = "Period in milliseconds to sample the stack (default: 10)", usageSyntax = "<ms>", category = OptionCategory.USER, stability = OptionStability.STABLE) //

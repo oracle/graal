@@ -113,7 +113,7 @@ final class InstrumentCache {
         this.provider = provider;
     }
 
-    public boolean isInternal() {
+    boolean isInternal() {
         return internal;
     }
 
@@ -248,7 +248,7 @@ final class InstrumentCache {
         return services.toArray(new String[0]);
     }
 
-    public String getWebsite() {
+    String getWebsite() {
         return website;
     }
 }

@@ -122,7 +122,7 @@ public final class Instrument {
      * Gets the website of this instrument.
      *
      * @return the website of this instrument.
-     * @since 22.0.0
+     * @since 22.1.0
      */
     public String getWebsite() {
         return dispatch.getWebsite(receiver);

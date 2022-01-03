@@ -56,7 +56,7 @@ public final class OptionDescriptor {
     private final OptionStability stability;
     private final boolean deprecated;
     private final String deprecationMessage;
-    private String usageSyntax;
+    private final String usageSyntax;
 
     OptionDescriptor(OptionKey<?> key, String name, String help, OptionCategory category, OptionStability stability, boolean deprecated, String deprecationMessage, String usageSyntax) {
         this.key = key;
