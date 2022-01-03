@@ -428,11 +428,11 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
             open();
         }
 
-        // Substituted by EnterpriseTruffleFeature
+        // Substituted by PolyglotIsolateFeature
         private void open() {
         }
 
-        // Substituted by EnterpriseTruffleFeature
+        // Substituted by PolyglotIsolateFeature
         @Override
         public void close() {
         }

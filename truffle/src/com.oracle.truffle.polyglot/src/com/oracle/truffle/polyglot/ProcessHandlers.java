@@ -250,6 +250,7 @@ final class ProcessHandlers {
 
         @Override
         public void run() {
+            open();
             try {
                 while (true) {
                     if (isInterrupted()) {
@@ -262,7 +263,17 @@ final class ProcessHandlers {
                     out.write(buffer, 0, read);
                 }
             } catch (IOException e) {
+            } finally {
+                close();
             }
+        }
+
+        // Substituted by PolyglotIsolateFeature
+        private void open() {
+        }
+
+        // Substituted by PolyglotIsolateFeature
+        private void close() {
         }
     }
 }
