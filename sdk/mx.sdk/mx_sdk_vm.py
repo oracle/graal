@@ -254,7 +254,8 @@ class GraalVmComponent(object):
                  dependencies=None,
                  supported=None,
                  early_adopter=False,
-                 stability=None):
+                 stability=None,
+                 extra_installable_qualifiers=None):
         """
         :param suite mx.Suite: the suite this component belongs to
         :type name: str
@@ -286,6 +287,7 @@ class GraalVmComponent(object):
         :type installable_id: str
         :type post_install_msg: str
         :type stability: str | None
+        :type extra_installable_qualifiers: list[str] | None
         """
         if dependencies is None:
             mx.logv('Component {} does not specify dependencies'.format(name))
@@ -317,6 +319,7 @@ class GraalVmComponent(object):
         self.installable = installable
         self.post_install_msg = post_install_msg
         self.installable_id = installable_id or self.dir_name
+        self.extra_installable_qualifiers = extra_installable_qualifiers or []
 
         if supported is not None or early_adopter:
             if stability is not None:
@@ -353,6 +356,7 @@ class GraalVmComponent(object):
         assert isinstance(self.jvmci_parent_jars, list)
         assert isinstance(self.launcher_configs, list)
         assert isinstance(self.library_configs, list)
+        assert isinstance(self.extra_installable_qualifiers, list)
 
         assert not any(cp_arg in self.polyglot_lib_build_args for cp_arg in ('-cp', '-classpath')), "the '{}' component passes a classpath argument to libpolylgot: '{}'. Use `polyglot_lib_jar_dependencies` instead".format(self.name, ' '.join(self.polyglot_lib_build_args))
 
