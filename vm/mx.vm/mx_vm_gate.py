@@ -154,8 +154,40 @@ def _test_libgraal_fatal_error_handling():
         mx.log("Cleaning up scratch dir after gate task completion: {}".format(scratch_dir))
         mx.rmtree(scratch_dir)
 
+def _jdk_has_ForceTranslateFailure_jvmci_option(jdk):
+    """
+    Determines if `jdk` supports the `-Djvmci.ForceTranslateFailure` option.
+    """
+    sink = mx.OutputCapture()
+    res = mx.run([jdk.java, '-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI', '-XX:+EagerJVMCI', '-Djvmci.ForceTranslateFailure=test', '-version'], nonZeroIsFatal=False, out=sink, err=sink)
+    if res == 0:
+        return True
+    if 'Could not find option jvmci.ForceTranslateFailure' in sink.data:
+        return False
+    mx.abort(sink.data)
+
 def _test_libgraal_ctw(extra_vm_arguments):
     import mx_compiler
+
+    if _jdk_has_ForceTranslateFailure_jvmci_option(mx_compiler.jdk):
+        # Tests that failures in HotSpotJVMCIRuntime.translate do not cause the VM to exit.
+        # This test is only possible if the jvmci.ForceTranslateFailure option exists.
+        compiler_log_file = abspath('graal-compiler-ctw.log')
+        fail_to_translate_value = 'nmethod/StackOverflowError:hotspot,method/String.hashCode:native,valueOf'
+        expectations = ['ForceTranslateFailure filter "{}"'.format(f) for f in fail_to_translate_value.split(',')]
+        try:
+            mx_compiler.ctw([
+                '-DCompileTheWorld.Config=Inline=false ' + ' '.join(mx_compiler._compiler_error_options(prefix='')),
+                '-XX:+EnableJVMCI',
+                '-Dgraal.InlineDuringParsing=false',
+                '-Dgraal.TrackNodeSourcePosition=true',
+                '-Dgraal.LogFile=' + compiler_log_file,
+                '-DCompileTheWorld.Verbose=true',
+                '-DCompileTheWorld.MethodFilter=StackOverflowError.*,String.*',
+                '-Djvmci.ForceTranslateFailure=nmethod/StackOverflowError:hotspot,method/String.hashCode:native,valueOf',
+            ], extra_vm_arguments)
+        finally:
+            _check_compiler_log(compiler_log_file, expectations)
 
     mx_compiler.ctw([
             '-DCompileTheWorld.Config=Inline=false ' + ' '.join(mx_compiler._compiler_error_options(prefix='')),
