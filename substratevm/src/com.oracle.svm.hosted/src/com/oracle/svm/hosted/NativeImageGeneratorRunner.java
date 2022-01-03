@@ -421,7 +421,7 @@ public class NativeImageGeneratorRunner {
                 analysisExecutor = NativeImagePointsToAnalysis.createExecutor(debug, NativeImageOptions.getMaximumNumberOfAnalysisThreads(parsedHostedOptions));
                 compilationExecutor = NativeImagePointsToAnalysis.createExecutor(debug, maxConcurrentThreads);
                 generator = new NativeImageGenerator(classLoader, optionParser, mainEntryPointData, reporter);
-                generator.run(entryPoints, javaMainSupport, imageName, classlistTimer, imageKind, SubstitutionProcessor.IDENTITY,
+                generator.run(entryPoints, javaMainSupport, imageName, imageKind, SubstitutionProcessor.IDENTITY,
                                 compilationExecutor, analysisExecutor, optionParser.getRuntimeOptionNames(), timerCollection);
                 wasSuccessfulBuild = true;
             } finally {
