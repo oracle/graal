@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,6 +23,8 @@
  * questions.
  */
 package com.oracle.truffle.tools.profiler.impl;
+
+import java.lang.reflect.Method;
 
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptors;
@@ -58,28 +60,16 @@ public class HeapMonitorInstrument extends TruffleInstrument {
     public static final String ID = "heapmonitor";
     static final String VERSION = "0.1.0";
     private HeapMonitor monitor;
-    private static ProfilerToolFactory<HeapMonitor> factory;
+    private static final ProfilerToolFactory<HeapMonitor> factory = getDefaultFactory();
 
-    /**
-     * Sets the factory which instantiates the {@link HeapMonitor}.
-     *
-     * @param factory the factory which instantiates the {@link HeapMonitor}.
-     * @since 19.0
-     */
-    public static void setFactory(ProfilerToolFactory<HeapMonitor> factory) {
-        if (factory == null || !factory.getClass().getName().startsWith("com.oracle.truffle.tools.profiler")) {
-            throw new IllegalArgumentException("Wrong factory: " + factory);
-        }
-        HeapMonitorInstrument.factory = factory;
-    }
-
-    static {
-        // Be sure that the factory is initialized:
+    @SuppressWarnings("unchecked")
+    private static ProfilerToolFactory<HeapMonitor> getDefaultFactory() {
         try {
-            Class.forName(HeapMonitor.class.getName(), true, HeapMonitor.class.getClassLoader());
-        } catch (ClassNotFoundException ex) {
-            // Can not happen
-            throw new AssertionError();
+            Method createFactory = HeapMonitor.class.getDeclaredMethod("createFactory");
+            createFactory.setAccessible(true);
+            return (ProfilerToolFactory<HeapMonitor>) createFactory.invoke(null);
+        } catch (Exception ex) {
+            throw new AssertionError(ex);
         }
     }
 

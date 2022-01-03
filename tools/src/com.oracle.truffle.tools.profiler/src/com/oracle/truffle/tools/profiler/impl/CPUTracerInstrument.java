@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 package com.oracle.truffle.tools.profiler.impl;
 
 import java.io.PrintStream;
+import java.lang.reflect.Method;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Engine;
@@ -60,28 +61,16 @@ public class CPUTracerInstrument extends TruffleInstrument {
     static final String VERSION = "0.3.0";
     private boolean enabled;
     private CPUTracer tracer;
-    private static ProfilerToolFactory<CPUTracer> factory;
+    private static final ProfilerToolFactory<CPUTracer> factory = getDefaultFactory();
 
-    /**
-     * Sets the factory which instantiates the {@link CPUTracer}.
-     *
-     * @param factory the factory which instantiates the {@link CPUTracer}.
-     * @since 0.30
-     */
-    public static void setFactory(ProfilerToolFactory<CPUTracer> factory) {
-        if (factory == null || !factory.getClass().getName().startsWith("com.oracle.truffle.tools.profiler")) {
-            throw new IllegalArgumentException("Wrong factory: " + factory);
-        }
-        CPUTracerInstrument.factory = factory;
-    }
-
-    static {
-        // Be sure that the factory is initialized:
+    @SuppressWarnings("unchecked")
+    private static ProfilerToolFactory<CPUTracer> getDefaultFactory() {
         try {
-            Class.forName(CPUTracer.class.getName(), true, CPUTracer.class.getClassLoader());
-        } catch (ClassNotFoundException ex) {
-            // Can not happen
-            throw new AssertionError();
+            Method createFactory = CPUTracer.class.getDeclaredMethod("createFactory");
+            createFactory.setAccessible(true);
+            return (ProfilerToolFactory<CPUTracer>) createFactory.invoke(null);
+        } catch (Exception ex) {
+            throw new AssertionError(ex);
         }
     }
 
