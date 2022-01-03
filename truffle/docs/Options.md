@@ -27,22 +27,20 @@ See [graalvm_ce_jdk8_options](https://chriswhocodes.com/graalvm_ce_jdk8_options.
 
 ## Default Language Launcher Options
 
-```shell
-  --polyglot                                   Run with all other guest languages accessible.
-  --native                                     Run using the native launcher with limited Java access (default).
-  --jvm                                        Run on the Java Virtual Machine with Java access.
-  --vm.[option]                                Pass options to the host VM. To see available options, use '--help:vm'.
-  --log.file=<String>                          Redirect guest languages logging into a given file.
-  --log.[logger].level=<String>                Set language log level to OFF, SEVERE, WARNING, INFO, CONFIG, FINE, FINER, FINEST or ALL.
-  --help                                       Print this help message.
-  --help:vm                                    Print options for the host VM.
-  --version:graalvm                            Print GraalVM version information and exit.
-  --show-version:graalvm                       Print GraalVM version information and continue execution.
-  --help:languages                             Print options for all installed languages.
-  --help:tools                                 Print options for all installed tools.
-  --help:expert                                Print additional options for experts.
-  --help:internal                              Print internal options for debugging language implementations and tools.
-```
+- `--polyglot` : Run with all other guest languages accessible.
+- `--native` : Run using the native launcher with limited Java access (default).
+- `--jvm` : Run on the Java Virtual Machine with Java access.
+- `--vm.[option]` : Pass options to the host VM. To see available options, use '--help:vm'.
+- `--log.file=<String>` : Redirect guest languages logging into a given file.
+- `--log.[logger].level=<String>` : Set language log level to OFF, SEVERE, WARNING, INFO, CONFIG, FINE, FINER, FINEST or ALL.
+- `--help` : Print this help message.
+- `--help:vm` : Print options for the host VM.
+- `--version:graalvm` : Print GraalVM version information and exit.
+- `--show-version:graalvm` : Print GraalVM version information and continue execution.
+- `--help:languages` : Print options for all installed languages.
+- `--help:tools` : Print options for all installed tools.
+- `--help:expert` : Print additional options for experts.
+- `--help:internal` : Print internal options for debugging language implementations and tools.
 
 ## Expert Engine Options
 
