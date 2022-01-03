@@ -105,7 +105,7 @@ public class DerivedConvertedInductionVariable extends DerivedInductionVariable 
     public void deleteUnusedNodes() {
     }
 
-    private ValueNode op(ValueNode v, boolean allowZeroExtend) {
+    public ValueNode op(ValueNode v, boolean allowZeroExtend) {
         return op(v, allowZeroExtend, true);
     }
 
