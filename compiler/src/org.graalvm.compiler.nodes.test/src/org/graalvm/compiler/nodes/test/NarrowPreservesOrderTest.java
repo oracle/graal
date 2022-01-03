@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,24 +26,21 @@ package org.graalvm.compiler.nodes.test;
 
 import static org.graalvm.compiler.core.common.calc.CanonicalCondition.BT;
 import static org.graalvm.compiler.core.common.calc.CanonicalCondition.LT;
-import static org.graalvm.compiler.core.test.GraalCompilerTest.getInitialOptions;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
-import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.test.GraphTest;
 import org.graalvm.compiler.nodes.ParameterNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
-import org.graalvm.compiler.options.OptionValues;
-import org.junit.Before;
 import org.junit.Test;
 
+import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
@@ -52,16 +49,27 @@ import jdk.vm.ci.meta.JavaKind;
  */
 public class NarrowPreservesOrderTest extends GraphTest {
 
-    private StructuredGraph graph;
-
-    @Before
-    public void before() {
-        OptionValues options = getInitialOptions();
-        DebugContext debug = getDebug(options);
-        graph = new StructuredGraph.Builder(options, debug, AllowAssumptions.YES).build();
+    private static IntegerStamp signExtend(Stamp stamp, int bits) {
+        assertTrue(stamp instanceof IntegerStamp);
+        IntegerStamp integerStamp = (IntegerStamp) stamp;
+        return IntegerStamp.create(bits, integerStamp.lowerBound(), integerStamp.upperBound());
     }
 
-    private void testPreserveOrder(Stamp inputStamp, int resultBits, CanonicalCondition cond, boolean expected) {
+    private static IntegerStamp zeroExtend(Stamp stamp, int bits) {
+        assertTrue(stamp instanceof IntegerStamp);
+        IntegerStamp integerStamp = (IntegerStamp) stamp;
+        return IntegerStamp.create(bits, integerStamp.unsignedLowerBound(), integerStamp.unsignedUpperBound());
+    }
+
+    private static IntegerStamp forConstantInt(long cst) {
+        return IntegerStamp.create(32, cst, cst);
+    }
+
+    private static IntegerStamp forConstantLong(long cst) {
+        return IntegerStamp.create(64, cst, cst);
+    }
+
+    private static void testPreserveOrder(Stamp inputStamp, int resultBits, CanonicalCondition cond, boolean expected) {
         ParameterNode input = new ParameterNode(0, StampPair.createSingle(inputStamp));
         NarrowNode narrow = new NarrowNode(input, resultBits);
         assertEquals(expected, narrow.preservesOrder(cond));
@@ -69,63 +77,63 @@ public class NarrowPreservesOrderTest extends GraphTest {
 
     @Test
     public void testBoolean() {
-        testPreserveOrder(IntegerStamp.create(32, 0, 0), 1, LT, true);
-        testPreserveOrder(IntegerStamp.create(32, 0, 0), 1, BT, true);
-        testPreserveOrder(IntegerStamp.create(32, 1, 1), 1, LT, false);
-        testPreserveOrder(IntegerStamp.create(32, 1, 1), 1, BT, true);
-        testPreserveOrder(IntegerStamp.create(32, 0, 1), 1, LT, false);
-        testPreserveOrder(IntegerStamp.create(32, 0, 1), 1, BT, true);
+        testPreserveOrder(forConstantInt(0), 1, LT, true);
+        testPreserveOrder(forConstantInt(0), 1, BT, true);
+        testPreserveOrder(forConstantInt(1), 1, LT, false);
+        testPreserveOrder(forConstantInt(1), 1, BT, true);
+        testPreserveOrder(signExtend(StampFactory.forKind(JavaKind.Boolean), 32), 1, LT, false);
+        testPreserveOrder(signExtend(StampFactory.forKind(JavaKind.Boolean), 32), 1, BT, true);
 
-        testPreserveOrder(IntegerStamp.create(32, 0xFFFFFF80, 0x7F), 1, LT, false);
-        testPreserveOrder(IntegerStamp.create(32, 0xFFFFFF80, 0x7F), 1, BT, false);
+        testPreserveOrder(StampFactory.forKind(JavaKind.Byte), 1, LT, false);
+        testPreserveOrder(StampFactory.forKind(JavaKind.Byte), 1, BT, false);
     }
 
     @Test
     public void testByte() {
-        testPreserveOrder(IntegerStamp.create(32, 0, 0), 8, LT, true);
-        testPreserveOrder(IntegerStamp.create(32, 0, 0), 8, BT, true);
-        testPreserveOrder(IntegerStamp.create(32, 0x7F, 0x7F), 8, LT, true);
-        testPreserveOrder(IntegerStamp.create(32, 0x7F, 0x7F), 8, BT, true);
-        testPreserveOrder(IntegerStamp.create(32, 0xFF, 0xFF), 8, LT, false);
-        testPreserveOrder(IntegerStamp.create(32, 0xFF, 0xFF), 8, BT, true);
-        testPreserveOrder(IntegerStamp.create(32, 0xFFFFFF80, 0x7F), 8, LT, true);
-        testPreserveOrder(IntegerStamp.create(32, 0xFFFFFF80, 0x7F), 8, BT, true);
-        testPreserveOrder(IntegerStamp.create(32, 0, 0xFF), 8, LT, false);
-        testPreserveOrder(IntegerStamp.create(32, 0, 0xFF), 8, BT, true);
+        testPreserveOrder(forConstantInt(0), 8, LT, true);
+        testPreserveOrder(forConstantInt(0), 8, BT, true);
+        testPreserveOrder(forConstantInt(CodeUtil.maxValue(8)), 8, LT, true);
+        testPreserveOrder(forConstantInt(CodeUtil.maxValue(8)), 8, BT, true);
+        testPreserveOrder(forConstantInt(NumUtil.maxValueUnsigned(8)), 8, LT, false);
+        testPreserveOrder(forConstantInt(NumUtil.maxValueUnsigned(8)), 8, BT, true);
+        testPreserveOrder(signExtend(StampFactory.forKind(JavaKind.Byte), 32), 8, LT, true);
+        testPreserveOrder(signExtend(StampFactory.forKind(JavaKind.Byte), 32), 8, BT, true);
+        testPreserveOrder(zeroExtend(StampFactory.forUnsignedInteger(8), 32), 8, LT, false);
+        testPreserveOrder(zeroExtend(StampFactory.forUnsignedInteger(8), 32), 8, BT, true);
 
-        testPreserveOrder(IntegerStamp.create(32, 0xFFFF8000, 0x7FFF), 8, LT, false);
-        testPreserveOrder(IntegerStamp.create(32, 0xFFFF8000, 0x7FFF), 8, BT, false);
+        testPreserveOrder(StampFactory.forKind(JavaKind.Short), 8, LT, false);
+        testPreserveOrder(StampFactory.forKind(JavaKind.Short), 8, BT, false);
     }
 
     @Test
     public void testShort() {
-        testPreserveOrder(IntegerStamp.create(32, 0, 0), 16, LT, true);
-        testPreserveOrder(IntegerStamp.create(32, 0, 0), 16, BT, true);
-        testPreserveOrder(IntegerStamp.create(32, 0x7FFF, 0x7FFF), 16, LT, true);
-        testPreserveOrder(IntegerStamp.create(32, 0x7FFF, 0x7FFF), 16, BT, true);
-        testPreserveOrder(IntegerStamp.create(32, 0xFFFF, 0xFFFF), 16, LT, false);
-        testPreserveOrder(IntegerStamp.create(32, 0xFFFF, 0xFFFF), 16, BT, true);
-        testPreserveOrder(IntegerStamp.create(32, 0xFFFF8000, 0x7FFF), 16, LT, true);
-        testPreserveOrder(IntegerStamp.create(32, 0xFFFF8000, 0x7FFF), 16, BT, true);
-        testPreserveOrder(IntegerStamp.create(32, 0, 0xFFFF), 16, LT, false);
-        testPreserveOrder(IntegerStamp.create(32, 0, 0xFFFF), 16, BT, true);
+        testPreserveOrder(forConstantInt(0), 16, LT, true);
+        testPreserveOrder(forConstantInt(0), 16, BT, true);
+        testPreserveOrder(forConstantInt(CodeUtil.maxValue(16)), 16, LT, true);
+        testPreserveOrder(forConstantInt(CodeUtil.maxValue(16)), 16, BT, true);
+        testPreserveOrder(forConstantInt(NumUtil.maxValueUnsigned(16)), 16, LT, false);
+        testPreserveOrder(forConstantInt(NumUtil.maxValueUnsigned(16)), 16, BT, true);
+        testPreserveOrder(signExtend(StampFactory.forKind(JavaKind.Short), 32), 16, LT, true);
+        testPreserveOrder(signExtend(StampFactory.forKind(JavaKind.Short), 32), 16, BT, true);
+        testPreserveOrder(zeroExtend(StampFactory.forUnsignedInteger(16), 32), 16, LT, false);
+        testPreserveOrder(zeroExtend(StampFactory.forUnsignedInteger(16), 32), 16, BT, true);
 
-        testPreserveOrder(StampFactory.intValue(), 16, LT, false);
-        testPreserveOrder(StampFactory.intValue(), 16, BT, false);
+        testPreserveOrder(StampFactory.forKind(JavaKind.Int), 16, LT, false);
+        testPreserveOrder(StampFactory.forKind(JavaKind.Int), 16, BT, false);
     }
 
     @Test
     public void testInt() {
-        testPreserveOrder(IntegerStamp.create(64, 0, 0), 32, LT, true);
-        testPreserveOrder(IntegerStamp.create(64, 0, 0), 32, BT, true);
-        testPreserveOrder(IntegerStamp.create(64, 0x7FFFFFFF, 0x7FFFFFFF), 32, LT, true);
-        testPreserveOrder(IntegerStamp.create(64, 0x7FFFFFFF, 0x7FFFFFFF), 32, BT, true);
-        testPreserveOrder(IntegerStamp.create(64, 0x00000000FFFFFFFFL, 0x00000000FFFFFFFFL), 32, LT, false);
-        testPreserveOrder(IntegerStamp.create(64, 0x00000000FFFFFFFFL, 0x00000000FFFFFFFFL), 32, BT, true);
-        testPreserveOrder(IntegerStamp.create(64, 0x80000000, 0x7FFFFFFF), 32, LT, true);
-        testPreserveOrder(IntegerStamp.create(64, 0x80000000, 0x7FFFFFFF), 32, BT, true);
-        testPreserveOrder(IntegerStamp.create(64, 0, 0x00000000FFFFFFFFL), 32, LT, false);
-        testPreserveOrder(IntegerStamp.create(64, 0, 0x00000000FFFFFFFFL), 32, BT, true);
+        testPreserveOrder(forConstantLong(0), 32, LT, true);
+        testPreserveOrder(forConstantLong(0), 32, BT, true);
+        testPreserveOrder(forConstantLong(CodeUtil.maxValue(32)), 32, LT, true);
+        testPreserveOrder(forConstantLong(CodeUtil.maxValue(32)), 32, BT, true);
+        testPreserveOrder(forConstantLong(NumUtil.maxValueUnsigned(32)), 32, LT, false);
+        testPreserveOrder(forConstantLong(NumUtil.maxValueUnsigned(32)), 32, BT, true);
+        testPreserveOrder(signExtend(StampFactory.forKind(JavaKind.Int), 64), 32, LT, true);
+        testPreserveOrder(signExtend(StampFactory.forKind(JavaKind.Int), 64), 32, BT, true);
+        testPreserveOrder(zeroExtend(StampFactory.forUnsignedInteger(32), 64), 32, LT, false);
+        testPreserveOrder(zeroExtend(StampFactory.forUnsignedInteger(32), 64), 32, BT, true);
 
         testPreserveOrder(StampFactory.forKind(JavaKind.Long), 32, LT, false);
         testPreserveOrder(StampFactory.forKind(JavaKind.Long), 32, BT, false);
