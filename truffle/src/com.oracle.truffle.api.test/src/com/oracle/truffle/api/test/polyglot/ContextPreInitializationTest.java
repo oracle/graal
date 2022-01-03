@@ -1730,7 +1730,7 @@ public class ContextPreInitializationTest {
             final ZoneId testId = foundId;
 
             // always patchable or this test
-            BaseLanguage.registerAction(ContextPreInitializationTestSharedLanguage.class, ActionKind.ON_PATCH_CONTEXT, (env) -> {
+            BaseLanguage.registerFunction(ContextPreInitializationTestSharedLanguage.class, ActionKind.ON_PATCH_CONTEXT, (env) -> {
                 return true;
             });
 
@@ -1859,7 +1859,7 @@ public class ContextPreInitializationTest {
             final ZoneId testId = foundId;
 
             // always patchable or this test
-            BaseLanguage.registerAction(ContextPreInitializationTestSharedLanguage.class, ActionKind.ON_PATCH_CONTEXT, (env) -> {
+            BaseLanguage.registerFunction(ContextPreInitializationTestSharedLanguage.class, ActionKind.ON_PATCH_CONTEXT, (env) -> {
                 return true;
             });
 
@@ -1980,7 +1980,7 @@ public class ContextPreInitializationTest {
 
             // try to create contexts that are incompatilbe
 
-            BaseLanguage.registerAction(ContextPreInitializationTestSharedLanguage.class, ActionKind.ON_PATCH_CONTEXT, (env) -> {
+            BaseLanguage.registerFunction(ContextPreInitializationTestSharedLanguage.class, ActionKind.ON_PATCH_CONTEXT, (env) -> {
                 return false;
             });
 
@@ -2003,7 +2003,7 @@ public class ContextPreInitializationTest {
             }
 
             // both contexts were tried but failed to patch, so should not be tried again
-            BaseLanguage.registerAction(ContextPreInitializationTestSharedLanguage.class, ActionKind.ON_PATCH_CONTEXT, (env) -> {
+            BaseLanguage.registerFunction(ContextPreInitializationTestSharedLanguage.class, ActionKind.ON_PATCH_CONTEXT, (env) -> {
                 return true;
             });
 
@@ -2575,13 +2575,13 @@ public class ContextPreInitializationTest {
         static Map<Pair<Class<? extends BaseLanguage>, ActionKind>, Function<TruffleLanguage.Env, Object>> actions = new HashMap<>();
 
         static void registerAction(Class<? extends BaseLanguage> languageClass, ActionKind kind, Consumer<TruffleLanguage.Env> action) {
-            registerAction(languageClass, kind, (e) -> {
+            registerFunction(languageClass, kind, (e) -> {
                 action.accept(e);
                 return null;
             });
         }
 
-        static void registerAction(Class<? extends BaseLanguage> languageClass, ActionKind kind, Function<TruffleLanguage.Env, Object> action) {
+        static void registerFunction(Class<? extends BaseLanguage> languageClass, ActionKind kind, Function<TruffleLanguage.Env, Object> action) {
             Pair<Class<? extends BaseLanguage>, ActionKind> key = Pair.create(languageClass, kind);
             actions.put(key, action);
         }
