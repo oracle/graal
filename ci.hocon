@@ -4,8 +4,6 @@ labsjdk17: ${labsjdk-ce-17}
 
 builds = []
 
-binaries-repository = "lafo"
-
 #Compiler
 compiler-suite-root = "./compiler"
 logPatterns = [
