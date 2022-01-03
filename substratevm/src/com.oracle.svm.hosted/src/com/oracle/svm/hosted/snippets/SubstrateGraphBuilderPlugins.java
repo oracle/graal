@@ -1005,7 +1005,7 @@ public class SubstrateGraphBuilderPlugins {
      * mode, we eliminate native methods that depend on 'awt_xawt' library in the call-tree.
      */
     private static void registerAWTPlugins(InvocationPlugins plugins) {
-        if (OS.getCurrent() == OS.LINUX) {
+        if (Platform.includedIn(Platform.LINUX.class)) {
             Registration r = new Registration(plugins, GraphicsEnvironment.class);
             r.register0("isHeadless", new InvocationPlugin() {
                 @SuppressWarnings("unchecked")

@@ -74,7 +74,6 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.graal.pointsto.infrastructure.WrappedElement;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
@@ -285,8 +284,12 @@ public final class NativeLibraries {
         return target;
     }
 
-    private static final String libPrefix = OS.getCurrent() == OS.WINDOWS ? "" : "lib";
-    private static final String libSuffix = OS.getCurrent() == OS.WINDOWS ? ".lib" : ".a";
+    private static String getStaticLibraryName(String libraryName) {
+        boolean targetWindows = Platform.includedIn(Platform.WINDOWS.class);
+        String prefix = targetWindows ? "" : "lib";
+        String suffix = targetWindows ? ".lib" : ".a";
+        return prefix + libraryName + suffix;
+    }
 
     private static Path getPlatformDependentJDKStaticLibraryPath() throws IOException {
         Path baseSearchPath = Paths.get(System.getProperty("java.home")).resolve("lib").toRealPath();
@@ -317,7 +320,7 @@ public final class NativeLibraries {
             Path jdkLibDir = getPlatformDependentJDKStaticLibraryPath();
 
             List<String> defaultBuiltInLibraries = Arrays.asList(PlatformNativeLibrarySupport.defaultBuiltInLibraries);
-            Predicate<String> hasStaticLibrary = s -> Files.isRegularFile(jdkLibDir.resolve(libPrefix + s + libSuffix));
+            Predicate<String> hasStaticLibrary = s -> Files.isRegularFile(jdkLibDir.resolve(getStaticLibraryName(s)));
             if (defaultBuiltInLibraries.stream().allMatch(hasStaticLibrary)) {
                 staticLibsDir = jdkLibDir;
             } else {
@@ -457,11 +460,12 @@ public final class NativeLibraries {
     }
 
     private static Path getStaticLibraryPath(Map<Path, Path> allStaticLibs, String staticLibraryName) {
-        return allStaticLibs.get(Paths.get(libPrefix + staticLibraryName + libSuffix));
+        return allStaticLibs.get(Paths.get(getStaticLibraryName(staticLibraryName)));
     }
 
     private Map<Path, Path> getAllStaticLibs() {
         Map<Path, Path> allStaticLibs = new LinkedHashMap<>();
+        String libSuffix = Platform.includedIn(Platform.WINDOWS.class) ? ".lib" : ".a";
         for (String libraryPath : getLibraryPaths()) {
             try (Stream<Path> paths = Files.list(Paths.get(libraryPath))) {
                 paths.filter(Files::isRegularFile)

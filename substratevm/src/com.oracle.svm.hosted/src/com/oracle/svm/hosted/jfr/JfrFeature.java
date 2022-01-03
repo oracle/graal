@@ -31,12 +31,12 @@ import java.util.List;
 import java.util.Set;
 
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
-import com.oracle.svm.core.OS;
 import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
@@ -78,7 +78,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
  * Provides basic JFR support. As this support is both platform-dependent and JDK-specific, the
- * current support is limited to JDK 11 on Linux/MacOS.
+ * current support is limited to Linux & MacOS.
  *
  * There are two different kinds of JFR events:
  * <ul>
@@ -141,7 +141,7 @@ public class JfrFeature implements Feature {
     }
 
     private static boolean osSupported() {
-        return OS.getCurrent() == OS.LINUX || OS.getCurrent() == OS.DARWIN;
+        return Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class);
     }
 
     /**
