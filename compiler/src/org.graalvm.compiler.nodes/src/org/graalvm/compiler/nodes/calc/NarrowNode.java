@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,7 @@ import org.graalvm.compiler.core.common.type.ArithmeticOpTable.IntegerConvertOp.
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -82,13 +83,14 @@ public final class NarrowNode extends IntegerConvertNode<Narrow> {
 
     @Override
     protected IntegerConvertOp<?> getReverseOp(ArithmeticOpTable table) {
-        assert isLossless();
+        assert isSignedLossless() || isUnsignedLossless();
         return isSignedLossless() ? table.getSignExtend() : table.getZeroExtend();
     }
 
     @Override
     public boolean isLossless() {
-        return isSignedLossless() || isUnsignedLossless();
+        // This is conservative as we don't know which compare operator is being used.
+        return isSignedLossless() && isUnsignedLossless();
     }
 
     private boolean isSignedLossless() {
@@ -127,8 +129,12 @@ public final class NarrowNode extends IntegerConvertNode<Narrow> {
         switch (cond) {
             case LT:
                 return isSignedLossless();
+            case EQ:
+            case BT:
+                // We may use signed stamps to represent unsigned integers.
+                return isSignedLossless() || isUnsignedLossless();
             default:
-                return isLossless();
+                throw GraalError.shouldNotReachHere("Unsupported canonical condition.");
         }
     }
 
