@@ -39,8 +39,6 @@ No active inner context is allowed after `TruffleLanguage.finalizeContext(Object
 * Removed deprecated method `LoopNode.executeLoop`.
 * Removed many deprecated methods in `TruffleLanguage`, `TruffleLanguage.Env` and `TruffleInstrument.Env`. All of which were already deprecated for at least four releases.
 * Removed deprecated `GraphPrintVisitor`.
-* Added [TruffleStrings](https://github.com/oracle/graal/blob/master/truffle/docs/TruffleStrings.md), a flexible string implementation for all Truffle languages.
-* Added a `@GeneratePackagePrivate` annotation to change the visibility of generated nodes to package-private.
 
 * Added new APIs to `com.oracle.truffle.api.frame.Frame` and `com.oracle.truffle.api.frame.FrameDescriptor`:
     * Added a new "namespace" of index-based slots in `Frame` that is defined during construction of the frame descriptor and cannot be changed afterwards, and that is accessed using `int` indexes instead of `FrameSlot`s.
@@ -85,7 +83,6 @@ No active inner context is allowed after `TruffleLanguage.finalizeContext(Object
 * `TruffleLanguage.Env#getPublicTruffleFile(URI)` and `TruffleLanguage.Env#getInternalTruffleFile(URI)` have been fixed to behave as specified and throw `UnsupportedOperationException` instead of `FileSystemNotFoundException`.
 * Added `LibraryFactory.getMessages()` to allow to enumerate all messages of a library.
 * Added `Engine.newBuilder(String...)` that also allows to restrict the permitted languages of an engine. The permitted languages of an engine are inherited by all created contexts.
-* Added a `@GeneratePackagePrivate` annotation to change the visibility of generated nodes to package-private.
 
 ## Version 21.2.0
 * Added `TypeDescriptor.subtract(TypeDescriptor)` creating a new `TypeDescriptor` by removing the given type from a union or intersection type.
