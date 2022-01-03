@@ -283,10 +283,22 @@ public abstract class LanguageLauncherBase extends Launcher {
             for (Language language : languages) {
                 List<PrintableOption> options = languagesOptions.get(language);
                 if (options != null) {
-                    printOptions(options, "  " + language.getName() + ":", 4);
+                    printOptions(options, title(language), 4);
                 }
             }
         }
+    }
+
+    private static String title(Language language) {
+        final StringBuilder title = new StringBuilder("  " + language.getName());
+        final String website = language.getWebsite();
+        if (!"".equals(website)) {
+            title.append(" (");
+            title.append(website);
+            title.append(")");
+        }
+        title.append(":");
+        return title.toString();
     }
 
     private void printLanguages(Engine engine, boolean printWhenEmpty) {

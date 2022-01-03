@@ -150,4 +150,13 @@ public final class Language {
         return dispatch.getMimeTypes(receiver);
     }
 
+    /**
+     * Get the URL for the language website.
+     *
+     * @since 21.1.0
+     */
+    public String getWebsite() {
+        return dispatch.getWebsite(receiver);
+    }
+
 }

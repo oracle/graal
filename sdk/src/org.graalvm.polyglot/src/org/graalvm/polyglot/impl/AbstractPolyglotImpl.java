@@ -673,6 +673,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract Set<String> getMimeTypes(Object receiver);
 
         public abstract String getDefaultMimeType(Object receiver);
+
+        public abstract String getWebsite(Object receiver);
     }
 
     public abstract static class AbstractHostAccess extends AbstractDispatchClass {
