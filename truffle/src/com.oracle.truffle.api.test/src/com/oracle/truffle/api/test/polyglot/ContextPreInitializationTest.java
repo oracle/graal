@@ -1689,6 +1689,7 @@ public class ContextPreInitializationTest {
      * create a single preinitialized context.
      */
     @Test
+    @SuppressWarnings("try")
     public void testCodeSharingSingleLayer() throws Exception {
         try (Engine engine = Engine.create()) {
             try (Context cacheContext = Context.newBuilder().engine(engine).build()) {
@@ -1949,6 +1950,7 @@ public class ContextPreInitializationTest {
      * This test is intended to test recovery from patching failure.
      */
     @Test
+    @SuppressWarnings("try")
     public void testCodeSharingTwoLayersIncompatible() throws Exception {
         try (Engine engine = Engine.create()) {
             try (Context cacheContext = Context.newBuilder().engine(engine).option(SHARED + ".Option1", "true").build()) {
@@ -2023,6 +2025,7 @@ public class ContextPreInitializationTest {
      * We test context preinitialization with used instruments.
      */
     @Test
+    @SuppressWarnings("try")
     public void testCodeSharingWithInstruments() throws Exception {
         try (Engine engine = Engine.newBuilder().option(ContextPreInitializationFirstInstrument.ID, "true").build()) {
 
