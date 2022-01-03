@@ -52,15 +52,40 @@ public final class RuntimeCPUFeatureCheck {
     /**
      * Returns a set of features eligible for a CPU feature check at run time for the given
      * architecture.
+     * <p>
+     * Not all supported features listed here are enabled by default, see
+     * {@link #getDefaultDisabledFeatures}.
+     * <p>
+     * Keep this set in sync with the default values listed in the documentation for the
+     * RuntimeCheckedCPUFeatures option.
+     *
+     * @see #getDefaultDisabledFeatures(Architecture)
      */
     public static Set<? extends Enum<?>> getSupportedFeatures(Architecture arch) {
         if (arch instanceof AMD64) {
-            /*
-             * For the time being, all supported features listed here are enabled by default (see
-             * NativeImageGenerator#createTarget). Keep this set in sync with the default values
-             * listed in the documentation for the RuntimeCheckedCPUFeatures option.
-             */
-            return EnumSet.of(AMD64.CPUFeature.AVX, AMD64.CPUFeature.AVX2);
+            return EnumSet.of(AMD64.CPUFeature.AVX, AMD64.CPUFeature.AVX2, AMD64.CPUFeature.AVX512F);
+        } else {
+            return Collections.emptySet();
+        }
+    }
+
+    /**
+     * Returns a set of features for which no runtime check will be emitted by default. The idea is
+     * that we do not want to generate code for CPU features which are rarely available or which
+     * rarely improve performance. (This is for example the case for many implementations of AVX512
+     * available in AMD64 CPUs to date). If the {@code RuntimeCheckedCPUFeatures} option is set,
+     * this has no effect.
+     * <p>
+     * The return value must be a subset of {@link #getSupportedFeatures}.
+     * <p>
+     * Keep this set in sync with the default values listed in the documentation for the
+     * RuntimeCheckedCPUFeatures option.
+     *
+     * @see #getSupportedFeatures(Architecture)
+     */
+    public static Set<? extends Enum<?>> getDefaultDisabledFeatures(Architecture arch) {
+        if (arch instanceof AMD64) {
+            return EnumSet.of(AMD64.CPUFeature.AVX512F);
         } else {
             return Collections.emptySet();
         }
