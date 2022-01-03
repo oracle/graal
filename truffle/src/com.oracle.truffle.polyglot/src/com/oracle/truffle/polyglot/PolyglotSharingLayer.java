@@ -268,7 +268,8 @@ final class PolyglotSharingLayer {
         PreinitConfig preinitConfig = s.preinitConfig;
         assert preinitConfig != null : "preinit config must be initialized";
 
-        Set<PolyglotLanguage> toInitialize = new HashSet<>();
+        // deterministic iteration order
+        Set<PolyglotLanguage> toInitialize = new LinkedHashSet<>();
         for (PolyglotLanguageInstance instance : s.instances) {
             if (instance != null && !instance.language.isHost()) {
                 toInitialize.add(instance.language);

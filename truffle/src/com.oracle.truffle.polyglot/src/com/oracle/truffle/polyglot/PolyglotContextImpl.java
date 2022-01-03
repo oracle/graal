@@ -2894,7 +2894,6 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
 
             if (!languagesToPreinitialize.isEmpty()) {
                 Object[] prev = context.engine.enter(context);
-
                 try {
                     for (PolyglotLanguage language : languagesToPreinitialize) {
                         assert language.engine == engine : "invalid language";
@@ -2908,6 +2907,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                             }
                         }
                     }
+
                 } finally {
                     synchronized (context) {
                         context.leaveAndDisposeThread(prev, Thread.currentThread());
@@ -2919,7 +2919,9 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             context.inContextPreInitialization = false;
 
             for (PolyglotLanguage language : engine.languages) {
-                language.clearOptionValues();
+                if (language != null) {
+                    language.clearOptionValues();
+                }
             }
             synchronized (engine.lock) {
                 engine.removeContext(context);
@@ -2949,11 +2951,32 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             return;
         }
 
+        Throwable ex = null;
+
         for (PolyglotLanguageContext languageContext : contexts) {
             if (languageContext.isInitialized()) {
-                LANGUAGE.disposeThread(languageContext.env, thread);
+                try {
+                    LANGUAGE.disposeThread(languageContext.env, thread);
+                } catch (Throwable t) {
+                    if (ex == null) {
+                        ex = t;
+                    } else {
+                        ex.addSuppressed(t);
+                    }
+                }
             }
         }
+
+        try {
+            EngineAccessor.INSTRUMENT.notifyThreadFinished(engine, creatorTruffleContext, thread);
+        } catch (Throwable t) {
+            if (ex == null) {
+                ex = t;
+            } else {
+                ex.addSuppressed(t);
+            }
+        }
+
         engine.leave(prev, this);
         assert !info.isActive();
 
@@ -2962,6 +2985,10 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         }
         info.setContextThreadLocals(DISPOSED_CONTEXT_THREAD_LOCALS);
         seenThreads.remove(thread);
+
+        if (ex != null) {
+            throw sneakyThrow(ex);
+        }
     }
 
     Object getOrCreateContextLoggers() {

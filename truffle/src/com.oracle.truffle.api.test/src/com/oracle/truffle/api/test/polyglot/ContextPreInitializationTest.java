@@ -3002,8 +3002,9 @@ public class ContextPreInitializationTest {
                 @Override
                 public void onThreadDisposed(TruffleContext context, Thread thread) {
                     // tests that onThreadInitialized was called
-                    assertTrue(initializedThreads.contains(Pair.create(context, thread)));
+                    assertTrue(initializedThreads.remove(Pair.create(context, thread)));
                 }
+
             }, true);
         }
 
