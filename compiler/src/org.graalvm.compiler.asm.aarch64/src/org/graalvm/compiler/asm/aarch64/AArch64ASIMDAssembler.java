@@ -2199,6 +2199,7 @@ public abstract class AArch64ASIMDAssembler {
      * @param imm long value to move. If size is 128, then this value is copied twice
      */
     public void moviVI(ASIMDSize size, Register dst, long imm) {
+        assert dst.getRegisterCategory().equals(SIMD);
         modifiedImmEncoding(ImmediateOp.MOVI, size, dst, imm);
     }
 

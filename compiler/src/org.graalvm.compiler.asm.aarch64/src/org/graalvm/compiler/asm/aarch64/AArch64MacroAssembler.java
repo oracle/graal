@@ -1573,8 +1573,8 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     public void fmov(int size, Register dst, double imm) {
         assert size == 32 || size == 64;
         if (imm == 0.0) {
-            assert Double.doubleToRawLongBits(imm) == 0L : "-0.0 is no valid immediate.";
-            fmovCpu2Fpu(size, dst, zr);
+            assert Double.doubleToRawLongBits(imm) == 0L : "-0.0 is not a valid immediate.";
+            neon.moviVI(ASIMDSize.HalfReg, dst, 0);
         } else {
             super.fmov(size, dst, imm);
         }
