@@ -174,10 +174,8 @@ public class ClassInitializationFeature implements GraalFeature {
     @SuppressWarnings("try")
     public void afterAnalysis(AfterAnalysisAccess access) {
         BigBang bigBang = ((FeatureImpl.AfterAnalysisAccessImpl) access).getBigBang();
-        TimerCollection timerCollection = TimerCollection.singleton();
         String imageName = bigBang.getHostVM().getImageName();
-        Timer clinitTimer = timerCollection.createTimer(imageName, "(clinit)");
-        try (Timer.StopTimer ignored = clinitTimer.start()) {
+        try (Timer.StopTimer ignored = TimerCollection.singleton().createTimer(imageName, "(clinit)").start()) {
             classInitializationSupport.setUnsupportedFeatures(null);
 
             String path = SubstrateOptions.reportsPath();
