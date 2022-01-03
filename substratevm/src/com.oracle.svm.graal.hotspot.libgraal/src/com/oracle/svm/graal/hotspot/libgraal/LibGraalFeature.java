@@ -390,9 +390,9 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
                                 registry.register(condition, false, clazz.getDeclaredMethod(methodName, parameters));
                             }
                         } catch (NoSuchMethodException e) {
-                            throw source.error("Method %s.%s%s not found: %e", clazz.getTypeName(), methodName, descriptor, e);
+                            throw source.error("Method %s.%s%s not found: %s", clazz.getTypeName(), methodName, descriptor, e);
                         } catch (NoClassDefFoundError e) {
-                            throw source.error("Could not register method %s.%s%s: %e", clazz.getTypeName(), methodName, descriptor, e);
+                            throw source.error("Could not register method %s.%s%s: %s", clazz.getTypeName(), methodName, descriptor, e);
                         }
                         break;
                     }
