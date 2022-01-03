@@ -361,7 +361,7 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Print stack trace on assumption invalidation", category = OptionCategory.INTERNAL) //
     public static final OptionKey<Boolean> TraceAssumptions = new OptionKey<>(false);
 
-    @Option(help = "Print stack trace when deoptimizing a frame from the stack with FrameInstance#getFrame(READ_WRITE|MATERIALIZE).", category = OptionCategory.INTERNAL) //
+    @Option(help = "Print stack trace when deoptimizing a frame from the stack with `FrameInstance#getFrame(READ_WRITE|MATERIALIZE)`.", category = OptionCategory.INTERNAL) //
     public static final OptionKey<Boolean> TraceDeoptimizeFrame = new OptionKey<>(false);
 
     private static final String EXPANSION_VALUES = "Accepted values are:%n" +

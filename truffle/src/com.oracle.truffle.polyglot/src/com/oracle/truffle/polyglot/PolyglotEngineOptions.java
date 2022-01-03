@@ -77,8 +77,8 @@ final class PolyglotEngineOptions {
     static final OptionKey<Boolean> UseConservativeContextReferences = new OptionKey<>(false);
 
     @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "Enables specialization statistics for nodes generated with Truffle DSL and prints the result on exit. " +
-                    "In order for this flag to be functional -Atruffle.dsl.GenerateSpecializationStatistics=true needs to be set at build time." + //
-                    "Enabling this flag and the compiler option has major implications on the performance and footprint of the interpreter." + //
+                    "In order for this flag to be functional -Atruffle.dsl.GenerateSpecializationStatistics=true needs to be set at build time. " + //
+                    "Enabling this flag and the compiler option has major implications on the performance and footprint of the interpreter. " + //
                     "Do not use in production environments.")//
     static final OptionKey<Boolean> SpecializationStatistics = new OptionKey<>(false);
 
