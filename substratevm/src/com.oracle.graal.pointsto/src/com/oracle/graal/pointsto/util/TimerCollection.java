@@ -30,8 +30,7 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.Collection;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -120,16 +119,15 @@ public class TimerCollection implements ImageBuildStatistics.TimerCollectionPrin
 
     @Override
     public void printTimerStats(PrintWriter out) {
-        Collection<Timer> timers = new ArrayList<>(this.timers.values());
-        int i = 0;
-        for (Timer timer : timers) {
+        Iterator<Timer> it = this.timers.values().iterator();
+        while (it.hasNext()) {
+            Timer timer = it.next();
             StatisticsPrinter.print(out, timer.getName() + "_time", ((int) timer.getTotalTime()));
-            if (i != timers.size() - 1) {
+            if (it.hasNext()) {
                 StatisticsPrinter.print(out, timer.getName() + "_memory", ((int) timer.getTotalMemory()));
             } else {
                 StatisticsPrinter.printLast(out, timer.getName() + "_memory", ((int) timer.getTotalMemory()));
             }
-            i++;
         }
     }
 }
