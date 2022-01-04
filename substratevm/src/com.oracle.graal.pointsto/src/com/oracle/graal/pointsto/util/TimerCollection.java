@@ -49,7 +49,7 @@ public class TimerCollection implements ImageBuildStatistics.TimerCollectionPrin
         OBJECTS("(objects)"),
         ANALYSIS("analysis"),
         UNIVERSE("universe"),
-        COMPILE_MAIN("compile"),
+        COMPILE_TOTAL("compile"),
         PARSE("(parse)"),
         INLINE("(inline)"),
         COMPILE("(compile)"),
@@ -75,7 +75,7 @@ public class TimerCollection implements ImageBuildStatistics.TimerCollectionPrin
         add(new Timer(imageName, Registry.FEATURES.name, false));
         add(new Timer(imageName, Registry.OBJECTS.name, false));
         add(new Timer(imageName, Registry.UNIVERSE.name, true));
-        add(new Timer(imageName, Registry.COMPILE_MAIN.name, true));
+        add(new Timer(imageName, Registry.COMPILE_TOTAL.name, true));
         add(new Timer(imageName, Registry.PARSE.name, true));
         add(new Timer(imageName, Registry.INLINE.name, true));
         add(new Timer(imageName, Registry.COMPILE.name, true));

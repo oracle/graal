@@ -628,7 +628,7 @@ public class NativeImageGenerator {
 
             NativeImageCodeCache codeCache;
             CompileQueue compileQueue;
-            try (StopTimer t = timerCollection.get(TimerCollection.Registry.COMPILE_MAIN).start()) {
+            try (StopTimer t = timerCollection.get(TimerCollection.Registry.COMPILE_TOTAL).start()) {
                 compileQueue = HostedConfiguration.instance().createCompileQueue(debug, featureHandler, hUniverse, runtime, DeoptTester.enabled(), bb.getProviders().getSnippetReflection(),
                                 compilationExecutor);
                 compileQueue.finish(debug);

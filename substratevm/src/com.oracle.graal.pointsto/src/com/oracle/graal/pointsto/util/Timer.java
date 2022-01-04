@@ -40,6 +40,11 @@ public class Timer {
     /** Total VM memory in bytes recorded when the timer is printed. */
     private long totalMemory;
 
+    /**
+     * Timers should only be instantiated via factory methods in TimerCollection.
+     * 
+     * @see TimerCollection
+     */
     Timer(String prefix, String name, boolean autoPrint) {
         this.prefix = prefix;
         this.name = name;
