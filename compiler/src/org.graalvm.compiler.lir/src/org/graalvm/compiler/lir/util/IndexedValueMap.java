@@ -37,26 +37,16 @@ import jdk.vm.ci.meta.Value;
 
 public final class IndexedValueMap {
     private Value[] values;
+    private boolean copyOnWrite;
 
     public IndexedValueMap() {
         values = Value.NO_VALUES;
     }
 
     public IndexedValueMap(IndexedValueMap other) {
-        int limit = other.values.length;
-        while (limit > 0) {
-            if (other.values[limit - 1] == null) {
-                limit--;
-                continue;
-            }
-            break;
-        }
-        if (limit == 0) {
-            values = Value.NO_VALUES;
-        } else {
-            values = new Value[limit];
-            System.arraycopy(other.values, 0, values, 0, values.length);
-        }
+        values = other.values;
+        copyOnWrite = true;
+        other.copyOnWrite = true;
     }
 
     public Value get(int index) {
@@ -73,13 +63,48 @@ public final class IndexedValueMap {
                 System.arraycopy(values, 0, newValues, 0, values.length);
             }
             values = newValues;
-            values[index] = value;
-        } else {
+            copyOnWrite = false;
+        } else if (copyOnWrite) {
+            doCopyOnWrite(value == null ? 0 : index + 1);
+        }
+        /*
+         * If the following condition is not satisfied, it means that value == null and the values
+         * array was shortened to the last non-null element.
+         */
+        if (index < values.length) {
             values[index] = value;
         }
     }
 
+    private void doCopyOnWrite(int minLimit) {
+        int limit = values.length;
+        while (limit > minLimit) {
+            if (values[limit - 1] == null) {
+                limit--;
+                continue;
+            }
+            break;
+        }
+        if (limit == 0) {
+            values = Value.NO_VALUES;
+        } else {
+            Value[] newValues = new Value[limit];
+            System.arraycopy(values, 0, newValues, 0, limit);
+            values = newValues;
+        }
+        copyOnWrite = false;
+    }
+
     public void putAll(IndexedValueMap stack) {
+        if (stack.values.length == 0) {
+            return;
+        }
+        if (values.length == 0) {
+            values = stack.values;
+            copyOnWrite = true;
+            stack.copyOnWrite = true;
+            return;
+        }
         Value[] otherValues = stack.values;
         int limit = otherValues.length;
         if (limit > values.length) {
@@ -94,7 +119,12 @@ public final class IndexedValueMap {
                 Value[] newValues = new Value[limit];
                 System.arraycopy(values, 0, newValues, 0, values.length);
                 values = newValues;
+                copyOnWrite = false;
+            } else if (copyOnWrite) {
+                doCopyOnWrite(limit);
             }
+        } else if (copyOnWrite) {
+            doCopyOnWrite(limit);
         }
         for (int i = 0; i < limit; i++) {
             Value value = otherValues[i];
