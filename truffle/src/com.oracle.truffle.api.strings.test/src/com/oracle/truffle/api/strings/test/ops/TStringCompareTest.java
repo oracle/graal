@@ -73,7 +73,7 @@ public class TStringCompareTest extends TStringTestBase {
         });
     }
 
-    private int compare(int[] a, int[] b) {
+    private static int compare(int[] a, int[] b) {
         for (int i = 0; i < Math.min(a.length, b.length); i++) {
             int cmp = a[i] - b[i];
             if (cmp != 0) {

@@ -71,7 +71,7 @@ public class TStringByteCodeRangeTest extends TStringTestBase {
         });
     }
 
-    private TruffleString.CodeRange byteCodeRange(TruffleString.CodeRange codeRange, TruffleString.Encoding encoding) {
+    private static TruffleString.CodeRange byteCodeRange(TruffleString.CodeRange codeRange, TruffleString.Encoding encoding) {
         switch (codeRange) {
             case ASCII:
                 if (encoding == TruffleString.Encoding.UTF_16 || encoding == TruffleString.Encoding.UTF_32) {

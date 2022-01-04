@@ -79,7 +79,7 @@ public class TStringJCodingsDisabledTest {
         }
 
         @Override
-        protected boolean patchContext(NoJCodingsDummyLanguageContext context, Env newEnv) {
+        protected boolean patchContext(@SuppressWarnings("hiding") NoJCodingsDummyLanguageContext context, Env newEnv) {
             context.patchContext(newEnv);
             return true;
         }

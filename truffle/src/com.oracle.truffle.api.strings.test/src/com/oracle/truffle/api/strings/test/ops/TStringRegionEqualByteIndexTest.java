@@ -83,7 +83,7 @@ public class TStringRegionEqualByteIndexTest extends TStringTestBase {
         Assert.assertEquals(expected, node.execute(a, fromIndexA, b, fromIndexB, length, encodingA));
     }
 
-    private boolean regionEquals(byte[] a, int fromIndexA, byte[] b, int fromIndexB, int length) {
+    private static boolean regionEquals(byte[] a, int fromIndexA, byte[] b, int fromIndexB, int length) {
         for (int i = 0; i < length; i++) {
             if (a[fromIndexA + i] != b[fromIndexB + i]) {
                 return false;

@@ -64,6 +64,7 @@ public class TStringParseDoubleTest extends TStringTestBase {
         return Arrays.asList(TruffleString.ParseDoubleNode.create(), TruffleString.ParseDoubleNode.getUncached());
     }
 
+    @SuppressWarnings("cast")
     @Test
     public void testAll() throws Exception {
         for (double n : new double[]{Double.MIN_VALUE, Double.MIN_VALUE + 1, Long.MIN_VALUE, Long.MIN_VALUE + 1, ((long) Integer.MIN_VALUE) - 1, Integer.MIN_VALUE, Integer.MIN_VALUE + 1,

@@ -271,7 +271,7 @@ public class TStringConstructorTests extends TStringTestBase {
         });
     }
 
-    private void checkInternalByteArrayEquals(byte[] array, TruffleString.InternalByteArray internalByteArray) {
+    private static void checkInternalByteArrayEquals(byte[] array, TruffleString.InternalByteArray internalByteArray) {
         Assert.assertEquals(array.length, internalByteArray.getLength());
         for (int i = 0; i < array.length; i++) {
             Assert.assertEquals(array[i], internalByteArray.getArray()[internalByteArray.getOffset() + i]);
