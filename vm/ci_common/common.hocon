@@ -562,6 +562,9 @@ builds += [
       curl: ">=7.50.1"
       git: ">=1.8.3"
     }
+    setup: [
+      [cd, ${vm_subdir}]
+    ]
     run: [
       ${notify-releaser}
     ]
