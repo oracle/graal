@@ -569,8 +569,8 @@ final class PolyglotSharingLayer {
         Map<PolyglotLanguage, OptionValuesImpl> newOptions = new HashMap<>();
         Set<PolyglotLanguage> languages = config.getConfiguredLanguages();
         if (!languages.containsAll(forcedLanguages)) {
-            // we need to resolve dependencies of forces languages
-            // the set of configured languages is already resolved.
+            // we need to resolve dependencies of not yet configured languages
+            // the set of configured languages is already resolved
             languages = new HashSet<>(languages);
             for (PolyglotLanguage language : forcedLanguages) {
                 config.addConfiguredLanguage(this.engine, languages, language);
