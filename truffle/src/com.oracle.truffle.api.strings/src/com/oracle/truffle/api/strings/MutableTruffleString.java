@@ -58,11 +58,17 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
+import com.oracle.truffle.api.strings.TruffleString.AsTruffleStringNode;
 
 /**
- * Mutable variant of {@link TruffleString}, which can be written to using
- * {@link MutableTruffleString.WriteByteNode}. Not thread-safe.
+ * Represents a mutable variant of a {@link TruffleString}. This class also accepts all operations
+ * of TruffleString. This class is not thread-safe and allows overwriting bytes in its internal byte
+ * array or native buffer via {@link WriteByteNode}. The internal array or native buffer may also be
+ * modified externally, but the corresponding MutableTruffleString must be notified of this via
+ * notifyExternalMutation. MutableTruffleString is not a Truffle interop type, and must be converted
+ * to an immutable TruffleString via {@link AsTruffleStringNode} before passing a language boundary.
  *
+ * @see TruffleString
  * @since 22.1
  */
 public final class MutableTruffleString extends AbstractTruffleString {
@@ -111,7 +117,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
      * {@link MutableTruffleString} was created by wrapping a native buffer via
      * {@link FromNativePointerNode}. If the native buffer is passed to a native function that may
      * modify the buffer, this method must be called afterwards, to ensure consistency.
-     * 
+     *
      * @since 22.1
      */
     public void notifyExternalMutation() {
@@ -228,7 +234,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
          * </p>
          * This operation requires native access permissions
          * ({@code TruffleLanguage.Env#isNativeAccessAllowed()}).
-         * 
+         *
          * @since 22.1
          */
         public abstract MutableTruffleString execute(Object pointerObject, int byteOffset, int byteLength, TruffleString.Encoding encoding, boolean copy);

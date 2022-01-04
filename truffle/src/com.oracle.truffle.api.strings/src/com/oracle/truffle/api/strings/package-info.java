@@ -39,8 +39,11 @@
  * SOFTWARE.
  */
 /**
- * The Truffle multi-language string implementation. Use this as your language's string
- * implementation for improved interoperability and performance!
+ * Truffle String related APIs.
+ *
+ * Please see the
+ * <a href="https://github.com/oracle/graal/tree/master/truffle/docs/TruffleStrings.md">tutorial</a>
+ * for further usage instructions.
  *
  * @since 22.1
  */

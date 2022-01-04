@@ -52,9 +52,11 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 
 /**
- * The Truffle multi-language string implementation. Use this as your language's string
- * implementation for improved interoperability and performance!
+ * Abstract base class for Truffle strings. Useful when a value can be both a {@link TruffleString}
+ * or a {@link MutableTruffleString}. Note that values of this type are not valid interop values.
+ * They must be converted to {@link TruffleString} before passing them to other languages.
  *
+ * @see TruffleString
  * @since 22.1
  */
 public abstract class AbstractTruffleString {

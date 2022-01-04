@@ -87,24 +87,12 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.IntValueProfile;
 
 /**
- * The Truffle multi-language string implementation. Features:
- * <ul>
- * <li>Support for all encodings listed in {@link Encoding}, with dedicated optimizations for
- * {@link Encoding#UTF_8}, {@link Encoding#UTF_16}, {@link Encoding#UTF_32},
- * {@link Encoding#ISO_8859_1}, {@link Encoding#US_ASCII}, and {@link Encoding#BYTES}.</li>
- * <li>Transparent string compaction on {@link Encoding#UTF_16} and two-level string compaction on
- * {@link Encoding#UTF_32}.</li>
- * <li>Codepoint- and byte-based indexing on all index method parameters.</li>
- * <li>{@link FromByteArrayNode String views into byte arrays}.</li>
- * <li>{@link FromNativePointerNode String views into native memory}.</li>
- * <li>{@link SubstringByteIndexNode String views into other strings}.</li>
- * <li>{@link ConcatNode Lazy concatenation}.</li>
- * <li>{@link FromLongNode Lazy strings from long values}.</li>
- * <li>{@link GetCodeRangeNode string content analysis}.</li>
- * <li>{@link IsValidNode string validation}.</li>
- * <li>{@link SwitchEncodingNode transcoding}.</li>
- * </ul>
- *
+ * Represents a primitive String type, which can be reused across languages. Language implementers
+ * are encouraged to use Truffle Strings as their language's string type for easier interoperability
+ * and better performance. Truffle strings can be encoded in a number of {@link Encoding encodings}.
+ * It is implemented to keep multiple representations of the same string in multiple encodings
+ * cached.
+ * <p>
  * {@link TruffleString} instances can be created via one of the following nodes, or via
  * {@link TruffleStringBuilder}.
  * <ul>
@@ -117,12 +105,18 @@ import com.oracle.truffle.api.profiles.IntValueProfile;
  * <li>{@link FromLongNode}</li>
  * </ul>
  *
+ * For iteration use {@link TruffleStringIterator}. There is a version of {@link TruffleString} that
+ * is also mutable. See {@link MutableTruffleString} for details.
+ * <p>
+ * Please see the
+ * <a href="https://github.com/oracle/graal/tree/master/truffle/docs/TruffleStrings.md">tutorial</a>
+ * for further usage instructions.
  *
  * @since 22.1
  */
 public final class TruffleString extends AbstractTruffleString {
 
-    /**
+    /*
      * TODO: replace with VarHandle equivalent (GR-35129).
      */
     private static final AtomicReferenceFieldUpdater<TruffleString, TruffleString> NEXT_UPDATER = initializeNextUpdater();

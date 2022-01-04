@@ -61,8 +61,8 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 
 /**
- * The {@link TruffleString} pendant to {@link java.lang.StringBuilder}. This builder eagerly fills
- * up a byte array with all strings passed to its {@code Append}-nodes. For lazy string
+ * The {@link TruffleString} equivalent to {@link java.lang.StringBuilder}. This builder eagerly
+ * fills up a byte array with all strings passed to its {@code Append}-nodes. For lazy string
  * concatenation, use {@link TruffleString.ConcatNode} instead.
  *
  * @since 22.1
@@ -92,7 +92,7 @@ public final class TruffleStringBuilder {
 
     /**
      * Returns true if the this string builder is empty.
-     * 
+     *
      * @since 22.1
      */
     public boolean isEmpty() {
@@ -101,7 +101,7 @@ public final class TruffleStringBuilder {
 
     /**
      * Returns this string builder's byte length.
-     * 
+     *
      * @since 22.1
      */
     public int byteLength() {
@@ -135,7 +135,7 @@ public final class TruffleStringBuilder {
 
     /**
      * Create a new string builder with the given encoding.
-     * 
+     *
      * @since 22.1
      */
     public static TruffleStringBuilder create(TruffleString.Encoding encoding) {
@@ -145,7 +145,7 @@ public final class TruffleStringBuilder {
     /**
      * Create a new string builder with the given encoding, and pre-allocate the given number of
      * bytes.
-     * 
+     *
      * @since 22.1
      */
     public static TruffleStringBuilder create(TruffleString.Encoding encoding, int initialCapacity) {
@@ -154,7 +154,7 @@ public final class TruffleStringBuilder {
 
     /**
      * Node to append a single byte to a string builder.
-     * 
+     *
      * @since 22.1
      */
     @ImportStatic(TStringGuards.class)
@@ -168,7 +168,7 @@ public final class TruffleStringBuilder {
         /**
          * Append a single byte to the string builder. Does not support UTF-16 and UTF-32; use
          * {@link AppendCharUTF16Node} and {@link AppendCodePointNode} instead.
-         * 
+         *
          * @since 22.1
          */
         public abstract void execute(TruffleStringBuilder sb, byte value);
@@ -209,7 +209,7 @@ public final class TruffleStringBuilder {
 
     /**
      * Shorthand for calling the uncached version of {@link AppendByteNode}.
-     * 
+     *
      * @since 22.1
      */
     @TruffleBoundary
@@ -219,7 +219,7 @@ public final class TruffleStringBuilder {
 
     /**
      * Node to append a single char to a string builder. For UTF-16 only.
-     * 
+     *
      * @since 22.1
      */
     @ImportStatic({TStringGuards.class, TruffleStringBuilder.class})
@@ -232,7 +232,7 @@ public final class TruffleStringBuilder {
 
         /**
          * Append a single char to the string builder. For UTF-16 only.
-         * 
+         *
          * @since 22.1
          */
         public abstract void execute(TruffleStringBuilder sb, char value);
@@ -304,7 +304,7 @@ public final class TruffleStringBuilder {
 
     /**
      * Shorthand for calling the uncached version of {@link AppendCharUTF16Node}.
-     * 
+     *
      * @since 22.1
      */
     @TruffleBoundary
@@ -334,7 +334,7 @@ public final class TruffleStringBuilder {
 
     /**
      * Node to append a codepoint to a string builder.
-     * 
+     *
      * @since 22.1
      */
     @ImportStatic(TStringGuards.class)
@@ -508,7 +508,7 @@ public final class TruffleStringBuilder {
 
     /**
      * Shorthand for calling the uncached version of {@link AppendCodePointNode}.
-     * 
+     *
      * @since 22.1
      */
     @TruffleBoundary
@@ -519,7 +519,7 @@ public final class TruffleStringBuilder {
     /**
      * Node to append an integer to a string builder. See
      * {@link #execute(TruffleStringBuilder, int)} for details.
-     * 
+     *
      * @since 22.1
      */
     @ImportStatic(TStringGuards.class)
@@ -573,7 +573,7 @@ public final class TruffleStringBuilder {
 
     /**
      * Shorthand for calling the uncached version of {@link AppendIntNumberNode}.
-     * 
+     *
      * @since 22.1
      */
     @TruffleBoundary
@@ -638,7 +638,7 @@ public final class TruffleStringBuilder {
 
     /**
      * Shorthand for calling the uncached version of {@link AppendLongNumberNode}.
-     * 
+     *
      * @since 22.1
      */
     @TruffleBoundary
@@ -648,7 +648,7 @@ public final class TruffleStringBuilder {
 
     /**
      * Node to append a given {@link TruffleString} to a string builder.
-     * 
+     *
      * @since 22.1
      */
     @ImportStatic(TStringGuards.class)
@@ -705,7 +705,7 @@ public final class TruffleStringBuilder {
 
     /**
      * Shorthand for calling the uncached version of {@link AppendStringNode}.
-     * 
+     *
      * @since 22.1
      */
     @TruffleBoundary
@@ -716,7 +716,7 @@ public final class TruffleStringBuilder {
     /**
      * Node to append a substring of a given {@link TruffleString} to a string builder. See
      * {@link #execute(TruffleStringBuilder, AbstractTruffleString, int, int)} for details.
-     * 
+     *
      * @since 22.1
      */
     @ImportStatic(TStringGuards.class)
@@ -795,7 +795,7 @@ public final class TruffleStringBuilder {
 
     /**
      * Shorthand for calling the uncached version of {@link AppendSubstringByteIndexNode}.
-     * 
+     *
      * @since 22.1
      */
     @TruffleBoundary
@@ -806,7 +806,7 @@ public final class TruffleStringBuilder {
     /**
      * Node to append a substring of a given {@link java.lang.String} to a string builder. See
      * {@link #execute(TruffleStringBuilder, String, int, int)} for details.
-     * 
+     *
      * @since 22.1
      */
     @ImportStatic(TStringGuards.class)
@@ -918,7 +918,7 @@ public final class TruffleStringBuilder {
 
     /**
      * Shorthand for calling the uncached version of {@link AppendJavaStringUTF16Node}.
-     * 
+     *
      * @since 22.1
      */
     @TruffleBoundary
@@ -928,7 +928,7 @@ public final class TruffleStringBuilder {
 
     /**
      * Node to materialize a string builder as a {@link TruffleString}.
-     * 
+     *
      * @since 22.1
      */
     @ImportStatic(TStringGuards.class)
@@ -986,7 +986,7 @@ public final class TruffleStringBuilder {
 
     /**
      * Shorthand for calling the uncached version of {@link ToStringNode}.
-     * 
+     *
      * @since 22.1
      */
     @TruffleBoundary
@@ -1093,7 +1093,7 @@ public final class TruffleStringBuilder {
 
     /**
      * Convert the string builder's content to a java string. Do not use this on a fast path.
-     * 
+     *
      * @since 22.1
      */
     @TruffleBoundary
