@@ -52,6 +52,7 @@ add_library(graalvm-llvm SHARED
     src/handles.c
     src/polyglot.c
     src/polyglot-buffer.c
+    src/polyglot-time.c
     src/toolchain-api.c
     src/truffle-compat.c
 )
