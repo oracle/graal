@@ -475,10 +475,9 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
         final EnumSet<AArch64.Flag> flags = ((AArch64) target().arch).getFlags();
 
         boolean isDcZvaProhibited = true;
-        int zvaLength = 0;
-        if (GraalHotSpotVMConfig.JDK >= 16) {
-            zvaLength = config.zvaLength;
-            isDcZvaProhibited = 0 == config.zvaLength;
+        int zvaLength = config.zvaLength;
+        if (zvaLength != Integer.MAX_VALUE) {
+            isDcZvaProhibited = 0 == zvaLength;
         } else {
             int dczidValue = config.psrInfoDczidValue;
 
