@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,43 +27,39 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.typed;
 
-import com.oracle.truffle.api.dsl.Cached;
+package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop;
+
+import java.time.DateTimeException;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
-import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
-import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
-import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
+import com.oracle.truffle.llvm.runtime.interop.values.LLVMInstantValue;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-@NodeChild(value = "ptr", type = LLVMExpressionNode.class)
-@NodeChild(value = "typeid", type = LLVMExpressionNode.class)
-public abstract class LLVMPolyglotAsTyped extends LLVMIntrinsic {
+@NodeChild(type = LLVMExpressionNode.class)
+public abstract class LLVMPolyglotInstantFromTimeNode extends LLVMExpressionNode {
+    public abstract LLVMInstantValue execute(VirtualFrame frame);
 
-    public static LLVMPolyglotAsTyped create(LLVMExpressionNode ptr, LLVMExpressionNode typeid) {
-        return LLVMPolyglotAsTypedNodeGen.create(ptr, typeid);
+    @TruffleBoundary
+    private Object instantOfEpochSecond(long epochSecond) {
+        try {
+            return LLVMInstantValue.ofEpochSecond(epochSecond);
+        } catch (DateTimeException ex) {
+            throw new LLVMPolyglotException(this, "Failed to construct instant value: %s", ex.toString());
+        }
     }
 
     @Specialization
-    LLVMManagedPointer doAsTyped(LLVMManagedPointer object, LLVMInteropType.Structured type,
-                    @Cached("create()") LLVMAsForeignNode asForeign) {
-        Object foreign = asForeign.execute(object);
-        return LLVMManagedPointer.create(LLVMTypedForeignObject.create(foreign, type));
+    public Object executeLong(long epochSecond) {
+        return LLVMManagedPointer.create(instantOfEpochSecond(epochSecond));
     }
 
-    @Specialization
-    LLVMNativePointer doNative(LLVMNativePointer address, LLVMInteropType.Structured type) {
-        return address.export(type);
-    }
-
-    @Specialization
-    LLVMManagedPointer doError(@SuppressWarnings("unused") LLVMPointer object, LLVMInteropType.Value type) {
-        throw new LLVMPolyglotException(this, "polyglot_as_typed cannot be used with primitive type (%s).", type.kind);
+    public static LLVMPolyglotInstantFromTimeNode create(LLVMExpressionNode epochSecondNode) {
+        return LLVMPolyglotInstantFromTimeNodeGen.create(epochSecondNode);
     }
 }

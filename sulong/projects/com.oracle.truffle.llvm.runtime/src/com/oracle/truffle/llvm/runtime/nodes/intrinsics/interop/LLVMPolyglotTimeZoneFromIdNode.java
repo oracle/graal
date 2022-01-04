@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,43 +27,54 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.typed;
+package com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop;
 
+import java.time.DateTimeException;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.llvm.runtime.except.LLVMPolyglotException;
 import com.oracle.truffle.llvm.runtime.interop.LLVMAsForeignNode;
-import com.oracle.truffle.llvm.runtime.interop.LLVMTypedForeignObject;
-import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
+import com.oracle.truffle.llvm.runtime.interop.values.LLVMTimeZoneValue;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
-@NodeChild(value = "ptr", type = LLVMExpressionNode.class)
-@NodeChild(value = "typeid", type = LLVMExpressionNode.class)
-public abstract class LLVMPolyglotAsTyped extends LLVMIntrinsic {
+@NodeChild(value = "zoneId", type = LLVMExpressionNode.class)
+public abstract class LLVMPolyglotTimeZoneFromIdNode extends LLVMExpressionNode {
 
-    public static LLVMPolyglotAsTyped create(LLVMExpressionNode ptr, LLVMExpressionNode typeid) {
-        return LLVMPolyglotAsTypedNodeGen.create(ptr, typeid);
+    @TruffleBoundary
+    private LLVMTimeZoneValue timeZoneOfString(String timeZone) {
+        try {
+            return LLVMTimeZoneValue.ofString(timeZone);
+        } catch (DateTimeException ex) {
+            throw new LLVMPolyglotException(this, "Could not construct time zone value: %s", ex.toString());
+        }
     }
 
     @Specialization
-    LLVMManagedPointer doAsTyped(LLVMManagedPointer object, LLVMInteropType.Structured type,
-                    @Cached("create()") LLVMAsForeignNode asForeign) {
-        Object foreign = asForeign.execute(object);
-        return LLVMManagedPointer.create(LLVMTypedForeignObject.create(foreign, type));
+    @GenerateAOT.Exclude
+    public Object execute(LLVMManagedPointer pointer,
+                    @Cached LLVMAsForeignNode foreign,
+                    @Cached BranchProfile exception,
+                    @CachedLibrary(limit = "3") InteropLibrary library) {
+        Object object = foreign.execute(pointer);
+        try {
+            String s = library.asString(object);
+            return LLVMManagedPointer.create(timeZoneOfString(s));
+        } catch (UnsupportedMessageException ex) {
+            exception.enter();
+            throw new LLVMPolyglotException(this, "The provided argument is not a string.");
+        }
     }
 
-    @Specialization
-    LLVMNativePointer doNative(LLVMNativePointer address, LLVMInteropType.Structured type) {
-        return address.export(type);
-    }
-
-    @Specialization
-    LLVMManagedPointer doError(@SuppressWarnings("unused") LLVMPointer object, LLVMInteropType.Value type) {
-        throw new LLVMPolyglotException(this, "polyglot_as_typed cannot be used with primitive type (%s).", type.kind);
+    public static LLVMPolyglotTimeZoneFromIdNode create(LLVMExpressionNode zoneId) {
+        return LLVMPolyglotTimeZoneFromIdNodeGen.create(zoneId);
     }
 }
