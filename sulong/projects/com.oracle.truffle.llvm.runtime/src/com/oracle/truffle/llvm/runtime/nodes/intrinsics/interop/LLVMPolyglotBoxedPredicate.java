@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -39,6 +39,7 @@ import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm.LLVMIntrinsic;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
+import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 
 @NodeChild(value = "object", type = LLVMExpressionNode.class)
 public abstract class LLVMPolyglotBoxedPredicate extends LLVMIntrinsic {
@@ -70,6 +71,13 @@ public abstract class LLVMPolyglotBoxedPredicate extends LLVMIntrinsic {
         Object foreign = foreigns.asForeign(pointer.getObject());
         assert foreign != null;
         return predicate.match(interop, foreign);
+    }
+
+    @Specialization
+    @GenerateAOT.Exclude
+    boolean matchNative(LLVMNativePointer pointer,
+                    @CachedLibrary(limit = "3") InteropLibrary interop) {
+        return predicate.match(interop, pointer);
     }
 
     @Specialization
