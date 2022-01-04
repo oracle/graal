@@ -114,7 +114,7 @@
     arch:: error "self.arch not set" + where,
     capabilities +: [],
     catch_files +: common_json.catch_files,
-    logs : [
+    logs +: [
       "*.bgv",
       "./" + repo_config.compiler.compiler_suite + "/graal_dumps/*/*",
       "*/es-*.json"
