@@ -31,18 +31,17 @@ import java.util.Objects;
 
 import javax.management.ObjectName;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicInteger;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicLong;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.util.VMError;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 import sun.management.Util;
 
-public final class SubstrateThreadMXBean implements com.sun.management.ThreadMXBean {
+public class SubstrateThreadMXBean implements com.sun.management.ThreadMXBean {
 
     private static final String MSG = "ThreadMXBean methods";
 
@@ -54,7 +53,7 @@ public final class SubstrateThreadMXBean implements com.sun.management.ThreadMXB
     private boolean allocatedMemoryEnabled;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    SubstrateThreadMXBean() {
+    public SubstrateThreadMXBean() {
         /*
          * We always track the amount of memory that is allocated by each thread, so this MX bean
          * feature can be on by default.

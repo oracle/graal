@@ -45,9 +45,6 @@ import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.annotate.Inject;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
@@ -210,18 +207,6 @@ public final class PosixPlatformThreads extends PlatformThreads {
         setPthreadIdentifier(thread, Pthread.pthread_self());
         setNativeName(thread, thread.getName());
     }
-}
-
-@TargetClass(Thread.class)
-final class Target_java_lang_Thread {
-    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
-    boolean hasPthreadIdentifier;
-
-    /**
-     * Every thread started by {@link PosixPlatformThreads#doStartThread} has an opaque pthread_t.
-     */
-    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
-    Pthread.pthread_t pthreadIdentifier;
 }
 
 class PosixParkEvent extends ParkEvent {

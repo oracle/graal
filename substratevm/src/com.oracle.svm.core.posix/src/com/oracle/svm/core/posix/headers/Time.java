@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.c.struct.AllowNarrowingCast;
 import org.graalvm.nativeimage.c.struct.AllowWideningCast;
 import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CFieldAddress;
+import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.CStruct;
 import org.graalvm.word.PointerBase;
 
@@ -101,6 +102,15 @@ public class Time {
         public native int getCValue();
     }
 
+    public interface clockid_t extends PointerBase {
+    }
+
+    @CPointerTo(nameOfCType = "clockid_t")
+    public interface clockid_tPointer extends PointerBase {
+        @AllowWideningCast
+        clockid_t read();
+    }
+
     public static class NoTransitions {
         /**
          * @param which from {@link TimerTypeEnum#getCValue()}
@@ -111,7 +121,13 @@ public class Time {
         @CFunction(transition = CFunction.Transition.NO_TRANSITION)
         public static native int gettimeofday(timeval tv, timezone tz);
 
+        // extern int nanosleep (const struct timespec *__requested_time, struct timespec
+        // *__remaining);
         @CFunction(transition = Transition.NO_TRANSITION)
         public static native int nanosleep(timespec requestedtime, timespec remaining);
+
+        // extern int clock_gettime (clockid_t __clock_id, struct timespec *__tp) __THROW;
+        @CFunction(transition = Transition.NO_TRANSITION)
+        public static native int clock_gettime(clockid_t clockid, timespec time);
     }
 }

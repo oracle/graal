@@ -115,7 +115,7 @@ public final class ManagementSupport implements ThreadListener {
     private final SubstrateClassLoadingMXBean classLoadingMXBean;
     private final SubstrateCompilationMXBean compilationMXBean;
     private final SubstrateRuntimeMXBean runtimeMXBean;
-    private final SubstrateThreadMXBean threadMXBean;
+    private SubstrateThreadMXBean threadMXBean;
 
     /* Initialized lazily at run time. */
     private OperatingSystemMXBean osMXBean;
@@ -140,7 +140,6 @@ public final class ManagementSupport implements ThreadListener {
         addPlatformManagedObjectSingleton(java.lang.management.ClassLoadingMXBean.class, classLoadingMXBean);
         addPlatformManagedObjectSingleton(java.lang.management.CompilationMXBean.class, compilationMXBean);
         addPlatformManagedObjectSingleton(java.lang.management.RuntimeMXBean.class, runtimeMXBean);
-        addPlatformManagedObjectSingleton(com.sun.management.ThreadMXBean.class, threadMXBean);
         /*
          * The following platform objects must be registered as existing and valid, even though we
          * do not have an implementation yet.
@@ -186,6 +185,10 @@ public final class ManagementSupport implements ThreadListener {
     public <T extends PlatformManagedObject> void addPlatformManagedObjectSingleton(Class<T> clazz, T object) {
         if (!clazz.isInterface()) {
             throw UserError.abort("Key for registration of a PlatformManagedObject must be an interface");
+        }
+        if (object instanceof SubstrateThreadMXBean) {
+            // TODO: is there a better way to init this?
+            threadMXBean = (SubstrateThreadMXBean) object;
         }
         doAddPlatformManagedObjectSingleton(clazz, object);
     }
