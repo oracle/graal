@@ -85,6 +85,7 @@ public class TStringTestBase {
     @BeforeClass
     public static void setUp() {
         context = Context.newBuilder(TStringTestDummyLanguage.ID).allowNativeAccess(true).build();
+        context.initialize(TStringTestDummyLanguage.ID);
         context.enter();
     }
 

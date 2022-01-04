@@ -43,30 +43,12 @@ package com.oracle.truffle.api.strings.test;
 
 import static com.oracle.truffle.api.strings.test.TStringTestUtil.byteArray;
 
-import com.oracle.truffle.api.strings.bench.TStringTestDummyLanguage;
-import org.graalvm.polyglot.Context;
-import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.strings.TruffleString;
 
-public class TStringCornerCaseTests {
-
-    static Context context;
-
-    @BeforeClass
-    public static void setUp() {
-        context = Context.newBuilder(TStringTestDummyLanguage.ID).build();
-        context.enter();
-    }
-
-    @AfterClass
-    public static void tearDown() {
-        context.leave();
-        context.close();
-    }
+public class TStringCornerCaseTests extends TStringTestBase {
 
     @Test
     public void testTranscodeYieldsEmptyString() {

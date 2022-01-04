@@ -677,7 +677,7 @@ public abstract class Accessor {
 
         public abstract boolean getNeedsAllEncodings();
 
-        public abstract boolean currentContextHasNeedsAllEncodings();
+        public abstract boolean requireLanguageWithAllEncodings(Object encoding);
     }
 
     public abstract static class LanguageSupport extends Support {

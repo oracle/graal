@@ -65,7 +65,4 @@ final class TStringAccessor extends Accessor {
         return ENGINE.getNeedsAllEncodings();
     }
 
-    static boolean currentContextHasNeedsAllEncodings() {
-        return ENGINE.currentContextHasNeedsAllEncodings();
-    }
 }

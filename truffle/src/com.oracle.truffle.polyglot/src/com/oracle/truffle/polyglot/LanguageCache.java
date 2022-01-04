@@ -207,11 +207,12 @@ final class LanguageCache implements Comparable<LanguageCache> {
      */
     @SuppressWarnings("unused")
     public static boolean getNeedsAllEncodings() {
-        boolean ret = false;
         for (LanguageCache cache : languages().values()) {
-            ret |= cache.isNeedsAllEncodings();
+            if (cache.isNeedsAllEncodings()) {
+                return true;
+            }
         }
-        return ret;
+        return false;
     }
 
     static Map<String, LanguageCache> languages() {

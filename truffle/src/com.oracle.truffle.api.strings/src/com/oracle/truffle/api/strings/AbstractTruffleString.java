@@ -50,6 +50,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString.Encoding;
 
 /**
  * Abstract base class for Truffle strings. Useful when a value can be both a {@link TruffleString}
@@ -77,7 +78,7 @@ public abstract class AbstractTruffleString {
         assert isByte(stride);
         assert isByte(encoding);
         assert isByte(flags);
-        assert isSupportedEncoding(encoding) || TStringAccessor.currentContextHasNeedsAllEncodings();
+        assert isSupportedEncoding(encoding) || TStringAccessor.ENGINE.requireLanguageWithAllEncodings(Encoding.get(encoding));
         this.data = data;
         this.encoding = (byte) encoding;
         this.offset = offset;

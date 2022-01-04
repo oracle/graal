@@ -70,7 +70,7 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
     private volatile boolean initialized;
 
     private volatile PolyglotLanguageInstance initLanguage;
-    private boolean firstInstance = true;
+    private volatile boolean firstInstance = true;
 
     @CompilationFinal volatile Class<?> contextClass;
     volatile LocalLocation[] previousContextLocalLocations;
