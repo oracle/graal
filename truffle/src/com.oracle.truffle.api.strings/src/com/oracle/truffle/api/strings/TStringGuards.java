@@ -92,10 +92,6 @@ final class TStringGuards {
         return TSCodeRange.isUnknown(codeRange);
     }
 
-    static boolean isAnyBrokenMultiByte(int codeRangeA, int codeRangeB) {
-        return isBrokenMultiByte(codeRangeA) || isBrokenMultiByte(codeRangeB);
-    }
-
     static boolean isBrokenMultiByteOrUnknown(int codeRange) {
         return TSCodeRange.isBrokenMultiByteOrUnknown(codeRange);
     }
@@ -143,20 +139,12 @@ final class TStringGuards {
         return enc == TruffleString.Encoding.BYTES.id;
     }
 
-    static boolean isLatin1(AbstractTruffleString a) {
-        return isLatin1(a.encoding());
-    }
-
     static boolean isLatin1(TruffleString.Encoding enc) {
         return isLatin1(enc.id);
     }
 
     static boolean isLatin1(int enc) {
         return enc == TruffleString.Encoding.ISO_8859_1.id;
-    }
-
-    static boolean isAsciiOrLatin1(int enc) {
-        return isAscii(enc) || isLatin1(enc);
     }
 
     static boolean isAsciiBytesOrLatin1(int enc) {
@@ -173,10 +161,6 @@ final class TStringGuards {
 
     static boolean isUTF8(AbstractTruffleString a) {
         return isUTF8(a.encoding());
-    }
-
-    static boolean isUTF8(AbstractTruffleString a, AbstractTruffleString b) {
-        return isUTF8(a) && isUTF8(b);
     }
 
     static boolean isUTF16(TruffleString.Encoding enc) {
@@ -205,18 +189,6 @@ final class TStringGuards {
 
     static boolean isUTF32(AbstractTruffleString a) {
         return isUTF32(a.encoding());
-    }
-
-    static boolean isUTF32(TruffleStringBuilder sb) {
-        return isUTF32(sb.getEncoding());
-    }
-
-    static boolean isUTF32(AbstractTruffleString a, AbstractTruffleString b) {
-        return isUTF32(a) && isUTF32(b);
-    }
-
-    static boolean isUTF16Or32(TruffleStringBuilder sb) {
-        return isUTF16Or32(sb.getEncoding());
     }
 
     static boolean isUTF16Or32(TruffleString.Encoding enc) {
@@ -268,14 +240,6 @@ final class TStringGuards {
 
     static int length(AbstractTruffleString a) {
         return a.length();
-    }
-
-    static boolean isStride0(String a) {
-        return TStringUnsafe.getJavaStringStride(a) == 0;
-    }
-
-    static boolean isStride1(String a) {
-        return TStringUnsafe.getJavaStringStride(a) == 1;
     }
 
     static boolean isStride0(AbstractTruffleString a) {

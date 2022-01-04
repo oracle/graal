@@ -54,10 +54,6 @@ final class Encodings {
 
     @CompilationFinal(dimensions = 1) private static final int[] UTF_8_MIN_CODEPOINT = {0, 0, 0x80, 0x800, 0x10000};
 
-    static int getBytes() {
-        return TruffleString.Encoding.BYTES.id;
-    }
-
     static int getAscii() {
         return TruffleString.Encoding.US_ASCII.id;
     }
@@ -117,7 +113,7 @@ final class Encodings {
         }
     }
 
-    static boolean isUTF8ContinuationByte(AbstractTruffleString a, Object arrayA, int index) {
+    private static boolean isUTF8ContinuationByte(AbstractTruffleString a, Object arrayA, int index) {
         return isUTF8ContinuationByte(readS0(a, arrayA, index));
     }
 

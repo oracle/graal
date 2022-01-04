@@ -49,9 +49,9 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 
 final class NumberConversion {
 
-    static final byte[] INT_MIN_VALUE_BYTES = {'-', '2', '1', '4', '7', '4', '8', '3', '6', '4', '8'};
-    static final byte[] LONG_MIN_VALUE_BYTES = {'-', '9', '2', '2', '3', '3', '7', '2', '0', '3', '6', '8', '5', '4', '7', '7', '5', '8', '0', '8'};
-    static final byte[] DIGITS = {
+    private static final byte[] INT_MIN_VALUE_BYTES = {'-', '2', '1', '4', '7', '4', '8', '3', '6', '4', '8'};
+    private static final byte[] LONG_MIN_VALUE_BYTES = {'-', '9', '2', '2', '3', '3', '7', '2', '0', '3', '6', '8', '5', '4', '7', '7', '5', '8', '0', '8'};
+    private static final byte[] DIGITS = {
                     '0', '1', '2', '3', '4', '5',
                     '6', '7', '8', '9', 'a', 'b',
                     'c', 'd', 'e', 'f', 'g', 'h',
@@ -59,7 +59,7 @@ final class NumberConversion {
                     'o', 'p', 'q', 'r', 's', 't',
                     'u', 'v', 'w', 'x', 'y', 'z'
     };
-    static final byte[] DIGIT_TENS = {
+    private static final byte[] DIGIT_TENS = {
                     '0', '0', '0', '0', '0', '0', '0', '0', '0', '0',
                     '1', '1', '1', '1', '1', '1', '1', '1', '1', '1',
                     '2', '2', '2', '2', '2', '2', '2', '2', '2', '2',
@@ -71,7 +71,7 @@ final class NumberConversion {
                     '8', '8', '8', '8', '8', '8', '8', '8', '8', '8',
                     '9', '9', '9', '9', '9', '9', '9', '9', '9', '9',
     };
-    static final byte[] DIGIT_ONES = {
+    private static final byte[] DIGIT_ONES = {
                     '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
                     '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
                     '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
@@ -272,7 +272,7 @@ final class NumberConversion {
 
     /**
      * Pre-calculated table of the following expression.
-     * 
+     *
      * <pre>
      * {@code
      * digits = ceil(log10(2 ** i))
@@ -292,7 +292,7 @@ final class NumberConversion {
 
     /**
      * Pre-calculated table of the following expression.
-     * 
+     *
      * <pre>
      * {@code
      * digits = ceil(log10(2 ** i))

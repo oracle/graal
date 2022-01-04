@@ -54,39 +54,39 @@ final class TSCodeRange {
     /**
      * All codepoints are ASCII (0x00 - 0x7f).
      */
-    static final int CR_7BIT = 0;
+    private static final int CR_7BIT = 0;
     /**
      * All codepoints are LATIN-1 (0x00 - 0xff).
      */
-    static final int CR_8BIT = 1;
+    private static final int CR_8BIT = 1;
     /**
      * All codepoints are BMP (0x0000 - 0xffff, no UTF-16 surrogates).
      */
-    static final int CR_16BIT = 2;
+    private static final int CR_16BIT = 2;
     /**
      * The string is encoded correctly in the given fixed-width encoding.
      */
-    static final int CR_VALID_FIXED_WIDTH = 3;
+    private static final int CR_VALID_FIXED_WIDTH = 3;
     /**
      * The string is not encoded correctly in the given fixed-width encoding.
      */
-    static final int CR_BROKEN_FIXED_WIDTH = 4;
+    private static final int CR_BROKEN_FIXED_WIDTH = 4;
     /**
      * The string is encoded correctly in the given multi-byte/variable-width encoding.
      */
-    static final int CR_VALID_MULTIBYTE = 5;
+    private static final int CR_VALID_MULTIBYTE = 5;
     /**
      * The string is not encoded correctly in the given multi-byte/variable-width encoding.
      */
-    static final int CR_BROKEN_MULTIBYTE = 6;
+    private static final int CR_BROKEN_MULTIBYTE = 6;
     /**
      * No information about the string is known.
      */
-    static final int CR_UNKNOWN = 7;
+    private static final int CR_UNKNOWN = 7;
 
     @CompilationFinal(dimensions = 1) private static final int[] MAX_CODEPOINT_PER_CODE_RANGE = {0x7f, 0xff, 0xffff, 0x10ffff, 0x10ffff, 0x10ffff, 0x10ffff, 0x10ffff};
 
-    static int maxCodePoint(int codeRange) {
+    private static int maxCodePoint(int codeRange) {
         return MAX_CODEPOINT_PER_CODE_RANGE[codeRange];
     }
 
@@ -187,13 +187,6 @@ final class TSCodeRange {
      */
     static int commonCodeRange(int a, int b) {
         return Math.max(a, b);
-    }
-
-    /**
-     * Returns the more restrictive code range of both parameters {@code a} and {@code b}.
-     */
-    static int smallerCodeRange(int a, int b) {
-        return Math.min(a, b);
     }
 
     static boolean isMoreRestrictiveThan(int a, int b) {

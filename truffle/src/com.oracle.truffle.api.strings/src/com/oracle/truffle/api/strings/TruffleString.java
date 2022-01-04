@@ -1034,10 +1034,6 @@ public final class TruffleString extends AbstractTruffleString {
             return MAX_COMPATIBLE_CODE_RANGE[encoding];
         }
 
-        static int getNaturalStride(int encoding) {
-            return NATURAL_STRIDE[encoding];
-        }
-
         boolean is7BitCompatible() {
             return is7BitCompatible(id);
         }
@@ -1048,10 +1044,6 @@ public final class TruffleString extends AbstractTruffleString {
 
         boolean is16BitCompatible() {
             return is16BitCompatible(id);
-        }
-
-        boolean isSupported() {
-            return isSupported(id);
         }
 
         static boolean is7BitCompatible(int encoding) {
