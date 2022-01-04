@@ -116,7 +116,7 @@ final class PolyglotSharingLayer {
         }
 
         void updatePreinitConfig(PolyglotContextConfig config) {
-            PreinitConfig newConfig = new PreinitConfig(config);
+            PreinitConfig newConfig;
             PreinitConfig prev = preinitConfig;
             if (prev == null) {
                 newConfig = new PreinitConfig(config);
