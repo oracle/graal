@@ -262,6 +262,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 
 public final class WasmBlockNode extends WasmNode implements RepeatingNode {
 
@@ -283,6 +284,10 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     @CompilationFinal private final int initialProfileOffset;
     @CompilationFinal private int profileCount;
     @Children private Node[] children;
+
+    private final ConditionProfile loopUnwindProfile = ConditionProfile.create();
+    private final ConditionProfile ifUnwindProfile = ConditionProfile.create();
+    private final ConditionProfile blockUnwindProfile = ConditionProfile.create();
 
     private static final float MIN_FLOAT_TRUNCATABLE_TO_INT = Integer.MIN_VALUE;
     private static final float MAX_FLOAT_TRUNCATABLE_TO_INT = 2147483520f;
@@ -407,7 +412,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     // The unwind counter indicates how many levels up we need to branch from
                     // within the block.
                     int unwindCounter = block.execute(context, frame);
-                    if (unwindCounter > 0) {
+                    if (blockUnwindProfile.profile(unwindCounter > 0)) {
                         return unwindCounter - 1;
                     }
 
@@ -436,7 +441,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     // "shallower" than the current loop block
                     // (break out of the loop and even further).
                     int unwindCounter = executeLoopNode(childrenOffset, frame);
-                    if (unwindCounter > 0) {
+                    if (loopUnwindProfile.profile(unwindCounter > 0)) {
                         return unwindCounter - 1;
                     }
 
@@ -455,7 +460,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     WasmIfNode ifNode = (WasmIfNode) children[childrenOffset];
                     stackPointer--;
                     int unwindCounter = ifNode.execute(context, frame);
-                    if (unwindCounter > 0) {
+                    if (ifUnwindProfile.profile(unwindCounter > 0)) {
                         return unwindCounter - 1;
                     }
                     childrenOffset++;
