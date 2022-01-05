@@ -7,8 +7,7 @@
   local jdks = common_json.jdks,
   local deps = common_json.deps,
   local downloads = common_json.downloads,
-  # This must always point to HEAD in the master branch but can be used to point
-  # to another branch/commit in a Graal PR when mx changes are required for the PR.
+
   mx:: {
     packages +: {
       mx: mx_version
@@ -17,11 +16,14 @@
 
   eclipse:: downloads.eclipse,
   jdt:: downloads.jdt,
+  devkits:: common_json.devkits,
 
   build_base:: {
     // holds location of CI resources that can easily be overwritten in an overlay
     ci_resources:: (import "ci-resources.libsonnet"),
   },
+
+  download_hsdis:: ["mx", "hsdis", "||", "true"],
 
   // Job frequencies
   // ***************
@@ -98,18 +100,21 @@
   labsjdk17::            self["labsjdk-" + repo_config.graalvm_edition + "-17"],
   "labsjdk-ce-17Debug":: jdk17 + { downloads+: { JAVA_HOME : jdks["labsjdk-ce-17Debug"] }},
   "labsjdk-ee-17Debug":: jdk17 + { downloads+: { JAVA_HOME : jdks["labsjdk-ee-17Debug"] }},
+  labsjdk17Debug::       self["labsjdk-" + repo_config.graalvm_edition + "-17Debug"],
 
 
   // Hardware definitions
   // ********************
   common:: deps.common + self.mx + {
     # enforce self.os (useful for generating job names)
-    os:: error "self.os not set",
+    os:: error "self.os not set in " + self.name,
     # enforce self.arch (useful for generating job names)
     arch:: error "self.arch not set",
     capabilities +: [],
     catch_files +: common_json.catch_files,
     logs : [
+      "*.bgv",
+      "./" + repo_config.compiler.compiler_suite + "/graal_dumps/*/*",
       "*/es-*.json"
     ]
   },
@@ -139,8 +144,14 @@
     capabilities+: [self.arch],
   },
 
-  "linux-amd64"::     self.linux + self.amd64,
-  "darwin-amd64"::    self.darwin + self.amd64,
-  "windows-amd64"::   self.windows + self.amd64,
-  "linux-aarch64"::   self.linux + self.aarch64,
+  LinuxAMD64::     self.linux + self.amd64,
+  DarwinAMD64::    self.darwin + self.amd64,
+  WindowsAMD64::   self.windows + self.amd64,
+  LinuxAArch64::   self.linux + self.aarch64,
+
+  # Legacy hocon names
+  "linux-amd64"::     self.LinuxAMD64,
+  "darwin-amd64"::    self.DarwinAMD64,
+  "windows-amd64"::   self.WindowsAMD64,
+  "linux-aarch64"::   self.LinuxAArch64,
 }

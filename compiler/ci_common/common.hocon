@@ -1,3 +1,4 @@
+# only exists for the sake of bench.hocon
 
 compilerCommon : ${common} {
   setup : [

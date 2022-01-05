@@ -19,9 +19,6 @@ libgraal_env = "libgraal"
 vm_subdir = "vm"
 
 include "compiler/ci_common/common.hocon"
-include "compiler/ci_common/gate.hocon"
-include "compiler/ci_common/gate_tasks.hocon"
-include "compiler/ci_common/gate_tasks_bootstrap.hocon"
 
 include "compiler/ci_common/bench.hocon"
 
