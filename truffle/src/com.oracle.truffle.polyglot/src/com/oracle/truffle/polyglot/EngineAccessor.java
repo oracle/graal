@@ -1621,6 +1621,11 @@ final class EngineAccessor extends Accessor {
         public Object installGuestToHostCodeCache(Object polyglotContextImpl, Object cache) {
             return ((PolyglotContextImpl) polyglotContextImpl).getHostContext().getLanguageInstance().installGuestToHostCodeCache(cache);
         }
+
+        @Override
+        public AutoCloseable createPolyglotThreadScope() {
+            return PolyglotImpl.getActivePolyglot().createThreadScope();
+        }
     }
 
     abstract static class AbstractClassLoaderSupplier implements Supplier<ClassLoader> {

@@ -52,6 +52,7 @@ import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 import com.oracle.truffle.api.impl.InternalProcessHandler;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.ThreadScope;
 import org.graalvm.polyglot.io.ProcessHandler;
 
 final class ProcessHandlers {
@@ -252,9 +253,9 @@ final class ProcessHandlers {
         }
 
         @Override
+        @SuppressWarnings("try")
         public void run() {
-            open();
-            try {
+            try (ThreadScope scope = PolyglotImpl.getActivePolyglot().createThreadScope()) {
                 while (true) {
                     if (isInterrupted()) {
                         return;
@@ -266,17 +267,7 @@ final class ProcessHandlers {
                     out.write(buffer, 0, read);
                 }
             } catch (IOException e) {
-            } finally {
-                close();
             }
-        }
-
-        // Substituted by PolyglotIsolateFeature
-        private void open() {
-        }
-
-        // Substituted by PolyglotIsolateFeature
-        private void close() {
         }
     }
 }

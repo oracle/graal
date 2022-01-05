@@ -678,6 +678,8 @@ public abstract class Accessor {
         public abstract boolean getNeedsAllEncodings();
 
         public abstract boolean requireLanguageWithAllEncodings(Object encoding);
+
+        public abstract AutoCloseable createPolyglotThreadScope();
     }
 
     public abstract static class LanguageSupport extends Support {

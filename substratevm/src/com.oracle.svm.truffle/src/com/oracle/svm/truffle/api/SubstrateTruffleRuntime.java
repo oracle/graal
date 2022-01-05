@@ -131,11 +131,6 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         return SubstrateFastThreadLocal.SINGLETON;
     }
 
-    @Override
-    protected AutoCloseable openCompilerThreadScope() {
-        return new CompilerThreadScope();
-    }
-
     private void initializeAtRuntime(OptimizedCallTarget callTarget) {
         truffleCompiler.initialize(getOptionsForCompiler(callTarget), callTarget, true);
         if (SubstrateTruffleOptions.isMultiThreaded()) {
@@ -421,21 +416,4 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         }
 
     }
-
-    private static final class CompilerThreadScope implements AutoCloseable {
-
-        CompilerThreadScope() {
-            open();
-        }
-
-        // Substituted by PolyglotIsolateFeature
-        private void open() {
-        }
-
-        // Substituted by PolyglotIsolateFeature
-        @Override
-        public void close() {
-        }
-    }
-
 }

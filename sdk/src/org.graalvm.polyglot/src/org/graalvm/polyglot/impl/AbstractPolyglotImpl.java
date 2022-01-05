@@ -1085,6 +1085,10 @@ public abstract class AbstractPolyglotImpl {
         return getNext().newDefaultProcessHandler();
     }
 
+    public ThreadScope createThreadScope() {
+        return getNext().createThreadScope();
+    }
+
     /**
      * Creates a union of all available option descriptors including prev implementations. This
      * allows to validate the full set of options.
@@ -1108,6 +1112,11 @@ public abstract class AbstractPolyglotImpl {
      */
     protected OptionDescriptors createEngineOptionDescriptors() {
         return OptionDescriptors.EMPTY;
+    }
+
+    public interface ThreadScope extends AutoCloseable {
+        @Override
+        void close();
     }
 
 }
