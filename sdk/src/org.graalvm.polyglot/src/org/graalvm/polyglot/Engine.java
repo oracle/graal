@@ -91,6 +91,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractStackFrameImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractValueDispatch;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
+import org.graalvm.polyglot.io.ProcessHandler;
 
 /**
  * An execution engine for Graal {@linkplain Language guest languages} that allows to inspect the
@@ -1016,6 +1017,11 @@ public final class Engine implements AutoCloseable {
 
         @Override
         public FileSystem newDefaultFileSystem() {
+            throw noPolyglotImplementationFound();
+        }
+
+        @Override
+        public ProcessHandler newDefaultProcessHandler() {
             throw noPolyglotImplementationFound();
         }
 

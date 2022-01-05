@@ -1081,6 +1081,10 @@ public abstract class AbstractPolyglotImpl {
         return getNext().newDefaultFileSystem();
     }
 
+    public ProcessHandler newDefaultProcessHandler() {
+        return getNext().newDefaultProcessHandler();
+    }
+
     /**
      * Creates a union of all available option descriptors including prev implementations. This
      * allows to validate the full set of options.
