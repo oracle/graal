@@ -52,6 +52,7 @@ import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle.ClassHierarchyAccessor;
 import com.oracle.truffle.espresso.analysis.hierarchy.SingleImplementor;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.attributes.ConstantValueAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.EnclosingMethodAttribute;
@@ -1259,6 +1260,31 @@ public final class ObjectKlass extends Klass {
 
     public void redefineClass(ChangePacket packet, List<ObjectKlass> invalidatedClasses, Ids<Object> ids) {
         DetectedChange change = packet.detectedChange;
+
+        if (change.isChangedSuperClass()) {
+            // no changes was detected to this class, but it was marked
+            // as a super class change, which means at least one subclass
+            // hereof has this class as a new superclass.
+            // All fields must be redefined as a removed -> added combo to
+            // allow old instances of the changed subclass to access the fields
+            // within this class
+            if (getDeclaredFields().length > 0) {
+                ExtensionFieldsMetadata extension = getExtensionFieldsMetadata(true);
+                for (Field declaredField : getDeclaredFields()) {
+                    if (!declaredField.isStatic()) {
+                        declaredField.removeByRedefintion();
+
+                        int nextFieldSlot = getContext().getClassRedefinition().getNextAvailableFieldSlot();
+                        LinkedField.IdMode mode = LinkedKlassFieldLayout.getIdMode(getLinkedKlass().getParserKlass());
+                        LinkedField linkedField = new LinkedField(declaredField.linkedField.getParserField(), nextFieldSlot, mode, Constants.FIELD_REDEFINE_ADDED);
+                        Field field = new RedefineAddedField(getKlassVersion(), linkedField, getConstantPool(), false);
+                        extension.addNewInstanceField(field);
+                    }
+                }
+            }
+            return;
+        }
+
         ParserKlass parserKlass = packet.parserKlass;
         KlassVersion oldVersion = klassVersion;
         LinkedKlass oldLinkedKlass = oldVersion.linkedKlass;

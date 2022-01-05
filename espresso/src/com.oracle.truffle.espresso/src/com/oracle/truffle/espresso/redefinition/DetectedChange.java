@@ -49,6 +49,7 @@ public final class DetectedChange {
     private Map<ParserField, Field> mappedCompatibleFields = new HashMap<>();
     private ObjectKlass superKlass;
     private ObjectKlass[] superInterfaces;
+    private boolean isChangedSuperClass;
 
     public void addNewField(ParserField parserField) {
         if (parserField.isStatic()) {
@@ -145,5 +146,13 @@ public final class DetectedChange {
 
     public void addSuperInterfaces(ObjectKlass[] interfaces) {
         superInterfaces = interfaces;
+    }
+
+    public void markChangedSuperClass() {
+        isChangedSuperClass = true;
+    }
+
+    public boolean isChangedSuperClass() {
+        return isChangedSuperClass;
     }
 }

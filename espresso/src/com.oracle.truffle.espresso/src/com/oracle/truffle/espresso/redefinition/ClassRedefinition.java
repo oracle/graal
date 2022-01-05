@@ -67,6 +67,8 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 
 public final class ClassRedefinition {
 
@@ -186,6 +188,8 @@ public final class ClassRedefinition {
 
     public List<ChangePacket> detectClassChanges(HotSwapClassInfo[] classInfos) throws RedefintionNotSupportedException {
         List<ChangePacket> result = new ArrayList<>(classInfos.length);
+        EconomicMap<ObjectKlass, ChangePacket> temp = EconomicMap.create(1);
+        EconomicSet<ObjectKlass> superClassChanges = EconomicSet.create(1);
         for (HotSwapClassInfo hotSwapInfo : classInfos) {
             ObjectKlass klass = hotSwapInfo.getKlass();
             if (klass == null) {
@@ -208,7 +212,31 @@ public final class ClassRedefinition {
                 parserKlass = ClassfileParser.parse(new ClassfileStream(patched, null), loader, types.fromName(hotSwapInfo.getNewName()), context);
             }
             classChange = detectClassChanges(parserKlass, klass, detectedChange, newParserKlass);
-            result.add(new ChangePacket(hotSwapInfo, newParserKlass != null ? newParserKlass : parserKlass, classChange, detectedChange));
+            if (detectedChange.getSuperKlass() != null) {
+                // keep track of unhandled changed super classes
+                ObjectKlass superKlass = detectedChange.getSuperKlass();
+                while (superKlass != null) {
+                    superClassChanges.add(superKlass);
+                    superKlass = superKlass.getSuperKlass();
+                }
+            }
+            ChangePacket packet = new ChangePacket(hotSwapInfo, newParserKlass != null ? newParserKlass : parserKlass, classChange, detectedChange);
+            result.add(packet);
+            temp.put(klass, packet);
+        }
+        // add superclass change information to result
+        for (ObjectKlass superKlass : superClassChanges) {
+            ChangePacket packet = temp.get(superKlass);
+            if (packet != null) {
+                // update changed super klass
+                packet.detectedChange.markChangedSuperClass();
+            } else {
+                // create new packet to signal a subclass was changed but the superclass didn't
+                DetectedChange change = new DetectedChange();
+                change.markChangedSuperClass();
+                packet = new ChangePacket(HotSwapClassInfo.createForSuperClassChanged(superKlass), null, ClassChange.CLASS_HIERARCHY_CHANGED, change);
+                result.add(packet);
+            }
         }
         return result;
     }
