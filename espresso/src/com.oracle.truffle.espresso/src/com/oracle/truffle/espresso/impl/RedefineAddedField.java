@@ -23,31 +23,36 @@
 package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.staticobject.StaticShape;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import org.graalvm.collections.EconomicMap;
+
+import java.util.WeakHashMap;
 
 public final class RedefineAddedField extends Field {
 
     private Field compatibleField;
-    private StaticShape<ExtensionFieldObject.ExtensionFieldObjectFactory> extensionShape;
+    private StaticShape<ExtensionFieldObjectFactory> extensionShape;
 
-    private final EconomicMap<StaticObject, ExtensionFieldObject> extensionFieldsCache = EconomicMap.create();
-    private final ExtensionFieldObject staticExtensionObject;
+    private final FieldStorageObject staticStorageObject;
+    private final WeakHashMap<StaticObject, FieldStorageObject> storageObjects = new WeakHashMap<>(1);
 
     public RedefineAddedField(ObjectKlass.KlassVersion holder, LinkedField linkedField, RuntimeConstantPool pool, boolean isDelegation) {
         super(holder, linkedField, pool);
         if (!isDelegation) {
             StaticShape.Builder shapeBuilder = StaticShape.newBuilder(getDeclaringKlass().getEspressoLanguage());
             shapeBuilder.property(linkedField, linkedField.getParserField().getPropertyType(), isFinalFlagSet());
-            this.extensionShape = shapeBuilder.build(ExtensionFieldObject.FieldStorageObject.class, ExtensionFieldObject.ExtensionFieldObjectFactory.class);
+            this.extensionShape = shapeBuilder.build(FieldStorageObject.class, ExtensionFieldObjectFactory.class);
         }
-        if (isStatic()) {
+        if (isStatic() && !isDelegation) {
             // create the extension field object eagerly for static fields
-            staticExtensionObject = new ExtensionFieldObject();
+            staticStorageObject = extensionShape.getFactory().create();
+            if (getKind().isObject()) {
+                linkedField.setObject(staticStorageObject, StaticObject.NULL);
+            }
         } else {
-            staticExtensionObject = null;
+            staticStorageObject = null;
         }
     }
 
@@ -74,27 +79,26 @@ public final class RedefineAddedField extends Field {
         return compatibleField;
     }
 
-    StaticShape<ExtensionFieldObject.ExtensionFieldObjectFactory> getExtensionShape() {
-        return extensionShape;
-    }
-
     @TruffleBoundary
-    private ExtensionFieldObject getExtensionObject(StaticObject instance) {
+    private FieldStorageObject getStorageObject(StaticObject instance) {
         if (isStatic()) {
-            return staticExtensionObject;
+            return staticStorageObject;
         }
 
-        ExtensionFieldObject extensionFieldObject = extensionFieldsCache.get(instance);
-        if (extensionFieldObject == null) {
-            synchronized (extensionFieldsCache) {
-                extensionFieldObject = extensionFieldsCache.get(instance);
-                if (extensionFieldObject == null) {
-                    extensionFieldObject = new ExtensionFieldObject();
-                    extensionFieldsCache.put(instance, extensionFieldObject);
+        FieldStorageObject storageObject = storageObjects.get(instance);
+        if (storageObject == null) {
+            synchronized (storageObjects) {
+                storageObject = storageObjects.get(instance);
+                if (storageObject == null) {
+                    storageObject = extensionShape.getFactory().create();
+                    if (getKind().isObject()) {
+                        linkedField.setObject(storageObject, StaticObject.NULL);
+                    }
+                    storageObjects.put(instance, storageObject);
                 }
             }
         }
-        return extensionFieldObject;
+        return storageObject;
     }
 
     @Override
@@ -102,7 +106,12 @@ public final class RedefineAddedField extends Field {
         if (hasCompatibleField()) {
             return getCompatibleField().getObject(obj, forceVolatile);
         } else {
-            return getExtensionObject(obj).getObject(this, forceVolatile);
+            FieldStorageObject storageObject = getStorageObject(obj);
+            if (forceVolatile) {
+                return (StaticObject) linkedField.getObjectVolatile(storageObject);
+            } else {
+                return (StaticObject) linkedField.getObject(storageObject);
+            }
         }
     }
 
@@ -111,7 +120,12 @@ public final class RedefineAddedField extends Field {
         if (hasCompatibleField()) {
             getCompatibleField().setObject(obj, value, forceVolatile);
         } else {
-            getExtensionObject(obj).setObject(this, value, forceVolatile);
+            FieldStorageObject storageObject = getStorageObject(obj);
+            if (forceVolatile) {
+                linkedField.setObjectVolatile(storageObject, value);
+            } else {
+                linkedField.setObject(storageObject, value);
+            }
         }
     }
 
@@ -120,7 +134,7 @@ public final class RedefineAddedField extends Field {
         if (hasCompatibleField()) {
             return getCompatibleField().getAndSetObject(obj, value);
         } else {
-            return getExtensionObject(obj).getAndSetObject(this, value);
+            return (StaticObject) linkedField.getAndSetObject(getStorageObject(obj), value);
         }
     }
 
@@ -129,7 +143,7 @@ public final class RedefineAddedField extends Field {
         if (hasCompatibleField()) {
             return getCompatibleField().compareAndSwapObject(obj, before, after);
         } else {
-            return getExtensionObject(obj).compareAndSwapObject(this, before, after);
+            return linkedField.compareAndSwapObject(getStorageObject(obj), before, after);
         }
     }
 
@@ -138,7 +152,7 @@ public final class RedefineAddedField extends Field {
         if (hasCompatibleField()) {
             return getCompatibleField().compareAndExchangeObject(obj, before, after);
         } else {
-            return getExtensionObject(obj).compareAndExchangeObject(this, before, after);
+            return (StaticObject) linkedField.compareAndExchangeObject(getStorageObject(obj), before, after);
         }
     }
 
@@ -147,7 +161,12 @@ public final class RedefineAddedField extends Field {
         if (hasCompatibleField()) {
             return getCompatibleField().getBoolean(obj, forceVolatile);
         } else {
-            return getExtensionObject(obj).getBoolean(this, forceVolatile);
+            FieldStorageObject storageObject = getStorageObject(obj);
+            if (forceVolatile) {
+                return linkedField.getBooleanVolatile(storageObject);
+            } else {
+                return linkedField.getBoolean(storageObject);
+            }
         }
     }
 
@@ -156,7 +175,12 @@ public final class RedefineAddedField extends Field {
         if (hasCompatibleField()) {
             getCompatibleField().setBoolean(obj, value, forceVolatile);
         } else {
-            getExtensionObject(obj).setBoolean(this, value, forceVolatile);
+            FieldStorageObject storageObject = getStorageObject(obj);
+            if (forceVolatile) {
+                linkedField.setBooleanVolatile(storageObject, value);
+            } else {
+                linkedField.setBoolean(storageObject, value);
+            }
         }
     }
 
@@ -165,7 +189,7 @@ public final class RedefineAddedField extends Field {
         if (hasCompatibleField()) {
             return getCompatibleField().compareAndSwapBoolean(obj, before, after);
         } else {
-            return getExtensionObject(obj).compareAndSwapBoolean(this, before, after);
+            return linkedField.compareAndSwapBoolean(getStorageObject(obj), before, after);
         }
     }
 
@@ -174,7 +198,7 @@ public final class RedefineAddedField extends Field {
         if (hasCompatibleField()) {
             return getCompatibleField().compareAndExchangeBoolean(obj, before, after);
         } else {
-            return getExtensionObject(obj).compareAndExchangeBoolean(this, before, after);
+            return linkedField.compareAndExchangeBoolean(getStorageObject(obj), before, after);
         }
     }
 
@@ -183,7 +207,12 @@ public final class RedefineAddedField extends Field {
         if (hasCompatibleField()) {
             return getCompatibleField().getByte(obj, forceVolatile);
         } else {
-            return getExtensionObject(obj).getByte(this, forceVolatile);
+            FieldStorageObject storageObject = getStorageObject(obj);
+            if (forceVolatile) {
+                return linkedField.getByteVolatile(storageObject);
+            } else {
+                return linkedField.getByte(storageObject);
+            }
         }
     }
 
@@ -192,7 +221,12 @@ public final class RedefineAddedField extends Field {
         if (hasCompatibleField()) {
             getCompatibleField().setByte(obj, value, forceVolatile);
         } else {
-            getExtensionObject(obj).setByte(this, value, forceVolatile);
+            FieldStorageObject storageObject = getStorageObject(obj);
+            if (forceVolatile) {
+                linkedField.setByteVolatile(storageObject, value);
+            } else {
+                linkedField.setByte(storageObject, value);
+            }
         }
     }
 
@@ -201,7 +235,7 @@ public final class RedefineAddedField extends Field {
         if (hasCompatibleField()) {
             return getCompatibleField().compareAndSwapByte(obj, before, after);
         } else {
-            return getExtensionObject(obj).compareAndSwapByte(this, before, after);
+            return linkedField.compareAndSwapByte(getStorageObject(obj), before, after);
         }
     }
 
@@ -210,7 +244,7 @@ public final class RedefineAddedField extends Field {
         if (hasCompatibleField()) {
             return getCompatibleField().compareAndExchangeByte(obj, before, after);
         } else {
-            return getExtensionObject(obj).compareAndExchangeByte(this, before, after);
+            return linkedField.compareAndExchangeByte(getStorageObject(obj), before, after);
         }
     }
 
@@ -219,7 +253,12 @@ public final class RedefineAddedField extends Field {
         if (hasCompatibleField()) {
             return getCompatibleField().getChar(obj, forceVolatile);
         } else {
-            return getExtensionObject(obj).getChar(this, forceVolatile);
+            FieldStorageObject storageObject = getStorageObject(obj);
+            if (forceVolatile) {
+                return linkedField.getCharVolatile(storageObject);
+            } else {
+                return linkedField.getChar(storageObject);
+            }
         }
     }
 
@@ -228,7 +267,12 @@ public final class RedefineAddedField extends Field {
         if (hasCompatibleField()) {
             getCompatibleField().setChar(obj, value, forceVolatile);
         } else {
-            getExtensionObject(obj).setChar(this, value, forceVolatile);
+            FieldStorageObject storageObject = getStorageObject(obj);
+            if (forceVolatile) {
+                linkedField.setCharVolatile(storageObject, value);
+            } else {
+                linkedField.setChar(storageObject, value);
+            }
         }
     }
 
@@ -237,7 +281,7 @@ public final class RedefineAddedField extends Field {
         if (hasCompatibleField()) {
             return getCompatibleField().compareAndSwapChar(obj, before, after);
         } else {
-            return getExtensionObject(obj).compareAndSwapChar(this, before, after);
+            return linkedField.compareAndSwapChar(getStorageObject(obj), before, after);
         }
     }
 
@@ -246,7 +290,7 @@ public final class RedefineAddedField extends Field {
         if (hasCompatibleField()) {
             return getCompatibleField().compareAndExchangeChar(obj, before, after);
         } else {
-            return getExtensionObject(obj).compareAndExchangeChar(this, before, after);
+            return linkedField.compareAndExchangeChar(getStorageObject(obj), before, after);
         }
     }
 
@@ -255,7 +299,12 @@ public final class RedefineAddedField extends Field {
         if (hasCompatibleField()) {
             return getCompatibleField().getDouble(obj, forceVolatile);
         } else {
-            return getExtensionObject(obj).getDouble(this, forceVolatile);
+            FieldStorageObject storageObject = getStorageObject(obj);
+            if (forceVolatile) {
+                return linkedField.getDoubleVolatile(storageObject);
+            } else {
+                return linkedField.getDouble(storageObject);
+            }
         }
     }
 
@@ -264,7 +313,12 @@ public final class RedefineAddedField extends Field {
         if (hasCompatibleField()) {
             getCompatibleField().setDouble(obj, value, forceVolatile);
         } else {
-            getExtensionObject(obj).setDouble(this, value, forceVolatile);
+            FieldStorageObject storageObject = getStorageObject(obj);
+            if (forceVolatile) {
+                linkedField.setDoubleVolatile(storageObject, value);
+            } else {
+                linkedField.setDouble(storageObject, value);
+            }
         }
     }
 
@@ -273,7 +327,7 @@ public final class RedefineAddedField extends Field {
         if (hasCompatibleField()) {
             return getCompatibleField().compareAndSwapDouble(obj, before, after);
         } else {
-            return getExtensionObject(obj).compareAndSwapDouble(this, before, after);
+            return linkedField.compareAndSwapDouble(getStorageObject(obj), before, after);
         }
     }
 
@@ -282,7 +336,7 @@ public final class RedefineAddedField extends Field {
         if (hasCompatibleField()) {
             return getCompatibleField().compareAndExchangeDouble(obj, before, after);
         } else {
-            return getExtensionObject(obj).compareAndExchangeDouble(this, before, after);
+            return linkedField.compareAndExchangeDouble(getStorageObject(obj), before, after);
         }
     }
 
@@ -291,7 +345,12 @@ public final class RedefineAddedField extends Field {
         if (hasCompatibleField()) {
             return getCompatibleField().getFloat(obj, forceVolatile);
         } else {
-            return getExtensionObject(obj).getFloat(this, forceVolatile);
+            FieldStorageObject storageObject = getStorageObject(obj);
+            if (forceVolatile) {
+                return linkedField.getFloatVolatile(storageObject);
+            } else {
+                return linkedField.getFloat(storageObject);
+            }
         }
     }
 
@@ -300,7 +359,12 @@ public final class RedefineAddedField extends Field {
         if (hasCompatibleField()) {
             getCompatibleField().setFloat(obj, value, forceVolatile);
         } else {
-            getExtensionObject(obj).setFloat(this, value, forceVolatile);
+            FieldStorageObject storageObject = getStorageObject(obj);
+            if (forceVolatile) {
+                linkedField.setFloatVolatile(storageObject, value);
+            } else {
+                linkedField.setFloat(storageObject, value);
+            }
         }
     }
 
@@ -309,7 +373,7 @@ public final class RedefineAddedField extends Field {
         if (hasCompatibleField()) {
             return getCompatibleField().compareAndSwapFloat(obj, before, after);
         } else {
-            return getExtensionObject(obj).compareAndSwapFloat(this, before, after);
+            return linkedField.compareAndSwapFloat(getStorageObject(obj), before, after);
         }
     }
 
@@ -318,7 +382,7 @@ public final class RedefineAddedField extends Field {
         if (hasCompatibleField()) {
             return getCompatibleField().compareAndExchangeFloat(obj, before, after);
         } else {
-            return getExtensionObject(obj).compareAndExchangeFloat(this, before, after);
+            return linkedField.compareAndExchangeFloat(getStorageObject(obj), before, after);
         }
     }
 
@@ -327,7 +391,12 @@ public final class RedefineAddedField extends Field {
         if (hasCompatibleField()) {
             return getCompatibleField().getInt(obj, forceVolatile);
         } else {
-            return getExtensionObject(obj).getInt(this, forceVolatile);
+            FieldStorageObject storageObject = getStorageObject(obj);
+            if (forceVolatile) {
+                return linkedField.getIntVolatile(storageObject);
+            } else {
+                return linkedField.getInt(storageObject);
+            }
         }
     }
 
@@ -336,7 +405,12 @@ public final class RedefineAddedField extends Field {
         if (hasCompatibleField()) {
             getCompatibleField().setInt(obj, value, forceVolatile);
         } else {
-            getExtensionObject(obj).setInt(this, value, forceVolatile);
+            FieldStorageObject storageObject = getStorageObject(obj);
+            if (forceVolatile) {
+                linkedField.setIntVolatile(storageObject, value);
+            } else {
+                linkedField.setInt(storageObject, value);
+            }
         }
     }
 
@@ -345,7 +419,7 @@ public final class RedefineAddedField extends Field {
         if (hasCompatibleField()) {
             return getCompatibleField().compareAndSwapInt(obj, before, after);
         } else {
-            return getExtensionObject(obj).compareAndSwapInt(this, before, after);
+            return linkedField.compareAndSwapInt(getStorageObject(obj), before, after);
         }
     }
 
@@ -354,7 +428,7 @@ public final class RedefineAddedField extends Field {
         if (hasCompatibleField()) {
             return getCompatibleField().compareAndExchangeInt(obj, before, after);
         } else {
-            return getExtensionObject(obj).compareAndExchangeInt(this, before, after);
+            return linkedField.compareAndExchangeInt(getStorageObject(obj), before, after);
         }
     }
 
@@ -363,7 +437,12 @@ public final class RedefineAddedField extends Field {
         if (hasCompatibleField()) {
             return getCompatibleField().getLong(obj, forceVolatile);
         } else {
-            return getExtensionObject(obj).getLong(this, forceVolatile);
+            FieldStorageObject storageObject = getStorageObject(obj);
+            if (forceVolatile) {
+                return linkedField.getLongVolatile(storageObject);
+            } else {
+                return linkedField.getLong(storageObject);
+            }
         }
     }
 
@@ -372,7 +451,12 @@ public final class RedefineAddedField extends Field {
         if (hasCompatibleField()) {
             getCompatibleField().setLong(obj, value, forceVolatile);
         } else {
-            getExtensionObject(obj).setLong(this, value, forceVolatile);
+            FieldStorageObject storageObject = getStorageObject(obj);
+            if (forceVolatile) {
+                linkedField.setLongVolatile(storageObject, value);
+            } else {
+                linkedField.setLong(storageObject, value);
+            }
         }
     }
 
@@ -381,7 +465,7 @@ public final class RedefineAddedField extends Field {
         if (hasCompatibleField()) {
             return getCompatibleField().compareAndSwapLong(obj, before, after);
         } else {
-            return getExtensionObject(obj).compareAndSwapLong(this, before, after);
+            return linkedField.compareAndSwapLong(getStorageObject(obj), before, after);
         }
     }
 
@@ -390,7 +474,7 @@ public final class RedefineAddedField extends Field {
         if (hasCompatibleField()) {
             return getCompatibleField().compareAndExchangeLong(obj, before, after);
         } else {
-            return getExtensionObject(obj).compareAndExchangeLong(this, before, after);
+            return linkedField.compareAndExchangeLong(getStorageObject(obj), before, after);
         }
     }
 
@@ -399,7 +483,12 @@ public final class RedefineAddedField extends Field {
         if (hasCompatibleField()) {
             return getCompatibleField().getShort(obj, forceVolatile);
         } else {
-            return getExtensionObject(obj).getShort(this, forceVolatile);
+            FieldStorageObject storageObject = getStorageObject(obj);
+            if (forceVolatile) {
+                return linkedField.getShortVolatile(storageObject);
+            } else {
+                return linkedField.getShort(storageObject);
+            }
         }
     }
 
@@ -408,7 +497,12 @@ public final class RedefineAddedField extends Field {
         if (hasCompatibleField()) {
             getCompatibleField().setShort(obj, value, forceVolatile);
         } else {
-            getExtensionObject(obj).setShort(this, value, forceVolatile);
+            FieldStorageObject storageObject = getStorageObject(obj);
+            if (forceVolatile) {
+                linkedField.setShortVolatile(storageObject, value);
+            } else {
+                linkedField.setShort(storageObject, value);
+            }
         }
     }
 
@@ -417,7 +511,7 @@ public final class RedefineAddedField extends Field {
         if (hasCompatibleField()) {
             return getCompatibleField().compareAndSwapShort(obj, before, after);
         } else {
-            return getExtensionObject(obj).compareAndSwapShort(this, before, after);
+            return linkedField.compareAndSwapShort(getStorageObject(obj), before, after);
         }
     }
 
@@ -426,7 +520,14 @@ public final class RedefineAddedField extends Field {
         if (hasCompatibleField()) {
             return getCompatibleField().compareAndExchangeShort(obj, before, after);
         } else {
-            return getExtensionObject(obj).compareAndExchangeShort(this, before, after);
+            return linkedField.compareAndExchangeShort(getStorageObject(obj), before, after);
         }
+    }
+
+    public static class FieldStorageObject implements TruffleObject {
+    }
+
+    public interface ExtensionFieldObjectFactory {
+        FieldStorageObject create();
     }
 }

@@ -56,12 +56,13 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
  * 2. A {@link RedefineAddedField} which represents a field that was added by a
  * {@link com.oracle.truffle.espresso.redefinition.ClassRedefinition}. Management of Redefine Added
  * Fields is done through {@link ExtensionFieldsMetadata}. Accessing a Redefined Added Field
- * normally happens through the associated {@link ExtensionFieldObject instance} unless the Redefine
- * Added Field has a Compatible Field {@link #hasCompatibleField()}. A Compatible field is always an
- * Original Field that has the same name and type as the associated Redefine Added Field. A Redefine
- * Added field can be assigned a Compatible Field if e.g. the field access modifiers changed. The
- * state of the field is thus maintained by the Compatible (Original) Field. In this case the
- * Redefine Added Field serves only as an up-to-date representative of the field in the runtime.
+ * normally happens through the associated {@link RedefineAddedField.FieldStorageObject instance}
+ * unless the Redefine Added Field has a Compatible Field {@link #hasCompatibleField()}. A
+ * Compatible field is always an Original Field that has the same name and type as the associated
+ * Redefine Added Field. A Redefine Added field can be assigned a Compatible Field if e.g. the field
+ * access modifiers changed. The state of the field is thus maintained by the Compatible (Original)
+ * Field. In this case the Redefine Added Field serves only as an up-to-date representative of the
+ * field in the runtime.
  *
  * 3. A Delegation Field is a special field that is created whenever a certain field requires to be
  * re-resolved due to class redefinition. It allows obsolete code that uses a field to continue
