@@ -79,7 +79,7 @@ Hello World!
 ```
 
 You can find a collection of larger Java examples on the [Examples Applications](../../examples/examples.md) page.
-For more information on the GraalVM compiler, go to [Compiler](../../reference-manual/compiler.md).
+For more information on the GraalVM compiler, go to [Compiler](../../reference-manual/java/compiler.md).
 For more extensive documentation on running Java, proceed to [JVM Languages](../../reference-manual/java/README.md).
 
 ### JavaScript and Node.js
