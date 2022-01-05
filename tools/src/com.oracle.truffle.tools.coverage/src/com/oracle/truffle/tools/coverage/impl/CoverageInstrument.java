@@ -76,9 +76,9 @@ public class CoverageInstrument extends TruffleInstrument {
     @Option(name = "Output", help = "Can be: human readable 'histogram' (per file coverage summary) or 'detailed' (per line coverage summary), machine readable 'json', tool compliant 'lcov' (default: histogram).",
             usageSyntax = "histogram|detailed|json|lcov", category = OptionCategory.USER, stability = OptionStability.STABLE)
     static final OptionKey<Output> OUTPUT = new OptionKey<>(Output.HISTOGRAM, CLI_OUTPUT_TYPE);
-    @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (eg. Math.*) (default: no filter)", usageSyntax = "*", category = OptionCategory.USER, stability = OptionStability.STABLE)
+    @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (eg. Math.*) (default: no filter)", usageSyntax = "<filter>", category = OptionCategory.USER, stability = OptionStability.STABLE)
     static final OptionKey<WildcardFilter> FILTER_ROOT = new OptionKey<>(WildcardFilter.DEFAULT, WildcardFilter.WILDCARD_FILTER_TYPE);
-    @Option(name = "FilterFile", help = "Wildcard filter for source file paths. (eg. *program*.sl)  (default: no filter).", usageSyntax = "*", category = OptionCategory.USER, stability = OptionStability.STABLE)
+    @Option(name = "FilterFile", help = "Wildcard filter for source file paths. (eg. *program*.sl)  (default: no filter).", usageSyntax = "<filter>", category = OptionCategory.USER, stability = OptionStability.STABLE)
     static final OptionKey<WildcardFilter> FILTER_FILE = new OptionKey<>(WildcardFilter.DEFAULT, WildcardFilter.WILDCARD_FILTER_TYPE);
     @Option(name = "FilterMimeType", help = "Only track languages with mime-type. (default: no filter)", usageSyntax = "<mimeType>", category = OptionCategory.USER, stability = OptionStability.STABLE)
     static final OptionKey<String> FILTER_MIME_TYPE = new OptionKey<>("");

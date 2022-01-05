@@ -51,7 +51,7 @@ abstract class ProfilerCLI {
     public static final String UNKNOWN = "<Unknown>";
 
     static SourceSectionFilter buildFilter(boolean roots, boolean statements, boolean calls, boolean internals,
-                                           WildcardFilter filterRootName, WildcardFilter filterFile, String filterMimeType, String filterLanguage) {
+                    WildcardFilter filterRootName, WildcardFilter filterFile, String filterMimeType, String filterLanguage) {
         SourceSectionFilter.Builder builder = SourceSectionFilter.newBuilder();
         if (!internals || filterFile != null || filterMimeType != null || filterLanguage != null) {
             builder.sourceIs(new SourceSectionFilter.SourcePredicate() {

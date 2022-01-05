@@ -3,7 +3,7 @@
 This changelog summarizes major changes between GraalVM SDK versions. The main focus is on APIs exported by GraalVM SDK.
 
 ## Version 22.1.0
-* (GR-35010) Truffle Languages and Instruments provide website information which is printed in launcher help pages.
+* (GR-35010) Added API for Truffle Languages (`Language#getWebsite()`) and Instruments (`Instrument#getWebsite()`) to provide website information.
 
 ## Version 22.0.0
 * (GR-31170) Native Image API: Added `WINDOWS_AARCH64` Platform.

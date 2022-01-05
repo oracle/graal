@@ -229,6 +229,7 @@ public final class PolyglotCompilerOptions {
     });
 
     private static final String PERFORMANCE_WARNING_SYNTAX = "none|all|<perfWarning>,<perfWarning>,...";
+    private static final String PERFORMANCE_WARNING_LIST = "Performance warnings are: call, instanceof, store, frame_merge, trivial.";
 
     // Compilation
 
@@ -323,7 +324,8 @@ public final class PolyglotCompilerOptions {
     @Option(help = ExceptionAction.HELP, usageSyntax = "Silent|Print|Throw|Diagnose|ExitVM", category = OptionCategory.INTERNAL) //
     public static final OptionKey<ExceptionAction> CompilationFailureAction = new OptionKey<>(ExceptionAction.Silent, EXCEPTION_ACTION_TYPE);
 
-    @Option(help = "Treat performance warnings as error. Handling of the error depends on the CompilationFailureAction option value.", usageSyntax = PERFORMANCE_WARNING_SYNTAX, category = OptionCategory.INTERNAL) //
+    @Option(help = "Treat performance warnings as error. Handling of the error depends on the CompilationFailureAction option value. " +
+                    PERFORMANCE_WARNING_LIST, usageSyntax = PERFORMANCE_WARNING_SYNTAX, category = OptionCategory.INTERNAL) //
     public static final OptionKey<Set<PerformanceWarningKind>> TreatPerformanceWarningsAsErrors = new OptionKey<>(Collections.emptySet(), PERFORMANCE_WARNING_TYPE);
 
     // Tracing
@@ -457,7 +459,7 @@ public final class PolyglotCompilerOptions {
     @Option(help = "Enable inlining across Truffle boundary", category = OptionCategory.INTERNAL) //
     public static final OptionKey<Boolean> InlineAcrossTruffleBoundary = new OptionKey<>(false);
 
-    @Option(help = "Print potential performance problems", usageSyntax = PERFORMANCE_WARNING_SYNTAX, category = OptionCategory.INTERNAL) //
+    @Option(help = "Print potential performance problems, " + PERFORMANCE_WARNING_LIST, usageSyntax = PERFORMANCE_WARNING_SYNTAX, category = OptionCategory.INTERNAL) //
     public static final OptionKey<Set<PerformanceWarningKind>> TracePerformanceWarnings = new OptionKey<>(Collections.emptySet(), PERFORMANCE_WARNING_TYPE);
 
     @Option(help = "Run the partial escape analysis iteratively in Truffle compilation.", category = OptionCategory.INTERNAL) //

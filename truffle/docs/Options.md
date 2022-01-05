@@ -194,7 +194,7 @@ Or one or multiple tiers separated by comma (e.g. truffleTier,lowTier):
     peTier - After partial evaluation without additional phases applied.  
     truffleTier - After partial evaluation with additional phases applied.  
     lowTier - After low tier phases were applied.
-- `--engine.TracePerformanceWarnings=none|all|<perfWarning>,<perfWarning>,...` : Print potential performance problems
+- `--engine.TracePerformanceWarnings=none|all|<perfWarning>,<perfWarning>,...` : Print potential performance problems, Performance warnings are: call, instanceof, store, frame_merge, trivial.
 - `--engine.TraceSplitting` : Print information for splitting decisions.
 - `--engine.TraceSplittingSummary` : Used for debugging the splitting implementation. Prints splitting summary directly to stdout on shutdown
 - `--engine.TraceStackTraceLimit=[1, inf)` : Number of stack trace elements printed by TraceTruffleTransferToInterpreter, TraceTruffleAssumptions and TraceDeoptimizeFrame (default: 20).
@@ -203,5 +203,5 @@ Or one or multiple tiers separated by comma (e.g. truffleTier,lowTier):
 - `--engine.TraversingQueueFirstTierBonus=[0.0, inf)` : Controls how much of a priority should be given to first tier compilations (default 15.0).
 - `--engine.TraversingQueueFirstTierPriority` : Traversing queue gives first tier compilations priority.
 - `--engine.TraversingQueueWeightingBothTiers=true|false` : Traversing queue uses rate as priority for both tier. (default: true)
-- `--engine.TreatPerformanceWarningsAsErrors=none|all|<perfWarning>,<perfWarning>,...` : Treat performance warnings as error. Handling of the error depends on the CompilationFailureAction option value.
+- `--engine.TreatPerformanceWarningsAsErrors=none|all|<perfWarning>,<perfWarning>,...` : Treat performance warnings as error. Handling of the error depends on the CompilationFailureAction option value. Performance warnings are: call, instanceof, store, frame_merge, trivial.
 <!-- END: internal-engine-options -->
