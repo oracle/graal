@@ -191,6 +191,8 @@ The current set of available options is as follows.
 - `--cpusampler.Output=histogram|calltree|json|flamegraph` : Specify the output format to one of: histogram, calltree, json or flamegraph (default: histogram).
 - `--cpusampler.OutputFile=<path>` : Save output to the given file. Output is printed to output stream by default.
 - `--cpusampler.Period=<ms>` : Period in milliseconds to sample the stack (default: 10)
+- `--cpusampler.SampleContextInitialization` : Enables sampling of code executed during context initialization
+- `--cpusampler.ShowTiers=true|false|0,1,2` : Specify whether to show compilation information for entries. You can specify 'true' to show all compilation information, 'false' for none, or a comma separated list of compilation tiers. Note: Interpreter is considered Tier 0. (default: false)
 - `--cpusampler.StackLimit=[1, inf)` : Maximum number of maximum stack elements (default: 10000).
 - `--cpusampler.SummariseThreads` : Print output as a summary of all 'per thread' profiles.
 <!-- END: cpu-sampler-options -->
