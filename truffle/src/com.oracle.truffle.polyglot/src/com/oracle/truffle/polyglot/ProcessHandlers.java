@@ -50,6 +50,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+
+import com.oracle.truffle.api.impl.InternalProcessHandler;
 import org.graalvm.polyglot.io.ProcessHandler;
 
 final class ProcessHandlers {
@@ -62,10 +64,6 @@ final class ProcessHandlers {
         return new DefaultProcessHandler();
     }
 
-    static boolean isDefault(ProcessHandler handler) {
-        return handler instanceof DefaultProcessHandler;
-    }
-
     static Process decorate(PolyglotLanguageContext owner, List<? extends String> cmd, Process process,
                     OutputStream out, OutputStream err) {
         ProcessDecorator decorator = new ProcessDecorator(owner, cmd.get(0), process, out, err);
@@ -75,7 +73,12 @@ final class ProcessHandlers {
         return decorator;
     }
 
-    private static final class DefaultProcessHandler implements ProcessHandler {
+    private static final class DefaultProcessHandler implements InternalProcessHandler {
+
+        @Override
+        public boolean isDefault() {
+            return true;
+        }
 
         @Override
         public Process start(ProcessCommand command) throws IOException {

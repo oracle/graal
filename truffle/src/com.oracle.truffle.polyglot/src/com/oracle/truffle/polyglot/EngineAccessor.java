@@ -71,6 +71,7 @@ import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
+import com.oracle.truffle.api.impl.InternalProcessHandler;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionKey;
@@ -1171,7 +1172,8 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public boolean hasDefaultProcessHandler(Object polyglotLanguageContext) {
-            return ProcessHandlers.isDefault(((PolyglotLanguageContext) polyglotLanguageContext).context.config.processHandler);
+            ProcessHandler handler = ((PolyglotLanguageContext) polyglotLanguageContext).context.config.processHandler;
+            return handler instanceof InternalProcessHandler && ((InternalProcessHandler) handler).isDefault();
         }
 
         @Override
