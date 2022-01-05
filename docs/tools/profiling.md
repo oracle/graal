@@ -179,14 +179,51 @@ The current set of available options is as follows.
 
 ### CPU Sampler Options
 
-{% include_relative cpu-sampler.txt%}
+<!-- BEGIN: cpu-sampler-options -->
+- `--cpusampler=true|false|<Output>` : Enable/Disable the CPU sampler, or enable with specific Output - as specified by the Output option (default: false). Choosing an output with this options defaults to printing the output to std out, except for the flamegraph which is printed to a flamegraph.svg file.
+- `--cpusampler.Delay=<ms>` : Delay the sampling for this many milliseconds (default: 0).
+- `--cpusampler.FilterFile=*` : Wildcard filter for source file paths. (eg. *program*.sl) (default: no filter).
+- `--cpusampler.FilterLanguage=<languageId>` : Only profile the language with given ID. (eg. js) (default: profile all).
+- `--cpusampler.FilterMimeType=<mime-type>` : Only profile the language with given mime-type. (eg. application/javascript) (default: profile all)
+- `--cpusampler.FilterRootName=*` : Wildcard filter for program roots. (eg. Math.*) (default: no filter).
+- `--cpusampler.GatherHitTimes` : Save a timestamp for each taken sample.
+- `--cpusampler.MinSamples=[0, inf)` : Remove elements from output if they have less samples than this value (default: 0)
+- `--cpusampler.Output=histogram|calltree|json|flamegraph` : Specify the output format to one of: histogram, calltree, json or flamegraph (default: histogram).
+- `--cpusampler.OutputFile=<path>` : Save output to the given file. Output is printed to output stream by default.
+- `--cpusampler.Period=<ms>` : Period in milliseconds to sample the stack (default: 10)
+- `--cpusampler.StackLimit=[1, inf)` : Maximum number of maximum stack elements (default: 10000).
+- `--cpusampler.SummariseThreads` : Print output as a summary of all 'per thread' profiles.
+<!-- END: cpu-sampler-options -->
 
 ### CPU Tracer Options
 
-{% include_relative cpu-tracer.txt%}
+
+<!-- BEGIN: cpu-tracer-options -->
+- `--cputracer` : Enable the CPU tracer (default: false).
+- `--cputracer.FilterFile=*` : Wildcard filter for source file paths. (eg. *program*.sl) (default: no filter).
+- `--cputracer.FilterLanguage=<languageId>` : Only profile languages with given ID. (eg. js) (default: no filter).
+- `--cputracer.FilterMimeType=<mime-type>` : Only profile languages with mime-type. (eg. application/javascript) (default: no filter).
+- `--cputracer.FilterRootName=*` : Wildcard filter for program roots. (eg. Math.*) (default: no filter).
+- `--cputracer.Output=histogram|json` : Print a 'histogram' or 'json' as output (default: histogram).
+- `--cputracer.OutputFile=<path>` : Save output to the given file. Output is printed to standard output stream by default.
+- `--cputracer.TraceCalls` : Capture calls when tracing (default: false).
+- `--cputracer.TraceRoots=true|false` : Capture roots when tracing (default: true).
+- `--cputracer.TraceStatements` : Capture statements when tracing (default: false).
+<!-- END: cpu-tracer-options -->
 
 ### Memory Tracer Options
 
 The memory tracer tool is currently an experimental tool. Make sure to prepend the `--experimental-options` flag to enable `--memtracer`.
 
-{% include_relative mem-tracer.txt%}
+<!-- BEGIN: mem-tracer-options -->
+- `--memtracer` : Enable the Memory Tracer (default: false).
+- `--memtracer.FilterFile=*` : Wildcard filter for source file paths. (eg. *program*.sl) (default: no filter).
+- `--memtracer.FilterLanguage=*<languageId>` : Only profile languages with given ID. (eg. js) (default: no filter).
+- `--memtracer.FilterMimeType=<mime-type>` : Only profile languages with mime-type. (eg. application/javascript). (default: no filter)
+- `--memtracer.FilterRootName=*` : Wildcard filter for program roots. (eg. Math.*) (default: no filter).
+- `--memtracer.Output=typehistogram|histogram|calltree` : Print a 'typehistogram', 'histogram' or 'calltree' as output. (default: histogram)
+- `--memtracer.StackLimit=[1, inf)` : Maximum number of maximum stack elements. (default: 10000)
+- `--memtracer.TraceCalls` : Capture calls when tracing. (default: false)
+- `--memtracer.TraceRoots=true|false` : Capture roots when tracing. (default: true)
+- `--memtracer.TraceStatements` : Capture statements when tracing (default: false).
+<!-- END: mem-tracer-options -->

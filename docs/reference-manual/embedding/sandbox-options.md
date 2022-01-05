@@ -13,8 +13,14 @@ The options are a best effort approach to limiting resource usage of guest appli
 
 The resource limits may be configured using the following options:
 
-{% include_relative sandbox.txt %}
-
+<!-- BEGIN: sandbox-options -->
+- `--sandbox.MaxASTDepth=[1, inf)` : Maximum AST depth of a function (default: no limit).
+- `--sandbox.MaxCPUTime=[1, inf)ms|s|m|h|d` : Limits the total maximum CPU time that was spent running the application. No limit is set by default. Example value: '100ms'.
+- `--sandbox.MaxHeapMemory=[1, inf)B|KB|MB|GB` : Specifies the maximum heap memory that can be retained by the application during its run. No limit is set by default and setting the related expert options has no effect. Example value: '100MB'.
+- `--sandbox.MaxStackFrames=[1, inf)` : Limits the maximum number of guest stack frames (default: no limit).
+- `--sandbox.MaxStatements=[1, inf)` : Limits the maximum number of guest language statements executed. The execution is cancelled with an resource exhausted error when it is exceeded.
+- `--sandbox.MaxThreads=[1, inf)` : Limits the number of threads that can be entered by a context at the same point in time (default: no limit).
+<!-- END: sandbox-options -->
 
 Different configurations may be provided for each polyglot embedding `Context` instance.
 In addition to that the limits may be reset at any point of time during the execution. Resetting is only aplicable to `sandbox.MaxStatements` and `sandbox.MaxCPUTime`.

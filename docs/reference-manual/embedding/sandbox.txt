@@ -1,6 +1,0 @@
-- `--sandbox.MaxASTDepth=[1, inf)` : Maximum AST depth of a function (default: no limit).
-- `--sandbox.MaxCPUTime=[1, inf)ms|s|m|h|d` : Limits the total maximum CPU time that was spent running the application. No limit is set by default. Example value: '100ms'.
-- `--sandbox.MaxHeapMemory=[1, inf)B|KB|MB|GB` : Specifies the maximum heap memory that can be retained by the application during its run. No limit is set by default and setting the related expert options has no effect. Example value: '100MB'.
-- `--sandbox.MaxStackFrames=[1, inf)` : Limits the maximum number of guest stack frames (default: no limit).
-- `--sandbox.MaxStatements=[1, inf)` : Limits the maximum number of guest language statements executed. The execution is cancelled with an resource exhausted error when it is exceeded.
-- `--sandbox.MaxThreads=[1, inf)` : Limits the number of threads that can be entered by a context at the same point in time (default: no limit).
