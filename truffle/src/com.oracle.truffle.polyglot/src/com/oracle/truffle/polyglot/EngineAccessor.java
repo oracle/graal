@@ -1596,7 +1596,7 @@ final class EngineAccessor extends Accessor {
 
             boolean needsAllEncodingsFound = false;
             for (PolyglotLanguage language : context.engine.languages) {
-                if (!language.isFirstInstance() && language.cache.isNeedsAllEncodings()) {
+                if (language != null && !language.isFirstInstance() && language.cache.isNeedsAllEncodings()) {
                     needsAllEncodingsFound = true;
                     break;
                 }

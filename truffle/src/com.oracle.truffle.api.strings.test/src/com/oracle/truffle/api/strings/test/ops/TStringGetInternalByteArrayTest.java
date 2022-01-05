@@ -45,6 +45,7 @@ import static org.junit.runners.Parameterized.Parameter;
 
 import java.util.Arrays;
 
+import com.oracle.truffle.api.strings.InternalByteArray;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -67,7 +68,7 @@ public class TStringGetInternalByteArrayTest extends TStringTestBase {
     @Test
     public void testAll() throws Exception {
         forAllStrings(true, (a, array, codeRange, isValid, encoding, codepoints, byteIndices) -> {
-            TruffleString.InternalByteArray internalByteArray = node.execute(a, encoding);
+            InternalByteArray internalByteArray = node.execute(a, encoding);
             Assert.assertEquals(array.length, internalByteArray.getLength());
             for (int i = 0; i < array.length; i++) {
                 Assert.assertEquals(array[i], internalByteArray.getArray()[internalByteArray.getOffset() + i]);

@@ -44,6 +44,7 @@ package com.oracle.truffle.api.strings.test.ops;
 import static org.junit.runners.Parameterized.Parameter;
 
 import java.util.Arrays;
+import java.util.EnumSet;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -70,13 +71,15 @@ public class TStringSwitchEncodingTest extends TStringTestBase {
 
     @Test
     public void testAll() throws Exception {
+        EnumSet<TruffleString.Encoding> reducedEncodingSet = EnumSet.allOf(TruffleString.Encoding.class);
+        reducedEncodingSet.removeIf(e -> e.name().startsWith("IBM") || e.name().startsWith("Windows") || e.name().startsWith("ISO_8859_"));
         forAllStrings(true, (a, array, codeRange, isValid, encoding, codepoints, byteIndices) -> {
             if (encoding == TruffleString.Encoding.UTF8_SoftBank || encoding == TruffleString.Encoding.CP51932) {
                 // TODO: these encodings crash in JCodings (GR-34837)
                 // https://github.com/jruby/jcodings/issues/42
                 return;
             }
-            for (TruffleString.Encoding targetEncoding : TruffleString.Encoding.values()) {
+            for (TruffleString.Encoding targetEncoding : reducedEncodingSet) {
                 TruffleString b = node.execute(a, targetEncoding);
                 MutableTruffleString bMutable = nodeMutable.execute(a, targetEncoding);
                 if (a instanceof TruffleString && (encoding == targetEncoding || !isDebugStrictEncodingChecks() && codeRange == TruffleString.CodeRange.ASCII && isAsciiCompatible(targetEncoding))) {

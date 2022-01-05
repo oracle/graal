@@ -129,7 +129,7 @@ public abstract class SLScopedNode extends Node {
     @TruffleBoundary
     final boolean hasRootInstance(@SuppressWarnings("unused") Frame frame) {
         // The instance of the current RootNode is a function of the same name.
-        return SLContext.get(this).getFunctionRegistry().getFunction(SLStrings.getRootNodeName(getRootNode())) != null;
+        return SLContext.get(this).getFunctionRegistry().getFunction(SLStrings.getSLRootName(getRootNode())) != null;
     }
 
     /**
@@ -140,7 +140,7 @@ public abstract class SLScopedNode extends Node {
     @TruffleBoundary
     final Object getRootInstance(@SuppressWarnings("unused") Frame frame) throws UnsupportedMessageException {
         // The instance of the current RootNode is a function of the same name.
-        Object function = SLContext.get(this).getFunctionRegistry().getFunction(SLStrings.getRootNodeName(getRootNode()));
+        Object function = SLContext.get(this).getFunctionRegistry().getFunction(SLStrings.getSLRootName(getRootNode()));
         if (function != null) {
             return function;
         } else {

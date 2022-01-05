@@ -950,7 +950,7 @@ public final class TruffleStringBuilder {
         static TruffleString createString(TruffleStringBuilder sb,
                         @Cached TStringInternalNodes.CalcStringAttributesNode calcAttributesNode) {
             if (sb.length == 0) {
-                return TStringConstants.getEmpty(sb.encoding.id);
+                return sb.encoding.getEmpty();
             }
             final int codeRange;
             final int codePointLength;

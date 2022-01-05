@@ -47,7 +47,6 @@ import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.ConditionProfile;
 
 // Checkstyle: stop
 /**
@@ -148,111 +147,14 @@ public final class TruffleStringIterator {
          *
          * @since 22.1
          */
-        public abstract int execute(TruffleStringIterator it);
-
-        @Specialization
-        static int getNext(TruffleStringIterator it,
-                        @Cached ConditionProfile errorProfile,
-                        @Cached InternalNextNode nextNode) {
-            if (errorProfile.profile(!it.hasNext())) {
+        public final int execute(TruffleStringIterator it) {
+            if (!it.hasNext()) {
                 throw InternalErrors.illegalState("end of string has been reached already");
             }
-            return nextNode.execute(it);
+            return executeInternal(it);
         }
 
-        /**
-         * Create a new {@link NextNode}.
-         *
-         * @since 22.1
-         */
-        public static NextNode create() {
-            return TruffleStringIteratorFactory.NextNodeGen.create();
-        }
-
-        /**
-         * Get the uncached version of {@link NextNode}.
-         *
-         * @since 22.1
-         */
-        public static NextNode getUncached() {
-            return TruffleStringIteratorFactory.NextNodeGen.getUncached();
-        }
-    }
-
-    /**
-     * Shorthand for calling the uncached version of {@link NextNode}.
-     *
-     * @since 22.1
-     */
-    @TruffleBoundary
-    public int nextUncached() {
-        return NextNode.getUncached().execute(this);
-    }
-
-    /**
-     * Returns the previous codepoint in the string.
-     *
-     * @since 22.1
-     */
-    @ImportStatic(TStringGuards.class)
-    @GeneratePackagePrivate
-    @GenerateUncached
-    public abstract static class PreviousNode extends Node {
-
-        PreviousNode() {
-        }
-
-        /**
-         * Returns the previous codepoint in the string.
-         *
-         * @since 22.1
-         */
-        public abstract int execute(TruffleStringIterator it);
-
-        @Specialization
-        static int getPrev(TruffleStringIterator it,
-                        @Cached ConditionProfile errorProfile,
-                        @Cached InternalPrevNode prevNode) {
-            if (errorProfile.profile(!it.hasPrevious())) {
-                throw InternalErrors.illegalState("beginning of string has been reached already");
-            }
-            return prevNode.execute(it);
-        }
-
-        /**
-         * Create a new {@link PreviousNode}.
-         *
-         * @since 22.1
-         */
-        public static PreviousNode create() {
-            return TruffleStringIteratorFactory.PreviousNodeGen.create();
-        }
-
-        /**
-         * Get the uncached version of {@link PreviousNode}.
-         *
-         * @since 22.1
-         */
-        public static PreviousNode getUncached() {
-            return TruffleStringIteratorFactory.PreviousNodeGen.getUncached();
-        }
-    }
-
-    /**
-     * Shorthand for calling the uncached version of {@link PreviousNode}.
-     *
-     * @since 22.1
-     */
-    @TruffleBoundary
-    public int previousUncached() {
-        return PreviousNode.getUncached().execute(this);
-    }
-
-    @ImportStatic(TStringGuards.class)
-    @GenerateUncached
-    abstract static class InternalNextNode extends Node {
-
-        abstract int execute(TruffleStringIterator it);
+        abstract int executeInternal(TruffleStringIterator it);
 
         @Specialization(guards = "isFixedWidth(it.codeRangeA)")
         static int fixed(TruffleStringIterator it,
@@ -374,13 +276,62 @@ public final class TruffleStringIterator {
             it.rawIndex += length;
             return codePoint;
         }
+
+        /**
+         * Create a new {@link NextNode}.
+         *
+         * @since 22.1
+         */
+        public static NextNode create() {
+            return TruffleStringIteratorFactory.NextNodeGen.create();
+        }
+
+        /**
+         * Get the uncached version of {@link NextNode}.
+         *
+         * @since 22.1
+         */
+        public static NextNode getUncached() {
+            return TruffleStringIteratorFactory.NextNodeGen.getUncached();
+        }
     }
 
-    @ImportStatic(TStringGuards.class)
-    @GenerateUncached
-    abstract static class InternalPrevNode extends Node {
+    /**
+     * Shorthand for calling the uncached version of {@link NextNode}.
+     *
+     * @since 22.1
+     */
+    @TruffleBoundary
+    public int nextUncached() {
+        return NextNode.getUncached().execute(this);
+    }
 
-        abstract int execute(TruffleStringIterator it);
+    /**
+     * Returns the previous codepoint in the string.
+     *
+     * @since 22.1
+     */
+    @ImportStatic(TStringGuards.class)
+    @GeneratePackagePrivate
+    @GenerateUncached
+    public abstract static class PreviousNode extends Node {
+
+        PreviousNode() {
+        }
+
+        /**
+         * Returns the previous codepoint in the string.
+         *
+         * @since 22.1
+         */
+        public final int execute(TruffleStringIterator it) {
+            if (!it.hasPrevious()) {
+                throw InternalErrors.illegalState("beginning of string has been reached already");
+            }
+            return executeInternal(it);
+        }
+
+        abstract int executeInternal(TruffleStringIterator it);
 
         @Specialization(guards = "isFixedWidth(it.codeRangeA)")
         static int fixed(TruffleStringIterator it,
@@ -478,6 +429,34 @@ public final class TruffleStringIterator {
             it.rawIndex = prevIndex - it.a.byteArrayOffset();
             return codePoint;
         }
+
+        /**
+         * Create a new {@link PreviousNode}.
+         *
+         * @since 22.1
+         */
+        public static PreviousNode create() {
+            return TruffleStringIteratorFactory.PreviousNodeGen.create();
+        }
+
+        /**
+         * Get the uncached version of {@link PreviousNode}.
+         *
+         * @since 22.1
+         */
+        public static PreviousNode getUncached() {
+            return TruffleStringIteratorFactory.PreviousNodeGen.getUncached();
+        }
+    }
+
+    /**
+     * Shorthand for calling the uncached version of {@link PreviousNode}.
+     *
+     * @since 22.1
+     */
+    @TruffleBoundary
+    public int previousUncached() {
+        return PreviousNode.getUncached().execute(this);
     }
 
     int getRawIndex() {

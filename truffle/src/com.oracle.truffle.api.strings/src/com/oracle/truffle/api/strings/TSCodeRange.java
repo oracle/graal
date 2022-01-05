@@ -239,6 +239,16 @@ final class TSCodeRange {
         }
     }
 
+    static int getAsciiCodeRange(int encoding) {
+        if (TStringGuards.is7BitCompatible(encoding)) {
+            return get7Bit();
+        } else if (JCodings.getInstance().isSingleByte(TruffleString.Encoding.getJCoding(encoding))) {
+            return getValidFixedWidth();
+        } else {
+            return getValidMultiByte();
+        }
+    }
+
     static {
         staticAssertions();
     }

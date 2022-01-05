@@ -140,6 +140,8 @@ final class Encodings {
 
     @SuppressWarnings("fallthrough")
     private static void utf8Encode(int codepoint, int encodedLength, byte[] buffer, int index) {
+        assert index >= 0;
+        assert 2 <= encodedLength && encodedLength <= 4;
         int i = index + encodedLength;
         int c = codepoint;
         // Checkstyle: stop

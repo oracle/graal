@@ -53,8 +53,6 @@ final class TStringConstants {
     @CompilationFinal(dimensions = 1) private static final byte[] INFINITY_BYTES = {'I', 'n', 'f', 'i', 'n', 'i', 't', 'y'};
     @CompilationFinal(dimensions = 1) private static final byte[] NaN_BYTES = {'N', 'a', 'N'};
 
-    private static final TruffleString EMPTY = TruffleString.createConstant(EMPTY_BYTES, 0, 0, Encodings.getAscii(), 0, TSCodeRange.get7Bit());
-    private static final TruffleString EMPTY_NO_CACHE_HEAD = TruffleString.createConstant(EMPTY_BYTES, 0, 0, Encodings.getAscii(), 0, TSCodeRange.get7Bit(), false);
     private static final TruffleString INFINITY = TruffleString.createConstant(INFINITY_BYTES, INFINITY_BYTES.length, 0, Encodings.getAscii(), INFINITY_BYTES.length, TSCodeRange.get7Bit());
     private static final TruffleString NaN = TruffleString.createConstant(NaN_BYTES, NaN_BYTES.length, 0, Encodings.getAscii(), NaN_BYTES.length, TSCodeRange.get7Bit());
     @CompilationFinal(dimensions = 2) private static final TruffleString[][] SINGLE_BYTE = new TruffleString[Encodings.SUPPORTED_ENCODINGS_MAX_NUM][];
@@ -94,20 +92,6 @@ final class TStringConstants {
         return TSCodeRange.get8Bit();
     }
 
-    static TruffleString getEmpty(int encoding) {
-        if (AbstractTruffleString.DEBUG_STRICT_ENCODING_CHECKS) {
-            return createAscii(EMPTY_BYTES, encoding);
-        }
-        return EMPTY;
-    }
-
-    static TruffleString getEmptyNoCacheHead(int encoding) {
-        if (AbstractTruffleString.DEBUG_STRICT_ENCODING_CHECKS) {
-            return createAscii(EMPTY_BYTES, encoding, false);
-        }
-        return EMPTY_NO_CACHE_HEAD;
-    }
-
     static TruffleString getInfinity(int encoding) {
         if (AbstractTruffleString.DEBUG_STRICT_ENCODING_CHECKS) {
             return createAscii(INFINITY_BYTES, encoding);
@@ -140,20 +124,7 @@ final class TStringConstants {
     }
 
     private static TruffleString createAscii(byte[] array, int encoding) {
-        return createAscii(array, encoding, true);
+        return TruffleString.createFromByteArray(array, array.length, 0, encoding, array.length, TSCodeRange.getAsciiCodeRange(encoding), true);
     }
 
-    private static TruffleString createAscii(byte[] array, int encoding, boolean isCacheHead) {
-        return TruffleString.createFromByteArray(array, array.length, 0, encoding, array.length, getAsciiCodeRange(encoding), isCacheHead);
-    }
-
-    private static int getAsciiCodeRange(int encoding) {
-        if (TStringGuards.is7BitCompatible(encoding)) {
-            return TSCodeRange.get7Bit();
-        } else if (JCodings.getInstance().isSingleByte(TruffleString.Encoding.getJCoding(encoding))) {
-            return TSCodeRange.getValidFixedWidth();
-        } else {
-            return TSCodeRange.getValidMultiByte();
-        }
-    }
 }

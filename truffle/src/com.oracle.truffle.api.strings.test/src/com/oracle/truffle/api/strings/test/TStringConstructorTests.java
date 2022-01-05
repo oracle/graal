@@ -50,6 +50,7 @@ import static com.oracle.truffle.api.strings.TruffleString.fromNativePointerUnca
 
 import java.nio.ByteOrder;
 
+import com.oracle.truffle.api.strings.InternalByteArray;
 import org.graalvm.shadowed.org.jcodings.Encoding;
 import org.junit.Assert;
 import org.junit.Test;
@@ -212,22 +213,6 @@ public class TStringConstructorTests extends TStringTestBase {
                     Assert.assertEquals(0, s.compareUncached(s, encoding));
                     Assert.assertTrue(s.compareUncached(cmp, encoding) > 0);
                     Assert.assertTrue(cmp.compareUncached(s, encoding) < 0);
-                    forAllEncodings(targetEncoding -> {
-                        // TODO: these encodings crash in JCodings (GR-34837)
-                        // https://github.com/jruby/jcodings/issues/42
-                        if (encoding != TruffleString.Encoding.UTF8_SoftBank && encoding != TruffleString.Encoding.CP51932) {
-                            // Checkstyle: stop
-                            // System.out.println(encoding + " -> " + targetEncoding);
-                            // Checkstyle: resume
-                            TruffleString switched = s.switchEncodingUncached(targetEncoding);
-                            if (isSupportedEncoding(encoding) && isUTF(targetEncoding)) {
-                                TruffleStringIterator it = switched.createCodePointIteratorUncached(targetEncoding);
-                                for (int codepoint : codepoints) {
-                                    Assert.assertEquals(codepoint, it.nextUncached());
-                                }
-                            }
-                        }
-                    });
                     s.toJavaStringUncached();
                     TruffleStringIterator it = s.createCodePointIteratorUncached(encoding);
                     Assert.assertEquals(codepoints.length, s.codePointLengthUncached(encoding));
@@ -271,7 +256,7 @@ public class TStringConstructorTests extends TStringTestBase {
         });
     }
 
-    private static void checkInternalByteArrayEquals(byte[] array, TruffleString.InternalByteArray internalByteArray) {
+    private static void checkInternalByteArrayEquals(byte[] array, InternalByteArray internalByteArray) {
         Assert.assertEquals(array.length, internalByteArray.getLength());
         for (int i = 0; i < array.length; i++) {
             Assert.assertEquals(array[i], internalByteArray.getArray()[internalByteArray.getOffset() + i]);

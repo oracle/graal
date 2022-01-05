@@ -38,49 +38,63 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.sl.runtime;
+package com.oracle.truffle.api.strings;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.sl.SLLanguage;
-import com.oracle.truffle.sl.nodes.SLEvalRootNode;
-import com.oracle.truffle.sl.nodes.SLRootNode;
+import static com.oracle.truffle.api.strings.TStringConstants.EMPTY_BYTES;
 
-public final class SLStrings {
+/**
+ * Wrapper object containing a {@link TruffleString}'s internal byte array, along with a byte offset
+ * and length defining the region in use.
+ *
+ * @since 22.1
+ */
+public final class InternalByteArray {
 
-    public static final TruffleString EMPTY_STRING = constant("");
-    public static final TruffleString NULL = constant("NULL");
-    public static final TruffleString NULL_LC = constant("null");
-    public static final TruffleString MAIN = constant("main");
-    public static final TruffleString HELLO = constant("hello");
-    public static final TruffleString WORLD = constant("world");
+    static final InternalByteArray EMPTY = new InternalByteArray(EMPTY_BYTES, 0, 0);
 
-    public static TruffleString constant(String s) {
-        return fromJavaString(s);
+    private final byte[] array;
+    private final int offset;
+    private final int length;
+
+    InternalByteArray(byte[] array, int offset, int length) {
+        this.array = array;
+        this.offset = offset;
+        this.length = length;
     }
 
-    public static TruffleString fromJavaString(String s) {
-        return TruffleString.fromJavaStringUncached(s, SLLanguage.STRING_ENCODING);
+    /**
+     * Get the internal byte array. Do not modify the array's contents!
+     *
+     * @since 22.1
+     */
+    public byte[] getArray() {
+        return array;
     }
 
-    public static TruffleString fromObject(Object o) {
-        if (o == null) {
-            return NULL_LC;
-        }
-        if (o instanceof TruffleString) {
-            return (TruffleString) o;
-        }
-        return fromJavaString(o.toString());
+    /**
+     * Get the string region's starting index.
+     *
+     * @since 22.1
+     */
+    public int getOffset() {
+        return offset;
     }
 
-    public static TruffleString getSLRootName(RootNode rootNode) {
-        if (rootNode instanceof SLRootNode) {
-            return ((SLRootNode) rootNode).getTSName();
-        } else if (rootNode instanceof SLEvalRootNode) {
-            return SLEvalRootNode.getTSName();
-        } else {
-            throw CompilerDirectives.shouldNotReachHere();
-        }
+    /**
+     * Get the string region's length.
+     *
+     * @since 22.1
+     */
+    public int getLength() {
+        return length;
+    }
+
+    /**
+     * Get the string region's end ({@code offset + length}).
+     *
+     * @since 22.1
+     */
+    public int getEnd() {
+        return offset + length;
     }
 }

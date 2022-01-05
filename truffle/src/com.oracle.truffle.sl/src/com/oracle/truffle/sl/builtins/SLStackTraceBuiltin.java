@@ -55,6 +55,8 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.sl.SLLanguage;
+import com.oracle.truffle.sl.nodes.SLEvalRootNode;
+import com.oracle.truffle.sl.nodes.SLRootNode;
 import com.oracle.truffle.sl.runtime.SLStrings;
 
 /**
@@ -97,7 +99,7 @@ public abstract class SLStackTraceBuiltin extends SLBuiltinNode {
                     str.appendStringUncached(SLStrings.fromJavaString(System.getProperty("line.separator")));
                 }
                 str.appendStringUncached(FRAME);
-                str.appendStringUncached(SLStrings.getRootNodeName(rn));
+                str.appendStringUncached(getRootNodeName(rn));
                 FrameDescriptor frameDescriptor = frame.getFrameDescriptor();
                 int count = frameDescriptor.getNumberOfSlots();
                 for (int i = 0; i < count; i++) {
@@ -110,5 +112,15 @@ public abstract class SLStackTraceBuiltin extends SLBuiltinNode {
             }
         });
         return str.toStringUncached();
+    }
+
+    private static TruffleString getRootNodeName(RootNode rootNode) {
+        if (rootNode instanceof SLRootNode) {
+            return ((SLRootNode) rootNode).getTSName();
+        } else if (rootNode instanceof SLEvalRootNode) {
+            return SLEvalRootNode.getTSName();
+        } else {
+            return SLStrings.fromJavaString(rootNode.getName());
+        }
     }
 }

@@ -194,7 +194,7 @@ public final class SLContext {
     public void installBuiltin(NodeFactory<? extends SLBuiltinNode> factory) {
         /* Register the builtin function in our function registry. */
         RootCallTarget target = language.lookupBuiltin(factory);
-        getFunctionRegistry().register(SLStrings.getRootNodeName(target.getRootNode()), target);
+        getFunctionRegistry().register(SLStrings.getSLRootName(target.getRootNode()), target);
     }
 
     /*

@@ -49,7 +49,6 @@ import static com.oracle.truffle.api.strings.Encodings.isUTF8ContinuationByte;
 import static com.oracle.truffle.api.strings.TStringGuards.indexOfCannotMatch;
 import static com.oracle.truffle.api.strings.TStringGuards.is16Bit;
 import static com.oracle.truffle.api.strings.TStringGuards.is7Bit;
-import static com.oracle.truffle.api.strings.TStringGuards.is7BitCompatible;
 import static com.oracle.truffle.api.strings.TStringGuards.is7Or8Bit;
 import static com.oracle.truffle.api.strings.TStringGuards.is8Bit;
 import static com.oracle.truffle.api.strings.TStringGuards.isAscii;
@@ -197,8 +196,8 @@ final class TStringInternalNodes {
                         @Cached ConditionProfile exoticValidProfile,
                         @Cached ConditionProfile exoticFixedWidthProfile) {
             CompilerAsserts.partialEvaluationConstant(copy);
-            if (is7BitCompatible(encoding) && byteLength == 0) {
-                return isCacheHead ? TStringConstants.getEmpty(encoding) : TStringConstants.getEmptyNoCacheHead(encoding);
+            if (byteLength == 0) {
+                return TruffleString.Encoding.get(encoding).getEmpty();
             }
             final int offset;
             final int length;
@@ -291,8 +290,8 @@ final class TStringInternalNodes {
                         @Cached ConditionProfile utf32Profile,
                         @Cached ConditionProfile utf32Compact0Profile,
                         @Cached ConditionProfile utf32Compact1Profile) {
-            if (is7BitCompatible(encoding) && byteLength == 0) {
-                return TStringConstants.getEmpty(encoding);
+            if (byteLength == 0) {
+                return TruffleString.Encoding.get(encoding).getEmpty();
             }
             final int offset = 0;
             final int length;
@@ -347,8 +346,8 @@ final class TStringInternalNodes {
                         @Cached ConditionProfile utf32Profile,
                         @Cached ConditionProfile exoticValidProfile,
                         @Cached ConditionProfile exoticFixedWidthProfile) {
-            if (is7BitCompatible(encoding) && byteLength == 0) {
-                return TStringConstants.getEmpty(encoding);
+            if (byteLength == 0) {
+                return TruffleString.Encoding.get(encoding).getEmpty();
             }
             final int length;
             final int stride;
@@ -913,9 +912,8 @@ final class TStringInternalNodes {
 
         @SuppressWarnings("unused")
         @Specialization(guards = "length == 0")
-        static TruffleString lengthZero(AbstractTruffleString a, Object arrayA, int codeRangeA, int fromIndex, int length, boolean lazy,
-                        @Cached TruffleString.CreateEmptyNode createEmptyNode) {
-            return createEmptyNode.execute(TruffleString.Encoding.get(a.encoding()));
+        static TruffleString lengthZero(AbstractTruffleString a, Object arrayA, int codeRangeA, int fromIndex, int length, boolean lazy) {
+            return TruffleString.Encoding.get(a.encoding()).getEmpty();
         }
 
         @SuppressWarnings("unused")
@@ -1375,7 +1373,7 @@ final class TStringInternalNodes {
             checkArrayRange(javaString.length(), charOffset, length);
             CompilerAsserts.partialEvaluationConstant(lazy);
             if (length == 0) {
-                return TStringConstants.getEmpty(Encodings.getUTF16());
+                return TruffleString.Encoding.UTF_16.getEmpty();
             }
             final byte[] array;
             final int offset;

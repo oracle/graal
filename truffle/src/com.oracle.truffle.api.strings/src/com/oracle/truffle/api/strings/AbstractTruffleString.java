@@ -64,12 +64,46 @@ public abstract class AbstractTruffleString {
 
     static final boolean DEBUG_STRICT_ENCODING_CHECKS = Boolean.getBoolean("truffle.strings.debug-strict-encoding-checks");
 
+    /**
+     * String content. This can be one of the following:
+     * <ul>
+     * <li>{@code byte[]}</li>
+     * <li>{@link LazyLong}</li>
+     * <li>{@link LazyConcat}</li>
+     * <li>{@link NativePointer}</li>
+     * <li>{@link String} (only for caching results of {@link #toJavaStringUncached()})</li>
+     * </ul>
+     */
     private Object data;
+    /**
+     * String content offset in bytes. Used for string views / lazy substrings.
+     */
     private final int offset;
+    /**
+     * String length, scaled to the string's {@link TruffleString.Encoding#naturalStride natural
+     * stride}, i.e.: if the string encoding is UTF-32, the length is int-based, UTF-16 implies
+     * char-based length, and all other encodings use byte-based length. This is useful for string
+     * compaction.
+     */
     private final int length;
+    /**
+     * String encoding id, stored as a byte to save space. Resolve with
+     * {@link TruffleString.Encoding#get(int)}.
+     */
     private final byte encoding;
+    /**
+     * String content's {@link Stride stride} in log2 format (0 for byte-stride, 1 for char-stride,
+     * 2 for int-stride). Used for string compaction in UTF-32 and UTF-16 encodings.
+     */
     private final byte stride;
+    /**
+     * Flags. The only flag defined at the moment is {@link TruffleString#isCacheHead()}.
+     */
     private final byte flags;
+    /**
+     * Cached {@link TruffleString.HashCodeNode hash code}. The hash method never returns zero, so a
+     * hashCode value of zero always means that the hash is not calculated yet.
+     */
     int hashCode = 0;
 
     AbstractTruffleString(Object data, int offset, int length, int stride, int encoding, int flags) {
@@ -191,7 +225,7 @@ public abstract class AbstractTruffleString {
      */
     public final boolean isMutable() {
         assert this instanceof TruffleString || this instanceof MutableTruffleString;
-        return !(this instanceof TruffleString);
+        return !isImmutable();
     }
 
     final boolean isCompatibleTo(int enc, int maxCompatibleCodeRange) {
@@ -200,7 +234,7 @@ public abstract class AbstractTruffleString {
 
     /**
      * Get this string's backing data. This may be a byte array, a {@link String}, a
-     * {@link LazyLong}, or a {@link LazyConcat}.
+     * {@link NativePointer}, a {@link LazyLong}, or a {@link LazyConcat}.
      */
     final Object data() {
         return data;
@@ -877,7 +911,7 @@ public abstract class AbstractTruffleString {
      * @since 22.1
      */
     @TruffleBoundary
-    public final TruffleString.InternalByteArray getInternalByteArrayUncached(TruffleString.Encoding expectedEncoding) {
+    public final InternalByteArray getInternalByteArrayUncached(TruffleString.Encoding expectedEncoding) {
         return TruffleString.GetInternalByteArrayNode.getUncached().execute(this, expectedEncoding);
     }
 
@@ -1154,7 +1188,7 @@ public abstract class AbstractTruffleString {
         final long pointer;
         private byte[] bytes;
         private final int offset;
-        private boolean byteArrayIsValid = false;
+        private volatile boolean byteArrayIsValid = false;
 
         private NativePointer(Object pointerObject, long pointer, int offset) {
             this.pointerObject = pointerObject;
