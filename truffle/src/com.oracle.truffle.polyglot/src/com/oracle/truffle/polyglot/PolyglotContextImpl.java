@@ -2244,6 +2244,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         }
     }
 
+    @SuppressWarnings("serial")
     static final class ExitException extends ThreadDeath {
         private static final long serialVersionUID = -4838571769179260137L;
 
