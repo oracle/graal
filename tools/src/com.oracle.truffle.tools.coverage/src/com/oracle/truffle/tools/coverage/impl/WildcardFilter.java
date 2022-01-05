@@ -33,12 +33,12 @@ import java.util.regex.PatternSyntaxException;
 
 import org.graalvm.options.OptionType;
 
-class WildcardHandler {
+class WildcardFilter {
 
-    static final OptionType<WildcardHandler> WILDCARD_FILTER_TYPE = new OptionType<>("Expression",
-                    new Function<String, WildcardHandler>() {
+    static final OptionType<WildcardFilter> WILDCARD_FILTER_TYPE = new OptionType<>("Expression",
+                    new Function<String, WildcardFilter>() {
                         @Override
-                        public WildcardHandler apply(String filterWildcardExpression) {
+                        public WildcardFilter apply(String filterWildcardExpression) {
                             if (filterWildcardExpression == null) {
                                 return null;
                             }
@@ -59,7 +59,7 @@ class WildcardHandler {
                                     strings.add(expression);
                                 }
                             }
-                            return new WildcardHandler(strings, patterns, filterWildcardExpression);
+                            return new WildcardFilter(strings, patterns, filterWildcardExpression);
                         }
                     });
 
@@ -119,12 +119,12 @@ class WildcardHandler {
         return false;
     }
 
-    static final WildcardHandler DEFAULT = new WildcardHandler(new ArrayList<>(0), new ArrayList<>(0), "*");
+    static final WildcardFilter DEFAULT = new WildcardFilter(new ArrayList<>(0), new ArrayList<>(0), "*");
     final List<String> strings;
     final List<Pattern> patterns;
     private final String expression;
 
-    WildcardHandler(List<String> strings, List<Pattern> patterns, String expression) {
+    WildcardFilter(List<String> strings, List<Pattern> patterns, String expression) {
         Objects.requireNonNull(strings);
         Objects.requireNonNull(patterns);
         this.strings = strings;

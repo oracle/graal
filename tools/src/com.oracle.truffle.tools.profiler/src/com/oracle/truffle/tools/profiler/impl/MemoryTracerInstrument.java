@@ -117,8 +117,8 @@ public class MemoryTracerInstrument extends TruffleInstrument {
         final boolean statements = env.getOptions().get(MemoryTracerCLI.TRACE_STATEMENTS);
         final boolean calls = env.getOptions().get(MemoryTracerCLI.TRACE_CALLS);
         final boolean internals = env.getOptions().get(MemoryTracerCLI.TRACE_INTERNAL);
-        final WildcardHandler filterRootName = env.getOptions().get(MemoryTracerCLI.FILTER_ROOT);
-        final WildcardHandler filterFile = env.getOptions().get(MemoryTracerCLI.FILTER_FILE);
+        final WildcardFilter filterRootName = env.getOptions().get(MemoryTracerCLI.FILTER_ROOT);
+        final WildcardFilter filterFile = env.getOptions().get(MemoryTracerCLI.FILTER_FILE);
         final String filterMimeType = env.getOptions().get(MemoryTracerCLI.FILTER_MIME_TYPE);
         final String filterLanguage = env.getOptions().get(MemoryTracerCLI.FILTER_LANGUAGE);
         return MemoryTracerCLI.buildFilter(roots, statements, calls, internals, filterRootName, filterFile, filterMimeType, filterLanguage);

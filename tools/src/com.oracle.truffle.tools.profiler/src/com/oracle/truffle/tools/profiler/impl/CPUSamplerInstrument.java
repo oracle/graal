@@ -115,8 +115,8 @@ public class CPUSamplerInstrument extends TruffleInstrument {
 
     private static SourceSectionFilter getSourceSectionFilter(Env env) {
         final boolean internals = env.getOptions().get(CPUSamplerCLI.SAMPLE_INTERNAL);
-        final WildcardHandler filterRootName = env.getOptions().get(CPUSamplerCLI.FILTER_ROOT);
-        final WildcardHandler filterFile = env.getOptions().get(CPUSamplerCLI.FILTER_FILE);
+        final WildcardFilter filterRootName = env.getOptions().get(CPUSamplerCLI.FILTER_ROOT);
+        final WildcardFilter filterFile = env.getOptions().get(CPUSamplerCLI.FILTER_FILE);
         final String filterMimeType = env.getOptions().get(CPUSamplerCLI.FILTER_MIME_TYPE);
         final String filterLanguage = env.getOptions().get(CPUSamplerCLI.FILTER_LANGUAGE);
         return CPUSamplerCLI.buildFilter(true, false, false, internals, filterRootName, filterFile, filterMimeType, filterLanguage);

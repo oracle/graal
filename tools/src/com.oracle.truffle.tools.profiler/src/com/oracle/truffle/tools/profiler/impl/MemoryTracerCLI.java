@@ -106,10 +106,10 @@ class MemoryTracerCLI extends ProfilerCLI {
     static final OptionKey<Boolean> TRACE_INTERNAL = new OptionKey<>(false);
 
     @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (eg. Math.*) (default: no filter).", usageSyntax = "*", category = OptionCategory.USER) //
-    static final OptionKey<WildcardHandler> FILTER_ROOT = new OptionKey<>(WildcardHandler.DEFAULT, WildcardHandler.WILDCARD_FILTER_TYPE);
+    static final OptionKey<WildcardFilter> FILTER_ROOT = new OptionKey<>(WildcardFilter.DEFAULT, WildcardFilter.WILDCARD_FILTER_TYPE);
 
     @Option(name = "FilterFile", help = "Wildcard filter for source file paths. (eg. *program*.sl) (default: no filter).", usageSyntax = "*", category = OptionCategory.USER) //
-    static final OptionKey<WildcardHandler> FILTER_FILE = new OptionKey<>(WildcardHandler.DEFAULT, WildcardHandler.WILDCARD_FILTER_TYPE);
+    static final OptionKey<WildcardFilter> FILTER_FILE = new OptionKey<>(WildcardFilter.DEFAULT, WildcardFilter.WILDCARD_FILTER_TYPE);
 
     @Option(name = "FilterMimeType", help = "Only profile languages with mime-type. (eg. application/javascript). (default: no filter)", usageSyntax = "<mime-type>", category = OptionCategory.USER) //
     static final OptionKey<String> FILTER_MIME_TYPE = new OptionKey<>("");

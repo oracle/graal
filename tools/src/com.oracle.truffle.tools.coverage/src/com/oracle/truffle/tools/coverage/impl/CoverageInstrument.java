@@ -77,9 +77,9 @@ public class CoverageInstrument extends TruffleInstrument {
             usageSyntax = "histogram|detailed|json|lcov", category = OptionCategory.USER, stability = OptionStability.STABLE)
     static final OptionKey<Output> OUTPUT = new OptionKey<>(Output.HISTOGRAM, CLI_OUTPUT_TYPE);
     @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (eg. Math.*) (default: no filter)", usageSyntax = "*", category = OptionCategory.USER, stability = OptionStability.STABLE)
-    static final OptionKey<WildcardHandler> FILTER_ROOT = new OptionKey<>(WildcardHandler.DEFAULT, WildcardHandler.WILDCARD_FILTER_TYPE);
+    static final OptionKey<WildcardFilter> FILTER_ROOT = new OptionKey<>(WildcardFilter.DEFAULT, WildcardFilter.WILDCARD_FILTER_TYPE);
     @Option(name = "FilterFile", help = "Wildcard filter for source file paths. (eg. *program*.sl)  (default: no filter).", usageSyntax = "*", category = OptionCategory.USER, stability = OptionStability.STABLE)
-    static final OptionKey<WildcardHandler> FILTER_FILE = new OptionKey<>(WildcardHandler.DEFAULT, WildcardHandler.WILDCARD_FILTER_TYPE);
+    static final OptionKey<WildcardFilter> FILTER_FILE = new OptionKey<>(WildcardFilter.DEFAULT, WildcardFilter.WILDCARD_FILTER_TYPE);
     @Option(name = "FilterMimeType", help = "Only track languages with mime-type. (default: no filter)", usageSyntax = "<mimeType>", category = OptionCategory.USER, stability = OptionStability.STABLE)
     static final OptionKey<String> FILTER_MIME_TYPE = new OptionKey<>("");
     @Option(name = "FilterLanguage", help = "Only track languages with given ID. (eg. js) (default: no filter).", usageSyntax = "<languageId>", category = OptionCategory.USER, stability = OptionStability.STABLE)
@@ -140,7 +140,7 @@ public class CoverageInstrument extends TruffleInstrument {
     }
 
     private static SourceSectionFilter getSourceSectionFilter(OptionValues options) {
-        final WildcardHandler filterFile = FILTER_FILE.getValue(options);
+        final WildcardFilter filterFile = FILTER_FILE.getValue(options);
         final String filterMimeType = FILTER_MIME_TYPE.getValue(options);
         final String filterLanguage = FILTER_LANGUAGE.getValue(options);
         final Boolean internals = TRACK_INTERNAL.getValue(options);
@@ -152,7 +152,7 @@ public class CoverageInstrument extends TruffleInstrument {
             final boolean languageId = filterLanguage.equals("") || filterMimeType.equals(source.getLanguage());
             return internal && file && mimeType && languageId;
         });
-        final WildcardHandler filterRootName = FILTER_ROOT.getValue(options);
+        final WildcardFilter filterRootName = FILTER_ROOT.getValue(options);
         builder.rootNameIs(filterRootName::testWildcardExpressions);
         return builder.build();
     }
