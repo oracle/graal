@@ -85,6 +85,40 @@ vm_unittest: {
   }
 }
 
+notify-releaser-build: {
+  name: notify-releaser-build
+  packages: {
+    curl: ">=7.50.1"
+    git: ">=1.8.3"
+  }
+  setup: [
+    [cd, ${vm_subdir}]
+  ]
+  run: [
+    [
+      [test, [git, rev-parse, --abbrev-ref, HEAD], "!=", master, "||"] ${notify-releaser-service}
+    ]
+  ]
+  capabilities: [linux, amd64]
+  requireArtifacts: [
+    {name: deploy-vm-java11-linux-amd64}
+    {name: deploy-vm-java17-linux-amd64}
+    {name: deploy-vm-java11-linux-aarch64}
+    {name: deploy-vm-java17-linux-aarch64}
+    {name: deploy-vm-base-java11-darwin-amd64}
+    {name: deploy-vm-installable-java11-darwin-amd64}
+    {name: deploy-vm-base-java17-darwin-amd64}
+    {name: deploy-vm-installable-java17-darwin-amd64}
+    {name: deploy-vm-base-java11-windows-amd64}
+    {name: deploy-vm-installable-java11-windows-amd64}
+    {name: deploy-vm-base-java17-windows-amd64}
+    {name: deploy-vm-installable-java17-windows-amd64}
+    {name: deploy-vm-ruby-java11-linux-amd64}
+    {name: deploy-vm-ruby-java11-darwin-amd64}
+  ]
+  targets: [daily]
+}
+
 builds += [
   ${vm_java_8} ${gate_vm_linux} ${vm_unittest} {
     run: [
@@ -183,6 +217,43 @@ builds += [
     ]
     name: deploy-vm-maven-windows-amd64
   }
-]
 
-notify-releaser: [test, [git, rev-parse, --abbrev-ref, HEAD], "!=", master, "||"] ${notify-releaser-service}
+  #
+  # Deploy GraalVM Base and Installables
+  #
+
+  # Linux/AMD64
+  ${deploy-vm-java11-linux-amd64} {publishArtifacts: [{name: deploy-vm-java11-linux-amd64, patterns: [deploy-vm-java11-linux-amd64]}]}
+  ${deploy-vm-java17-linux-amd64} {publishArtifacts: [{name: deploy-vm-java17-linux-amd64, patterns: [deploy-vm-java17-linux-amd64]}]}
+
+  # Linux/AARCH64
+  ${deploy-vm-java11-linux-aarch64} {publishArtifacts: [{name: deploy-vm-java11-linux-aarch64, patterns: [deploy-vm-java11-linux-aarch64]}]}
+  ${deploy-vm-java17-linux-aarch64} {publishArtifacts: [{name: deploy-vm-java17-linux-aarch64, patterns: [deploy-vm-java17-linux-aarch64]}]}
+
+  # Darwin/AMD64
+  ${deploy-vm-base-java11-darwin-amd64} {publishArtifacts: [{name: deploy-vm-base-java11-darwin-amd64, patterns: [deploy-vm-base-java11-darwin-amd64]}]}
+  ${deploy-vm-installable-java11-darwin-amd64} {publishArtifacts: [{name: deploy-vm-installable-java11-darwin-amd64, patterns: [deploy-vm-installable-java11-darwin-amd64]}]}
+  ${deploy-vm-base-java17-darwin-amd64} {publishArtifacts: [{name: deploy-vm-base-java17-darwin-amd64, patterns: [deploy-vm-base-java17-darwin-amd64]}]}
+  ${deploy-vm-installable-java17-darwin-amd64} {publishArtifacts: [{name: deploy-vm-installable-java17-darwin-amd64, patterns: [deploy-vm-installable-java17-darwin-amd64]}]}
+
+  # Windows/AMD64
+  ${deploy-vm-base-java11-windows-amd64} {publishArtifacts: [{name: deploy-vm-base-java11-windows-amd64, patterns: [deploy-vm-base-java11-windows-amd64]}]}
+  ${deploy-vm-installable-java11-windows-amd64} {publishArtifacts: [{name: deploy-vm-installable-java11-windows-amd64, patterns: [deploy-vm-installable-java11-windows-amd64]}]}
+  ${deploy-vm-base-java17-windows-amd64} {publishArtifacts: [{name: deploy-vm-base-java17-windows-amd64, patterns: [deploy-vm-base-java17-windows-amd64]}]}
+  ${deploy-vm-installable-java17-windows-amd64} {publishArtifacts: [{name: deploy-vm-installable-java17-windows-amd64, patterns: [deploy-vm-installable-java17-windows-amd64]}]}
+
+  #
+  # Deploy the GraalVM Ruby image (GraalVM Base + ruby - js)
+  #
+  ${deploy-vm-ruby-java11-linux-amd64} {publishArtifacts: [{name: deploy-vm-ruby-java11-linux-amd64, patterns: [deploy-vm-ruby-java11-linux-amd64]}]}
+  ${deploy-vm-ruby-java11-darwin-amd64} {publishArtifacts: [{name: deploy-vm-ruby-java11-darwin-amd64, patterns: [deploy-vm-ruby-java11-darwin-amd64]}]}
+
+  #
+  # Deploy GraalVM Complete
+  #
+  ${deploy-vm-complete-java11-linux-amd64}
+  ${deploy-vm-complete-java11-darwin-amd64}
+
+  # Trigger the releaser service
+  ${notify-releaser-build}
+]
