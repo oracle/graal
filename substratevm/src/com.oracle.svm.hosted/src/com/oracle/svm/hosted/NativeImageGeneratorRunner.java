@@ -425,7 +425,7 @@ public class NativeImageGeneratorRunner {
                 wasSuccessfulBuild = true;
             } finally {
                 if (!wasSuccessfulBuild) {
-                    reporter.printInitializeEnd(classlistTimer, classlistTimer);
+                    reporter.printInitializeEnd();
                 }
             }
         } catch (InterruptImageBuilding e) {
@@ -477,7 +477,7 @@ public class NativeImageGeneratorRunner {
         } finally {
             totalTimer.print();
             if (imageName != null && generator != null) {
-                reporter.printEpilog(imageName, generator, wasSuccessfulBuild, totalTimer, parsedHostedOptions);
+                reporter.printEpilog(imageName, generator, wasSuccessfulBuild, parsedHostedOptions);
             }
             NativeImageGenerator.clearSystemPropertiesForImage();
             ImageSingletonsSupportImpl.HostedManagement.clear();

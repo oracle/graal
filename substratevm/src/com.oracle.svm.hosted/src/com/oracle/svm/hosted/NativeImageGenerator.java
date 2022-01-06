@@ -564,7 +564,7 @@ public class NativeImageGenerator {
             HostedMetaAccess hMetaAccess;
             SharedRuntimeConfigurationBuilder runtime;
             TimerCollection timerCollection = TimerCollection.singleton();
-            try (ReporterClosable c = reporter.printUniverse(timerCollection.get(TimerCollection.Registry.UNIVERSE))) {
+            try (ReporterClosable c = reporter.printUniverse()) {
                 bb.getHeartbeatCallback().run();
 
                 hUniverse = new HostedUniverse(bb);
@@ -700,7 +700,7 @@ public class NativeImageGenerator {
                 AfterImageWriteAccessImpl afterConfig = new AfterImageWriteAccessImpl(featureHandler, loader, hUniverse, inv, tmpDir, image.getImageKind(), debug);
                 featureHandler.forEachFeature(feature -> feature.afterImageWrite(afterConfig));
             }
-            reporter.printCreationEnd(timerCollection.get(TimerCollection.Registry.IMAGE), timerCollection.get(TimerCollection.Registry.WRITE), image.getImageSize(), bb.getUniverse(),
+            reporter.printCreationEnd(image.getImageSize(), bb.getUniverse(),
                             heap.getObjectCount(), image.getImageHeapSize(), codeCache.getCodeCacheSize(),
                             codeCache.getCompilations().size(), image.getDebugInfoSize());
             if (SubstrateOptions.BuildOutputBreakdowns.getValue()) {
@@ -897,7 +897,7 @@ public class NativeImageGenerator {
                 entryPoints.forEach((method, entryPointData) -> CEntryPointCallStubSupport.singleton().registerStubForMethod(method, () -> entryPointData));
             }
 
-            ProgressReporter.singleton().printInitializeEnd(timerCollection.get(TimerCollection.Registry.CLASSLIST), setupTimer, nativeLibraries.getLibraries());
+            ProgressReporter.singleton().printInitializeEnd(nativeLibraries.getLibraries());
         }
     }
 
