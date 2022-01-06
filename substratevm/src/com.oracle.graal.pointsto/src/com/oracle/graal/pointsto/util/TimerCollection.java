@@ -40,53 +40,42 @@ public class TimerCollection implements ImageBuildStatistics.TimerCollectionPrin
         return ImageSingletons.lookup(TimerCollection.class);
     }
 
+    /**
+     * A registry of well-known timers used when building images.
+     */
     public enum Registry {
-        TOTAL("[total]"),
-        SETUP("setup"),
-        CLASSLIST("classlist"),
-        CLINIT("(clinit)"),
-        FEATURES("(features)"),
-        OBJECTS("(objects)"),
-        ANALYSIS("analysis"),
-        UNIVERSE("universe"),
-        COMPILE_TOTAL("compile"),
-        PARSE("(parse)"),
-        INLINE("(inline)"),
-        COMPILE("(compile)"),
-        DEBUG_INFO("dbginfo"),
-        IMAGE("image"),
-        WRITE("write");
+        TOTAL("[total]", false),
+        SETUP("setup", true),
+        CLASSLIST("classlist", false),
+        CLINIT("(clinit)", true),
+        FEATURES("(features)", false),
+        OBJECTS("(objects)", false),
+        ANALYSIS("analysis", true),
+        UNIVERSE("universe", true),
+        COMPILE_TOTAL("compile", true),
+        PARSE("(parse)", true),
+        INLINE("(inline)", true),
+        COMPILE("(compile)", true),
+        DEBUG_INFO("dbginfo", true),
+        IMAGE("image", true),
+        WRITE("write", true);
 
         public final String name;
 
-        Registry(String name) {
+        public final boolean autoPrint;
+
+        Registry(String name, boolean autoPrint) {
             this.name = name;
+            this.autoPrint = autoPrint;
         }
+
     }
 
     private final Map<String, Timer> timers = new ConcurrentHashMap<>();
+    private final String imageName;
 
-    public void initDefaultTimers(String imageName) {
-        add(new Timer(imageName, Registry.TOTAL.name, false));
-        add(new Timer(imageName, Registry.SETUP.name, true));
-        add(new Timer(imageName, Registry.CLASSLIST.name, false));
-        add(new Timer(imageName, Registry.CLINIT.name, true));
-        add(new Timer(imageName, Registry.ANALYSIS.name, true));
-        add(new Timer(imageName, Registry.FEATURES.name, false));
-        add(new Timer(imageName, Registry.OBJECTS.name, false));
-        add(new Timer(imageName, Registry.UNIVERSE.name, true));
-        add(new Timer(imageName, Registry.COMPILE_TOTAL.name, true));
-        add(new Timer(imageName, Registry.PARSE.name, true));
-        add(new Timer(imageName, Registry.INLINE.name, true));
-        add(new Timer(imageName, Registry.COMPILE.name, true));
-        add(new Timer(imageName, Registry.DEBUG_INFO.name, true));
-        add(new Timer(imageName, Registry.IMAGE.name, true));
-        add(new Timer(imageName, Registry.WRITE.name, true));
-    }
-
-    private void add(Timer timer) {
-        GraalError.guarantee(!timers.containsKey(timer.getName()), "Name %s for a timer is already taken.", timer.getName());
-        timers.put(timer.getName(), timer);
+    public TimerCollection(String imageName) {
+        this.imageName = imageName;
     }
 
     public Timer get(String name) {
@@ -96,7 +85,7 @@ public class TimerCollection implements ImageBuildStatistics.TimerCollectionPrin
     }
 
     public Timer get(TimerCollection.Registry type) {
-        return get(type.name);
+        return timers.computeIfAbsent(type.name, (name) -> new Timer(imageName, name, type.autoPrint));
     }
 
     public Timer createTimer(String name) {
@@ -112,8 +101,9 @@ public class TimerCollection implements ImageBuildStatistics.TimerCollectionPrin
     }
 
     public Timer createTimer(String prefix, String name, boolean autoPrint) {
+        GraalError.guarantee(!timers.containsKey(name), "Name %s for a timer is already taken.", name);
         Timer timer = new Timer(prefix, name, autoPrint);
-        add(timer);
+        timers.put(timer.getName(), timer);
         return timer;
     }
 

@@ -287,8 +287,7 @@ public class NativeImageGeneratorRunner {
         OptionValues parsedHostedOptions = classLoader.classLoaderSupport.getParsedHostedOptions();
 
         String imageName = SubstrateOptions.Name.getValue(parsedHostedOptions);
-        TimerCollection timerCollection = new TimerCollection();
-        timerCollection.initDefaultTimers(imageName);
+        TimerCollection timerCollection = new TimerCollection(imageName);
         Timer totalTimer = timerCollection.get(TimerCollection.Registry.TOTAL);
 
         if (NativeImageOptions.ListCPUFeatures.getValue(parsedHostedOptions)) {
