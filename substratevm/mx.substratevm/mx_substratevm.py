@@ -241,6 +241,9 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
     common_args = [] if common_args is None else common_args
     base_args = ['--no-fallback', '-H:+EnforceMaxRuntimeCompileMethods']
     base_args += ['-H:Path=' + svmbuild_dir()]
+    # avoid escape sequences in output to dumb terminals (or emacs)
+    if os.getenv("TERM") == "dumb":
+        base_args += ["-H:-BuildOutputColorful", "-H:-BuildOutputProgress"]
     if mx.get_opts().verbose:
         base_args += ['--verbose']
     if mx.get_opts().very_verbose:
