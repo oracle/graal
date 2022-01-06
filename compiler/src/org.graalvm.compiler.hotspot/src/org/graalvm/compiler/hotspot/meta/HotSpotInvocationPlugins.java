@@ -138,25 +138,25 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
     @Override
     public void notifyNoPlugin(ResolvedJavaMethod targetMethod, OptionValues options) {
         if (Options.WarnMissingIntrinsic.getValue(options)) {
-            if (missingIntrinsicMetrics == null) {
-                synchronized (this) {
-                    if (missingIntrinsicMetrics == null) {
-                        missingIntrinsicMetrics = new HashMap<>();
-                        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                            if (missingIntrinsicMetrics.size() > 0) {
-                                TTY.println("[Warning] Missing intrinsics found: %d", missingIntrinsicMetrics.size());
-                                missingIntrinsicMetrics.entrySet().stream().sorted(Comparator.comparing(Entry::getValue, Comparator.reverseOrder())).forEach(entry -> {
-                                    TTY.println("        - %d occurrences during parsing: %s", entry.getValue(), entry.getKey());
-                                });
-                            }
-                        }));
-                    }
-                }
-            }
             String method = String.format("%s.%s%s", targetMethod.getDeclaringClass().toJavaName().replace('.', '/'), targetMethod.getName(), targetMethod.getSignature().toMethodDescriptor());
             if (unimplementedIntrinsics.isMissing(method)) {
                 int currentCount;
-                synchronized (missingIntrinsicMetrics) {
+                synchronized (unimplementedIntrinsics) {
+                    if (missingIntrinsicMetrics == null) {
+                        missingIntrinsicMetrics = new HashMap<>();
+                        try {
+                            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                                if (missingIntrinsicMetrics.size() > 0) {
+                                    TTY.println("[Warning] Missing intrinsics found: %d", missingIntrinsicMetrics.size());
+                                    missingIntrinsicMetrics.entrySet().stream().sorted(Comparator.comparing(Entry::getValue, Comparator.reverseOrder())).forEach(entry -> {
+                                        TTY.println("        - %d occurrences during parsing: %s", entry.getValue(), entry.getKey());
+                                    });
+                                }
+                            }));
+                        } catch (IllegalStateException e) {
+                            // shutdown in progress, no need to register the hook
+                        }
+                    }
                     currentCount = missingIntrinsicMetrics.compute(method, (key, cnt) -> cnt == null ? 1 : Math.addExact(cnt, 1));
                 }
                 if (currentCount == 1) {
