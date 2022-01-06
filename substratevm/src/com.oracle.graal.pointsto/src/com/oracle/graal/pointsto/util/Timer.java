@@ -77,6 +77,7 @@ public class Timer {
     }
 
     private void print(long time) {
+        // TODO GR-35721
         if (disablePrinting) {
             return;
         }
