@@ -212,7 +212,7 @@ public final class ClassRedefinition {
                 parserKlass = ClassfileParser.parse(new ClassfileStream(patched, null), loader, types.fromName(hotSwapInfo.getNewName()), context);
             }
             classChange = detectClassChanges(parserKlass, klass, detectedChange, newParserKlass);
-            if (detectedChange.getSuperKlass() != null) {
+            if (classChange == ClassChange.CLASS_HIERARCHY_CHANGED && detectedChange.getSuperKlass() != null) {
                 // keep track of unhandled changed super classes
                 ObjectKlass superKlass = detectedChange.getSuperKlass();
                 while (superKlass != null) {

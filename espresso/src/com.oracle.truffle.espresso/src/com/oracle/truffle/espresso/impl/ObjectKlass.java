@@ -1262,12 +1262,11 @@ public final class ObjectKlass extends Klass {
         DetectedChange change = packet.detectedChange;
 
         if (change.isChangedSuperClass()) {
-            // no changes was detected to this class, but it was marked
-            // as a super class change, which means at least one subclass
+            // this class was marked as a super class change, which means at least one subclass
             // hereof has this class as a new superclass.
             // All fields must be redefined as a removed -> added combo to
             // allow old instances of the changed subclass to access the fields
-            // within this class
+            // within this class.
             if (getDeclaredFields().length > 0) {
                 ExtensionFieldsMetadata extension = getExtensionFieldsMetadata(true);
                 for (Field declaredField : getDeclaredFields()) {
@@ -1282,6 +1281,9 @@ public final class ObjectKlass extends Klass {
                     }
                 }
             }
+        }
+        if (packet.parserKlass == null) {
+            // no further changes
             return;
         }
 
@@ -1296,7 +1298,12 @@ public final class ObjectKlass extends Klass {
         for (int i = 0; i < superInterfaces.length; i++) {
             interfaces[i] = superInterfaces[i].getLinkedKlass();
         }
-        LinkedKlass linkedKlass = LinkedKlass.redefine(parserKlass, change.getSuperKlass().getLinkedKlass(), interfaces, oldLinkedKlass);
+        LinkedKlass linkedKlass;
+        if (Modifier.isInterface(change.getSuperKlass().getModifiers())) {
+            linkedKlass = LinkedKlass.redefine(parserKlass, null, interfaces, oldLinkedKlass);
+        } else {
+            linkedKlass = LinkedKlass.redefine(parserKlass, change.getSuperKlass().getLinkedKlass(), interfaces, oldLinkedKlass);
+        }
         klassVersion = new KlassVersion(oldVersion, pool, linkedKlass, packet, invalidatedClasses, ids);
 
         // fields
