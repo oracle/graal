@@ -241,6 +241,9 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
     common_args = [] if common_args is None else common_args
     base_args = ['--no-fallback', '-H:+EnforceMaxRuntimeCompileMethods']
     base_args += ['-H:Path=' + svmbuild_dir()]
+    # avoid escape sequences in output to dumb terminals (or emacs)
+    if os.getenv("TERM") == "dumb":
+        base_args += ["-H:-BuildOutputColorful", "-H:-BuildOutputProgress"]
     if mx.get_opts().verbose:
         base_args += ['--verbose']
     if mx.get_opts().very_verbose:
@@ -727,10 +730,18 @@ def _debuginfotest(native_image, path, build_only, args):
 
     # build with and without Isolates and check both work
 
+    # remove previously built native image binary
+    if os.path.exists(join(path, 'hello.hello')):
+        os.remove(join(path, 'hello.hello'))
+
     build_debug_test(['-H:+SpawnIsolates'])
     if mx.get_os() == 'linux' and not build_only:
         os.environ.update({'debuginfotest.isolates' : 'yes'})
         mx.run([os.environ.get('GDB_BIN', 'gdb'), '-ex', 'python "ISOLATES=True"', '-x', join(parent, 'mx.substratevm/testhello.py'), join(path, 'hello.hello')])
+
+    # remove previously built native image binary
+    if os.path.exists(join(path, 'hello.hello')):
+        os.remove(join(path, 'hello.hello'))
 
     build_debug_test(['-H:-SpawnIsolates'])
     if mx.get_os() == 'linux' and not build_only:
