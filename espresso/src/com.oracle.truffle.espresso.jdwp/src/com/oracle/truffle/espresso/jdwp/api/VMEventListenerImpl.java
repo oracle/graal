@@ -55,8 +55,6 @@ import com.oracle.truffle.espresso.jdwp.impl.SuspendStrategy;
 import com.oracle.truffle.espresso.jdwp.impl.SuspendedInfo;
 import com.oracle.truffle.espresso.jdwp.impl.TypeTag;
 
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
-
 public final class VMEventListenerImpl implements VMEventListener {
 
     public static final InteropLibrary UNCACHED = InteropLibrary.getUncached();
@@ -839,7 +837,7 @@ public final class VMEventListenerImpl implements VMEventListener {
 
     @Override
     public void classUnloaded(KlassRef klass) {
-        throw new NotImplementedException();
+        throw new UnsupportedOperationException();
     }
 
     @Override

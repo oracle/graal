@@ -131,14 +131,14 @@ suite = {
             "dependencies": [
                 "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_NFI",
+                "truffle:TRUFFLE_ASM_9.1",
                 "com.oracle.truffle.espresso.jdwp",
             ],
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR", "ESPRESSO_PROCESSOR"],
             "javaCompliance": "1.8+",
             "checkstyle": "com.oracle.truffle.espresso",
             "checkstyleVersion": "8.8",
-            "checkPackagePrefix": False,  # java.lang.ref.PublicFinalReference
-        },
+        },        
 
         "com.oracle.truffle.espresso.jdk17": {
             "subDir": "src",

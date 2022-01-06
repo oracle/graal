@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.runtime;
 
+import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -30,7 +31,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.substitutions.EspressoReference;
+import com.oracle.truffle.espresso.ref.EspressoReference;
 import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
@@ -148,12 +149,12 @@ class EspressoReferenceDrainer implements ContextAccess {
         }
     }
 
-    private void casNextIfNullAndMaybeClear(@SuppressWarnings("rawtypes") EspressoReference wrapper) {
+    private void casNextIfNullAndMaybeClear(EspressoReference wrapper) {
         StaticObject ref = wrapper.getGuestReference();
         // Cleaner references extends PhantomReference but are cleared.
         // See HotSpot's ReferenceProcessor::process_discovered_references in referenceProcessor.cpp
         if (InterpreterToVM.instanceOf(ref, getMeta().sun_misc_Cleaner)) {
-            wrapper.clear();
+            ((Reference<?>) wrapper).clear();
         }
         getMeta().java_lang_ref_Reference_next.compareAndSwapObject(ref, StaticObject.NULL, ref);
     }
