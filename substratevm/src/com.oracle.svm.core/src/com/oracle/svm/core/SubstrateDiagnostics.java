@@ -247,7 +247,9 @@ public class SubstrateDiagnostics {
             fatalErrorState.invocationCount = 0;
         }
 
-        // Reset the state so that another thread can print diagnostics for a fatal error.
+        // Flush the output and reset the state so that another thread can print diagnostics for a
+        // fatal error.
+        log.flush();
         fatalErrorState.clear();
     }
 

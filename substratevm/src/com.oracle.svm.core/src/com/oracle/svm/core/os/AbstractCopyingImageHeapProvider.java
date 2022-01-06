@@ -118,7 +118,8 @@ public abstract class AbstractCopyingImageHeapProvider extends AbstractImageHeap
 
     @Uninterruptible(reason = "Called during isolate initialization.")
     protected int commitAndCopyMemory(Pointer loadedImageHeap, UnsignedWord imageHeapSize, Pointer newImageHeap) {
-        if (VirtualMemoryProvider.get().commit(newImageHeap, imageHeapSize, Access.READ | Access.WRITE).isNull()) {
+        Pointer actualNewImageHeap = VirtualMemoryProvider.get().commit(newImageHeap, imageHeapSize, Access.READ | Access.WRITE);
+        if (actualNewImageHeap.isNull() || actualNewImageHeap.notEqual(newImageHeap)) {
             return CEntryPointErrors.RESERVE_ADDRESS_SPACE_FAILED;
         }
         return copyMemory(loadedImageHeap, imageHeapSize, newImageHeap);
