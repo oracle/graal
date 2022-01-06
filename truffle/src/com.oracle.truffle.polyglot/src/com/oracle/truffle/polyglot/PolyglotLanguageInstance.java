@@ -83,6 +83,8 @@ final class PolyglotLanguageInstance implements VMObject {
     LocalLocation[] contextLocalLocations;
     LocalLocation[] contextThreadLocalLocations;
 
+    @CompilationFinal Object guestToHostCodeCache;
+
     @SuppressWarnings("unchecked")
     PolyglotLanguageInstance(PolyglotLanguage language, PolyglotSharingLayer layer) {
         this.language = language;
