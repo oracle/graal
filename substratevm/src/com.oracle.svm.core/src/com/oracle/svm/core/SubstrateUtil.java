@@ -362,8 +362,7 @@ public class SubstrateUtil {
         }
         String mangled = out.toString();
         assert mangled.matches("[a-zA-Z\\._][a-zA-Z0-9_]*");
-        //@formatter:off
-        /*
+        /*-
          * To demangle, the following pipeline works for me (assuming no multi-byte characters):
          *
          * sed -r 's/\_([0-9a-f]{4})/\n\1\n/g' | sed -r 's#^[0-9a-f]{2}([0-9a-f]{2})#/usr/bin/printf "\\x\1"#e' | tr -d '\n'
@@ -371,7 +370,6 @@ public class SubstrateUtil {
          * It's not strictly correct if the first characters after an escape sequence
          * happen to match ^[0-9a-f]{2}, but hey....
          */
-        //@formatter:on
         return mangled;
     }
 

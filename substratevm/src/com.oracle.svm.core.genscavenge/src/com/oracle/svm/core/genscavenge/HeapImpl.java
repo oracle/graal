@@ -296,7 +296,6 @@ public final class HeapImpl extends Heap {
         if (HeapParameters.getZapProducedHeapChunks() || HeapParameters.getZapConsumedHeapChunks()) {
             log.string("[Heap Chunk zap values: ").indent(true);
             /* Padded with spaces so the columns line up between the int and word variants. */
-            // @formatter:off
             if (HeapParameters.getZapProducedHeapChunks()) {
                 log.string("  producedHeapChunkZapInt: ")
                                 .string("  hex: ").spaces(8).hex(HeapParameters.getProducedHeapChunkZapInt())
@@ -321,7 +320,6 @@ public final class HeapImpl extends Heap {
                                 .string("  unsigned: ").unsigned(HeapParameters.getConsumedHeapChunkZapWord());
             }
             log.redent(false).string("]");
-            // @formatter:on
         }
         return log;
     }
