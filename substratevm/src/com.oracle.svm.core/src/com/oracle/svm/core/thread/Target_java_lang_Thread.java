@@ -397,7 +397,7 @@ public final class Target_java_lang_Thread {
     /**
      * Marks the thread as interrupted and wakes it up.
      *
-     * See {@link JavaThreads#platformPark()}, {@link JavaThreads#platformUnpark} and
+     * See {@link JavaThreads#platformOrCarrierPark()}, {@link JavaThreads#platformUnpark} and
      * {@link JavaThreads#sleep} for vital aspects of the underlying mechanisms.
      */
     @Substitute

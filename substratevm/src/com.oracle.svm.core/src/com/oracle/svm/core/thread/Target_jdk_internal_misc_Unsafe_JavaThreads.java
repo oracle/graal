@@ -45,11 +45,11 @@ final class Target_jdk_internal_misc_Unsafe_JavaThreads {
         /* Decide what kind of park I am doing. */
         if (!isAbsolute && time == 0L) {
             /* Park without deadline. */
-            JavaThreads.platformPark();
+            JavaThreads.platformOrCarrierPark();
         } else {
             /* Park with deadline. */
             final long delayNanos = TimeUtils.delayNanos(isAbsolute, time);
-            JavaThreads.platformPark(delayNanos);
+            JavaThreads.platformOrCarrierPark(delayNanos);
         }
         /*
          * Unsafe.park does not distinguish between timing out, being unparked, and being
