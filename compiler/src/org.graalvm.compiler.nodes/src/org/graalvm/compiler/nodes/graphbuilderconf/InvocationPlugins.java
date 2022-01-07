@@ -62,6 +62,7 @@ import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 /**
  * Manages a set of {@link InvocationPlugin}s.
@@ -542,6 +543,90 @@ public class InvocationPlugins {
          */
         public void registerOptional6(String name, Type arg1, Type arg2, Type arg3, Type arg4, Type arg5, Type arg6, InvocationPlugin plugin) {
             plugins.register(plugin, true, allowOverwrite, declaringType, name, arg1, arg2, arg3, arg4, arg5, arg6);
+        }
+
+        /**
+         * Registers a plugin for a method with no arguments if the Java version is greater than the
+         * given Java version, or an optional plugin in case it may be backported.
+         *
+         * @param name the name of the method
+         * @param introducedVersion the Java version where this intrinsic is introduced
+         * @param plugin the plugin to be registered
+         */
+        public void registerOptionalBackport0(String name, int introducedVersion, InvocationPlugin plugin) {
+            plugins.register(plugin, JavaVersionUtil.JAVA_SPEC < introducedVersion, allowOverwrite, declaringType, name);
+        }
+
+        /**
+         * Registers a plugin for a method with 1 argument if the Java version is greater than the
+         * given Java version, or an optional plugin in case it may be backported.
+         *
+         * @param name the name of the method
+         * @param introducedVersion the Java version where this intrinsic is introduced
+         * @param plugin the plugin to be registered
+         */
+        public void registerOptionalBackport1(String name, int introducedVersion, Type arg, InvocationPlugin plugin) {
+            plugins.register(plugin, JavaVersionUtil.JAVA_SPEC < introducedVersion, allowOverwrite, declaringType, name, arg);
+        }
+
+        /**
+         * Registers a plugin for a method with 2 arguments if the Java version is greater than the
+         * given Java version, or an optional plugin in case it may be backported.
+         *
+         * @param name the name of the method
+         * @param introducedVersion the Java version where this intrinsic is introduced
+         * @param plugin the plugin to be registered
+         */
+        public void registerOptionalBackport2(String name, int introducedVersion, Type arg1, Type arg2, InvocationPlugin plugin) {
+            plugins.register(plugin, JavaVersionUtil.JAVA_SPEC < introducedVersion, allowOverwrite, declaringType, name, arg1, arg2);
+        }
+
+        /**
+         * Registers a plugin for a method with 3 arguments if the Java version is greater than the
+         * given Java version, or an optional plugin in case it may be backported.
+         *
+         * @param name the name of the method
+         * @param introducedVersion the Java version where this intrinsic is introduced
+         * @param plugin the plugin to be registered
+         */
+        public void registerOptionalBackport3(String name, int introducedVersion, Type arg1, Type arg2, Type arg3, InvocationPlugin plugin) {
+            plugins.register(plugin, JavaVersionUtil.JAVA_SPEC < introducedVersion, allowOverwrite, declaringType, name, arg1, arg2, arg3);
+        }
+
+        /**
+         * Registers a plugin for a method with 4 arguments if the Java version is greater than the
+         * given Java version, or an optional plugin in case it may be backported.
+         *
+         * @param name the name of the method
+         * @param introducedVersion the Java version where this intrinsic is introduced
+         * @param plugin the plugin to be registered
+         */
+        public void registerOptionalBackport4(String name, int introducedVersion, Type arg1, Type arg2, Type arg3, Type arg4, InvocationPlugin plugin) {
+            plugins.register(plugin, JavaVersionUtil.JAVA_SPEC < introducedVersion, allowOverwrite, declaringType, name, arg1, arg2, arg3, arg4);
+        }
+
+        /**
+         * Registers a plugin for a method with 5 arguments if the Java version is greater than the
+         * given Java version, or an optional plugin in case it may be backported.
+         *
+         * @param name the name of the method
+         * @param introducedVersion the Java version where this intrinsic is introduced
+         * @param plugin the plugin to be registered
+         */
+        public void registerOptionalBackport5(String name, int introducedVersion, Type arg1, Type arg2, Type arg3, Type arg4, Type arg5, InvocationPlugin plugin) {
+            plugins.register(plugin, JavaVersionUtil.JAVA_SPEC < introducedVersion, allowOverwrite, declaringType, name, arg1, arg2, arg3, arg4, arg5);
+        }
+
+        /**
+         * Registers a plugin for a method with 6 arguments if the Java version is greater than the
+         * given Java version, or an optional plugin in case it may be backported.
+         *
+         * @param name the name of the method
+         * @param introducedVersion the Java version where this intrinsic is introduced
+         * @param plugin the plugin to be registered
+         */
+        public void registerOptionalBackport6(String name, int introducedVersion, Type arg1, Type arg2, Type arg3, Type arg4, Type arg5, Type arg6, InvocationPlugin plugin) {
+            plugins.register(plugin, JavaVersionUtil.JAVA_SPEC < introducedVersion, allowOverwrite, declaringType, name, arg1, arg2, arg3, arg4, arg5, arg6);
         }
 
         /**

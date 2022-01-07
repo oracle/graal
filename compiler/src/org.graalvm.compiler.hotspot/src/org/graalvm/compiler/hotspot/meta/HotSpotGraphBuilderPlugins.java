@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -133,7 +133,6 @@ import org.graalvm.compiler.replacements.arraycopy.ArrayCopyForeignCalls;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopySnippets;
 import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
 import org.graalvm.compiler.serviceprovider.GraalServices;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.word.LocationIdentity;
 
@@ -147,7 +146,6 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.UnresolvedJavaType;
 import jdk.vm.ci.services.Services;
-import sun.misc.Unsafe;
 
 /**
  * Defines the {@link Plugins} used when running on HotSpot.
@@ -494,12 +492,7 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     private static void registerUnsafePlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
-        Registration r;
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            r = new Registration(plugins, Unsafe.class, replacements);
-        } else {
-            r = new Registration(plugins, "jdk.internal.misc.Unsafe", replacements);
-        }
+        Registration r = new Registration(plugins, "jdk.internal.misc.Unsafe", replacements);
         r.register6(HotSpotBackend.copyMemoryName, Receiver.class, Object.class, long.class, Object.class,
                         long.class, long.class, new InvocationPlugin() {
                             @Override
@@ -569,49 +562,47 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     private static void registerStringPlugins(InvocationPlugins plugins, Replacements replacements, WordTypes wordTypes, ArrayCopyForeignCalls foreignCalls, GraalHotSpotVMConfig vmConfig) {
-        if (JavaVersionUtil.JAVA_SPEC > 8) {
-            final Registration utf16r = new Registration(plugins, "java.lang.StringUTF16", replacements);
-            utf16r.register3("toBytes", char[].class, int.class, int.class, new InvocationPlugin() {
-                private static final int MAX_LENGTH = Integer.MAX_VALUE >> 1;
+        final Registration utf16r = new Registration(plugins, "java.lang.StringUTF16", replacements);
+        utf16r.register3("toBytes", char[].class, int.class, int.class, new InvocationPlugin() {
+            private static final int MAX_LENGTH = Integer.MAX_VALUE >> 1;
 
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode srcBegin, ValueNode length) {
-                    try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, vmConfig)) {
-                        helper.intrinsicRangeCheck(srcBegin, Condition.LT, ConstantNode.forInt(0));
-                        helper.intrinsicRangeCheck(length, Condition.LT, ConstantNode.forInt(0));
-                        helper.intrinsicRangeCheck(length, Condition.GT, ConstantNode.forInt(MAX_LENGTH));
-                        ValueNode valueLength = b.add(new ArrayLengthNode(value));
-                        ValueNode limit = b.add(new SubNode(valueLength, length));
-                        helper.intrinsicRangeCheck(srcBegin, Condition.GT, limit);
-                        ValueNode newArray = b.add(new NewArrayNode(b.getMetaAccess().lookupJavaType(Byte.TYPE), b.add(new LeftShiftNode(length, ConstantNode.forInt(1))), false));
-                        b.addPush(JavaKind.Object, newArray);
-                        // The stateAfter should include the value pushed, so push it first and then
-                        // perform the call that fills in the array.
-                        b.add(new ArrayCopyCallNode(foreignCalls, wordTypes, value, srcBegin, newArray, ConstantNode.forInt(0), length, JavaKind.Char, LocationIdentity.init(), false, true, true,
-                                        vmConfig.heapWordSize));
-                    }
-                    return true;
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode srcBegin, ValueNode length) {
+                try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, vmConfig)) {
+                    helper.intrinsicRangeCheck(srcBegin, Condition.LT, ConstantNode.forInt(0));
+                    helper.intrinsicRangeCheck(length, Condition.LT, ConstantNode.forInt(0));
+                    helper.intrinsicRangeCheck(length, Condition.GT, ConstantNode.forInt(MAX_LENGTH));
+                    ValueNode valueLength = b.add(new ArrayLengthNode(value));
+                    ValueNode limit = b.add(new SubNode(valueLength, length));
+                    helper.intrinsicRangeCheck(srcBegin, Condition.GT, limit);
+                    ValueNode newArray = b.add(new NewArrayNode(b.getMetaAccess().lookupJavaType(Byte.TYPE), b.add(new LeftShiftNode(length, ConstantNode.forInt(1))), false));
+                    b.addPush(JavaKind.Object, newArray);
+                    // The stateAfter should include the value pushed, so push it first and then
+                    // perform the call that fills in the array.
+                    b.add(new ArrayCopyCallNode(foreignCalls, wordTypes, value, srcBegin, newArray, ConstantNode.forInt(0), length, JavaKind.Char, LocationIdentity.init(), false, true, true,
+                                    vmConfig.heapWordSize));
                 }
-            });
-            utf16r.register5("getChars", byte[].class, int.class, int.class, char[].class, int.class, new InvocationPlugin() {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode srcBegin, ValueNode srcEnd, ValueNode dst,
-                                ValueNode dstBegin) {
-                    try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, vmConfig)) {
-                        ValueNode length = helper.sub(srcEnd, srcBegin);
-                        helper.intrinsicRangeCheck(srcBegin, Condition.LT, ConstantNode.forInt(0));
-                        helper.intrinsicRangeCheck(length, Condition.LT, ConstantNode.forInt(0));
-                        ValueNode srcLimit = helper.sub(helper.shr(helper.length(value), 1), length);
-                        helper.intrinsicRangeCheck(srcBegin, Condition.GT, srcLimit);
-                        ValueNode limit = helper.sub(helper.length(dst), length);
-                        helper.intrinsicRangeCheck(dstBegin, Condition.GT, limit);
-                        b.add(new ArrayCopyCallNode(foreignCalls, wordTypes, value, srcBegin, dst, dstBegin, length, JavaKind.Char, JavaKind.Byte, JavaKind.Char, false, true, true,
-                                        vmConfig.heapWordSize));
-                    }
-                    return true;
+                return true;
+            }
+        });
+        utf16r.register5("getChars", byte[].class, int.class, int.class, char[].class, int.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode srcBegin, ValueNode srcEnd, ValueNode dst,
+                            ValueNode dstBegin) {
+                try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, vmConfig)) {
+                    ValueNode length = helper.sub(srcEnd, srcBegin);
+                    helper.intrinsicRangeCheck(srcBegin, Condition.LT, ConstantNode.forInt(0));
+                    helper.intrinsicRangeCheck(length, Condition.LT, ConstantNode.forInt(0));
+                    ValueNode srcLimit = helper.sub(helper.shr(helper.length(value), 1), length);
+                    helper.intrinsicRangeCheck(srcBegin, Condition.GT, srcLimit);
+                    ValueNode limit = helper.sub(helper.length(dst), length);
+                    helper.intrinsicRangeCheck(dstBegin, Condition.GT, limit);
+                    b.add(new ArrayCopyCallNode(foreignCalls, wordTypes, value, srcBegin, dst, dstBegin, length, JavaKind.Char, JavaKind.Byte, JavaKind.Char, false, true, true,
+                                    vmConfig.heapWordSize));
                 }
-            });
-        }
+                return true;
+            }
+        });
     }
 
     private static void registerThreadPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
@@ -660,15 +651,7 @@ public class HotSpotGraphBuilderPlugins {
 
     }
 
-    public static final String reflectionClass;
-
-    static {
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            reflectionClass = "sun.reflect.Reflection";
-        } else {
-            reflectionClass = "jdk.internal.reflect.Reflection";
-        }
-    }
+    public static final String reflectionClass = "jdk.internal.reflect.Reflection";
 
     public static String lookupIntrinsicName(GraalHotSpotVMConfig config, String className, String name1, String name2) {
         return selectIntrinsicName(config, className, name1, name2).getLeft();
@@ -888,13 +871,8 @@ public class HotSpotGraphBuilderPlugins {
     private static void registerBigIntegerPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
         Registration r = new Registration(plugins, BigInteger.class, replacements);
         assert !config.useMultiplyToLenIntrinsic() || config.multiplyToLen != 0L;
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            r.registerConditionalMethodSubstitution(config.useMultiplyToLenIntrinsic(), BigIntegerSubstitutions.class, "multiplyToLen", "multiplyToLenStatic", int[].class, int.class, int[].class,
-                            int.class, int[].class);
-        } else {
-            r.registerConditionalMethodSubstitution(config.useMultiplyToLenIntrinsic(), BigIntegerSubstitutions.class, "implMultiplyToLen", "multiplyToLenStatic", int[].class, int.class, int[].class,
-                            int.class, int[].class);
-        }
+        r.registerConditionalMethodSubstitution(config.useMultiplyToLenIntrinsic(), BigIntegerSubstitutions.class, "implMultiplyToLen", "multiplyToLenStatic", int[].class, int.class, int[].class,
+                        int.class, int[].class);
         if (config.useMulAddIntrinsic()) {
             r.register5("implMulAdd", int[].class, int[].class, int.class, int.class, int.class, new InvocationPlugin() {
                 @Override
@@ -1189,8 +1167,7 @@ public class HotSpotGraphBuilderPlugins {
                     return true;
                 }
             });
-            String updateBytesName = JavaVersionUtil.JAVA_SPEC <= 8 ? "updateBytes" : "updateBytes0";
-            r.register4(updateBytesName, int.class, byte[].class, int.class, int.class, new InvocationPlugin() {
+            r.register4("updateBytes0", int.class, byte[].class, int.class, int.class, new InvocationPlugin() {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode crc, ValueNode buf, ValueNode off, ValueNode len) {
                     int byteArrayBaseOffset = b.getMetaAccess().getArrayBaseOffset(JavaKind.Byte);
@@ -1199,8 +1176,7 @@ public class HotSpotGraphBuilderPlugins {
                     return true;
                 }
             });
-            String updateByteBufferName = JavaVersionUtil.JAVA_SPEC <= 8 ? "updateByteBuffer" : "updateByteBuffer0";
-            r.register4(updateByteBufferName, int.class, long.class, int.class, int.class, new InvocationPlugin() {
+            r.register4("updateByteBuffer0", int.class, long.class, int.class, int.class, new InvocationPlugin() {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode crc, ValueNode addr, ValueNode off, ValueNode len) {
                     ValueNode bufAddr = b.add(new AddNode(addr, new SignExtendNode(off, 32, 64)));
@@ -1212,7 +1188,7 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     private static void registerCRC32CPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
-        if (JavaVersionUtil.JAVA_SPEC > 8 && config.useCRC32CIntrinsics) {
+        if (config.useCRC32CIntrinsics) {
             Registration r = new Registration(plugins, "java.util.zip.CRC32C", replacements);
             r.register4("updateBytes", int.class, byte[].class, int.class, int.class, new InvocationPlugin() {
                 @Override
@@ -1235,7 +1211,7 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     private static void registerArraysSupportPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
-        if (JavaVersionUtil.JAVA_SPEC > 8 && config.useVectorizedMismatchIntrinsic) {
+        if (config.useVectorizedMismatchIntrinsic) {
             Registration r = new Registration(plugins, "jdk.internal.util.ArraysSupport", replacements);
             r.register6("vectorizedMismatch", Object.class, long.class, Object.class, long.class,
                             int.class, int.class, new InvocationPlugin() {
@@ -1253,43 +1229,41 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     private static void registerReferencePlugins(InvocationPlugins plugins, Replacements replacements) {
-        if (JavaVersionUtil.JAVA_SPEC >= 16) {
-            Registration r = new Registration(plugins, Reference.class, replacements);
-            r.register2("refersTo0", Receiver.class, Object.class, new InvocationPlugin() {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode o) {
-                    ValueNode offset = b.add(ConstantNode.forLong(HotSpotReplacementsUtil.referentOffset(b.getMetaAccess())));
-                    AddressNode address = b.add(new OffsetAddressNode(receiver.get(), offset));
-                    FieldLocationIdentity locationIdentity = new FieldLocationIdentity(HotSpotReplacementsUtil.referentField(b.getMetaAccess()));
-                    JavaReadNode read = b.add(new JavaReadNode(StampFactory.object(), JavaKind.Object, address, locationIdentity, BarrierType.WEAK_FIELD, true));
-                    LogicNode objectEquals = b.add(ObjectEqualsNode.create(b.getConstantReflection(), b.getMetaAccess(), b.getOptions(), read, o, NodeView.DEFAULT));
-                    b.addPush(JavaKind.Boolean, ConditionalNode.create(objectEquals, b.add(forBoolean(true)), b.add(forBoolean(false)), NodeView.DEFAULT));
-                    return true;
-                }
+        Registration r = new Registration(plugins, Reference.class, replacements);
+        r.registerOptionalBackport2("refersTo0", 16, Receiver.class, Object.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode o) {
+                ValueNode offset = b.add(ConstantNode.forLong(HotSpotReplacementsUtil.referentOffset(b.getMetaAccess())));
+                AddressNode address = b.add(new OffsetAddressNode(receiver.get(), offset));
+                FieldLocationIdentity locationIdentity = new FieldLocationIdentity(HotSpotReplacementsUtil.referentField(b.getMetaAccess()));
+                JavaReadNode read = b.add(new JavaReadNode(StampFactory.object(), JavaKind.Object, address, locationIdentity, BarrierType.WEAK_FIELD, true));
+                LogicNode objectEquals = b.add(ObjectEqualsNode.create(b.getConstantReflection(), b.getMetaAccess(), b.getOptions(), read, o, NodeView.DEFAULT));
+                b.addPush(JavaKind.Boolean, ConditionalNode.create(objectEquals, b.add(forBoolean(true)), b.add(forBoolean(false)), NodeView.DEFAULT));
+                return true;
+            }
 
-                @Override
-                public boolean inlineOnly() {
-                    return true;
-                }
-            });
-            r = new Registration(plugins, PhantomReference.class, replacements);
-            r.register2("refersTo0", Receiver.class, Object.class, new InvocationPlugin() {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode o) {
-                    ValueNode offset = b.add(ConstantNode.forLong(HotSpotReplacementsUtil.referentOffset(b.getMetaAccess())));
-                    AddressNode address = b.add(new OffsetAddressNode(receiver.get(), offset));
-                    FieldLocationIdentity locationIdentity = new FieldLocationIdentity(HotSpotReplacementsUtil.referentField(b.getMetaAccess()));
-                    JavaReadNode read = b.add(new JavaReadNode(StampFactory.object(), JavaKind.Object, address, locationIdentity, BarrierType.PHANTOM_FIELD, true));
-                    LogicNode objectEquals = b.add(ObjectEqualsNode.create(b.getConstantReflection(), b.getMetaAccess(), b.getOptions(), read, o, NodeView.DEFAULT));
-                    b.addPush(JavaKind.Boolean, ConditionalNode.create(objectEquals, b.add(forBoolean(true)), b.add(forBoolean(false)), NodeView.DEFAULT));
-                    return true;
-                }
+            @Override
+            public boolean inlineOnly() {
+                return true;
+            }
+        });
+        r = new Registration(plugins, PhantomReference.class, replacements);
+        r.registerOptionalBackport2("refersTo0", 16, Receiver.class, Object.class, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode o) {
+                ValueNode offset = b.add(ConstantNode.forLong(HotSpotReplacementsUtil.referentOffset(b.getMetaAccess())));
+                AddressNode address = b.add(new OffsetAddressNode(receiver.get(), offset));
+                FieldLocationIdentity locationIdentity = new FieldLocationIdentity(HotSpotReplacementsUtil.referentField(b.getMetaAccess()));
+                JavaReadNode read = b.add(new JavaReadNode(StampFactory.object(), JavaKind.Object, address, locationIdentity, BarrierType.PHANTOM_FIELD, true));
+                LogicNode objectEquals = b.add(ObjectEqualsNode.create(b.getConstantReflection(), b.getMetaAccess(), b.getOptions(), read, o, NodeView.DEFAULT));
+                b.addPush(JavaKind.Boolean, ConditionalNode.create(objectEquals, b.add(forBoolean(true)), b.add(forBoolean(false)), NodeView.DEFAULT));
+                return true;
+            }
 
-                @Override
-                public boolean inlineOnly() {
-                    return true;
-                }
-            });
-        }
+            @Override
+            public boolean inlineOnly() {
+                return true;
+            }
+        });
     }
 }
