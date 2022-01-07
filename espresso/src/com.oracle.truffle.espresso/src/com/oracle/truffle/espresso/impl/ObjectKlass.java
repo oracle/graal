@@ -689,8 +689,10 @@ public final class ObjectKlass extends Klass {
     @Override
     public Field[] getDeclaredFields() {
         // Speculate that there are no hidden fields
-        Field[] declaredFields = Arrays.copyOf(staticFieldTable, staticFieldTable.length + fieldTable.length - localFieldTableIndex);
-        int insertionIndex = staticFieldTable.length;
+        Field[] realStaticFields = new Field[staticFieldTable.length - 1];
+        System.arraycopy(staticFieldTable, 0, realStaticFields, 0, realStaticFields.length);
+        Field[] declaredFields = Arrays.copyOf(realStaticFields, realStaticFields.length + fieldTable.length - localFieldTableIndex);
+        int insertionIndex = realStaticFields.length;
         for (int i = localFieldTableIndex; i < fieldTable.length; i++) {
             Field f = fieldTable[i];
             if (!f.isHidden() && !f.isRemoved()) {
