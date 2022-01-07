@@ -215,7 +215,9 @@ public final class ClassRedefinition {
             if (classChange == ClassChange.CLASS_HIERARCHY_CHANGED && detectedChange.getSuperKlass() != null) {
                 // keep track of unhandled changed super classes
                 ObjectKlass superKlass = detectedChange.getSuperKlass();
-                while (superKlass != null) {
+                ObjectKlass oldSuperKlass = klass.getSuperKlass();
+                ObjectKlass commonSuperKlass = findCommonSuperKlass(superKlass, oldSuperKlass);
+                while (superKlass != commonSuperKlass) {
                     superClassChanges.add(superKlass);
                     superKlass = superKlass.getSuperKlass();
                 }
@@ -239,6 +241,28 @@ public final class ClassRedefinition {
             }
         }
         return result;
+    }
+
+    private ObjectKlass findCommonSuperKlass(ObjectKlass superKlass, ObjectKlass oldSuperKlass) {
+        if (superKlass.getSuperKlass() == null || superKlass == context.getMeta().java_lang_Object) {
+            return context.getMeta().java_lang_Object;
+        }
+        if (oldSuperKlass.getSuperKlass() == null || oldSuperKlass == context.getMeta().java_lang_Object) {
+            return context.getMeta().java_lang_Object;
+        }
+        // capture the full hierarchy chain of the old super class
+        List<ObjectKlass> oldSuperClassChain = new ArrayList<>(4);
+        ObjectKlass temp = oldSuperKlass;
+        while (temp != null) {
+            oldSuperClassChain.add(temp);
+            temp = temp.getSuperKlass();
+        }
+        // iterate the new chain until a hit occurs in the old chain
+        ObjectKlass matchingKlass = superKlass;
+        while (!oldSuperClassChain.contains(matchingKlass)) {
+            matchingKlass = matchingKlass.getSuperKlass();
+        }
+        return matchingKlass;
     }
 
     public int redefineClass(ChangePacket packet, List<ObjectKlass> invalidatedClasses, List<ObjectKlass> redefinedClasses) {
