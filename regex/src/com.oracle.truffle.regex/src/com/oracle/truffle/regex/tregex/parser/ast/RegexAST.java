@@ -111,7 +111,7 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         this.language = language;
         this.source = source;
         this.flags = flags;
-        this.sourceSections = source.getOptions().isDumpAutomata() ? EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE) : null;
+        this.sourceSections = source.getOptions().isDumpAutomataWithSourceSections() ? EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE) : null;
     }
 
     public RegexLanguage getLanguage() {
@@ -562,17 +562,17 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
      * </ul>
      */
     public List<SourceSection> getSourceSections(RegexASTNode node) {
-        return getOptions().isDumpAutomata() ? sourceSections.get(node) : null;
+        return getOptions().isDumpAutomataWithSourceSections() ? sourceSections.get(node) : null;
     }
 
     public void addSourceSection(RegexASTNode node, Token token) {
-        if (getOptions().isDumpAutomata() && token != null && token.getSourceSection() != null) {
+        if (getOptions().isDumpAutomataWithSourceSections() && token != null && token.getSourceSection() != null) {
             getOrCreateSourceSections(node).add(token.getSourceSection());
         }
     }
 
     public void addSourceSections(RegexASTNode node, Collection<SourceSection> src) {
-        if (getOptions().isDumpAutomata() && src != null) {
+        if (getOptions().isDumpAutomataWithSourceSections() && src != null) {
             getOrCreateSourceSections(node).addAll(src);
         }
     }

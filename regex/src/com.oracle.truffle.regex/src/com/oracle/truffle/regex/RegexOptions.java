@@ -162,6 +162,10 @@ public final class RegexOptions {
         return isBitSet(DUMP_AUTOMATA);
     }
 
+    public boolean isDumpAutomataWithSourceSections() {
+        return isDumpAutomata() && getFlavor() == ECMAScriptFlavor.INSTANCE;
+    }
+
     /**
      * Trace the execution of automata in JSON files.
      */

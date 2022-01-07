@@ -112,7 +112,7 @@ public final class RegexParser {
         this.groupCount = ast.getGroupCount();
         this.copyVisitor = new CopyVisitor(ast);
         this.countVisitor = new NodeCountVisitor();
-        this.setSourceSectionVisitor = source.getOptions().isDumpAutomata() ? new SetSourceSectionVisitor(ast) : null;
+        this.setSourceSectionVisitor = source.getOptions().isDumpAutomataWithSourceSections() ? new SetSourceSectionVisitor(ast) : null;
         this.compilationBuffer = compilationBuffer;
         this.ignoreCaptureGroups = source.getOptions().isBooleanMatch() && !lexer.hasBackReferences();
     }
@@ -608,7 +608,7 @@ public final class RegexParser {
 
     private void substitute(Token token, Group substitution) {
         Group copy = substitution.copyRecursive(ast, compilationBuffer);
-        if (source.getOptions().isDumpAutomata()) {
+        if (source.getOptions().isDumpAutomataWithSourceSections()) {
             setSourceSectionVisitor.run(copy, token);
         }
         addTerm(copy);
@@ -619,7 +619,7 @@ public final class RegexParser {
     private Group parse(boolean rootCapture) throws RegexSyntaxException {
         RegexASTRootNode rootParent = ast.createRootNode();
         Group root = createGroup(null, false, rootCapture, rootParent);
-        if (source.getOptions().isDumpAutomata()) {
+        if (source.getOptions().isDumpAutomataWithSourceSections()) {
             // set leading and trailing '/' as source sections of root
             ast.addSourceSections(root, Arrays.asList(ast.getSource().getSource().createSection(0, 1), ast.getSource().getSource().createSection(ast.getSource().getPattern().length() + 1, 1)));
         }
