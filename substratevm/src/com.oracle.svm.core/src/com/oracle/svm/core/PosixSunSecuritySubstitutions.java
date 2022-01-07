@@ -22,45 +22,18 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.posix;
+package com.oracle.svm.core;
 
 import java.io.Closeable;
 import java.io.FilterInputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.security.SecureRandom;
 
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.RuntimeSupport;
-
-/**
- * The {@code NativePRNG} backend for {@link SecureRandom} on Linux and Darwin opens file handles
- * for {@code /dev/random} and {@code /dev/urandom} without ever closing them. This leak can cause a
- * native image to hit the open files limit when it repeatedly spawns isolates, so we close these
- * handles on isolate tear-down.
- *
- * As of Java 11, there is only a dummy implementation of {@code NativePRNG} on Windows which does
- * not open file descriptors that would need to be closed.
- */
-@AutomaticFeature
-@Platforms({Platform.LINUX.class, Platform.DARWIN.class})
-class NativeSecureRandomFilesCloser implements Feature {
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        access.registerReachabilityHandler(NativeSecureRandomFilesCloser::registerShutdownHook, Target_sun_security_provider_NativePRNG.class);
-    }
-
-    private static void registerShutdownHook(@SuppressWarnings("unused") DuringAnalysisAccess access) {
-        RuntimeSupport.getRuntimeSupport().addTearDownHook(new NativeSecureRandomFilesCloserShutdownHook());
-    }
-}
 
 final class NativeSecureRandomFilesCloserShutdownHook implements Runnable {
     @Override
@@ -111,5 +84,9 @@ final class Target_java_io_FilterInputStream {
 
 public final class PosixSunSecuritySubstitutions {
     private PosixSunSecuritySubstitutions() {
+    }
+
+    public static Runnable getShutdownHook() {
+        return new NativeSecureRandomFilesCloserShutdownHook();
     }
 }
