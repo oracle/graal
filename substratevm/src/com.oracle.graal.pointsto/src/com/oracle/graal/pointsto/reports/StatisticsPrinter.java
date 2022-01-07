@@ -95,11 +95,11 @@ public final class StatisticsPrinter {
 
     static final String INDENT = "   ";
 
-    public static PrintWriter endObject(PrintWriter out) {
+    private static PrintWriter endObject(PrintWriter out) {
         return out.format("}%n");
     }
 
-    public static PrintWriter beginObject(PrintWriter out) {
+    private static PrintWriter beginObject(PrintWriter out) {
         return out.format("{%n");
     }
 
