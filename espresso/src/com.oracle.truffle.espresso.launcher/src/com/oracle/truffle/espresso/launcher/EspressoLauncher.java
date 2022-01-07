@@ -484,9 +484,17 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
         // LM_SOURCE
     }
 
+    private static Map<String, String> defaultLauncherOptions() {
+        HashMap<String, String> map = new HashMap<>();
+        map.put("java.UseBindingsLoader", "false");
+        return map;
+    }
+
     @Override
     protected void launch(Builder contextBuilder) {
         contextBuilder.arguments(getLanguageId(), mainClassArgs.toArray(new String[0])).in(System.in).out(System.out).err(System.err);
+
+        contextBuilder.options(defaultLauncherOptions());
 
         for (Map.Entry<String, String> entry : espressoOptions.entrySet()) {
             contextBuilder.option(entry.getKey(), entry.getValue());
