@@ -382,9 +382,8 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.util",
             ],
-            "checkstyle": "com.oracle.graal.pointsto",
+            "checkstyle": "com.oracle.svm.core",
             "javaCompliance": "8+",
-            "checkstyleVersion" : "8.36.1",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
             ],
@@ -619,8 +618,7 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.hosted",
             ],
-            "checkstyle": "com.oracle.svm.driver",
-            "checkstyleVersion" : "8.36.1",
+            "checkstyle": "com.oracle.svm.hosted",
             "workingSets": "SVM",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
@@ -634,7 +632,7 @@ suite = {
             "sourceDirs": [
                 "src",
             ],
-            "checkstyle": "com.oracle.svm.driver",
+            "checkstyle": "com.oracle.svm.hosted",
             "workingSets": "SVM",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
@@ -750,7 +748,7 @@ suite = {
             "subDir": "src",
             "sourceDirs" : ["src"],
             "dependencies" : ["com.oracle.svm.core"],
-            "checkstyle" : "com.oracle.svm.truffle",
+            "checkstyle" : "com.oracle.svm.hosted",
             "javaCompliance" : "8+",
             "annotationProcessors" : [
                 "compiler:GRAAL_PROCESSOR",
@@ -813,7 +811,7 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.core",
             ],
-            "checkstyle": "com.oracle.svm.truffle",
+            "checkstyle": "com.oracle.svm.core",
             "javaCompliance": "8+",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
@@ -827,7 +825,7 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.core",
             ],
-            "checkstyle": "com.oracle.svm.truffle",
+            "checkstyle": "com.oracle.svm.core",
             "javaCompliance": "8+",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
@@ -841,9 +839,8 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.graal",
             ],
-            "checkstyle": "com.oracle.svm.truffle",
+            "checkstyle": "com.oracle.svm.hosted",
             "javaCompliance": "8+",
-            "checkstyleVersion" : "8.36.1",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
             ],
@@ -856,7 +853,7 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.truffle",
             ],
-            "checkstyle": "com.oracle.svm.truffle",
+            "checkstyle": "com.oracle.svm.hosted",
             "javaCompliance": "8+",
             "annotationProcessors": [
                 "truffle:TRUFFLE_DSL_PROCESSOR",
@@ -871,7 +868,7 @@ suite = {
                 "com.oracle.svm.truffle.nfi",
                 "com.oracle.svm.core.posix",
             ],
-            "checkstyle": "com.oracle.svm.truffle",
+            "checkstyle": "com.oracle.svm.hosted",
             "javaCompliance": "8+",
             "annotationProcessors": [
                 "truffle:TRUFFLE_DSL_PROCESSOR",
@@ -886,7 +883,7 @@ suite = {
                 "com.oracle.svm.truffle.nfi",
                 "com.oracle.svm.core.windows",
             ],
-            "checkstyle": "com.oracle.svm.truffle",
+            "checkstyle": "com.oracle.svm.hosted",
             "javaCompliance": "8+",
             "annotationProcessors": [
                 "truffle:TRUFFLE_DSL_PROCESSOR",
@@ -900,7 +897,7 @@ suite = {
             "generatedDependencies": [
                 "com.oracle.svm.graal",
             ],
-            "checkstyle": "com.oracle.svm.truffle",
+            "checkstyle": "com.oracle.svm.core",
             "javaCompliance": "8+",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
@@ -919,8 +916,7 @@ suite = {
                 "sdk:GRAAL_SDK",
                 "com.oracle.svm.hosted",
             ],
-            "checkstyle": "org.graalvm.polyglot.nativeapi",
-            "checkstyleVersion" : "8.36.1",
+            "checkstyle": "com.oracle.svm.core",
             "javaCompliance" : "8+",
             "annotationProcessors" : [
                 "compiler:GRAAL_PROCESSOR",
@@ -954,7 +950,7 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.core",
             ],
-            "checkstyle": "com.oracle.svm.driver",
+            "checkstyle": "com.oracle.svm.hosted",
             "workingSets": "SVM",
             "annotationProcessors": [
             ],
@@ -970,7 +966,7 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.configure",
             ],
-            "checkstyle": "com.oracle.svm.driver",
+            "checkstyle": "com.oracle.svm.hosted",
             "workingSets": "SVM",
             "annotationProcessors": [
             ],
@@ -986,7 +982,7 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.jni",
             ],
-            "checkstyle": "com.oracle.svm.driver",
+            "checkstyle": "com.oracle.svm.hosted",
             "workingSets": "SVM",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
@@ -1006,7 +1002,7 @@ suite = {
                 "com.oracle.svm.configure",
                 "com.oracle.svm.driver",
             ],
-            "checkstyle": "com.oracle.svm.driver",
+            "checkstyle": "com.oracle.svm.hosted",
             "workingSets": "SVM",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
@@ -1024,7 +1020,7 @@ suite = {
             "dependencies": [
                 "JVMTI_AGENT_BASE",
             ],
-            "checkstyle": "com.oracle.svm.driver",
+            "checkstyle": "com.oracle.svm.hosted",
             "workingSets": "SVM",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
@@ -1039,7 +1035,7 @@ suite = {
             "dependencies": [
                 "com.oracle.svm.hosted",
             ],
-            "checkstyle" : "com.oracle.svm.truffle",
+            "checkstyle" : "com.oracle.svm.hosted",
             "workingSets": "SVM",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
