@@ -33,15 +33,15 @@
 #include <graalvm/llvm/polyglot-time.h>
 
 polyglot_value zurichZone() {
-    return polyglot_timezone_from_string("Europe/Zurich");
+    polyglot_value id = polyglot_from_string("Europe/Zurich", "UTF8");
+    return polyglot_timezone_from_id(id);
 }
 
-polyglot_value zoneFromString(polyglot_value zone) {
-    return NULL;
+polyglot_value zoneFromZoneId(polyglot_value id) {
+    return polyglot_timezone_from_id(id);
 }
 
 polyglot_value stringFromZone(polyglot_value zone) {
-    char zoneId[64] = { 0 };
-    polyglot_timezone_as_string(zone, zoneId, 64, "UTF8");
-    return polyglot_from_string(zoneId, "UTF8");
+    polyglot_value id = polyglot_timezone_get_id(zone);
+    return id;
 }
