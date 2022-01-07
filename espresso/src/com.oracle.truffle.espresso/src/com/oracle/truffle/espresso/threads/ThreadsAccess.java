@@ -151,7 +151,7 @@ public final class ThreadsAccess implements ContextAccess {
      * Implementation of {@link Thread#isInterrupted()}.
      */
     public boolean isInterrupted(StaticObject guest, boolean clear) {
-        if (!isAlive(guest)) {
+        if (context.getJavaVersion().java13OrEarlier() && !isAlive(guest)) {
             return false;
         }
         boolean isInterrupted = meta.HIDDEN_INTERRUPTED.getBoolean(guest, true);
