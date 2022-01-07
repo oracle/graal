@@ -1569,6 +1569,16 @@ final class EngineAccessor extends Accessor {
         public Object getPolyglotSharingLayer(Object polyglotLanguageInstance) {
             return ((PolyglotLanguageInstance) polyglotLanguageInstance).sharing;
         }
+
+        @Override
+        public Object getGuestToHostCodeCache(Object polyglotContextImpl) {
+            return ((PolyglotContextImpl) polyglotContextImpl).getHostContext().getLanguageInstance().guestToHostCodeCache;
+        }
+
+        @Override
+        public void setGuestToHostCodeCache(Object polyglotContextImpl, Object cache) {
+            ((PolyglotContextImpl) polyglotContextImpl).getHostContext().getLanguageInstance().guestToHostCodeCache = cache;
+        }
     }
 
     abstract static class AbstractClassLoaderSupplier implements Supplier<ClassLoader> {
