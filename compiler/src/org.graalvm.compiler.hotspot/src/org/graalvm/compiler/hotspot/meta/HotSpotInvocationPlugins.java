@@ -28,6 +28,7 @@ import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -36,6 +37,7 @@ import java.util.Map.Entry;
 import java.util.function.Predicate;
 
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.MethodFilter;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
@@ -64,8 +66,16 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
     private final UnimplementedGraalIntrinsics unimplementedIntrinsics;
     private Map<String, Integer> missingIntrinsicMetrics;
 
+    private final MethodFilter disabledIntrinsicsFilter;
+    private final boolean logDisabledIntrinsics;
+
     public static class Options {
-        @Option(help = "Print a warning when a missing intrinsic is seen.", type = OptionType.Debug) public static final OptionKey<Boolean> WarnMissingIntrinsic = new OptionKey<>(false);
+        // @formatter:off
+        @Option(help = "Print a warning when a missing intrinsic is seen.", type = OptionType.Debug)
+        public static final OptionKey<Boolean> WarnMissingIntrinsic = new OptionKey<>(false);
+        @Option(help = "Method filter for disabling intrinsics.", type = OptionType.Debug)
+        public static final OptionKey<String> DisableIntrinsics = new OptionKey<>(null);
+        // @formatter:on
     }
 
     /**
@@ -83,6 +93,21 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
             this.unimplementedIntrinsics = null;
         }
         this.missingIntrinsicMetrics = null;
+
+        String filterValue = Options.DisableIntrinsics.getValue(options);
+        if (filterValue != null) {
+            String[] values = filterValue.split(":");
+            if (values.length > 1 && "verbose".equals(values[1])) {
+                logDisabledIntrinsics = true;
+            } else {
+                logDisabledIntrinsics = false;
+            }
+            disabledIntrinsicsFilter = MethodFilter.parse(values[0]);
+        } else {
+            logDisabledIntrinsics = false;
+            disabledIntrinsicsFilter = null;
+        }
+
         registerIntrinsificationPredicate(runtime().getIntrinsificationTrustPredicate(compilerConfiguration.getClass()));
     }
 
@@ -98,6 +123,15 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
             if (name.endsWith("Unaligned") && declaringClass.getTypeName().equals("jdk.internal.misc.Unsafe")) {
                 return;
             }
+        }
+
+        boolean isStatic = argumentTypes.length == 0 || argumentTypes[0] != InvocationPlugin.Receiver.class;
+        if (disabledIntrinsicsFilter != null &&
+                        disabledIntrinsicsFilter.matches(declaringClass.getTypeName(), name, isStatic ? argumentTypes : Arrays.copyOfRange(argumentTypes, 1, argumentTypes.length))) {
+            if (logDisabledIntrinsics) {
+                TTY.println("[Warning] Intrinsic %s.%s%s is disabled.", declaringClass.getTypeName(), name, toArgumentDescriptor(isStatic, argumentTypes));
+            }
+            return;
         }
         super.register(plugin, isOptional, allowOverwrite, declaringClass, name, argumentTypes);
     }

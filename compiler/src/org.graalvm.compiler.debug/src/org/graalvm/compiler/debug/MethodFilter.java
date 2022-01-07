@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.debug;
 
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.function.Predicate;
@@ -137,6 +138,13 @@ public final class MethodFilter {
      */
     public boolean matches(String javaClassName, String name, Signature sig) {
         return matches(baseFilter -> baseFilter.matches(javaClassName, name, sig));
+    }
+
+    /**
+     * Determines if a given method with a given class and argument types is matched by this filter.
+     */
+    public boolean matches(String javaClassName, String name, Type[] arguments) {
+        return matches(baseFilter -> baseFilter.matches(javaClassName, name, arguments));
     }
 
     /**
@@ -265,6 +273,34 @@ public final class MethodFilter {
                 return false;
             }
             return matchesSignature(sig);
+        }
+
+        private boolean matchesArguments(Type[] arguments) {
+            if (signature == null) {
+                return true;
+            }
+            if (arguments.length != signature.length) {
+                return false;
+            }
+            for (int i = 0; i < signature.length; i++) {
+                String javaName = arguments[i].getTypeName();
+                if (signature[i] != null && !signature[i].matcher(javaName).matches()) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private boolean matches(String javaClassName, String name, Type[] arguments) {
+            assert arguments != null || signature == null;
+            // check method name first, since MetaUtil.toJavaName is expensive
+            if (methodName != null && !methodName.matcher(name).matches()) {
+                return false;
+            }
+            if (clazz != null && !clazz.matcher(javaClassName).matches()) {
+                return false;
+            }
+            return matchesArguments(arguments);
         }
 
         @Override
