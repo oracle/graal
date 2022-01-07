@@ -121,7 +121,7 @@ public class PointstoOptions {
     public static final OptionKey<Boolean> PrintPointsToStatistics = new OptionKey<>(false);
 
     @Option(help = "Collect information during image build about devirtualized invokes and bytecode exceptions.")//
-    public static final OptionKey<Boolean> CollectImageBuildStatistics = new OptionKey<Boolean>(false) {
+    public static final OptionKey<Boolean> CollectImageBuildStatistics = new OptionKey<>(false) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
             if (newValue) {
