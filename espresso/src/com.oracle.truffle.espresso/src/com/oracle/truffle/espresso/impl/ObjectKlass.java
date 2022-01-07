@@ -53,6 +53,7 @@ import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyAssumption;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle.ClassHierarchyAccessor;
 import com.oracle.truffle.espresso.analysis.hierarchy.SingleImplementor;
+import com.oracle.truffle.espresso.blocking.EspressoLock;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.classfile.attributes.ConstantValueAttribute;
@@ -84,7 +85,6 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
-import com.oracle.truffle.espresso.trufflethreads.TruffleLock;
 import com.oracle.truffle.espresso.verifier.MethodVerifier;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
@@ -112,7 +112,7 @@ public final class ObjectKlass extends Klass {
     private String genericSignature;
 
     @CompilationFinal //
-    private volatile TruffleLock initLock;
+    private volatile EspressoLock initLock;
 
     @CompilationFinal //
     private volatile int initState = LOADED;
@@ -288,13 +288,13 @@ public final class ObjectKlass extends Klass {
 
     // region InitStatus
 
-    private TruffleLock getInitLock() {
-        TruffleLock iLock = initLock;
+    private EspressoLock getInitLock() {
+        EspressoLock iLock = initLock;
         if (iLock == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             synchronized (this) {
                 if (initLock == null) {
-                    iLock = this.initLock = TruffleLock.create(getContext().getTruffleThreads());
+                    iLock = this.initLock = EspressoLock.create(getContext().getTruffleThreads());
                 }
             }
         }

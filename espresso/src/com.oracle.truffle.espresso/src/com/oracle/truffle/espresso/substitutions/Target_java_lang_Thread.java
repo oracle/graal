@@ -31,6 +31,7 @@ import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.espresso.blocking.GuestInterruptedException;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -39,7 +40,6 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.threads.State;
 import com.oracle.truffle.espresso.threads.ThreadsAccess;
 import com.oracle.truffle.espresso.threads.Transition;
-import com.oracle.truffle.espresso.trufflethreads.GuestInterruptedException;
 
 // @formatter:off
 /**

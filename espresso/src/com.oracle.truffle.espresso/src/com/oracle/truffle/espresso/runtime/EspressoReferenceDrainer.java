@@ -29,14 +29,14 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.espresso.blocking.EspressoLock;
+import com.oracle.truffle.espresso.blocking.GuestInterruptedException;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.ref.EspressoReference;
 import com.oracle.truffle.espresso.substitutions.SubstitutionProfiler;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
-import com.oracle.truffle.espresso.trufflethreads.GuestInterruptedException;
-import com.oracle.truffle.espresso.trufflethreads.TruffleLock;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 class EspressoReferenceDrainer implements ContextAccess {
@@ -45,7 +45,7 @@ class EspressoReferenceDrainer implements ContextAccess {
 
     private final ReferenceQueue<StaticObject> referenceQueue = new ReferenceQueue<>();
     private volatile StaticObject referencePendingList = StaticObject.NULL;
-    @CompilationFinal private volatile TruffleLock pendingLock;
+    @CompilationFinal private volatile EspressoLock pendingLock;
 
     EspressoReferenceDrainer(EspressoContext context) {
         this.context = context;
@@ -56,11 +56,11 @@ class EspressoReferenceDrainer implements ContextAccess {
         return context;
     }
 
-    private TruffleLock getLock() {
+    private EspressoLock getLock() {
         if (pendingLock == null) {
             synchronized (this) {
                 if (pendingLock == null) {
-                    pendingLock = TruffleLock.create(context.getTruffleThreads());
+                    pendingLock = EspressoLock.create(context.getTruffleThreads());
                 }
             }
         }
@@ -89,7 +89,7 @@ class EspressoReferenceDrainer implements ContextAccess {
                     @SuppressWarnings("rawtypes")
                     @Override
                     protected void updateReferencePendingList(EspressoReference head, EspressoReference prev, StaticObject lock) {
-                        TruffleLock pLock = getLock();
+                        EspressoLock pLock = getLock();
                         pLock.lock();
                         try {
                             StaticObject obj = referencePendingList;
@@ -139,7 +139,7 @@ class EspressoReferenceDrainer implements ContextAccess {
 
     StaticObject getAndClearReferencePendingList() {
         // Should be under guest lock
-        TruffleLock pLock = getLock();
+        EspressoLock pLock = getLock();
         pLock.lock();
         try {
             StaticObject res = referencePendingList;
@@ -164,7 +164,7 @@ class EspressoReferenceDrainer implements ContextAccess {
     @TruffleBoundary
     private void doWaitForReferencePendingList() {
         try {
-            TruffleLock pLock = getLock();
+            EspressoLock pLock = getLock();
             pLock.lock();
             try {
                 // Wait until the reference drain updates the list.

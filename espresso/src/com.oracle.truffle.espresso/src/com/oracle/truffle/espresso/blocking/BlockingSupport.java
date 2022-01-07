@@ -21,7 +21,7 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.trufflethreads;
+package com.oracle.truffle.espresso.blocking;
 
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -47,7 +47,7 @@ import com.oracle.truffle.api.nodes.Node;
  * </ul>
  * </p>
  * <p>
- * Additionally, this class provides the {@link #enterInterruptible(Interruptible, Node, Object)}
+ * Additionally, this class provides the {@link #enterBlockingRegion(Interruptible, Node, Object)}
  * which allows implementing custom blocking operations with the behavior described above.
  * </p>
  * <p>
@@ -56,8 +56,14 @@ import com.oracle.truffle.api.nodes.Node;
  * language-specific behavior of an interruption.
  * </p>
  */
-public interface TruffleThreads {
-    TruffleThreads UNINTERRUPTIBLE = create(GuestInterrupter.EMPTY);
+public final class BlockingSupport {
+    public static final BlockingSupport UNINTERRUPTIBLE = create(GuestInterrupter.EMPTY);
+
+    private BlockingSupport(GuestInterrupter guestInterrupter) {
+        this.guestInterrupter = guestInterrupter;
+    }
+
+    private final GuestInterrupter guestInterrupter;
 
     /**
      * Creates an instance of this interface, using the given {@link Interrupter guestInterrupter}
@@ -71,8 +77,8 @@ public interface TruffleThreads {
      * safepoints and wake-ups of the thread are handled by the internals of this class. As such,
      * the guest interrupter need not call the host {@link Thread#interrupt()}.
      */
-    static TruffleThreads create(GuestInterrupter guestInterrupter) {
-        return new TruffleThreadsImpl(guestInterrupter);
+    public static BlockingSupport create(GuestInterrupter guestInterrupter) {
+        return new BlockingSupport(guestInterrupter);
     }
 
     /**
@@ -88,7 +94,7 @@ public interface TruffleThreads {
      * 
      * As such, there are only three ways to retrieve control from a call to this method:
      * <ul>
-     * <li>The given {@linkplain Interruptible interruptible} naturally completes</li>
+     * <li>The given {@linkplain Interruptible blockingRegion} naturally completes</li>
      * <li>{@link #guestInterrupt(Thread)} is called for this thread.</li>
      * <li>An {@link ThreadLocalAction action} was submitted to this thread, that throws an
      * exception that is not an {@link InterruptedException}.</li>
@@ -96,20 +102,35 @@ public interface TruffleThreads {
      *
      * @throws GuestInterruptedException if the current thread was guest-interrupted.
      */
-    <T> void enterInterruptible(Interruptible<T> interruptible, Node location, T object) throws GuestInterruptedException;
+    @TruffleBoundary
+    public <T> void enterBlockingRegion(Interruptible<T> blockingRegion, Node location, T object) throws GuestInterruptedException {
+        TruffleSafepoint safepoint = TruffleSafepoint.getCurrent();
+        Thread current = Thread.currentThread();
+        safepoint.setBlocked(location, guestInterrupter, blockingRegion, object, null, (t) -> guestInterrupter.afterInterrupt(current, t));
+    }
 
     /**
-     * Same as {@link #enterInterruptible(Interruptible, Node, Object)}, but allows providing
+     * Same as {@link #enterBlockingRegion(Interruptible, Node, Object)}, but allows providing
      * something to execute before and/or after the thread is interrupted and safepoints are
      * processed.
      *
      * @throws GuestInterruptedException if the current thread was guest-interrupted.
      */
-    <T> void enterInterruptible(Interruptible<T> interruptible, Node location, T object, Runnable beforeSafepoint, Consumer<Throwable> afterSafepoint) throws GuestInterruptedException;
+    @TruffleBoundary
+    public <T> void enterBlockingRegion(Interruptible<T> blockingRegion, Node location, T object, Runnable beforeSafepoint, Consumer<Throwable> afterSafepoint) throws GuestInterruptedException {
+        TruffleSafepoint safepoint = TruffleSafepoint.getCurrent();
+        Thread current = Thread.currentThread();
+        safepoint.setBlocked(location, guestInterrupter, blockingRegion, object, beforeSafepoint, (t) -> {
+            if (afterSafepoint != null) {
+                afterSafepoint.accept(t);
+            }
+            guestInterrupter.afterInterrupt(current, t);
+        });
+    }
 
     /**
      * Similar to {@link Thread#sleep(long)}, but with the semantics of
-     * {@link #enterInterruptible(Interruptible, Node, Object)}, meaning that the current thread
+     * {@link #enterBlockingRegion(Interruptible, Node, Object)}, meaning that the current thread
      * will still handle {@linkplain TruffleSafepoint safepoints}.
      *
      * @param millis the length of time to sleep in milliseconds.
@@ -117,7 +138,9 @@ public interface TruffleThreads {
      * @throws GuestInterruptedException if the current thread was guest-interrupted.
      * @throws IllegalArgumentException if millis is negative.
      */
-    void sleep(long millis, Node location) throws GuestInterruptedException;
+    public void sleep(long millis, Node location) throws GuestInterruptedException {
+        enterBlockingRegion(sleepInterruptible(), location, TimeUnit.MILLISECONDS.toNanos(millis));
+    }
 
     /**
      * Interrupts the given thread with the provided {@linkplain #create(GuestInterrupter) guest
@@ -125,36 +148,9 @@ public interface TruffleThreads {
      *
      * @param t the thread to interrupt.
      */
-    void guestInterrupt(Thread t);
-
-}
-
-final class TruffleThreadsImpl implements TruffleThreads {
-    TruffleThreadsImpl(GuestInterrupter guestInterrupter) {
-        this.guestInterrupter = guestInterrupter;
-    }
-
-    private final GuestInterrupter guestInterrupter;
-
-    @Override
-    @TruffleBoundary
-    public <T> void enterInterruptible(Interruptible<T> interruptible, Node location, T object) throws GuestInterruptedException {
-        TruffleSafepoint safepoint = TruffleSafepoint.getCurrent();
-        Thread current = Thread.currentThread();
-        safepoint.setBlocked(location, guestInterrupter, interruptible, object, null, (t) -> guestInterrupter.afterInterrupt(current, t));
-    }
-
-    @Override
-    @TruffleBoundary
-    public <T> void enterInterruptible(Interruptible<T> interruptible, Node location, T object, Runnable beforeSafepoint, Consumer<Throwable> afterSafepoint) throws GuestInterruptedException {
-        TruffleSafepoint safepoint = TruffleSafepoint.getCurrent();
-        Thread current = Thread.currentThread();
-        safepoint.setBlocked(location, guestInterrupter, interruptible, object, beforeSafepoint, (t) -> {
-            if (afterSafepoint != null) {
-                afterSafepoint.accept(t);
-            }
-            guestInterrupter.afterInterrupt(current, t);
-        });
+    public void guestInterrupt(Thread t) {
+        guestInterrupter.guestInterrupt(t);
+        t.interrupt(); // Host interrupt to wake up the thread.
     }
 
     private static Interruptible<Long> sleepInterruptible() {
@@ -170,16 +166,5 @@ final class TruffleThreadsImpl implements TruffleThreads {
                 Thread.sleep(millis);
             }
         };
-    }
-
-    @Override
-    public void sleep(long millis, Node location) throws GuestInterruptedException {
-        enterInterruptible(sleepInterruptible(), location, TimeUnit.MILLISECONDS.toNanos(millis));
-    }
-
-    @Override
-    public void guestInterrupt(Thread t) {
-        guestInterrupter.guestInterrupt(t);
-        t.interrupt(); // Host interrupt to wake up the thread.
     }
 }

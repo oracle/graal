@@ -21,12 +21,12 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.trufflethreads;
+package com.oracle.truffle.espresso.blocking;
 
 import com.oracle.truffle.api.TruffleSafepoint;
 
 /**
- * Provides the {@link TruffleThreads} with the representation of guest languages interruptions.
+ * Provides the {@link BlockingSupport} with the representation of guest languages interruptions.
  * Only two behaviors are needed for this purpose:
  * <ul>
  * <li>{@link #guestInterrupt(Thread)} should provide the language specific way of making known a

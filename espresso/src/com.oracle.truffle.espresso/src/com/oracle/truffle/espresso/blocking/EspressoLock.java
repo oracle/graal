@@ -21,7 +21,7 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.trufflethreads;
+package com.oracle.truffle.espresso.blocking;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
@@ -36,14 +36,14 @@ import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
  * Lock implementation for guest objects. Provides a similar interface to {@link Object} built-in
  * monitor locks, along with some bookkeeping.
  */
-public interface TruffleLock {
+public interface EspressoLock {
 
     /**
      * Creates a new {@code TruffleLock} instance.
      */
     @TruffleBoundary // ReentrantLock.<init> blacklisted by SVM
-    static TruffleLock create(TruffleThreads truffleThreads) {
-        return new TruffleLockImpl(truffleThreads);
+    static EspressoLock create(BlockingSupport blockingSupport) {
+        return new EspressoLockImpl(blockingSupport);
     }
 
     /**
@@ -81,7 +81,7 @@ public interface TruffleLock {
 
     /**
      * Acquires the lock unless the current thread is
-     * {@linkplain TruffleThreads#guestInterrupt(Thread) guest-interrupted}.
+     * {@linkplain BlockingSupport#guestInterrupt(Thread) guest-interrupted}.
      * <p>
      * Acquires the lock if it is not held by another thread and returns immediately, setting the
      * lock hold count to one.
@@ -94,8 +94,8 @@ public interface TruffleLock {
      * safepoints} and lies dormant until one of two things happens:
      * <ul>
      * <li>The lock is acquired by the current thread; or
-     * <li>Some other thread {@linkplain TruffleThreads#guestInterrupt(Thread) guest-interrupts} the
-     * current thread.
+     * <li>Some other thread {@linkplain BlockingSupport#guestInterrupt(Thread) guest-interrupts}
+     * the current thread.
      * </ul>
      * <p>
      * If the lock is acquired by the current thread then the lock hold count is set to one.
@@ -103,7 +103,7 @@ public interface TruffleLock {
      * If the current thread:
      * <ul>
      * <li>has its guest-interrupted status set on entry to this method; or
-     * <li>is {@linkplain TruffleThreads#guestInterrupt(Thread) guest-interrupted}} while acquiring
+     * <li>is {@linkplain BlockingSupport#guestInterrupt(Thread) guest-interrupted}} while acquiring
      * the lock,
      * </ul>
      * then {@link GuestInterruptedException} is thrown. There is no particular handling of the
@@ -127,7 +127,7 @@ public interface TruffleLock {
 
     /**
      * Causes the current thread to wait until either another thread invokes the
-     * {@link TruffleLock#signal()} method or the {@link TruffleLock#signalAll()} method for this
+     * {@link EspressoLock#signal()} method or the {@link EspressoLock#signalAll()} method for this
      * object, or a specified amount of time has elapsed.
      * <p>
      * The current thread must own this object's monitor.
@@ -194,18 +194,25 @@ public interface TruffleLock {
     int getEntryCount();
 }
 
-final class TruffleLockImpl extends ReentrantLock implements TruffleLock {
+/**
+ * {@link EspressoLock} is not a final class to hide the {@link ReentrantLock} implementation.
+ */
+final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
 
     private static final Node dummy = new Node() {
+        @Override
+        public boolean isAdoptable() {
+            return false;
+        }
     };
     private static final long serialVersionUID = -2776792497346642438L;
 
-    TruffleLockImpl(TruffleThreads truffleThreads) {
-        assert truffleThreads != null;
-        this.truffleThreads = truffleThreads;
+    EspressoLockImpl(BlockingSupport blockingSupport) {
+        assert blockingSupport != null;
+        this.blockingSupport = blockingSupport;
     }
 
-    private final TruffleThreads truffleThreads;
+    private final BlockingSupport blockingSupport;
     private volatile Condition waitCondition;
     private int waiters = 0;
     private int signals = 0;
@@ -226,12 +233,12 @@ final class TruffleLockImpl extends ReentrantLock implements TruffleLock {
 
     @Override
     public void lock() {
-        TruffleSafepoint.setBlockedThreadInterruptible(dummy, TruffleLockImpl::doLock, this);
+        TruffleSafepoint.setBlockedThreadInterruptible(dummy, EspressoLockImpl::doLock, this);
     }
 
     @Override
     public void lockInterruptible() throws GuestInterruptedException {
-        truffleThreads.enterInterruptible(TruffleLockImpl::doLock, dummy, this);
+        blockingSupport.enterBlockingRegion(EspressoLockImpl::doLock, dummy, this);
     }
 
     @Override
@@ -248,7 +255,7 @@ final class TruffleLockImpl extends ReentrantLock implements TruffleLock {
             }
             waiters++;
             try {
-                truffleThreads.enterInterruptible(interruptible, dummy, this,
+                blockingSupport.enterBlockingRegion(interruptible, dummy, this,
                                 /*
                                  * Upon being notified to safepoint, control is returned after lock
                                  * has been acquired. We must unlock it, allowing other thread to
@@ -297,7 +304,6 @@ final class TruffleLockImpl extends ReentrantLock implements TruffleLock {
     }
 
     @Override
-    @TruffleBoundary // ReentrantLock.getOwner blacklisted by SVM
     public Thread getOwnerThread() {
         return getOwner();
     }
@@ -363,7 +369,7 @@ final class TruffleLockImpl extends ReentrantLock implements TruffleLock {
         }
     }
 
-    private static final class WaitInterruptible implements TruffleSafepoint.Interruptible<TruffleLockImpl> {
+    private static final class WaitInterruptible implements TruffleSafepoint.Interruptible<EspressoLockImpl> {
         WaitInterruptible(long timeout, TimeUnit unit) {
             this.nanoTimeout = unit.toNanos(timeout);
             this.start = System.nanoTime();
@@ -375,7 +381,7 @@ final class TruffleLockImpl extends ReentrantLock implements TruffleLock {
 
         @Override
         @SuppressFBWarnings(value = "WA_AWAIT_NOT_IN_LOOP", justification = "TruffleLock runtime method.")
-        public void apply(TruffleLockImpl lock) throws InterruptedException {
+        public void apply(EspressoLockImpl lock) throws InterruptedException {
             if (nanoTimeout == 0L) {
                 lock.getWaitCondition().await();
             } else {

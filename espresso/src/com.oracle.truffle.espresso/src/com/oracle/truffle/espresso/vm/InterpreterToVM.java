@@ -41,6 +41,8 @@ import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.espresso.blocking.EspressoLock;
+import com.oracle.truffle.espresso.blocking.GuestInterruptedException;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.ContextAccess;
@@ -61,8 +63,6 @@ import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.substitutions.Throws;
 import com.oracle.truffle.espresso.threads.State;
 import com.oracle.truffle.espresso.threads.Transition;
-import com.oracle.truffle.espresso.trufflethreads.GuestInterruptedException;
-import com.oracle.truffle.espresso.trufflethreads.TruffleLock;
 
 public final class InterpreterToVM implements ContextAccess {
 
@@ -73,37 +73,37 @@ public final class InterpreterToVM implements ContextAccess {
     }
 
     @TruffleBoundary(allowInlining = true)
-    public static void monitorUnsafeEnter(TruffleLock self) {
+    public static void monitorUnsafeEnter(EspressoLock self) {
         self.lock();
     }
 
     @TruffleBoundary(allowInlining = true)
-    public static void monitorUnsafeExit(TruffleLock self) {
+    public static void monitorUnsafeExit(EspressoLock self) {
         self.unlock();
     }
 
     @TruffleBoundary(allowInlining = true)
-    public static void monitorNotifyAll(TruffleLock self) {
+    public static void monitorNotifyAll(EspressoLock self) {
         self.signalAll();
     }
 
     @TruffleBoundary(allowInlining = true)
-    public static void monitorNotify(TruffleLock self) {
+    public static void monitorNotify(EspressoLock self) {
         self.signal();
     }
 
     @TruffleBoundary(allowInlining = true)
-    public static boolean monitorWait(TruffleLock self, long timeout) throws GuestInterruptedException {
+    public static boolean monitorWait(EspressoLock self, long timeout) throws GuestInterruptedException {
         return self.await(timeout);
     }
 
     @TruffleBoundary(allowInlining = true)
-    public static boolean monitorTryLock(TruffleLock lock) {
+    public static boolean monitorTryLock(EspressoLock lock) {
         return lock.tryLock();
     }
 
     @TruffleBoundary(allowInlining = true)
-    public static boolean holdsLock(TruffleLock lock) {
+    public static boolean holdsLock(EspressoLock lock) {
         return lock.isHeldByCurrentThread();
     }
 
@@ -398,7 +398,7 @@ public final class InterpreterToVM implements ContextAccess {
     // region Monitor enter/exit
 
     public static void monitorEnter(@JavaType(Object.class) StaticObject obj, Meta meta) {
-        final TruffleLock lock = obj.getLock(meta.getContext());
+        final EspressoLock lock = obj.getLock(meta.getContext());
         EspressoContext context = meta.getContext();
         if (!monitorTryLock(lock)) {
             StaticObject thread = context.getCurrentThread();
@@ -425,7 +425,7 @@ public final class InterpreterToVM implements ContextAccess {
     }
 
     public static void monitorExit(@JavaType(Object.class) StaticObject obj, Meta meta) {
-        final TruffleLock lock = obj.getLock(meta.getContext());
+        final EspressoLock lock = obj.getLock(meta.getContext());
         if (!holdsLock(lock)) {
             // No owner checks in SVM. This is a safeguard against unbalanced monitor accesses until
             // Espresso has its own monitor handling.

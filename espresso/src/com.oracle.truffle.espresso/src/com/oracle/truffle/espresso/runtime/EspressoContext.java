@@ -66,6 +66,7 @@ import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
 import com.oracle.truffle.espresso.analysis.hierarchy.DefaultClassHierarchyOracle;
 import com.oracle.truffle.espresso.analysis.hierarchy.NoOpClassHierarchyOracle;
+import com.oracle.truffle.espresso.blocking.BlockingSupport;
 import com.oracle.truffle.espresso.descriptors.Names;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -98,7 +99,6 @@ import com.oracle.truffle.espresso.ref.FinalizationSupport;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 import com.oracle.truffle.espresso.threads.EspressoThreadRegistry;
 import com.oracle.truffle.espresso.threads.ThreadsAccess;
-import com.oracle.truffle.espresso.trufflethreads.TruffleThreads;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.UnsafeAccess;
 import com.oracle.truffle.espresso.vm.VM;
@@ -144,7 +144,7 @@ public final class EspressoContext {
     // region Helpers
     private final EspressoThreadRegistry threadRegistry;
     @CompilationFinal private ThreadsAccess threads;
-    @CompilationFinal private TruffleThreads truffleThreads;
+    @CompilationFinal private BlockingSupport blockingSupport;
     private final EspressoShutdownHandler shutdownManager;
     private final EspressoReferenceDrainer referenceDrainer;
     // endregion Helpers
@@ -506,7 +506,7 @@ public final class EspressoContext {
             }
             this.metaInitialized = true;
             this.threads = new ThreadsAccess(meta);
-            this.truffleThreads = TruffleThreads.create(threads);
+            this.blockingSupport = BlockingSupport.create(threads);
 
             this.interpreterToVM = new InterpreterToVM(this);
 
@@ -816,8 +816,8 @@ public final class EspressoContext {
         return threads;
     }
 
-    public TruffleThreads getTruffleThreads() {
-        return truffleThreads;
+    public BlockingSupport getTruffleThreads() {
+        return blockingSupport;
     }
 
     /**

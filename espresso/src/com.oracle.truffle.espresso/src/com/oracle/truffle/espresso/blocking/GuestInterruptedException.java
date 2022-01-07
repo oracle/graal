@@ -21,7 +21,7 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.trufflethreads;
+package com.oracle.truffle.espresso.blocking;
 
 /**
  * Holds the same role as a {@link InterruptedException}, but for guest interruptions. This
