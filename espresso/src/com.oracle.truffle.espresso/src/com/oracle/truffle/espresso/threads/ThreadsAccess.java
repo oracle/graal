@@ -238,7 +238,6 @@ public final class ThreadsAccess implements ContextAccess {
         assert support != null;
         support.stop(throwable);
         Thread host = getHost(guest);
-        interrupt(guest);
         if (host != null) {
             host.interrupt();
         }
