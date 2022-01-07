@@ -115,19 +115,18 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     @SuppressWarnings({"unused", "try"})
     public void layoutMethods(DebugContext debug, String imageName, BigBang bb, ForkJoinPool threadPool) {
         try (Indent indent = debug.logAndIndent("layout methods")) {
-            TimerCollection timerCollection = TimerCollection.singleton();
             BatchExecutor executor = new BatchExecutor(bb, threadPool);
-            try (StopTimer t = timerCollection.createTimer(imageName, "(bitcode)").start()) {
+            try (StopTimer t = TimerCollection.createTimerAndStart(imageName, "(bitcode)")) {
                 writeBitcode(executor);
             }
             int numBatches;
-            try (StopTimer t = timerCollection.createTimer(imageName, "(prelink)").start()) {
+            try (StopTimer t = TimerCollection.createTimerAndStart(imageName, "(prelink)")) {
                 numBatches = createBitcodeBatches(executor, debug);
             }
-            try (StopTimer t = timerCollection.createTimer(imageName, "(llvm)").start()) {
+            try (StopTimer t = TimerCollection.createTimerAndStart(imageName, "(llvm)")) {
                 compileBitcodeBatches(executor, debug, numBatches);
             }
-            try (StopTimer t = timerCollection.createTimer(imageName, "(postlink)").start()) {
+            try (StopTimer t = TimerCollection.createTimerAndStart(imageName, "(postlink)")) {
                 linkCompiledBatches(executor, debug, numBatches);
             }
         }

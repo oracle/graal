@@ -784,8 +784,7 @@ public class NativeImageGenerator {
         if (SubstrateOptions.DisableTypeIdResultVerification.getValue()) {
             return true;
         }
-        Timer timer = TimerCollection.singleton().createTimer(imageName, "(verifyAssignableTypes)");
-        try (StopTimer t = timer.start()) {
+        try (StopTimer t = TimerCollection.createTimerAndStart(imageName, "(verifyAssignableTypes)")) {
             return AnalysisType.verifyAssignableTypes(bb);
         }
     }
@@ -1062,8 +1061,7 @@ public class NativeImageGenerator {
     @SuppressWarnings("try")
     private NativeLibraries setupNativeLibraries(String imageName, ConstantReflectionProvider aConstantReflection, MetaAccessProvider aMetaAccess,
                     SnippetReflectionProvider aSnippetReflection, CEnumCallWrapperSubstitutionProcessor cEnumProcessor, ClassInitializationSupport classInitializationSupport, DebugContext debug) {
-        Timer capTimer = TimerCollection.singleton().createTimer(imageName, "(cap)");
-        try (StopTimer ignored = capTimer.start()) {
+        try (StopTimer ignored = TimerCollection.createTimerAndStart(imageName, "(cap)")) {
             NativeLibraries nativeLibs = new NativeLibraries(aConstantReflection, aMetaAccess, aSnippetReflection, ConfigurationValues.getTarget(), classInitializationSupport,
                             ImageSingletons.lookup(TemporaryBuildDirectoryProvider.class).getTemporaryBuildDirectory(), debug);
             cEnumProcessor.setNativeLibraries(nativeLibs);

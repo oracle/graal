@@ -88,6 +88,10 @@ public class TimerCollection implements ImageBuildStatistics.TimerCollectionPrin
         return timers.computeIfAbsent(type.name, (name) -> new Timer(imageName, name, type.autoPrint));
     }
 
+    public static Timer.StopTimer createTimerAndStart(String prefix, String name) {
+        return singleton().createTimer(prefix, name).start();
+    }
+
     public Timer createTimer(String name) {
         return createTimer(null, name, true);
     }
