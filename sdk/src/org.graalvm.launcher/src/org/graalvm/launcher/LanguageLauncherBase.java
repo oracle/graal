@@ -370,9 +370,16 @@ public abstract class LanguageLauncherBase extends Launcher {
         StringBuilder key = new StringBuilder("--");
         final String name = descriptor.getName();
         key.append(name);
+        if (descriptor.isOptionMap()) {
+            key.append(".<key>");
+        }
         if (!Boolean.FALSE.equals(descriptor.getKey().getDefaultValue())) {
             key.append("=");
-            key.append(descriptor.getUsageSyntax());
+            if (descriptor.isOptionMap()) {
+                key.append("<value>");
+            } else {
+                key.append(descriptor.getUsageSyntax());
+            }
         }
         return new PrintableOption(name, key.toString(), descriptor.getHelp());
     }

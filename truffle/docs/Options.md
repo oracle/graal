@@ -80,9 +80,9 @@ They are useful to users and language and tool implementers.
 - `--engine.SingleTierCompilationThreshold=[1, inf)` : Minimum number of invocations or loop iterations needed to compile a guest language root when not using multi tier (default: 1000).
 - `--engine.Splitting=true|false` : Enable automatic duplication of compilation profiles (splitting) (default: true).
 - `--engine.TraceCompilation` : Print information for compilation results.
-- `--engine.HostCallStackHeadRoom=<B>|<KB>|<MB>|<GB>` : Stack space headroom for calls to the host.
+- `--engine.HostCallStackHeadRoom=[1, inf)<B>|<KB>|<MB>|<GB>` : Stack space headroom for calls to the host.
 - `--engine.IsolateLibrary=<path>` : Path to the isolate library.
-- `--engine.IsolateOption=` : Isolate VM options.
+- `--engine.IsolateOption.<key>=<value>` : Isolate VM options.
 <!-- END: expert-engine-options -->
 
 ## Internal Engine Options
