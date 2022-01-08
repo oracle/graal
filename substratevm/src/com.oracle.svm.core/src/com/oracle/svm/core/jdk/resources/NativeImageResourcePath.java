@@ -122,13 +122,11 @@ public class NativeImageResourcePath implements Path {
                 }
             }
 
-            // Checkstyle: stop
             synchronized (this) {
                 if (offsets == null) {
                     offsets = result;
                 }
             }
-            // Checkstyle: resume
         }
     }
 

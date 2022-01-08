@@ -42,7 +42,6 @@ public class JfrSerializerSupport {
         serializers = new JfrConstantPool[0];
     }
 
-    // Checkstyle: allow synchronization.
     @Platforms(Platform.HOSTED_ONLY.class)
     public synchronized void register(JfrConstantPool serializer) {
         assert serializer != null;
@@ -51,7 +50,6 @@ public class JfrSerializerSupport {
         serializers = Arrays.copyOf(serializers, oldLength + 1);
         serializers[oldLength] = serializer;
     }
-    // Checkstyle: disallow synchronization.
 
     @Fold
     public static JfrSerializerSupport get() {

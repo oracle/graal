@@ -931,14 +931,12 @@ public class SubstrateDiagnostics {
         private int[] initialInvocationCount;
 
         @Fold
-        /* Checkstyle: allow synchronization. */
         public static synchronized DiagnosticThunkRegistry singleton() {
             if (!ImageSingletons.contains(DiagnosticThunkRegistry.class)) {
                 ImageSingletons.add(DiagnosticThunkRegistry.class, new DiagnosticThunkRegistry());
             }
             return ImageSingletons.lookup(DiagnosticThunkRegistry.class);
         }
-        /* Checkstyle: disallow synchronization. */
 
         @Platforms(Platform.HOSTED_ONLY.class)
         DiagnosticThunkRegistry() {
@@ -955,7 +953,6 @@ public class SubstrateDiagnostics {
          * Register a diagnostic thunk to be called after a segfault.
          */
         @Platforms(Platform.HOSTED_ONLY.class)
-        /* Checkstyle: allow synchronization. */
         public synchronized void register(DiagnosticThunk diagnosticThunk) {
             diagnosticThunks = Arrays.copyOf(diagnosticThunks, diagnosticThunks.length + 1);
             diagnosticThunks[diagnosticThunks.length - 1] = diagnosticThunk;
@@ -963,7 +960,6 @@ public class SubstrateDiagnostics {
             initialInvocationCount = Arrays.copyOf(initialInvocationCount, initialInvocationCount.length + 1);
             initialInvocationCount[initialInvocationCount.length - 1] = 1;
         }
-        /* Checkstyle: disallow synchronization. */
 
         @Fold
         int size() {

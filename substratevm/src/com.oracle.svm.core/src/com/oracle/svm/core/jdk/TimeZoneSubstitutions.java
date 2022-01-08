@@ -143,10 +143,8 @@ final class TimeZoneFeature implements Feature {
         };
 
         private static void printWarning() {
-            // Checkstyle: stop
             System.err.println("-H:IncludeAllTimeZones and -H:IncludeTimeZones are now deprecated. Native-image includes all timezones" +
                             " by default.");
-            // Checkstyle: resume
         }
     }
 

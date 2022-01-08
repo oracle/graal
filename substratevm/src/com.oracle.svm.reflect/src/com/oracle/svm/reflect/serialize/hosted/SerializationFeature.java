@@ -25,8 +25,6 @@
  */
 package com.oracle.svm.reflect.serialize.hosted;
 
-// Checkstyle: allow reflection
-
 import static com.oracle.svm.reflect.serialize.hosted.SerializationFeature.println;
 
 import java.io.Externalizable;
@@ -123,9 +121,7 @@ public class SerializationFeature implements Feature {
     }
 
     static void println(String str) {
-        // Checkstyle: stop
         System.out.println(str);
-        // Checkstyle: resume
     }
 }
 

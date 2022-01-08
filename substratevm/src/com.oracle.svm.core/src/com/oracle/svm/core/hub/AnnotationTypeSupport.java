@@ -35,9 +35,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
-// Checkstyle: stop
 import sun.reflect.annotation.AnnotationType;
-// Checkstyle: start
 
 public class AnnotationTypeSupport {
     private Map<Class<? extends Annotation>, AnnotationType> annotationTypeMap = new HashMap<>();

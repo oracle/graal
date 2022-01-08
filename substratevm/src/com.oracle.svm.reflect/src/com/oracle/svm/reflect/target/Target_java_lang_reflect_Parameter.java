@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.reflect.target;
 
-// Checkstyle: allow reflection
-
 import java.lang.reflect.Parameter;
 
 import com.oracle.svm.core.annotate.Alias;

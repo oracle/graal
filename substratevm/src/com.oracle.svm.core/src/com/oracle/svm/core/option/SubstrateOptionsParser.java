@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.option;
 
-// Checkstyle: allow reflection
-
 import java.io.PrintStream;
 import java.lang.reflect.Field;
 import java.util.Arrays;
@@ -109,9 +107,7 @@ public class SubstrateOptionsParser {
             if (deprecationMessage != null && !deprecationMessage.isEmpty()) {
                 message += ": " + deprecationMessage;
             }
-            // Checkstyle: stop
             System.err.println(message);
-            // Checkstyle: resume
         }
         return true;
     }

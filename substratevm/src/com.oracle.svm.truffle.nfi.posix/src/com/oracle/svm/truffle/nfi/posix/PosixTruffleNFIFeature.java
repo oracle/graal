@@ -114,7 +114,6 @@ final class PosixTruffleNFISupport extends TruffleNFISupport {
         // Double-checked locking on the NFI context instance.
         long namespaceId = context.isolatedNamespaceId;
         if (namespaceId == 0) {
-            // Checkstyle: allow synchronization
             synchronized (context) {
                 namespaceId = context.isolatedNamespaceId;
                 if (namespaceId == 0) {

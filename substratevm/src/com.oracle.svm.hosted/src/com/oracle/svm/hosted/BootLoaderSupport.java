@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.hosted;
 
-// Checkstyle: allow reflection
-
 import java.lang.reflect.Method;
 
 import com.oracle.svm.core.util.VMError;
@@ -39,9 +37,7 @@ public class BootLoaderSupport {
     public static ClassLoader getBootLoader() {
         Class<?> classLoadersClass;
         try {
-            // Checkstyle: stop
             classLoadersClass = Class.forName("jdk.internal.loader.ClassLoaders");
-            // Checkstyle: resume
             Method method = ReflectionUtil.lookupMethod(classLoadersClass, "bootLoader");
             Object r = method.invoke(null);
             return (ClassLoader) r;

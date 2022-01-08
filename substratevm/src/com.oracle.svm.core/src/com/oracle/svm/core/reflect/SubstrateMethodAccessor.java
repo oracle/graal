@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.reflect;
 
-// Checkstyle: allow reflection
-
 import java.lang.reflect.Executable;
 
 import org.graalvm.nativeimage.c.function.CFunctionPointer;

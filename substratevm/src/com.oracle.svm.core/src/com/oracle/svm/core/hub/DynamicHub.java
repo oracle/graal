@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.hub;
 
-//Checkstyle: allow reflection
-
 import java.io.InputStream;
 import java.io.Serializable;
 import java.lang.annotation.Annotation;

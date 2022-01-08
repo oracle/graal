@@ -27,10 +27,8 @@ package com.oracle.svm.methodhandles;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.lang.invoke.MethodType;
-// Checkstyle: stop
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-// Checkstyle: allow
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;

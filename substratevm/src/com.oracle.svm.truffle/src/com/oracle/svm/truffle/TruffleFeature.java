@@ -25,8 +25,6 @@
 
 package com.oracle.svm.truffle;
 
-//Checkstyle: allow reflection
-
 import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsingMaxDepth;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
 

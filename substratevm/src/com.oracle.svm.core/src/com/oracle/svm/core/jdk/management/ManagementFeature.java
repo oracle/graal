@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.jdk.management;
 
-// Checkstyle: allow reflection
-
 import java.lang.management.ClassLoadingMXBean;
 import java.lang.management.CompilationMXBean;
 import java.lang.management.GarbageCollectorMXBean;

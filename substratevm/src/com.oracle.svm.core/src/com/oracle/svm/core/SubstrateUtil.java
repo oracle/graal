@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core;
 
-// Checkstyle: allow reflection
-
 import java.io.FileDescriptor;
 import java.io.FileOutputStream;
 import java.lang.reflect.Constructor;
@@ -38,7 +36,6 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.oracle.svm.util.StringUtil;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.java.LambdaUtils;
 import org.graalvm.compiler.nodes.BreakpointNode;
@@ -61,6 +58,7 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.StringUtil;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.services.Services;
@@ -359,9 +357,7 @@ public class SubstrateUtil {
                 out.append("__");
             } else {
                 out.append('_');
-                // Checkstyle: stop
                 out.append(String.format("%04x", (int) c));
-                // Checkstyle: resume
             }
         }
         String mangled = out.toString();

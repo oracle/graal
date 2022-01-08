@@ -242,9 +242,7 @@ public class PermissionsFeature implements Feature {
 
     private static Class<?> loadClassOrFail(String className) {
         try {
-            // Checkstyle: stop
             return Class.forName(className);
-            // Checkstyle: resume
         } catch (ClassNotFoundException e) {
             throw JVMCIError.shouldNotReachHere(e);
         }

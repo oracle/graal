@@ -29,9 +29,7 @@ import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
 
-// Checkstyle: stop
 import sun.misc.Unsafe;
-// Checkstyle: resume
 
 /**
  * Spin locks may only be used in places where the critical section contains only a few instructions
