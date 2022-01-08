@@ -1547,7 +1547,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
     @ExplodeLoop
     private void clearOperandStack(VirtualFrame frame, int top) {
-        int stackStart = getMethodVersion().getMaxLocals();
+        int stackStart = EspressoFrame.VALUES_START + getMethodVersion().getMaxLocals();
         for (int slot = top - 1; slot >= stackStart; --slot) {
             clear(frame, slot);
         }
