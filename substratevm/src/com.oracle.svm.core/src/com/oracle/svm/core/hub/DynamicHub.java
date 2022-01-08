@@ -88,9 +88,6 @@ import jdk.vm.ci.meta.JavaKind;
 public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedElement, java.lang.reflect.Type, GenericDeclaration, Serializable,
                 Target_java_lang_invoke_TypeDescriptor_OfField, Target_java_lang_constant_Constable {
 
-    /** Marker value for {@link #classLoader}. */
-    static final Object NO_CLASS_LOADER = new Object();
-
     @Substitute //
     private static final Class<?>[] EMPTY_CLASS_ARRAY = new Class<?>[0];
 
@@ -273,11 +270,6 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     private ClassInitializationInfo classInitializationInfo;
 
     /**
-     * Classloader used for loading this class during image-build time.
-     */
-    private final Object classLoader;
-
-    /**
      * Array containing this type's type check id information. During a type check, a requested
      * column of this array is read to determine if this value fits within the range of ids which
      * match the assignee's type.
@@ -305,7 +297,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         this.module = module;
     }
 
-    private final LazyFinalReference<DynamicHubCompanion> companion = new LazyFinalReference<>(() -> new DynamicHubCompanion(this));
+    private final DynamicHubCompanion companion;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHub(Class<?> hostedJavaClass, String name, HubType hubType, ReferenceType referenceType, Object isLocalClass, Object isAnonymousClass, DynamicHub superType, DynamicHub componentHub,
@@ -321,7 +313,6 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         this.componentType = componentHub;
         this.sourceFileName = sourceFileName;
         this.modifiers = modifiers;
-        this.classLoader = PredefinedClassesSupport.isPredefined(hostedJavaClass) ? NO_CLASS_LOADER : classLoader;
         this.nestHost = nestHost;
 
         this.flags = NumUtil.safeToUByte(makeFlag(IS_PRIMITIVE_FLAG_BIT, hostedJavaClass.isPrimitive()) |
@@ -332,6 +323,8 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
                         makeFlag(HAS_DEFAULT_METHODS_FLAG_BIT, hasDefaultMethods) |
                         makeFlag(DECLARES_DEFAULT_METHODS_FLAG_BIT, declaresDefaultMethods) |
                         makeFlag(IS_SEALED_FLAG_BIT, isSealed));
+
+        this.companion = new DynamicHubCompanion(hostedJavaClass, classLoader);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -560,6 +553,10 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         return SubstrateUtil.cast(clazz, DynamicHub.class);
     }
 
+    public DynamicHubCompanion getCompanion() {
+        return companion;
+    }
+
     /*
      * Note that this method must be a static method and not an instance method, otherwise null
      * values cannot be converted.
@@ -696,18 +693,15 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Substitute
     private ClassLoader getClassLoader0() {
-        if (classLoader == NO_CLASS_LOADER) {
-            return companion.get().getClassLoader();
-        }
-        return (ClassLoader) classLoader;
+        return companion.getClassLoader();
     }
 
     public boolean isLoaded() {
-        return classLoader != NO_CLASS_LOADER || (companion.isPresent() && companion.get().hasClassLoader());
+        return companion.hasClassLoader();
     }
 
     void setClassLoaderAtRuntime(ClassLoader loader) {
-        companion.get().setClassLoader(loader);
+        companion.setClassLoader(loader);
     }
 
     @Substitute
@@ -1066,7 +1060,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
          * The original code of getMethods() does a recursive search to avoid creating objects for
          * all public methods. We prepare them during the image build and can just iterate here.
          */
-        Method method = searchMethods(companion.get().getCompleteReflectionData().publicMethods, name, parameterTypes);
+        Method method = searchMethods(companion.getCompleteReflectionData(this).publicMethods, name, parameterTypes);
         if (method == null) {
             throw new NoSuchMethodException(describeMethod(getName() + "." + name + "(", parameterTypes, ")"));
         }
@@ -1112,7 +1106,8 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Substitute
     private Constructor<?>[] privateGetDeclaredConstructors(boolean publicOnly) {
-        return publicOnly ? companion.get().getCompleteReflectionData().publicConstructors : companion.get().getCompleteReflectionData().declaredConstructors;
+        ReflectionData reflectionData = companion.getCompleteReflectionData(this);
+        return publicOnly ? reflectionData.publicConstructors : reflectionData.declaredConstructors;
     }
 
     @Substitute
@@ -1122,7 +1117,8 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Substitute
     private Method[] privateGetDeclaredMethods(boolean publicOnly) {
-        return publicOnly ? companion.get().getCompleteReflectionData().declaredPublicMethods : companion.get().getCompleteReflectionData().declaredMethods;
+        ReflectionData reflectionData = companion.getCompleteReflectionData(this);
+        return publicOnly ? reflectionData.declaredPublicMethods : reflectionData.declaredMethods;
     }
 
     @Substitute
@@ -1132,7 +1128,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Substitute
     Method[] privateGetPublicMethods() {
-        return companion.get().getCompleteReflectionData().publicMethods;
+        return companion.getCompleteReflectionData(this).publicMethods;
     }
 
     @KeepOriginal
@@ -1292,7 +1288,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         if (SubstrateUtil.HOSTED) { // avoid eager initialization in image heap
             return computePackageName();
         }
-        return companion.get().getPackageName();
+        return companion.getPackageName(this);
     }
 
     String computePackageName() {
@@ -1330,7 +1326,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
     @Substitute
     public ProtectionDomain getProtectionDomain() {
-        return companion.get().getProtectionDomain();
+        return companion.getProtectionDomain();
     }
 
     @TargetElement(onlyWith = JDK17OrLater.class)
@@ -1340,7 +1336,7 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     void setProtectionDomainAtRuntime(ProtectionDomain protectionDomain) {
-        companion.get().setProtectionDomain(protectionDomain);
+        companion.setProtectionDomain(protectionDomain);
     }
 
     @Substitute

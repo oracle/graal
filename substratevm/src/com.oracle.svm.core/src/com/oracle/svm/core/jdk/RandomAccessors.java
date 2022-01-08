@@ -59,13 +59,6 @@ public abstract class RandomAccessors {
     }
 
     // Checkstyle: allow synchronization
-    /**
-     * It is important that this synchronization is on an instance method and not on a static
-     * method. A static synchronized method will lock the java.lang.Class object and SVM currently
-     * uses a secondary storage map for locking on classes. Syncronizing on a class object can lead
-     * to recursive locking problems when this particular code is called from the constructor of
-     * JavaVMOperation.
-     */
     private synchronized AtomicLong initialize() {
         AtomicLong result = seeder;
         if (result != null) {

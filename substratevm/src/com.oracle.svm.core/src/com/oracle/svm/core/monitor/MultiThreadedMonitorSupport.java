@@ -57,6 +57,7 @@ import com.oracle.svm.core.annotate.RestrictHeapAccess.Access;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.JavaContinuations;
@@ -173,6 +174,12 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
                  */
                 monitorTypes.add(Class.forName("jdk.internal.ref.PhantomCleanable"));
             }
+
+            /*
+             * Use as the delegate for locking on {@link Class} (i.e. {@link DynamicHub}) since the
+             * hub itself must be immutable.
+             */
+            monitorTypes.add(DynamicHubCompanion.class);
 
             FORCE_MONITOR_SLOT_TYPES = Collections.unmodifiableSet(monitorTypes);
         } catch (ClassNotFoundException e) {
@@ -422,38 +429,20 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         return DynamicHub.fromClass(obj.getClass()).getMonitorOffset();
     }
 
-    private static final Object CLEANER_CLASS;
-    private static final Object CLEANER_REPLACEMENT;
-
-    static {
-        try {
-            CLEANER_CLASS = Class.forName("jdk.internal.ref.Cleaner");
-        } catch (ClassNotFoundException ex) {
-            throw VMError.shouldNotReachHere(ex);
+    protected static Object replaceObject(Object unreplacedObject) {
+        if (unreplacedObject instanceof DynamicHub) {
+            /*
+             * Classes (= DynamicHub) never have a monitor slot because they must be immutable.
+             * Since the companion object is never exposed to user code, we can use it as a
+             * replacement object that is mutable and is marked to always have a monitor slot.
+             */
+            return ((DynamicHub) unreplacedObject).getCompanion();
         }
-        CLEANER_REPLACEMENT = new Object();
-        VMError.guarantee(FORCE_MONITOR_SLOT_TYPES.contains(CLEANER_REPLACEMENT.getClass()), "Must have a monitor slot for Cleaner replacement object");
+        return unreplacedObject;
     }
 
     protected final ReentrantLock getOrCreateMonitor(Object unreplacedObject, boolean createIfNotExisting) {
-        Object obj;
-        if (unreplacedObject == CLEANER_CLASS) {
-            /*
-             * Workaround for jdk.internal.ref.Cleaner when cleaners do not run in a separate
-             * thread. Cleaner uses static synchronized methods. Since classes (= DynamicHub) never
-             * have a monitor slot, static synchronized methods always use the additionalMonitors
-             * map. When a Cleaner then runs at a time where the application thread already holds
-             * the additionalMonitorsLock, i.e., when a GC runs while allocating a monitor in
-             * getOrCreateMonitorFromMap(), a disallowed recursive locking of additionalMonitorsLock
-             * would happen. Note that CLEANER_REPLACEMENT is an Object which always has a monitor
-             * slot. This workaround will be removed by GR-35898 when we have a better
-             * implementation of static synchronized methods.
-             */
-            obj = CLEANER_REPLACEMENT;
-        } else {
-            obj = unreplacedObject;
-        }
-
+        Object obj = replaceObject(unreplacedObject);
         assert obj != null;
         int monitorOffset = getMonitorOffset(obj);
         if (monitorOffset != 0) {
