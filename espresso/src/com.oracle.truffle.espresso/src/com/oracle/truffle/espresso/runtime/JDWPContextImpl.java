@@ -543,6 +543,7 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public void stopThread(Object guestThread, Object guestThrowable) {
+        context.invalidateNoThreadStop("JDWP STOP");
         context.getThreadAccess().stop((StaticObject) guestThread, (StaticObject) guestThrowable);
     }
 
