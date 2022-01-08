@@ -87,6 +87,7 @@ import org.graalvm.compiler.phases.common.jmx.HotSpotMBeanOperationProvider;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.serviceprovider.IsolateUtil;
+import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluatorConfiguration;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerBase;
@@ -600,6 +601,18 @@ final class Target_jdk_vm_ci_hotspot_SharedLibraryJVMCIReflection {
 
     @Delete
     static native Annotation[] getMethodAnnotationsInternal(ResolvedJavaMethod javaMethod);
+}
+
+@TargetClass(value = SpeculationReasonGroup.class, onlyWith = LibGraalFeature.IsEnabled.class)
+final class Target_org_graalvm_compiler_serviceprovider_SpeculationReasonGroup {
+
+    /**
+     * Delete this constructor to ensure {@link SpeculationReasonGroup} ids are in the libgraal
+     * image and thus global across all libgraal isolates.
+     */
+    @Delete
+    @TargetElement(name = TargetElement.CONSTRUCTOR_NAME)
+    native void constructor(String name, Class<?>... signature);
 }
 
 /**
