@@ -77,6 +77,7 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
     private AtomicBoolean isAccessed = new AtomicBoolean();
     private AtomicBoolean isRead = new AtomicBoolean();
     private AtomicBoolean isWritten = new AtomicBoolean();
+    private AtomicBoolean isFolded = new AtomicBoolean();
 
     private boolean isJNIAccessed;
     private boolean isUsedInComparison;
@@ -156,6 +157,7 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
         this.isUnsafeAccessed = other.isUnsafeAccessed;
         this.canBeNull = other.canBeNull;
         this.isWritten = new AtomicBoolean(other.isWritten.get());
+        this.isFolded = new AtomicBoolean(other.isFolded.get());
         this.isRead = new AtomicBoolean(other.isRead.get());
         notifyUpdateAccessInfo();
     }
@@ -164,6 +166,7 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
         this.isAccessed = new AtomicBoolean(this.isAccessed.get() && other.isAccessed.get());
         this.canBeNull = this.canBeNull && other.canBeNull;
         this.isWritten = new AtomicBoolean(this.isWritten.get() && other.isWritten.get());
+        this.isFolded = new AtomicBoolean(this.isFolded.get() && other.isFolded.get());
         this.isRead = new AtomicBoolean(this.isRead.get() && other.isRead.get());
         notifyUpdateAccessInfo();
     }
@@ -172,6 +175,7 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
         this.isAccessed.set(false);
         this.canBeNull = true;
         this.isWritten.set(false);
+        this.isFolded.set(false);
         this.isRead.set(false);
         notifyUpdateAccessInfo();
     }
@@ -272,6 +276,12 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
         return firstAttempt;
     }
 
+    public void markFolded() {
+        if (AtomicUtils.atomicMark(isFolded)) {
+            getDeclaringClass().registerAsReachable();
+        }
+    }
+
     public void registerAsUnsafeAccessed() {
         registerAsUnsafeAccessed(DefaultUnsafePartition.get());
     }
@@ -368,6 +378,14 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
         return isAccessed.get() || isWritten.get();
     }
 
+    public boolean isFolded() {
+        return isFolded.get();
+    }
+
+    public boolean isReachable() {
+        return isAccessed.get() || isRead.get() || isWritten.get() || isFolded.get();
+    }
+
     public void setCanBeNull(boolean canBeNull) {
         this.canBeNull = canBeNull;
         notifyUpdateAccessInfo();
@@ -448,7 +466,7 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
 
     @Override
     public String toString() {
-        return "AnalysisField<" + format("%h.%n") + " accessed: " + isAccessed + " reads: " + isRead + " written: " + isWritten + ">";
+        return "AnalysisField<" + format("%h.%n") + " accessed: " + isAccessed + " reads: " + isRead + " written: " + isWritten + " folded: " + isFolded + ">";
     }
 
     public void markAsUsedInComparison() {
