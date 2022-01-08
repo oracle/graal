@@ -67,9 +67,7 @@ public class LocalJFR implements JFR {
     public void cleanupRecording(Recording recording) throws IOException {
         String debugRecording = System.getenv("DEBUG_RECORDING");
         if (debugRecording != null && !"false".equals(debugRecording)) {
-            // Checkstyle: stop
             System.out.println("Recording: " + recording.getDestination());
-            // Checkstyle: resume
         } else {
             Files.deleteIfExists(recording.getDestination());
         }

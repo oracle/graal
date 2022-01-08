@@ -160,16 +160,14 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.services.Services;
 
 class LibGraalOptions {
-    // @formatter:off
     @Option(help = "Converts an exception triggered by the CrashAt option into a fatal error " +
-            "if a non-null pointer was passed in the _fatal option to JNI_CreateJavaVM. " +
-            "This option exists for the purpose of testing fatal error handling in libgraal.")
+                    "if a non-null pointer was passed in the _fatal option to JNI_CreateJavaVM. " +
+                    "This option exists for the purpose of testing fatal error handling in libgraal.") //
     static final RuntimeOptionKey<Boolean> CrashAtIsFatal = new RuntimeOptionKey<>(false);
     @Option(help = "The fully qualified name of a no-arg, void, static method to be invoked " +
-            "in HotSpot from libgraal when the libgraal isolate is being shutdown." +
-            "This option exists for the purpose of testing callbacks in this context.")
-            static final RuntimeOptionKey<String> OnShutdownCallback = new RuntimeOptionKey<>(null);
-    // @formatter:on
+                    "in HotSpot from libgraal when the libgraal isolate is being shutdown." +
+                    "This option exists for the purpose of testing callbacks in this context.") //
+    static final RuntimeOptionKey<String> OnShutdownCallback = new RuntimeOptionKey<>(null);
 }
 
 public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFeature {

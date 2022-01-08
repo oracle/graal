@@ -31,7 +31,6 @@ import com.oracle.svm.core.annotate.TargetClass;
 
 import jdk.jfr.internal.SecuritySupport.SafePath;
 
-// Checkstyle: allow synchronization.
 @TargetClass(value = jdk.jfr.internal.Repository.class, onlyWith = JfrEnabled.class)
 public final class Target_jdk_jfr_internal_Repository {
     @Alias private SafePath baseLocation;

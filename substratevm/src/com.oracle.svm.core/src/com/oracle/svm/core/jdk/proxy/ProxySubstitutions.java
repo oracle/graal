@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.jdk.proxy;
 
-// Checkstyle: allow reflection
-
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Modifier;

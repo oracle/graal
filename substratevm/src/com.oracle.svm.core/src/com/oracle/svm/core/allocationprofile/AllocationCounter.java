@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.allocationprofile;
 
-// Checkstyle: allow reflection
-
 import java.lang.reflect.Field;
 
 import org.graalvm.nativeimage.Platform;

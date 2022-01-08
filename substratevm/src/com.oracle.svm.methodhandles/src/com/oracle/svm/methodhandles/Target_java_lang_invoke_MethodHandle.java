@@ -26,13 +26,11 @@ package com.oracle.svm.methodhandles;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
-// Checkstyle: stop
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-// Checkstyle: resume
 import java.util.Arrays;
 
 import com.oracle.svm.core.SubstrateUtil;
@@ -48,10 +46,8 @@ import com.oracle.svm.reflect.target.Target_java_lang_reflect_AccessibleObject;
 import com.oracle.svm.reflect.target.Target_java_lang_reflect_Method;
 import com.oracle.svm.reflect.target.Target_jdk_internal_reflect_MethodAccessor;
 
-// Checkstyle: stop
 import sun.invoke.util.ValueConversions;
 import sun.invoke.util.Wrapper;
-// Checkstyle: resume
 
 @TargetClass(className = "java.lang.invoke.MethodHandle")
 final class Target_java_lang_invoke_MethodHandle {

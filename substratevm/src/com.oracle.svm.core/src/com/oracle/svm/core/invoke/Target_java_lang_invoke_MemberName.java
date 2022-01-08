@@ -24,16 +24,14 @@
  */
 package com.oracle.svm.core.invoke;
 
+import java.lang.invoke.MethodType;
+import java.lang.reflect.Member;
+
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-
-import java.lang.invoke.MethodType;
-// Checkstyle: stop
-import java.lang.reflect.Member;
-// Checkstyle: resume
 
 @TargetClass(className = "java.lang.invoke.MemberName")
 public final class Target_java_lang_invoke_MemberName {

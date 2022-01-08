@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.monitor;
 
-//Checkstyle: stop
-
 import java.lang.ref.ReferenceQueue;
 import java.util.Collections;
 import java.util.HashSet;
@@ -68,8 +66,6 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.util.VMError;
 
 import sun.misc.Unsafe;
-
-//Checkstyle resume
 
 /**
  * Implementation of synchronized-related operations.
@@ -195,9 +191,11 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
      */
     static final ConditionObject MONITOR_WITHOUT_CONDITION = (ConditionObject) new ReentrantLock().newCondition();
 
+    // Checkstyle: stop
     /** Substituted in {@link Target_com_oracle_svm_core_monitor_MultiThreadedMonitorSupport} */
     private static long SYNC_MONITOR_CONDITION_FIELD_OFFSET = -1;
     private static long SYNC_STATE_FIELD_OFFSET = -1;
+    // Checkstyle: resume
 
     /**
      * Secondary storage for monitor slots. Synchronized to prevent concurrent access and
@@ -260,7 +258,8 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         }
     }
 
-    protected static final String NO_LONGER_UNINTERRUPTIBLE = "The monitor snippet slow path is uninterruptible to avoid stack overflow errors being thrown. Now the yellow zone is enabled and we are no longer uninterruptible, and allocation is allowed again too";
+    protected static final String NO_LONGER_UNINTERRUPTIBLE = "The monitor snippet slow path is uninterruptible to avoid stack overflow errors being thrown. " +
+                    "Now the yellow zone is enabled and we are no longer uninterruptible, and allocation is allowed again too";
 
     @RestrictHeapAccess(reason = NO_LONGER_UNINTERRUPTIBLE, access = Access.UNRESTRICTED)
     @Override
@@ -595,6 +594,7 @@ final class Target_java_util_concurrent_locks_ReentrantLock_NonfairSync {
     volatile Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_ConditionObject objectMonitorCondition;
 }
 
+// Checkstyle: stop
 @TargetClass(MultiThreadedMonitorSupport.class)
 final class Target_com_oracle_svm_core_monitor_MultiThreadedMonitorSupport {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FieldOffset, name = "objectMonitorCondition", declClass = Target_java_util_concurrent_locks_ReentrantLock_NonfairSync.class) //
@@ -625,3 +625,4 @@ final class Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_Conditi
 @TargetClass(value = ReferenceQueue.class, innerClass = "Lock")
 final class Target_java_lang_ref_ReferenceQueue_Lock {
 }
+// Checkstyle: resume

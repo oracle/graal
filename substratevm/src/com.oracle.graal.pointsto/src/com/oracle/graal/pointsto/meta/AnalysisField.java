@@ -208,38 +208,6 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
         return interceptTypeState(instanceFieldFlow.getState());
     }
 
-    // @formatter:off
-//    public TypeState getInstanceFieldTypeState() {
-//        if (instanceFieldTypeState == null) {
-//
-//            /* Collect the types of all instance field flows. */
-//            HashSet<AnalysisType> fieldTypes = new HashSet<>();
-//            boolean fieldCanBeNull = false;
-//
-//            fieldCanBeNull = collectInstanceFieldTypes(getDeclaringClass(), fieldTypes);
-//            instanceFieldTypeState = TypeState.forExactTypes(null, new ArrayList<>(fieldTypes), fieldCanBeNull);
-//
-//        }
-//        return instanceFieldTypeState;
-//    }
-
-//    private boolean collectInstanceFieldTypes(AnalysisType type, HashSet<AnalysisType> fieldTypes) {
-//        boolean fieldCanBeNull = false;
-//
-//        TypeFlow<?> fieldFlow = type.getAbstractObject().getInstanceFieldFlow(null, this, false);
-//        if (fieldFlow != null) {
-//            TypeState mergedState = fieldFlow.getState();
-//            mergedState.typesIterator().forEachRemaining(fieldTypes::add);
-//            fieldCanBeNull |= mergedState.canBeNull();
-//        }
-//
-//        for (AnalysisType subClass : type.subTypes) {
-//            fieldCanBeNull |= collectInstanceFieldTypes(subClass, fieldTypes);
-//        }
-//        return fieldCanBeNull;
-//    }
-    //@formatter:on
-
     public FieldTypeFlow getInitialInstanceFieldFlow() {
         return initialInstanceFieldFlow;
     }

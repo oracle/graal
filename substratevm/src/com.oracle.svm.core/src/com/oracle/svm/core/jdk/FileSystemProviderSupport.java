@@ -293,8 +293,6 @@ class UnixFileSystemAccessors {
         that.injectedRootDirectory = value;
     }
 
-    // Checkstyle: allow synchronization
-
     private static synchronized void reinitialize(Target_sun_nio_fs_UnixFileSystem that) {
         if (that.needsReinitialization != NeedsReinitializationProvider.STATUS_NEEDS_REINITIALIZATION) {
             /* Field initialized is volatile, so double-checked locking is OK. */

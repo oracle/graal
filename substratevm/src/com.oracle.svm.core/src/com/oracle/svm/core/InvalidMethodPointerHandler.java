@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core;
 
-// Checkstyle: allow reflection
-
 import static com.oracle.svm.core.annotate.RestrictHeapAccess.Access.NO_ALLOCATION;
 
 import java.lang.reflect.Method;

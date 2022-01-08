@@ -58,7 +58,6 @@ public abstract class RandomAccessors {
         return result;
     }
 
-    // Checkstyle: allow synchronization
     private synchronized AtomicLong initialize() {
         AtomicLong result = seeder;
         if (result != null) {
@@ -85,7 +84,6 @@ public abstract class RandomAccessors {
         return result;
 
     }
-    // Checkstyle: disallow synchronization
 
     abstract long mix64(long l);
 }

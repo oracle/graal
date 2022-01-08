@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.jni.functions;
 
-// Checkstyle: allow reflection
-
 import static com.oracle.svm.core.annotate.RestrictHeapAccess.Access.NO_ALLOCATION;
 
 import java.lang.reflect.Array;

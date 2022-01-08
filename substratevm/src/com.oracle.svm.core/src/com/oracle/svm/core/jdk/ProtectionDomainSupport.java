@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.jdk;
 
-// Checkstyle: allow reflection
-
 import java.io.File;
 import java.net.MalformedURLException;
 import java.net.URL;

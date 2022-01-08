@@ -30,9 +30,7 @@ import java.lang.invoke.MethodHandle;
 
 import com.oracle.svm.core.annotate.AlwaysInline;
 
-// Checkstyle: stop
 import sun.invoke.util.Wrapper;
-// Checkstyle: resume
 
 public class MethodHandleUtils {
     public static Object cast(Object obj, Class<?> type) {

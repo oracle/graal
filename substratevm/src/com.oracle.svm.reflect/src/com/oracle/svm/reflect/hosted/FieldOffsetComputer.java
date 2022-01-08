@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.reflect.hosted;
 
-// Checkstyle: allow reflection
-
 import java.lang.reflect.Field;
 
 import com.oracle.svm.core.annotate.RecomputeFieldValue;

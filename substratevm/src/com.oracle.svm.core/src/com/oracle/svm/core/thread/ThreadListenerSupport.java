@@ -42,7 +42,6 @@ public class ThreadListenerSupport {
         listeners = new ThreadListener[0];
     }
 
-    // Checkstyle: allow synchronization.
     @Platforms(Platform.HOSTED_ONLY.class)
     public synchronized void register(ThreadListener listener) {
         assert listener != null;
@@ -51,7 +50,6 @@ public class ThreadListenerSupport {
         listeners = Arrays.copyOf(listeners, oldLength + 1);
         listeners[oldLength] = listener;
     }
-    // Checkstyle: disallow synchronization.
 
     @Fold
     public static ThreadListenerSupport get() {

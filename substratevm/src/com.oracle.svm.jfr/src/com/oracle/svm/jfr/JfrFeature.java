@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.jfr;
 
-//Checkstyle: allow reflection
-
 import java.lang.reflect.Field;
 import java.util.Collection;
 import java.util.Collections;
@@ -131,10 +129,8 @@ public class JfrFeature implements Feature {
         }
         boolean runtimeEnabled = VMInspectionOptions.AllowVMInspection.getValue();
         if (hostedEnabled && !runtimeEnabled) {
-            // Checkstyle: stop
             System.err.println("Warning: When FlightRecoder is used to profile the image generator, it is also automatically enabled in the native image at run time. " +
                             "This can affect the measurements because it can can make the image larger and image build time longer.");
-            // Checkstyle: resume
             runtimeEnabled = true;
         }
         return runtimeEnabled && systemSupported;

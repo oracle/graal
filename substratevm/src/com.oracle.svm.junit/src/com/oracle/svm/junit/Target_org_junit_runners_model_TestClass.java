@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.junit;
 
-// Checkstyle: allow reflection
-
 import java.lang.reflect.Constructor;
 
 import org.graalvm.nativeimage.hosted.RuntimeReflection;

@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.reflect.target;
 
-// Checkstyle: allow reflection
-
 import static com.oracle.svm.core.util.VMError.unimplemented;
 
 import java.lang.reflect.Field;

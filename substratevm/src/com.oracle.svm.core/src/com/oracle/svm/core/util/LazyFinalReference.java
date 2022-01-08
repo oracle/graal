@@ -28,9 +28,7 @@ import java.util.function.Supplier;
 
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 
-// Checkstyle: stop
 import sun.misc.Unsafe;
-// Checkstyle: resume
 
 /**
  * An object reference that is set lazily to the reference returned by the provided {@link Supplier}

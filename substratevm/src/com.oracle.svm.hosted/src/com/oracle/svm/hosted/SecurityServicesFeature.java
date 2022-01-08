@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.hosted;
 
-// Checkstyle: allow reflection
-
 import static com.oracle.svm.hosted.SecurityServicesFeature.SecurityServicesPrinter.dedent;
 import static com.oracle.svm.hosted.SecurityServicesFeature.SecurityServicesPrinter.indent;
 
@@ -872,9 +870,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
 
         SecurityServicesPrinter() {
             File reportFile = reportFile(SubstrateOptions.reportsPath());
-            // Checkstyle: stop
             System.out.println("# Printing security services automatic registration to: " + reportFile);
-            // Checkstyle: resume
             try {
                 writer = new PrintWriter(new FileWriter(reportFile));
             } catch (IOException e) {

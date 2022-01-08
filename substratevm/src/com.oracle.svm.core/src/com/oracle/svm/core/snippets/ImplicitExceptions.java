@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.snippets;
 
-// Checkstyle: allow reflection
-
 import java.lang.reflect.GenericSignatureFormatError;
 
 import com.oracle.svm.core.SubstrateDiagnostics;

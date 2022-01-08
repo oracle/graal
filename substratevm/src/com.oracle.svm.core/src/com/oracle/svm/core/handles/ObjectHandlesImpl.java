@@ -33,9 +33,7 @@ import org.graalvm.word.SignedWord;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
-//Checkstyle: stop
 import sun.misc.Unsafe;
-// Checkstyle: resume
 
 /**
  * This class implements {@link ObjectHandle word}-sized integer handles that refer to Java objects.

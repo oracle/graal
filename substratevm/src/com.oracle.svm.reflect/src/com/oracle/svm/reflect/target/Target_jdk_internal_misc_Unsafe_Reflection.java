@@ -25,8 +25,6 @@
 
 package com.oracle.svm.reflect.target;
 
-// Checkstyle: allow reflection
-
 import java.lang.reflect.Field;
 
 import com.oracle.svm.core.StaticFieldsSupport;

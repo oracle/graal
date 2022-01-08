@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.graal.snippets;
 
-//Checkstyle: allow reflection
-
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
