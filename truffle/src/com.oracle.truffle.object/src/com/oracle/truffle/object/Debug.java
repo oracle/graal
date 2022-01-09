@@ -166,7 +166,7 @@ class Debug {
             sb.append(getId(shape));
             sb.append(":");
             if (shape.getLastProperty() != null) {
-                for (Property property : shape.getProperties()) {
+                for (Property property : shape.getPropertyListInternal(true)) {
                     sb.append("\\n");
                     sb.append(escapeString(property.toString()));
                 }
