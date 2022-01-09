@@ -166,9 +166,12 @@ class Debug {
             sb.append(getId(shape));
             sb.append(":");
             if (shape.getLastProperty() != null) {
-                sb.append(escapeString(shape.getLastProperty().toString()));
+                for (Property property : shape.getProperties()) {
+                    sb.append("\\n");
+                    sb.append(escapeString(property.toString()));
+                }
             } else {
-                sb.append("ROOT");
+                sb.append("\\nROOT");
             }
             sb.append("\"");
             sb.append(", shape=\"rectangle\"");
