@@ -163,6 +163,8 @@ class Debug {
             String prefix = "s";
             sb.append(prefix).append(getId(shape));
             sb.append(" [label=\"");
+            sb.append(getId(shape));
+            sb.append(":");
             if (shape.getLastProperty() != null) {
                 sb.append(escapeString(shape.getLastProperty().toString()));
             } else {
