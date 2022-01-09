@@ -155,6 +155,11 @@ class Debug {
                 return this;
             }
 
+            if (shape.isLeaf() && shape.getLastProperty() == null) {
+                // There are many leaf root shapes - don't draw them
+                return this;
+            }
+
             String prefix = "s";
             sb.append(prefix).append(getId(shape));
             sb.append(" [label=\"");
