@@ -898,15 +898,12 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     public synchronized MethodHook[] getMethodHooks() {
-        if (hooks == null) {
-            return MethodHook.EMPTY;
-        }
         return Arrays.copyOf(hooks, hooks.length);
     }
 
     public synchronized void addMethodHook(MethodHook info) {
         hasActiveHook.set(true);
-        if (hooks == null) {
+        if (hooks == MethodHook.EMPTY) {
             hooks = new MethodHook[]{info};
             return;
         }
@@ -916,7 +913,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     private void expectActiveHooks() {
-        if (hooks == null) {
+        if (hooks == MethodHook.EMPTY) {
             throw new RuntimeException("Method: " + getNameAsString() + " expected to contain method hook");
         }
     }
@@ -928,7 +925,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         if (hooks.length == 1) {
             // make sure it's the right hook
             if (hooks[0].getRequestId() == requestId) {
-                hooks = null;
+                hooks = MethodHook.EMPTY;
                 hasActiveHook.set(false);
                 removed = true;
             }
@@ -961,7 +958,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         if (hooks.length == 1) {
             // make sure it's the right hook
             if (hooks[0] == hook) {
-                hooks = null;
+                hooks = MethodHook.EMPTY;
                 hasActiveHook.set(false);
                 removed = true;
             }
