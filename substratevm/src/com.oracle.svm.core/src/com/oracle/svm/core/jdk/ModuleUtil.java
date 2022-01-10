@@ -132,7 +132,6 @@ public final class ModuleUtil {
         return ModuleLayer.boot().modules().stream().anyMatch(m -> m.getName().equals(name));
     }
 
-    // Checkstyle: allow synchronization
     public static void defineModule(Module module, boolean isOpen, List<String> pns) {
         if (Objects.isNull(module)) {
             throw new NullPointerException("Null module object");

@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.hosted.jdk.localization;
 
-// Checkstyle: stop
-
 import java.lang.reflect.Field;
 import java.nio.charset.Charset;
 import java.nio.charset.IllegalCharsetNameException;
@@ -92,7 +90,6 @@ import sun.text.spi.JavaTimeDateTimePatternProvider;
 import sun.util.locale.provider.LocaleProviderAdapter;
 import sun.util.locale.provider.ResourceBundleBasedAdapter;
 import sun.util.resources.LocaleData;
-// Checkstyle: resume
 
 /**
  * LocalizationFeature is the core class of SVM localization support. It contains all the options
@@ -520,9 +517,7 @@ public class LocalizationFeature implements Feature {
             String errorMessage = "The bundle named: " + baseName + ", has not been found. " +
                             "If the bundle is part of a module, verify the bundle name is a fully qualified class name. Otherwise " +
                             "verify the bundle path is accessible in the classpath.";
-            // Checkstyle: stop
             System.out.println(errorMessage);
-            // Checkstyle: resume
         }
     }
 
@@ -569,9 +564,7 @@ public class LocalizationFeature implements Feature {
     @Platforms(Platform.HOSTED_ONLY.class)
     protected void trace(String msg) {
         if (trace) {
-            // Checkstyle: stop
             System.out.println(msg);
-            // Checkstyle: resume
         }
     }
 }

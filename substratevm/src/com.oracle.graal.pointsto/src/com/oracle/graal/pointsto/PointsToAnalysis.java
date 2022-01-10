@@ -745,20 +745,16 @@ public abstract class PointsToAnalysis implements BigBang {
                                     numIterations, analysisChanged ? "DID" : "DID NOT"));
                 }
 
-                /*
-                 * Allow features to change the universe.
-                 */
-                try (StopTimer t2 = getProcessFeaturesTimer().start()) {
-                    int numTypes = universe.getTypes().size();
-                    int numMethods = universe.getMethods().size();
-                    int numFields = universe.getFields().size();
-                    if (analysisEndCondition.apply(universe)) {
-                        if (numTypes != universe.getTypes().size() || numMethods != universe.getMethods().size() || numFields != universe.getFields().size()) {
-                            throw AnalysisError.shouldNotReachHere(
-                                            "When a feature makes more types, methods, or fields reachable, it must require another analysis iteration via DuringAnalysisAccess.requireAnalysisIteration()");
-                        }
-                        return;
+                /* Allow features to change the universe. */
+                int numTypes = universe.getTypes().size();
+                int numMethods = universe.getMethods().size();
+                int numFields = universe.getFields().size();
+                if (analysisEndCondition.apply(universe)) {
+                    if (numTypes != universe.getTypes().size() || numMethods != universe.getMethods().size() || numFields != universe.getFields().size()) {
+                        throw AnalysisError.shouldNotReachHere(
+                                        "When a feature makes more types, methods, or fields reachable, it must require another analysis iteration via DuringAnalysisAccess.requireAnalysisIteration()");
                     }
+                    return;
                 }
             }
         }

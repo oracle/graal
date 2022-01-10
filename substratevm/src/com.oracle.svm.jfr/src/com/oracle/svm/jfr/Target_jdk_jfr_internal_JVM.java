@@ -45,7 +45,6 @@ import jdk.jfr.internal.JVM;
 import jdk.jfr.internal.LogTag;
 import jdk.jfr.internal.handlers.EventHandler;
 
-// Checkstyle: allow synchronization.
 @SuppressWarnings({"static-method", "unused"})
 @TargetClass(value = jdk.jfr.internal.JVM.class, onlyWith = JfrEnabled.class)
 public final class Target_jdk_jfr_internal_JVM {

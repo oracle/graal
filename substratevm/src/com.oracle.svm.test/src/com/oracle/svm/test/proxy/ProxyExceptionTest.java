@@ -25,11 +25,9 @@
 
 package com.oracle.svm.test.proxy;
 
-import org.junit.Test;
-
-// Checkstyle: stop
 import java.lang.reflect.Proxy;
-// Checkstyle: resume
+
+import org.junit.Test;
 
 public class ProxyExceptionTest {
 

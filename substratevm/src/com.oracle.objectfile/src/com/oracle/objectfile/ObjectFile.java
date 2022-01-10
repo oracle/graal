@@ -24,8 +24,6 @@
  */
 package com.oracle.objectfile;
 
-// Checkstyle: allow reflection
-
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;

@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.methodhandles;
 
-// Checkstyle: stop
-
 import java.lang.ref.SoftReference;
 
 import com.oracle.svm.core.annotate.Alias;
@@ -33,8 +31,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.NewEmptyArrayTransformer;
 import com.oracle.svm.core.annotate.TargetClass;
-
-// Checkstyle: resume
 
 @TargetClass(className = "java.lang.invoke.MethodTypeForm")
 final class Target_java_lang_invoke_MethodTypeForm {

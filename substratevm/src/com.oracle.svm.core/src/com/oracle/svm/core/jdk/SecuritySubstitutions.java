@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.jdk;
 
-// Checkstyle: stop
-
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
 
 import java.lang.reflect.Constructor;
@@ -71,10 +69,6 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import sun.security.jca.ProviderList;
 import sun.security.util.SecurityConstants;
-
-// Checkstyle: resume
-
-// Checkstyle: allow reflection
 
 /*
  * All security checks are disabled.
@@ -263,9 +257,7 @@ class ServiceKeyComputer implements RecomputeFieldValue.CustomFieldValueComputer
     @Override
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
         try {
-            // Checkstyle: stop do not use dynamic class loading
             Class<?> serviceKey = Class.forName("java.security.Provider$ServiceKey");
-            // Checkstyle: resume
             Constructor<?> constructor = ReflectionUtil.lookupConstructor(serviceKey, String.class, String.class, boolean.class);
             return constructor.newInstance("", "", false);
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException | ClassNotFoundException e) {
@@ -440,10 +432,7 @@ class JceSecurityAccessor {
         return result;
     }
 
-    // Checkstyle: stop
     private static synchronized SecureRandom initializeOnce() {
-        // Checkstyle: resume
-
         SecureRandom result = RANDOM;
         if (result != null) {
             /* Double-checked locking is OK because INSTANCE is volatile. */
@@ -501,9 +490,7 @@ final class PlatformHasClass implements Predicate<String> {
     public boolean test(String className) {
         try {
             @SuppressWarnings({"unused"})
-            /* { Allow use of `Class.forName`. Checkstyle: stop. */
             final Class<?> classForName = Class.forName(className);
-            /* } Allow use of `Class.forName`. Checkstyle: resume. */
             return true;
         } catch (ClassNotFoundException cnfe) {
             return false;

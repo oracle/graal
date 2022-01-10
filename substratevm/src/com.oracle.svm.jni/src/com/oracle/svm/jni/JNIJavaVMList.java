@@ -49,7 +49,7 @@ import com.oracle.svm.jni.nativeapi.JNIJavaVMPointer;
  * never shrinks.
  */
 public class JNIJavaVMList {
-    /* @formatter:off
+    /*-
      *
      * HEAD  -->  +------------------------+
      *            | capacity: UnsignedWord |
@@ -62,7 +62,6 @@ public class JNIJavaVMList {
      *                                             | ...      |
      *                                             | next     |  -->  null
      *                                             +----------+
-     * @formatter:on
      */
 
     private static final UnsignedWord INITIAL_CAPACITY = unsigned(8);

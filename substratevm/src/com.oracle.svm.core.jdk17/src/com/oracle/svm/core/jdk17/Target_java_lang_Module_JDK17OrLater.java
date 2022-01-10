@@ -38,7 +38,6 @@ import com.oracle.svm.core.jdk.ModuleUtil;
 @TargetClass(value = java.lang.Module.class, onlyWith = JDK17OrLater.class)
 public final class Target_java_lang_Module_JDK17OrLater {
 
-    // Checkstyle: allow synchronization
     @Substitute
     private static void defineModule0(Module module, boolean isOpen, String version, String location, Object[] pns) {
         if (Arrays.stream(pns).anyMatch(Objects::isNull)) {

@@ -25,6 +25,7 @@
 package com.oracle.svm.hosted.jdk;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.net.DatagramPacket;
 import java.net.InetAddress;
 import java.net.Proxy;
@@ -227,9 +228,7 @@ class JNIRegistrationJavaNet extends JNIRegistrationUtil implements Feature {
 
     private static void registerDatagramSocketCheckOldImpl(DuringAnalysisAccess a) {
         a.registerSubtypeReachabilityHandler((access, clazz) -> {
-            // Checkstyle: stop
-            if (!java.lang.reflect.Modifier.isAbstract(clazz.getModifiers())) {
-                // Checkstyle: resume
+            if (!Modifier.isAbstract(clazz.getModifiers())) {
                 RuntimeReflection.register(method(access, clazz.getName(), "peekData", DatagramPacket.class));
             }
         }, clazz(a, "java.net.DatagramSocketImpl"));

@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.jni.access;
 
-// Checkstyle: allow reflection
-
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 

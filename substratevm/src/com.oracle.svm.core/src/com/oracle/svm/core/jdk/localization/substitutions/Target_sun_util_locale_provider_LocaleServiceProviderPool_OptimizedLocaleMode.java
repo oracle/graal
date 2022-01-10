@@ -38,9 +38,7 @@ import com.oracle.svm.core.jdk.localization.LocalizationSupport;
 import com.oracle.svm.core.jdk.localization.substitutions.modes.OptimizedLocaleMode;
 import com.oracle.svm.core.util.VMError;
 
-// Checkstyle: stop
 import sun.util.locale.provider.LocaleServiceProviderPool;
-// Checkstyle: resume
 
 @Substitute
 @TargetClass(value = sun.util.locale.provider.LocaleServiceProviderPool.class, onlyWith = OptimizedLocaleMode.class)

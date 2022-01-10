@@ -98,9 +98,7 @@ public class FallbackExecutor {
         command.add(Options.FallbackExecutorMainClass.getValue());
         command.addAll(Arrays.asList(args));
         if (System.getenv("FALLBACK_EXECUTOR_VERBOSE") != null) {
-            // Checkstyle: stop
             System.out.println("Exec: " + String.join(" ", command));
-            // Checkstyle: resume
         }
         ProcessProperties.exec(javaExecutable, command.toArray(new String[0]));
     }
@@ -137,9 +135,7 @@ public class FallbackExecutor {
     }
 
     private static void showError(String s) {
-        // Checkstyle: stop
         System.err.println("Error: " + s);
-        // Checkstyle: resume
         System.exit(1);
     }
 }

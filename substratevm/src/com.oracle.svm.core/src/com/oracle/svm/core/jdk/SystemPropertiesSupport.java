@@ -215,11 +215,9 @@ public abstract class SystemPropertiesSupport {
              */
             String value = lazyRuntimeValues.get(key).get();
             if (properties.putIfAbsent(key, value) == null) {
-                // Checkstyle: stop
                 synchronized (savedProperties) {
                     savedProperties.put(key, value);
                 }
-                // Checkstyle: resume
             }
         }
     }

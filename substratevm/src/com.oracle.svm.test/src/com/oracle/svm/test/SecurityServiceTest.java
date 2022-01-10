@@ -35,10 +35,8 @@ import org.hamcrest.CoreMatchers;
 import org.junit.Assert;
 import org.junit.Test;
 
-// Checkstyle: stop
 import sun.security.jca.GetInstance;
 
-// Checkstyle: resume
 /**
  * Tests the {@code SecurityServicesFeature}.
  */

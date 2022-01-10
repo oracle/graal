@@ -26,6 +26,7 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.utilities.AlwaysValidAssumption;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
@@ -39,6 +40,7 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.perf.DebugCounter;
+import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 
 public interface FieldRefConstant extends MemberRefConstant {
@@ -131,7 +133,14 @@ public interface FieldRefConstant extends MemberRefConstant {
             if (field == null) {
                 Meta meta = pool.getContext().getMeta();
                 EspressoException failure = EspressoException.wrap(Meta.initExceptionWithMessage(meta.java_lang_NoSuchFieldError, name.toString()), meta);
-                return new Missing(failure, pool.getContext().getClassRedefinition().getMissingFieldAssumption());
+                ClassRedefinition classRedefinition = pool.getContext().getClassRedefinition();
+                Assumption missingFieldAssumption;
+                if (classRedefinition != null) {
+                    missingFieldAssumption = classRedefinition.getMissingFieldAssumption();
+                } else {
+                    missingFieldAssumption = AlwaysValidAssumption.INSTANCE;
+                }
+                return new Missing(failure, missingFieldAssumption);
             }
 
             MemberRefConstant.doAccessCheck(accessingKlass, holderKlass, field, pool.getContext().getMeta());

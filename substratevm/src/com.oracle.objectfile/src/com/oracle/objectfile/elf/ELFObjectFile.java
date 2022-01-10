@@ -880,15 +880,13 @@ public class ELFObjectFile extends ObjectFile {
             if (isNullEntry()) {
                 return "SHT NULL Entry";
             }
-            //@formatter:off
-            return new StringBuilder("SHT Entry: ").
-             append(String.format("\n  %s", type)).
-             append(String.format("\n  flags %#x", flags)).
-             append(String.format("\n  virtual address %#x", virtualAddress)).
-             append(String.format("\n  offset %#x (%1$d), size %d", fileOffset, sectionSize)).
-             append(String.format("\n  link %#x, info %#x, align %#x, entry size %#x (%4$d)", link, info, addrAlign, entrySize)).
-             append("\n").toString();
-            //@formatter:on
+            return new StringBuilder("SHT Entry: ")
+                            .append(String.format("\n  %s", type))
+                            .append(String.format("\n  flags %#x", flags))
+                            .append(String.format("\n  virtual address %#x", virtualAddress))
+                            .append(String.format("\n  offset %#x (%1$d), size %d", fileOffset, sectionSize))
+                            .append(String.format("\n  link %#x, info %#x, align %#x, entry size %#x (%4$d)", link, info, addrAlign, entrySize))
+                            .append("\n").toString();
         }
 
         public boolean isNullEntry() {

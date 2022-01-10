@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.heap;
 
-//Checkstyle: allow reflection
-
 import java.lang.ref.PhantomReference;
 import java.lang.ref.Reference;
 import java.lang.reflect.Field;

@@ -199,12 +199,10 @@ public class MachOUserDefinedSection extends MachOSection implements ObjectFile.
             case AARCH64_R_AARCH64_LDST8_ABS_LO12_NC:
             case AARCH64_R_AARCH64_ADD_ABS_LO12_NC:
                 if (addend != 0) {
-                    /*
+                    /*-
                      * According to the Mach-O ld code at:
                      *
-                     * @formatter:off
                      * https://opensource.apple.com/source/ld64/ld64-274.2/src/ld/parsers/macho_relocatable_file.cpp.auto.html
-                     * @formatter:on
                      *
                      * These relocations should use an explicit addend relocation record (ARM64_RELOC_ADDEND) instead of an
                      * implicit addend.

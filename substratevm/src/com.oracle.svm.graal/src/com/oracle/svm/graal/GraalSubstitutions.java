@@ -85,8 +85,6 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
-// Checkstyle: stop
-
 @TargetClass(value = org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.class, onlyWith = GraalFeature.IsEnabledAndNotLibgraal.class)
 final class Target_org_graalvm_compiler_nodes_graphbuilderconf_InvocationPlugins {
 
@@ -148,7 +146,9 @@ final class Target_org_graalvm_compiler_debug_DebugContext_Immutable {
         @Override
         public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
             for (Class<?> c : DebugContext.class.getDeclaredClasses()) {
+                // Checkstyle: allow Class.getSimpleName
                 if (c.getSimpleName().equals("Immutable")) {
+                    // Checkstyle: disallow Class.getSimpleName
                     Object[] cache = ReflectionUtil.readStaticField(c, "CACHE");
                     Object[] clearedCache = cache.clone();
                     for (int i = 0; i < clearedCache.length; i++) {
@@ -193,8 +193,10 @@ final class Target_org_graalvm_compiler_debug_DebugHandlersFactory {
 
 @TargetClass(value = TimeSource.class, onlyWith = GraalFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_debug_TimeSource {
+    // Checkstyle: stop
     @Alias @RecomputeFieldValue(kind = FromAlias)//
     private static boolean USING_THREAD_CPU_TIME = false;
+    // Checkstyle: resume
 }
 
 @TargetClass(value = org.graalvm.compiler.debug.TTY.class, onlyWith = GraalFeature.IsEnabledAndNotLibgraal.class)

@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.jni.access;
 
-// Checkstyle: allow reflection
-
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
@@ -215,11 +213,9 @@ public class JNIAccessFeature implements Feature {
 
         JNINativeLinkage key = new JNINativeLinkage(declaringClass, name, descriptor);
 
-        // Checkstyle: stop
         if (JNIAccessFeature.Options.PrintJNIMethods.getValue()) {
             System.out.println("Creating a new JNINativeLinkage: " + key.toString());
         }
-        // Checkstyle: resume
 
         return nativeLinkages.computeIfAbsent(key, linkage -> {
             newLinkages.put(linkage, linkage);

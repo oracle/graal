@@ -42,6 +42,9 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+
 import com.oracle.objectfile.BasicProgbitsSectionImpl;
 import com.oracle.objectfile.BuildDependency;
 import com.oracle.objectfile.ElementImpl;
@@ -52,8 +55,6 @@ import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.SymbolTable;
 import com.oracle.objectfile.io.AssemblyBuffer;
 import com.oracle.objectfile.io.OutputAssembler;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
 
 /**
  * Models a Mach-O relocatable object file.
@@ -1280,28 +1281,12 @@ public final class MachOObjectFile extends ObjectFile {
             return size;
         }
 
-        //@formatter:off
-//        @Override
-//        public int getOrDecideSize(Map<Element, LayoutDecisionMap> alreadyDecided, int sizeHint) {
-//            /*
-//             * HACK HACK HACK: since the content is ULEB128 variable-length-encoded, we need to
-//             * compute our content before we can compute our size. BUT this gives us cyclic build
-//             * dependencies because of Mach-O's messed-up segment structure (FIXME: find out exactly
-//             * what is creating the cycles). So we overapproximate our size based on the biggest
-//             * function-to-function offset we think is likely.
-//             */
-//            return overapproximateSize();
-//        }
-        //@formatter:on
-
-        //@formatter:off
         @Override
         public int getOrDecideSize(java.util.Map<Element, LayoutDecisionMap> alreadyDecided, int sizeHint) {
             Object decidedContent = alreadyDecided.get(this).getDecidedValue(LayoutDecision.Kind.CONTENT);
             assert decidedContent != null;
             return ((byte[]) decidedContent).length;
         }
-        //@formatter:on
 
         @Override
         public Iterable<BuildDependency> getDependencies(Map<Element, LayoutDecisionMap> decisions) {
@@ -1520,8 +1505,7 @@ public final class MachOObjectFile extends ObjectFile {
 
     public abstract class MachOSection extends ObjectFile.Section {
 
-        // @formatter:off
-        /* We have no fields except type & flags! Mach-O section64 struct's fields are
+        /*- We have no fields except type & flags! Mach-O section64 struct's fields are
          * modelled as follows:
          * sectname: in the ObjectFile's element name map
          * segname: explicitly if relocatable file, else in the ObjectFile's segments list
@@ -1534,7 +1518,6 @@ public final class MachOObjectFile extends ObjectFile {
          * flags: we DO have this one
          * reserved1, reserved2: saved for a "symbol stub section" subclass, if we need it
          */
-        // @formatter:on
 
         SectionType type;
         EnumSet<SectionFlag> flags;
@@ -2019,20 +2002,18 @@ public final class MachOObjectFile extends ObjectFile {
                  */
                 assert s.destinationSegmentName != null;
 
-                //@formatter:off
                 SectionInfoStruct si = new SectionInfoStruct(
-                    s.getName(),
-                    s.destinationSegmentName,
-                    s.getElement().isReferenceable() ? (int) alreadyDecided.get(s).getDecidedValue(LayoutDecision.Kind.VADDR) : 0,
-                    (int) alreadyDecided.get(s).getDecidedValue(LayoutDecision.Kind.SIZE),
-                    (int) alreadyDecided.get(s).getDecidedValue(LayoutDecision.Kind.OFFSET),
-                    logAlignment,
-                    ourRelocs == null ? 0 : (int) alreadyDecided.get(ourRelocs).getDecidedValue(LayoutDecision.Kind.OFFSET) + ourRelocs.startIndexFor(s) * ourRelocs.encodedEntrySize(),
-                    ourRelocs == null ? 0 : ourRelocs.countFor(s),
-                    (int) ObjectFile.flagSetAsLong(s.flags) | s.type.getValue(),
-                    /* reserved1 */ 0,
-                    /* reserved2 */ 0);
-                //@formatter:on
+                                s.getName(),
+                                s.destinationSegmentName,
+                                s.getElement().isReferenceable() ? (int) alreadyDecided.get(s).getDecidedValue(LayoutDecision.Kind.VADDR) : 0,
+                                (int) alreadyDecided.get(s).getDecidedValue(LayoutDecision.Kind.SIZE),
+                                (int) alreadyDecided.get(s).getDecidedValue(LayoutDecision.Kind.OFFSET),
+                                logAlignment,
+                                ourRelocs == null ? 0 : (int) alreadyDecided.get(ourRelocs).getDecidedValue(LayoutDecision.Kind.OFFSET) + ourRelocs.startIndexFor(s) * ourRelocs.encodedEntrySize(),
+                                ourRelocs == null ? 0 : ourRelocs.countFor(s),
+                                (int) ObjectFile.flagSetAsLong(s.flags) | s.type.getValue(),
+                                /* reserved1 */ 0,
+                                /* reserved2 */ 0);
                 int startPos = db.pos();
                 si.write(db);
                 assert db.pos() - startPos == SectionInfoStruct.DEFAULT_SIZE;

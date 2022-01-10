@@ -69,9 +69,7 @@ public class UserError {
      *            preprocessed} before being sent to {@link String#format(String, Object...)}
      */
     public static UserException abort(String format, Object... args) {
-        // Checkstyle: stop
         throw new UserException(String.format(format, formatArguments(args)));
-        // Checkstyle: resume
     }
 
     /**
@@ -83,9 +81,7 @@ public class UserError {
      *            preprocessed} before being sent to {@link String#format(String, Object...)}
      */
     public static UserException abort(Throwable cause, String format, Object... args) {
-        // Checkstyle: stop
         throw ((UserException) new UserException(String.format(format, formatArguments(args))).initCause(cause));
-        // Checkstyle: resume
     }
 
     /**
@@ -97,9 +93,7 @@ public class UserError {
      */
     public static void guarantee(boolean condition, String format, Object... args) {
         if (!condition) {
-            // Checkstyle: stop
             throw UserError.abort(format, args);
-            // Checkstyle: resume
         }
     }
 

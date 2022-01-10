@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.hosted.code;
 
-// Checkstyle: allow reflection
-
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
