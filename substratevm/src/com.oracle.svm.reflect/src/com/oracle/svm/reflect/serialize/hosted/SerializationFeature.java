@@ -135,7 +135,7 @@ public class SerializationFeature implements Feature {
         // Checkstyle: resume
     }
 
-    static void warn(String str){
+    static void warn(String str) {
         // Checkstyle: stop
         System.err.println("Warning:" + str);
         // Checkstyle: resume
@@ -204,7 +204,6 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     private final FeatureImpl.DuringSetupAccessImpl access;
     private boolean sealed;
 
-
     SerializationBuilder(SerializationDenyRegistry serializationDenyRegistry, FeatureImpl.DuringSetupAccessImpl access, ConfigurationTypeResolver typeResolver) {
         this.access = access;
         Class<?> classDataSlotClazz = access.findClassByName("java.io.ObjectStreamClass$ClassDataSlot");
@@ -245,13 +244,13 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         } else if (access.findSubclasses(clazz).size() > 1) {
             // The classes returned from access.findSubclasses API including the base class itself
             warn("Class " + targetClassName +
-                    " has subclasses. No classes were registered for object serialization.\n");
+                            " has subclasses. No classes were registered for object serialization.\n");
             return;
         }
         try {
             clazz.getDeclaredMethod("writeObject", ObjectOutputStream.class);
             warn("Class " + targetClassName +
-                    " implements its own writeObject method for object serialization. Any serialization types it uses need to be explicitly registered.\n");
+                            " implements its own writeObject method for object serialization. Any serialization types it uses need to be explicitly registered.\n");
             return;
         } catch (NoSuchMethodException e) {
             // Expected case. Do nothing
