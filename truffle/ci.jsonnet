@@ -46,7 +46,7 @@
     name: 'gate-truffle-sigtest-' + self.jdk_version,
     run: [
       ["mx", "build"],
-      ["mx", "sigtest", "--check", (if self.jdk_version == 8 then "all" else "bin")],
+      ["mx", "sigtest", "--check", (if self.jdk_version == 11 then "all" else "bin")],
     ],
   },
 
