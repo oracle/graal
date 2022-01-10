@@ -53,10 +53,14 @@ public interface SubstrateLoweringProvider extends LoweringProvider {
 
     Stamp loadStamp(Stamp stamp, JavaKind kind);
 
-    static LoweringProvider create(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig,
+    static LoweringProvider createForHosted(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig,
                     MetaAccessExtensionProvider metaAccessExtensionProvider) {
-        return GraalConfiguration.instance().createLoweringProvider(metaAccess, foreignCalls, platformConfig, metaAccessExtensionProvider);
+        return GraalConfiguration.hostedInstance().createLoweringProvider(metaAccess, foreignCalls, platformConfig, metaAccessExtensionProvider);
+    }
 
+    static LoweringProvider createForRuntime(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig,
+                    MetaAccessExtensionProvider metaAccessExtensionProvider) {
+        return GraalConfiguration.runtimeInstance().createLoweringProvider(metaAccess, foreignCalls, platformConfig, metaAccessExtensionProvider);
     }
 
     @Override

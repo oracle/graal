@@ -62,6 +62,7 @@ import com.oracle.svm.core.util.UserError;
 
 public class SubstrateOptions {
 
+    // TODO: Make PGO disable DevMode
     @Option(help = "Build the native image using the economy compiler configuration.", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> DevMode = new HostedOptionKey<>(false);
 

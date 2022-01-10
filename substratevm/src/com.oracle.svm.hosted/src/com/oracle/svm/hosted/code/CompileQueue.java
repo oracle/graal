@@ -1390,7 +1390,7 @@ public class CompileQueue {
     }
 
     protected void removeDeoptTargetOptimizations(Suites suites) {
-        GraalConfiguration.instance().removeDeoptTargetOptimizations(suites);
+        GraalConfiguration.hostedInstance().removeDeoptTargetOptimizations(suites);
 
         PhaseSuite<HighTierContext> highTier = suites.getHighTier();
         highTier.removePhase(PartialEscapePhase.class);

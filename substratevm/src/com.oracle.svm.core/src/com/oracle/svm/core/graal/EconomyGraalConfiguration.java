@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,16 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.amd64;
+package com.oracle.svm.core.graal;
 
-import org.graalvm.compiler.core.amd64.AMD64SuitesCreator;
-import org.graalvm.compiler.core.phases.EconomyCompilerConfiguration;
+import org.graalvm.compiler.hotspot.EconomyCompilerConfigurationFactory;
 
-import com.oracle.svm.core.graal.code.SubstrateSuitesCreatorProvider;
+public class EconomyGraalConfiguration extends GraalConfiguration {
 
-public class SubstrateAMD64SuitesCreatorProvider extends SubstrateSuitesCreatorProvider {
-    public SubstrateAMD64SuitesCreatorProvider() {
-        super(new AMD64SuitesCreator(getCompilerConfiguration()),
-                        new AMD64SuitesCreator(new EconomyCompilerConfiguration()));
+    private static final String COMPILER_CONFIGURATION_NAME = EconomyCompilerConfigurationFactory.NAME;
+
+    @Override
+    public String getCompilerConfigurationName() {
+        return COMPILER_CONFIGURATION_NAME;
     }
 }
