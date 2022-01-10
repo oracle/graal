@@ -720,7 +720,7 @@ public class NativeImageGenerator {
                 DuringAnalysisAccessImpl config = new DuringAnalysisAccessImpl(featureHandler, loader, bb, nativeLibraries, debug);
                 try {
                     bb.runAnalysis(debug, (universe) -> {
-                        try (StopTimer t2 = bb.getProcessFeaturesTimer().start()) {
+                        try (StopTimer t2 = TimerCollection.singleton().get(TimerCollection.Registry.FEATURES).start()) {
                             bb.getHostVM().notifyClassReachabilityListener(universe, config);
                             featureHandler.forEachFeature(feature -> feature.duringAnalysis(config));
                         }
