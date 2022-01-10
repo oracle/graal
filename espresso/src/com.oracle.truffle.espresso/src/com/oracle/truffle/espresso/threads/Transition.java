@@ -35,7 +35,7 @@ public interface Transition extends AutoCloseable {
      * Implements the transition of a thread from runnable to other {@link State states}.
      * <p>
      * Note that this class does not handle transition from native code to guest world. Use
-     * {@link ThreadStateTransitionImpl} instead.
+     * {@link #fromNative(EspressoContext)} instead.
      */
     static Transition transition(EspressoContext context, State state) {
         return new ThreadStateTransitionImpl(context, state);

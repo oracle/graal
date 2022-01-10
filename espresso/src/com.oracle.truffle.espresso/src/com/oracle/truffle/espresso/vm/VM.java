@@ -1613,7 +1613,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             }
         }
         if (JniVersion.isSupported(version, getContext().getJavaVersion())) {
-            StaticObject currentThread = getContext().getGuestThreadFromHost(Thread.currentThread());
+            StaticObject currentThread = getContext().getCurrentThread();
             if (currentThread == null) {
                 return JNI_EDETACHED;
             }

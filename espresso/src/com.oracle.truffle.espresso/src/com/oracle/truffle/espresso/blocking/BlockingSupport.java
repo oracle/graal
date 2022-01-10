@@ -37,13 +37,13 @@ import com.oracle.truffle.api.nodes.Node;
  * This class is a convenience layer on top of
  * {@link TruffleSafepoint#setBlocked(Node, Interrupter, Interruptible, Object, Runnable, Consumer)}.
  * <p>
- * TruffleThreads provides custom implementations of the common blocking methods from the
+ * BlockingSupport provides custom implementations of the common blocking methods from the
  * {@link java.lang.Thread} class which behaves as their original counterpart, save for two details:
  * <ul>
  * <li>These blocking operation can still handle {@link TruffleSafepoint safepoints}.</li>
- * <li>These operation will only be interrupted through the provided {@link #guestInterrupt(Thread)}
- * method, and throw a {@link GuestInterruptedException} instead of a
- * {@link java.lang.InterruptedException}.</li>
+ * <li>These operation will only be interrupted through the provided
+ * {@link #guestInterrupt(Thread, Object)} method, and throw a {@link GuestInterruptedException}
+ * instead of a {@link java.lang.InterruptedException}.</li>
  * </ul>
  * </p>
  * <p>
@@ -56,14 +56,14 @@ import com.oracle.truffle.api.nodes.Node;
  * language-specific behavior of an interruption.
  * </p>
  */
-public final class BlockingSupport {
-    public static final BlockingSupport UNINTERRUPTIBLE = create(GuestInterrupter.EMPTY);
+public final class BlockingSupport<T> {
+    public static final BlockingSupport<Object> UNINTERRUPTIBLE = create(GuestInterrupter.EMPTY);
 
-    private BlockingSupport(GuestInterrupter guestInterrupter) {
+    private BlockingSupport(GuestInterrupter<T> guestInterrupter) {
         this.guestInterrupter = guestInterrupter;
     }
 
-    private final GuestInterrupter guestInterrupter;
+    private final GuestInterrupter<T> guestInterrupter;
 
     /**
      * Creates an instance of this interface, using the given {@link Interrupter guestInterrupter}
@@ -73,12 +73,12 @@ public final class BlockingSupport {
      * the thread.
      * <p>
      * To benefit from the classes of this package, the guest implementations of thread
-     * interruptions should call {@link #guestInterrupt(Thread)}. Coordination with truffle
+     * interruptions should call {@link #guestInterrupt(Thread, Object)}. Coordination with truffle
      * safepoints and wake-ups of the thread are handled by the internals of this class. As such,
      * the guest interrupter need not call the host {@link Thread#interrupt()}.
      */
-    public static BlockingSupport create(GuestInterrupter guestInterrupter) {
-        return new BlockingSupport(guestInterrupter);
+    public static <T> BlockingSupport<T> create(GuestInterrupter<T> guestInterrupter) {
+        return new BlockingSupport<>(guestInterrupter);
     }
 
     /**
@@ -86,8 +86,8 @@ public final class BlockingSupport {
      * following properties:
      * <ul>
      * <li>{@link TruffleSafepoint safepoints} will still be handled.</li>
-     * <li>Will throw a {@link GuestInterruptedException} if {@link #guestInterrupt(Thread)} was
-     * called on this thread.</li>
+     * <li>Will throw a {@link GuestInterruptedException} if {@link #guestInterrupt(Thread, Object)}
+     * was called on this thread.</li>
      * </ul>
      * Furthermore, no host interruptions of the current thread will result in an
      * {@link InterruptedException}.
@@ -95,7 +95,7 @@ public final class BlockingSupport {
      * As such, there are only three ways to retrieve control from a call to this method:
      * <ul>
      * <li>The given {@linkplain Interruptible blockingRegion} naturally completes</li>
-     * <li>{@link #guestInterrupt(Thread)} is called for this thread.</li>
+     * <li>{@link #guestInterrupt(Thread, Object)} is called for this thread.</li>
      * <li>An {@link ThreadLocalAction action} was submitted to this thread, that throws an
      * exception that is not an {@link InterruptedException}.</li>
      * </ul>
@@ -103,10 +103,9 @@ public final class BlockingSupport {
      * @throws GuestInterruptedException if the current thread was guest-interrupted.
      */
     @TruffleBoundary
-    public <T> void enterBlockingRegion(Interruptible<T> blockingRegion, Node location, T object) throws GuestInterruptedException {
+    public <U> void enterBlockingRegion(Interruptible<U> blockingRegion, Node location, U object) throws GuestInterruptedException {
         TruffleSafepoint safepoint = TruffleSafepoint.getCurrent();
-        Thread current = Thread.currentThread();
-        safepoint.setBlocked(location, guestInterrupter, blockingRegion, object, null, (t) -> guestInterrupter.afterInterrupt(current, t));
+        safepoint.setBlocked(location, guestInterrupter, blockingRegion, object, null, guestInterrupter::afterInterrupt);
     }
 
     /**
@@ -117,14 +116,13 @@ public final class BlockingSupport {
      * @throws GuestInterruptedException if the current thread was guest-interrupted.
      */
     @TruffleBoundary
-    public <T> void enterBlockingRegion(Interruptible<T> blockingRegion, Node location, T object, Runnable beforeSafepoint, Consumer<Throwable> afterSafepoint) throws GuestInterruptedException {
+    public <U> void enterBlockingRegion(Interruptible<U> blockingRegion, Node location, U object, Runnable beforeSafepoint, Consumer<Throwable> afterSafepoint) throws GuestInterruptedException {
         TruffleSafepoint safepoint = TruffleSafepoint.getCurrent();
-        Thread current = Thread.currentThread();
-        safepoint.setBlocked(location, guestInterrupter, blockingRegion, object, beforeSafepoint, (t) -> {
+        safepoint.setBlocked(location, guestInterrupter, blockingRegion, object, beforeSafepoint, (ex) -> {
             if (afterSafepoint != null) {
-                afterSafepoint.accept(t);
+                afterSafepoint.accept(ex);
             }
-            guestInterrupter.afterInterrupt(current, t);
+            guestInterrupter.afterInterrupt(ex);
         });
     }
 
@@ -148,9 +146,11 @@ public final class BlockingSupport {
      *
      * @param t the thread to interrupt.
      */
-    public void guestInterrupt(Thread t) {
-        guestInterrupter.guestInterrupt(t);
-        t.interrupt(); // Host interrupt to wake up the thread.
+    public void guestInterrupt(Thread t, T guest) {
+        guestInterrupter.guestInterrupt(t, guest);
+        if (t != null) { // Make sure thread is initialized
+            t.interrupt(); // Host interrupt to wake up the thread.
+        }
     }
 
     private static Interruptible<Long> sleepInterruptible() {
@@ -158,12 +158,12 @@ public final class BlockingSupport {
             private final long start = System.nanoTime();
 
             @Override
-            public void apply(Long arg) throws InterruptedException {
-                long millis = arg - (System.nanoTime() - start);
-                if (millis <= 0) {
-                    return;
+            public void apply(Long nanoTimeout) throws InterruptedException {
+                long left = nanoTimeout - (System.nanoTime() - start);
+                if (left <= 0) {
+                    return; // fully waited.
                 }
-                Thread.sleep(millis);
+                Thread.sleep(TimeUnit.NANOSECONDS.toMillis(left));
             }
         };
     }

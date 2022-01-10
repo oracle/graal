@@ -215,7 +215,7 @@ public final class Target_java_lang_Thread {
     public static void sleep(long millis, @Inject Meta meta, @Inject SubstitutionProfiler location) {
         StaticObject thread = meta.getContext().getCurrentThread();
         try (Transition transition = Transition.transition(meta.getContext(), State.TIMED_WAITING)) {
-            meta.getContext().getTruffleThreads().sleep(millis, location);
+            meta.getContext().getBlockingSupport().sleep(millis, location);
         } catch (GuestInterruptedException e) {
             if (meta.getThreadAccess().isInterrupted(thread, true)) {
                 throw meta.throwExceptionWithMessage(meta.java_lang_InterruptedException, e.getMessage());

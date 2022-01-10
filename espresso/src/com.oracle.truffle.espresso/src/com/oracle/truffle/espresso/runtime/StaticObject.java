@@ -290,7 +290,7 @@ public class StaticObject implements TruffleObject, Cloneable {
             synchronized (this) {
                 l = lockOrForeignMarker;
                 if (l == null) {
-                    lockOrForeignMarker = l = EspressoLock.create(context.getTruffleThreads());
+                    lockOrForeignMarker = l = EspressoLock.create(context.getBlockingSupport());
                 }
             }
         }

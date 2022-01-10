@@ -39,10 +39,10 @@ import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
 public interface EspressoLock {
 
     /**
-     * Creates a new {@code TruffleLock} instance.
+     * Creates a new {@code EspressoLock} instance.
      */
     @TruffleBoundary // ReentrantLock.<init> blacklisted by SVM
-    static EspressoLock create(BlockingSupport blockingSupport) {
+    static EspressoLock create(BlockingSupport<?> blockingSupport) {
         return new EspressoLockImpl(blockingSupport);
     }
 
@@ -81,7 +81,7 @@ public interface EspressoLock {
 
     /**
      * Acquires the lock unless the current thread is
-     * {@linkplain BlockingSupport#guestInterrupt(Thread) guest-interrupted}.
+     * {@linkplain BlockingSupport#guestInterrupt(Thread, Object)} guest-interrupted}.
      * <p>
      * Acquires the lock if it is not held by another thread and returns immediately, setting the
      * lock hold count to one.
@@ -94,8 +94,8 @@ public interface EspressoLock {
      * safepoints} and lies dormant until one of two things happens:
      * <ul>
      * <li>The lock is acquired by the current thread; or
-     * <li>Some other thread {@linkplain BlockingSupport#guestInterrupt(Thread) guest-interrupts}
-     * the current thread.
+     * <li>Some other thread {@linkplain BlockingSupport#guestInterrupt(Thread, Object)}
+     * guest-interrupts} the current thread.
      * </ul>
      * <p>
      * If the lock is acquired by the current thread then the lock hold count is set to one.
@@ -103,8 +103,8 @@ public interface EspressoLock {
      * If the current thread:
      * <ul>
      * <li>has its guest-interrupted status set on entry to this method; or
-     * <li>is {@linkplain BlockingSupport#guestInterrupt(Thread) guest-interrupted}} while acquiring
-     * the lock,
+     * <li>is {@linkplain BlockingSupport#guestInterrupt(Thread, Object)} guest-interrupted}} while
+     * acquiring the lock,
      * </ul>
      * then {@link GuestInterruptedException} is thrown. There is no particular handling of the
      * thread interrupted status. It is up to the implementor to determine whether to clear the
@@ -207,17 +207,17 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
     };
     private static final long serialVersionUID = -2776792497346642438L;
 
-    EspressoLockImpl(BlockingSupport blockingSupport) {
+    EspressoLockImpl(BlockingSupport<?> blockingSupport) {
         assert blockingSupport != null;
         this.blockingSupport = blockingSupport;
     }
 
-    private final BlockingSupport blockingSupport;
+    private final BlockingSupport<?> blockingSupport;
     private volatile Condition waitCondition;
     private int waiters = 0;
     private int signals = 0;
 
-    @SuppressFBWarnings(value = "JLM_JSR166_LOCK_MONITORENTER", justification = "Truffle runtime method.")
+    @SuppressFBWarnings(value = "JLM_JSR166_LOCK_MONITORENTER", justification = "Espresso runtime method.")
     private Condition getWaitCondition() {
         Condition cond = waitCondition;
         if (cond == null) {
@@ -237,13 +237,19 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
     }
 
     @Override
+    @TruffleBoundary // ReetrantLock.unlock() blacklisted by SVM
+    public void unlock() {
+        super.unlock();
+    }
+
+    @Override
     public void lockInterruptible() throws GuestInterruptedException {
         blockingSupport.enterBlockingRegion(EspressoLockImpl::doLock, dummy, this);
     }
 
     @Override
     public void lockInterruptibly() {
-        throw new UnsupportedOperationException("lockInterruptibly unsupported for TruffleLocks. Use lockInterruptible instead.");
+        throw new UnsupportedOperationException("lockInterruptibly unsupported for EspressoLock. Use lockInterruptible instead.");
     }
 
     @Override
@@ -380,7 +386,7 @@ final class EspressoLockImpl extends ReentrantLock implements EspressoLock {
         boolean result = true;
 
         @Override
-        @SuppressFBWarnings(value = "WA_AWAIT_NOT_IN_LOOP", justification = "TruffleLock runtime method.")
+        @SuppressFBWarnings(value = "WA_AWAIT_NOT_IN_LOOP", justification = "Espresso lock runtime method.")
         public void apply(EspressoLockImpl lock) throws InterruptedException {
             if (nanoTimeout == 0L) {
                 lock.getWaitCondition().await();

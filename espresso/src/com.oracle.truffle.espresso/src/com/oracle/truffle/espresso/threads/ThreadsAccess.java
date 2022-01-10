@@ -46,7 +46,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 /**
  * Provides bridges to guest world thread implementation.
  */
-public final class ThreadsAccess extends GuestInterrupter implements ContextAccess {
+public final class ThreadsAccess extends GuestInterrupter<StaticObject> implements ContextAccess {
 
     private final Meta meta;
     private final EspressoContext context;
@@ -57,13 +57,33 @@ public final class ThreadsAccess extends GuestInterrupter implements ContextAcce
     }
 
     @Override
-    public void guestInterrupt(Thread t) {
-        doInterrupt(context.getGuestThreadFromHost(t));
+    public void guestInterrupt(Thread t, StaticObject guest) {
+        StaticObject g = guest;
+        if (g == null) {
+            g = getThreadFromHost(t);
+        }
+        doInterrupt(g);
     }
 
     @Override
-    public boolean isGuestInterrupted(Thread t) {
-        return isInterrupted(context.getGuestThreadFromHost(t), false);
+    public boolean isGuestInterrupted(Thread t, StaticObject guest) {
+        StaticObject g = guest;
+        if (g == null) {
+            g = getThreadFromHost(t);
+        }
+        return isInterrupted(g, false);
+    }
+
+    @Override
+    protected StaticObject getCurrentGuestThread() {
+        return context.getLanguage().getThreadLocalState().getCurrentThread();
+    }
+
+    private StaticObject getThreadFromHost(Thread t) {
+        if (t == Thread.currentThread()) {
+            return getCurrentGuestThread();
+        }
+        return context.getGuestThreadFromHost(t);
     }
 
     @Override
@@ -204,7 +224,7 @@ public final class ThreadsAccess extends GuestInterrupter implements ContextAcce
      * {@link #callInterrupt(StaticObject)} instead.
      */
     public void interrupt(StaticObject guest) {
-        context.getTruffleThreads().guestInterrupt(getHost(guest));
+        context.getBlockingSupport().guestInterrupt(getHost(guest), guest);
     }
 
     private void doInterrupt(StaticObject guest) {

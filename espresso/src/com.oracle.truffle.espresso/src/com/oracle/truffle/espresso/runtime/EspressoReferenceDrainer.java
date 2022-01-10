@@ -60,7 +60,7 @@ class EspressoReferenceDrainer implements ContextAccess {
         if (pendingLock == null) {
             synchronized (this) {
                 if (pendingLock == null) {
-                    pendingLock = EspressoLock.create(context.getTruffleThreads());
+                    pendingLock = EspressoLock.create(context.getBlockingSupport());
                 }
             }
         }

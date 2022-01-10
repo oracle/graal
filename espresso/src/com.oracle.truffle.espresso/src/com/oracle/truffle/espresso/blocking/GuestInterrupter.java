@@ -29,16 +29,17 @@ import com.oracle.truffle.api.TruffleSafepoint;
  * Provides the {@link BlockingSupport} with the representation of guest languages interruptions.
  * Only two behaviors are needed for this purpose:
  * <ul>
- * <li>{@link #guestInterrupt(Thread)} should provide the language specific way of making known a
- * given thread was interrupted by guest means.</li>
- * <li>{@link #isGuestInterrupted(Thread)} should provide a way of checking whether a thread was
- * guest-interrupted.</li>
+ * <li>{@link #guestInterrupt(Thread, Object)} should provide the language specific way of making
+ * known a given thread was interrupted by guest means.</li>
+ * <li>{@link #isGuestInterrupted(Thread, Object)} should provide a way of checking whether a thread
+ * was guest-interrupted.</li>
  * </ul>
  * <p>
- * The contract is simply that, if {@link #isGuestInterrupted(Thread)} is called immediately after
- * (and the thread did not have time to process safepoints) {@link #guestInterrupt(Thread)}, then it
- * should return true. Also, the {@link #isGuestInterrupted(Thread)} method must not rely on the
- * host interrupted status (ie: {@link Thread#isInterrupted()}).
+ * The contract is simply that, if {@link #isGuestInterrupted(Thread, Object)} is called immediately
+ * after (and the thread did not have time to process safepoints)
+ * {@link #guestInterrupt(Thread, Object)}, then it should return true. Also, the
+ * {@link #isGuestInterrupted(Thread, Object)} method must not rely on the host interrupted status
+ * (ie: {@link Thread#isInterrupted()}).
  * <p>
  * Note that the guest interrupted status is not cleared by the implementation. It is up to the
  * language implementor to clear it or not when observing an interruption.
@@ -48,14 +49,14 @@ import com.oracle.truffle.api.TruffleSafepoint;
  * blocking methods of this package, but be aware that no early escape from the blocking operations
  * will be possible.
  */
-public abstract class GuestInterrupter implements TruffleSafepoint.Interrupter {
-    public static final GuestInterrupter EMPTY = new GuestInterrupter() {
+public abstract class GuestInterrupter<T> implements TruffleSafepoint.Interrupter {
+    public static final GuestInterrupter<Object> EMPTY = new GuestInterrupter<Object>() {
         @Override
-        public void guestInterrupt(Thread t) {
+        public void guestInterrupt(Thread t, Object guestThread) {
         }
 
         @Override
-        public boolean isGuestInterrupted(Thread t) {
+        public boolean isGuestInterrupted(Thread t, Object guestThread) {
             return false;
         }
     };
@@ -64,24 +65,35 @@ public abstract class GuestInterrupter implements TruffleSafepoint.Interrupter {
      * Provides the semantics for making it known that a thread was interrupted by guest.
      * 
      * @param t the thread to interrupt
+     * @param guestThread the guest representation of the given thread. May be null.
      */
-    public abstract void guestInterrupt(Thread t);
+    public abstract void guestInterrupt(Thread t, T guestThread);
 
     /**
-     * Provides a check whether the given thread was {@linkplain #guestInterrupt(Thread)
+     * Provides a check whether the given thread was {@linkplain #guestInterrupt(Thread, Object)
      * guest-interrupted}.
      * 
      * @param t The thread whose interrupt status is to be checked.
+     * @param guestThread the guest representation of the given thread. May be null.
      * @return true if the thread was guest interrupted, false otherwise.
      */
-    public abstract boolean isGuestInterrupted(Thread t);
+    public abstract boolean isGuestInterrupted(Thread t, T guestThread);
 
-    final void afterInterrupt(Thread current, Throwable ex) {
+    /**
+     * Provides a way of getting the guest representation of the current host thread.
+     * 
+     * @return the guest representation of the current thread
+     */
+    protected T getCurrentGuestThread() {
+        return null;
+    }
+
+    final void afterInterrupt(Throwable ex) {
         if (ex != null) {
             // Do not suppress safepoint throws.
             throw sneakyThrow(ex);
         }
-        if (isGuestInterrupted(current)) {
+        if (isGuestInterrupted(Thread.currentThread(), getCurrentGuestThread())) {
             throw sneakyThrow(new GuestInterruptedException());
         }
     }

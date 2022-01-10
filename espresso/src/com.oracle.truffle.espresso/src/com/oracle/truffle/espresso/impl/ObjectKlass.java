@@ -294,7 +294,7 @@ public final class ObjectKlass extends Klass {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             synchronized (this) {
                 if (initLock == null) {
-                    iLock = this.initLock = EspressoLock.create(getContext().getTruffleThreads());
+                    iLock = this.initLock = EspressoLock.create(getContext().getBlockingSupport());
                 }
             }
         }
@@ -421,7 +421,7 @@ public final class ObjectKlass extends Klass {
                 initState = PREPARED;
                 if (getContext().isMainThreadCreated()) {
                     if (getContext().shouldReportVMEvents()) {
-                        prepareThread = getContext().getGuestThreadFromHost(Thread.currentThread());
+                        prepareThread = getContext().getCurrentThread();
                         getContext().reportClassPrepared(this, prepareThread);
                     }
                 }

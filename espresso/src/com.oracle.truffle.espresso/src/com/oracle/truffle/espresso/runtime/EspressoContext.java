@@ -144,7 +144,7 @@ public final class EspressoContext {
     // region Helpers
     private final EspressoThreadRegistry threadRegistry;
     @CompilationFinal private ThreadsAccess threads;
-    @CompilationFinal private BlockingSupport blockingSupport;
+    @CompilationFinal private BlockingSupport<StaticObject> blockingSupport;
     private final EspressoShutdownHandler shutdownManager;
     private final EspressoReferenceDrainer referenceDrainer;
     // endregion Helpers
@@ -816,7 +816,7 @@ public final class EspressoContext {
         return threads;
     }
 
-    public BlockingSupport getTruffleThreads() {
+    public BlockingSupport<StaticObject> getBlockingSupport() {
         return blockingSupport;
     }
 
