@@ -107,6 +107,7 @@ public final class EspressoThreadRegistry implements ContextAccess {
             guestMainThread = self;
         }
         activeThreads.add(self);
+        context.registerCurrentThread();
     }
 
     public final AtomicLong createdThreadCount = new AtomicLong();

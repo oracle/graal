@@ -854,8 +854,18 @@ public final class EspressoContext {
         return threadRegistry.getGuestThreadFromHost(host);
     }
 
+    public void registerCurrentThread() {
+        Thread t = Thread.currentThread();
+        getLanguage().getThreadLocalStateFor(t).setCurrentThread(getGuestThreadFromHost(t));
+    }
+
     public StaticObject getCurrentThread() {
-        return threadRegistry.getGuestThreadFromHost(Thread.currentThread());
+        StaticObject result = getLanguage().getThreadLocalState().getCurrentThread();
+        if (result != null) {
+            return result;
+        }
+        // Thread not yet started
+        return getGuestThreadFromHost(Thread.currentThread());
     }
 
     /**

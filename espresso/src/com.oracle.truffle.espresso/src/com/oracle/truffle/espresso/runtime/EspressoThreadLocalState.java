@@ -22,6 +22,7 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.vm.VM;
 
@@ -29,6 +30,8 @@ public class EspressoThreadLocalState {
     private EspressoException pendingJniException;
     private final ClassRegistry.TypeStack typeStack;
     private final VM.PrivilegedStack privilegedStack;
+    @CompilationFinal //
+    private StaticObject currentThread;
 
     @SuppressWarnings("unused")
     public EspressoThreadLocalState(EspressoContext context) {
@@ -55,6 +58,15 @@ public class EspressoThreadLocalState {
 
     public void clearPendingException() {
         setPendingException(null);
+    }
+
+    public void setCurrentThread(StaticObject t) {
+        assert currentThread == null;
+        currentThread = t;
+    }
+
+    public StaticObject getCurrentThread() {
+        return currentThread;
     }
 
     public ClassRegistry.TypeStack getTypeStack() {
