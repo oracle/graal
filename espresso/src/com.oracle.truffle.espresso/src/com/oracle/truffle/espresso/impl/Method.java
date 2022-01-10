@@ -131,6 +131,9 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     private boolean removedByRedefinition;
 
+    private MethodHook[] hooks;
+    private final Field.StableBoolean hasActiveHook = new Field.StableBoolean(false);
+
     Method(Method method) {
         this(method, method.getCodeAttribute());
     }
@@ -890,21 +893,20 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return genericSignature;
     }
 
-    private final Field.StableBoolean hasActiveHook = new Field.StableBoolean(false);
-
-    private MethodHook[] hooks = new MethodHook[0];
-
     public boolean hasActiveHook() {
         return hasActiveHook.get();
     }
 
     public synchronized MethodHook[] getMethodHooks() {
+        if (hooks == null) {
+            return MethodHook.EMPTY;
+        }
         return Arrays.copyOf(hooks, hooks.length);
     }
 
     public synchronized void addMethodHook(MethodHook info) {
         hasActiveHook.set(true);
-        if (hooks.length == 0) {
+        if (hooks == null) {
             hooks = new MethodHook[]{info};
             return;
         }
@@ -914,7 +916,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     private void expectActiveHooks() {
-        if (hooks.length == 0) {
+        if (hooks == null) {
             throw new RuntimeException("Method: " + getNameAsString() + " expected to contain method hook");
         }
     }
@@ -926,7 +928,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         if (hooks.length == 1) {
             // make sure it's the right hook
             if (hooks[0].getRequestId() == requestId) {
-                hooks = new MethodHook[0];
+                hooks = null;
                 hasActiveHook.set(false);
                 removed = true;
             }
@@ -959,7 +961,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         if (hooks.length == 1) {
             // make sure it's the right hook
             if (hooks[0] == hook) {
-                hooks = new MethodHook[0];
+                hooks = null;
                 hasActiveHook.set(false);
                 removed = true;
             }
