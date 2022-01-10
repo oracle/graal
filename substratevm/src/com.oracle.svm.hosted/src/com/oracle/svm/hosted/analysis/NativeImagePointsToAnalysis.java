@@ -30,7 +30,7 @@ import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.options.OptionValues;
 
 import com.oracle.graal.pointsto.ObjectScanner;
-import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
+import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
@@ -116,7 +116,7 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
     private void scanHub(ObjectScanner objectScanner, AnalysisType type) {
         SVMHost svmHost = (SVMHost) hostVM;
         JavaConstant hubConstant = SubstrateObjectConstant.forObject(svmHost.dynamicHub(type));
-        objectScanner.scanConstant(hubConstant, ScanReason.HUB);
+        objectScanner.scanConstant(hubConstant, OtherReason.HUB);
     }
 
     public static ResolvedJavaType toWrappedType(ResolvedJavaType type) {

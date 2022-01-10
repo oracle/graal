@@ -118,7 +118,8 @@ public @interface RecomputeFieldValue {
 
         /**
          * When is the value for this custom computation available? By default, it is assumed that
-         * the value is available {@link ValueAvailability#BeforeAnalysis during analysis}.
+         * the value is available {@link ValueAvailability#BeforeAnalysis before analysis}, i.e., it
+         * doesn't depend on analysis results.
          */
         ValueAvailability valueAvailability();
 
