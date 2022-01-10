@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.replacements.amd64;
+package org.graalvm.compiler.replacements.nodes;
 
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
@@ -30,8 +30,6 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
-import org.graalvm.compiler.lir.amd64.AMD64ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -39,6 +37,8 @@ import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.UnaryNode;
 import org.graalvm.compiler.nodes.spi.ArithmeticLIRLowerable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
+import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.type.StampTool;
 
@@ -46,15 +46,23 @@ import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
 /**
- * Count the number of trailing zeros using the {@code tzcntq} or {@code tzcntl} instructions.
+ * Count the number of trailing zeros using the hardware instructions where possible.
  */
 @NodeInfo(cycles = CYCLES_2, size = SIZE_1)
-public final class AMD64CountTrailingZerosNode extends UnaryNode implements ArithmeticLIRLowerable {
-    public static final NodeClass<AMD64CountTrailingZerosNode> TYPE = NodeClass.create(AMD64CountTrailingZerosNode.class);
+public final class CountTrailingZerosNode extends UnaryNode implements ArithmeticLIRLowerable, Lowerable {
+    public static final NodeClass<CountTrailingZerosNode> TYPE = NodeClass.create(CountTrailingZerosNode.class);
 
-    public AMD64CountTrailingZerosNode(ValueNode value) {
+    protected CountTrailingZerosNode(ValueNode value) {
         super(TYPE, computeStamp(value.stamp(NodeView.DEFAULT), value), value);
         assert value.getStackKind() == JavaKind.Int || value.getStackKind() == JavaKind.Long;
+    }
+
+    public static ValueNode create(ValueNode value) {
+        ValueNode folded = tryFold(value);
+        if (folded != null) {
+            return folded;
+        }
+        return new CountTrailingZerosNode(value);
     }
 
     @Override
@@ -88,12 +96,6 @@ public final class AMD64CountTrailingZerosNode extends UnaryNode implements Arit
 
     @Override
     public void generate(NodeLIRBuilderTool builder, ArithmeticLIRGeneratorTool gen) {
-        builder.setResult(this, ((AMD64ArithmeticLIRGeneratorTool) gen).emitCountTrailingZeros(builder.operand(getValue())));
+        builder.setResult(this, gen.emitCountTrailingZeros(builder.operand(getValue())));
     }
-
-    @NodeIntrinsic
-    public static native int countTrailingZeros(int i);
-
-    @NodeIntrinsic
-    public static native int countTrailingZeros(long i);
 }

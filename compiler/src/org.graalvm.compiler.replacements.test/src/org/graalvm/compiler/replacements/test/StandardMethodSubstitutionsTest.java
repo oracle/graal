@@ -32,11 +32,11 @@ import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.calc.AbsNode;
 import org.graalvm.compiler.nodes.calc.ReinterpretNode;
-import org.graalvm.compiler.replacements.amd64.AMD64CountLeadingZerosNode;
-import org.graalvm.compiler.replacements.amd64.AMD64CountTrailingZerosNode;
 import org.graalvm.compiler.replacements.nodes.BitCountNode;
 import org.graalvm.compiler.replacements.nodes.BitScanForwardNode;
 import org.graalvm.compiler.replacements.nodes.BitScanReverseNode;
+import org.graalvm.compiler.replacements.nodes.CountLeadingZerosNode;
+import org.graalvm.compiler.replacements.nodes.CountTrailingZerosNode;
 import org.graalvm.compiler.replacements.nodes.ReverseBytesNode;
 import org.junit.Test;
 
@@ -211,8 +211,8 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
         Object[] args = new Object[]{Integer.MIN_VALUE, -1, 0, 1, Integer.MAX_VALUE};
 
         testSubstitution("integerReverseBytes", Integer.class, "reverseBytes", false, args, ReverseBytesNode.class);
-        testSubstitution("integerNumberOfLeadingZeros", Integer.class, "numberOfLeadingZeros", true, args, BitScanReverseNode.class, AMD64CountLeadingZerosNode.class);
-        testSubstitution("integerNumberOfTrailingZeros", Integer.class, "numberOfTrailingZeros", false, args, BitScanForwardNode.class, AMD64CountTrailingZerosNode.class);
+        testSubstitution("integerNumberOfLeadingZeros", Integer.class, "numberOfLeadingZeros", true, args, BitScanReverseNode.class, CountLeadingZerosNode.class);
+        testSubstitution("integerNumberOfTrailingZeros", Integer.class, "numberOfTrailingZeros", false, args, BitScanForwardNode.class, CountTrailingZerosNode.class);
         testSubstitution("integerBitCount", Integer.class, "bitCount", true, args, BitCountNode.class);
     }
 
@@ -237,8 +237,8 @@ public class StandardMethodSubstitutionsTest extends MethodSubstitutionTest {
         Object[] args = new Object[]{Long.MIN_VALUE, -1L, 0L, 1L, Long.MAX_VALUE};
 
         testSubstitution("longReverseBytes", Long.class, "reverseBytes", false, args, ReverseBytesNode.class);
-        testSubstitution("longNumberOfLeadingZeros", Long.class, "numberOfLeadingZeros", true, args, BitScanReverseNode.class, AMD64CountLeadingZerosNode.class);
-        testSubstitution("longNumberOfTrailingZeros", Long.class, "numberOfTrailingZeros", false, args, BitScanForwardNode.class, AMD64CountTrailingZerosNode.class);
+        testSubstitution("longNumberOfLeadingZeros", Long.class, "numberOfLeadingZeros", true, args, BitScanReverseNode.class, CountLeadingZerosNode.class);
+        testSubstitution("longNumberOfTrailingZeros", Long.class, "numberOfTrailingZeros", false, args, BitScanForwardNode.class, CountTrailingZerosNode.class);
         testSubstitution("longBitCount", Long.class, "bitCount", true, args, BitCountNode.class);
     }
 
