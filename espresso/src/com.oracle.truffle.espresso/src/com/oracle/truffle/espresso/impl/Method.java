@@ -903,17 +903,12 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     public synchronized void addMethodHook(MethodHook info) {
         hasActiveHook.set(true);
-        if (hooks == MethodHook.EMPTY) {
-            hooks = new MethodHook[]{info};
-            return;
-        }
-
         hooks = Arrays.copyOf(hooks, hooks.length + 1);
         hooks[hooks.length - 1] = info;
     }
 
     private void expectActiveHooks() {
-        if (hooks == MethodHook.EMPTY) {
+        if (hooks.length == 0) {
             throw new RuntimeException("Method: " + getNameAsString() + " expected to contain method hook");
         }
     }
