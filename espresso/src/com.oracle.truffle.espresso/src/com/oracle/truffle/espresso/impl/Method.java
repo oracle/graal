@@ -131,7 +131,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     private boolean removedByRedefinition;
 
-    private MethodHook[] hooks;
+    private MethodHook[] hooks = MethodHook.EMPTY;
     private final Field.StableBoolean hasActiveHook = new Field.StableBoolean(false);
 
     Method(Method method) {
