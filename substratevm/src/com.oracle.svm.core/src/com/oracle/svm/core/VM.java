@@ -53,18 +53,6 @@ public final class VM {
         return version;
     }
 
-    public final String version;
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public VM(String config) {
-        String versionStr = System.getProperty("org.graalvm.version");
-        VMError.guarantee(versionStr != null);
-        versionStr = "GraalVM " + versionStr;
-        versionStr += " Java " + JavaVersionUtil.JAVA_SPEC;
-        versionStr += " " + config;
-        version = versionStr;
-    }
-
     private static final String VERSION_INFO_SYMBOL_NAME = "__svm_version_info";
     private static final CGlobalData<CCharPointer> VERSION_INFO = CGlobalDataFactory.createCString(versionValue, VERSION_INFO_SYMBOL_NAME);
 
