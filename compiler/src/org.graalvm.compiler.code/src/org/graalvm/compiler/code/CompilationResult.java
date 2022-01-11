@@ -146,15 +146,14 @@ public class CompilationResult {
          */
         public enum EntryFormat {
             /**
-             * Each entry is a 4 byte offset. The base of the offset is platform dependent.
+             * Each entry is a 4 byte offset.
              */
-            OFFSET(4),
+            OFFSET_ONLY(4),
 
             /**
-             * Each entry is a secondary key value followed by a 4 byte offset. The base of the
-             * offset is platform dependent.
+             * Each entry contains a 4 byte value followed by a 4 byte offset.
              */
-            KEY2_OFFSET(8);
+            VALUE_AND_OFFSET(8);
 
             EntryFormat(int size) {
                 this.size = size;
