@@ -140,7 +140,7 @@ public class TStringTestBase {
             this.buffer = buffer;
         }
 
-        static PointerObject create(byte[] array) {
+        public static PointerObject create(byte[] array) {
             ByteBuffer buffer = ByteBuffer.allocateDirect(array.length);
             UNSAFE.copyMemory(array, Unsafe.ARRAY_BYTE_BASE_OFFSET, null, getBufferAddress(buffer), array.length);
             return new PointerObject(buffer);
@@ -159,6 +159,10 @@ public class TStringTestBase {
         @ExportMessage
         public long asPointer() {
             return getBufferAddress(buffer);
+        }
+
+        public void writeByte(int offset, byte value) {
+            UNSAFE.putByte(getBufferAddress(buffer) + offset, value);
         }
 
         private static long getBufferAddress(ByteBuffer buffer) {
@@ -421,8 +425,7 @@ public class TStringTestBase {
     }
 
     protected static void testIndexOfString(AbstractTruffleString a, byte[] array, boolean isValid, TruffleString.Encoding encoding, int[] codepoints, int[] byteIndices, boolean byteIndex,
-                    boolean lastIndex,
-                    TestIndexOfString test) {
+                    boolean lastIndex, TestIndexOfString test) {
         if (!isValid) {
             // ignore broken strings
             return;

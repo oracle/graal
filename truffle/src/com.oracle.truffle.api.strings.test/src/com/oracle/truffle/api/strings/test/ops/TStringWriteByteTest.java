@@ -41,11 +41,14 @@
 
 package com.oracle.truffle.api.strings.test.ops;
 
+import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_16;
+import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_32;
 import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_8;
 import static org.junit.runners.Parameterized.Parameter;
 
 import java.util.Arrays;
 
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -67,10 +70,16 @@ public class TStringWriteByteTest extends TStringTestBase {
 
     @Test
     public void testAll() throws Exception {
-        byte v = (byte) 123;
+        byte v = (byte) 0x81;
         forAllStrings(true, (a, array, codeRange, isValid, encoding, codepoints, byteIndices) -> {
             byte[] modified = Arrays.copyOf(array, array.length);
-            modified[0] = v;
+            checkNotifyExternal(MutableTruffleString.fromByteArrayUncached(modified, 0, modified.length, encoding, false), encoding, () -> {
+                modified[0] = v;
+            });
+            PointerObject pointerObject = PointerObject.create(array);
+            checkNotifyExternal(MutableTruffleString.fromNativePointerUncached(pointerObject, 0, array.length, encoding, false), encoding, () -> {
+                pointerObject.writeByte(0, v);
+            });
             if (a instanceof MutableTruffleString) {
                 TruffleString[] immutable = {
                                 a.asTruffleStringUncached(encoding),
@@ -97,6 +106,21 @@ public class TStringWriteByteTest extends TStringTestBase {
                 assertBytesEqual(a, encoding, array);
             }
         });
+    }
+
+    private void checkNotifyExternal(MutableTruffleString string, TruffleString.Encoding encoding, Runnable mutate) {
+        TruffleString.CodeRange codeRangeBeforeMutate = string.getCodeRangeUncached(encoding);
+        mutate.run();
+        TruffleString.CodeRange codeRangeAfterMutate = string.getCodeRangeUncached(encoding);
+        Assert.assertSame(codeRangeBeforeMutate, codeRangeAfterMutate);
+        string.notifyExternalMutation();
+        TruffleString.CodeRange codeRangeAfterNotify = string.getCodeRangeUncached(encoding);
+        if (encoding == UTF_8) {
+            Assert.assertSame(TruffleString.CodeRange.BROKEN, codeRangeAfterNotify);
+        } else if (encoding == UTF_16 || encoding == UTF_32) {
+            Assert.assertTrue(codeRangeAfterNotify.isSupersetOf(TruffleString.CodeRange.LATIN_1));
+        }
+        Assert.assertTrue(codeRangeAfterNotify.isSupersetOf(codeRangeBeforeMutate));
     }
 
     @Test

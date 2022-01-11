@@ -76,6 +76,27 @@ public class TStringRegionEqualByteIndexTest extends TStringTestBase {
         });
     }
 
+    @Test
+    public void testWithMask() throws Exception {
+        TruffleString strA = TruffleString.fromJavaStringUncached("ABCDEFGHIJKLMNOPQRSTUVWXYZ", TruffleString.Encoding.UTF_16);
+        TruffleString strB = TruffleString.fromJavaStringUncached("abc", TruffleString.Encoding.UTF_16);
+        TruffleString.WithMask[] withMask = {
+                        TruffleString.WithMask.create(strB.switchEncodingUncached(TruffleString.Encoding.UTF_8), new byte[]{0x20, 0x20, 0x20}, TruffleString.Encoding.UTF_8),
+                        TruffleString.WithMask.createUTF16(strB.switchEncodingUncached(TruffleString.Encoding.UTF_16), new char[]{0x20, 0x20, 0x20}),
+                        TruffleString.WithMask.createUTF32(strB.switchEncodingUncached(TruffleString.Encoding.UTF_32), new int[]{0x20, 0x20, 0x20})
+        };
+        TruffleString.Encoding[] encodings = {TruffleString.Encoding.UTF_8, TruffleString.Encoding.UTF_16, TruffleString.Encoding.UTF_32};
+        for (int i = 0; i < encodings.length; i++) {
+            TruffleString.Encoding encoding = encodings[i];
+            byte[] arr = new byte[strA.byteLength(encoding)];
+            strA.switchEncodingUncached(encoding).copyToByteArrayNodeUncached(0, arr, 0, arr.length, encoding);
+            int iFinal = i;
+            checkStringVariants(arr, TruffleString.CodeRange.ASCII, true, encoding, null, null, (a, array, codeRange, isValid, enc, codepoints, byteIndices) -> {
+                Assert.assertTrue(node.execute(a, 0, withMask[iFinal], 0, strB.switchEncodingUncached(encoding).byteLength(encoding), encoding));
+            });
+        }
+    }
+
     private void checkRegionEquals(
                     AbstractTruffleString a, byte[] arrayA, int fromIndexA,
                     AbstractTruffleString b, byte[] arrayB, int fromIndexB, int length, TruffleString.Encoding encodingA) {
