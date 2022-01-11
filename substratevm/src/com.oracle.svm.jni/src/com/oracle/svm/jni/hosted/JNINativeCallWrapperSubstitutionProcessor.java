@@ -28,10 +28,11 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
-
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.jni.JNIJavaCallTrampolines;
 import com.oracle.svm.jni.access.JNIAccessFeature;
+
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -40,21 +41,20 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * that take care of performing the actual native calls.
  */
 class JNINativeCallWrapperSubstitutionProcessor extends SubstitutionProcessor {
+    private final MetaAccessProvider originalMetaAccess;
+    private final ResolvedJavaType trampolinesType;
     private final Map<ResolvedJavaMethod, JNINativeCallWrapperMethod> callWrappers = new ConcurrentHashMap<>();
-    private final DuringSetupAccessImpl access;
-    private final ResolvedJavaType jniJavaCallTrampolinesType;
 
     JNINativeCallWrapperSubstitutionProcessor(DuringSetupAccessImpl access) {
-        this.access = access;
-        this.jniJavaCallTrampolinesType = access.getMetaAccess().lookupJavaType(JNIJavaCallTrampolines.class).getWrapped();
+        this.originalMetaAccess = access.getMetaAccess().getWrapped();
+        this.trampolinesType = originalMetaAccess.lookupJavaType(JNIJavaCallTrampolines.class);
     }
 
     @Override
     public ResolvedJavaMethod lookup(ResolvedJavaMethod method) {
         assert method.isNative() : "Must have been registered as a native substitution processor";
-        if (method.getDeclaringClass() == jniJavaCallTrampolinesType) {
-            // Avoid generating JNINativeCallWrapperMethods for trampolines
-            return JNIAccessFeature.singleton().getOrCreateCallTrampolineMethod(access, method.getName());
+        if (method.getDeclaringClass().equals(trampolinesType)) {
+            return JNIAccessFeature.singleton().getOrCreateCallTrampolineMethod(originalMetaAccess, method.getName());
         }
         return callWrappers.computeIfAbsent(method, JNINativeCallWrapperMethod::new);
     }

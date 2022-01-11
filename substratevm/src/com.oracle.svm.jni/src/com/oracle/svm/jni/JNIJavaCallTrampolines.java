@@ -24,18 +24,20 @@
  */
 package com.oracle.svm.jni;
 
+import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
+import org.graalvm.nativeimage.Platforms;
+
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.jni.hosted.JNIJavaCallWrapperMethod;
+import com.oracle.svm.jni.hosted.JNICallTrampolineMethod;
 import com.oracle.svm.jni.hosted.JNIJavaCallWrapperMethod.CallVariant;
 
-/**
- * Holder class for generated {@link JNIJavaCallWrapperMethod} code.
- */
+/** Holder class for generated {@link JNICallTrampolineMethod} code. */
 public final class JNIJavaCallTrampolines {
 
     private JNIJavaCallTrampolines() {
     }
 
+    @Platforms(HOSTED_ONLY.class)
     public static String getTrampolineName(CallVariant variant, boolean nonVirtual) {
         StringBuilder name = new StringBuilder(48);
         if (variant == CallVariant.VARARGS) {
@@ -54,10 +56,12 @@ public final class JNIJavaCallTrampolines {
         return name.toString();
     }
 
+    @Platforms(HOSTED_ONLY.class)
     public static boolean isNonVirtual(String trampolineName) {
         return trampolineName.endsWith("NonvirtualJavaCallTrampoline");
     }
 
+    @Platforms(HOSTED_ONLY.class)
     public static CallVariant getVariant(String trampolineName) {
         if (trampolineName.startsWith("varargs")) {
             return CallVariant.VARARGS;

@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.jni;
 
-import com.oracle.svm.jni.hosted.JNICallTrampolineMethod;
+import com.oracle.svm.jni.hosted.JNIJavaCallWrapperMethod;
 
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
- * Holder class for generated {@link JNICallTrampolineMethod} code.
+ * Holder class for generated {@link JNIJavaCallWrapperMethod} code.
  */
 public final class JNIJavaCallWrappers {
     public static ConstantPool getConstantPool(MetaAccessProvider metaAccess) {

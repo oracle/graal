@@ -30,16 +30,11 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
-import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
-import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
-import com.oracle.svm.jni.JNIJavaCallTrampolines;
-import com.oracle.svm.util.ReflectionUtil;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -70,11 +65,13 @@ import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.meta.MaterializedConstantFields;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
+import com.oracle.svm.jni.JNIJavaCallTrampolines;
 import com.oracle.svm.jni.JNISupport;
 import com.oracle.svm.jni.hosted.JNICallTrampolineMethod;
 import com.oracle.svm.jni.hosted.JNIFieldAccessorMethod;
 import com.oracle.svm.jni.hosted.JNIJavaCallWrapperMethod;
 import com.oracle.svm.jni.hosted.JNIJavaCallWrapperMethod.CallVariant;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -93,7 +90,7 @@ public class JNIAccessFeature implements Feature {
 
     private boolean sealed = false;
     private NativeLibraries nativeLibraries;
-    private final Map<String, JNICallTrampolineMethod> trampolineMethods = new HashMap<>();
+    private final Map<String, JNICallTrampolineMethod> trampolineMethods = new ConcurrentHashMap<>();
 
     private int loadedConfigurations;
 
@@ -167,12 +164,10 @@ public class JNIAccessFeature implements Feature {
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) arg;
         this.nativeLibraries = access.getNativeLibraries();
 
-        registerJavaCallTrampoline(access, CallVariant.VARARGS, false);
-        registerJavaCallTrampoline(access, CallVariant.ARRAY, false);
-        registerJavaCallTrampoline(access, CallVariant.VA_LIST, false);
-        registerJavaCallTrampoline(access, CallVariant.VARARGS, true);
-        registerJavaCallTrampoline(access, CallVariant.ARRAY, true);
-        registerJavaCallTrampoline(access, CallVariant.VA_LIST, true);
+        for (CallVariant variant : CallVariant.values()) {
+            registerJavaCallTrampoline(access, variant, false);
+            registerJavaCallTrampoline(access, variant, true);
+        }
 
         /* duplicated to reduce the number of analysis iterations */
         getConditionalConfigurationRegistry().flushConditionalConfiguration(access);
@@ -183,16 +178,13 @@ public class JNIAccessFeature implements Feature {
     }
 
     private static void registerJavaCallTrampoline(BeforeAnalysisAccessImpl access, CallVariant variant, boolean nonVirtual) {
-        AnalysisMetaAccess metaAccess = access.getMetaAccess();
-        ResolvedJavaField field = JNIAccessibleMethod.getCallWrapperField(metaAccess.getWrapped(), variant, nonVirtual);
+        MetaAccessProvider originalMetaAccess = access.getMetaAccess().getWrapped();
+        ResolvedJavaField field = JNIAccessibleMethod.getCallWrapperField(originalMetaAccess, variant, nonVirtual);
         access.getUniverse().lookup(field.getDeclaringClass()).registerAsReachable();
         access.registerAsAccessed(access.getUniverse().lookup(field));
         String name = JNIJavaCallTrampolines.getTrampolineName(variant, nonVirtual);
         Method method = ReflectionUtil.lookupMethod(JNIJavaCallTrampolines.class, name);
-        // Look up the java method to ensure a JNICallTrampolineMethod gets created for it through
-        // com.oracle.svm.jni.hosted.JNINativeCallWrapperSubstitutionProcessor.lookup
-        AnalysisMethod trampoline = metaAccess.lookupJavaMethod(method);
-        access.registerAsCompiled(trampoline);
+        access.registerAsCompiled(method);
     }
 
     public JNICallTrampolineMethod getCallTrampolineMethod(CallVariant variant, boolean nonVirtual) {
@@ -200,29 +192,20 @@ public class JNIAccessFeature implements Feature {
         return getCallTrampolineMethod(name);
     }
 
-    public JNICallTrampolineMethod getCallTrampolineMethod(String javaTrampolineName) {
-        JNICallTrampolineMethod trampoline = trampolineMethods.get(javaTrampolineName);
+    public JNICallTrampolineMethod getCallTrampolineMethod(String trampolineName) {
+        JNICallTrampolineMethod trampoline = trampolineMethods.get(trampolineName);
         assert trampoline != null;
         return trampoline;
     }
 
-    public JNICallTrampolineMethod getOrCreateCallTrampolineMethod(DuringSetupAccessImpl access, String trampolineName) {
-        JNICallTrampolineMethod trampoline = trampolineMethods.get(trampolineName);
-
-        if (trampoline != null) {
-            return trampoline;
-        }
-
-        MetaAccessProvider wrappedMetaAccess = access.getMetaAccess().getWrapped();
-        Method reflectionMethod = ReflectionUtil.lookupMethod(JNIJavaCallTrampolines.class, trampolineName);
-        boolean nonVirtual = JNIJavaCallTrampolines.isNonVirtual(trampolineName);
-        ResolvedJavaField field = JNIAccessibleMethod.getCallWrapperField(wrappedMetaAccess, JNIJavaCallTrampolines.getVariant(trampolineName), nonVirtual);
-        // Use wrapped MetaAccess to avoid infinite recursion through
-        // com.oracle.svm.jni.hosted.JNINativeCallWrapperSubstitutionProcessor.lookup
-        ResolvedJavaMethod method = wrappedMetaAccess.lookupJavaMethod(reflectionMethod);
-        trampoline = new JNICallTrampolineMethod(method, field, nonVirtual);
-        trampolineMethods.put(trampolineName, trampoline);
-        return trampoline;
+    public JNICallTrampolineMethod getOrCreateCallTrampolineMethod(MetaAccessProvider metaAccess, String trampolineName) {
+        return trampolineMethods.computeIfAbsent(trampolineName, name -> {
+            Method reflectionMethod = ReflectionUtil.lookupMethod(JNIJavaCallTrampolines.class, name);
+            boolean nonVirtual = JNIJavaCallTrampolines.isNonVirtual(name);
+            ResolvedJavaField field = JNIAccessibleMethod.getCallWrapperField(metaAccess, JNIJavaCallTrampolines.getVariant(name), nonVirtual);
+            ResolvedJavaMethod method = metaAccess.lookupJavaMethod(reflectionMethod);
+            return new JNICallTrampolineMethod(method, field, nonVirtual);
+        });
     }
 
     public JNINativeLinkage makeLinkage(String declaringClass, String name, String descriptor) {
