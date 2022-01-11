@@ -240,6 +240,14 @@ public class PythonTests extends RegexTestBase {
     }
 
     @Test
+    public void gr28565SimplerAsciiTests() {
+        test("(?=a)|(?<=a)|:", "", "MustAdvance=false", "a:", 0, true, 0, 0, -1);
+        test("(?=a)|(?<=a)|:", "", "MustAdvance=true", "a:", 0, true, 1, 1, -1);
+        test("(?=a)|(?<=a)|:", "", "MustAdvance=true", "a:", 1, true, 1, 2, -1);
+        test("(?=a)|(?<=a)|:", "", "MustAdvance=false", "a:", 2, false);
+    }
+
+    @Test
     public void mustAdvanceLiteralEngineTests() {
         test("", "", "MustAdvance=true", "", 0, false);
         test("", "", "MustAdvance=true", "a", 0, true, 1, 1, -1);

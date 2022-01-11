@@ -209,17 +209,19 @@ public final class TRegexCompilationRequest {
             preCalculatedResults = new PreCalculatedResultFactory[]{PreCalcResultVisitor.createResultFactory(ast)};
         }
         if (allowSimpleCG && preCalculatedResults == null && TRegexOptions.TRegexEnableTraceFinder && !ast.getRoot().hasLoops() && properties.isFixedCodePointWidth()) {
-            try {
-                phaseStart("TraceFinder NFA");
-                traceFinderNFA = NFATraceFinderGenerator.generateTraceFinder(nfa);
-                preCalculatedResults = traceFinderNFA.getPreCalculatedResults();
-                phaseEnd("TraceFinder NFA");
-                debugTraceFinder();
-            } catch (UnsupportedRegexException e) {
-                phaseEnd("TraceFinder NFA Bailout");
-                Loggers.LOG_BAILOUT_MESSAGES.fine(() -> "TraceFinder: " + e.getReason() + ": " + source);
-                // handle with capture group aware DFA, bailout will always happen before
-                // assigning preCalculatedResults
+            if (nfa.isFixedCodePointWidth()) {
+                try {
+                    phaseStart("TraceFinder NFA");
+                    traceFinderNFA = NFATraceFinderGenerator.generateTraceFinder(nfa);
+                    preCalculatedResults = traceFinderNFA.getPreCalculatedResults();
+                    phaseEnd("TraceFinder NFA");
+                    debugTraceFinder();
+                } catch (UnsupportedRegexException e) {
+                    phaseEnd("TraceFinder NFA Bailout");
+                    Loggers.LOG_BAILOUT_MESSAGES.fine(() -> "TraceFinder: " + e.getReason() + ": " + source);
+                    // handle with capture group aware DFA, bailout will always happen before
+                    // assigning preCalculatedResults
+                }
             }
         }
         boolean traceFinder = preCalculatedResults != null;

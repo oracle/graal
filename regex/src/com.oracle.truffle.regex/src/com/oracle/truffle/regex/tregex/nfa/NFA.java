@@ -245,6 +245,17 @@ public final class NFA implements StateIndex<NFAState>, JsonConvertible {
         }
     }
 
+    public boolean isFixedCodePointWidth() {
+        boolean fixedCodePointWidth = true;
+        for (NFAState state : states) {
+            if (state != null && !ast.getEncoding().isFixedCodePointWidth(state.getCharSet())) {
+                fixedCodePointWidth = false;
+                break;
+            }
+        }
+        return fixedCodePointWidth;
+    }
+
     @TruffleBoundary
     @Override
     public JsonValue toJson() {
