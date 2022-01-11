@@ -4,7 +4,7 @@ local sc = (import "ci_common/sulong-common.jsonnet");
 {
   local common = import "../common.jsonnet",
 
-  local linux_amd64 = common["linux-amd64"],
+  local linux_amd64 = common.linux_amd64,
 
   local basicTags = "build,sulongBasic,nwcc,llvm",
   local basicTagsToolchain = "build,sulongBasic,nwcc,llvm,toolchain",
