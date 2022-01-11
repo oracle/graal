@@ -106,10 +106,11 @@
   // Hardware definitions
   // ********************
   common:: deps.common + self.mx + {
+    local where = if std.objectHas(self, "name") then " in " + self.name else "",
     # enforce self.os (useful for generating job names)
-    os:: error "self.os not set in " + self.name,
+    os:: error "self.os not set" + where,
     # enforce self.arch (useful for generating job names)
-    arch:: error "self.arch not set",
+    arch:: error "self.arch not set" + where,
     capabilities +: [],
     catch_files +: common_json.catch_files,
     logs : [
