@@ -1298,7 +1298,7 @@ def _update_graaljdk(src_jdk, dst_jdk_dir=None, root_module_names=None, export_t
 
         if isJDK8:
             jre_dir = join(tmp_dst_jdk_dir, 'jre')
-            shutil.copytree(src_jdk.home, tmp_dst_jdk_dir)
+            shutil.copytree(src_jdk.home, tmp_dst_jdk_dir, symlinks=True)
 
             boot_dir = mx.ensure_dir_exists(join(jre_dir, 'lib', 'boot'))
             jvmci_dir = mx.ensure_dir_exists(join(jre_dir, 'lib', 'jvmci'))
