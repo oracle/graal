@@ -492,6 +492,7 @@ public class NativeImageGenerator {
                 ImageSingletons.add(TemporaryBuildDirectoryProvider.class, tempDirectoryProvider);
                 doRun(entryPoints, javaMainSupport, imageName, classlistTimer, k, harnessSubstitutions, compilationExecutor, analysisExecutor);
             } finally {
+                reporter.ensureCreationStageEndCompleted();
                 watchdog.close();
             }
         } finally {
