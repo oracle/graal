@@ -44,11 +44,8 @@ package org.graalvm.wasm.parser.validation;
 import org.graalvm.wasm.Assert;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.collection.ByteArrayList;
-import org.graalvm.wasm.collection.IntArrayList;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
-
-import java.util.ArrayList;
 
 import static java.lang.Integer.compareUnsigned;
 
@@ -56,27 +53,21 @@ import static java.lang.Integer.compareUnsigned;
  * Represents the values and stack frames of a Wasm code section during validation. Stores
  * additional information used to generate parser nodes.
  */
-public class ValidationState {
+public class ParserState {
     private static final byte[] EMPTY_ARRAY = new byte[0];
     private static final byte UNKNOWN = -1;
     private static final byte ANY = 0;
 
     private final ByteArrayList valueStack;
     private final ControlStack controlStack;
-
-    private final IntArrayList intConstants;
-    private final ArrayList<int[]> branchTables;
-    private int profileCount;
+    private final ExtraDataList extraData;
 
     private int maxStackSize;
 
-    public ValidationState() {
+    public ParserState() {
         this.valueStack = new ByteArrayList();
         this.controlStack = new ControlStack();
-
-        this.intConstants = new IntArrayList();
-        this.branchTables = new ArrayList<>();
-        this.profileCount = 0;
+        this.extraData = new ExtraDataList();
 
         this.maxStackSize = 0;
     }
@@ -253,32 +244,94 @@ public class ValidationState {
         }
     }
 
-    /**
-     * Creates a new control frame that holds information about the current scope and pushes it onto
-     * the control frame stack.
-     * 
-     * @param opcode The opcode of the control structure that was entered.
-     * @param returnType The return type of the control structure that was entered.
-     */
-    public void enterBlock(int opcode, byte returnType) {
+    private byte[] getReturnTypeArray(byte returnType) {
         byte[] out = EMPTY_ARRAY;
         if (returnType != WasmType.VOID_TYPE) {
             out = new byte[]{returnType};
         }
-        enterBlock(opcode, EMPTY_ARRAY, out);
+        return out;
     }
 
     /**
-     * Creates a new control frame based on the given information.
-     * 
-     * @param opcode The opcode of the control frame.
-     * @param in The input value types of the control frame.
-     * @param out The result value types of the control frame.
+     * Creates a new control frame that holds information about the current scope and pushes it onto
+     * the control frame stack.
+     *
+     * @param returnType The return type of the control structure that was entered.
      */
-    private void enterBlock(int opcode, byte[] in, byte[] out) {
-        ControlFrame frame = new ControlFrame(opcode, in, out, valueStack.size(), false);
+    public void enterBlock(byte returnType) {
+        ControlFrame frame = new BlockFrame(EMPTY_ARRAY, getReturnTypeArray(returnType), valueStack.size(), false);
         controlStack.push(frame);
-        pushAll(in);
+    }
+
+    /**
+     * Creates a new control frame that holds information about the current scope and pushes it onto
+     * the control frame stack. The control frame represents a loop.
+     *
+     * @param returnType The return type of the control structure that was entered.
+     * @param offset The offset of the control structure that was entered in the wasm binary.
+     */
+    public void enterLoop(byte returnType, int offset) {
+        ControlFrame frame = new LoopFrame(EMPTY_ARRAY, getReturnTypeArray(returnType), valueStack.size(), false, offset, extraData.getLocation());
+        controlStack.push(frame);
+    }
+
+    public void enterIf(byte returnType) {
+        ControlFrame frame = new IfFrame(EMPTY_ARRAY, getReturnTypeArray(returnType), valueStack.size(), false, extraData.addIfLocation());
+        controlStack.push(frame);
+    }
+
+    public void enterElse(int offset) {
+        ControlFrame frame = controlStack.peek();
+        frame.enterElse(this, extraData, offset);
+    }
+
+    public void addConditionalBranch(int branchLabel) {
+        checkLabelExists(branchLabel);
+        ControlFrame frame = getFrame(branchLabel);
+        final byte[] labelTypes = frame.getLabelTypes();
+        popAll(labelTypes);
+        pushAll(labelTypes);
+        frame.addConditionalBranch(extraData);
+    }
+
+    public void addUnconditionalBranch(int branchLabel) {
+        checkLabelExists(branchLabel);
+        ControlFrame frame = getFrame(branchLabel);
+        final byte[] labelTypes = frame.getLabelTypes();
+        popAll(labelTypes);
+        frame.addUnconditionalBranch(extraData);
+    }
+
+    public void addBranchTable(int[] branchLabels) {
+        int branchLabel = branchLabels[branchLabels.length - 1];
+        checkLabelExists(branchLabel);
+        ControlFrame frame = getFrame(branchLabel);
+        byte[] branchLabelReturnTypes = frame.getLabelTypes();
+        int location = extraData.addBranchTableLocation(branchLabels.length);
+        for (int i = 0; i < branchLabels.length; i++) {
+            int otherBranchLabel = branchLabels[i];
+            checkLabelExists(otherBranchLabel);
+            frame = getFrame(otherBranchLabel);
+            byte[] otherBranchLabelReturnTypes = frame.getLabelTypes();
+            checkLabelTypes(branchLabelReturnTypes, otherBranchLabelReturnTypes);
+            pushAll(popAll(otherBranchLabelReturnTypes));
+            frame.addUnconditionalBranchTableEntry(extraData, location, i);
+        }
+        popAll(branchLabelReturnTypes);
+    }
+
+    public void addReturn() {
+        ControlFrame frame = getRootBlock();
+        Assert.assertIntLessOrEqual(frame.getLabelTypeLength(), 1, Failure.INVALID_RESULT_ARITY);
+        checkReturnTypes(frame);
+    }
+
+    public void addIndirectCall(int childOffset) {
+        extraData.addIndirectCall(childOffset);
+    }
+
+    public void addCall(int childOffset) {
+        extraData.addCall(childOffset);
     }
 
     /**
@@ -287,10 +340,21 @@ public class ValidationState {
      * @throws WasmException If the number of return value types do not match with the remaining
      *             stack or the number of return values is greater than 1.
      */
-    public void exitBlock() {
+    public void exit(int offset) {
         Assert.assertTrue(!controlStack.isEmpty(), Failure.UNEXPECTED_END_OF_BLOCK);
         ControlFrame frame = controlStack.peek();
         byte[] resultTypes = frame.getResultTypes();
+
+        frame.exit(extraData, offset);
+
+        checkStackAfterFrameExit(frame, resultTypes);
+
+        controlStack.pop();
+        Assert.assertIntLessOrEqual(resultTypes.length, 1, "A block cannot return more than one value.", Failure.INVALID_RESULT_ARITY);
+        pushAll(resultTypes);
+    }
+
+    public void checkStackAfterFrameExit(ControlFrame frame, byte[] resultTypes) {
         if (availableStackSize() > resultTypes.length) {
             byte[] actualTypes = popAvailableUnchecked();
             if (!checkTypes(resultTypes, actualTypes)) {
@@ -298,14 +362,9 @@ public class ValidationState {
             }
         }
         checkReturnTypes(frame);
-        controlStack.pop();
-        Assert.assertIntLessOrEqual(resultTypes.length, 1, "A block cannot return more than one value.", Failure.INVALID_RESULT_ARITY);
-        if (!frame.isIf()) {
-            pushAll(resultTypes);
-        }
     }
 
-    public ControlFrame getBlock(int index) {
+    public ControlFrame getFrame(int index) {
         return controlStack.get(index);
     }
 
@@ -398,15 +457,6 @@ public class ValidationState {
         frame.setUnreachable();
     }
 
-    /**
-     * @param index The control stack for which the value stack size should be returned.
-     * @return Returns the value stack size of the control stack given by the index.
-     */
-    public int getValueStackSize(int index) {
-        assert compareUnsigned(index, controlStackSize()) < 0;
-        return controlStack.get(index).getInitialStackSize();
-    }
-
     public int controlStackSize() {
         return controlStack.size();
     }
@@ -415,39 +465,11 @@ public class ValidationState {
         return valueStack.size();
     }
 
-    public int intConstantSize() {
-        return intConstants.size();
-    }
-
-    public int branchTableSize() {
-        return branchTables.size();
-    }
-
-    public int currentProfileCount() {
-        return profileCount;
-    }
-
     public int maxStackSize() {
         return maxStackSize;
     }
 
-    public void useIntConstant(int constant) {
-        intConstants.add(constant);
-    }
-
-    public void incrementProfileCount() {
-        ++profileCount;
-    }
-
-    public void saveBranchTable(int[] branchTable) {
-        branchTables.add(branchTable);
-    }
-
-    public IntArrayList intConstants() {
-        return intConstants;
-    }
-
-    public ArrayList<int[]> branchTables() {
-        return branchTables;
+    public int[] extraData() {
+        return extraData.getExtraDataArray();
     }
 }

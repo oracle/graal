@@ -41,50 +41,71 @@
 
 package org.graalvm.wasm.parser.validation;
 
-import org.graalvm.wasm.constants.Instructions;
+import org.graalvm.wasm.collection.IntArrayList;
 
 /**
  * Represents the scope of a block structure during module validation.
  */
-public class ControlFrame {
-    private final int opcode;
+public abstract class ControlFrame {
     private final byte[] paramTypes;
     private final byte[] resultTypes;
     private final int initialStackSize;
     private boolean unreachable;
+    private final IntArrayList conditionalBranches;
+    private final IntArrayList unconditionalBranches;
 
     /**
-     * @param opcode The opcode of the block structure.
      * @param paramTypes The parameter value types of the block structure.
      * @param resultTypes The result value types of the block structure.
      * @param initialStackSize The size of the value stack when entering this block structure.
      * @param unreachable If the block structure should be declared unreachable.
      */
-    ControlFrame(int opcode, byte[] paramTypes, byte[] resultTypes, int initialStackSize, boolean unreachable) {
-        this.opcode = opcode;
+    ControlFrame(byte[] paramTypes, byte[] resultTypes, int initialStackSize, boolean unreachable) {
         this.paramTypes = paramTypes;
         this.resultTypes = resultTypes;
         this.initialStackSize = initialStackSize;
         this.unreachable = unreachable;
+
+        this.conditionalBranches = new IntArrayList();
+        this.unconditionalBranches = new IntArrayList();
     }
 
-    boolean isLoop() {
-        return opcode == Instructions.LOOP;
+    public abstract byte[] getLabelTypes();
+
+    public abstract void enterElse(ParserState state, ExtraDataList extraData, int offset);
+
+    public abstract void exit(ExtraDataList extraData, int offset);
+
+    public void addConditionalBranch(ExtraDataList extraData) {
+        conditionalBranches.add(extraData.addConditionalBranchLocation());
     }
 
-    boolean isIf() {
-        return opcode == Instructions.IF;
+    public void addUnconditionalBranch(ExtraDataList extraData) {
+        unconditionalBranches.add(extraData.addUnconditionalBranchLocation());
+    }
+
+    public void addUnconditionalBranchTableEntry(ExtraDataList extraData, int location, int index) {
+        unconditionalBranches.add(extraData.addBranchTableEntry(location, index));
+    }
+
+    protected int[] conditionalBranches() {
+        return conditionalBranches.toArray();
+    }
+
+    protected int[] unconditionalBranches() {
+        return unconditionalBranches.toArray();
+    }
+
+    protected byte[] getParamTypes() {
+        return paramTypes;
     }
 
     public byte[] getResultTypes() {
         return resultTypes;
     }
 
-    public byte[] getLabelTypes() {
-        if (isLoop()) {
-            return paramTypes;
-        }
-        return resultTypes;
+    protected int getLabelTypeLength() {
+        return getLabelTypes().length;
     }
 
     int getInitialStackSize() {

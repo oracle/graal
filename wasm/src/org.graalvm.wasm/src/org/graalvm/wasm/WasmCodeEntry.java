@@ -40,8 +40,6 @@
  */
 package org.graalvm.wasm;
 
-import org.graalvm.wasm.collection.IntArrayList;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -51,19 +49,18 @@ public final class WasmCodeEntry {
     private final WasmFunction function;
     @CompilationFinal(dimensions = 1) private final byte[] data;
     @CompilationFinal(dimensions = 1) private final byte[] localTypes;
-    @CompilationFinal(dimensions = 1) private int[] intConstants;
-    @CompilationFinal(dimensions = 2) private int[][] branchTables;
-    @CompilationFinal(dimensions = 1) private int[] profileCounters;
     private final int maxStackSize;
     private final BranchProfile errorBranch = BranchProfile.create();
+    @CompilationFinal(dimensions = 1) private final int[] extraData;
+    private final int numLocals;
 
-    public WasmCodeEntry(WasmFunction function, byte[] data, byte[] localTypes, int maxStackSize) {
+    public WasmCodeEntry(WasmFunction function, byte[] data, byte[] localTypes, int maxStackSize, int[] extraData) {
         this.function = function;
         this.data = data;
         this.localTypes = localTypes;
         this.maxStackSize = maxStackSize;
-        this.intConstants = null;
-        this.profileCounters = null;
+        this.extraData = extraData;
+        this.numLocals = localTypes.length;
     }
 
     public WasmFunction function() {
@@ -82,45 +79,16 @@ public final class WasmCodeEntry {
         return localTypes[index];
     }
 
-    @SuppressWarnings("unused")
-    public int intConstant(int index) {
-        return intConstants[index];
-    }
-
-    public void setIntConstants(int[] intConstants) {
-        this.intConstants = intConstants;
-    }
-
-    public int[] intConstants() {
-        return intConstants;
-    }
-
-    public int[] branchTable(int index) {
-        return branchTables[index];
-    }
-
-    public void setBranchTables(int[][] branchTables) {
-        this.branchTables = branchTables;
-    }
-
-    public void setProfileCount(int size) {
-        if (size > 0) {
-            this.profileCounters = new int[size];
-        } else {
-            this.profileCounters = IntArrayList.EMPTY_INT_ARRAY;
-        }
-    }
-
-    public int[] profileCounters() {
-        return profileCounters;
-    }
-
     public int numLocals() {
-        return localTypes.length;
+        return numLocals;
     }
 
     public int functionIndex() {
         return function.index();
+    }
+
+    public int[] extraData() {
+        return extraData;
     }
 
     /**

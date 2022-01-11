@@ -61,9 +61,9 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
     private final ModuleLimits limits;
     private final Source source;
 
-    private CodeEntry[] codeEntries;
+    @CompilationFinal(dimensions = 1) private CodeEntry[] codeEntries;
 
-    @CompilationFinal(dimensions = 1) private byte[] data;
+    @CompilationFinal(dimensions = 1) private final byte[] data;
     @CompilationFinal private boolean isParsed;
 
     private WasmModule(String name, byte[] data, ModuleLimits limits, Source source) {

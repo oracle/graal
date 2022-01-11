@@ -44,7 +44,7 @@ package org.graalvm.wasm.parser.ir;
 /**
  * Represents information about a wasm call instruction.
  */
-public class CallNode implements ParserNode {
+public class CallNode {
     private final int functionIndex;
     private final boolean isIndirectCall;
 

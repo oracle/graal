@@ -73,7 +73,7 @@ public class WasmRootNode extends RootNode {
     protected final WasmInstance instance;
     private final WasmCodeEntry codeEntry;
     private final SourceSection sourceSection;
-    @Child private WasmNode body;
+    @Child private WasmBlockNode body;
 
     public WasmRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, WasmInstance instance, WasmCodeEntry codeEntry) {
         super(language, frameDescriptor);
@@ -87,7 +87,7 @@ public class WasmRootNode extends RootNode {
         return WasmContext.get(this);
     }
 
-    public void setBody(WasmNode body) {
+    public void setBody(WasmBlockNode body) {
         this.body = insert(body);
     }
 
@@ -122,7 +122,7 @@ public class WasmRootNode extends RootNode {
         // The reason for this is that the operand stack cannot be passed
         // as an argument to the loop-node's execute method,
         // and must be restored at the beginning of the loop body.
-        final int numLocals = body.codeEntry().numLocals();
+        final int numLocals = codeEntry.numLocals();
         moveArgumentsToLocals(frame);
 
         // WebAssembly rules dictate that a function's locals must be initialized to zero before
@@ -163,11 +163,11 @@ public class WasmRootNode extends RootNode {
     @ExplodeLoop
     private void moveArgumentsToLocals(VirtualFrame frame) {
         Object[] args = frame.getArguments();
-        int numArgs = body.instance().symbolTable().function(codeEntry().functionIndex()).numArguments();
+        int numArgs = instance.symbolTable().function(codeEntry().functionIndex()).numArguments();
         assert args.length == numArgs : "Expected number of arguments " + numArgs + ", actual " + args.length;
         for (int i = 0; i != numArgs; ++i) {
             final Object arg = args[i];
-            byte type = body.codeEntry().localType(i);
+            byte type = codeEntry.localType(i);
             switch (type) {
                 case WasmType.I32_TYPE:
                     pushInt(frame, i, (int) arg);
@@ -187,9 +187,9 @@ public class WasmRootNode extends RootNode {
 
     @ExplodeLoop
     private void initializeLocals(VirtualFrame frame) {
-        int numArgs = body.instance().symbolTable().function(codeEntry().functionIndex()).numArguments();
-        for (int i = numArgs; i != body.codeEntry().numLocals(); ++i) {
-            byte type = body.codeEntry().localType(i);
+        int numArgs = instance.symbolTable().function(codeEntry().functionIndex()).numArguments();
+        for (int i = numArgs; i != codeEntry.numLocals(); ++i) {
+            byte type = codeEntry.localType(i);
             switch (type) {
                 case WasmType.I32_TYPE:
                     pushInt(frame, i, 0);
