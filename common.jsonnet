@@ -92,12 +92,15 @@
 
   "labsjdk-ce-11"::      jdk11 + { downloads+: { JAVA_HOME : jdks["labsjdk-ce-11"] }},
   "labsjdk-ee-11"::      jdk11 + { downloads+: { JAVA_HOME : jdks["labsjdk-ee-11"] }},
-  labsjdk11::            self["labsjdk-" + repo_config.graalvm_edition + "-11"],
   "labsjdk-ce-17"::      jdk17 + { downloads+: { JAVA_HOME : jdks["labsjdk-ce-17"] }},
   "labsjdk-ee-17"::      jdk17 + { downloads+: { JAVA_HOME : jdks["labsjdk-ee-17"] }},
-  labsjdk17::            self["labsjdk-" + repo_config.graalvm_edition + "-17"],
   "labsjdk-ce-17Debug":: jdk17 + { downloads+: { JAVA_HOME : jdks["labsjdk-ce-17Debug"] }},
   "labsjdk-ee-17Debug":: jdk17 + { downloads+: { JAVA_HOME : jdks["labsjdk-ee-17Debug"] }},
+
+  # Aliases to edition specific labsjdks
+  labsjdk11::            self["labsjdk-" + repo_config.graalvm_edition + "-11"],
+  labsjdk17::            self["labsjdk-" + repo_config.graalvm_edition + "-17"],
+  labsjdk11Debug::       self["labsjdk-" + repo_config.graalvm_edition + "-11Debug"],
   labsjdk17Debug::       self["labsjdk-" + repo_config.graalvm_edition + "-17Debug"],
 
 
