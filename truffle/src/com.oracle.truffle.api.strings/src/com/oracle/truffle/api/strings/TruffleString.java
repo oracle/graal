@@ -1005,7 +1005,6 @@ public final class TruffleString extends AbstractTruffleString {
         @CompilationFinal(dimensions = 1) private static final Encoding[] ENCODINGS_TABLE = new Encoding[Encoding.values().length];
         @CompilationFinal(dimensions = 1) private static final JCodings.Encoding[] J_CODINGS_TABLE = new JCodings.Encoding[Encoding.values().length];
         @CompilationFinal(dimensions = 1) private static final byte[] MAX_COMPATIBLE_CODE_RANGE = new byte[Encoding.values().length];
-        @CompilationFinal(dimensions = 1) private static final byte[] NATURAL_STRIDE = new byte[Encoding.values().length];
         @CompilationFinal(dimensions = 1) private static final TruffleString[] EMPTY_STRINGS = new TruffleString[Encoding.values().length];
         private static final EconomicMap<String, Encoding> J_CODINGS_NAME_MAP = EconomicMap.create(Encoding.values().length);
 
@@ -1016,7 +1015,6 @@ public final class TruffleString extends AbstractTruffleString {
                 assert J_CODINGS_TABLE[e.id] == null;
                 J_CODINGS_TABLE[e.id] = e.jCoding;
                 MAX_COMPATIBLE_CODE_RANGE[e.id] = e.maxCompatibleCodeRange;
-                NATURAL_STRIDE[e.id] = e.naturalStride;
                 if (JCodings.ENABLED) {
                     J_CODINGS_NAME_MAP.put(e.jCoding.toString(), e);
                 }
@@ -1027,7 +1025,9 @@ public final class TruffleString extends AbstractTruffleString {
             for (Encoding e : Encoding.values()) {
                 if (e != US_ASCII) {
                     assert EMPTY_STRINGS[e.id] == null;
-                    EMPTY_STRINGS[e.id] = createEmpty(e.id);
+                    if (isSupported(e.id) || JCodings.ENABLED) {
+                        EMPTY_STRINGS[e.id] = createEmpty(e.id);
+                    }
                 }
             }
         }

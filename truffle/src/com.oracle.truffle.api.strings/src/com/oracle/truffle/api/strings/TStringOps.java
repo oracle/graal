@@ -966,7 +966,7 @@ final class TStringOps {
     private static int runIndexOfAnyChar(Node location, Object array, long offset, int length, int stride, boolean isNative, int fromIndex, char... needle) {
         for (int i = fromIndex; i < length; i++) {
             for (int j = 0; j < needle.length; j++) {
-                if (readValue(array, offset, stride, i, isNative) == (int) needle[j]) {
+                if (readValue(array, offset, stride, i, isNative) == needle[j]) {
                     return i;
                 }
                 TStringConstants.truffleSafePointPoll(location, j + 1);

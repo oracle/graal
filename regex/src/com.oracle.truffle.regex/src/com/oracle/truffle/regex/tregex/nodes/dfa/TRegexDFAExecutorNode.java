@@ -46,7 +46,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
