@@ -34,11 +34,6 @@ import jdk.vm.ci.meta.Value;
  * This interface can be used to generate AMD64 LIR for arithmetic operations.
  */
 public interface AMD64ArithmeticLIRGeneratorTool extends ArithmeticLIRGeneratorTool {
-
-    Value emitCountLeadingZeros(Value value);
-
-    Value emitCountTrailingZeros(Value value);
-
     Value emitLogicalAndNot(Value value1, Value value2);
 
     Value emitLowestSetIsolatedBit(Value value);

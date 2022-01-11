@@ -63,6 +63,8 @@ import org.graalvm.compiler.replacements.StringUTF16Substitutions;
 import org.graalvm.compiler.replacements.TargetGraphBuilderPlugins;
 import org.graalvm.compiler.replacements.nodes.ArrayCompareToNode;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
+import org.graalvm.compiler.replacements.nodes.CountLeadingZerosNode;
+import org.graalvm.compiler.replacements.nodes.CountTrailingZerosNode;
 import org.graalvm.compiler.replacements.nodes.FusedMultiplyAddNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
@@ -101,24 +103,14 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
         r.register1("numberOfLeadingZeros", type, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                ValueNode folded = AArch64CountLeadingZerosNode.tryFold(value);
-                if (folded != null) {
-                    b.addPush(JavaKind.Int, folded);
-                } else {
-                    b.addPush(JavaKind.Int, new AArch64CountLeadingZerosNode(value));
-                }
+                b.addPush(JavaKind.Int, CountLeadingZerosNode.create(value));
                 return true;
             }
         });
         r.register1("numberOfTrailingZeros", type, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                ValueNode folded = AArch64CountTrailingZerosNode.tryFold(value);
-                if (folded != null) {
-                    b.addPush(JavaKind.Int, folded);
-                } else {
-                    b.addPush(JavaKind.Int, new AArch64CountTrailingZerosNode(value));
-                }
+                b.addPush(JavaKind.Int, CountTrailingZerosNode.create(value));
                 return true;
             }
         });
