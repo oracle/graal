@@ -62,9 +62,7 @@ import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
 import com.oracle.svm.core.thread.Target_java_lang_Thread;
 import com.oracle.svm.core.util.VMError;
-
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaField;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
