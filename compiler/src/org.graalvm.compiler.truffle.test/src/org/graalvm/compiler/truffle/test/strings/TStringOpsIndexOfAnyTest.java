@@ -121,7 +121,7 @@ public class TStringOpsIndexOfAnyTest extends TStringOpsTest<ArrayIndexOfNode> {
             for (int i = 0; i < values.length; i++) {
                 valuesB[i] = (byte) values[i];
             }
-            test(method, null, arrayA, offsetA, lengthA, fromIndexA, valuesB);
+            test(method, null, DUMMY_LOCATION, arrayA, offsetA, lengthA, fromIndexA, valuesB);
         }
 
         if (strideA < 2) {
@@ -131,7 +131,7 @@ public class TStringOpsIndexOfAnyTest extends TStringOpsTest<ArrayIndexOfNode> {
             for (int i = 0; i < values.length; i++) {
                 valuesC[i] = (char) (strideA == 0 ? values[i] & 0xff : values[i]);
             }
-            test(method, null, arrayA, offsetA, lengthA, strideA, fromIndexA, valuesC);
+            test(method, null, DUMMY_LOCATION, arrayA, offsetA, lengthA, strideA, fromIndexA, valuesC);
         }
 
         ResolvedJavaMethod method = getTStringOpsMethod("indexOfAnyIntIntl",
@@ -140,6 +140,6 @@ public class TStringOpsIndexOfAnyTest extends TStringOpsTest<ArrayIndexOfNode> {
         for (int i = 0; i < values.length; i++) {
             valuesI[i] = strideA == 0 ? values[i] & 0xff : strideA == 1 ? values[i] & 0xffff : values[i];
         }
-        test(method, null, arrayA, offsetA, lengthA, strideA, fromIndexA, valuesI);
+        test(method, null, DUMMY_LOCATION, arrayA, offsetA, lengthA, strideA, fromIndexA, valuesI);
     }
 }

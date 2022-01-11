@@ -39,6 +39,9 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public abstract class TStringOpsTest<T> extends MethodSubstitutionTest {
 
+    protected static final com.oracle.truffle.api.nodes.Node DUMMY_LOCATION = new com.oracle.truffle.api.nodes.Node() {
+    };
+
     public static final String T_STRING_OPS_CLASS_NAME = "com.oracle.truffle.api.strings.TStringOps";
     private final Class<T> nodeClass;
 
@@ -48,7 +51,10 @@ public abstract class TStringOpsTest<T> extends MethodSubstitutionTest {
 
     protected ResolvedJavaMethod getTStringOpsMethod(String methodName, Class<?>... argTypes) throws ClassNotFoundException {
         Class<?> javaClass = Class.forName(T_STRING_OPS_CLASS_NAME);
-        return getResolvedJavaMethod(javaClass, methodName, argTypes);
+        Class<?>[] argTypesWithNode = new Class<?>[argTypes.length + 1];
+        argTypesWithNode[0] = com.oracle.truffle.api.nodes.Node.class;
+        System.arraycopy(argTypes, 0, argTypesWithNode, 1, argTypes.length);
+        return getResolvedJavaMethod(javaClass, methodName, argTypesWithNode);
     }
 
     protected ResolvedJavaMethod getArrayCopyWithStride() throws ClassNotFoundException {

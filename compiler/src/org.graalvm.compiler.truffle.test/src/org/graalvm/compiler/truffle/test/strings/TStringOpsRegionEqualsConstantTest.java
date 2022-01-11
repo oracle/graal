@@ -55,7 +55,7 @@ public class TStringOpsRegionEqualsConstantTest extends TStringOpsRegionEqualsTe
                     byte[] arrayA, int offsetA, int lengthA, int strideA, int fromIndexA,
                     byte[] arrayB, int offsetB, int lengthB, int strideB, int fromIndexB, int lengthCMP) {
         super(arrayA, offsetA, lengthA, strideA, fromIndexA, arrayB, offsetB, lengthB, strideB, fromIndexB, lengthCMP);
-        constantArgs = new Object[]{
+        constantArgs = new Object[]{DUMMY_LOCATION,
                         arrayA, offsetA, lengthA, strideA, fromIndexA,
                         arrayB, offsetB, lengthB, strideB, fromIndexB, JavaConstant.NULL_POINTER, lengthCMP};
     }
@@ -93,7 +93,7 @@ public class TStringOpsRegionEqualsConstantTest extends TStringOpsRegionEqualsTe
         ResolvedJavaMethod method = getTStringOpsMethod("regionEqualsWithOrMaskWithStrideIntl",
                         Object.class, int.class, int.class, int.class, int.class,
                         Object.class, int.class, int.class, int.class, int.class, byte[].class, int.class);
-        test(method, null,
+        test(method, null, DUMMY_LOCATION,
                         arrayA, offsetA, lengthA, strideA, fromIndexA,
                         arrayB, offsetB, lengthB, strideB, fromIndexB, null, lengthCMP);
     }

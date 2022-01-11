@@ -97,6 +97,6 @@ public class TStringOpsCalcStringAttributesBMPTest extends TStringOpsTest<AMD64C
 
     @Test
     public void testBMP() throws ClassNotFoundException {
-        test(getTStringOpsMethod("calcStringAttributesBMP", Object.class, int.class, int.class), null, array, offset, length);
+        test(getTStringOpsMethod("calcStringAttributesBMP", Object.class, int.class, int.class), null, DUMMY_LOCATION, array, offset, length);
     }
 }

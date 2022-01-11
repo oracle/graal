@@ -113,6 +113,6 @@ public class TStringOpsIndexOfTwoConsecutiveTest extends TStringOpsTest<ArrayInd
     public void testIndexOfTwoConsecutive() throws ClassNotFoundException {
         ResolvedJavaMethod method = getTStringOpsMethod("indexOf2ConsecutiveWithStrideIntl",
                         Object.class, int.class, int.class, int.class, int.class, int.class, int.class);
-        test(method, null, arrayA, offsetA, lengthA, strideA, fromIndexA, v0, v1);
+        test(method, null, DUMMY_LOCATION, arrayA, offsetA, lengthA, strideA, fromIndexA, v0, v1);
     }
 }

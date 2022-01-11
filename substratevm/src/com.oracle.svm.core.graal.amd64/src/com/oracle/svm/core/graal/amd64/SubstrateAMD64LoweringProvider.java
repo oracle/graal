@@ -51,7 +51,7 @@ public class SubstrateAMD64LoweringProvider extends SubstrateBasicLoweringProvid
     @SuppressWarnings("unchecked")
     @Override
     public void lower(Node n, LoweringTool tool) {
-        if (lowerAMD64(n, tool)) {
+        if (lowerAMD64(n)) {
             return;
         }
         @SuppressWarnings("rawtypes")

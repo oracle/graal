@@ -116,7 +116,7 @@ public class TStringOpsRegionEqualsTest extends TStringOpsTest<ArrayRegionEquals
         ResolvedJavaMethod method = getTStringOpsMethod("regionEqualsWithOrMaskWithStrideIntl",
                         Object.class, int.class, int.class, int.class, int.class,
                         Object.class, int.class, int.class, int.class, int.class, byte[].class, int.class);
-        test(method, null,
+        test(method, null, DUMMY_LOCATION,
                         arrayA, offsetA, lengthA, strideA, fromIndexA,
                         arrayB, offsetB, lengthB, strideB, fromIndexB, null, lengthCMP);
     }

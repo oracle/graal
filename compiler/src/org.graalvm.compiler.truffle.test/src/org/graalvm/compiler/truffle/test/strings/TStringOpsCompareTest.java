@@ -114,7 +114,7 @@ public class TStringOpsCompareTest extends TStringOpsTest<ArrayRegionCompareToNo
         ResolvedJavaMethod method = getTStringOpsMethod("memcmpWithStrideIntl",
                         Object.class, int.class, int.class,
                         Object.class, int.class, int.class, int.class);
-        test(method, null,
+        test(method, null, DUMMY_LOCATION,
                         arrayA, offsetA, strideA,
                         arrayB, offsetB, strideB, lengthCMP);
     }

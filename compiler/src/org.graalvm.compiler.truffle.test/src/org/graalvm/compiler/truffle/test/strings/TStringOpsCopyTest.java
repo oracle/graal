@@ -112,11 +112,11 @@ public class TStringOpsCopyTest extends TStringOpsTest<ArrayCopyWithConversionsN
     @Test
     public void testCopy() throws ClassNotFoundException {
         ArgSupplier arrayB = () -> new byte[128 + offsetB + (lengthCPY << strideB) + 128];
-        test(getArrayCopyWithStride(), null, arrayA, offsetA, strideA, 0, arrayB, offsetB, strideB, 0, lengthCPY);
+        test(getArrayCopyWithStride(), null, DUMMY_LOCATION, arrayA, offsetA, strideA, 0, arrayB, offsetB, strideB, 0, lengthCPY);
         if (strideA == 1) {
-            test(getArrayCopyWithStrideCB(), null, toCharArray((byte[]) arrayA), offsetA, arrayB, offsetB, strideB, lengthCPY);
+            test(getArrayCopyWithStrideCB(), null, DUMMY_LOCATION, toCharArray((byte[]) arrayA), offsetA, arrayB, offsetB, strideB, lengthCPY);
         } else if (strideA == 2) {
-            test(getArrayCopyWithStrideIB(), null, toIntArray((byte[]) arrayA), offsetA, arrayB, offsetB, strideB, lengthCPY);
+            test(getArrayCopyWithStrideIB(), null, DUMMY_LOCATION, toIntArray((byte[]) arrayA), offsetA, arrayB, offsetB, strideB, lengthCPY);
         }
     }
 

@@ -74,7 +74,7 @@ public class AMD64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvider
 
     @Override
     public void lower(Node n, LoweringTool tool) {
-        if (lowerAMD64(n, tool)) {
+        if (lowerAMD64(n)) {
             return;
         }
         if (n instanceof FloatConvertNode) {

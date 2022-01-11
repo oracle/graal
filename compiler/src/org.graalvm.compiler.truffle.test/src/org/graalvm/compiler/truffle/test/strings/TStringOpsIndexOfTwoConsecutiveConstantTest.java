@@ -52,7 +52,7 @@ public class TStringOpsIndexOfTwoConsecutiveConstantTest extends TStringOpsIndex
 
     public TStringOpsIndexOfTwoConsecutiveConstantTest(byte[] arrayA, int offsetA, int lengthA, int strideA, int fromIndexA, int v0, int v1, int mask0, int mask1) {
         super(arrayA, offsetA, lengthA, strideA, fromIndexA, v0, v1, mask0, mask1);
-        constantArgs = new Object[]{arrayA, offsetA, lengthA, strideA, fromIndexA, v0, v1, mask0, mask1};
+        constantArgs = new Object[]{DUMMY_LOCATION, arrayA, offsetA, lengthA, strideA, fromIndexA, v0, v1, mask0, mask1};
     }
 
     @Parameters(name = "{index}: offset: {1}, length: {2}, stride: {3}, fromIndex: {4}, toIndex: {5}")
@@ -88,9 +88,9 @@ public class TStringOpsIndexOfTwoConsecutiveConstantTest extends TStringOpsIndex
     public void testIndexOfTwoConsecutive() throws ClassNotFoundException {
         ResolvedJavaMethod method = getTStringOpsMethod("indexOf2ConsecutiveWithStrideIntl",
                         Object.class, int.class, int.class, int.class, int.class, int.class, int.class);
-        constantArgs[5] = v0;
-        constantArgs[6] = v1;
-        test(method, null, arrayA, offsetA, lengthA, strideA, fromIndexA, v0, v1);
+        constantArgs[6] = v0;
+        constantArgs[7] = v1;
+        test(method, null, DUMMY_LOCATION, arrayA, offsetA, lengthA, strideA, fromIndexA, v0, v1);
     }
 
     @Override

@@ -45,16 +45,16 @@ public class TStringOpsCopyReturnValueTest extends TStringOpsTest<ArrayCopyWithC
         byte[] arrayB = new byte[4];
         for (int strideA = 0; strideA < 3; strideA++) {
             for (int strideB = 0; strideB < 3; strideB++) {
-                Assert.assertSame(arrayB, invoke(method, null, arrayA, 0, strideA, 0, arrayB, 0, strideB, 0, 1));
+                Assert.assertSame(arrayB, invoke(method, null, DUMMY_LOCATION, arrayA, 0, strideA, 0, arrayB, 0, strideB, 0, 1));
             }
         }
         ResolvedJavaMethod methodCB = getArrayCopyWithStrideCB();
         for (int strideB = 0; strideB < 3; strideB++) {
-            Assert.assertSame(arrayB, invoke(methodCB, null, new char[1], 0, arrayB, 0, strideB, 1));
+            Assert.assertSame(arrayB, invoke(methodCB, null, DUMMY_LOCATION, new char[1], 0, arrayB, 0, strideB, 1));
         }
         ResolvedJavaMethod methodIB = getArrayCopyWithStrideIB();
         for (int strideB = 0; strideB < 3; strideB++) {
-            Assert.assertSame(arrayB, invoke(methodIB, null, new int[1], 0, arrayB, 0, strideB, 1));
+            Assert.assertSame(arrayB, invoke(methodIB, null, DUMMY_LOCATION, new int[1], 0, arrayB, 0, strideB, 1));
         }
     }
 }

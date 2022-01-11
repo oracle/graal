@@ -64,7 +64,7 @@ public class TStringOpsCompareConstantTest extends TStringOpsCompareTest {
                     byte[] arrayA, int offsetA, int strideA,
                     byte[] arrayB, int offsetB, int strideB, int lengthCMP) {
         super(arrayA, offsetA, strideA, arrayB, offsetB, strideB, lengthCMP);
-        constantArgs = new Object[]{
+        constantArgs = new Object[]{DUMMY_LOCATION,
                         arrayA, offsetA, strideA,
                         arrayB, offsetB, strideB, lengthCMP};
     }
@@ -92,7 +92,7 @@ public class TStringOpsCompareConstantTest extends TStringOpsCompareTest {
         ResolvedJavaMethod method = getTStringOpsMethod("memcmpWithStrideIntl",
                         Object.class, int.class, int.class,
                         Object.class, int.class, int.class, int.class);
-        test(method, null,
+        test(method, null, DUMMY_LOCATION,
                         arrayA, offsetA, strideA,
                         arrayB, offsetB, strideB, lengthCMP);
     }

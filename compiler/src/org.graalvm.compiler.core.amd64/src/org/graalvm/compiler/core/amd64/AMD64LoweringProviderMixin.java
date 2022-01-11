@@ -35,7 +35,6 @@ import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.calc.SubNode;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.replacements.nodes.BitScanForwardNode;
 import org.graalvm.compiler.replacements.nodes.BitScanReverseNode;
 import org.graalvm.compiler.replacements.nodes.CountLeadingZerosNode;
@@ -68,7 +67,7 @@ public interface AMD64LoweringProviderMixin extends LoweringProvider {
      * Performs AMD64-specific lowerings. Returns {@code true} if the given Node {@code n} was
      * lowered, {@code false} otherwise.
      */
-    default boolean lowerAMD64(Node n, LoweringTool tool) {
+    default boolean lowerAMD64(Node n) {
         if (n instanceof CountLeadingZerosNode) {
             AMD64 arch = (AMD64) getTarget().arch;
             CountLeadingZerosNode count = (CountLeadingZerosNode) n;

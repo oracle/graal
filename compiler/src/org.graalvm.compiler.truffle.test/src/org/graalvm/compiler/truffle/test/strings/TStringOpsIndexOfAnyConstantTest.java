@@ -89,10 +89,11 @@ public class TStringOpsIndexOfAnyConstantTest extends TStringOpsIndexOfAnyTest {
     @Override
     @Test
     public void testIndexOfAny() throws ClassNotFoundException {
-        constantArgs = new Object[6];
-        constantArgs[0] = arrayA;
-        constantArgs[1] = offsetA;
-        constantArgs[2] = lengthA;
+        constantArgs = new Object[7];
+        constantArgs[0] = DUMMY_LOCATION;
+        constantArgs[1] = arrayA;
+        constantArgs[2] = offsetA;
+        constantArgs[3] = lengthA;
         if (strideA == 0) {
             ResolvedJavaMethod caller = getTStringOpsMethod("indexOfAnyByteIntl",
                             Object.class, int.class, int.class, int.class, byte[].class);
@@ -100,9 +101,9 @@ public class TStringOpsIndexOfAnyConstantTest extends TStringOpsIndexOfAnyTest {
             for (int i = 0; i < values.length; i++) {
                 valuesB[i] = (byte) values[i];
             }
-            constantArgs[3] = fromIndexA;
-            constantArgs[4] = valuesB;
-            test(caller, null, arrayA, offsetA, lengthA, fromIndexA, valuesB);
+            constantArgs[4] = fromIndexA;
+            constantArgs[5] = valuesB;
+            test(caller, null, DUMMY_LOCATION, arrayA, offsetA, lengthA, fromIndexA, valuesB);
         }
         if (strideA < 2) {
             ResolvedJavaMethod callerC = getTStringOpsMethod("indexOfAnyCharIntl",
@@ -111,10 +112,10 @@ public class TStringOpsIndexOfAnyConstantTest extends TStringOpsIndexOfAnyTest {
             for (int i = 0; i < values.length; i++) {
                 valuesC[i] = (char) (strideA == 0 ? values[i] & 0xff : values[i]);
             }
-            constantArgs[3] = strideA;
-            constantArgs[4] = fromIndexA;
-            constantArgs[5] = valuesC;
-            test(callerC, null, arrayA, offsetA, lengthA, strideA, fromIndexA, valuesC);
+            constantArgs[4] = strideA;
+            constantArgs[5] = fromIndexA;
+            constantArgs[6] = valuesC;
+            test(callerC, null, DUMMY_LOCATION, arrayA, offsetA, lengthA, strideA, fromIndexA, valuesC);
         }
 
         ResolvedJavaMethod callerC = getTStringOpsMethod("indexOfAnyIntIntl",
@@ -123,10 +124,10 @@ public class TStringOpsIndexOfAnyConstantTest extends TStringOpsIndexOfAnyTest {
         for (int i = 0; i < values.length; i++) {
             valuesI[i] = strideA == 0 ? values[i] & 0xff : strideA == 1 ? values[i] & 0xffff : values[i];
         }
-        constantArgs[3] = strideA;
-        constantArgs[4] = fromIndexA;
-        constantArgs[5] = valuesI;
-        test(callerC, null, arrayA, offsetA, lengthA, strideA, fromIndexA, valuesI);
+        constantArgs[4] = strideA;
+        constantArgs[5] = fromIndexA;
+        constantArgs[6] = valuesI;
+        test(callerC, null, DUMMY_LOCATION, arrayA, offsetA, lengthA, strideA, fromIndexA, valuesI);
     }
 
     @Override
