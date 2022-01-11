@@ -110,6 +110,7 @@ public class ProgressReporter {
     private int numJNIMethods = -1;
     private Timer debugInfoTimer;
     private boolean initializeStageEndCompleted = false;
+    private boolean creationStageEndCompleted = false;
 
     private enum BuildStage {
         INITIALIZING("Initializing"),
@@ -360,6 +361,7 @@ public class ProgressReporter {
     public void printCreationEnd(Timer creationTimer, Timer writeTimer, int imageSize, AnalysisUniverse universe, int numHeapObjects, long imageHeapSize, int codeCacheSize,
                     int numCompilations, int debugInfoSize) {
         printStageEnd(creationTimer.getTotalTime() + writeTimer.getTotalTime());
+        creationStageEndCompleted = true;
         String format = "%9s (%5.2f%%) for ";
         l().a(format, bytesToHuman(codeCacheSize), codeCacheSize / (double) imageSize * 100)
                         .doclink("code area", "#glossary-code-area").a(":%,9d compilation units", numCompilations).flushln();
@@ -378,6 +380,18 @@ public class ProgressReporter {
         l().a(format, bytesToHuman(otherBytes), otherBytes / (double) imageSize * 100)
                         .doclink("other data", "#glossary-other-data").flushln();
         l().a("%9s in total", bytesToHuman(imageSize)).flushln();
+    }
+
+    public void ensureCreationStageEndCompleted() {
+        if (!creationStageEndCompleted) {
+            linePrinter.flushln();
+            restoreBuilderIO();
+        }
+    }
+
+    private void restoreBuilderIO() {
+        builderIO.useCapturing = false;
+        builderIO.flushCapturedContent();
     }
 
     public void printBreakdowns(Collection<CompileTask> compilationTasks, Collection<ObjectInfo> heapObjects) {
@@ -613,8 +627,7 @@ public class ProgressReporter {
         if (optionsAvailable && SubstrateOptions.BuildOutputGCWarnings.getValue()) {
             checkForExcessiveGarbageCollection();
         }
-        builderIO.useCapturing = false;
-        builderIO.flushCapturedContent();
+        restoreBuilderIO();
     }
 
     private void checkForExcessiveGarbageCollection() {
