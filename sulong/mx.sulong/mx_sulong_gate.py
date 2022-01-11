@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -189,8 +189,9 @@ def _sulong_gate_runner(args, tasks):
         if t: build_llvm_org(args)
     with Task('ClangFormat', tasks, tags=['style', 'clangformat']) as t:
         if t: clangformat([])
+    # Folders not containing tests: options, services, util
     _unittest('Benchmarks', 'SULONG_SHOOTOUT_TEST_SUITE', description="Language Benchmark game tests", testClasses=['ShootoutsSuite'], tags=['benchmarks', 'sulongMisc'])
-    _unittest('Types', 'SULONG_TEST', description="Test floating point arithmetic", testClasses=['com.oracle.truffle.llvm.tests.types.floating'], tags=['type', 'sulongMisc', 'sulongCoverage'])
+    _unittest('Types', 'SULONG_TEST', description="Test floating point arithmetic", testClasses=['com.oracle.truffle.llvm.tests.types.floating.'], tags=['type', 'sulongMisc', 'sulongCoverage'])
     _unittest('Pipe', 'SULONG_TEST', description="Test output capturing", testClasses=['CaptureOutputTest'], tags=['pipe', 'sulongMisc', 'sulongCoverage'])
     _unittest('LLVM', 'SULONG_LLVM_TEST_SUITE', description="LLVM 3.2 test suite", testClasses=['LLVMSuite'], tags=['llvm', 'sulongCoverage'])
     _unittest('NWCC', 'SULONG_NWCC_TEST_SUITE', description="Test suite of the NWCC compiler v0.8.3", testClasses=['NWCCSuite'], tags=['nwcc', 'sulongCoverage'])
@@ -199,13 +200,13 @@ def _sulong_gate_runner(args, tasks):
     _unittest('GCC_CPP', 'SULONG_GCC_CPP_TEST_SUITE', description="GCC 5.2 test suite (C++ tests)", testClasses=['GccCppSuite'], tags=['gcc_cpp', 'sulongCoverage'])
     _unittest('GCC_Fortran', 'SULONG_GCC_FORTRAN_TEST_SUITE', description="GCC 5.2 test suite (Fortran tests)", testClasses=['GccFortranSuite'], tags=['gcc_fortran', 'sulongCoverage'])
     _unittest('Sulong', 'SULONG_STANDALONE_TEST_SUITES', description="Sulong's internal tests", testClasses='SulongSuite', tags=['sulong', 'sulongBasic', 'sulongCoverage'])
-    _unittest('Interop', 'SULONG_EMBEDDED_TEST_SUITES', description="Truffle Language interoperability tests", testClasses='com.oracle.truffle.llvm.tests.interop', tags=['interop', 'sulongBasic', 'sulongCoverage'])
-    _unittest('Linker', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses='com.oracle.truffle.llvm.tests.linker', tags=['linker', 'sulongBasic', 'sulongCoverage'])
-    _unittest('Debug', 'SULONG_EMBEDDED_TEST_SUITES', description="Debug support test suite", testClasses='LLVMDebugTest', tags=['debug', 'sulongBasic', 'sulongCoverage'])
-    _unittest('IRDebug', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses='LLVMIRDebugTest', tags=['irdebug', 'sulongBasic', 'sulongCoverage'])
-    _unittest('BitcodeFormat', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses='BitcodeFormatTest', tags=['bitcodeFormat', 'sulongBasic', 'sulongCoverage'])
-    _unittest('DebugExpr', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses='LLVMDebugExprParserTest', tags=['debugexpr', 'sulongBasic', 'sulongCoverage'])
-    _unittest('OtherTests', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses=['com.oracle.truffle.llvm.tests.other', 'com.oracle.truffle.llvm.tests.bitcode.'], tags=['otherTests', 'sulongBasic', 'sulongCoverage'])
+    _unittest('Interop', 'SULONG_EMBEDDED_TEST_SUITES', description="Truffle Language interoperability tests", testClasses=['com.oracle.truffle.llvm.tests.interop.'], tags=['interop', 'sulongBasic', 'sulongCoverage'])
+    _unittest('Linker', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses=['com.oracle.truffle.llvm.tests.linker.'], tags=['linker', 'sulongBasic', 'sulongCoverage'])
+    _unittest('Debug', 'SULONG_EMBEDDED_TEST_SUITES', description="Debug support test suite", testClasses=['com.oracle.truffle.llvm.tests.debug.LLVMDebugTest'], tags=['debug', 'sulongBasic', 'sulongCoverage'])
+    _unittest('IRDebug', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses=['com.oracle.truffle.llvm.tests.debug.LLVMIRDebugTest'], tags=['irdebug', 'sulongBasic', 'sulongCoverage'])
+    _unittest('BitcodeFormat', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses=['com.oracle.truffle.llvm.tests.bitcodeformat.'], tags=['bitcodeFormat', 'sulongBasic', 'sulongCoverage'])
+    _unittest('DebugExpr', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses=['com.oracle.truffle.llvm.tests.debug.LLVMDebugExprParserTest'], tags=['debugexpr', 'sulongBasic', 'sulongCoverage'])
+    _unittest('OtherTests', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses=['com.oracle.truffle.llvm.tests.bitcode.', 'com.oracle.truffle.llvm.tests.other.', 'com.oracle.truffle.llvm.tests.runtime.'], tags=['otherTests', 'sulongBasic', 'sulongCoverage'])
     _unittest('Args', 'SULONG_EMBEDDED_TEST_SUITES', description="Tests main args passing", testClasses=['com.oracle.truffle.llvm.tests.MainArgsTest'], tags=['args', 'sulongMisc', 'sulongCoverage'])
     _unittest('Callback', 'SULONG_EMBEDDED_TEST_SUITES', description="Test calling native functions", testClasses=['com.oracle.truffle.llvm.tests.CallbackTest'], tags=['callback', 'sulongMisc', 'sulongCoverage'])
     _unittest('Varargs', 'SULONG_EMBEDDED_TEST_SUITES', description="Varargs tests", testClasses=['com.oracle.truffle.llvm.tests.VAArgsTest'], tags=['vaargs', 'sulongMisc', 'sulongCoverage'])

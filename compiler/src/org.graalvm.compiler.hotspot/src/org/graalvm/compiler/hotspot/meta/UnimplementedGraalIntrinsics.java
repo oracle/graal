@@ -169,12 +169,14 @@ public final class UnimplementedGraalIntrinsics {
                         "java/lang/Long.numberOfTrailingZeros(J)I");
 
         // Relevant for Java flight recorder
-        add(toBeInvestigated,
+        // [GR-10106] These JFR intrinsics are used for firing socket/file events via Java
+        // instrumentation and are of low priority.
+        add(ignore,
                         "oracle/jrockit/jfr/Timing.counterTime()J",
                         "oracle/jrockit/jfr/VMJFR.classID0(Ljava/lang/Class;)J",
                         "oracle/jrockit/jfr/VMJFR.threadID()I");
 
-        add(toBeInvestigated,
+        add(ignore,
                         "jdk/jfr/internal/JVM.counterTime()J",
                         "jdk/jfr/internal/JVM.getClassId(Ljava/lang/Class;)J",
                         "jdk/jfr/internal/JVM.getEventWriter()Ljava/lang/Object;");

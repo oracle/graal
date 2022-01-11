@@ -81,14 +81,14 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
      * The compiler should not import classes from Truffle for libgraal, so we manually encode these
      * constants:
      */
-    public static final int FrameSlotKindObjectTag = 0; // FrameSlotKind.Object.tag
-    public static final int FrameSlotKindLongTag = 1; // FrameSlotKind.Long.tag
-    private static final int FrameSlotKindIntTag = 2; // FrameSlotKind.Int.tag
-    private static final int FrameSlotKindDoubleTag = 3; // FrameSlotKind.Double.tag
-    private static final int FrameSlotKindFloatTag = 4; // FrameSlotKind.Float.tag
-    private static final int FrameSlotKindBooleanTag = 5; // FrameSlotKind.Boolean.tag
-    private static final int FrameSlotKindByteTag = 6; // FrameSlotKind.Byte.tag
-    public static final int FrameSlotKindIllegalTag = 7; // FrameSlotKind.Illegal.tag
+    public static final byte FrameSlotKindObjectTag = 0; // FrameSlotKind.Object.tag
+    public static final byte FrameSlotKindLongTag = 1; // FrameSlotKind.Long.tag
+    private static final byte FrameSlotKindIntTag = 2; // FrameSlotKind.Int.tag
+    private static final byte FrameSlotKindDoubleTag = 3; // FrameSlotKind.Double.tag
+    private static final byte FrameSlotKindFloatTag = 4; // FrameSlotKind.Float.tag
+    private static final byte FrameSlotKindBooleanTag = 5; // FrameSlotKind.Boolean.tag
+    private static final byte FrameSlotKindByteTag = 6; // FrameSlotKind.Byte.tag
+    public static final byte FrameSlotKindIllegalTag = 7; // FrameSlotKind.Illegal.tag
 
     public static final NodeClass<NewFrameNode> TYPE = NodeClass.create(NewFrameNode.class);
     @Input ValueNode descriptor;
@@ -117,10 +117,28 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
 
     private final SpeculationReason intrinsifyAccessorsSpeculation;
 
-    private static JavaKind asJavaKind(byte tag) {
+    public static byte asStackTag(byte tag) {
         switch (tag) {
             case FrameSlotKindBooleanTag:
             case FrameSlotKindByteTag:
+            case FrameSlotKindIntTag:
+                return FrameSlotKindIntTag;
+            case FrameSlotKindDoubleTag:
+                return FrameSlotKindDoubleTag;
+            case FrameSlotKindFloatTag:
+                return FrameSlotKindFloatTag;
+            case FrameSlotKindLongTag:
+            case FrameSlotKindObjectTag:
+            case FrameSlotKindIllegalTag:
+            case NO_TYPE_MARKER:
+            case INITIAL_TYPE_MARKER:
+                return FrameSlotKindLongTag;
+        }
+        throw new IllegalStateException("Unexpected frame slot kind tag: " + tag);
+    }
+
+    public static JavaKind asJavaKind(byte tag) {
+        switch (tag) {
             case FrameSlotKindIntTag:
                 return JavaKind.Int;
             case FrameSlotKindDoubleTag:
@@ -128,10 +146,7 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
             case FrameSlotKindFloatTag:
                 return JavaKind.Float;
             case FrameSlotKindLongTag:
-            case FrameSlotKindObjectTag:
-            case FrameSlotKindIllegalTag:
             case NO_TYPE_MARKER:
-            case INITIAL_TYPE_MARKER:
                 return JavaKind.Long;
         }
         throw new IllegalStateException("Unexpected frame slot kind tag: " + tag);
@@ -198,6 +213,7 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
                 JavaConstant slotKind = constantReflection.readFieldValue(types.fieldFrameSlotKind, slot);
                 JavaConstant slotIndex = constantReflection.readFieldValue(types.fieldFrameSlotIndex, slot);
                 if (slotKind.isNonNull() && slotIndex.isNonNull()) {
+                    byte kind = (byte) constantReflection.readFieldValue(types.fieldFrameSlotKindTag, slotKind).asInt();
                     int index = slotIndex.asInt();
                     if (index >= frameSlotKindsCandidate.length) {
                         /*
@@ -210,7 +226,7 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
                         Arrays.fill(newArray, frameSlotKindsCandidate.length, newArray.length, NO_TYPE_MARKER);
                         frameSlotKindsCandidate = newArray;
                     }
-                    frameSlotKindsCandidate[index] = INITIAL_TYPE_MARKER;
+                    frameSlotKindsCandidate[index] = asStackTag(kind);
                 }
             }
         }
@@ -221,7 +237,7 @@ public final class NewFrameNode extends FixedWithNextNode implements IterableNod
         this.indexedFrameSize = constantReflection.readArrayLength(indexedTagsArray);
 
         byte[] indexedFrameSlotKindsCandidate = new byte[indexedFrameSize];
-        Arrays.fill(indexedFrameSlotKindsCandidate, INITIAL_TYPE_MARKER);
+        Arrays.fill(indexedFrameSlotKindsCandidate, FrameSlotKindLongTag);
         this.indexedFrameSlotKinds = indexedFrameSlotKindsCandidate;
 
         this.auxiliarySize = constantReflection.readFieldValue(types.fieldFrameDescriptorAuxiliarySlotCount, frameDescriptor).asInt();

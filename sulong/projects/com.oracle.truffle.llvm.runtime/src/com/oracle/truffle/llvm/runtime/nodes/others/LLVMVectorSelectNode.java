@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.others;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -51,14 +52,14 @@ import com.oracle.truffle.llvm.runtime.vector.LLVMPointerVector;
 @NodeChild(value = "elseNode", type = LLVMExpressionNode.class)
 @NodeField(name = "vectorLength", type = int.class)
 public abstract class LLVMVectorSelectNode extends LLVMExpressionNode {
-    protected final ConditionProfile conditionProfile = ConditionProfile.createCountingProfile();
 
     protected abstract int getVectorLength();
 
     public abstract static class LLVMI1VectorSelectNode extends LLVMVectorSelectNode {
         @Specialization
         @ExplodeLoop
-        protected LLVMI1Vector doOp(LLVMI1Vector condition, LLVMI1Vector trueValue, LLVMI1Vector elseValue) {
+        protected LLVMI1Vector doOp(LLVMI1Vector condition, LLVMI1Vector trueValue, LLVMI1Vector elseValue,
+                        @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
             assert condition.getLength() == getVectorLength();
             boolean[] values = new boolean[getVectorLength()];
             for (int i = 0; i < getVectorLength(); i++) {
@@ -71,7 +72,8 @@ public abstract class LLVMVectorSelectNode extends LLVMExpressionNode {
     public abstract static class LLVMI8VectorSelectNode extends LLVMVectorSelectNode {
         @Specialization
         @ExplodeLoop
-        protected LLVMI8Vector doOp(LLVMI1Vector condition, LLVMI8Vector trueValue, LLVMI8Vector elseValue) {
+        protected LLVMI8Vector doOp(LLVMI1Vector condition, LLVMI8Vector trueValue, LLVMI8Vector elseValue,
+                        @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
             assert condition.getLength() == getVectorLength();
             byte[] values = new byte[getVectorLength()];
             for (int i = 0; i < getVectorLength(); i++) {
@@ -84,7 +86,8 @@ public abstract class LLVMVectorSelectNode extends LLVMExpressionNode {
     public abstract static class LLVMI16VectorSelectNode extends LLVMVectorSelectNode {
         @Specialization
         @ExplodeLoop
-        protected LLVMI16Vector doOp(LLVMI1Vector condition, LLVMI16Vector trueValue, LLVMI16Vector elseValue) {
+        protected LLVMI16Vector doOp(LLVMI1Vector condition, LLVMI16Vector trueValue, LLVMI16Vector elseValue,
+                        @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
             assert condition.getLength() == getVectorLength();
             short[] values = new short[getVectorLength()];
             for (int i = 0; i < getVectorLength(); i++) {
@@ -97,7 +100,8 @@ public abstract class LLVMVectorSelectNode extends LLVMExpressionNode {
     public abstract static class LLVMI32VectorSelectNode extends LLVMVectorSelectNode {
         @Specialization
         @ExplodeLoop
-        protected LLVMI32Vector doOp(LLVMI1Vector condition, LLVMI32Vector trueValue, LLVMI32Vector elseValue) {
+        protected LLVMI32Vector doOp(LLVMI1Vector condition, LLVMI32Vector trueValue, LLVMI32Vector elseValue,
+                        @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
             assert condition.getLength() == getVectorLength();
             int[] values = new int[getVectorLength()];
             for (int i = 0; i < getVectorLength(); i++) {
@@ -110,7 +114,8 @@ public abstract class LLVMVectorSelectNode extends LLVMExpressionNode {
     public abstract static class LLVMI64VectorSelectNode extends LLVMVectorSelectNode {
         @Specialization
         @ExplodeLoop
-        protected LLVMI64Vector doOp(LLVMI1Vector condition, LLVMI64Vector trueValue, LLVMI64Vector elseValue) {
+        protected LLVMI64Vector doOp(LLVMI1Vector condition, LLVMI64Vector trueValue, LLVMI64Vector elseValue,
+                        @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
             assert condition.getLength() == getVectorLength();
             long[] values = new long[getVectorLength()];
             for (int i = 0; i < getVectorLength(); i++) {
@@ -121,7 +126,8 @@ public abstract class LLVMVectorSelectNode extends LLVMExpressionNode {
 
         @Specialization
         @ExplodeLoop
-        protected LLVMPointerVector doOp(LLVMI1Vector condition, LLVMI64Vector trueValue, LLVMPointerVector elseValue) {
+        protected LLVMPointerVector doOp(LLVMI1Vector condition, LLVMI64Vector trueValue, LLVMPointerVector elseValue,
+                        @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
             assert condition.getLength() == getVectorLength();
             LLVMPointer[] values = new LLVMPointer[getVectorLength()];
             for (int i = 0; i < getVectorLength(); i++) {
@@ -132,7 +138,8 @@ public abstract class LLVMVectorSelectNode extends LLVMExpressionNode {
 
         @Specialization
         @ExplodeLoop
-        protected LLVMPointerVector doOp(LLVMI1Vector condition, LLVMPointerVector trueValue, LLVMI64Vector elseValue) {
+        protected LLVMPointerVector doOp(LLVMI1Vector condition, LLVMPointerVector trueValue, LLVMI64Vector elseValue,
+                        @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
             assert condition.getLength() == getVectorLength();
             LLVMPointer[] values = new LLVMPointer[getVectorLength()];
             for (int i = 0; i < getVectorLength(); i++) {
@@ -143,7 +150,8 @@ public abstract class LLVMVectorSelectNode extends LLVMExpressionNode {
 
         @Specialization
         @ExplodeLoop
-        protected LLVMPointerVector doOp(LLVMI1Vector condition, LLVMPointerVector trueValue, LLVMPointerVector elseValue) {
+        protected LLVMPointerVector doOp(LLVMI1Vector condition, LLVMPointerVector trueValue, LLVMPointerVector elseValue,
+                        @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
             assert condition.getLength() == getVectorLength();
             LLVMPointer[] values = new LLVMPointer[getVectorLength()];
             for (int i = 0; i < getVectorLength(); i++) {
@@ -156,7 +164,8 @@ public abstract class LLVMVectorSelectNode extends LLVMExpressionNode {
     public abstract static class LLVMFloatVectorSelectNode extends LLVMVectorSelectNode {
         @Specialization
         @ExplodeLoop
-        protected LLVMFloatVector doOp(LLVMI1Vector condition, LLVMFloatVector trueValue, LLVMFloatVector elseValue) {
+        protected LLVMFloatVector doOp(LLVMI1Vector condition, LLVMFloatVector trueValue, LLVMFloatVector elseValue,
+                        @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
             assert condition.getLength() == getVectorLength();
             float[] values = new float[getVectorLength()];
             for (int i = 0; i < getVectorLength(); i++) {
@@ -169,7 +178,8 @@ public abstract class LLVMVectorSelectNode extends LLVMExpressionNode {
     public abstract static class LLVMDoubleVectorSelectNode extends LLVMVectorSelectNode {
         @Specialization
         @ExplodeLoop
-        protected LLVMDoubleVector doOp(LLVMI1Vector condition, LLVMDoubleVector trueValue, LLVMDoubleVector elseValue) {
+        protected LLVMDoubleVector doOp(LLVMI1Vector condition, LLVMDoubleVector trueValue, LLVMDoubleVector elseValue,
+                        @Cached("createCountingProfile()") ConditionProfile conditionProfile) {
             assert condition.getLength() == getVectorLength();
             double[] values = new double[getVectorLength()];
             for (int i = 0; i < getVectorLength(); i++) {

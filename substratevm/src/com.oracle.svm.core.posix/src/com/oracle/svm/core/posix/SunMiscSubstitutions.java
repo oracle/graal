@@ -27,11 +27,7 @@ package com.oracle.svm.core.posix;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.Function;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -53,19 +49,7 @@ import com.oracle.svm.core.posix.headers.Signal.SignalDispatcher;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.util.VMError;
 
-@Platforms(Platform.HOSTED_ONLY.class)
-class Package_jdk_internal_misc implements Function<TargetClass, String> {
-    @Override
-    public String apply(TargetClass annotation) {
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            return "sun.misc." + annotation.className();
-        } else {
-            return "jdk.internal.misc." + annotation.className();
-        }
-    }
-}
-
-@TargetClass(classNameProvider = Package_jdk_internal_misc.class, className = "Signal")
+@TargetClass(className = "jdk.internal.misc.Signal")
 final class Target_jdk_internal_misc_Signal {
 
     @Substitute

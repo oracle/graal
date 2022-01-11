@@ -31,10 +31,10 @@ import com.oracle.svm.core.annotate.TargetClass;
 
 @SuppressWarnings({"unused"})
 @TargetClass(Package.class)
-public final class Target_java_lang_Package {
+final class Target_java_lang_Package {
 
     @Alias
-    public Target_java_lang_Package(String name,
+    Target_java_lang_Package(String name,
                     String spectitle, String specversion, String specvendor,
                     String impltitle, String implversion, String implvendor,
                     URL sealbase, ClassLoader loader) {

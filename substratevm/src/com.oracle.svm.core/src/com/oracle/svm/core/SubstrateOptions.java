@@ -46,7 +46,6 @@ import org.graalvm.compiler.options.OptionStability;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -388,10 +387,8 @@ public class SubstrateOptions {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
             if ("llvm".equals(newValue)) {
-                if (JavaVersionUtil.JAVA_SPEC >= 11) {
-                    /* See GR-14405, https://github.com/oracle/graal/issues/1056 */
-                    GraalOptions.EmitStringSubstitutions.update(values, false);
-                }
+                /* See GR-14405, https://github.com/oracle/graal/issues/1056 */
+                GraalOptions.EmitStringSubstitutions.update(values, false);
                 /*
                  * The code information is filled before linking, which means that stripping dead
                  * functions makes it incoherent with the executable.
@@ -574,10 +571,6 @@ public class SubstrateOptions {
 
     @Option(help = "For internal purposes only. Disables type id result verification even when running with assertions enabled.", stability = OptionStability.EXPERIMENTAL, type = Debug)//
     public static final HostedOptionKey<Boolean> DisableTypeIdResultVerification = new HostedOptionKey<>(true);
-
-    public static boolean areMethodHandlesSupported() {
-        return JavaVersionUtil.JAVA_SPEC >= 11;
-    }
 
     @Option(help = "Enables the signal API (sun.misc.Signal or jdk.internal.misc.Signal). Defaults to false for shared library and true for executables", stability = OptionStability.EXPERIMENTAL, type = Expert)//
     public static final HostedOptionKey<Boolean> EnableSignalAPI = new HostedOptionKey<>(null) {

@@ -29,9 +29,7 @@ import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.util.VMError;
 
-// Checkstyle: stop
 import sun.misc.Unsafe;
-// Checkstyle: resume
 
 /**
  * This class holds thread-specific data that must be freed when the thread detaches. However, it

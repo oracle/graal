@@ -35,11 +35,10 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.invoke.MethodHandleUtils.MethodHandlesSupported;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 import com.oracle.svm.core.jdk.JDK17OrLater;
 
-@TargetClass(value = MethodHandles.class, innerClass = "Lookup", onlyWith = MethodHandlesSupported.class)
+@TargetClass(value = MethodHandles.class, innerClass = "Lookup")
 final class Target_java_lang_invoke_MethodHandles_Lookup {
     @SuppressWarnings("static-method")
     @Substitute

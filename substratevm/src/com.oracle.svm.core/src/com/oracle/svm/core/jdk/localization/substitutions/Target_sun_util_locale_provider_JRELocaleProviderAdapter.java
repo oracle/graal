@@ -37,10 +37,8 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
 
-// Checkstyle: stop
 import sun.util.locale.provider.JRELocaleProviderAdapter;
 import sun.util.locale.provider.LocaleResources;
-// Checkstyle: resume
 
 @TargetClass(JRELocaleProviderAdapter.class)
 final class Target_sun_util_locale_provider_JRELocaleProviderAdapter {

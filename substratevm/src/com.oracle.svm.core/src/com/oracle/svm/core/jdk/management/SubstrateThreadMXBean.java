@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.jdk.management;
 
-//Checkstyle: stop
-
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadInfo;
 
@@ -40,7 +38,6 @@ import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicLong;
 import com.oracle.svm.core.util.VMError;
 
 import sun.management.Util;
-//Checkstyle: resume
 
 final class SubstrateThreadMXBean implements com.sun.management.ThreadMXBean {
 

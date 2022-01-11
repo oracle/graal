@@ -25,7 +25,6 @@
 package com.oracle.svm.graal.hotspot.libgraal;
 
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
-import static org.graalvm.compiler.serviceprovider.JavaVersionUtil.JAVA_SPEC;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -88,6 +87,7 @@ import org.graalvm.compiler.phases.common.jmx.HotSpotMBeanOperationProvider;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.serviceprovider.IsolateUtil;
+import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluatorConfiguration;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerBase;
@@ -160,16 +160,14 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.services.Services;
 
 class LibGraalOptions {
-    // @formatter:off
     @Option(help = "Converts an exception triggered by the CrashAt option into a fatal error " +
-            "if a non-null pointer was passed in the _fatal option to JNI_CreateJavaVM. " +
-            "This option exists for the purpose of testing fatal error handling in libgraal.")
+                    "if a non-null pointer was passed in the _fatal option to JNI_CreateJavaVM. " +
+                    "This option exists for the purpose of testing fatal error handling in libgraal.") //
     static final RuntimeOptionKey<Boolean> CrashAtIsFatal = new RuntimeOptionKey<>(false);
     @Option(help = "The fully qualified name of a no-arg, void, static method to be invoked " +
-            "in HotSpot from libgraal when the libgraal isolate is being shutdown." +
-            "This option exists for the purpose of testing callbacks in this context.")
-            static final RuntimeOptionKey<String> OnShutdownCallback = new RuntimeOptionKey<>(null);
-    // @formatter:on
+                    "in HotSpot from libgraal when the libgraal isolate is being shutdown." +
+                    "This option exists for the purpose of testing callbacks in this context.") //
+    static final RuntimeOptionKey<String> OnShutdownCallback = new RuntimeOptionKey<>(null);
 }
 
 public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFeature {
@@ -391,9 +389,9 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
                                 registry.register(condition, false, clazz.getDeclaredMethod(methodName, parameters));
                             }
                         } catch (NoSuchMethodException e) {
-                            throw source.error("Method %s.%s%s not found: %e", clazz.getTypeName(), methodName, descriptor, e);
+                            throw source.error("Method %s.%s%s not found: %s", clazz.getTypeName(), methodName, descriptor, e);
                         } catch (NoClassDefFoundError e) {
-                            throw source.error("Could not register method %s.%s%s: %e", clazz.getTypeName(), methodName, descriptor, e);
+                            throw source.error("Could not register method %s.%s%s: %s", clazz.getTypeName(), methodName, descriptor, e);
                         }
                         break;
                     }
@@ -485,12 +483,10 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
             filterArchitectureServices(archPackage, servicesCache);
             servicesCache.remove(GeneratedPluginFactory.class);
 
-            if (JAVA_SPEC > 8) {
-                final Field graalServicesCacheField = ReflectionUtil.lookupField(GraalServices.class, "servicesCache");
-                Map<Class<?>, List<?>> graalServicesCache = (Map<Class<?>, List<?>>) graalServicesCacheField.get(null);
-                filterArchitectureServices(archPackage, graalServicesCache);
-                graalServicesCache.remove(GeneratedPluginFactory.class);
-            }
+            final Field graalServicesCacheField = ReflectionUtil.lookupField(GraalServices.class, "servicesCache");
+            Map<Class<?>, List<?>> graalServicesCache = (Map<Class<?>, List<?>>) graalServicesCacheField.get(null);
+            filterArchitectureServices(archPackage, graalServicesCache);
+            graalServicesCache.remove(GeneratedPluginFactory.class);
 
             Field cachedHotSpotJVMCIBackendFactoriesField = ReflectionUtil.lookupField(HotSpotJVMCIRuntime.class, "cachedHotSpotJVMCIBackendFactories");
             List<HotSpotJVMCIBackendFactory> cachedHotSpotJVMCIBackendFactories = (List<HotSpotJVMCIBackendFactory>) cachedHotSpotJVMCIBackendFactoriesField.get(null);
@@ -603,6 +599,18 @@ final class Target_jdk_vm_ci_hotspot_SharedLibraryJVMCIReflection {
 
     @Delete
     static native Annotation[] getMethodAnnotationsInternal(ResolvedJavaMethod javaMethod);
+}
+
+@TargetClass(value = SpeculationReasonGroup.class, onlyWith = LibGraalFeature.IsEnabled.class)
+final class Target_org_graalvm_compiler_serviceprovider_SpeculationReasonGroup {
+
+    /**
+     * Delete this constructor to ensure {@link SpeculationReasonGroup} ids are in the libgraal
+     * image and thus global across all libgraal isolates.
+     */
+    @Delete
+    @TargetElement(name = TargetElement.CONSTRUCTOR_NAME)
+    native void constructor(String name, Class<?>... signature);
 }
 
 /**

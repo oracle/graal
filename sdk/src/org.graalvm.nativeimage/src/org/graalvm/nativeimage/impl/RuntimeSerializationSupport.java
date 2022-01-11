@@ -42,6 +42,8 @@ package org.graalvm.nativeimage.impl;
 
 public interface RuntimeSerializationSupport {
 
+    void registerIncludingAssociatedClasses(ConfigurationCondition condition, Class<?> clazz);
+
     void register(ConfigurationCondition condition, Class<?>... classes);
 
     void registerWithTargetConstructorClass(ConfigurationCondition condition, Class<?> clazz, Class<?> customTargetConstructorClazz);

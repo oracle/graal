@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.jdk;
 
-// Checkstyle: allow reflection
-
 import java.io.File;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -40,12 +38,9 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.ProcessProperties;
-import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.LazyFinalReference;
-import com.oracle.svm.util.ReflectionUtil;
 
 import sun.security.util.SecurityConstants;
 
@@ -60,8 +55,7 @@ import sun.security.util.SecurityConstants;
  * But computing the URL for the location pulls in a lot of JDK dependencies. For a simple
  * application like "Hello World", that would significantly increase the image size. So we only add
  * code to compute the URL if the application explicitly invokes {@link CodeSource#getLocation()}.
- * This is done using a reachability handler registered in
- * {@link ProtectionDomainFeature#beforeAnalysis}.
+ * This is done using a reachability handler registered in ProtectionDomainFeature#beforeAnalysis().
  * 
  * Note that this still leads to observable differences in places where the location is used
  * implicitly, like {@link CodeSource#toString} and {@link CodeSource#implies}. We accept that
@@ -116,34 +110,7 @@ public final class ProtectionDomainSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    static void enableCodeSource(Feature.DuringAnalysisAccess access) {
+    public static void enableCodeSource() {
         ImageSingletons.lookup(ProtectionDomainSupport.class).executableURLSupplier = ProtectionDomainSupport::createExecutableURL;
-        if (access != null) {
-            access.requireAnalysisIteration();
-        }
-    }
-}
-
-@AutomaticFeature
-final class ProtectionDomainFeature implements Feature {
-
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(ProtectionDomainSupport.class, new ProtectionDomainSupport());
-    }
-
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        Boolean useApplicationCodeSourceLocation = ProtectionDomainSupport.Options.UseApplicationCodeSourceLocation.getValue();
-        if (useApplicationCodeSourceLocation == null) {
-            /* Option not set explicitly, so use automatic behavior based on reachability. */
-            access.registerReachabilityHandler(ProtectionDomainSupport::enableCodeSource,
-                            ReflectionUtil.lookupMethod(CodeSource.class, "getLocation"));
-        } else if (useApplicationCodeSourceLocation) {
-            /* Always enabled. */
-            ProtectionDomainSupport.enableCodeSource(null);
-        } else {
-            /* Always disabled - nothing to do. */
-        }
     }
 }

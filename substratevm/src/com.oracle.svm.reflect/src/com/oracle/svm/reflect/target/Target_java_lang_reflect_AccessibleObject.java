@@ -24,10 +24,7 @@
  */
 package com.oracle.svm.reflect.target;
 
-// Checkstyle: stop
-
 import java.lang.reflect.AccessibleObject;
-// Checkstyle: resume
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;

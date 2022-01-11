@@ -25,11 +25,6 @@
 package com.oracle.svm.core.heap;
 
 import java.lang.ref.ReferenceQueue;
-import java.util.function.Function;
-
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -37,19 +32,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
 
-@Platforms(Platform.HOSTED_ONLY.class)
-class Package_jdk_internal_ref implements Function<TargetClass, String> {
-    @Override
-    public String apply(TargetClass annotation) {
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            return "sun.misc." + annotation.className();
-        } else {
-            return "jdk.internal.ref." + annotation.className();
-        }
-    }
-}
-
-@TargetClass(classNameProvider = Package_jdk_internal_ref.class, className = "Cleaner")
+@TargetClass(className = "jdk.internal.ref.Cleaner")
 public final class Target_jdk_internal_ref_Cleaner {
 
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//

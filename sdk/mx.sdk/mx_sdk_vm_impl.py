@@ -826,8 +826,6 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
         :type parent_release_file: str | None
         :rtype: str
         """
-        def quote(string):
-            return '"{}"'.format(string)
 
         _commit_info = {}
         for _s in suites:
@@ -840,28 +838,22 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                     "commit.committer": _info['committer'] if _s.vc.kind != 'binary' else 'unknown',
                     "commit.committer-ts": _info['committer-ts'],
                 }
-        _metadata_dict = OrderedDict()
-        if parent_release_file is not None and exists(parent_release_file):
-            with open(parent_release_file, 'r') as f:
-                for line in f:
-                    if line.strip() != '':  # on Windows, the release file might have extra line terminators
-                        assert line.count('=') > 0, "The release file of the base JDK ('{}') contains a line without the '=' sign: '{}'".format(parent_release_file, line)
-                        k, v = line.strip().split('=', 1)
-                        _metadata_dict[k] = v
+        if parent_release_file:
+            _metadata_dict = mx_sdk_vm.parse_release_file(parent_release_file)
+        else:
+            _metadata_dict = OrderedDict()
 
-        _metadata_dict.setdefault('JAVA_VERSION', quote(_src_jdk.version))
-        _metadata_dict.setdefault('OS_NAME', quote(get_graalvm_os()))
-        _metadata_dict.setdefault('OS_ARCH', quote(mx.get_arch()))
+        _metadata_dict.setdefault('JAVA_VERSION', _src_jdk.version)
+        _metadata_dict.setdefault('OS_NAME', get_graalvm_os())
+        _metadata_dict.setdefault('OS_ARCH', mx.get_arch())
 
-        _metadata_dict['GRAALVM_VERSION'] = quote(_suite.release_version())
+        _metadata_dict['GRAALVM_VERSION'] = _suite.release_version()
         _source = _metadata_dict.get('SOURCE') or ''
         if _source:
-            if len(_source) > 1 and _source[0] == '"' and _source[-1] == '"':
-                _source = _source[1:-1]
             _source += ' '
         _source += ' '.join(['{}:{}'.format(_s.name, _s.version()) for _s in suites])
-        _metadata_dict['SOURCE'] = quote(_source)
-        _metadata_dict['COMMIT_INFO'] = json.dumps(_commit_info, sort_keys=True)  # unquoted to simplify JSON parsing
+        _metadata_dict['SOURCE'] = _source
+        _metadata_dict['COMMIT_INFO'] = json.dumps(_commit_info, sort_keys=True)
         if _suite.is_release():
             catalog = _release_catalog()
         else:
@@ -871,9 +863,10 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             else:
                 catalog = None
         if catalog:
-            _metadata_dict['component_catalog'] = quote(catalog)
+            _metadata_dict['component_catalog'] = catalog
 
-        return '\n'.join(['{}={}'.format(k, v) for k, v in _metadata_dict.items()])
+        # COMMIT_INFO is unquoted to simplify JSON parsing
+        return mx_sdk_vm.format_release_file(_metadata_dict, {'COMMIT_INFO'})
 
 
 class BaseGraalVmLayoutDistributionTask(mx.LayoutArchiveTask):
@@ -2354,6 +2347,10 @@ class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDis
         for component_ in extra_components:
             library_configs += _get_library_configs(component_)
 
+        extra_installable_qualifiers = list(component.extra_installable_qualifiers)
+        for component_ in extra_components:
+            extra_installable_qualifiers += component_.extra_installable_qualifiers
+
         other_involved_components = []
         if self.main_component.short_name not in ('svm', 'svmee') \
                 and _get_svm_support().is_supported() \
@@ -2367,7 +2364,9 @@ class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDis
             if _skip_libraries(library_config):
                 name += '_S' + basename(library_config.destination).upper()
         if other_involved_components:
-            name += '_' + '_'.join(sorted((component.short_name.upper() for component in other_involved_components)))
+            extra_installable_qualifiers += [component.short_name for component in other_involved_components]
+        if extra_installable_qualifiers:
+            name += '_' + '_'.join(sorted(q.upper() for q in extra_installable_qualifiers))
         name += '_JAVA{}'.format(_src_jdk_version)
         self.maven = _graalvm_maven_attributes(tag='installable')
         components = [component]

@@ -59,7 +59,7 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.jdk11.BootModuleLayerSupport;
+import com.oracle.svm.core.jdk.BootModuleLayerSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.jdk.NativeImageClassLoaderSupportJDK11OrLater;
 import com.oracle.svm.util.ModuleSupport;

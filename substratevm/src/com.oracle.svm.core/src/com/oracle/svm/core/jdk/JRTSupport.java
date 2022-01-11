@@ -99,14 +99,12 @@ final class Target_jdk_internal_module_SystemModuleFinders_SystemImage_JRTEnable
     static Object reader() {
         Target_jdk_internal_jimage_ImageReader_JRTEnabled localRef = READER;
         if (localRef == null) {
-            /* Checkstyle: allow synchronization. */
             synchronized (Target_jdk_internal_module_SystemModuleFinders_SystemImage_JRTEnabled.class) {
                 localRef = READER;
                 if (localRef == null) {
                     READER = localRef = Target_jdk_internal_jimage_ImageReaderFactory_JRTEnabled.getImageReader();
                 }
             }
-            /* Checkstyle: disallow synchronization. */
         }
         return localRef;
     }

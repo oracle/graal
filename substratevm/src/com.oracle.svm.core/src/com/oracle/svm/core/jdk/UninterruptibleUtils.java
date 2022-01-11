@@ -34,9 +34,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.util.VMError;
 
-// Checkstyle: stop
 import sun.misc.Unsafe;
-// Checkstyle: resume
 
 /**
  * Annotated replacements to be called from uninterruptible code for methods whose source I do not

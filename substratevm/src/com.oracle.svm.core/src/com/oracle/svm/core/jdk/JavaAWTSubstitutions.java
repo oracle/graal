@@ -28,7 +28,6 @@ import java.awt.GraphicsEnvironment;
 import java.io.FilenameFilter;
 import java.util.function.BooleanSupplier;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -213,14 +212,13 @@ public final class JavaAWTSubstitutions {
                 fcm.populateFontConfig(fcCompFonts);
             }
 
-            // @formatter:off
-            /*
+            /*-
             The below code was part of the original method but has been removed in the substitution. In a native-image,
             java.home is set to null, so executing it would result in an exception.
             The #getInstalledFallbackFonts method is in charge of installing fallback fonts shipped with the JDK. If the
             fallback font directory does not exist, it is a no-op. As we do not have a JDK available at native-image
             runtime, we can safely remove the call.
-
+            
             // NB already in a privileged block from SGE
             String javaHome = System.getProperty("java.home");
             if (javaHome == null) {
@@ -229,7 +227,6 @@ public final class JavaAWTSubstitutions {
             String javaLib = javaHome + File.separator + "lib";
             getInstalledFallbackFonts(javaLib);
              */
-            // @formatter:on
 
             return fcCompFonts != null; // couldn't load fontconfig.
         }
@@ -962,7 +959,7 @@ public final class JavaAWTSubstitutions {
     static class IsHeadless implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
-            return GraphicsEnvironment.isHeadless() && JavaVersionUtil.JAVA_SPEC >= 11;
+            return GraphicsEnvironment.isHeadless();
         }
     }
     // Checkstyle: resume

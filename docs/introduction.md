@@ -1,7 +1,7 @@
 ---
 layout: docs
 toc_group: docs
-title: GraalVM Documentation
+title: Architecture Overview
 permalink: /docs/introduction/
 ---
 
@@ -34,7 +34,7 @@ With GraalVM Truffle, Java and other supported languages can directly interopera
 GraalVM is unique as a runtime environment offering several modes of operation: JVM runtime mode, Native Image, Java on Truffle (the same Java applications can be run on either).
 
 #### JVM Runtime Mode
-When running programs on the HotSpot JVM, GraalVM defaults to the [GraalVM compiler](reference-manual/compiler.md) as the top-tier JIT compiler.
+When running programs on the HotSpot JVM, GraalVM defaults to the [GraalVM compiler](reference-manual/java/compiler.md) as the top-tier JIT compiler.
 At runtime, an application is loaded and executed normally on the JVM.
 The JVM passes bytecodes for Java or any other JVM-native language to the compiler, which compiles that to the machine code and returns it to the JVM.
 Interpreters for supported languages, written on top of the [Truffle framework](../truffle/docs/README.md), are themselves Java programs that run on the JVM.

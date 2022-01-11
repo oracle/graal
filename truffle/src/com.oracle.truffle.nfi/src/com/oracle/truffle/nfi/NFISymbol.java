@@ -56,9 +56,13 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.nfi.CallSignatureNode.CachedCallSignatureNode;
 import com.oracle.truffle.nfi.NFILibrary.Keys;
+import com.oracle.truffle.nfi.api.NativePointerLibrary;
+import com.oracle.truffle.nfi.backend.spi.BackendNativePointerLibrary;
+
 import static com.oracle.truffle.nfi.NFISignature.NO_SIGNATURE;
 
 @ExportLibrary(InteropLibrary.class)
+@ExportLibrary(value = NativePointerLibrary.class, useForAOT = true, useForAOTPriority = 1)
 final class NFISymbol implements TruffleObject {
 
     static Object createBindable(String backend, Object nativeSymbol) {
@@ -146,13 +150,23 @@ final class NFISymbol implements TruffleObject {
         return library.isNull(nativeSymbol);
     }
 
-    @ExportMessage
-    boolean isPointer(@CachedLibrary("this.nativeSymbol") InteropLibrary library) {
+    @ExportMessage(name = "isPointer", library = InteropLibrary.class)
+    boolean isPointerInterop(@CachedLibrary("this.nativeSymbol") InteropLibrary library) {
         return library.isPointer(nativeSymbol);
     }
 
-    @ExportMessage
-    long asPointer(@CachedLibrary("this.nativeSymbol") InteropLibrary library) throws UnsupportedMessageException {
+    @ExportMessage(name = "isPointer", library = NativePointerLibrary.class)
+    boolean isPointerNFI(@CachedLibrary(limit = "1") BackendNativePointerLibrary library) {
+        return library.isPointer(nativeSymbol);
+    }
+
+    @ExportMessage(name = "asPointer", library = InteropLibrary.class)
+    long asPointerInterop(@CachedLibrary("this.nativeSymbol") InteropLibrary library) throws UnsupportedMessageException {
+        return library.asPointer(nativeSymbol);
+    }
+
+    @ExportMessage(name = "asPointer", library = NativePointerLibrary.class)
+    long asPointerNFI(@CachedLibrary(limit = "1") BackendNativePointerLibrary library) throws UnsupportedMessageException {
         return library.asPointer(nativeSymbol);
     }
 

@@ -24,39 +24,34 @@
  */
 package com.oracle.svm.core.reflect;
 
-// Checkstyle: allow reflection
-
 import java.lang.reflect.Executable;
 
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
-import com.oracle.svm.core.annotate.InvokeJavaFunctionPointer;
 import com.oracle.svm.core.jdk.InternalVMMethod;
+import com.oracle.svm.core.reflect.SubstrateMethodAccessor.MethodInvokeFunctionPointer;
 import com.oracle.svm.core.util.VMError;
 
-@InternalVMMethod
-public abstract class SubstrateConstructorAccessor {
+import jdk.internal.reflect.ConstructorAccessor;
 
-    interface ConstructorNewInstanceFunctionPointer extends CFunctionPointer {
-        /** Must match the signature of {@link ReflectionAccessorHolder#newInstancePrototype}. */
-        @InvokeJavaFunctionPointer
-        Object invoke(Object[] args);
-    }
+@InternalVMMethod
+public final class SubstrateConstructorAccessor implements ConstructorAccessor {
 
     private final Executable member;
     private final CFunctionPointer newInstanceFunctionPointer;
 
-    protected SubstrateConstructorAccessor(Executable member, CFunctionPointer newInstanceFunctionPointer) {
+    public SubstrateConstructorAccessor(Executable member, CFunctionPointer newInstanceFunctionPointer) {
         this.member = member;
         this.newInstanceFunctionPointer = newInstanceFunctionPointer;
     }
 
+    @Override
     public Object newInstance(Object[] args) {
-        ConstructorNewInstanceFunctionPointer functionPointer = (ConstructorNewInstanceFunctionPointer) this.newInstanceFunctionPointer;
+        MethodInvokeFunctionPointer functionPointer = (MethodInvokeFunctionPointer) this.newInstanceFunctionPointer;
         if (functionPointer.isNull()) {
             throw newInstanceError();
         }
-        return functionPointer.invoke(args);
+        return functionPointer.invoke(false, null, args);
     }
 
     private RuntimeException newInstanceError() {

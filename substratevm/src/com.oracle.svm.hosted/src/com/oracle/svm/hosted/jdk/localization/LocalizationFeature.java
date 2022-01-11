@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.hosted.jdk.localization;
 
-// Checkstyle: stop
-
 import java.lang.reflect.Field;
 import java.nio.charset.Charset;
 import java.nio.charset.IllegalCharsetNameException;
@@ -58,40 +56,40 @@ import java.util.spi.LocaleNameProvider;
 import java.util.spi.LocaleServiceProvider;
 import java.util.spi.TimeZoneNameProvider;
 
-import com.oracle.svm.core.jdk.localization.BundleContentSubstitutedLocalizationSupport;
-import com.oracle.svm.core.jdk.localization.LocalizationSupport;
-import com.oracle.svm.core.jdk.localization.OptimizedLocalizationSupport;
-import com.oracle.svm.hosted.NativeImageOptions;
-import com.oracle.svm.core.jdk.localization.compression.GzipBundleCompression;
-import com.oracle.svm.core.jdk.localization.substitutions.Target_sun_util_locale_provider_LocaleServiceProviderPool_OptimizedLocaleMode;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionType;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.ClassLoaderSupport;
+import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.jdk.localization.BundleContentSubstitutedLocalizationSupport;
+import com.oracle.svm.core.jdk.localization.LocalizationSupport;
+import com.oracle.svm.core.jdk.localization.OptimizedLocalizationSupport;
+import com.oracle.svm.core.jdk.localization.compression.GzipBundleCompression;
+import com.oracle.svm.core.jdk.localization.substitutions.Target_sun_util_locale_provider_LocaleServiceProviderPool_OptimizedLocaleMode;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import sun.text.spi.JavaTimeDateTimePatternProvider;
 import sun.util.locale.provider.LocaleProviderAdapter;
 import sun.util.locale.provider.ResourceBundleBasedAdapter;
 import sun.util.resources.LocaleData;
-// Checkstyle: resume
 
 /**
  * LocalizationFeature is the core class of SVM localization support. It contains all the options
@@ -122,7 +120,8 @@ import sun.util.resources.LocaleData;
  * @see OptimizedLocalizationSupport
  * @see BundleContentSubstitutedLocalizationSupport
  */
-public abstract class LocalizationFeature implements Feature {
+@AutomaticFeature
+public class LocalizationFeature implements Feature {
 
     protected final boolean optimizedMode = Options.LocalizationOptimizedMode.getValue();
 
@@ -166,7 +165,7 @@ public abstract class LocalizationFeature implements Feature {
         public static final HostedOptionKey<Boolean> IncludeAllLocales = new HostedOptionKey<>(false);
 
         @Option(help = "Optimize the resource bundle lookup using a simple map.", type = OptionType.User)//
-        public static final HostedOptionKey<Boolean> LocalizationOptimizedMode = new HostedOptionKey<>(JavaVersionUtil.JAVA_SPEC == 8);
+        public static final HostedOptionKey<Boolean> LocalizationOptimizedMode = new HostedOptionKey<>(false);
 
         @Option(help = "Store the resource bundle content more efficiently in the fallback mode.", type = OptionType.User)//
         public static final HostedOptionKey<Boolean> LocalizationSubstituteLoadLookup = new HostedOptionKey<>(true);
@@ -249,7 +248,6 @@ public abstract class LocalizationFeature implements Feature {
         allLocales.add(defaultLocale);
         support = selectLocalizationSupport();
         ImageSingletons.add(LocalizationSupport.class, support);
-        ImageSingletons.add(LocalizationFeature.class, this);
 
         addCharsets();
         if (optimizedMode) {
@@ -391,18 +389,14 @@ public abstract class LocalizationFeature implements Feature {
                     CurrencyNameProvider.class,
                     LocaleNameProvider.class,
                     TimeZoneNameProvider.class,
+                    JavaTimeDateTimePatternProvider.class,
                     CalendarDataProvider.class,
                     CalendarNameProvider.class);
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected List<Class<? extends LocaleServiceProvider>> getSpiClasses() {
-        return spiClasses;
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
     private void addProviders() {
         OptimizedLocalizationSupport optimizedLocalizationSupport = support.asOptimizedSupport();
-        for (Class<? extends LocaleServiceProvider> providerClass : getSpiClasses()) {
+        for (Class<? extends LocaleServiceProvider> providerClass : spiClasses) {
             LocaleProviderAdapter adapter = Objects.requireNonNull(LocaleProviderAdapter.getAdapter(providerClass, defaultLocale));
             LocaleServiceProvider provider = Objects.requireNonNull(adapter.getLocaleServiceProvider(providerClass));
             optimizedLocalizationSupport.providerPools.put(providerClass, new Target_sun_util_locale_provider_LocaleServiceProviderPool_OptimizedLocaleMode(provider));
@@ -410,7 +404,7 @@ public abstract class LocalizationFeature implements Feature {
 
         for (Locale locale : allLocales) {
             for (Locale candidateLocale : optimizedLocalizationSupport.control.getCandidateLocales("", locale)) {
-                for (Class<? extends LocaleServiceProvider> providerClass : getSpiClasses()) {
+                for (Class<? extends LocaleServiceProvider> providerClass : spiClasses) {
                     LocaleProviderAdapter adapter = Objects.requireNonNull(LocaleProviderAdapter.getAdapter(providerClass, candidateLocale));
 
                     optimizedLocalizationSupport.adaptersByClass.put(Pair.create(providerClass, candidateLocale), adapter);
@@ -433,10 +427,11 @@ public abstract class LocalizationFeature implements Feature {
             prepareBundle(localeData(java.text.spi.BreakIteratorProvider.class, locale).getCollationData(locale), locale);
             prepareBundle(localeData(java.text.spi.DateFormatProvider.class, locale).getDateFormatData(locale), locale);
             prepareBundle(localeData(java.text.spi.NumberFormatProvider.class, locale).getNumberFormatData(locale), locale);
-            /* Note that JDK 11 support overrides this method to register more bundles. */
+            prepareBundle(localeData(java.text.spi.BreakIteratorProvider.class, locale).getBreakIteratorResources(locale), locale);
         }
 
         final String[] alwaysRegisteredResourceBundles = new String[]{
+                        "sun.text.resources.FormatData",
                         "sun.util.logging.resources.logging",
                         "sun.util.resources.TimeZoneNames"
         };
@@ -522,9 +517,7 @@ public abstract class LocalizationFeature implements Feature {
             String errorMessage = "The bundle named: " + baseName + ", has not been found. " +
                             "If the bundle is part of a module, verify the bundle name is a fully qualified class name. Otherwise " +
                             "verify the bundle path is accessible in the classpath.";
-            // Checkstyle: stop
             System.out.println(errorMessage);
-            // Checkstyle: resume
         }
     }
 
@@ -571,9 +564,7 @@ public abstract class LocalizationFeature implements Feature {
     @Platforms(Platform.HOSTED_ONLY.class)
     protected void trace(String msg) {
         if (trace) {
-            // Checkstyle: stop
             System.out.println(msg);
-            // Checkstyle: resume
         }
     }
 }

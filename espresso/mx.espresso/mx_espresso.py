@@ -81,7 +81,10 @@ def _run_java_truffle(args=None, cwd=None, nonZeroIsFatal=True):
 
 def _run_espresso_meta(args, nonZeroIsFatal=True):
     """Run Espresso (standalone) on Espresso (launcher)"""
-    return _run_espresso_launcher(['--vm.Xss4m'] + _espresso_standalone_command(args), nonZeroIsFatal=nonZeroIsFatal)
+    return _run_espresso_launcher([
+        '--vm.Xss4m',
+        '-Dtruffle.class.path.append=' + mx.dependency('ESPRESSO').path,  # on GraalVM the EspressoLanguageProvider must be visible to the GraalVMLocator
+    ] + _espresso_standalone_command(args), nonZeroIsFatal=nonZeroIsFatal)
 
 
 class EspressoTags:
@@ -190,7 +193,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     installable=True,
     license_files=['LICENSE_JAVAONTRUFFLE'],
     third_party_license_files=[],
-    dependencies=['Truffle', 'Truffle NFI', 'ejvm'],
+    dependencies=['Truffle', 'nfi-libffi', 'ejvm'],
     truffle_jars=['espresso:ESPRESSO'],
     support_distributions=['espresso:ESPRESSO_SUPPORT'],
     library_configs=[espresso_library_config],
@@ -207,13 +210,24 @@ Usage: java -truffle [-options] class [args...]
 
 To rebuild the polyglot library:
     gu rebuild-images libpolyglot -cp """ + lib_espresso_cp,
-    stability="experimental",
+    stability="supported",
 ))
 
 if LLVM_JAVA_HOME:
+    release_dict = mx_sdk_vm.parse_release_file(join(LLVM_JAVA_HOME, 'release'))
+    implementor = release_dict.get('IMPLEMENTOR')
+    if implementor is not None:
+        if implementor == 'Oracle Corporation':
+            edition = 'ee'
+        else:
+            edition = 'ce'
+    else:
+        mx.warn('Release file for `LLVM_JAVA_HOME` ({}) is missing the IMPLEMENTOR field')
+        edition = 'ce'
+
     mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
         suite=_suite,
-        name='Espresso LLVM Java libraries',
+        name='Java on Truffle LLVM Java libraries',
         short_name='ellvm',
         license_files=[],
         third_party_license_files=[],
@@ -221,11 +235,12 @@ if LLVM_JAVA_HOME:
         include_in_polyglot=False,
         dir_name='java',
         installable_id='espresso-llvm',
+        extra_installable_qualifiers=[edition],
         installable=True,
         dependencies=['Java on Truffle', 'LLVM Runtime Native'],
         support_distributions=['espresso:ESPRESSO_LLVM_SUPPORT'],
         priority=2,
-        stability="experimental",
+        stability="supported",
     ))
 
 
@@ -258,7 +273,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     dependencies=['Java on Truffle'],
     support_libraries_distributions=['espresso:ESPRESSO_JVM_SUPPORT'],
     priority=2,
-    stability="experimental",
+    stability="supported",
 ))
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
@@ -293,8 +308,8 @@ mx.update_commands(_suite, {
 # Build configs
 # pylint: disable=bad-whitespace
 tools = ['cov', 'dap', 'ins', 'insight', 'insightheap', 'lsp', 'pro', 'vvm']
-mx_sdk_vm.register_vm_config('espresso-jvm',       ['java', 'ejvm', 'libpoly', 'nfi', 'sdk', 'tfl', 'cmp'                                           , 'elau'                                             ] + tools, _suite, env_file='jvm')
-mx_sdk_vm.register_vm_config('espresso-jvm-ce',    ['java', 'ejvm', 'libpoly', 'nfi', 'sdk', 'tfl', 'cmp'         , 'svm', 'svmnfi'         , 'tflm', 'elau', 'lg', 'bespresso', 'sespresso', 'spolyglot'] + tools, _suite, env_file='jvm-ce')
-mx_sdk_vm.register_vm_config('espresso-jvm-ee',    ['java', 'ejvm', 'libpoly', 'nfi', 'sdk', 'tfl', 'cmp', 'cmpee', 'svm', 'svmnfi', 'svmee', 'tflm', 'elau', 'lg', 'bespresso', 'sespresso', 'spolyglot'] + tools, _suite, env_file='jvm-ee')
-mx_sdk_vm.register_vm_config('espresso-native-ce', ['java', 'ejvm', 'libpoly', 'nfi', 'sdk', 'tfl', 'cmp'         , 'svm', 'svmnfi'         , 'tflm'                                        , 'spolyglot'] + tools, _suite, env_file='native-ce')
-mx_sdk_vm.register_vm_config('espresso-native-ee', ['java', 'ejvm', 'libpoly', 'nfi', 'sdk', 'tfl', 'cmp', 'cmpee', 'svm', 'svmnfi', 'svmee', 'tflm'                                        , 'spolyglot'] + tools, _suite, env_file='native-ee')
+mx_sdk_vm.register_vm_config('espresso-jvm',       ['java', 'ejvm', 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'tfl', 'cmp'                                           , 'elau'                                             ] + tools, _suite, env_file='jvm')
+mx_sdk_vm.register_vm_config('espresso-jvm-ce',    ['java', 'ejvm', 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'tfl', 'cmp'         , 'svm', 'svmnfi'         , 'tflm', 'elau', 'lg', 'bespresso', 'sespresso', 'spolyglot'] + tools, _suite, env_file='jvm-ce')
+mx_sdk_vm.register_vm_config('espresso-jvm-ee',    ['java', 'ejvm', 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'tfl', 'cmp', 'cmpee', 'svm', 'svmnfi', 'svmee', 'tflm', 'elau', 'lg', 'bespresso', 'sespresso', 'spolyglot'] + tools, _suite, env_file='jvm-ee')
+mx_sdk_vm.register_vm_config('espresso-native-ce', ['java', 'ejvm', 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'tfl', 'cmp'         , 'svm', 'svmnfi'         , 'tflm'                                        , 'spolyglot'] + tools, _suite, env_file='native-ce')
+mx_sdk_vm.register_vm_config('espresso-native-ee', ['java', 'ejvm', 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'tfl', 'cmp', 'cmpee', 'svm', 'svmnfi', 'svmee', 'tflm'                                        , 'spolyglot'] + tools, _suite, env_file='native-ee')

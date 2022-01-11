@@ -190,7 +190,7 @@ public class NativeImageGeneratorRunner {
          */
         nativeImageSystemClassLoader.setNativeImageClassLoader(nativeImageClassLoader);
 
-        if (JavaVersionUtil.JAVA_SPEC >= 11 && !nativeImageClassLoaderSupport.imagecp.isEmpty()) {
+        if (!nativeImageClassLoaderSupport.imagecp.isEmpty()) {
             ModuleSupport.openModuleByClass(JavaVersionUtil.class, null);
         }
 
@@ -206,17 +206,12 @@ public class NativeImageGeneratorRunner {
     }
 
     private static AbstractNativeImageClassLoaderSupport createNativeImageClassLoaderSupport(ClassLoader defaultSystemClassLoader, String[] classpath, String[] modulePath) {
-        if (JavaVersionUtil.JAVA_SPEC >= 11) {
-            /* Instantiate module-aware NativeImageClassLoaderSupport */
-            try {
-                Class<?> nativeImageClassLoaderSupport = Class.forName("com.oracle.svm.hosted.jdk.NativeImageClassLoaderSupportJDK11OrLater");
-                Constructor<?> nativeImageClassLoaderSupportConstructor = nativeImageClassLoaderSupport.getConstructor(ClassLoader.class, String[].class, String[].class);
-                return (AbstractNativeImageClassLoaderSupport) nativeImageClassLoaderSupportConstructor.newInstance(defaultSystemClassLoader, classpath, modulePath);
-            } catch (ReflectiveOperationException e) {
-                throw VMError.shouldNotReachHere("Unable to reflectively instantiate module-aware NativeImageClassLoaderSupport", e);
-            }
-        } else {
-            return new NativeImageClassLoaderSupport(defaultSystemClassLoader, classpath, modulePath);
+        try {
+            Class<?> nativeImageClassLoaderSupport = Class.forName("com.oracle.svm.hosted.jdk.NativeImageClassLoaderSupportJDK11OrLater");
+            Constructor<?> nativeImageClassLoaderSupportConstructor = nativeImageClassLoaderSupport.getConstructor(ClassLoader.class, String[].class, String[].class);
+            return (AbstractNativeImageClassLoaderSupport) nativeImageClassLoaderSupportConstructor.newInstance(defaultSystemClassLoader, classpath, modulePath);
+        } catch (ReflectiveOperationException e) {
+            throw VMError.shouldNotReachHere("Unable to reflectively instantiate module-aware NativeImageClassLoaderSupport", e);
         }
     }
 
@@ -263,11 +258,6 @@ public class NativeImageGeneratorRunner {
             return Integer.parseInt(pidStr);
         }
         return -1;
-    }
-
-    /** Unless the check should be ignored, check that I am running on JDK-8. */
-    public static boolean isValidJavaVersion() {
-        return (Boolean.getBoolean("substratevm.IgnoreGraalVersionCheck") || JavaVersionUtil.JAVA_SPEC <= 8);
     }
 
     private static void reportToolUserError(String msg) {
@@ -489,10 +479,6 @@ public class NativeImageGeneratorRunner {
     }
 
     public static boolean verifyValidJavaVersionAndPlatform() {
-        if (!isValidJavaVersion()) {
-            reportToolUserError("supports only Java 1.8 with an update version 40+. Detected Java version is: " + getJavaVersion());
-            return false;
-        }
         if (!isValidArchitecture()) {
             reportToolUserError("runs only on architecture AMD64. Detected architecture: " + ClassUtil.getUnqualifiedName(GraalAccess.getOriginalTarget().arch.getClass()));
         }

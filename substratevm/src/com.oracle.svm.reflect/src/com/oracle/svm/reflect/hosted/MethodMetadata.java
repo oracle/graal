@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.reflect.hosted;
 
-// Checkstyle: allow reflection
-
 import java.lang.annotation.Annotation;
 
 import org.graalvm.nativeimage.ImageSingletons;

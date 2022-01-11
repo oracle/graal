@@ -103,7 +103,6 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.replacements.NodeIntrinsificationProvider;
 import org.graalvm.compiler.replacements.TargetGraphBuilderPlugins;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.WordOperationPlugin;
 import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.nativeimage.ImageInfo;
@@ -699,8 +698,10 @@ public class NativeImageGenerator {
                 DuringAnalysisAccessImpl config = new DuringAnalysisAccessImpl(featureHandler, loader, bb, nativeLibraries, debug);
                 try {
                     bb.runAnalysis(debug, (universe) -> {
-                        bb.getHostVM().notifyClassReachabilityListener(universe, config);
-                        featureHandler.forEachFeature(feature -> feature.duringAnalysis(config));
+                        try (StopTimer t2 = bb.getProcessFeaturesTimer().start()) {
+                            bb.getHostVM().notifyClassReachabilityListener(universe, config);
+                            featureHandler.forEachFeature(feature -> feature.duringAnalysis(config));
+                        }
                         return !config.getAndResetRequireAnalysisIteration();
                     });
                 } catch (AnalysisError e) {
@@ -1168,7 +1169,7 @@ public class NativeImageGenerator {
         Architecture architecture = ConfigurationValues.getTarget().arch;
         OptionValues options = aUniverse.hostVM().options();
         ImageSingletons.lookup(TargetGraphBuilderPlugins.class).register(plugins, replacements, architecture,
-                        /* registerForeignCallMath */ false, JavaVersionUtil.JAVA_SPEC >= 11, options);
+                        /* registerForeignCallMath */ false, true, options);
 
         /*
          * When the context is hosted, i.e., ahead-of-time compilation, and after the analysis we

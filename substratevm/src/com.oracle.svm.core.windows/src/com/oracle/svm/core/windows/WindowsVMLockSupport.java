@@ -58,8 +58,6 @@ import com.oracle.svm.core.windows.headers.WinBase;
 
 import jdk.vm.ci.meta.JavaKind;
 
-//Checkstyle: stop
-
 /**
  * Support of {@link VMMutex} and {@link VMCondition} in multi-threaded environments. Locking is
  * implemented via Windows locking primitives.

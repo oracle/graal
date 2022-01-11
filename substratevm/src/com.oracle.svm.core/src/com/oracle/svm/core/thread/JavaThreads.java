@@ -78,9 +78,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 
-// Checkstyle: stop
 import sun.misc.Unsafe;
-// Checkstyle: resume
 
 public abstract class JavaThreads {
     @Fold
@@ -526,10 +524,8 @@ public abstract class JavaThreads {
         setThreadStatus(thread, ThreadStatus.TERMINATED);
         /*
          * And finally, wake up any threads waiting to join this one.
-         *
-         * Checkstyle: allow synchronization
          */
-        synchronized (thread) { // Checkstyle: disallow synchronization
+        synchronized (thread) {
             thread.notifyAll();
         }
     }
@@ -682,9 +678,7 @@ public abstract class JavaThreads {
             }
         } else {
             /* If no uncaught exception handler is present, then just report the throwable. */
-            /* Checkstyle: stop (printStackTrace below is going to write to System.err too). */
             System.err.print("Exception in thread \"" + Thread.currentThread().getName() + "\" ");
-            // Checkstyle: resume
             throwable.printStackTrace();
         }
     }

@@ -27,6 +27,7 @@ package com.oracle.svm.hosted.snippets;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.lang.invoke.VarHandle;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
@@ -55,7 +56,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
@@ -157,23 +157,12 @@ public final class ReflectionPlugins {
      * Adding an array type of a Java collection class to this list is always wrong, because those
      * are never immutable.
      */
-    private static final Set<Class<?>> ALLOWED_CONSTANT_CLASSES;
-
-    static {
-        ALLOWED_CONSTANT_CLASSES = new HashSet<>(Arrays.asList(
-                        Class.class, String.class, ClassLoader.class,
-                        Method.class, Constructor.class, Field.class,
-                        MethodHandle.class, MethodHandles.Lookup.class, MethodType.class,
-                        ByteOrder.class));
-
-        if (JavaVersionUtil.JAVA_SPEC >= 11) {
-            try {
-                ALLOWED_CONSTANT_CLASSES.add(Class.forName("java.lang.invoke.VarHandle"));
-            } catch (ClassNotFoundException ex) {
-                throw VMError.shouldNotReachHere(ex);
-            }
-        }
-    }
+    private static final Set<Class<?>> ALLOWED_CONSTANT_CLASSES = new HashSet<>(Arrays.asList(
+                    Class.class, String.class, ClassLoader.class,
+                    Method.class, Constructor.class, Field.class,
+                    MethodHandle.class, MethodHandles.Lookup.class, MethodType.class,
+                    VarHandle.class,
+                    ByteOrder.class));
 
     private void registerMethodHandlesPlugins(InvocationPlugins plugins) {
         registerFoldInvocationPlugins(plugins, MethodHandles.class,

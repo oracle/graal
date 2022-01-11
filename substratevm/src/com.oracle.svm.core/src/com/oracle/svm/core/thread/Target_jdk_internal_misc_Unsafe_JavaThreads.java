@@ -26,10 +26,9 @@ package com.oracle.svm.core.thread;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.Package_jdk_internal_misc;
 import com.oracle.svm.core.util.TimeUtils;
 
-@TargetClass(classNameProvider = Package_jdk_internal_misc.class, className = "Unsafe")
+@TargetClass(className = "jdk.internal.misc.Unsafe")
 @SuppressWarnings({"static-method"})
 final class Target_jdk_internal_misc_Unsafe_JavaThreads {
 

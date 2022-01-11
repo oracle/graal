@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.309.2",
+  "mxversion" : "5.316.15",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
@@ -539,6 +539,9 @@ suite = {
     "org.graalvm.compiler.api.directives" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
+      "dependencies" : [
+        "JVMCI_API",
+      ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
       "workingSets" : "API,Graal",

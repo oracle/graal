@@ -27,9 +27,9 @@ package com.oracle.objectfile.pecoff;
 
 import com.oracle.objectfile.ObjectFile.RelocationKind;
 import com.oracle.objectfile.ObjectFile.RelocationMethod;
-import com.oracle.objectfile.pecoff.PECoffRelocationTable.PECoffRelocationMethod;
 import com.oracle.objectfile.pecoff.PECoff.IMAGE_FILE_HEADER;
 import com.oracle.objectfile.pecoff.PECoff.IMAGE_RELOCATION;
+import com.oracle.objectfile.pecoff.PECoffRelocationTable.PECoffRelocationMethod;
 
 /**
  * PECoff machine type (incomplete). Each machine type also defines its set of relocation types.
@@ -93,8 +93,7 @@ public enum PECoffMachine/* implements Integral */ {
     }
 }
 
-/**
- * @formatter:off
+/*-
  *
  * IMAGE_REL_AMD64_ABSOLUTE 0x0000 // Reference is absolute, no relocation is necessary
  * IMAGE_REL_AMD64_ADDR64 0x0001   // 64-bit address (VA).
@@ -112,8 +111,6 @@ public enum PECoffMachine/* implements Integral */ {
  * IMAGE_REL_AMD64_TOKEN 0x000D    // 32 bit metadata token
  * IMAGE_REL_AMD64_SREL32 0x000E   // 32 bit signed span-dependent value emitted into object
  * IMAGE_REL_AMD64_PAIR 0x000F IMAGE_REL_AMD64_SSPAN32 0x0010 // 32 bit signed span-dependent value applied at link time
- *
- * @formatter:on
  */
 enum PECoffX86_64Relocation implements PECoffRelocationMethod {
     ADDR64 {

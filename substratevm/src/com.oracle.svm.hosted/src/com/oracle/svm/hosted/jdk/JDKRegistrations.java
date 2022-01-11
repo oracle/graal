@@ -40,13 +40,7 @@ class JDKRegistrations extends JNIRegistrationUtil implements GraalFeature {
     @Override
     public void duringSetup(DuringSetupAccess a) {
         rerunClassInit(a, "java.io.RandomAccessFile", "java.lang.ProcessEnvironment", "java.io.File$TempDirectory", "java.nio.file.TempFileHelper", "java.lang.Terminator");
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            if (isPosix()) {
-                rerunClassInit(a, "java.lang.UNIXProcess");
-            }
-        } else {
-            rerunClassInit(a, "java.lang.ProcessImpl", "java.lang.ProcessHandleImpl", "java.lang.ProcessHandleImpl$Info", "java.io.FilePermission");
-        }
+        rerunClassInit(a, "java.lang.ProcessImpl", "java.lang.ProcessHandleImpl", "java.lang.ProcessHandleImpl$Info", "java.io.FilePermission");
 
         if (JavaVersionUtil.JAVA_SPEC >= 17) {
             /*

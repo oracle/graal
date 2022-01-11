@@ -24,18 +24,12 @@
  */
 package com.oracle.svm.core.jdk;
 
-// Checkstyle: allow reflection
-
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.security.ProtectionDomain;
-import java.util.function.Function;
 
 import org.graalvm.compiler.nodes.extended.MembarNode;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.word.WordFactory;
 
@@ -54,9 +48,9 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.MemoryBarriers;
 
-@TargetClass(classNameProvider = Package_jdk_internal_misc.class, className = "Unsafe")
+@TargetClass(className = "jdk.internal.misc.Unsafe")
 @SuppressWarnings({"static-method", "unused"})
-final class Target_Unsafe_Core {
+final class Target_jdk_internal_misc_Unsafe_Core {
 
     @Substitute
     private long allocateMemory0(long bytes) {
@@ -233,18 +227,6 @@ final class Target_jdk_internal_access_JavaAWTAccess {
 
 @TargetClass(classNameProvider = Package_jdk_internal_access.class, className = "JavaLangAccess")
 final class Target_jdk_internal_access_JavaLangAccess {
-}
-
-@Platforms(Platform.HOSTED_ONLY.class)
-class Package_jdk_internal_loader implements Function<TargetClass, String> {
-    @Override
-    public String apply(TargetClass annotation) {
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            return "sun.misc." + annotation.className();
-        } else {
-            return "jdk.internal.loader." + annotation.className();
-        }
-    }
 }
 
 @TargetClass(className = "sun.reflect.misc.MethodUtil")

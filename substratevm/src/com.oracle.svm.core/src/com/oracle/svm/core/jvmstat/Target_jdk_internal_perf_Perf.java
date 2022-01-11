@@ -31,7 +31,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
-@TargetClass(classNameProvider = Package_jdk_internal_perf.class, className = "Perf")
+@TargetClass(className = "jdk.internal.perf.Perf")
 @SuppressWarnings({"unused", "static-method"})
 public final class Target_jdk_internal_perf_Perf {
     @Substitute

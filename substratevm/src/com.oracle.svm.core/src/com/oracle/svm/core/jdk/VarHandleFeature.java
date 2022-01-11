@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.jdk;
 
-//Checkstyle: allow reflection
-
 import static com.oracle.svm.core.util.VMError.guarantee;
 
 import java.lang.reflect.Field;
@@ -110,22 +108,15 @@ public class VarHandleFeature implements Feature {
     private Consumer<Field> markAsUnsafeAccessed;
 
     @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return JavaVersionUtil.JAVA_SPEC >= 11;
-    }
-
-    @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         try {
             for (String typeName : new String[]{"Booleans", "Bytes", "Chars", "Doubles", "Floats", "Ints", "Longs", "Shorts", OBJECT_SUFFIX}) {
-                // Checkstyle: stop
                 buildInfo(false, "receiverType",
                                 Class.forName("java.lang.invoke.VarHandle" + typeName + "$FieldInstanceReadOnly"),
                                 Class.forName("java.lang.invoke.VarHandle" + typeName + "$FieldInstanceReadWrite"));
                 buildInfo(true, "base",
                                 Class.forName("java.lang.invoke.VarHandle" + typeName + "$FieldStaticReadOnly"),
                                 Class.forName("java.lang.invoke.VarHandle" + typeName + "$FieldStaticReadWrite"));
-                // Checkstyle: resume
             }
         } catch (ClassNotFoundException ex) {
             throw VMError.shouldNotReachHere(ex);

@@ -28,14 +28,13 @@ import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
 import com.oracle.svm.reflect.serialize.SerializationRegistry;
 
-@TargetClass(classNameProvider = Package_jdk_internal_reflect.class, className = "AccessorGenerator")
+@TargetClass(className = "jdk.internal.reflect.AccessorGenerator")
 public final class Target_jdk_internal_reflect_AccessorGenerator {
 }
 
-@TargetClass(classNameProvider = Package_jdk_internal_reflect.class, className = "MethodAccessorGenerator")
+@TargetClass(className = "jdk.internal.reflect.MethodAccessorGenerator")
 final class Target_jdk_internal_reflect_MethodAccessorGenerator {
 
     @SuppressWarnings("static-method")
@@ -51,6 +50,6 @@ final class Target_jdk_internal_reflect_MethodAccessorGenerator {
     }
 }
 
-@TargetClass(classNameProvider = Package_jdk_internal_reflect.class, className = "SerializationConstructorAccessorImpl")
+@TargetClass(className = "jdk.internal.reflect.SerializationConstructorAccessorImpl")
 final class Target_jdk_internal_reflect_SerializationConstructorAccessorImpl {
 }

@@ -663,6 +663,10 @@ public abstract class Accessor {
         public abstract boolean isPolyglotThread(Thread thread);
 
         public abstract Object getHostNull();
+
+        public abstract Object getGuestToHostCodeCache(Object polyglotContextImpl);
+
+        public abstract void setGuestToHostCodeCache(Object polyglotContextImpl, Object cache);
     }
 
     public abstract static class LanguageSupport extends Support {

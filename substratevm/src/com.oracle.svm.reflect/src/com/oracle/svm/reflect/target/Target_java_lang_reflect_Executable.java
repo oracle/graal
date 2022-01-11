@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.reflect.target;
 
-// Checkstyle: allow reflection
-
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.AnnotatedType;
@@ -128,7 +126,6 @@ public final class Target_java_lang_reflect_Executable {
             if (!MethodMetadataDecoderImpl.hasQueriedMethods()) {
                 throw VMError.shouldNotReachHere();
             }
-            // Checkstyle: stop
             synchronized (this) {
                 if ((declAnnos = declaredAnnotations) == null) {
                     Target_java_lang_reflect_Executable holder = ReflectionHelper.getHolder(this);
@@ -139,7 +136,6 @@ public final class Target_java_lang_reflect_Executable {
                     declaredAnnotations = declAnnos;
                 }
             }
-            // Checkstyle: resume
         }
         return declAnnos;
     }

@@ -9,13 +9,17 @@
     "openjdk11":          {"name": "openjdk",   "version": "11.0.11+9", "platformspecific": true },
     "oraclejdk11":        {"name": "oraclejdk", "version": "11.0.11+9", "platformspecific": true },
     "labsjdk-ce-11":      {"name": "labsjdk",   "version": "ce-11.0.13+8-jvmci-22.0-b02", "platformspecific": true },
+    "labsjdk-ce-11-llvm": {"name": "labsjdk",   "version": "ce-11.0.14+7-jvmci-22.1-b00-sulong", "platformspecific": true },
     "labsjdk-ee-11":      {"name": "labsjdk",   "version": "ee-11.0.14+5-jvmci-22.0-b02", "platformspecific": true },
+    "labsjdk-ee-11-llvm": {"name": "labsjdk",   "version": "ee-11.0.14+6-jvmci-22.1-b00-sulong", "platformspecific": true },
 
     "oraclejdk17":        {"name": "oraclejdk", "version": "17.0.1+12", "platformspecific": true },
     "labsjdk-ce-17":      {"name": "labsjdk",   "version": "ce-17.0.2+5-jvmci-22.0-b02", "platformspecific": true },
     "labsjdk-ce-17Debug": {"name": "labsjdk",   "version": "ce-17.0.2+5-jvmci-22.0-b02-debug", "platformspecific": true },
+    "labsjdk-ce-17-llvm": {"name": "labsjdk",   "version": "ce-17.0.2+6-jvmci-22.1-b00-sulong", "platformspecific": true },
     "labsjdk-ee-17":      {"name": "labsjdk",   "version": "ee-17.0.2+5-jvmci-22.0-b02", "platformspecific": true },
-    "labsjdk-ee-17Debug": {"name": "labsjdk",   "version": "ee-17.0.2+5-jvmci-22.0-b02-debug", "platformspecific": true }
+    "labsjdk-ee-17Debug": {"name": "labsjdk",   "version": "ee-17.0.2+5-jvmci-22.0-b02-debug", "platformspecific": true },
+    "labsjdk-ee-17-llvm": {"name": "labsjdk",   "version": "ee-17.0.2+6-jvmci-22.1-b00-sulong", "platformspecific": true }
   },
 
   "COMMENT.devkits" : "The devkits versions reflect those used to build the JVMCI JDKs (e.g., see devkit_platform_revisions in <jdk>/make/conf/jib-profiles.js)",
@@ -46,6 +50,7 @@
         "pip:isort": "==4.3.19",
         "pip:logilab-common": "==1.4.4",
         "pip:pylint": "==1.9.3",
+        "pip:lazy-object-proxy": "==1.6.0",
         "pip:ninja_syntax": "==1.7.2"
       }
     },

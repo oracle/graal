@@ -27,6 +27,7 @@ package com.oracle.svm.core.genscavenge;
 import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.TLAB_END_IDENTITY;
 import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.TLAB_TOP_IDENTITY;
 
+import com.oracle.svm.core.SubstrateGCOptions;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.replacements.AllocationSnippets.FillContent;
 import org.graalvm.compiler.word.Word;
@@ -280,6 +281,10 @@ public final class ThreadLocalAllocation {
         Pointer memory = UnalignedHeapChunk.allocateMemory(newTlabChunk, size);
         assert memory.isNonNull();
 
+        if (!needsZeroing && SubstrateGCOptions.VerifyHeap.getValue()) {
+            guaranteeZeroed(memory, size);
+        }
+
         /*
          * Install the DynamicHub and length and zero the elements if necessary. If the memory is
          * already pre-zeroed, we need to ensure that the snippet code does not fill the memory in
@@ -320,6 +325,16 @@ public final class ThreadLocalAllocation {
             return WordFactory.unsigned(0);
         }
         return end.subtract(top);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static void guaranteeZeroed(Pointer memory, UnsignedWord size) {
+        Pointer pos = memory;
+        Pointer end = memory.add(size);
+        while (pos.belowThan(end)) {
+            VMError.guarantee(pos.readByte(0) == 0);
+            pos = pos.add(1);
+        }
     }
 
     static void disableAndFlushForAllThreads() {

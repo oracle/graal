@@ -63,8 +63,9 @@ import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.BranchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.CompareBranchZeroOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.CondMoveOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.CondSetOp;
+import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.HashTableSwitchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.StrategySwitchOp;
-import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.TableSwitchOp;
+import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.RangeTableSwitchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Move;
 import org.graalvm.compiler.lir.aarch64.AArch64Move.MembarOp;
 import org.graalvm.compiler.lir.aarch64.AArch64PauseOp;
@@ -482,8 +483,13 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected void emitTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value key) {
-        append(new TableSwitchOp(lowKey, defaultTarget, targets, asAllocatable(key)));
+    protected void emitRangeTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value key) {
+        append(new RangeTableSwitchOp(lowKey, defaultTarget, targets, asAllocatable(key)));
+    }
+
+    @Override
+    protected void emitHashTableSwitch(JavaConstant[] keys, LabelRef defaultTarget, LabelRef[] targets, Value value, Value hash) {
+        append(new HashTableSwitchOp(keys, defaultTarget, targets, asAllocatable(value), asAllocatable(hash)));
     }
 
     @Override

@@ -26,10 +26,8 @@
 package com.oracle.svm.reflect.serialize;
 
 import java.io.Serializable;
-// Checkstyle: stop
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
-// Checkstyle: resume
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;

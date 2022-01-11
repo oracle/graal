@@ -26,6 +26,7 @@ package org.graalvm.compiler.replacements.test;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.junit.Test;
 
 import jdk.vm.ci.code.InstalledCode;
@@ -41,6 +42,11 @@ public class DeoptimizeOnVolatileReadTest extends GraalCompilerTest {
     static class Dummy {
         boolean f1 = false;
         volatile boolean f2 = false;
+    }
+
+    @Override
+    protected OptimisticOptimizations getOptimisticOptimizations() {
+        return OptimisticOptimizations.ALL;
     }
 
     public static int test1Snippet(Dummy dummy) {

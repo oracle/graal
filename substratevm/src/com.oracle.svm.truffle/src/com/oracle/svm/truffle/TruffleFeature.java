@@ -25,8 +25,6 @@
 
 package com.oracle.svm.truffle;
 
-//Checkstyle: allow reflection
-
 import static org.graalvm.compiler.java.BytecodeParserOptions.InlineDuringParsingMaxDepth;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
 
@@ -112,7 +110,6 @@ import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilationNode;
 import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
@@ -583,11 +580,8 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
         blocklistAllMethods(metaAccess, ToLongBiFunction.class);
         blocklistAllMethods(metaAccess, ToLongFunction.class);
         blocklistAllMethods(metaAccess, UnaryOperator.class);
-
         /* Block list string concatenation. */
-        if (JavaVersionUtil.JAVA_SPEC >= 11) {
-            blocklistAllMethods(metaAccess, featureAccess.findClassByName("java.lang.StringConcatHelper"));
-        }
+        blocklistAllMethods(metaAccess, featureAccess.findClassByName("java.lang.StringConcatHelper"));
 
         /*
          * Core Substrate VM classes that very certainly should not be reachable for runtime

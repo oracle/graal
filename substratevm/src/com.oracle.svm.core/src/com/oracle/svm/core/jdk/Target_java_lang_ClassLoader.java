@@ -34,6 +34,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Stream;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
@@ -45,6 +46,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
+import com.oracle.svm.core.util.LazyFinalReference;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -176,7 +178,7 @@ public final class Target_java_lang_ClassLoader {
 
     @Substitute //
     @SuppressWarnings("unused")
-    Class<?> loadClass(Target_java_lang_Module module, String name) {
+    Class<?> loadClass(Module module, String name) {
         /* The module system is not supported for now, therefore the module parameter is ignored. */
         try {
             return loadClass(name, false);
@@ -200,6 +202,22 @@ public final class Target_java_lang_ClassLoader {
         return ClassForNameSupport.forNameOrNull(name, SubstrateUtil.cast(this, ClassLoader.class));
     }
 
+    /**
+     * All ClassLoaderValue are reset at run time for now. See also
+     * {@link Target_jdk_internal_loader_BootLoader#CLASS_LOADER_VALUE_MAP} for resetting of the
+     * boot class loader.
+     */
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = ConcurrentHashMap.class)//
+    ConcurrentHashMap<?, ?> classLoaderValueMap;
+
+    @Alias
+    native Stream<Package> packages();
+
+    @SuppressWarnings("static-method")
+    @Substitute
+    public Target_java_lang_Module getUnnamedModule() {
+        return ClassLoaderUtil.unnamedModuleReference.get();
+    }
     /*
      * The assertion status of classes is fixed at image build time because it is baked into the AOT
      * compiled code. All methods that modify the assertion status are substituted to throw an
@@ -379,10 +397,6 @@ final class Target_java_lang_ClassLoader_NativeLibrary {
 final class Target_java_lang_AssertionStatusDirectives {
 }
 
-@TargetClass(className = "java.lang.NamedPackage") //
-final class Target_java_lang_NamedPackage {
-}
-
 class PackageFieldTransformer implements RecomputeFieldValue.CustomFieldValueTransformer {
     @Override
     public RecomputeFieldValue.ValueAvailability valueAvailability() {
@@ -405,4 +419,9 @@ class PackageFieldTransformer implements RecomputeFieldValue.CustomFieldValueTra
             return useConcurrentHashMap ? packages : new HashMap<>(packages);
         }
     }
+}
+
+final class ClassLoaderUtil {
+
+    public static final LazyFinalReference<Target_java_lang_Module> unnamedModuleReference = new LazyFinalReference<>(Target_java_lang_Module::new);
 }

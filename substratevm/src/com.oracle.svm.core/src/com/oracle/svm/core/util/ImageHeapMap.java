@@ -24,27 +24,23 @@
  */
 package com.oracle.svm.core.util;
 
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicMapWrap;
 import org.graalvm.collections.Equivalence;
-import org.graalvm.collections.MapCursor;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.BuildPhaseProvider;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 
 /**
  * A thread-safe map implementation that optimizes its run time representation for space efficiency.
  * 
  * At image build time the map is implemented as a {@link ConcurrentHashMap} wrapped into an
- * {@link EconomicMap}. The {@link ImageHeapMapFeature} intercepts each build time map and
- * transforms it into an actual memory-efficient {@link EconomicMap} backed by a flat object array
- * during analysis. The later image building stages see only the {@link EconomicMap}.
+ * {@link EconomicMap}. The ImageHeapMapFeature intercepts each build time map and transforms it
+ * into an actual memory-efficient {@link EconomicMap} backed by a flat object array during
+ * analysis. The later image building stages see only the {@link EconomicMap}.
  * 
  * This map implementation allows thread-safe collection of data at image build time and storing it
  * into a space efficient data structure at run time.
@@ -71,79 +67,15 @@ public final class ImageHeapMap {
         VMError.guarantee(!BuildPhaseProvider.isAnalysisFinished(), "Trying to create an ImageHeapMap after analysis.");
         return new HostedImageHeapMap<>(strategy);
     }
-}
 
-@Platforms(Platform.HOSTED_ONLY.class) //
-final class HostedImageHeapMap<K, V> extends EconomicMapWrap<K, V> {
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    public static final class HostedImageHeapMap<K, V> extends EconomicMapWrap<K, V> {
 
-    final EconomicMap<Object, Object> runtimeMap;
+        public final EconomicMap<Object, Object> runtimeMap;
 
-    HostedImageHeapMap(Equivalence strategy) {
-        super((strategy == Equivalence.IDENTITY) ? new ConcurrentIdentityHashMap<>() : new ConcurrentHashMap<>());
-        this.runtimeMap = EconomicMap.create(strategy);
-    }
-}
-
-@AutomaticFeature
-final class ImageHeapMapFeature implements Feature {
-
-    private final Set<HostedImageHeapMap<?, ?>> allInstances = ConcurrentHashMap.newKeySet();
-
-    @Override
-    public void duringSetup(DuringSetupAccess config) {
-        config.registerObjectReplacer(this::imageHeapMapTransformer);
-    }
-
-    private Object imageHeapMapTransformer(Object obj) {
-        if (obj instanceof HostedImageHeapMap) {
-            HostedImageHeapMap<?, ?> hostedImageHeapMap = (HostedImageHeapMap<?, ?>) obj;
-            if (BuildPhaseProvider.isAnalysisFinished()) {
-                VMError.guarantee(allInstances.contains(hostedImageHeapMap), "ImageHeapMap reachable after analysis that was not seen during analysis");
-            } else {
-                allInstances.add(hostedImageHeapMap);
-            }
-            return hostedImageHeapMap.runtimeMap;
+        HostedImageHeapMap(Equivalence strategy) {
+            super((strategy == Equivalence.IDENTITY) ? new ConcurrentIdentityHashMap<>() : new ConcurrentHashMap<>());
+            this.runtimeMap = EconomicMap.create(strategy);
         }
-        return obj;
-    }
-
-    @Override
-    public void duringAnalysis(DuringAnalysisAccess access) {
-        for (HostedImageHeapMap<?, ?> hostedImageHeapMap : allInstances) {
-            if (needsUpdate(hostedImageHeapMap)) {
-                update(hostedImageHeapMap);
-                access.requireAnalysisIteration();
-            }
-        }
-    }
-
-    @Override
-    public void afterImageWrite(AfterImageWriteAccess access) {
-        for (HostedImageHeapMap<?, ?> hostedImageHeapMap : allInstances) {
-            if (needsUpdate(hostedImageHeapMap)) {
-                throw VMError.shouldNotReachHere("ImageHeapMap modified after static analysis: " + hostedImageHeapMap + System.lineSeparator() + hostedImageHeapMap.runtimeMap);
-            }
-        }
-    }
-
-    private static boolean needsUpdate(HostedImageHeapMap<?, ?> hostedMap) {
-        EconomicMap<Object, Object> runtimeMap = hostedMap.runtimeMap;
-        if (hostedMap.size() != runtimeMap.size()) {
-            return true;
-        }
-        MapCursor<?, ?> hostedEntry = hostedMap.getEntries();
-        while (hostedEntry.advance()) {
-            Object hostedValue = hostedEntry.getValue();
-            Object runtimeValue = runtimeMap.get(hostedEntry.getKey());
-            if (hostedValue != runtimeValue) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static void update(HostedImageHeapMap<?, ?> hostedMap) {
-        hostedMap.runtimeMap.clear();
-        hostedMap.runtimeMap.putAll(hostedMap);
     }
 }

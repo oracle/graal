@@ -48,8 +48,6 @@ import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.Predicate;
 
-import com.oracle.graal.pointsto.meta.InvokeInfo;
-import jdk.vm.ci.common.JVMCIError;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodes.Invoke;
@@ -66,10 +64,10 @@ import org.graalvm.polyglot.io.FileSystem;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.util.UserError;
@@ -80,6 +78,7 @@ import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.util.ClassUtil;
 
+import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -194,7 +193,7 @@ public class PermissionsFeature implements Feature {
                             Options.TruffleTCKPermissionsExcludeFiles,
                             new ResourceAsOptionDecorator(getClass().getPackage().getName().replace('.', '/') + "/resources/jre.json"),
                             CONFIG);
-            reflectionFieldAccessorFactory = bb.getMetaAccess().lookupJavaType(loadClassOrFail(Package_jdk_internal_reflect.getQualifiedName() + ".UnsafeFieldAccessorFactory"));
+            reflectionFieldAccessorFactory = bb.getMetaAccess().lookupJavaType(loadClassOrFail("jdk.internal.reflect.UnsafeFieldAccessorFactory"));
             VMError.guarantee(reflectionFieldAccessorFactory != null, "Cannot load one or several reflection types");
             whiteList = parser.getLoadedWhiteList();
             Set<AnalysisMethod> deniedMethods = new HashSet<>();
@@ -243,9 +242,7 @@ public class PermissionsFeature implements Feature {
 
     private static Class<?> loadClassOrFail(String className) {
         try {
-            // Checkstyle: stop
             return Class.forName(className);
-            // Checkstyle: resume
         } catch (ClassNotFoundException e) {
             throw JVMCIError.shouldNotReachHere(e);
         }

@@ -47,6 +47,7 @@ import com.oracle.truffle.api.nodes.ControlFlowException;
  * {@link SLFunctionBodyNode function body}. The exception transports the return value in its
  * {@link #result} field.
  */
+@SuppressWarnings("serial")
 public final class SLReturnException extends ControlFlowException {
 
     private static final long serialVersionUID = 4073191346281369231L;

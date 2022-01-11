@@ -42,6 +42,7 @@ package com.oracle.truffle.nfi.backend.libffi;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -58,11 +59,13 @@ import com.oracle.truffle.nfi.backend.libffi.LibFFIType.CachedTypeInfo;
 
 @GenerateUncached
 @ImportStatic(LibFFILanguage.class)
+@GenerateAOT
 abstract class FunctionExecuteNode extends Node {
 
     public abstract Object execute(long receiver, LibFFISignature signature, Object[] args) throws ArityException, UnsupportedTypeException;
 
     @Specialization(guards = "signature.signatureInfo == cachedInfo")
+    @GenerateAOT.Exclude
     protected Object cachedSignature(long receiver, LibFFISignature signature, Object[] args,
                     @Cached("signature.signatureInfo") @SuppressWarnings("unused") CachedSignatureInfo cachedInfo,
                     @Cached("createCachedSignatureCall(cachedInfo)") DirectCallNode execute) {

@@ -24,12 +24,9 @@
  */
 package com.oracle.svm.jfr;
 
-//Checkstyle: allow reflection
-
 import java.lang.reflect.Field;
 import java.util.List;
 
-import com.oracle.svm.core.thread.ThreadListener;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -41,6 +38,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.thread.JavaVMOperation;
+import com.oracle.svm.core.thread.ThreadListener;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.jfr.logging.JfrLogging;
 

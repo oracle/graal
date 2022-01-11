@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.jdk;
 
-// Checkstyle: allow reflection
-
 import org.graalvm.compiler.api.replacements.Fold;
 
 import com.oracle.svm.core.annotate.Alias;

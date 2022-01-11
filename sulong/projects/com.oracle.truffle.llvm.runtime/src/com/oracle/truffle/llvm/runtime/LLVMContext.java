@@ -78,6 +78,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Level;
 import java.util.stream.Collectors;
 
 public final class LLVMContext {
@@ -86,6 +87,8 @@ public final class LLVMContext {
     public static final String SULONG_DISPOSE_CONTEXT = "__sulong_dispose_context";
 
     private static final String START_METHOD_NAME = "_start";
+
+    private static final Level NATIVE_CALL_STATISTICS_LEVEL = Level.FINER;
 
     private final List<Path> libraryPaths = new ArrayList<>();
     private final Object libraryPathsLock = new Object();
@@ -197,7 +200,7 @@ public final class LLVMContext {
         this.initialized = false;
         this.cleanupNecessary = false;
         // this.destructorFunctions = new ArrayList<>();
-        this.nativeCallStatistics = SulongEngineOption.optionEnabled(env.getOptions().get(SulongEngineOption.NATIVE_CALL_STATS)) ? new ConcurrentHashMap<>() : null;
+        this.nativeCallStatistics = logNativeCallStatsEnabled() ? new ConcurrentHashMap<>() : null;
         this.sigDfl = LLVMNativePointer.create(0);
         this.sigIgn = LLVMNativePointer.create(1);
         this.sigErr = LLVMNativePointer.create(-1);
@@ -247,7 +250,7 @@ public final class LLVMContext {
             throw CompilerDirectives.shouldNotReachHere("Context cannot be initialized during context pre-initialization");
         }
         this.env = newEnv;
-        this.nativeCallStatistics = SulongEngineOption.optionEnabled(this.env.getOptions().get(SulongEngineOption.NATIVE_CALL_STATS)) ? new ConcurrentHashMap<>() : null;
+        this.nativeCallStatistics = logNativeCallStatsEnabled() ? new ConcurrentHashMap<>() : null;
         this.mainArguments = getMainArguments(newEnv);
         if (contextState == State.INITIALIZATION_DEFERRED) {
             // Context initialization was requested at context pre-initialization time and was
@@ -270,8 +273,6 @@ public final class LLVMContext {
 
         String opt = env.getOptions().get(SulongEngineOption.DEBUG_SYSCALLS);
         this.syscallTraceStream = SulongEngineOption.optionEnabled(opt) ? new TargetStream(env, opt) : null;
-        opt = env.getOptions().get(SulongEngineOption.NATIVE_CALL_STATS);
-        this.nativeCallStatsStream = SulongEngineOption.optionEnabled(opt) ? new TargetStream(env, opt) : null;
         opt = env.getOptions().get(SulongEngineOption.LL_DEBUG_VERBOSE);
         this.llDebugVerboseStream = (SulongEngineOption.optionEnabled(opt) && env.getOptions().get(SulongEngineOption.LL_DEBUG)) ? new TargetStream(env, opt) : null;
         opt = env.getOptions().get(SulongEngineOption.TRACE_IR);
@@ -568,11 +569,6 @@ public final class LLVMContext {
 
         if (syscallTraceStream != null) {
             syscallTraceStream.dispose();
-        }
-
-        if (nativeCallStatsStream != null) {
-            assert nativeCallStatistics != null;
-            nativeCallStatsStream.dispose();
         }
     }
 
@@ -1077,15 +1073,14 @@ public final class LLVMContext {
     }
 
     private void printNativeCallStatistics() {
-        if (nativeCallStatistics != null) {
+        if (logNativeCallStatsEnabled()) {
             LinkedHashMap<String, Integer> sorted = nativeCallStatistics.entrySet().stream().sorted(Map.Entry.comparingByValue()).collect(Collectors.toMap(
                             Map.Entry::getKey,
                             Map.Entry::getValue,
                             (e1, e2) -> e1,
                             LinkedHashMap::new));
-            TargetStream stream = nativeCallStatsStream();
             for (String s : sorted.keySet()) {
-                stream.printf("Function %s \t count: %d\n", s, sorted.get(s));
+                nativeCallStatsLogger.log(NATIVE_CALL_STATISTICS_LEVEL, String.format("Function %s \t count: %d\n", s, sorted.get(s)));
             }
         }
     }
@@ -1132,10 +1127,10 @@ public final class LLVMContext {
         return syscallTraceStream;
     }
 
-    @CompilationFinal private TargetStream nativeCallStatsStream;
+    private static final TruffleLogger nativeCallStatsLogger = TruffleLogger.getLogger("llvm", "NativeCallStats");
 
-    public TargetStream nativeCallStatsStream() {
-        return nativeCallStatsStream;
+    public static boolean logNativeCallStatsEnabled() {
+        return nativeCallStatsLogger.isLoggable(NATIVE_CALL_STATISTICS_LEVEL);
     }
 
     private static final TruffleLogger lifetimeAnalysisLogger = TruffleLogger.getLogger("llvm", "LifetimeAnalysis");

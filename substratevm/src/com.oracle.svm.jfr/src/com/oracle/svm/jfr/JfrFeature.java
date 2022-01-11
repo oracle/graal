@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.jfr;
 
-//Checkstyle: allow reflection
-
 import java.lang.reflect.Field;
 import java.util.Collection;
 import java.util.Collections;
@@ -33,7 +31,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
@@ -125,24 +122,18 @@ public class JfrFeature implements Feature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        boolean systemSupported = jvmVersionSupported() && osSupported();
+        boolean systemSupported = osSupported();
         if (hostedEnabled && !systemSupported) {
             throw UserError.abort("FlightRecorder cannot be used to profile the image generator on this platform. " +
                             "The image generator can only be profiled on platforms where FlightRecoder is also supported at run time.");
         }
         boolean runtimeEnabled = VMInspectionOptions.AllowVMInspection.getValue();
         if (hostedEnabled && !runtimeEnabled) {
-            // Checkstyle: stop
             System.err.println("Warning: When FlightRecoder is used to profile the image generator, it is also automatically enabled in the native image at run time. " +
                             "This can affect the measurements because it can can make the image larger and image build time longer.");
-            // Checkstyle: resume
             runtimeEnabled = true;
         }
         return runtimeEnabled && systemSupported;
-    }
-
-    private static boolean jvmVersionSupported() {
-        return JavaVersionUtil.JAVA_SPEC >= 11;
     }
 
     private static boolean osSupported() {

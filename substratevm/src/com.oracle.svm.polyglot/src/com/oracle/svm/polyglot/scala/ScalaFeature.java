@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.polyglot.scala;
 
-// Checkstyle: stop
-
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -44,7 +42,6 @@ import com.oracle.svm.core.graal.GraalFeature;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 
-// Checkstyle: resume
 @AutomaticFeature
 public class ScalaFeature implements GraalFeature {
 
