@@ -38,8 +38,6 @@ import org.graalvm.compiler.bytecode.BytecodeDisassembler;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.DisassemblerProvider;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.core.common.alloc.Trace;
-import org.graalvm.compiler.core.common.alloc.TraceBuilderResult;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.core.gen.NodeLIRBuilder;
 import org.graalvm.compiler.debug.DebugContext;
@@ -48,7 +46,6 @@ import org.graalvm.compiler.debug.DebugDumpScope;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.PathUtilities;
 import org.graalvm.compiler.debug.TTY;
-import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.java.BciBlockMapping;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.debug.IntervalDumper;
@@ -138,16 +135,12 @@ public class CFGPrinterObserver implements DebugDumpHandler {
         return true;
     }
 
-    private static boolean isFrontendObject(Object object) {
-        return object instanceof Graph || object instanceof BciBlockMapping;
-    }
-
     private LIR lastLIR = null;
     private IntervalDumper delayedIntervals = null;
 
     public void dumpSandboxed(DebugContext debug, Object object, boolean forced, String message) {
         OptionValues options = debug.getOptions();
-        if (isFrontendObject(object)) {
+        if (object instanceof BciBlockMapping) {
             if (!PrintCFG.getValue(options) && !forced) {
                 return;
             }
@@ -209,7 +202,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
                 }
             } else if (object instanceof LIR) {
                 // Currently no node printing for lir
-                cfgPrinter.printCFG(message, cfgPrinter.lir.codeEmittingOrder(), false);
+                cfgPrinter.printCFG(message, cfgPrinter.lir.codeEmittingOrder());
                 lastLIR = (LIR) object;
                 if (delayedIntervals != null) {
                     cfgPrinter.printIntervals(message, delayedIntervals);
@@ -217,20 +210,6 @@ public class CFGPrinterObserver implements DebugDumpHandler {
                 }
             } else if (object instanceof ScheduleResult) {
                 cfgPrinter.printSchedule(message, (ScheduleResult) object);
-            } else if (object instanceof StructuredGraph) {
-                StructuredGraph graph = (StructuredGraph) object;
-                if (cfgPrinter.cfg == null) {
-                    ScheduleResult scheduleResult = GraalDebugHandlersFactory.tryGetSchedule(debug, graph);
-                    if (scheduleResult != null) {
-                        cfgPrinter.cfg = scheduleResult.getCFG();
-                    }
-                }
-                if (cfgPrinter.cfg != null) {
-                    if (graph.nodeIdCount() > cfgPrinter.cfg.getNodeToBlock().capacity()) {
-                        cfgPrinter.cfg = ControlFlowGraph.compute(graph, true, true, true, false);
-                    }
-                    cfgPrinter.printCFG(message, cfgPrinter.cfg.getBlocks(), true);
-                }
             } else if (object instanceof CompilationResult) {
                 final CompilationResult compResult = (CompilationResult) object;
                 cfgPrinter.printMachineCode(disassemble(options, codeCache, compResult, null), message);
@@ -249,11 +228,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
                     delayedIntervals = (IntervalDumper) object;
                 }
             } else if (object instanceof AbstractBlockBase<?>[]) {
-                cfgPrinter.printCFG(message, (AbstractBlockBase<?>[]) object, false);
-            } else if (object instanceof Trace) {
-                cfgPrinter.printCFG(message, ((Trace) object).getBlocks(), false);
-            } else if (object instanceof TraceBuilderResult) {
-                cfgPrinter.printTraces(message, (TraceBuilderResult) object);
+                cfgPrinter.printCFG(message, (AbstractBlockBase<?>[]) object);
             }
         } finally {
             cfgPrinter.target = null;
