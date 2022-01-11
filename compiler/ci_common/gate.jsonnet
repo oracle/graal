@@ -124,46 +124,46 @@
 
   builds: [
     # Darwin AMD64
-    {name: "gate-compiler-test-labsjdk-17-darwin-amd64"} +              s.test +           c.labsjdk17 +      c.DarwinAMD64 + t("1:00:00") + s.save_as_json,
-    {name: "weekly-compiler-test-test-labsjdk-11-darwin-amd64"} +       s.test +           c.labsjdk11 +      c.DarwinAMD64 + s.weekly,
+    {name: "gate-compiler-test-labsjdk-17-darwin-amd64"} +              s.test +           c.labsjdk17 +      c.darwin_amd64 + t("1:00:00") + s.save_as_json,
+    {name: "weekly-compiler-test-test-labsjdk-11-darwin-amd64"} +       s.test +           c.labsjdk11 +      c.darwin_amd64 + s.weekly,
 
     # Windows AMD64
-    {name: "gate-compiler-test-labsjdk-11-windows-amd64"} +             s.test +           c.labsjdk11 +      c.WindowsAMD64  + t("55:00") + c.devkits["windows-jdk11"] + s.save_as_json,
-    {name: "gate-compiler-test-labsjdk-17-windows-amd64"} +             s.test +           c.labsjdk17 +      c.WindowsAMD64  + t("55:00") + c.devkits["windows-jdk17"] + s.save_as_json,
+    {name: "gate-compiler-test-labsjdk-11-windows-amd64"} +             s.test +           c.labsjdk11 +      c.windows_amd64  + t("55:00") + c.devkits["windows-jdk11"] + s.save_as_json,
+    {name: "gate-compiler-test-labsjdk-17-windows-amd64"} +             s.test +           c.labsjdk17 +      c.windows_amd64  + t("55:00") + c.devkits["windows-jdk17"] + s.save_as_json,
 
     # Linux AMD64
-    {name: "gate-compiler-test-labsjdk-11-linux-amd64"} +               s.test +           c.labsjdk11 +      c.LinuxAMD64 + t("50:00") + s.save_as_json,
-    {name: "gate-compiler-test-labsjdk-17-linux-amd64"} +               s.test +           c.labsjdk17 +      c.LinuxAMD64 + t("55:00") + s.save_as_json,
-    {name: "gate-compiler-ctw-labsjdk-11-linux-amd64"} +                s.ctw +            c.labsjdk11 +      c.LinuxAMD64,
-    {name: "gate-compiler-ctw-labsjdk-17-linux-amd64"} +                s.ctw +            c.labsjdk17 +      c.LinuxAMD64,
-    {name: "gate-compiler-ctw-economy-labsjdk-11-linux-amd64"} +        s.ctw_economy +    c.labsjdk11 +      c.LinuxAMD64,
-    {name: "gate-compiler-ctw-economy-labsjdk-17-linux-amd64"} +        s.ctw_economy +    c.labsjdk17 +      c.LinuxAMD64,
-    {name: "gate-compiler-benchmarktest-labsjdk-11-linux-amd64"} +      s.benchmark +      c.labsjdk11 +      c.LinuxAMD64,
-    {name: "gate-compiler-benchmarktest-labsjdk-17-linux-amd64"} +      s.benchmark +      c.labsjdk17 +      c.LinuxAMD64,
-    {name: "gate-compiler-style-linux-amd64"} +                         s.style +          c.labsjdk17 +      c.LinuxAMD64 + t("45:00"),
-    {name: "gate-compiler-test-labsjdk-11-linux-amd64-avx3"} +          s.test +           c.labsjdk11 +      c.LinuxAMD64 + t("45:00") + s.x82_avx3 + s.save_as_json,
-    {name: "gate-compiler-test-truffle-xcomp-labsjdk-17-linux-amd64"} + s.truffle_xcomp +  c.labsjdk17 +      c.LinuxAMD64 + t("1:00:00") + s.save_as_json,
-    {name: "weekly-compiler-test-labsjdk-17-linux-amd64-vector16"} +    s.test_vec16 +     c.labsjdk17 +      c.LinuxAMD64 + s.weekly,
-    {name: "weekly-compiler-test-labsjdk-17-linux-amd64-avx0"} +        s.test_avx0 +      c.labsjdk17 +      c.LinuxAMD64 + s.weekly,
-    {name: "weekly-compiler-test-labsjdk-17-linux-amd64-avx1"} +        s.test_avx1 +      c.labsjdk17 +      c.LinuxAMD64 + s.weekly,
-    {name: "weekly-compiler-test-javabasetest-labsjdk-11-linux-amd64"} +s.test_javabase +  c.labsjdk11 +      c.LinuxAMD64 + s.weekly,
-    {name: "weekly-compiler-coverage-labsjdk-17-linux-amd64"} +         s.coverage +       c.labsjdk17Debug + c.LinuxAMD64 + s.weekly + t("1:50:00"),
-    {name: "weekly-compiler-test-benchmarktest-labsjdk-17Debug-linux-amd64-fastdebug"} +   c.labsjdk17Debug + c.LinuxAMD64 + s.benchmark + s.weekly + t("1:00:00"),
-    {name: "weekly-compiler-test-ctw-labsjdk-11-linux-amd64"} +         s.coverage_ctw +   c.labsjdk11 +      c.LinuxAMD64 + s.weekly + t("2:00:00"),
-    {name: "weekly-compiler-test-ctw-labsjdk-17-linux-amd64"} +         s.coverage_ctw +   c.labsjdk17 +      c.LinuxAMD64 + s.weekly,
-    {name: "weekly-compiler-test-labsjdk-17-linux-amd64-fastdebug"} +   s.test +           c.labsjdk17Debug + c.LinuxAMD64 + s.weekly + t("3:00:00"),
+    {name: "gate-compiler-test-labsjdk-11-linux-amd64"} +               s.test +           c.labsjdk11 +      c.linux_amd64 + t("50:00") + s.save_as_json,
+    {name: "gate-compiler-test-labsjdk-17-linux-amd64"} +               s.test +           c.labsjdk17 +      c.linux_amd64 + t("55:00") + s.save_as_json,
+    {name: "gate-compiler-ctw-labsjdk-11-linux-amd64"} +                s.ctw +            c.labsjdk11 +      c.linux_amd64,
+    {name: "gate-compiler-ctw-labsjdk-17-linux-amd64"} +                s.ctw +            c.labsjdk17 +      c.linux_amd64,
+    {name: "gate-compiler-ctw-economy-labsjdk-11-linux-amd64"} +        s.ctw_economy +    c.labsjdk11 +      c.linux_amd64,
+    {name: "gate-compiler-ctw-economy-labsjdk-17-linux-amd64"} +        s.ctw_economy +    c.labsjdk17 +      c.linux_amd64,
+    {name: "gate-compiler-benchmarktest-labsjdk-11-linux-amd64"} +      s.benchmark +      c.labsjdk11 +      c.linux_amd64,
+    {name: "gate-compiler-benchmarktest-labsjdk-17-linux-amd64"} +      s.benchmark +      c.labsjdk17 +      c.linux_amd64,
+    {name: "gate-compiler-style-linux-amd64"} +                         s.style +          c.labsjdk17 +      c.linux_amd64 + t("45:00"),
+    {name: "gate-compiler-test-labsjdk-11-linux-amd64-avx3"} +          s.test +           c.labsjdk11 +      c.linux_amd64 + t("45:00") + s.x82_avx3 + s.save_as_json,
+    {name: "gate-compiler-test-truffle-xcomp-labsjdk-17-linux-amd64"} + s.truffle_xcomp +  c.labsjdk17 +      c.linux_amd64 + t("1:00:00") + s.save_as_json,
+    {name: "weekly-compiler-test-labsjdk-17-linux-amd64-vector16"} +    s.test_vec16 +     c.labsjdk17 +      c.linux_amd64 + s.weekly,
+    {name: "weekly-compiler-test-labsjdk-17-linux-amd64-avx0"} +        s.test_avx0 +      c.labsjdk17 +      c.linux_amd64 + s.weekly,
+    {name: "weekly-compiler-test-labsjdk-17-linux-amd64-avx1"} +        s.test_avx1 +      c.labsjdk17 +      c.linux_amd64 + s.weekly,
+    {name: "weekly-compiler-test-javabasetest-labsjdk-11-linux-amd64"} +s.test_javabase +  c.labsjdk11 +      c.linux_amd64 + s.weekly,
+    {name: "weekly-compiler-coverage-labsjdk-17-linux-amd64"} +         s.coverage +       c.labsjdk17Debug + c.linux_amd64 + s.weekly + t("1:50:00"),
+    {name: "weekly-compiler-test-benchmarktest-labsjdk-17Debug-linux-amd64-fastdebug"} +   c.labsjdk17Debug + c.linux_amd64 + s.benchmark + s.weekly + t("1:00:00"),
+    {name: "weekly-compiler-test-ctw-labsjdk-11-linux-amd64"} +         s.coverage_ctw +   c.labsjdk11 +      c.linux_amd64 + s.weekly + t("2:00:00"),
+    {name: "weekly-compiler-test-ctw-labsjdk-17-linux-amd64"} +         s.coverage_ctw +   c.labsjdk17 +      c.linux_amd64 + s.weekly,
+    {name: "weekly-compiler-test-labsjdk-17-linux-amd64-fastdebug"} +   s.test +           c.labsjdk17Debug + c.linux_amd64 + s.weekly + t("3:00:00"),
 
     # Linux AArch64
-    {name: "gate-compiler-test-labsjdk-11-linux-aarch64"} +             s.test +           c.labsjdk11 +      c.LinuxAArch64 + t("1:50:00") + s.save_as_json,
-    {name: "gate-compiler-ctw-labsjdk-11-linux-aarch64"} +              s.ctw +            c.labsjdk11 +      c.LinuxAArch64 + t("1:50:00"),
-    {name: "gate-compiler-ctw-economy-labsjdk-11-linux-aarch64"} +      s.ctw_economy +    c.labsjdk11 +      c.LinuxAArch64 + t("1:50:00"),
-    {name: "weekly-compiler-coverage-labsjdk-11-linux-aarch64"} +       s.coverage +       c.labsjdk11 +      c.LinuxAArch64 + s.weekly + t("1:50:00"),
-    {name: "weekly-compiler-test-ctw-labsjdk-11-linux-aarch64"} +       s.coverage_ctw +   c.labsjdk11 +      c.LinuxAArch64 + s.weekly,
+    {name: "gate-compiler-test-labsjdk-11-linux-aarch64"} +             s.test +           c.labsjdk11 +      c.linux_aarch64 + t("1:50:00") + s.save_as_json,
+    {name: "gate-compiler-ctw-labsjdk-11-linux-aarch64"} +              s.ctw +            c.labsjdk11 +      c.linux_aarch64 + t("1:50:00"),
+    {name: "gate-compiler-ctw-economy-labsjdk-11-linux-aarch64"} +      s.ctw_economy +    c.labsjdk11 +      c.linux_aarch64 + t("1:50:00"),
+    {name: "weekly-compiler-coverage-labsjdk-11-linux-aarch64"} +       s.coverage +       c.labsjdk11 +      c.linux_aarch64 + s.weekly + t("1:50:00"),
+    {name: "weekly-compiler-test-ctw-labsjdk-11-linux-aarch64"} +       s.coverage_ctw +   c.labsjdk11 +      c.linux_aarch64 + s.weekly,
     
     # Bootstrap testing
-    {name: "gate-compiler-bootstraplite-labsjdk-11-darwin-amd64"} +     s.bootstrap_lite + c.labsjdk11 +      c.DarwinAMD64 + t("1:00:00"),
-    {name: "gate-compiler-bootstraplite-labsjdk-17-darwin-amd64"} +     s.bootstrap_lite + c.labsjdk17 +      c.DarwinAMD64 + t("1:00:00"),
-    {name: "gate-compiler-bootstrapfullverify-labsjdk-17-linux-amd64"} +s.bootstrap_full + c.labsjdk17 +      c.LinuxAMD64  + s.many_cores,
+    {name: "gate-compiler-bootstraplite-labsjdk-11-darwin-amd64"} +     s.bootstrap_lite + c.labsjdk11 +      c.darwin_amd64 + t("1:00:00"),
+    {name: "gate-compiler-bootstraplite-labsjdk-17-darwin-amd64"} +     s.bootstrap_lite + c.labsjdk17 +      c.darwin_amd64 + t("1:00:00"),
+    {name: "gate-compiler-bootstrapfullverify-labsjdk-17-linux-amd64"} +s.bootstrap_full + c.labsjdk17 +      c.linux_amd64  + s.many_cores,
 
   ] + (import '../ci_includes/bootstrap_extra.libsonnet').builds
 }

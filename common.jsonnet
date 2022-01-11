@@ -121,39 +121,15 @@
     ]
   },
 
-  linux:: deps.linux + self.common + {
-    os::"linux",
-    capabilities+: [self.os],
-  },
+  linux::   deps.linux   + self.common + {os::"linux",   capabilities+: [self.os]},
+  darwin::  deps.darwin  + self.common + {os::"darwin",  capabilities+: [self.os]},
+  windows:: deps.windows + self.common + {os::"windows", capabilities+: [self.os]},
 
-  darwin:: deps.darwin + self.common + {
-    os::"darwin",
-    capabilities+: [self.os],
-  },
+  amd64::   { arch::"amd64",   capabilities+: [self.arch]},
+  aarch64:: { arch::"aarch64", capabilities+: [self.arch]},
 
-  windows:: deps.windows + self.common + {
-    os::"windows",
-    capabilities+: [self.os],
-  },
-
-  amd64:: {
-    arch::"amd64",
-    capabilities+: [self.arch]
-  },
-
-  aarch64:: {
-    arch::"aarch64",
-    capabilities+: [self.arch],
-  },
-
-  LinuxAMD64::     self.linux + self.amd64,
-  DarwinAMD64::    self.darwin + self.amd64,
-  WindowsAMD64::   self.windows + self.amd64,
-  LinuxAArch64::   self.linux + self.aarch64,
-
-  # Legacy hocon names
-  "linux-amd64"::     self.LinuxAMD64,
-  "darwin-amd64"::    self.DarwinAMD64,
-  "windows-amd64"::   self.WindowsAMD64,
-  "linux-aarch64"::   self.LinuxAArch64,
+  linux_amd64::     self.linux + self.amd64,
+  darwin_amd64::    self.darwin + self.amd64,
+  windows_amd64::   self.windows + self.amd64,
+  linux_aarch64::   self.linux + self.aarch64,
 }
