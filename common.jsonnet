@@ -23,8 +23,6 @@
     ci_resources:: (import "ci-resources.libsonnet"),
   },
 
-  download_hsdis:: ["mx", "hsdis", "||", "true"],
-
   // Job frequencies
   // ***************
   on_demand:: {
