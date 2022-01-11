@@ -41,6 +41,9 @@
 package com.oracle.truffle.api.strings;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleSafepoint;
+import com.oracle.truffle.api.nodes.LoopNode;
+import com.oracle.truffle.api.nodes.Node;
 
 final class TStringConstants {
 
@@ -127,4 +130,11 @@ final class TStringConstants {
         return TruffleString.createFromByteArray(array, array.length, 0, encoding, array.length, TSCodeRange.getAsciiCodeRange(encoding), true);
     }
 
+    static void truffleSafePointPoll(Node location, int loopCount) {
+        // poll once in a million iterations to reduce overhead
+        if ((loopCount & 0xf_ffff) == 0) {
+            TruffleSafepoint.poll(location);
+            LoopNode.reportLoopCount(location, 0x10_0000);
+        }
+    }
 }

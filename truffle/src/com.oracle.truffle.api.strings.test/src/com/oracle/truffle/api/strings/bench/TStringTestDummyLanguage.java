@@ -106,6 +106,17 @@ public class TStringTestDummyLanguage extends TruffleLanguage<TStringTestDummyLa
                         return benchNode.execute(args[0], args[1]);
                     }
                 };
+            case "byteIndexOfAnyByteTString":
+                return new RootNode(this) {
+
+                    @Child ByteIndexOfAnyByteTStringNode benchNode = TStringTestDummyLanguageFactory.ByteIndexOfAnyByteTStringNodeGen.create();
+
+                    @Override
+                    public Object execute(VirtualFrame frame) {
+                        Object[] args = frame.getArguments();
+                        return benchNode.execute(args[0], args[1]);
+                    }
+                };
             case "calcStringAttributesUTF8":
                 return new RootNode(this) {
 
@@ -217,6 +228,17 @@ public class TStringTestDummyLanguage extends TruffleLanguage<TStringTestDummyLa
         @Specialization
         int bench(String a, String b) {
             return a.compareTo(b);
+        }
+    }
+
+    abstract static class ByteIndexOfAnyByteTStringNode extends Node {
+
+        abstract int execute(Object a, Object b);
+
+        @Specialization
+        int bench(TruffleString a, byte b,
+                        @Cached TruffleString.ByteIndexOfAnyByteNode compareNode) {
+            return compareNode.execute(a, 0, a.byteLength(TruffleString.Encoding.UTF_8), new byte[]{b}, TruffleString.Encoding.UTF_8);
         }
     }
 

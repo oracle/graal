@@ -523,11 +523,12 @@ public final class TruffleStringIterator {
         return Encodings.isUTF8ContinuationByte(readFwdS0());
     }
 
-    static int indexOf(TruffleStringIterator it, int codepoint, int fromIndex, int toIndex, NextNode nextNode) {
+    static int indexOf(Node location, TruffleStringIterator it, int codepoint, int fromIndex, int toIndex, NextNode nextNode) {
         int aCodepointIndex = 0;
         while (aCodepointIndex < fromIndex && it.hasNext()) {
             nextNode.execute(it);
             aCodepointIndex++;
+            TStringConstants.truffleSafePointPoll(location, aCodepointIndex);
         }
         if (aCodepointIndex < fromIndex) {
             return -1;
@@ -537,11 +538,12 @@ public final class TruffleStringIterator {
                 return aCodepointIndex;
             }
             aCodepointIndex++;
+            TStringConstants.truffleSafePointPoll(location, aCodepointIndex);
         }
         return -1;
     }
 
-    static int lastIndexOf(TruffleStringIterator it, int codepoint, int fromIndex, int toIndex, NextNode nextNode) {
+    static int lastIndexOf(Node location, TruffleStringIterator it, int codepoint, int fromIndex, int toIndex, NextNode nextNode) {
         int aCodepointIndex = 0;
         int result = -1;
         // the code point index is based on the beginning of the string, so we have to count
@@ -551,6 +553,7 @@ public final class TruffleStringIterator {
                 result = aCodepointIndex;
             }
             aCodepointIndex++;
+            TStringConstants.truffleSafePointPoll(location, aCodepointIndex);
         }
         if (aCodepointIndex < toIndex) {
             // fromIndex was out of bounds
@@ -559,7 +562,7 @@ public final class TruffleStringIterator {
         return result;
     }
 
-    static int indexOfString(TruffleStringIterator aIt, TruffleStringIterator bIt, int fromIndex, int toIndex, NextNode nextNodeA, NextNode nextNodeB) {
+    static int indexOfString(Node location, TruffleStringIterator aIt, TruffleStringIterator bIt, int fromIndex, int toIndex, NextNode nextNodeA, NextNode nextNodeB) {
         if (!bIt.hasNext()) {
             return fromIndex;
         }
@@ -567,6 +570,7 @@ public final class TruffleStringIterator {
         while (aCodepointIndex < fromIndex && aIt.hasNext()) {
             nextNodeA.execute(aIt);
             aCodepointIndex++;
+            TStringConstants.truffleSafePointPoll(location, aCodepointIndex);
         }
         if (aCodepointIndex < fromIndex) {
             return -1;
@@ -576,6 +580,7 @@ public final class TruffleStringIterator {
         while (aIt.hasNext() && aCodepointIndex < toIndex) {
             if (nextNodeA.execute(aIt) == bFirst) {
                 int aCurIndex = aIt.getRawIndex();
+                int innerLoopCount = 0;
                 while (bIt.hasNext()) {
                     if (!aIt.hasNext()) {
                         return -1;
@@ -583,6 +588,7 @@ public final class TruffleStringIterator {
                     if (nextNodeA.execute(aIt) != nextNodeB.execute(bIt)) {
                         break;
                     }
+                    TStringConstants.truffleSafePointPoll(location, ++innerLoopCount);
                 }
                 if (!bIt.hasNext()) {
                     return aCodepointIndex;
@@ -591,17 +597,19 @@ public final class TruffleStringIterator {
                 bIt.setRawIndex(bSecondIndex);
             }
             aCodepointIndex++;
+            TStringConstants.truffleSafePointPoll(location, aCodepointIndex);
         }
         return -1;
     }
 
-    static int byteIndexOfString(TruffleStringIterator aIt, TruffleStringIterator bIt, int fromByteIndex, int toByteIndex, NextNode nextNodeA, NextNode nextNodeB) {
+    static int byteIndexOfString(Node location, TruffleStringIterator aIt, TruffleStringIterator bIt, int fromByteIndex, int toByteIndex, NextNode nextNodeA, NextNode nextNodeB) {
         if (!bIt.hasNext()) {
             return fromByteIndex;
         }
         aIt.setRawIndex(fromByteIndex);
         int bFirst = nextNodeB.execute(bIt);
         int bSecondIndex = bIt.getRawIndex();
+        int loopCount = 0;
         while (aIt.hasNext() && aIt.getRawIndex() < toByteIndex) {
             int ret = aIt.getRawIndex();
             if (nextNodeA.execute(aIt) == bFirst) {
@@ -613,6 +621,7 @@ public final class TruffleStringIterator {
                     if (nextNodeA.execute(aIt) != nextNodeB.execute(bIt)) {
                         break;
                     }
+                    TStringConstants.truffleSafePointPoll(location, ++loopCount);
                 }
                 if (!bIt.hasNext()) {
                     return ret;
@@ -620,11 +629,12 @@ public final class TruffleStringIterator {
                 aIt.setRawIndex(aCurIndex);
                 bIt.setRawIndex(bSecondIndex);
             }
+            TStringConstants.truffleSafePointPoll(location, ++loopCount);
         }
         return -1;
     }
 
-    static int lastIndexOfString(TruffleStringIterator aIt, TruffleStringIterator bIt, int fromIndex, int toIndex, NextNode nextNodeA, PreviousNode prevNodeA, PreviousNode prevNodeB) {
+    static int lastIndexOfString(Node location, TruffleStringIterator aIt, TruffleStringIterator bIt, int fromIndex, int toIndex, NextNode nextNodeA, PreviousNode prevNodeA, PreviousNode prevNodeB) {
         if (!bIt.hasPrevious()) {
             return fromIndex;
         }
@@ -638,6 +648,7 @@ public final class TruffleStringIterator {
                 lastMatchByteIndex = aIt.getRawIndex();
             }
             aCodepointIndex++;
+            TStringConstants.truffleSafePointPoll(location, aCodepointIndex);
         }
         if (aCodepointIndex < fromIndex || lastMatchIndex < 0) {
             return -1;
@@ -657,6 +668,7 @@ public final class TruffleStringIterator {
                         break;
                     }
                     aCurCodePointIndex--;
+                    TStringConstants.truffleSafePointPoll(location, aCurCodePointIndex);
                 }
                 if (!bIt.hasPrevious()) {
                     return aCurCodePointIndex;
@@ -665,20 +677,24 @@ public final class TruffleStringIterator {
                 bIt.setRawIndex(bSecondIndex);
             }
             aCodepointIndex--;
+            TStringConstants.truffleSafePointPoll(location, aCodepointIndex);
         }
         return -1;
     }
 
-    static int lastByteIndexOfString(TruffleStringIterator aIt, TruffleStringIterator bIt, int fromByteIndex, int toByteIndex, NextNode nextNodeA, PreviousNode prevNodeA, PreviousNode prevNodeB) {
+    static int lastByteIndexOfString(Node location, TruffleStringIterator aIt, TruffleStringIterator bIt, int fromByteIndex, int toByteIndex, NextNode nextNodeA, PreviousNode prevNodeA,
+                    PreviousNode prevNodeB) {
         if (!bIt.hasPrevious()) {
             return fromByteIndex;
         }
         int bFirstCodePoint = prevNodeB.execute(bIt);
         int lastMatchByteIndex = -1;
+        int loopCount = 0;
         while (aIt.getRawIndex() < fromByteIndex && aIt.hasNext()) {
             if (nextNodeA.execute(aIt) == bFirstCodePoint) {
                 lastMatchByteIndex = aIt.getRawIndex();
             }
+            TStringConstants.truffleSafePointPoll(location, ++loopCount);
         }
         if (aIt.getRawIndex() < fromByteIndex || lastMatchByteIndex < 0) {
             return -1;
@@ -695,6 +711,7 @@ public final class TruffleStringIterator {
                     if (prevNodeA.execute(aIt) != prevNodeB.execute(bIt)) {
                         break;
                     }
+                    TStringConstants.truffleSafePointPoll(location, ++loopCount);
                 }
                 if (!bIt.hasPrevious()) {
                     return aIt.getRawIndex();
@@ -702,6 +719,7 @@ public final class TruffleStringIterator {
                 aIt.setRawIndex(aCurIndex);
                 bIt.setRawIndex(bSecondIndex);
             }
+            TStringConstants.truffleSafePointPoll(location, ++loopCount);
         }
         return -1;
     }

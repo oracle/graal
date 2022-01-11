@@ -76,17 +76,18 @@ final class TStringOpsNodes {
         abstract int execute(AbstractTruffleString a, Object arrayA, int fromIndex, int maxIndex, char[] values);
 
         @Specialization(guards = {"isStride0(a)", "values.length == 1"})
-        static int stride0(AbstractTruffleString a, Object arrayA, int fromIndex, int maxIndex, char[] values) {
-            return TStringOps.indexOfAnyChar(a, arrayA, 0, fromIndex, maxIndex, values);
+        int stride0(AbstractTruffleString a, Object arrayA, int fromIndex, int maxIndex, char[] values) {
+            return TStringOps.indexOfAnyChar(this, a, arrayA, 0, fromIndex, maxIndex, values);
         }
 
         @Specialization(guards = {"isStride0(a)", "values.length > 1"})
-        static int stride0MultiValue(AbstractTruffleString a, Object arrayA, int fromIndex, int maxIndex, char[] values) {
+        int stride0MultiValue(AbstractTruffleString a, Object arrayA, int fromIndex, int maxIndex, char[] values) {
             int n = 0;
             for (int i = 0; i < values.length; i++) {
                 if (values[i] <= 0xff) {
                     n++;
                 }
+                TStringConstants.truffleSafePointPoll(this, i + 1);
             }
             final char[] stride0Values;
             if (n != values.length) {
@@ -96,16 +97,17 @@ final class TStringOpsNodes {
                     if (values[i] <= 0xff) {
                         stride0Values[n++] = values[i];
                     }
+                    TStringConstants.truffleSafePointPoll(this, i + 1);
                 }
             } else {
                 stride0Values = values;
             }
-            return TStringOps.indexOfAnyChar(a, arrayA, 0, fromIndex, maxIndex, stride0Values);
+            return TStringOps.indexOfAnyChar(this, a, arrayA, 0, fromIndex, maxIndex, stride0Values);
         }
 
         @Specialization(guards = "isStride1(a)")
-        static int stride1(AbstractTruffleString a, Object arrayA, int fromIndex, int maxIndex, char[] values) {
-            return TStringOps.indexOfAnyChar(a, arrayA, 1, fromIndex, maxIndex, values);
+        int stride1(AbstractTruffleString a, Object arrayA, int fromIndex, int maxIndex, char[] values) {
+            return TStringOps.indexOfAnyChar(this, a, arrayA, 1, fromIndex, maxIndex, values);
         }
     }
 
@@ -116,17 +118,18 @@ final class TStringOpsNodes {
         abstract int execute(AbstractTruffleString a, Object arrayA, int fromIndex, int maxIndex, int[] values);
 
         @Specialization(guards = {"isStride0(a)", "values.length == 1"})
-        static int stride0(AbstractTruffleString a, Object arrayA, int fromIndex, int maxIndex, int[] values) {
-            return TStringOps.indexOfAnyInt(a, arrayA, 0, fromIndex, maxIndex, values);
+        int stride0(AbstractTruffleString a, Object arrayA, int fromIndex, int maxIndex, int[] values) {
+            return TStringOps.indexOfAnyInt(this, a, arrayA, 0, fromIndex, maxIndex, values);
         }
 
         @Specialization(guards = {"isStride0(a)", "values.length > 1"})
-        static int stride0MultiValue(AbstractTruffleString a, Object arrayA, int fromIndex, int maxIndex, int[] values) {
+        int stride0MultiValue(AbstractTruffleString a, Object arrayA, int fromIndex, int maxIndex, int[] values) {
             int n = 0;
             for (int i = 0; i < values.length; i++) {
                 if (values[i] <= 0xff) {
                     n++;
                 }
+                TStringConstants.truffleSafePointPoll(this, i + 1);
             }
             final int[] stride0Values;
             if (n != values.length) {
@@ -136,25 +139,27 @@ final class TStringOpsNodes {
                     if (values[i] <= 0xff) {
                         stride0Values[n++] = values[i];
                     }
+                    TStringConstants.truffleSafePointPoll(this, i + 1);
                 }
             } else {
                 stride0Values = values;
             }
-            return TStringOps.indexOfAnyInt(a, arrayA, 0, fromIndex, maxIndex, stride0Values);
+            return TStringOps.indexOfAnyInt(this, a, arrayA, 0, fromIndex, maxIndex, stride0Values);
         }
 
         @Specialization(guards = {"isStride1(a)", "values.length == 1"})
-        static int stride1(AbstractTruffleString a, Object arrayA, int fromIndex, int maxIndex, int[] values) {
-            return TStringOps.indexOfAnyInt(a, arrayA, 1, fromIndex, maxIndex, values);
+        int stride1(AbstractTruffleString a, Object arrayA, int fromIndex, int maxIndex, int[] values) {
+            return TStringOps.indexOfAnyInt(this, a, arrayA, 1, fromIndex, maxIndex, values);
         }
 
         @Specialization(guards = {"isStride1(a)", "values.length > 1"})
-        static int stride1MultiValue(AbstractTruffleString a, Object arrayA, int fromIndex, int maxIndex, int[] values) {
+        int stride1MultiValue(AbstractTruffleString a, Object arrayA, int fromIndex, int maxIndex, int[] values) {
             int n = 0;
             for (int i = 0; i < values.length; i++) {
                 if (values[i] <= 0xffff) {
                     n++;
                 }
+                TStringConstants.truffleSafePointPoll(this, i + 1);
             }
             final int[] stride1Values;
             if (n != values.length) {
@@ -164,16 +169,17 @@ final class TStringOpsNodes {
                     if (values[i] <= 0xffff) {
                         stride1Values[n++] = values[i];
                     }
+                    TStringConstants.truffleSafePointPoll(this, i + 1);
                 }
             } else {
                 stride1Values = values;
             }
-            return TStringOps.indexOfAnyInt(a, arrayA, 1, fromIndex, maxIndex, stride1Values);
+            return TStringOps.indexOfAnyInt(this, a, arrayA, 1, fromIndex, maxIndex, stride1Values);
         }
 
         @Specialization(guards = "isStride2(a)")
-        static int stride2(AbstractTruffleString a, Object arrayA, int fromIndex, int maxIndex, int[] values) {
-            return TStringOps.indexOfAnyInt(a, arrayA, 2, fromIndex, maxIndex, values);
+        int stride2(AbstractTruffleString a, Object arrayA, int fromIndex, int maxIndex, int[] values) {
+            return TStringOps.indexOfAnyInt(this, a, arrayA, 2, fromIndex, maxIndex, values);
         }
     }
 
@@ -184,9 +190,9 @@ final class TStringOpsNodes {
         abstract int execute(AbstractTruffleString a, Object arrayA, int codepoint, int fromIndex, int toIndex);
 
         @Specialization(guards = {"stride(a) == cachedStrideA"}, limit = LIMIT_STRIDE)
-        static int cached(AbstractTruffleString a, Object arrayA, int codepoint, int fromIndex, int toIndex,
+        int cached(AbstractTruffleString a, Object arrayA, int codepoint, int fromIndex, int toIndex,
                         @Cached(value = "stride(a)", allowUncached = true) int cachedStrideA) {
-            return TStringOps.indexOfCodePointWithStride(a, arrayA, cachedStrideA, fromIndex, toIndex, codepoint);
+            return TStringOps.indexOfCodePointWithStride(this, a, arrayA, cachedStrideA, fromIndex, toIndex, codepoint);
         }
     }
 
@@ -197,9 +203,9 @@ final class TStringOpsNodes {
         abstract int execute(AbstractTruffleString a, Object arrayA, int codepoint, int fromIndex, int toIndex);
 
         @Specialization(guards = {"stride(a) == cachedStrideA"}, limit = LIMIT_STRIDE)
-        static int cached(AbstractTruffleString a, Object arrayA, int codepoint, int fromIndex, int toIndex,
+        int cached(AbstractTruffleString a, Object arrayA, int codepoint, int fromIndex, int toIndex,
                         @Cached(value = "stride(a)", allowUncached = true) int cachedStrideA) {
-            return TStringOps.lastIndexOfCodePointWithOrMaskWithStride(a, arrayA, cachedStrideA, fromIndex, toIndex, codepoint, 0);
+            return TStringOps.lastIndexOfCodePointWithOrMaskWithStride(this, a, arrayA, cachedStrideA, fromIndex, toIndex, codepoint, 0);
         }
     }
 
@@ -210,19 +216,19 @@ final class TStringOpsNodes {
         abstract int execute(AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB, int fromIndex, int toIndex, byte[] mask);
 
         @Specialization(guards = {"length(b) == 1", "stride(a) == cachedStrideA", "stride(b) == cachedStrideB"}, limit = LIMIT_STRIDE)
-        static int cachedLen1(AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB, int fromIndex, int toIndex, byte[] mask,
+        int cachedLen1(AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB, int fromIndex, int toIndex, byte[] mask,
                         @Cached(value = "stride(a)", allowUncached = true) int cachedStrideA,
                         @Cached(value = "stride(b)", allowUncached = true) int cachedStrideB) {
             final int b0 = TStringOps.readValue(b, arrayB, cachedStrideB, 0);
             final int mask0 = mask == null ? 0 : TStringOps.readFromByteArray(mask, cachedStrideB, 0);
-            return TStringOps.indexOfCodePointWithOrMaskWithStride(a, arrayA, cachedStrideA, fromIndex, toIndex, b0, mask0);
+            return TStringOps.indexOfCodePointWithOrMaskWithStride(this, a, arrayA, cachedStrideA, fromIndex, toIndex, b0, mask0);
         }
 
         @Specialization(guards = {"length(b) > 1", "stride(a) == cachedStrideA", "stride(b) == cachedStrideB"}, limit = LIMIT_STRIDE)
-        static int cached(AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB, int fromIndex, int toIndex, byte[] mask,
+        int cached(AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB, int fromIndex, int toIndex, byte[] mask,
                         @Cached(value = "stride(a)", allowUncached = true) int cachedStrideA,
                         @Cached(value = "stride(b)", allowUncached = true) int cachedStrideB) {
-            return TStringOps.indexOfStringWithOrMaskWithStride(a, arrayA, cachedStrideA, b, arrayB, cachedStrideB, fromIndex, toIndex, mask);
+            return TStringOps.indexOfStringWithOrMaskWithStride(this, a, arrayA, cachedStrideA, b, arrayB, cachedStrideB, fromIndex, toIndex, mask);
         }
     }
 
@@ -233,19 +239,19 @@ final class TStringOpsNodes {
         abstract int execute(AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB, int fromIndex, int toIndex, byte[] mask);
 
         @Specialization(guards = {"length(b) == 1", "stride(a) == cachedStrideA", "stride(b) == cachedStrideB"}, limit = LIMIT_STRIDE)
-        static int cachedLen1(AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB, int fromIndex, int toIndex, byte[] mask,
+        int cachedLen1(AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB, int fromIndex, int toIndex, byte[] mask,
                         @Cached(value = "stride(a)", allowUncached = true) int cachedStrideA,
                         @Cached(value = "stride(b)", allowUncached = true) int cachedStrideB) {
             final int b0 = TStringOps.readValue(b, arrayB, cachedStrideB, 0);
             final int mask0 = mask == null ? 0 : TStringOps.readFromByteArray(mask, cachedStrideB, 0);
-            return TStringOps.lastIndexOfCodePointWithOrMaskWithStride(a, arrayA, cachedStrideA, fromIndex, toIndex, b0, mask0);
+            return TStringOps.lastIndexOfCodePointWithOrMaskWithStride(this, a, arrayA, cachedStrideA, fromIndex, toIndex, b0, mask0);
         }
 
         @Specialization(guards = {"length(b) > 1", "stride(a) == cachedStrideA", "stride(b) == cachedStrideB"}, limit = LIMIT_STRIDE)
-        static int cached(AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB, int fromIndex, int toIndex, byte[] mask,
+        int cached(AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB, int fromIndex, int toIndex, byte[] mask,
                         @Cached(value = "stride(a)", allowUncached = true) int cachedStrideA,
                         @Cached(value = "stride(b)", allowUncached = true) int cachedStrideB) {
-            return TStringOps.lastIndexOfStringWithOrMaskWithStride(a, arrayA, cachedStrideA, b, arrayB, cachedStrideB, fromIndex, toIndex, mask);
+            return TStringOps.lastIndexOfStringWithOrMaskWithStride(this, a, arrayA, cachedStrideA, b, arrayB, cachedStrideB, fromIndex, toIndex, mask);
         }
     }
 
@@ -256,10 +262,10 @@ final class TStringOpsNodes {
         abstract boolean execute(AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB, int fromIndexA, int fromIndexB, int length, byte[] mask);
 
         @Specialization(guards = {"stride(a) == cachedStrideA", "stride(b) == cachedStrideB"}, limit = LIMIT_STRIDE)
-        static boolean cached(AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB, int fromIndexA, int fromIndexB, int length, byte[] mask,
+        boolean cached(AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB, int fromIndexA, int fromIndexB, int length, byte[] mask,
                         @Cached(value = "stride(a)", allowUncached = true) int cachedStrideA,
                         @Cached(value = "stride(b)", allowUncached = true) int cachedStrideB) {
-            return TStringOps.regionEqualsWithOrMaskWithStride(a, arrayA, cachedStrideA, fromIndexA, b, arrayB, cachedStrideB, fromIndexB, mask, length);
+            return TStringOps.regionEqualsWithOrMaskWithStride(this, a, arrayA, cachedStrideA, fromIndexA, b, arrayB, cachedStrideB, fromIndexB, mask, length);
         }
     }
 
@@ -270,11 +276,11 @@ final class TStringOpsNodes {
         abstract boolean execute(AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB);
 
         @Specialization(guards = {"stride(a) == cachedStrideA", "stride(b) == cachedStrideB"}, limit = LIMIT_STRIDE)
-        static boolean cached(AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB,
+        boolean cached(AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB,
                         @Cached(value = "stride(a)", allowUncached = true) int cachedStrideA,
                         @Cached(value = "stride(b)", allowUncached = true) int cachedStrideB) {
             return a.length() == b.length() && TStringOps.regionEqualsWithOrMaskWithStride(
-                            a, arrayA, cachedStrideA, 0,
+                            this, a, arrayA, cachedStrideA, 0,
                             b, arrayB, cachedStrideB, 0, null, a.length());
         }
 
@@ -290,13 +296,13 @@ final class TStringOpsNodes {
         abstract int execute(AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB);
 
         @Specialization(guards = {"stride(a) == cachedStrideA", "stride(b) == cachedStrideB"}, limit = LIMIT_STRIDE)
-        static int cached(AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB,
+        int cached(AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB,
                         @Cached(value = "stride(a)", allowUncached = true) int cachedStrideA,
                         @Cached(value = "stride(b)", allowUncached = true) int cachedStrideB) {
             int lengthA = a.length();
             int lengthB = b.length();
             int minLength = Math.min(lengthA, lengthB);
-            int cmp = TStringOps.memcmpWithStride(a, arrayA, cachedStrideA, b, arrayB, cachedStrideB, minLength);
+            int cmp = TStringOps.memcmpWithStride(this, a, arrayA, cachedStrideA, b, arrayB, cachedStrideB, minLength);
             if (cmp == 0) {
                 if (lengthA == lengthB) {
                     return 0;
@@ -316,11 +322,11 @@ final class TStringOpsNodes {
         abstract void execute(AbstractTruffleString a, Object arrayA, int srcPos, byte[] dst, int dstPos, int dstStride, int length);
 
         @Specialization(guards = {"stride(a) == cachedStrideA", "dstStride == cachedStrideDst"}, limit = LIMIT_STRIDE)
-        static void cached(AbstractTruffleString a, Object arrayA, int srcPos, byte[] dst, int dstPos, @SuppressWarnings("unused") int dstStride, int length,
+        void cached(AbstractTruffleString a, Object arrayA, int srcPos, byte[] dst, int dstPos, @SuppressWarnings("unused") int dstStride, int length,
                         @Cached(value = "stride(a)", allowUncached = true) int cachedStrideA,
                         @Cached(value = "dstStride", allowUncached = true) int cachedStrideDst) {
             TStringOps.arraycopyWithStride(
-                            arrayA, a.offset(), cachedStrideA, srcPos,
+                            this, arrayA, a.offset(), cachedStrideA, srcPos,
                             dst, 0, cachedStrideDst, dstPos, length);
         }
 
@@ -338,12 +344,12 @@ final class TStringOpsNodes {
                         byte[] dst, int offsetDst, int strideDst, int length);
 
         @Specialization(guards = {"strideSrc == cachedStrideSrc", "strideDst == cachedStrideDst"}, limit = LIMIT_STRIDE)
-        static void cached(
+        void cached(
                         Object src, int offsetSrc, @SuppressWarnings("unused") int strideSrc,
                         byte[] dst, int offsetDst, @SuppressWarnings("unused") int strideDst, int length,
                         @Cached(value = "strideSrc", allowUncached = true) int cachedStrideSrc,
                         @Cached(value = "strideDst", allowUncached = true) int cachedStrideDst) {
-            TStringOps.arraycopyWithStride(
+            TStringOps.arraycopyWithStride(this,
                             src, offsetSrc, cachedStrideSrc, 0,
                             dst, offsetDst, cachedStrideDst, 0, length);
         }
@@ -356,9 +362,9 @@ final class TStringOpsNodes {
         abstract int execute(AbstractTruffleString a, Object arrayA);
 
         @Specialization(guards = {"stride(a) == cachedStrideA"}, limit = LIMIT_STRIDE)
-        static int cached(AbstractTruffleString a, Object arrayA,
+        int cached(AbstractTruffleString a, Object arrayA,
                         @Cached(value = "stride(a)", allowUncached = true) int cachedStrideA) {
-            return TStringOps.hashCodeWithStride(a, arrayA, cachedStrideA);
+            return TStringOps.hashCodeWithStride(this, a, arrayA, cachedStrideA);
         }
     }
 

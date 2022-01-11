@@ -247,7 +247,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
             final Object array;
             final int offset;
             if (copy) {
-                array = TStringOps.arraycopyOfWithStride(nativePointer, byteOffset, byteLength, 0, byteLength, 0);
+                array = TStringOps.arraycopyOfWithStride(this, nativePointer, byteOffset, byteLength, 0, byteLength, 0);
                 offset = 0;
             } else {
                 array = nativePointer;
@@ -773,7 +773,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
         abstract void execute(MutableTruffleString a);
 
         @Specialization
-        static void calc(MutableTruffleString a,
+        void calc(MutableTruffleString a,
                         @Cached("createClassProfile()") ValueProfile dataClassProfile,
                         @Cached ConditionProfile asciiBytesLatinProfile,
                         @Cached ConditionProfile utf8Profile,
@@ -793,38 +793,38 @@ public final class MutableTruffleString extends AbstractTruffleString {
             final int codeRange;
             if (utf16Profile.profile(isUTF16(encoding))) {
                 if (utf16S0Profile.profile(isStride0(a))) {
-                    codeRange = TStringOps.calcStringAttributesLatin1(data, offset, length);
+                    codeRange = TStringOps.calcStringAttributesLatin1(this, data, offset, length);
                     codePointLength = length;
                 } else {
                     assert isStride1(a);
-                    long attrs = TStringOps.calcStringAttributesUTF16(data, offset, length, false);
+                    long attrs = TStringOps.calcStringAttributesUTF16(this, data, offset, length, false);
                     codePointLength = StringAttributes.getCodePointLength(attrs);
                     codeRange = StringAttributes.getCodeRange(attrs);
                 }
             } else if (utf32Profile.profile(isUTF32(encoding))) {
                 if (utf32S0Profile.profile(isStride0(a))) {
-                    codeRange = TStringOps.calcStringAttributesLatin1(data, offset, length);
+                    codeRange = TStringOps.calcStringAttributesLatin1(this, data, offset, length);
                 } else if (utf32S1Profile.profile(isStride1(a))) {
-                    codeRange = TStringOps.calcStringAttributesBMP(data, offset, length);
+                    codeRange = TStringOps.calcStringAttributesBMP(this, data, offset, length);
                 } else {
                     assert isStride2(a);
-                    codeRange = TStringOps.calcStringAttributesUTF32(data, offset, length);
+                    codeRange = TStringOps.calcStringAttributesUTF32(this, data, offset, length);
                 }
                 codePointLength = length;
             } else {
                 if (utf8Profile.profile(isUTF8(encoding))) {
-                    long attrs = TStringOps.calcStringAttributesUTF8(data, offset, length, false);
+                    long attrs = TStringOps.calcStringAttributesUTF8(this, data, offset, length, false);
                     codeRange = StringAttributes.getCodeRange(attrs);
                     codePointLength = StringAttributes.getCodePointLength(attrs);
                 } else if (asciiBytesLatinProfile.profile(TStringGuards.isAsciiBytesOrLatin1(encoding))) {
-                    int cr = TStringOps.calcStringAttributesLatin1(data, offset, length);
+                    int cr = TStringOps.calcStringAttributesLatin1(this, data, offset, length);
                     codeRange = TStringGuards.is8Bit(cr) ? TSCodeRange.asciiLatinBytesNonAsciiCodeRange(encoding) : cr;
                     codePointLength = length;
                 } else {
                     if (data instanceof NativePointer) {
                         ((NativePointer) data).materializeByteArray(a, exoticMaterializeNativeProfile);
                     }
-                    long attrs = JCodings.getInstance().calcStringAttributes(data, offset, length, encoding, exoticValidProfile, exoticFixedWidthProfile);
+                    long attrs = JCodings.getInstance().calcStringAttributes(this, data, offset, length, encoding, exoticValidProfile, exoticFixedWidthProfile);
                     codeRange = StringAttributes.getCodeRange(attrs);
                     codePointLength = StringAttributes.getCodePointLength(attrs);
                 }

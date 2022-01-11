@@ -44,6 +44,7 @@ package com.oracle.truffle.api.strings;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.nodes.Node;
 
 import sun.misc.Unsafe;
 
@@ -200,39 +201,39 @@ final class TStringOps {
         }
     }
 
-    static int indexOfAnyByte(AbstractTruffleString a, Object arrayA, int fromIndex, int toIndex, byte[] values) {
+    static int indexOfAnyByte(Node location, AbstractTruffleString a, Object arrayA, int fromIndex, int toIndex, byte[] values) {
         assert a.stride() == 0;
-        return indexOfAnyByteIntl(arrayA, a.offset(), toIndex, fromIndex, values);
+        return indexOfAnyByteIntl(location, arrayA, a.offset(), toIndex, fromIndex, values);
     }
 
-    private static int indexOfAnyByteIntl(Object array, int offset, int length, int fromIndex, byte[] values) {
+    private static int indexOfAnyByteIntl(Node location, Object array, int offset, int length, int fromIndex, byte[] values) {
         final boolean isNative = isNativePointer(array);
         final Object stubArray = stubArray(array, isNative);
         validateRegionIndex(stubArray, offset, length, 0, fromIndex, isNative);
         final long stubOffset = stubOffset(array, offset, isNative);
         switch (values.length) {
             case 1:
-                return runIndexOfAny1(stubArray, stubOffset, length, 0, isNative, fromIndex, uInt(values[0]));
+                return runIndexOfAny1(location, stubArray, stubOffset, length, 0, isNative, fromIndex, uInt(values[0]));
             case 2:
-                return runIndexOfAny2(stubArray, stubOffset, length, 0, isNative, fromIndex, uInt(values[0]), uInt(values[1]));
+                return runIndexOfAny2(location, stubArray, stubOffset, length, 0, isNative, fromIndex, uInt(values[0]), uInt(values[1]));
             case 3:
-                return runIndexOfAny3(stubArray, stubOffset, length, 0, isNative, fromIndex, uInt(values[0]), uInt(values[1]), uInt(values[2]));
+                return runIndexOfAny3(location, stubArray, stubOffset, length, 0, isNative, fromIndex, uInt(values[0]), uInt(values[1]), uInt(values[2]));
             case 4:
-                return runIndexOfAny4(stubArray, stubOffset, length, 0, isNative, fromIndex, uInt(values[0]), uInt(values[1]), uInt(values[2]), uInt(values[3]));
+                return runIndexOfAny4(location, stubArray, stubOffset, length, 0, isNative, fromIndex, uInt(values[0]), uInt(values[1]), uInt(values[2]), uInt(values[3]));
             default:
-                return runIndexOfAnyByte(stubArray, stubOffset, length, isNative, fromIndex, values);
+                return runIndexOfAnyByte(location, stubArray, stubOffset, length, isNative, fromIndex, values);
         }
     }
 
-    static int indexOfAnyChar(AbstractTruffleString a, Object arrayA, int stride, int fromIndex, int toIndex, char[] values) {
+    static int indexOfAnyChar(Node location, AbstractTruffleString a, Object arrayA, int stride, int fromIndex, int toIndex, char[] values) {
         assert stride == 0 || stride == 1;
-        return indexOfAnyCharIntl(arrayA, a.offset(), toIndex, stride, fromIndex, values);
+        return indexOfAnyCharIntl(location, arrayA, a.offset(), toIndex, stride, fromIndex, values);
     }
 
     /**
      * This redundant method is used to simplify compiler tests for the intrinsic it is calling.
      */
-    private static int indexOfAnyCharIntl(Object array, int offset, int length, int stride, int fromIndex, char[] values) {
+    private static int indexOfAnyCharIntl(Node location, Object array, int offset, int length, int stride, int fromIndex, char[] values) {
         final boolean isNative = isNativePointer(array);
         final Object stubArray = stubArray(array, isNative);
         validateRegionIndex(stubArray, offset, length, stride, fromIndex, isNative);
@@ -240,38 +241,38 @@ final class TStringOps {
         if (stride == 0) {
             switch (values.length) {
                 case 1:
-                    return runIndexOfAny1(stubArray, stubOffset, length, 0, isNative, fromIndex, values[0]);
+                    return runIndexOfAny1(location, stubArray, stubOffset, length, 0, isNative, fromIndex, values[0]);
                 case 2:
-                    return runIndexOfAny2(stubArray, stubOffset, length, 0, isNative, fromIndex, values[0], values[1]);
+                    return runIndexOfAny2(location, stubArray, stubOffset, length, 0, isNative, fromIndex, values[0], values[1]);
                 case 3:
-                    return runIndexOfAny3(stubArray, stubOffset, length, 0, isNative, fromIndex, values[0], values[1], values[2]);
+                    return runIndexOfAny3(location, stubArray, stubOffset, length, 0, isNative, fromIndex, values[0], values[1], values[2]);
                 case 4:
-                    return runIndexOfAny4(stubArray, stubOffset, length, 0, isNative, fromIndex, values[0], values[1], values[2], values[3]);
+                    return runIndexOfAny4(location, stubArray, stubOffset, length, 0, isNative, fromIndex, values[0], values[1], values[2], values[3]);
             }
         } else {
             assert stride == 1;
             switch (values.length) {
                 case 1:
-                    return runIndexOfAny1(stubArray, stubOffset, length, 1, isNative, fromIndex, values[0]);
+                    return runIndexOfAny1(location, stubArray, stubOffset, length, 1, isNative, fromIndex, values[0]);
                 case 2:
-                    return runIndexOfAny2(stubArray, stubOffset, length, 1, isNative, fromIndex, values[0], values[1]);
+                    return runIndexOfAny2(location, stubArray, stubOffset, length, 1, isNative, fromIndex, values[0], values[1]);
                 case 3:
-                    return runIndexOfAny3(stubArray, stubOffset, length, 1, isNative, fromIndex, values[0], values[1], values[2]);
+                    return runIndexOfAny3(location, stubArray, stubOffset, length, 1, isNative, fromIndex, values[0], values[1], values[2]);
                 case 4:
-                    return runIndexOfAny4(stubArray, stubOffset, length, 1, isNative, fromIndex, values[0], values[1], values[2], values[3]);
+                    return runIndexOfAny4(location, stubArray, stubOffset, length, 1, isNative, fromIndex, values[0], values[1], values[2], values[3]);
             }
         }
-        return runIndexOfAnyChar(stubArray, stubOffset, length, stride, isNative, fromIndex, values);
+        return runIndexOfAnyChar(location, stubArray, stubOffset, length, stride, isNative, fromIndex, values);
     }
 
-    static int indexOfAnyInt(AbstractTruffleString a, Object arrayA, int stride, int fromIndex, int toIndex, int[] values) {
-        return indexOfAnyIntIntl(arrayA, a.offset(), toIndex, stride, fromIndex, values);
+    static int indexOfAnyInt(Node location, AbstractTruffleString a, Object arrayA, int stride, int fromIndex, int toIndex, int[] values) {
+        return indexOfAnyIntIntl(location, arrayA, a.offset(), toIndex, stride, fromIndex, values);
     }
 
     /**
      * This redundant method is used to simplify compiler tests for the intrinsic it is calling.
      */
-    private static int indexOfAnyIntIntl(Object array, int offset, int length, int stride, int fromIndex, int[] values) {
+    private static int indexOfAnyIntIntl(Node location, Object array, int offset, int length, int stride, int fromIndex, int[] values) {
         final boolean isNative = isNativePointer(array);
         final Object stubArray = stubArray(array, isNative);
         validateRegionIndex(stubArray, offset, length, stride, fromIndex, isNative);
@@ -279,121 +280,123 @@ final class TStringOps {
         if (stride == 0) {
             switch (values.length) {
                 case 1:
-                    return runIndexOfAny1(stubArray, stubOffset, length, 0, isNative, fromIndex, values[0]);
+                    return runIndexOfAny1(location, stubArray, stubOffset, length, 0, isNative, fromIndex, values[0]);
                 case 2:
-                    return runIndexOfAny2(stubArray, stubOffset, length, 0, isNative, fromIndex, values[0], values[1]);
+                    return runIndexOfAny2(location, stubArray, stubOffset, length, 0, isNative, fromIndex, values[0], values[1]);
                 case 3:
-                    return runIndexOfAny3(stubArray, stubOffset, length, 0, isNative, fromIndex, values[0], values[1], values[2]);
+                    return runIndexOfAny3(location, stubArray, stubOffset, length, 0, isNative, fromIndex, values[0], values[1], values[2]);
                 case 4:
-                    return runIndexOfAny4(stubArray, stubOffset, length, 0, isNative, fromIndex, values[0], values[1], values[2], values[3]);
+                    return runIndexOfAny4(location, stubArray, stubOffset, length, 0, isNative, fromIndex, values[0], values[1], values[2], values[3]);
             }
         } else if (stride == 1) {
             switch (values.length) {
                 case 1:
-                    return runIndexOfAny1(stubArray, stubOffset, length, 1, isNative, fromIndex, values[0]);
+                    return runIndexOfAny1(location, stubArray, stubOffset, length, 1, isNative, fromIndex, values[0]);
                 case 2:
-                    return runIndexOfAny2(stubArray, stubOffset, length, 1, isNative, fromIndex, values[0], values[1]);
+                    return runIndexOfAny2(location, stubArray, stubOffset, length, 1, isNative, fromIndex, values[0], values[1]);
                 case 3:
-                    return runIndexOfAny3(stubArray, stubOffset, length, 1, isNative, fromIndex, values[0], values[1], values[2]);
+                    return runIndexOfAny3(location, stubArray, stubOffset, length, 1, isNative, fromIndex, values[0], values[1], values[2]);
                 case 4:
-                    return runIndexOfAny4(stubArray, stubOffset, length, 1, isNative, fromIndex, values[0], values[1], values[2], values[3]);
+                    return runIndexOfAny4(location, stubArray, stubOffset, length, 1, isNative, fromIndex, values[0], values[1], values[2], values[3]);
             }
         } else {
             assert stride == 2;
             switch (values.length) {
                 case 1:
-                    return runIndexOfAny1(stubArray, stubOffset, length, 2, isNative, fromIndex, values[0]);
+                    return runIndexOfAny1(location, stubArray, stubOffset, length, 2, isNative, fromIndex, values[0]);
                 case 2:
-                    return runIndexOfAny2(stubArray, stubOffset, length, 2, isNative, fromIndex, values[0], values[1]);
+                    return runIndexOfAny2(location, stubArray, stubOffset, length, 2, isNative, fromIndex, values[0], values[1]);
                 case 3:
-                    return runIndexOfAny3(stubArray, stubOffset, length, 2, isNative, fromIndex, values[0], values[1], values[2]);
+                    return runIndexOfAny3(location, stubArray, stubOffset, length, 2, isNative, fromIndex, values[0], values[1], values[2]);
                 case 4:
-                    return runIndexOfAny4(stubArray, stubOffset, length, 2, isNative, fromIndex, values[0], values[1], values[2], values[3]);
+                    return runIndexOfAny4(location, stubArray, stubOffset, length, 2, isNative, fromIndex, values[0], values[1], values[2], values[3]);
             }
         }
-        return runIndexOfAnyInt(stubArray, stubOffset, length, stride, isNative, fromIndex, values);
+        return runIndexOfAnyInt(location, stubArray, stubOffset, length, stride, isNative, fromIndex, values);
     }
 
-    static int indexOfCodePointWithStride(AbstractTruffleString a, Object arrayA, int strideA, int fromIndex, int toIndex, int codepoint) {
-        return indexOfCodePointWithStrideIntl(arrayA, a.offset(), toIndex, strideA, fromIndex, codepoint);
+    static int indexOfCodePointWithStride(Node location, AbstractTruffleString a, Object arrayA, int strideA, int fromIndex, int toIndex, int codepoint) {
+        return indexOfCodePointWithStrideIntl(location, arrayA, a.offset(), toIndex, strideA, fromIndex, codepoint);
     }
 
-    private static int indexOfCodePointWithStrideIntl(Object array, int offset, int length, int stride, int fromIndex, int v1) {
+    private static int indexOfCodePointWithStrideIntl(Node location, Object array, int offset, int length, int stride, int fromIndex, int v1) {
         final boolean isNative = isNativePointer(array);
         final Object stubArray = stubArray(array, isNative);
         validateRegionIndex(stubArray, offset, length, stride, fromIndex, isNative);
         final long stubOffset = stubOffset(array, offset, isNative);
         switch (stride) {
             case 0:
-                return runIndexOfAny1(stubArray, stubOffset, length, 0, isNative, fromIndex, v1);
+                return runIndexOfAny1(location, stubArray, stubOffset, length, 0, isNative, fromIndex, v1);
             case 1:
-                return runIndexOfAny1(stubArray, stubOffset, length, 1, isNative, fromIndex, v1);
+                return runIndexOfAny1(location, stubArray, stubOffset, length, 1, isNative, fromIndex, v1);
             default:
                 assert stride == 2;
-                return runIndexOfAny1(stubArray, stubOffset, length, 2, isNative, fromIndex, v1);
+                return runIndexOfAny1(location, stubArray, stubOffset, length, 2, isNative, fromIndex, v1);
         }
     }
 
-    static int indexOfCodePointWithOrMaskWithStride(AbstractTruffleString a, Object arrayA, int strideA, int fromIndex, int toIndex, int codepoint, int maskA) {
-        return indexOfCodePointWithMaskWithStrideIntl(arrayA, a.offset(), toIndex, strideA, fromIndex, codepoint, maskA);
+    static int indexOfCodePointWithOrMaskWithStride(Node location, AbstractTruffleString a, Object arrayA, int strideA, int fromIndex, int toIndex, int codepoint, int maskA) {
+        return indexOfCodePointWithMaskWithStrideIntl(location, arrayA, a.offset(), toIndex, strideA, fromIndex, codepoint, maskA);
     }
 
-    private static int indexOfCodePointWithMaskWithStrideIntl(Object array, int offset, int length, int stride, int fromIndex, int v1, int mask1) {
+    private static int indexOfCodePointWithMaskWithStrideIntl(Node location, Object array, int offset, int length, int stride, int fromIndex, int v1, int mask1) {
         final boolean isNative = isNativePointer(array);
         final Object stubArray = stubArray(array, isNative);
         validateRegionIndex(stubArray, offset, length, stride, fromIndex, isNative);
         final long stubOffset = stubOffset(array, offset, isNative);
         switch (stride) {
             case 0:
-                return runIndexOfWithOrMaskWithStride(stubArray, stubOffset, length, 0, isNative, fromIndex, v1, mask1);
+                return runIndexOfWithOrMaskWithStride(location, stubArray, stubOffset, length, 0, isNative, fromIndex, v1, mask1);
             case 1:
-                return runIndexOfWithOrMaskWithStride(stubArray, stubOffset, length, 1, isNative, fromIndex, v1, mask1);
+                return runIndexOfWithOrMaskWithStride(location, stubArray, stubOffset, length, 1, isNative, fromIndex, v1, mask1);
             default:
                 assert stride == 2;
-                return runIndexOfWithOrMaskWithStride(stubArray, stubOffset, length, 2, isNative, fromIndex, v1, mask1);
+                return runIndexOfWithOrMaskWithStride(location, stubArray, stubOffset, length, 2, isNative, fromIndex, v1, mask1);
         }
     }
 
-    static int indexOf2ConsecutiveWithStride(AbstractTruffleString a, Object arrayA, int strideA, int fromIndex, int toIndex, int v1, int v2) {
-        return indexOf2ConsecutiveWithStrideIntl(arrayA, a.offset(), toIndex, strideA, fromIndex, v1, v2);
+    static int indexOf2ConsecutiveWithStride(Node location, AbstractTruffleString a, Object arrayA, int strideA, int fromIndex, int toIndex, int v1, int v2) {
+        return indexOf2ConsecutiveWithStrideIntl(location, arrayA, a.offset(), toIndex, strideA, fromIndex, v1, v2);
     }
 
-    private static int indexOf2ConsecutiveWithStrideIntl(Object array, int offset, int length, int stride, int fromIndex, int v1, int v2) {
+    private static int indexOf2ConsecutiveWithStrideIntl(Node location, Object array, int offset, int length, int stride, int fromIndex, int v1, int v2) {
         final boolean isNative = isNativePointer(array);
         final Object stubArray = stubArray(array, isNative);
         validateRegionIndex(stubArray, offset, length, stride, fromIndex, isNative);
         final long stubOffset = stubOffset(array, offset, isNative);
         switch (stride) {
             case 0:
-                return runIndexOf2ConsecutiveWithStride(stubArray, stubOffset, length, 0, isNative, fromIndex, v1, v2);
+                return runIndexOf2ConsecutiveWithStride(location, stubArray, stubOffset, length, 0, isNative, fromIndex, v1, v2);
             case 1:
-                return runIndexOf2ConsecutiveWithStride(stubArray, stubOffset, length, 1, isNative, fromIndex, v1, v2);
+                return runIndexOf2ConsecutiveWithStride(location, stubArray, stubOffset, length, 1, isNative, fromIndex, v1, v2);
             default:
                 assert stride == 2;
-                return runIndexOf2ConsecutiveWithStride(stubArray, stubOffset, length, 2, isNative, fromIndex, v1, v2);
+                return runIndexOf2ConsecutiveWithStride(location, stubArray, stubOffset, length, 2, isNative, fromIndex, v1, v2);
         }
     }
 
     /**
      * This redundant method is used to simplify compiler tests for the intrinsic it is calling.
      */
-    private static int indexOf2ConsecutiveWithOrMaskWithStrideIntl(Object array, int offset, int length, int stride, int fromIndex, int v1, int v2, int mask1, int mask2) {
+    private static int indexOf2ConsecutiveWithOrMaskWithStrideIntl(Node location, Object array, int offset, int length, int stride, int fromIndex, int v1, int v2, int mask1, int mask2) {
         final boolean isNative = isNativePointer(array);
         final Object stubArray = stubArray(array, isNative);
         validateRegionIndex(stubArray, offset, length, stride, fromIndex, isNative);
         final long stubOffset = stubOffset(array, offset, isNative);
         switch (stride) {
             case 0:
-                return runIndexOf2ConsecutiveWithOrMaskWithStride(stubArray, stubOffset, length, 0, isNative, fromIndex, v1, v2, mask1, mask2);
+                return runIndexOf2ConsecutiveWithOrMaskWithStride(location, stubArray, stubOffset, length, 0, isNative, fromIndex, v1, v2, mask1, mask2);
             case 1:
-                return runIndexOf2ConsecutiveWithOrMaskWithStride(stubArray, stubOffset, length, 1, isNative, fromIndex, v1, v2, mask1, mask2);
+                return runIndexOf2ConsecutiveWithOrMaskWithStride(location, stubArray, stubOffset, length, 1, isNative, fromIndex, v1, v2, mask1, mask2);
             default:
                 assert stride == 2;
-                return runIndexOf2ConsecutiveWithOrMaskWithStride(stubArray, stubOffset, length, 2, isNative, fromIndex, v1, v2, mask1, mask2);
+                return runIndexOf2ConsecutiveWithOrMaskWithStride(location, stubArray, stubOffset, length, 2, isNative, fromIndex, v1, v2, mask1, mask2);
         }
     }
 
-    static int indexOfStringWithOrMaskWithStride(AbstractTruffleString a, Object arrayA, int strideA, AbstractTruffleString b, Object arrayB, int strideB, int fromIndex, int toIndex, byte[] maskB) {
+    static int indexOfStringWithOrMaskWithStride(Node location,
+                    AbstractTruffleString a, Object arrayA, int strideA,
+                    AbstractTruffleString b, Object arrayB, int strideB, int fromIndex, int toIndex, byte[] maskB) {
         int offsetMask = 0;
         assert b.length() > 1;
         assert a.length() >= b.length();
@@ -405,63 +408,65 @@ final class TStringOps {
         final int mask1 = maskB == null ? 0 : readValue(maskB, offsetMask, b.length(), strideB, 1);
         while (index < max - 1) {
             if (maskB == null) {
-                index = indexOf2ConsecutiveWithStrideIntl(arrayA, a.offset(), max, strideA, index, b0, b1);
+                index = indexOf2ConsecutiveWithStrideIntl(location, arrayA, a.offset(), max, strideA, index, b0, b1);
             } else {
-                index = indexOf2ConsecutiveWithOrMaskWithStrideIntl(arrayA, a.offset(), max, strideA, index, b0, b1, mask0, mask1);
+                index = indexOf2ConsecutiveWithOrMaskWithStrideIntl(location, arrayA, a.offset(), max, strideA, index, b0, b1, mask0, mask1);
             }
             if (index < 0) {
                 return -1;
             }
-            if (b.length() == 2 || regionEqualsWithOrMaskWithStride(a, arrayA, strideA, index, b, arrayB, strideB, 0, maskB, b.length())) {
+            if (b.length() == 2 || regionEqualsWithOrMaskWithStride(location, a, arrayA, strideA, index, b, arrayB, strideB, 0, maskB, b.length())) {
                 return index;
             }
             index++;
+            TStringConstants.truffleSafePointPoll(location, index);
         }
         return -1;
     }
 
-    static int lastIndexOfCodePointWithOrMaskWithStride(AbstractTruffleString a, Object arrayA, int stride, int fromIndex, int toIndex, int codepoint, int mask) {
-        return lastIndexOfCodePointWithOrMaskWithStrideIntl(arrayA, a.offset(), stride, fromIndex, toIndex, codepoint, mask);
+    static int lastIndexOfCodePointWithOrMaskWithStride(Node location, AbstractTruffleString a, Object arrayA, int stride, int fromIndex, int toIndex, int codepoint, int mask) {
+        return lastIndexOfCodePointWithOrMaskWithStrideIntl(location, arrayA, a.offset(), stride, fromIndex, toIndex, codepoint, mask);
     }
 
-    private static int lastIndexOfCodePointWithOrMaskWithStrideIntl(Object array, int offset, int stride, int fromIndex, int toIndex, int codepoint, int mask) {
+    private static int lastIndexOfCodePointWithOrMaskWithStrideIntl(Node location, Object array, int offset, int stride, int fromIndex, int toIndex, int codepoint, int mask) {
         final boolean isNative = isNativePointer(array);
         final Object stubArray = stubArray(array, isNative);
         validateRegionIndex(stubArray, offset, fromIndex, stride, toIndex, isNative);
         final long stubOffset = stubOffset(array, offset, isNative);
         switch (stride) {
             case 0:
-                return runLastIndexOfWithOrMaskWithStride(stubArray, stubOffset, 0, isNative, fromIndex, toIndex, codepoint, mask);
+                return runLastIndexOfWithOrMaskWithStride(location, stubArray, stubOffset, 0, isNative, fromIndex, toIndex, codepoint, mask);
             case 1:
-                return runLastIndexOfWithOrMaskWithStride(stubArray, stubOffset, 1, isNative, fromIndex, toIndex, codepoint, mask);
+                return runLastIndexOfWithOrMaskWithStride(location, stubArray, stubOffset, 1, isNative, fromIndex, toIndex, codepoint, mask);
             default:
                 assert stride == 2;
-                return runLastIndexOfWithOrMaskWithStride(stubArray, stubOffset, 2, isNative, fromIndex, toIndex, codepoint, mask);
+                return runLastIndexOfWithOrMaskWithStride(location, stubArray, stubOffset, 2, isNative, fromIndex, toIndex, codepoint, mask);
         }
     }
 
-    static int lastIndexOf2ConsecutiveWithOrMaskWithStride(AbstractTruffleString a, Object arrayA, int stride, int fromIndex, int toIndex, int v1, int v2, int mask1, int mask2) {
-        return lastIndexOf2ConsecutiveWithOrMaskWithStrideIntl(arrayA, a.offset(), stride, fromIndex, toIndex, v1, v2, mask1, mask2);
+    static int lastIndexOf2ConsecutiveWithOrMaskWithStride(Node location, AbstractTruffleString a, Object arrayA, int stride, int fromIndex, int toIndex, int v1, int v2, int mask1, int mask2) {
+        return lastIndexOf2ConsecutiveWithOrMaskWithStrideIntl(location, arrayA, a.offset(), stride, fromIndex, toIndex, v1, v2, mask1, mask2);
     }
 
-    private static int lastIndexOf2ConsecutiveWithOrMaskWithStrideIntl(Object array, int offset, int stride, int fromIndex, int toIndex, int v1, int v2, int mask1, int mask2) {
+    private static int lastIndexOf2ConsecutiveWithOrMaskWithStrideIntl(Node location, Object array, int offset, int stride, int fromIndex, int toIndex, int v1, int v2, int mask1, int mask2) {
         final boolean isNative = isNativePointer(array);
         final Object stubArray = stubArray(array, isNative);
         validateRegionIndex(stubArray, offset, fromIndex, stride, toIndex, isNative);
         final long stubOffset = stubOffset(array, offset, isNative);
         switch (stride) {
             case 0:
-                return runLastIndexOf2ConsecutiveWithOrMaskWithStride(stubArray, stubOffset, 0, isNative, fromIndex, toIndex, v1, v2, mask1, mask2);
+                return runLastIndexOf2ConsecutiveWithOrMaskWithStride(location, stubArray, stubOffset, 0, isNative, fromIndex, toIndex, v1, v2, mask1, mask2);
             case 1:
-                return runLastIndexOf2ConsecutiveWithOrMaskWithStride(stubArray, stubOffset, 1, isNative, fromIndex, toIndex, v1, v2, mask1, mask2);
+                return runLastIndexOf2ConsecutiveWithOrMaskWithStride(location, stubArray, stubOffset, 1, isNative, fromIndex, toIndex, v1, v2, mask1, mask2);
             default:
                 assert stride == 2;
-                return runLastIndexOf2ConsecutiveWithOrMaskWithStride(stubArray, stubOffset, 2, isNative, fromIndex, toIndex, v1, v2, mask1, mask2);
+                return runLastIndexOf2ConsecutiveWithOrMaskWithStride(location, stubArray, stubOffset, 2, isNative, fromIndex, toIndex, v1, v2, mask1, mask2);
         }
     }
 
-    static int lastIndexOfStringWithOrMaskWithStride(AbstractTruffleString a, Object arrayA, int strideA, AbstractTruffleString b, Object arrayB, int strideB, int fromIndex, int toIndex,
-                    byte[] maskB) {
+    static int lastIndexOfStringWithOrMaskWithStride(Node location,
+                    AbstractTruffleString a, Object arrayA, int strideA,
+                    AbstractTruffleString b, Object arrayB, int strideB, int fromIndex, int toIndex, byte[] maskB) {
         int offsetMask = 0;
         assert b.length() > 1;
         assert a.length() >= b.length();
@@ -471,29 +476,30 @@ final class TStringOps {
         final int mask0 = maskB == null ? 0 : readValue(maskB, offsetMask, b.length(), strideB, b.length() - 2);
         final int mask1 = maskB == null ? 0 : readValue(maskB, offsetMask, b.length(), strideB, b.length() - 1);
         while (index > toIndex) {
-            index = lastIndexOf2ConsecutiveWithOrMaskWithStrideIntl(arrayA, a.offset(), strideA, index, b.length() - 2, b0, b1, mask0, mask1);
+            index = lastIndexOf2ConsecutiveWithOrMaskWithStrideIntl(location, arrayA, a.offset(), strideA, index, b.length() - 2, b0, b1, mask0, mask1);
             if (index < 0) {
                 return -1;
             }
             index += 2;
-            if (b.length() == 2 || regionEqualsWithOrMaskWithStride(a, arrayA, strideA, index - b.length(), b, arrayB, strideB, 0, maskB, b.length())) {
+            if (b.length() == 2 || regionEqualsWithOrMaskWithStride(location, a, arrayA, strideA, index - b.length(), b, arrayB, strideB, 0, maskB, b.length())) {
                 return index - b.length();
             }
             index--;
+            TStringConstants.truffleSafePointPoll(location, index);
         }
         return -1;
     }
 
-    static boolean regionEqualsWithOrMaskWithStride(
+    static boolean regionEqualsWithOrMaskWithStride(Node location,
                     AbstractTruffleString a, Object arrayA, int strideA, int fromIndexA,
                     AbstractTruffleString b, Object arrayB, int strideB, int fromIndexB,
                     byte[] maskB, int lengthCMP) {
-        return regionEqualsWithOrMaskWithStrideIntl(
+        return regionEqualsWithOrMaskWithStrideIntl(location,
                         arrayA, a.offset(), a.length(), strideA, fromIndexA,
                         arrayB, b.offset(), b.length(), strideB, fromIndexB, maskB, lengthCMP);
     }
 
-    private static boolean regionEqualsWithOrMaskWithStrideIntl(
+    private static boolean regionEqualsWithOrMaskWithStrideIntl(Node location,
                     Object arrayA, int offsetA, int lengthA, int strideA, int fromIndexA,
                     Object arrayB, int offsetB, int lengthB, int strideB, int fromIndexB, byte[] maskB, int lengthCMP) {
         if (!rangeInBounds(fromIndexA, lengthCMP, lengthA) || !rangeInBounds(fromIndexB, lengthCMP, lengthB)) {
@@ -509,7 +515,7 @@ final class TStringOps {
         final long stubOffsetB = stubOffset(arrayB, offsetB, strideB, fromIndexB, isNativeB);
         if (maskB == null) {
             if (strideA == strideB) {
-                return runRegionEqualsWithStride(
+                return runRegionEqualsWithStride(location,
                                 stubArrayA, stubOffsetA, 0, isNativeA,
                                 stubArrayB, stubOffsetB, 0, isNativeB, lengthCMP << strideA);
             }
@@ -542,18 +548,18 @@ final class TStringOps {
             }
             if (swappedStrideA == 1) {
                 assert swappedStrideB == 0;
-                return runRegionEqualsWithStride(
+                return runRegionEqualsWithStride(location,
                                 swappedArrayA, swappedOffsetA, 1, swappedIsNativeA,
                                 swappedArrayB, swappedOffsetB, 0, swappedIsNativeB, lengthCMP);
             } else {
                 assert swappedStrideA == 2;
                 if (swappedStrideB == 0) {
-                    return runRegionEqualsWithStride(
+                    return runRegionEqualsWithStride(location,
                                     swappedArrayA, swappedOffsetA, 2, swappedIsNativeA,
                                     swappedArrayB, swappedOffsetB, 0, swappedIsNativeB, lengthCMP);
                 } else {
                     assert swappedStrideB == 1;
-                    return runRegionEqualsWithStride(
+                    return runRegionEqualsWithStride(location,
                                     swappedArrayA, swappedOffsetA, 2, swappedIsNativeA,
                                     swappedArrayB, swappedOffsetB, 1, swappedIsNativeB, lengthCMP);
                 }
@@ -562,40 +568,40 @@ final class TStringOps {
             validateRegion(maskB, 0, lengthCMP, strideB, false);
             if (strideA == strideB) {
                 return runRegionEqualsWithOrMaskWithStride(
-                                stubArrayA, stubOffsetA, 0, isNativeA,
+                                location, stubArrayA, stubOffsetA, 0, isNativeA,
                                 stubArrayB, stubOffsetB, 0, isNativeB, maskB, lengthCMP << strideA);
             }
             switch (strideA) {
                 case 0:
                     if (strideB == 1) {
-                        return runRegionEqualsWithOrMaskWithStride(
+                        return runRegionEqualsWithOrMaskWithStride(location,
                                         stubArrayA, stubOffsetA, 0, isNativeA,
                                         stubArrayB, stubOffsetB, 1, isNativeB, maskB, lengthCMP);
                     } else {
                         assert strideB == 2;
-                        return runRegionEqualsWithOrMaskWithStride(
+                        return runRegionEqualsWithOrMaskWithStride(location,
                                         stubArrayA, stubOffsetA, 0, isNativeA,
                                         stubArrayB, stubOffsetB, 2, isNativeB, maskB, lengthCMP);
                     }
                 case 1:
                     if (strideB == 0) {
-                        return runRegionEqualsWithOrMaskWithStride(
+                        return runRegionEqualsWithOrMaskWithStride(location,
                                         stubArrayA, stubOffsetA, 1, isNativeA,
                                         stubArrayB, stubOffsetB, 0, isNativeB, maskB, lengthCMP);
                     } else {
                         assert strideB == 2;
-                        return runRegionEqualsWithOrMaskWithStride(
+                        return runRegionEqualsWithOrMaskWithStride(location,
                                         stubArrayA, stubOffsetA, 1, isNativeA,
                                         stubArrayB, stubOffsetB, 2, isNativeB, maskB, lengthCMP);
                     }
                 default:
                     if (strideB == 0) {
-                        return runRegionEqualsWithOrMaskWithStride(
+                        return runRegionEqualsWithOrMaskWithStride(location,
                                         stubArrayA, stubOffsetA, 2, isNativeA,
                                         stubArrayB, stubOffsetB, 0, isNativeB, maskB, lengthCMP);
                     } else {
                         assert strideB == 1;
-                        return runRegionEqualsWithOrMaskWithStride(
+                        return runRegionEqualsWithOrMaskWithStride(location,
                                         stubArrayA, stubOffsetA, 2, isNativeA,
                                         stubArrayB, stubOffsetB, 1, isNativeB, maskB, lengthCMP);
                     }
@@ -603,14 +609,14 @@ final class TStringOps {
         }
     }
 
-    static int memcmpWithStride(AbstractTruffleString a, Object arrayA, int strideA, AbstractTruffleString b, Object arrayB, int strideB, int lengthCMP) {
+    static int memcmpWithStride(Node location, AbstractTruffleString a, Object arrayA, int strideA, AbstractTruffleString b, Object arrayB, int strideB, int lengthCMP) {
         assert lengthCMP <= a.length();
         assert lengthCMP <= b.length();
-        return memcmpWithStrideIntl(arrayA, a.offset(), strideA, arrayB, b.offset(), strideB, lengthCMP);
+        return memcmpWithStrideIntl(location, arrayA, a.offset(), strideA, arrayB, b.offset(), strideB, lengthCMP);
     }
 
     private static int memcmpWithStrideIntl(
-                    Object arrayA, int offsetA, int strideA,
+                    Node location, Object arrayA, int offsetA, int strideA,
                     Object arrayB, int offsetB, int strideB, int lengthCMP) {
         if (lengthCMP == 0) {
             return 0;
@@ -626,16 +632,16 @@ final class TStringOps {
         if (strideA == strideB) {
             switch (strideA) {
                 case 0:
-                    return runMemCmp(
+                    return runMemCmp(location,
                                     stubArrayA, stubOffsetA, 0, isNativeA,
                                     stubArrayB, stubOffsetB, 0, isNativeB, lengthCMP);
                 case 1:
-                    return runMemCmp(
+                    return runMemCmp(location,
                                     stubArrayA, stubOffsetA, 1, isNativeA,
                                     stubArrayB, stubOffsetB, 1, isNativeB, lengthCMP);
                 default:
                     assert strideA == 2;
-                    return runMemCmp(
+                    return runMemCmp(location,
                                     stubArrayA, stubOffsetA, 2, isNativeA,
                                     stubArrayB, stubOffsetB, 2, isNativeB, lengthCMP);
             }
@@ -672,72 +678,72 @@ final class TStringOps {
         }
         if (swappedStrideA == 1) {
             assert swappedStrideB == 0;
-            return swappedResult * runMemCmp(
+            return swappedResult * runMemCmp(location,
                             swappedArrayA, swappedOffsetA, 1, swappedIsNativeA,
                             swappedArrayB, swappedOffsetB, 0, swappedIsNativeB, lengthCMP);
         } else {
             assert swappedStrideA == 2;
             if (swappedStrideB == 0) {
-                return swappedResult * runMemCmp(
+                return swappedResult * runMemCmp(location,
                                 swappedArrayA, swappedOffsetA, 2, swappedIsNativeA,
                                 swappedArrayB, swappedOffsetB, 0, swappedIsNativeB, lengthCMP);
             } else {
                 assert swappedStrideB == 1;
-                return swappedResult * runMemCmp(
+                return swappedResult * runMemCmp(location,
                                 swappedArrayA, swappedOffsetA, 2, swappedIsNativeA,
                                 swappedArrayB, swappedOffsetB, 1, swappedIsNativeB, lengthCMP);
             }
         }
     }
 
-    static int hashCodeWithStride(AbstractTruffleString a, Object arrayA, int stride) {
-        return hashCodeWithStrideIntl(arrayA, a.offset(), a.length(), stride);
+    static int hashCodeWithStride(Node location, AbstractTruffleString a, Object arrayA, int stride) {
+        return hashCodeWithStrideIntl(location, arrayA, a.offset(), a.length(), stride);
     }
 
-    private static int hashCodeWithStrideIntl(Object array, int offset, int length, int stride) {
+    private static int hashCodeWithStrideIntl(Node location, Object array, int offset, int length, int stride) {
         final boolean isNative = isNativePointer(array);
         final Object stubArray = stubArray(array, isNative);
         validateRegion(stubArray, offset, length, stride, isNative);
         final long stubOffset = stubOffset(array, offset, isNative);
         switch (stride) {
             case 0:
-                return runHashCode(stubArray, stubOffset, length, 0, isNative);
+                return runHashCode(location, stubArray, stubOffset, length, 0, isNative);
             case 1:
-                return runHashCode(stubArray, stubOffset, length, 1, isNative);
+                return runHashCode(location, stubArray, stubOffset, length, 1, isNative);
             default:
                 assert stride == 2;
-                return runHashCode(stubArray, stubOffset, length, 2, isNative);
+                return runHashCode(location, stubArray, stubOffset, length, 2, isNative);
         }
     }
 
     // arrayB is returned for testing purposes, do not remove
-    static Object arraycopyWithStrideCB(
+    static Object arraycopyWithStrideCB(Node location,
                     char[] arrayA, int offsetA,
                     byte[] arrayB, int offsetB, int strideB, int lengthCPY) {
         validateRegion(arrayA, offsetA, lengthCPY);
         validateRegion(arrayB, offsetB, lengthCPY, strideB);
         int stubOffsetA = Unsafe.ARRAY_CHAR_BASE_OFFSET + offsetA;
         int stubOffsetB = Unsafe.ARRAY_BYTE_BASE_OFFSET + offsetB;
-        return arraycopyWithStrideIntl(
+        return arraycopyWithStrideIntl(location,
                         arrayA, stubOffsetA, 1, false,
                         arrayB, stubOffsetB, strideB, false, lengthCPY);
     }
 
     // arrayB is returned for testing purposes, do not remove
-    static Object arraycopyWithStrideIB(
+    static Object arraycopyWithStrideIB(Node location,
                     int[] arrayA, int offsetA,
                     byte[] arrayB, int offsetB, int strideB, int lengthCPY) {
         validateRegion(arrayA, offsetA, lengthCPY);
         validateRegion(arrayB, offsetB, lengthCPY, strideB);
         int stubOffsetA = Unsafe.ARRAY_INT_BASE_OFFSET + offsetA;
         int stubOffsetB = Unsafe.ARRAY_BYTE_BASE_OFFSET + offsetB;
-        return arraycopyWithStrideIntl(
+        return arraycopyWithStrideIntl(location,
                         arrayA, stubOffsetA, 2, false,
                         arrayB, stubOffsetB, strideB, false, lengthCPY);
     }
 
     // arrayB is returned for testing purposes, do not remove
-    static Object arraycopyWithStride(
+    static Object arraycopyWithStride(Node location,
                     Object arrayA, int offsetA, int strideA, int fromIndexA,
                     Object arrayB, int offsetB, int strideB, int fromIndexB, int lengthCPY) {
         final boolean isNativeA = isNativePointer(arrayA);
@@ -748,54 +754,54 @@ final class TStringOps {
         validateRegion(stubArrayB, offsetB, lengthCPY, strideB, isNativeB);
         final long stubOffsetA = stubOffset(arrayA, offsetA, strideA, fromIndexA, isNativeA);
         final long stubOffsetB = stubOffset(arrayB, offsetB, strideB, fromIndexB, isNativeB);
-        return arraycopyWithStrideIntl(
+        return arraycopyWithStrideIntl(location,
                         stubArrayA, stubOffsetA, strideA, isNativeA,
                         stubArrayB, stubOffsetB, strideB, isNativeB, lengthCPY);
     }
 
     private static Object arraycopyWithStrideIntl(
-                    Object stubArrayA, long stubOffsetA, int strideA, boolean isNativeA,
+                    Node location, Object stubArrayA, long stubOffsetA, int strideA, boolean isNativeA,
                     Object stubArrayB, long stubOffsetB, int strideB, boolean isNativeB, int lengthCPY) {
         if (strideA == strideB) {
             int byteLength = lengthCPY << strideA;
             runArrayCopy(
-                            stubArrayA, stubOffsetA, 0, isNativeA,
+                            location, stubArrayA, stubOffsetA, 0, isNativeA,
                             stubArrayB, stubOffsetB, 0, isNativeB, byteLength);
             return stubArrayB;
         }
         switch (strideA) {
             case 0:
                 if (strideB == 1) {
-                    runArrayCopy(
+                    runArrayCopy(location,
                                     stubArrayA, stubOffsetA, 0, isNativeA,
                                     stubArrayB, stubOffsetB, 1, isNativeB, lengthCPY);
                 } else {
                     assert strideB == 2;
-                    runArrayCopy(
+                    runArrayCopy(location,
                                     stubArrayA, stubOffsetA, 0, isNativeA,
                                     stubArrayB, stubOffsetB, 2, isNativeB, lengthCPY);
                 }
                 break;
             case 1:
                 if (strideB == 0) {
-                    runArrayCopy(
+                    runArrayCopy(location,
                                     stubArrayA, stubOffsetA, 1, isNativeA,
                                     stubArrayB, stubOffsetB, 0, isNativeB, lengthCPY);
                 } else {
                     assert strideB == 2;
-                    runArrayCopy(
+                    runArrayCopy(location,
                                     stubArrayA, stubOffsetA, 1, isNativeA,
                                     stubArrayB, stubOffsetB, 2, isNativeB, lengthCPY);
                 }
                 break;
             default:
                 if (strideB == 0) {
-                    runArrayCopy(
+                    runArrayCopy(location,
                                     stubArrayA, stubOffsetA, 2, isNativeA,
                                     stubArrayB, stubOffsetB, 0, isNativeB, lengthCPY);
                 } else {
                     assert strideB == 1;
-                    runArrayCopy(
+                    runArrayCopy(location,
                                     stubArrayA, stubOffsetA, 2, isNativeA,
                                     stubArrayB, stubOffsetB, 1, isNativeB, lengthCPY);
                 }
@@ -803,41 +809,42 @@ final class TStringOps {
         return stubArrayB;
     }
 
-    static byte[] arraycopyOfWithStride(Object arrayA, int offsetA, int lengthA, int strideA, int lengthB, int strideB) {
+    static byte[] arraycopyOfWithStride(Node location, Object arrayA, int offsetA, int lengthA, int strideA, int lengthB, int strideB) {
         byte[] dst = new byte[lengthB << strideB];
-        arraycopyWithStride(arrayA, offsetA, strideA, 0, dst, 0, strideB, 0, lengthA);
+        arraycopyWithStride(location, arrayA, offsetA, strideA, 0, dst, 0, strideB, 0, lengthA);
         return dst;
     }
 
-    static int calcStringAttributesLatin1(Object array, int offset, int length) {
+    static int calcStringAttributesLatin1(Node location, Object array, int offset, int length) {
         final boolean isNative = isNativePointer(array);
         final Object stubArray = stubArray(array, isNative);
         validateRegion(stubArray, offset, length, 0, isNative);
         final long stubOffset = stubOffset(array, offset, 0, 0, isNative);
-        return runCalcStringAttributesLatin1(stubArray, stubOffset, length, isNative);
+        return runCalcStringAttributesLatin1(location, stubArray, stubOffset, length, isNative);
     }
 
-    static int calcStringAttributesBMP(Object array, int offset, int length) {
+    static int calcStringAttributesBMP(Node location, Object array, int offset, int length) {
         final boolean isNative = isNativePointer(array);
         final Object stubArray = stubArray(array, isNative);
         validateRegion(stubArray, offset, length, 1, isNative);
         final long stubOffset = stubOffset(array, offset, 1, 0, isNative);
-        return runCalcStringAttributesBMP(stubArray, stubOffset, length, isNative);
+        return runCalcStringAttributesBMP(location, stubArray, stubOffset, length, isNative);
     }
 
-    static long calcStringAttributesUTF8(Object array, int offset, int length, boolean assumeValid) {
+    static long calcStringAttributesUTF8(Node location, Object array, int offset, int length, boolean assumeValid) {
         final boolean isNative = isNativePointer(array);
         final Object stubArray = stubArray(array, isNative);
         validateRegion(stubArray, offset, length, 0, isNative);
         final long stubOffset = stubOffset(array, offset, 0, 0, isNative);
         if (assumeValid) {
-            return runCalcStringAttributesUTF8(stubArray, stubOffset, length, isNative, true);
+            return runCalcStringAttributesUTF8(location, stubArray, stubOffset, length, isNative, true);
         } else {
-            long attrs = runCalcStringAttributesUTF8(stubArray, stubOffset, length, isNative, false);
+            long attrs = runCalcStringAttributesUTF8(location, stubArray, stubOffset, length, isNative, false);
             if (TStringGuards.isBrokenMultiByte(StringAttributes.getCodeRange(attrs))) {
                 int codePointLength = 0;
                 for (int i = 0; i < length; i += Encodings.utf8GetCodePointLength(array, offset, length, i)) {
                     codePointLength++;
+                    TStringConstants.truffleSafePointPoll(location, codePointLength);
                 }
                 return StringAttributes.create(codePointLength, StringAttributes.getCodeRange(attrs));
             }
@@ -845,22 +852,22 @@ final class TStringOps {
         }
     }
 
-    static long calcStringAttributesUTF16C(char[] array, int offset, int length) {
+    static long calcStringAttributesUTF16C(Node location, char[] array, int offset, int length) {
         validateRegion(array, offset, length);
         int stubOffset = Unsafe.ARRAY_CHAR_BASE_OFFSET + offset;
-        return runCalcStringAttributesUTF16C(array, stubOffset, length);
+        return runCalcStringAttributesUTF16C(location, array, stubOffset, length);
     }
 
-    static long calcStringAttributesUTF16(Object array, int offset, int length, boolean assumeValid) {
+    static long calcStringAttributesUTF16(Node location, Object array, int offset, int length, boolean assumeValid) {
         final boolean isNative = isNativePointer(array);
         final Object stubArray = stubArray(array, isNative);
         validateRegion(stubArray, offset, length, 1, isNative);
         final long stubOffset = stubOffset(array, offset, 1, 0, isNative);
         long attrs;
         if (assumeValid) {
-            attrs = runCalcStringAttributesUTF16(stubArray, stubOffset, length, isNative, true);
+            attrs = runCalcStringAttributesUTF16(location, stubArray, stubOffset, length, isNative, true);
         } else {
-            attrs = runCalcStringAttributesUTF16(stubArray, stubOffset, length, isNative, false);
+            attrs = runCalcStringAttributesUTF16(location, stubArray, stubOffset, length, isNative, false);
         }
         if (assumeValid && length > 0) {
             if (Encodings.isUTF16LowSurrogate(readS1(array, offset, length, 0))) {
@@ -873,18 +880,18 @@ final class TStringOps {
         return attrs;
     }
 
-    static int calcStringAttributesUTF32I(int[] array, int offset, int length) {
+    static int calcStringAttributesUTF32I(Node location, int[] array, int offset, int length) {
         validateRegion(array, offset, length);
         int stubOffset = Unsafe.ARRAY_INT_BASE_OFFSET + offset;
-        return runCalcStringAttributesUTF32I(array, stubOffset, length);
+        return runCalcStringAttributesUTF32I(location, array, stubOffset, length);
     }
 
-    static int calcStringAttributesUTF32(Object array, int offset, int length) {
+    static int calcStringAttributesUTF32(Node location, Object array, int offset, int length) {
         final boolean isNative = isNativePointer(array);
         final Object stubArray = stubArray(array, isNative);
         validateRegion(stubArray, offset, length, 2, isNative);
         final long stubOffset = stubOffset(array, offset, 2, 0, isNative);
-        return runCalcStringAttributesUTF32(stubArray, stubOffset, length, isNative);
+        return runCalcStringAttributesUTF32(location, stubArray, stubOffset, length, isNative);
     }
 
     private static int runReadS0Managed(Object array, long byteOffset) {
@@ -943,124 +950,138 @@ final class TStringOps {
         TStringUnsafe.putIntNative(array, byteOffset, value);
     }
 
-    private static int runIndexOfAnyByte(Object array, long offset, int length, boolean isNative, int fromIndex, byte... needle) {
+    private static int runIndexOfAnyByte(Node location, Object array, long offset, int length, boolean isNative, int fromIndex, byte... needle) {
         for (int i = fromIndex; i < length; i++) {
-            for (byte c : needle) {
-                if (readValue(array, offset, 0, i, isNative) == uInt(c)) {
+            for (int j = 0; j < needle.length; j++) {
+                if (readValue(array, offset, 0, i, isNative) == uInt(needle[j])) {
                     return i;
                 }
+                TStringConstants.truffleSafePointPoll(location, j + 1);
             }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
         }
         return -1;
     }
 
-    private static int runIndexOfAnyChar(Object array, long offset, int length, int stride, boolean isNative, int fromIndex, char... needle) {
+    private static int runIndexOfAnyChar(Node location, Object array, long offset, int length, int stride, boolean isNative, int fromIndex, char... needle) {
         for (int i = fromIndex; i < length; i++) {
-            for (int c : needle) {
-                if (readValue(array, offset, stride, i, isNative) == c) {
+            for (int j = 0; j < needle.length; j++) {
+                if (readValue(array, offset, stride, i, isNative) == (int) needle[j]) {
                     return i;
                 }
+                TStringConstants.truffleSafePointPoll(location, j + 1);
             }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
         }
         return -1;
     }
 
-    private static int runIndexOfAnyInt(Object array, long offset, int length, int stride, boolean isNative, int fromIndex, int... needle) {
+    private static int runIndexOfAnyInt(Node location, Object array, long offset, int length, int stride, boolean isNative, int fromIndex, int... needle) {
         for (int i = fromIndex; i < length; i++) {
-            for (int c : needle) {
-                if (readValue(array, offset, stride, i, isNative) == c) {
+            for (int j = 0; j < needle.length; j++) {
+                if (readValue(array, offset, stride, i, isNative) == needle[j]) {
                     return i;
                 }
+                TStringConstants.truffleSafePointPoll(location, j + 1);
             }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
         }
         return -1;
     }
 
-    private static int runIndexOfAny1(Object array, long offset, int length, int stride, boolean isNative, int fromIndex, int v0) {
-        return runIndexOfAnyInt(array, offset, length, stride, isNative, fromIndex, v0);
+    private static int runIndexOfAny1(Node location, Object array, long offset, int length, int stride, boolean isNative, int fromIndex, int v0) {
+        return runIndexOfAnyInt(location, array, offset, length, stride, isNative, fromIndex, v0);
     }
 
-    private static int runIndexOfAny2(Object array, long offset, int length, int stride, boolean isNative, int fromIndex, int v0, int v1) {
-        return runIndexOfAnyInt(array, offset, length, stride, isNative, fromIndex, v0, v1);
+    private static int runIndexOfAny2(Node location, Object array, long offset, int length, int stride, boolean isNative, int fromIndex, int v0, int v1) {
+        return runIndexOfAnyInt(location, array, offset, length, stride, isNative, fromIndex, v0, v1);
     }
 
-    private static int runIndexOfAny3(Object array, long offset, int length, int stride, boolean isNative, int fromIndex, int v0, int v1, int v2) {
-        return runIndexOfAnyInt(array, offset, length, stride, isNative, fromIndex, v0, v1, v2);
+    private static int runIndexOfAny3(Node location, Object array, long offset, int length, int stride, boolean isNative, int fromIndex, int v0, int v1, int v2) {
+        return runIndexOfAnyInt(location, array, offset, length, stride, isNative, fromIndex, v0, v1, v2);
     }
 
-    private static int runIndexOfAny4(Object array, long offset, int length, int stride, boolean isNative, int fromIndex, int v0, int v1, int v2, int v3) {
-        return runIndexOfAnyInt(array, offset, length, stride, isNative, fromIndex, v0, v1, v2, v3);
+    private static int runIndexOfAny4(Node location, Object array, long offset, int length, int stride, boolean isNative, int fromIndex, int v0, int v1, int v2, int v3) {
+        return runIndexOfAnyInt(location, array, offset, length, stride, isNative, fromIndex, v0, v1, v2, v3);
     }
 
-    private static int runIndexOfWithOrMaskWithStride(Object array, long offset, int length, int stride, boolean isNative, int fromIndex, int needle, int mask) {
+    private static int runIndexOfWithOrMaskWithStride(Node location, Object array, long offset, int length, int stride, boolean isNative, int fromIndex, int needle, int mask) {
         for (int i = fromIndex; i < length; i++) {
             if ((readValue(array, offset, stride, i, isNative) | mask) == needle) {
                 return i;
             }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
         }
         return -1;
     }
 
-    private static int runLastIndexOfWithOrMaskWithStride(Object array, long offset, int stride, boolean isNative, int fromIndex, int toIndex, int needle, int mask) {
+    private static int runLastIndexOfWithOrMaskWithStride(Node location, Object array, long offset, int stride, boolean isNative, int fromIndex, int toIndex, int needle, int mask) {
         for (int i = fromIndex - 1; i >= toIndex; i--) {
             if ((readValue(array, offset, stride, i, isNative) | mask) == needle) {
                 return i;
             }
+            TStringConstants.truffleSafePointPoll(location, i);
         }
         return -1;
     }
 
-    private static int runIndexOf2ConsecutiveWithStride(Object array, long offset, int length, int stride, boolean isNative, int fromIndex, int c1, int c2) {
+    private static int runIndexOf2ConsecutiveWithStride(Node location, Object array, long offset, int length, int stride, boolean isNative, int fromIndex, int c1, int c2) {
         for (int i = fromIndex + 1; i < length; i++) {
             if (readValue(array, offset, stride, i - 1, isNative) == c1 && readValue(array, offset, stride, i, isNative) == c2) {
                 return i - 1;
             }
+            TStringConstants.truffleSafePointPoll(location, i);
         }
         return -1;
     }
 
-    private static int runIndexOf2ConsecutiveWithOrMaskWithStride(Object array, long offset, int length, int stride, boolean isNative, int fromIndex, int c1, int c2, int mask1, int mask2) {
+    private static int runIndexOf2ConsecutiveWithOrMaskWithStride(Node location, Object array, long offset, int length, int stride, boolean isNative, int fromIndex,
+                    int c1, int c2, int mask1, int mask2) {
         for (int i = fromIndex + 1; i < length; i++) {
             if ((readValue(array, offset, stride, i - 1, isNative) | mask1) == c1 && (readValue(array, offset, stride, i, isNative) | mask2) == c2) {
                 return i - 1;
             }
+            TStringConstants.truffleSafePointPoll(location, i);
         }
         return -1;
     }
 
-    private static int runLastIndexOf2ConsecutiveWithOrMaskWithStride(Object array, long offset, int stride, boolean isNative, int fromIndex, int toIndex,
+    private static int runLastIndexOf2ConsecutiveWithOrMaskWithStride(Node location, Object array, long offset, int stride, boolean isNative, int fromIndex, int toIndex,
                     int c1, int c2, int mask1, int mask2) {
         for (int i = fromIndex - 1; i >= toIndex; i--) {
             if ((readValue(array, offset, stride, i - 1, isNative) | mask1) == c1 && (readValue(array, offset, stride, i, isNative) | mask2) == c2) {
                 return i - 1;
             }
+            TStringConstants.truffleSafePointPoll(location, i);
         }
         return -1;
     }
 
-    private static boolean runRegionEqualsWithStride(
+    private static boolean runRegionEqualsWithStride(Node location,
                     Object arrayA, long offsetA, int strideA, boolean isNativeA,
                     Object arrayB, long offsetB, int strideB, boolean isNativeB, int length) {
         for (int i = 0; i < length; i++) {
             if (readValue(arrayA, offsetA, strideA, i, isNativeA) != readValue(arrayB, offsetB, strideB, i, isNativeB)) {
                 return false;
             }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
         }
         return true;
     }
 
-    private static boolean runRegionEqualsWithOrMaskWithStride(
+    private static boolean runRegionEqualsWithOrMaskWithStride(Node location,
                     Object arrayA, long offsetA, int strideA, boolean isNativeA,
                     Object arrayB, long offsetB, int strideB, boolean isNativeB, byte[] arrayMask, int lengthCMP) {
         for (int i = 0; i < lengthCMP; i++) {
             if ((readValue(arrayA, offsetA, strideA, i, isNativeA) | readFromByteArray(arrayMask, strideB, i)) != readValue(arrayB, offsetB, strideB, i, isNativeB)) {
                 return false;
             }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
         }
         return true;
     }
 
-    private static int runMemCmp(
+    private static int runMemCmp(Node location,
                     Object arrayA, long offsetA, int strideA, boolean isNativeA,
                     Object arrayB, long offsetB, int strideB, boolean isNativeB, int lengthCMP) {
         for (int i = 0; i < lengthCMP; i++) {
@@ -1068,36 +1089,40 @@ final class TStringOps {
             if (cmp != 0) {
                 return cmp;
             }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
         }
         return 0;
     }
 
-    private static int runHashCode(Object array, long offset, int length, int stride, boolean isNative) {
+    private static int runHashCode(Node location, Object array, long offset, int length, int stride, boolean isNative) {
         int hash = 0;
         for (int i = 0; i < length; i++) {
             hash = 31 * hash + readValue(array, offset, stride, i, isNative);
+            TStringConstants.truffleSafePointPoll(location, i + 1);
         }
         return hash;
     }
 
-    private static void runArrayCopy(
+    private static void runArrayCopy(Node location,
                     Object arrayA, long offsetA, int strideA, boolean isNativeA,
                     Object arrayB, long offsetB, int strideB, boolean isNativeB, int lengthCPY) {
         for (int i = 0; i < lengthCPY; i++) {
             writeValue(arrayB, offsetB, strideB, i, isNativeB, readValue(arrayA, offsetA, strideA, i, isNativeA));
+            TStringConstants.truffleSafePointPoll(location, i + 1);
         }
     }
 
-    private static int runCalcStringAttributesLatin1(Object array, long offset, int length, boolean isNative) {
+    private static int runCalcStringAttributesLatin1(Node location, Object array, long offset, int length, boolean isNative) {
         for (int i = 0; i < length; i++) {
             if (readValueS0(array, offset, i, isNative) > 0x7f) {
                 return TSCodeRange.get8Bit();
             }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
         }
         return TSCodeRange.get7Bit();
     }
 
-    private static int runCalcStringAttributesBMP(Object array, long offset, int length, boolean isNative) {
+    private static int runCalcStringAttributesBMP(Node location, Object array, long offset, int length, boolean isNative) {
         int codeRange = TSCodeRange.get7Bit();
         int i = 0;
         for (; i < length; i++) {
@@ -1105,6 +1130,7 @@ final class TStringOps {
                 codeRange = TSCodeRange.get8Bit();
                 break;
             }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
         }
         if (!TSCodeRange.is8Bit(codeRange)) {
             return TSCodeRange.get7Bit();
@@ -1113,15 +1139,16 @@ final class TStringOps {
             if (readValueS1(array, offset, i, isNative) > 0xff) {
                 return TSCodeRange.get16Bit();
             }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
         }
         return TSCodeRange.get8Bit();
     }
 
-    private static int runCalcStringAttributesUTF32I(int[] array, long offset, int length) {
-        return runCalcStringAttributesUTF32(array, offset, length, false);
+    private static int runCalcStringAttributesUTF32I(Node location, int[] array, long offset, int length) {
+        return runCalcStringAttributesUTF32(location, array, offset, length, false);
     }
 
-    private static int runCalcStringAttributesUTF32(Object array, long offset, int length, boolean isNative) {
+    private static int runCalcStringAttributesUTF32(Node location, Object array, long offset, int length, boolean isNative) {
         int codeRange = TSCodeRange.get7Bit();
         int i = 0;
         for (; i < length; i++) {
@@ -1129,6 +1156,7 @@ final class TStringOps {
                 codeRange = TSCodeRange.get8Bit();
                 break;
             }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
         }
         if (!TSCodeRange.is8Bit(codeRange)) {
             return TSCodeRange.get7Bit();
@@ -1138,6 +1166,7 @@ final class TStringOps {
                 codeRange = TSCodeRange.get16Bit();
                 break;
             }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
         }
         if (!TSCodeRange.is16Bit(codeRange)) {
             return TSCodeRange.get8Bit();
@@ -1151,6 +1180,7 @@ final class TStringOps {
             if (Encodings.isUTF16Surrogate(value)) {
                 return TSCodeRange.getBrokenFixedWidth();
             }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
         }
         if (!TSCodeRange.isValidFixedWidth(codeRange)) {
             return TSCodeRange.get16Bit();
@@ -1160,6 +1190,7 @@ final class TStringOps {
             if (Integer.toUnsignedLong(value) > 0x10ffff || Encodings.isUTF16Surrogate(value)) {
                 return TSCodeRange.getBrokenFixedWidth();
             }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
         }
         return TSCodeRange.getValidFixedWidth();
     }
@@ -1192,7 +1223,7 @@ final class TStringOps {
     };
     private static final byte UTF8_ACCEPT = 0;
 
-    private static long runCalcStringAttributesUTF8(Object array, long offset, int length, boolean isNative, boolean assumeValid) {
+    private static long runCalcStringAttributesUTF8(Node location, Object array, long offset, int length, boolean isNative, boolean assumeValid) {
         int codeRange = TSCodeRange.get7Bit();
         int i = 0;
         for (; i < length; i++) {
@@ -1200,6 +1231,7 @@ final class TStringOps {
                 codeRange = TSCodeRange.getValidMultiByte();
                 break;
             }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
         }
         if (!TSCodeRange.isValidMultiByte(codeRange)) {
             return StringAttributes.create(length, TSCodeRange.get7Bit());
@@ -1210,6 +1242,7 @@ final class TStringOps {
                 if (!Encodings.isUTF8ContinuationByte(readValueS0(array, offset, i, isNative))) {
                     nCodePoints++;
                 }
+                TStringConstants.truffleSafePointPoll(location, i + 1);
             }
             return StringAttributes.create(nCodePoints, TSCodeRange.getValidMultiByte());
         } else {
@@ -1228,6 +1261,7 @@ final class TStringOps {
                 // codepoint = (state != UTF8_ACCEPT) ? (b & 0x3f) | (codepoint << 6) : (0xff >>
                 // type) & (b);
                 state = UTF_8_STATE_MACHINE[256 + state + type];
+                TStringConstants.truffleSafePointPoll(location, i + 1);
             }
             if (state != UTF8_ACCEPT) {
                 codeRange = TSCodeRange.getBrokenMultiByte();
@@ -1236,11 +1270,11 @@ final class TStringOps {
         }
     }
 
-    private static long runCalcStringAttributesUTF16C(char[] array, long offset, int length) {
-        return runCalcStringAttributesUTF16(array, offset, length, false, false);
+    private static long runCalcStringAttributesUTF16C(Node location, char[] array, long offset, int length) {
+        return runCalcStringAttributesUTF16(location, array, offset, length, false, false);
     }
 
-    private static long runCalcStringAttributesUTF16(Object array, long offset, int length, boolean isNative, boolean assumeValid) {
+    private static long runCalcStringAttributesUTF16(Node location, Object array, long offset, int length, boolean isNative, boolean assumeValid) {
         int codeRange = TSCodeRange.get7Bit();
         int i = 0;
         for (; i < length; i++) {
@@ -1248,6 +1282,7 @@ final class TStringOps {
                 codeRange = TSCodeRange.get8Bit();
                 break;
             }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
         }
         if (!TSCodeRange.is8Bit(codeRange)) {
             return StringAttributes.create(length, TSCodeRange.get7Bit());
@@ -1257,6 +1292,7 @@ final class TStringOps {
                 codeRange = TSCodeRange.get16Bit();
                 break;
             }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
         }
         if (!TSCodeRange.is16Bit(codeRange)) {
             return StringAttributes.create(length, TSCodeRange.get8Bit());
@@ -1267,6 +1303,7 @@ final class TStringOps {
                 codeRange = TSCodeRange.getValidMultiByte();
                 break;
             }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
         }
         if (!TSCodeRange.isValidMultiByte(codeRange)) {
             return StringAttributes.create(length, TSCodeRange.get16Bit());
@@ -1277,6 +1314,7 @@ final class TStringOps {
                 if (Encodings.isUTF16HighSurrogate(readValueS1(array, offset, i, isNative))) {
                     nCodePoints--;
                 }
+                TStringConstants.truffleSafePointPoll(location, i + 1);
             }
             return StringAttributes.create(nCodePoints, TSCodeRange.getValidMultiByte());
         } else {
@@ -1290,6 +1328,7 @@ final class TStringOps {
                         nCodePoints--;
                     }
                 }
+                TStringConstants.truffleSafePointPoll(location, i + 1);
             }
             return StringAttributes.create(nCodePoints, codeRange);
         }

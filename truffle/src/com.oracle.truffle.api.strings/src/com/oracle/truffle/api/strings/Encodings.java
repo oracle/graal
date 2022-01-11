@@ -46,6 +46,7 @@ import static com.oracle.truffle.api.strings.TStringOps.writeToByteArray;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.nodes.Node;
 
 final class Encodings {
 
@@ -160,7 +161,7 @@ final class Encodings {
         // Checkstyle: resume
     }
 
-    static int utf8CodePointToByteIndex(AbstractTruffleString a, Object arrayA, int codePointIndex) {
+    static int utf8CodePointToByteIndex(Node location, AbstractTruffleString a, Object arrayA, int codePointIndex) {
         int iCP = 0;
         int iBytes = 0;
         while (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, iBytes < a.length())) {
@@ -171,6 +172,7 @@ final class Encodings {
                 iCP++;
             }
             iBytes++;
+            TStringConstants.truffleSafePointPoll(location, iBytes);
         }
         if (iBytes >= a.length()) {
             throw InternalErrors.indexOutOfBounds();
@@ -320,7 +322,7 @@ final class Encodings {
         writeToByteArray(bytes, 1, index + 1, c2);
     }
 
-    static int utf16ValidCodePointToCharIndex(AbstractTruffleString a, Object arrayA, int codePointIndex) {
+    static int utf16ValidCodePointToCharIndex(Node location, AbstractTruffleString a, Object arrayA, int codePointIndex) {
         int iCP = 0;
         int iChars = 0;
         while (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, iChars < a.length())) {
@@ -331,6 +333,7 @@ final class Encodings {
                 iCP++;
             }
             iChars++;
+            TStringConstants.truffleSafePointPoll(location, iChars);
         }
         if (iChars >= a.length()) {
             throw InternalErrors.indexOutOfBounds();
@@ -338,7 +341,7 @@ final class Encodings {
         return iChars;
     }
 
-    static int utf16BrokenCodePointToCharIndex(AbstractTruffleString a, Object arrayA, int codePointIndex) {
+    static int utf16BrokenCodePointToCharIndex(Node location, AbstractTruffleString a, Object arrayA, int codePointIndex) {
         int iCP = 0;
         int iChars = 0;
         while (iCP < codePointIndex) {
@@ -347,6 +350,7 @@ final class Encodings {
             }
             iChars++;
             iCP++;
+            TStringConstants.truffleSafePointPoll(location, iCP);
         }
         if (iChars >= a.length()) {
             throw InternalErrors.indexOutOfBounds();

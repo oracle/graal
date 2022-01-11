@@ -205,7 +205,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         }
         int ip = 0;
         outer: while (true) {
-            LoopNode.reportLoopCount(this, 1);
+            locals.incLoopCount(this);
             if (CompilerDirectives.inInterpreter()) {
                 RegexRootNode.checkThreadInterrupted();
             }

@@ -94,5 +94,6 @@ public class TStringForceEncodingTest extends TStringTestBase {
     @Test
     public void testNull() throws Exception {
         checkNullSEE((s, e1, e2) -> node.execute(s, e1, e2));
+        checkNullSEE((s, e1, e2) -> nodeMutable.execute(s, e1, e2));
     }
 }

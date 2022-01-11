@@ -43,6 +43,7 @@ package com.oracle.truffle.api.strings;
 import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 
 interface JCodings {
@@ -104,13 +105,13 @@ interface JCodings {
     int writeCodePoint(Encoding jCoding, int codepoint, byte[] array, int index);
 
     @TruffleBoundary
-    int codePointIndexToRaw(AbstractTruffleString a, byte[] arrayA, int extraOffsetRaw, int index, boolean isLength, Encoding jCoding);
+    int codePointIndexToRaw(Node location, AbstractTruffleString a, byte[] arrayA, int extraOffsetRaw, int index, boolean isLength, Encoding jCoding);
 
     int decode(AbstractTruffleString a, byte[] arrayA, int rawIndex, Encoding jCoding);
 
-    long calcStringAttributes(Object array, int offset, int length, int encoding, ConditionProfile validCharacterProfile, ConditionProfile fixedWidthProfile);
+    long calcStringAttributes(Node location, Object array, int offset, int length, int encoding, ConditionProfile validCharacterProfile, ConditionProfile fixedWidthProfile);
 
-    TruffleString transcode(AbstractTruffleString a, Object arrayA, int codePointLengthA, int targetEncoding,
+    TruffleString transcode(Node location, AbstractTruffleString a, Object arrayA, int codePointLengthA, int targetEncoding,
                     ConditionProfile outOfMemoryProfile,
                     ConditionProfile nativeProfile,
                     TStringInternalNodes.FromBufferWithStringCompactionNode fromBufferWithStringCompactionNode);

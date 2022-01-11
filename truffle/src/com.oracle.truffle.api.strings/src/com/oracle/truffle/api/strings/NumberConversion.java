@@ -45,6 +45,7 @@ import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 
 final class NumberConversion {
@@ -346,9 +347,9 @@ final class NumberConversion {
         return sign + digits;
     }
 
-    static void writeLongToBytes(long i, byte[] buf, int stride, int fromIndex, int length) {
+    static void writeLongToBytes(Node location, long i, byte[] buf, int stride, int fromIndex, int length) {
         if (i == Long.MIN_VALUE) {
-            TStringOps.arraycopyWithStride(
+            TStringOps.arraycopyWithStride(location,
                             LONG_MIN_VALUE_BYTES, 0, 0, 0,
                             buf, 0, stride, fromIndex, LONG_MIN_VALUE_BYTES.length);
         } else {
@@ -406,9 +407,9 @@ final class NumberConversion {
         }
     }
 
-    static void writeIntToBytes(int i, byte[] buf, int stride, int fromIndex, int length) {
+    static void writeIntToBytes(Node location, int i, byte[] buf, int stride, int fromIndex, int length) {
         if (i == Integer.MIN_VALUE) {
-            TStringOps.arraycopyWithStride(
+            TStringOps.arraycopyWithStride(location,
                             INT_MIN_VALUE_BYTES, 0, 0, 0,
                             buf, 0, stride, fromIndex, INT_MIN_VALUE_BYTES.length);
         } else {

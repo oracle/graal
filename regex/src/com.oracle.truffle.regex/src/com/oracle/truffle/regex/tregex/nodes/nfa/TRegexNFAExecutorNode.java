@@ -120,7 +120,7 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
         }
         while (true) {
             if (dfaGeneratorBailedOut) {
-                LoopNode.reportLoopCount(this, 1);
+                locals.incLoopCount(this);
             }
             if (CompilerDirectives.inInterpreter()) {
                 RegexRootNode.checkThreadInterrupted();

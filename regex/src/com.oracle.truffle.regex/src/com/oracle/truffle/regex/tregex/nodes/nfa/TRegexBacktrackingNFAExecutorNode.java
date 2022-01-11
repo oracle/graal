@@ -236,7 +236,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
     protected void runMergeExplode(TRegexBacktrackingNFAExecutorLocals locals, TruffleString.CodeRange codeRange) {
         int ip = IP_BEGIN;
         outer: while (true) {
-            LoopNode.reportLoopCount(this, 1);
+            locals.incLoopCount(this);
             if (CompilerDirectives.inInterpreter()) {
                 RegexRootNode.checkThreadInterrupted();
             }

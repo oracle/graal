@@ -1098,14 +1098,14 @@ public abstract class AbstractTruffleString {
         }
 
         @TruffleBoundary
-        static byte[] flatten(TruffleString a) {
+        static byte[] flatten(Node location, TruffleString a) {
             byte[] dst = new byte[a.length() << a.stride()];
-            flatten(a, 0, a.length(), dst, 0, a.stride());
+            flatten(location, a, 0, a.length(), dst, 0, a.stride());
             return dst;
         }
 
         @TruffleBoundary
-        private static void flatten(TruffleString src, int srcBegin, int srcEnd, byte[] dst, int dstBegin, int dstStride) {
+        private static void flatten(Node location, TruffleString src, int srcBegin, int srcEnd, byte[] dst, int dstBegin, int dstStride) {
             TruffleString str = src;
             int from = srcBegin;
             int to = srcEnd;
@@ -1121,9 +1121,9 @@ public abstract class AbstractTruffleString {
                         // right is longer, recurse left
                         if (from < mid) {
                             if (left.isLazyConcat()) {
-                                flatten(left, from, mid, dst, dstFrom, dstStride);
+                                flatten(location, left, from, mid, dst, dstFrom, dstStride);
                             } else {
-                                copy(left, dst, dstFrom, dstStride);
+                                copy(location, left, dst, dstFrom, dstStride);
                             }
                             dstFrom += mid - from;
                             from = 0;
@@ -1136,25 +1136,25 @@ public abstract class AbstractTruffleString {
                         // left is longer, recurse right
                         if (to > mid) {
                             if (right.isLazyConcat()) {
-                                flatten(right, 0, to - mid, dst, dstFrom + mid - from, dstStride);
+                                flatten(location, right, 0, to - mid, dst, dstFrom + mid - from, dstStride);
                             } else {
-                                copy(right, dst, dstFrom + mid - from, dstStride);
+                                copy(location, right, dst, dstFrom + mid - from, dstStride);
                             }
                             to = mid;
                         }
                         str = left;
                     }
                 } else {
-                    copy(str, dst, dstFrom, dstStride);
+                    copy(location, str, dst, dstFrom, dstStride);
                     return;
                 }
             }
         }
 
         @TruffleBoundary
-        private static void copy(TruffleString src, byte[] dst, int dstFrom, int dstStride) {
+        private static void copy(Node location, TruffleString src, byte[] dst, int dstFrom, int dstStride) {
             Object arrayA = TruffleString.ToIndexableNode.getUncached().execute(src, src.data());
-            TStringOps.arraycopyWithStride(
+            TStringOps.arraycopyWithStride(location,
                             arrayA, src.offset(), src.stride(), 0,
                             dst, 0, dstStride, dstFrom, src.length());
         }
