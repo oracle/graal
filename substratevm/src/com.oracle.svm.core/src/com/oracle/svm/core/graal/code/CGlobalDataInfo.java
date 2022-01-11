@@ -42,7 +42,6 @@ public final class CGlobalDataInfo {
     private final CGlobalDataImpl<?> data;
     private final boolean isSymbolReference;
 
-    private boolean isGlobalSymbol;
     private int offset = -1;
 
     /** Cache until writing the image in case the {@link Supplier} is costly or has side-effects. */
@@ -74,7 +73,6 @@ public final class CGlobalDataInfo {
 
     public void makeGlobalSymbol() {
         VMError.guarantee(!isSymbolReference && data.symbolName != null, "Cannot change the local/global status of a symbol reference");
-        isGlobalSymbol = true;
     }
 
     public boolean isSymbolReference() {

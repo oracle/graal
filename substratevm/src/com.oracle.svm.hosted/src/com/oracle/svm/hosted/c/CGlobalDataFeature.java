@@ -207,6 +207,7 @@ public class CGlobalDataFeature implements GraalFeature {
         info.makeGlobalSymbol();
         return info;
     }
+
     public CGlobalDataInfo registerAsAccessedOrGet(CGlobalData<?> obj) {
         CGlobalDataImpl<?> data = (CGlobalDataImpl<?>) obj;
         VMError.guarantee(!isLayouted() || map.containsKey(data), "CGlobalData instance must have been discovered/registered before or during analysis");

@@ -75,7 +75,7 @@ public class VMFeature implements Feature {
         }
 
         FeatureImpl.BeforeAnalysisAccessImpl access = (FeatureImpl.BeforeAnalysisAccessImpl) a;
-        String fieldName = "VERSION_INFO";
+        String fieldName = "version";
         try {
             Field declaredField = VM.class.getDeclaredField(fieldName);
             access.registerAsRead(declaredField);
