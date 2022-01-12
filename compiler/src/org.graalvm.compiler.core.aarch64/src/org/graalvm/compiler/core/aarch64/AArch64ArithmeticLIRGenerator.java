@@ -45,7 +45,6 @@ import org.graalvm.compiler.lir.ConstantValue;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.aarch64.AArch64AddressValue;
-import org.graalvm.compiler.lir.aarch64.AArch64ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp;
 import org.graalvm.compiler.lir.aarch64.AArch64BitManipulationOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Convert;
@@ -66,7 +65,7 @@ import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
 
-public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implements AArch64ArithmeticLIRGeneratorTool {
+public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implements ArithmeticLIRGeneratorTool {
 
     public AArch64ArithmeticLIRGenerator(AllocatableValue nullRegisterValue) {
         this.nullRegisterValue = nullRegisterValue;

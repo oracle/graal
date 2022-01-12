@@ -175,4 +175,14 @@ public interface ArithmeticLIRGeneratorTool {
         }
     }
 
+    @SuppressWarnings("unused")
+    default Value emitCountLeadingZeros(Value value) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default Value emitCountTrailingZeros(Value value) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
 }
