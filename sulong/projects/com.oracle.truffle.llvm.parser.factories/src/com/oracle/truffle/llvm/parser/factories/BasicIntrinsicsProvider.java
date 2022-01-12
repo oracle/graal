@@ -108,6 +108,7 @@ import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotBuff
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotEval;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotExportNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotFromBufferNode;
+import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotFromPrimitive;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotFromString;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotGetArraySizeNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.intrinsics.interop.LLVMPolyglotGetStringSizeNodeGen;
@@ -445,6 +446,14 @@ public class BasicIntrinsicsProvider implements LLVMIntrinsicProvider {
         add("polyglot_instant_from_time", (args, nodeFactory) -> LLVMPolyglotInstantFromTimeNode.create(args.get(1)));
         add("polyglot_timezone_from_id", (args, nodeFactory) -> LLVMPolyglotTimeZoneFromIdNode.create(args.get(1)));
         add("polyglot_timezone_get_id", (args, nodeFactory) -> LLVMPolyglotTimeZoneGetIdNode.create(args.get(1)));
+
+        add("polyglot_from_boolean", (args, nodeFactory) -> LLVMPolyglotFromPrimitive.FromBoolean.create(args.get(1)));
+        add("polyglot_from_i8", (args, nodeFactory) -> LLVMPolyglotFromPrimitive.FromI8.create(args.get(1)));
+        add("polyglot_from_i16", (args, nodeFactory) -> LLVMPolyglotFromPrimitive.FromI16.create(args.get(1)));
+        add("polyglot_from_i32", (args, nodeFactory) -> LLVMPolyglotFromPrimitive.FromI32.create(args.get(1)));
+        add("polyglot_from_i64", (args, nodeFactory) -> LLVMPolyglotFromPrimitive.FromI64.create(args.get(1)));
+        add("polyglot_from_float", (args, nodeFactory) -> LLVMPolyglotFromPrimitive.FromFloat.create(args.get(1)));
+        add("polyglot_from_double", (args, nodeFactory) -> LLVMPolyglotFromPrimitive.FromDouble.create(args.get(1)));
 
         add("polyglot_new_instance",
                         (args, nodeFactory, language, types) -> LLVMPolyglotNewInstanceNodeGen.create(argumentsArray(args, 2, args.size() - 2),

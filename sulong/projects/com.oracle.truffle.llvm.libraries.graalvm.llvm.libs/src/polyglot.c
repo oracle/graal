@@ -86,6 +86,34 @@ bool polyglot_as_boolean(const polyglot_value value) {
     should_not_reach();
     return false;
 }
+polyglot_value polyglot_from_boolean(bool value) {
+    should_not_reach();
+    return NULL;
+}
+polyglot_value polyglot_from_i8(int8_t value) {
+    should_not_reach();
+    return NULL;
+}
+polyglot_value polyglot_from_i16(int16_t value) {
+    should_not_reach();
+    return NULL;
+}
+polyglot_value polyglot_from_i32(int32_t value) {
+    should_not_reach();
+    return NULL;
+}
+polyglot_value polyglot_from_i64(int64_t value) {
+    should_not_reach();
+    return NULL;
+}
+polyglot_value polyglot_from_float(float value) {
+    should_not_reach();
+    return NULL;
+}
+polyglot_value polyglot_from_double(double value) {
+    should_not_reach();
+    return NULL;
+}
 bool polyglot_can_execute(const polyglot_value value) {
     should_not_reach();
     return false;

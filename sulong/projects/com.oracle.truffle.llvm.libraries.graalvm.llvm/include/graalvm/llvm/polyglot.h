@@ -285,6 +285,41 @@ double polyglot_as_double(const polyglot_value value);
  */
 bool polyglot_as_boolean(const polyglot_value value);
 
+/**
+  * Convert a primitive boolean to a polyglot boolean.
+  */
+polyglot_value polyglot_from_boolean(bool value);
+
+/**
+  * Convert a primitive int8_t value to a polyglot byte.
+  */
+polyglot_value polyglot_from_i8(int8_t value);
+
+/**
+  * Convert a primitive int16_t value to a polyglot byte.
+  */
+polyglot_value polyglot_from_i16(int16_t value);
+
+/**
+  * Convert a primitive int32_t value to a polyglot byte.
+  */
+polyglot_value polyglot_from_i32(int32_t value);
+
+/**
+  * Convert a primitive int64_t value to a polyglot byte.
+  */
+polyglot_value polyglot_from_i64(int64_t value);
+
+/**
+  * Convert a primitive float value to a polyglot byte.
+  */
+polyglot_value polyglot_from_float(float value);
+
+/**
+  * Convert a primitive double value to a polyglot byte.
+  */
+polyglot_value polyglot_from_double(double value);
+
 /** @} */
 
 /**
