@@ -816,6 +816,7 @@ public class NativeImageGenerator {
                 }
 
                 if (SubstrateOptions.DevMode.getValue()) {
+                    ImageSingletons.add(HostedConfiguration.class, new EconomyHostedConfiguration());
                     GraalConfiguration.setHostedInstanceIfEmpty(new EconomyGraalConfiguration());
                 }
 
