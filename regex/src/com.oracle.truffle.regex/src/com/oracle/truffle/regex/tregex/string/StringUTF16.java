@@ -90,7 +90,7 @@ public final class StringUTF16 implements AbstractString {
 
     @Override
     public TruffleString.WithMask asTStringMask(TruffleString pattern) {
-        return TruffleString.WithMask.createUTF16(pattern, str.toCharArray());
+        return TruffleString.WithMask.createUTF16Uncached(pattern, str.toCharArray());
     }
 
     @Override

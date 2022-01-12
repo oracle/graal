@@ -81,9 +81,9 @@ public class TStringRegionEqualByteIndexTest extends TStringTestBase {
         TruffleString strA = TruffleString.fromJavaStringUncached("ABCDEFGHIJKLMNOPQRSTUVWXYZ", TruffleString.Encoding.UTF_16);
         TruffleString strB = TruffleString.fromJavaStringUncached("abc", TruffleString.Encoding.UTF_16);
         TruffleString.WithMask[] withMask = {
-                        TruffleString.WithMask.create(strB.switchEncodingUncached(TruffleString.Encoding.UTF_8), new byte[]{0x20, 0x20, 0x20}, TruffleString.Encoding.UTF_8),
-                        TruffleString.WithMask.createUTF16(strB.switchEncodingUncached(TruffleString.Encoding.UTF_16), new char[]{0x20, 0x20, 0x20}),
-                        TruffleString.WithMask.createUTF32(strB.switchEncodingUncached(TruffleString.Encoding.UTF_32), new int[]{0x20, 0x20, 0x20})
+                        TruffleString.WithMask.createUncached(strB.switchEncodingUncached(TruffleString.Encoding.UTF_8), new byte[]{0x20, 0x20, 0x20}, TruffleString.Encoding.UTF_8),
+                        TruffleString.WithMask.createUTF16Uncached(strB.switchEncodingUncached(TruffleString.Encoding.UTF_16), new char[]{0x20, 0x20, 0x20}),
+                        TruffleString.WithMask.createUTF32Uncached(strB.switchEncodingUncached(TruffleString.Encoding.UTF_32), new int[]{0x20, 0x20, 0x20})
         };
         TruffleString.Encoding[] encodings = {TruffleString.Encoding.UTF_8, TruffleString.Encoding.UTF_16, TruffleString.Encoding.UTF_32};
         for (int i = 0; i < encodings.length; i++) {

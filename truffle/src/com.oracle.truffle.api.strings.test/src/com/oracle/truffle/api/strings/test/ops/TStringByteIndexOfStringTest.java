@@ -57,11 +57,22 @@ import com.oracle.truffle.api.strings.test.TStringTestBase;
 @RunWith(Parameterized.class)
 public class TStringByteIndexOfStringTest extends TStringTestBase {
 
-    @Parameter public TruffleString.ByteIndexOfStringNode node;
+    @Parameter(0) public TruffleString.ByteIndexOfStringNode node;
+    @Parameter(1) public TruffleString.WithMask.CreateNode nodeMaskByte;
+    @Parameter(2) public TruffleString.WithMask.CreateUTF16Node nodeMaskChar;
+    @Parameter(3) public TruffleString.WithMask.CreateUTF32Node nodeMaskInt;
 
     @Parameters(name = "{0}")
-    public static Iterable<TruffleString.ByteIndexOfStringNode> data() {
-        return Arrays.asList(TruffleString.ByteIndexOfStringNode.create(), TruffleString.ByteIndexOfStringNode.getUncached());
+    public static Iterable<Object[]> data() {
+        return Arrays.asList(
+                        new Object[]{TruffleString.ByteIndexOfStringNode.create(),
+                                        TruffleString.WithMask.CreateNode.create(),
+                                        TruffleString.WithMask.CreateUTF16Node.create(),
+                                        TruffleString.WithMask.CreateUTF32Node.create()},
+                        new Object[]{TruffleString.ByteIndexOfStringNode.getUncached(),
+                                        TruffleString.WithMask.CreateNode.getUncached(),
+                                        TruffleString.WithMask.CreateUTF16Node.getUncached(),
+                                        TruffleString.WithMask.CreateUTF32Node.getUncached()});
     }
 
     @Test
@@ -78,9 +89,9 @@ public class TStringByteIndexOfStringTest extends TStringTestBase {
         TruffleString strA = TruffleString.fromJavaStringUncached("ABCDEFGHIJKLMNOPQRSTUVWXYZ", TruffleString.Encoding.UTF_16);
         TruffleString strB = TruffleString.fromJavaStringUncached("xyz", TruffleString.Encoding.UTF_16);
         TruffleString.WithMask[] withMask = {
-                        TruffleString.WithMask.create(strB.switchEncodingUncached(TruffleString.Encoding.UTF_8), new byte[]{0x20, 0x20, 0x20}, TruffleString.Encoding.UTF_8),
-                        TruffleString.WithMask.createUTF16(strB.switchEncodingUncached(TruffleString.Encoding.UTF_16), new char[]{0x20, 0x20, 0x20}),
-                        TruffleString.WithMask.createUTF32(strB.switchEncodingUncached(TruffleString.Encoding.UTF_32), new int[]{0x20, 0x20, 0x20})
+                        nodeMaskByte.execute(strB.switchEncodingUncached(TruffleString.Encoding.UTF_8), new byte[]{0x20, 0x20, 0x20}, TruffleString.Encoding.UTF_8),
+                        nodeMaskChar.execute(strB.switchEncodingUncached(TruffleString.Encoding.UTF_16), new char[]{0x20, 0x20, 0x20}),
+                        nodeMaskInt.execute(strB.switchEncodingUncached(TruffleString.Encoding.UTF_32), new int[]{0x20, 0x20, 0x20})
         };
         TruffleString.Encoding[] encodings = {TruffleString.Encoding.UTF_8, TruffleString.Encoding.UTF_16, TruffleString.Encoding.UTF_32};
         for (int i = 0; i < encodings.length; i++) {

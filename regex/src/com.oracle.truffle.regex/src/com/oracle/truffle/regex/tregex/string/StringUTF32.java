@@ -94,7 +94,7 @@ public final class StringUTF32 implements AbstractString {
 
     @Override
     public TruffleString.WithMask asTStringMask(TruffleString pattern) {
-        return TruffleString.WithMask.createUTF32(pattern, str);
+        return TruffleString.WithMask.createUTF32Uncached(pattern, str);
     }
 
     @Override

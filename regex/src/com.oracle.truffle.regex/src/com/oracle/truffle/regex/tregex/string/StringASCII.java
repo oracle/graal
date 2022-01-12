@@ -94,7 +94,7 @@ public final class StringASCII implements AbstractString {
 
     @Override
     public TruffleString.WithMask asTStringMask(TruffleString pattern) {
-        return TruffleString.WithMask.create(pattern, str, TruffleString.Encoding.US_ASCII);
+        return TruffleString.WithMask.createUncached(pattern, str, TruffleString.Encoding.US_ASCII);
     }
 
     @Override

@@ -1265,60 +1265,193 @@ public final class TruffleString extends AbstractTruffleString {
         }
 
         /**
-         * Creates a new {@link WithMask} from {@code a} and {@code mask}. {@code mask.length} must
-         * be equal to the string's length in bytes. Cannot be used for UTF-16 or UTF-32 strings.
+         * Node to create a new {@link WithMask} from a string and a byte array. See
+         * {@code #execute(AbstractTruffleString, byte[], Encoding)} for details.
          *
          * @since 22.1
          */
-        public static WithMask create(AbstractTruffleString a, byte[] mask, Encoding expectedEncoding) {
-            if (expectedEncoding == Encoding.UTF_16 || expectedEncoding == Encoding.UTF_32) {
-                throw InternalErrors.illegalArgument("use a char[]-array for UTF-16, and int[] for UTF-32");
+        @ImportStatic(TStringGuards.class)
+        @GeneratePackagePrivate
+        @GenerateUncached
+        public abstract static class CreateNode extends Node {
+
+            CreateNode() {
             }
-            a.checkEncoding(expectedEncoding);
-            checkMaskLength(a, mask.length);
-            assert isStride0(a);
-            return new WithMask(a, Arrays.copyOf(mask, mask.length));
+
+            /**
+             * Creates a new {@link WithMask} from {@code a} and {@code mask}. {@code mask.length}
+             * must be equal to the string's length in bytes. Cannot be used for UTF-16 or UTF-32
+             * strings.
+             *
+             * @since 22.1
+             */
+            public abstract WithMask execute(AbstractTruffleString a, byte[] mask, Encoding expectedEncoding);
+
+            @Specialization
+            WithMask doCreate(AbstractTruffleString a, byte[] mask, Encoding expectedEncoding) {
+                if (expectedEncoding == Encoding.UTF_16 || expectedEncoding == Encoding.UTF_32) {
+                    throw InternalErrors.illegalArgument("use a CreateUTF16Node for UTF-16, and CreateUTF32Node for UTF-32");
+                }
+                a.checkEncoding(expectedEncoding);
+                checkMaskLength(a, mask.length);
+                assert isStride0(a);
+                return new WithMask(a, Arrays.copyOf(mask, mask.length));
+            }
+
+            /**
+             * Create a new {@link TruffleString.WithMask.CreateNode}.
+             *
+             * @since 22.1
+             */
+            public static TruffleString.WithMask.CreateNode create() {
+                return TruffleStringFactory.WithMaskFactory.CreateNodeGen.create();
+            }
+
+            /**
+             * Get the uncached version of {@link TruffleString.WithMask.CreateNode}.
+             *
+             * @since 22.1
+             */
+            public static TruffleString.WithMask.CreateNode getUncached() {
+                return TruffleStringFactory.WithMaskFactory.CreateNodeGen.getUncached();
+            }
         }
 
-        private static final Node DUMMY = new Node() {
-        };
-
         /**
-         * Creates a new {@link WithMask} from {@code a} and {@code mask}. {@code mask.length} must
-         * be equal to the string's length in {@code char}s.
+         * Shorthand for calling the uncached version of {@link CreateNode}.
          *
          * @since 22.1
          */
-        public static WithMask createUTF16(AbstractTruffleString a, char[] mask) {
-            a.checkEncoding(Encoding.UTF_16);
-            checkMaskLength(a, mask.length);
-            byte[] maskBytes = new byte[a.length() << a.stride()];
-            if (a.stride() == 0) {
-                TStringOps.arraycopyWithStrideCB(DUMMY, mask, 0, maskBytes, 0, 0, mask.length);
-            } else {
-                TStringOps.arraycopyWithStrideCB(DUMMY, mask, 0, maskBytes, 0, 1, mask.length);
-            }
-            return new WithMask(a, maskBytes);
+        public static WithMask createUncached(AbstractTruffleString a, byte[] mask, Encoding expectedEncoding) {
+            return CreateNode.getUncached().execute(a, mask, expectedEncoding);
         }
 
         /**
-         * Creates a new {@link WithMask} from {@code a} and {@code mask}. {@code mask.length} must
-         * be equal to the string's length in {@code int}s.
+         * Node to create a new {@link WithMask} from a UTF-16 string and a char array. See
+         * {@code #execute(AbstractTruffleString, char[])} for details.
          *
          * @since 22.1
          */
-        public static WithMask createUTF32(AbstractTruffleString a, int[] mask) {
-            a.checkEncoding(Encoding.UTF_32);
-            checkMaskLength(a, mask.length);
-            byte[] maskBytes = new byte[a.length() << a.stride()];
-            if (a.stride() == 0) {
-                TStringOps.arraycopyWithStrideIB(DUMMY, mask, 0, maskBytes, 0, 0, mask.length);
-            } else if (a.stride() == 1) {
-                TStringOps.arraycopyWithStrideIB(DUMMY, mask, 0, maskBytes, 0, 1, mask.length);
-            } else {
-                TStringOps.arraycopyWithStrideIB(DUMMY, mask, 0, maskBytes, 0, 2, mask.length);
+        @ImportStatic(TStringGuards.class)
+        @GeneratePackagePrivate
+        @GenerateUncached
+        public abstract static class CreateUTF16Node extends Node {
+
+            CreateUTF16Node() {
             }
-            return new WithMask(a, maskBytes);
+
+            /**
+             * Creates a new {@link WithMask} from {@code a} and {@code mask}. {@code mask.length}
+             * must be equal to the string's length in {@code char}s.
+             *
+             * @since 22.1
+             */
+            public abstract WithMask execute(AbstractTruffleString a, char[] mask);
+
+            @Specialization
+            WithMask doCreate(AbstractTruffleString a, char[] mask) {
+                a.checkEncoding(Encoding.UTF_16);
+                checkMaskLength(a, mask.length);
+                byte[] maskBytes = new byte[a.length() << a.stride()];
+                if (a.stride() == 0) {
+                    TStringOps.arraycopyWithStrideCB(this, mask, 0, maskBytes, 0, 0, mask.length);
+                } else {
+                    TStringOps.arraycopyWithStrideCB(this, mask, 0, maskBytes, 0, 1, mask.length);
+                }
+                return new WithMask(a, maskBytes);
+            }
+
+            /**
+             * Create a new {@link TruffleString.WithMask.CreateNode}.
+             *
+             * @since 22.1
+             */
+            public static TruffleString.WithMask.CreateUTF16Node create() {
+                return TruffleStringFactory.WithMaskFactory.CreateUTF16NodeGen.create();
+            }
+
+            /**
+             * Get the uncached version of {@link TruffleString.WithMask.CreateNode}.
+             *
+             * @since 22.1
+             */
+            public static TruffleString.WithMask.CreateUTF16Node getUncached() {
+                return TruffleStringFactory.WithMaskFactory.CreateUTF16NodeGen.getUncached();
+            }
+        }
+
+        /**
+         * Shorthand for calling the uncached version of {@link CreateUTF16Node}.
+         *
+         * @since 22.1
+         */
+        public static WithMask createUTF16Uncached(AbstractTruffleString a, char[] mask) {
+            return CreateUTF16Node.getUncached().execute(a, mask);
+        }
+
+        /**
+         * Node to create a new {@link WithMask} from a UTF-32 string and an int array. See
+         * {@code #execute(AbstractTruffleString, int[])} for details.
+         *
+         * @since 22.1
+         */
+        @ImportStatic(TStringGuards.class)
+        @GeneratePackagePrivate
+        @GenerateUncached
+        public abstract static class CreateUTF32Node extends Node {
+
+            CreateUTF32Node() {
+            }
+
+            /**
+             * Creates a new {@link WithMask} from {@code a} and {@code mask}. {@code mask.length}
+             * must be equal to the string's length in {@code int}s.
+             *
+             * @since 22.1
+             */
+            public abstract WithMask execute(AbstractTruffleString a, int[] mask);
+
+            @Specialization
+            WithMask doCreate(AbstractTruffleString a, int[] mask) {
+                a.checkEncoding(Encoding.UTF_32);
+                checkMaskLength(a, mask.length);
+                byte[] maskBytes = new byte[a.length() << a.stride()];
+                if (a.stride() == 0) {
+                    TStringOps.arraycopyWithStrideIB(this, mask, 0, maskBytes, 0, 0, mask.length);
+                } else if (a.stride() == 1) {
+                    TStringOps.arraycopyWithStrideIB(this, mask, 0, maskBytes, 0, 1, mask.length);
+                } else {
+                    TStringOps.arraycopyWithStrideIB(this, mask, 0, maskBytes, 0, 2, mask.length);
+                }
+                return new WithMask(a, maskBytes);
+            }
+
+            /**
+             * Create a new {@link TruffleString.WithMask.CreateNode}.
+             *
+             * @since 22.1
+             */
+            public static TruffleString.WithMask.CreateUTF32Node create() {
+                return TruffleStringFactory.WithMaskFactory.CreateUTF32NodeGen.create();
+            }
+
+            /**
+             * Get the uncached version of {@link TruffleString.WithMask.CreateNode}.
+             *
+             * @since 22.1
+             */
+            public static TruffleString.WithMask.CreateUTF32Node getUncached() {
+                return TruffleStringFactory.WithMaskFactory.CreateUTF32NodeGen.getUncached();
+            }
+        }
+
+        /**
+         * Shorthand for calling the uncached version of {@link CreateUTF32Node}.
+         *
+         * @since 22.1
+         */
+        public static WithMask createUTF32Uncached(AbstractTruffleString a, int[] mask) {
+            return CreateUTF32Node.getUncached().execute(a, mask);
         }
 
         private static void checkMaskLength(AbstractTruffleString string, int length) {

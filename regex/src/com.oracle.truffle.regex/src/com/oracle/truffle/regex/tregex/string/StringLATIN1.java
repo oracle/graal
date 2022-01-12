@@ -94,7 +94,7 @@ public final class StringLATIN1 implements AbstractString {
 
     @Override
     public TruffleString.WithMask asTStringMask(TruffleString pattern) {
-        return TruffleString.WithMask.create(pattern, str, TruffleString.Encoding.ISO_8859_1);
+        return TruffleString.WithMask.createUncached(pattern, str, TruffleString.Encoding.ISO_8859_1);
     }
 
     @Override

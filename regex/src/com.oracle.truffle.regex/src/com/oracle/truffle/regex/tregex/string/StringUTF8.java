@@ -86,7 +86,7 @@ public final class StringUTF8 implements AbstractString {
 
     @Override
     public TruffleString.WithMask asTStringMask(TruffleString pattern) {
-        return TruffleString.WithMask.create(pattern, str, TruffleString.Encoding.UTF_8);
+        return TruffleString.WithMask.createUncached(pattern, str, TruffleString.Encoding.UTF_8);
     }
 
     @Override
