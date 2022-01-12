@@ -41,18 +41,18 @@ public class LLVMAlias extends LLVMSymbol {
 
     public LLVMAlias(String name, LLVMSymbol target, boolean exported) {
         super(name, IDGenerater.INVALID_ID, LLVMSymbol.INVALID_INDEX, exported, false);
-        setTarget(target);
+        this.target = target;
+        setTarget();
     }
 
     public LLVMSymbol getTarget() {
         return target;
     }
 
-    public void setTarget(LLVMSymbol value) {
-        this.target = value;
+    public void setTarget() {
         if (target instanceof LLVMAlias) {
             EconomicSet<LLVMAlias> visited = EconomicSet.create(Equivalence.IDENTITY);
-            LLVMSymbol result = checkForCycle(this, visited);
+            LLVMSymbol result = unwindAlias((LLVMAlias) target, visited);
             assert !result.isAlias();
             this.target = result;
         }
@@ -88,15 +88,15 @@ public class LLVMAlias extends LLVMSymbol {
         return super.getName() + " -> " + target.toString();
     }
 
-    private static LLVMSymbol checkForCycle(LLVMAlias alias, EconomicSet<LLVMAlias> visited) {
+    private static LLVMSymbol unwindAlias(LLVMAlias alias, EconomicSet<LLVMAlias> visited) {
         if (visited.contains(alias)) {
             throw new LLVMLinkerException("Found a cycle between the following aliases: " + visited.toString());
         }
         visited.add(alias);
         if (alias.getTarget() instanceof LLVMAlias) {
-            return checkForCycle((LLVMAlias) alias.getTarget(), visited);
+            return unwindAlias((LLVMAlias) alias.getTarget(), visited);
         }
-        return alias;
+        return alias.getTarget();
     }
 
     public static LLVMSymbol resolveAlias(LLVMSymbol symbol) {
