@@ -815,7 +815,7 @@ public class NativeImageGenerator {
                     ImageSingletons.add(ImageBuildStatistics.class, new ImageBuildStatistics());
                 }
 
-                if (SubstrateOptions.DevMode.getValue()) {
+                if (SubstrateOptions.useEconomyConfig()) {
                     ImageSingletons.add(HostedConfiguration.class, new EconomyHostedConfiguration());
                     GraalConfiguration.setHostedInstanceIfEmpty(new EconomyGraalConfiguration());
                 }
@@ -1328,7 +1328,7 @@ public class NativeImageGenerator {
         PhaseSuite<MidTierContext> midTier = suites.getMidTier();
         PhaseSuite<LowTierContext> lowTier = suites.getLowTier();
 
-        final boolean useEconomy = firstTier || SubstrateOptions.DevMode.getValue();
+        final boolean economy = firstTier || SubstrateOptions.useEconomyConfig();
 
         ListIterator<BasePhase<? super HighTierContext>> position;
         if (hosted) {
@@ -1350,7 +1350,7 @@ public class NativeImageGenerator {
         lowTier.addBeforeLast(new OptimizeExceptionPathsPhase());
 
         BasePhase<CoreProviders> addressLoweringPhase = backend.newAddressLoweringPhase(runtimeCallProviders.getCodeCache());
-        if (useEconomy) {
+        if (economy) {
             lowTier.findPhase(ExpandLogicPhase.class, true).add(addressLoweringPhase);
         } else {
             lowTier.findPhase(UseTrappingNullChecksPhase.class).add(addressLoweringPhase);
@@ -1377,7 +1377,7 @@ public class NativeImageGenerator {
             highTier.removePhase(ConvertDeoptimizeToGuardPhase.class);
             midTier.removePhase(DeoptimizationGroupingPhase.class);
         } else {
-            if (useEconomy) {
+            if (economy) {
                 ListIterator<BasePhase<? super MidTierContext>> it = midTier.findPhase(FrameStateAssignmentPhase.class);
                 it.add(new CollectDeoptimizationSourcePositionsPhase());
 

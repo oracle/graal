@@ -39,7 +39,7 @@ public class SubstrateSuitesCreatorProvider {
     private final SuitesCreator firstTierSuitesCreator;
 
     public static CompilerConfiguration getCompilerConfiguration() {
-        if (SubstrateOptions.DevMode.getValue()) {
+        if (SubstrateOptions.useEconomyConfig()) {
             return new EconomyCompilerConfiguration();
         } else {
             return new CommunityCompilerConfiguration();

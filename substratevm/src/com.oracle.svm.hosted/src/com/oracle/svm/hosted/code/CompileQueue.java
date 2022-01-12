@@ -1141,7 +1141,7 @@ public class CompileQueue {
     protected GraphBuilderConfiguration createHostedGraphBuilderConfiguration(HostedProviders providers, HostedMethod method) {
         GraphBuilderConfiguration gbConf = GraphBuilderConfiguration.getDefault(providers.getGraphBuilderPlugins()).withBytecodeExceptionMode(BytecodeExceptionMode.CheckAll);
 
-        if (SubstrateOptions.Optimize.getValue() <= 0 && !method.isDeoptTarget()) {
+        if (SubstrateOptions.optimizationLevel() <= 0 && !method.isDeoptTarget()) {
             /*
              * Disabling liveness analysis preserves the values of local variables beyond the
              * bytecode-liveness. This greatly helps debugging. When local variable numbers are

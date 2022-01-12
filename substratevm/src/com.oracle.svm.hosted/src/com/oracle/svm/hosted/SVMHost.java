@@ -329,11 +329,11 @@ public class SVMHost implements HostVM {
              * reused by javac, local variables can still get illegal values. Since we cannot
              * "restore" such illegal values during deoptimization, we cannot disable liveness
              * analysis for deoptimization target methods.
-             * 
+             *
              * TODO: ParseOnce does not support deoptimization targets yet, this needs to be added
              * later.
              */
-            return SubstrateOptions.Optimize.getValue() <= 0;
+            return SubstrateOptions.optimizationLevel() <= 0;
 
         } else {
             /*
@@ -656,7 +656,7 @@ public class SVMHost implements HostVM {
             /*
              * Unsafe memory access nodes are rare, so it does not pay off to check what kind of
              * field they are accessing.
-             * 
+             *
              * Methods that access a thread-local value cannot be initialized at image build time
              * because such values are not available yet.
              */
