@@ -79,12 +79,10 @@ jobs:
               JDK: "labsjdk-ce-17"
               GATE: "build,debuginfotest"
               PRIMARY: "substratevm"
-              GHA_EXPECTED_FAILURE: true # temporarily marked as expected failure due to #4018 / GR-35118
           - env:
               JDK: "labsjdk-ce-11"
               GATE: "build,debuginfotest"
               PRIMARY: "substratevm"
-              GHA_EXPECTED_FAILURE: true # temporarily marked as expected failure due to #4018 / GR-35118
           - env:
               JDK: "labsjdk-ce-11"
               GATE: "hellomodule"

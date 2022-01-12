@@ -737,6 +737,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         if (!Modifier.isStatic(method.getModifiers())) {
             pos = writeMethodParameterDeclaration(context, "this", classEntry.getTypeName(), true, isSpecification, buffer, pos);
         }
+        if (method.getParamTypes() == null) {
+            return pos;
+        }
         for (TypeEntry paramType : method.getParamTypes()) {
             String paramTypeName = paramType.getTypeName();
             String paramName = uniqueDebugString("");
