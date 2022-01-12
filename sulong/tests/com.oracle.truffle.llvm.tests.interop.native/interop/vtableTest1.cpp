@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -48,7 +48,7 @@ int evaluateDirectly(A *a, int x) {
     return a->foo(x);
 }
 
-int evaluateWithPolyglotConversion(void *aObj, int x) {
+int evaluateWithPolyglotConversion(polyglot_value aObj, int x) {
     return evaluateDirectly(polyglot_as_A(aObj), x);
 }
 
