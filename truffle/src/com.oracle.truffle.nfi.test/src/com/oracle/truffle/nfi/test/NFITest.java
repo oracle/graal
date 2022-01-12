@@ -180,9 +180,13 @@ public class NFITest {
         }
     }
 
-    protected static Object lookupAndBind(Object library, String name, String signature) {
+    protected static Object parseSignature(String signature) {
         Source sigSource = Source.newBuilder("nfi", signature, "signature").internal(true).build();
         CallTarget sigTarget = runWithPolyglot.getTruffleTestEnv().parseInternal(sigSource);
-        return lookupAndBind.call(library, name, sigTarget.call());
+        return sigTarget.call();
+    }
+
+    protected static Object lookupAndBind(Object library, String name, String signature) {
+        return lookupAndBind.call(library, name, parseSignature(signature));
     }
 }
