@@ -28,9 +28,10 @@ import static jdk.vm.ci.code.ValueUtil.asAllocatableValue;
 import static jdk.vm.ci.code.ValueUtil.isAllocatableValue;
 import static jdk.vm.ci.code.ValueUtil.isLegal;
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
+import static org.graalvm.compiler.core.common.GraalOptions.LoopHeaderAlignment;
 import static org.graalvm.compiler.lir.LIRValueUtil.asConstant;
-import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
 import static org.graalvm.compiler.lir.LIRValueUtil.asVariable;
+import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
 import static org.graalvm.compiler.lir.LIRValueUtil.isVariable;
 import static org.graalvm.compiler.lir.LIRValueUtil.isVirtualStackSlot;
 
@@ -89,6 +90,8 @@ import jdk.vm.ci.meta.ValueKind;
  */
 public abstract class LIRGenerator implements LIRGeneratorTool {
 
+    private final int loopHeaderAlignment;
+
     public static class Options {
         // @formatter:off
         @Option(help = "Print HIR along side LIR as the latter is generated", type = OptionType.Debug)
@@ -120,6 +123,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
         OptionValues options = res.getLIR().getOptions();
         this.printIrWithLir = !TTY.isSuppressed() && Options.PrintIRWithLIR.getValue(options);
         this.traceLIRGeneratorLevel = TTY.isSuppressed() ? 0 : Options.TraceLIRGeneratorLevel.getValue(options);
+        this.loopHeaderAlignment = LoopHeaderAlignment.getValue(options);
 
         assert arithmeticLIRGen.lirGen == null;
         arithmeticLIRGen.lirGen = this;
@@ -357,7 +361,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
             assert res.getLIR().getLIRforBlock(currentBlock) == null : "LIR list already computed for this block";
             res.getLIR().setLIRforBlock(currentBlock, new ArrayList<LIRInstruction>());
 
-            append(new LabelOp(new Label(currentBlock.getId()), currentBlock.isAligned()));
+            append(new LabelOp(new Label(currentBlock.getId()), currentBlock.isAligned() ? loopHeaderAlignment : 0));
 
             if (traceLIRGeneratorLevel >= 1) {
                 TTY.println("BEGIN Generating LIR for block B" + currentBlock.getId());
