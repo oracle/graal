@@ -355,7 +355,7 @@ abstract class HostToTypeNode extends Node {
                 // fallthrough
             } else if (interop.hasArrayElements(value)) {
                 return asJavaObject(hostContext, value, List.class, null, false);
-            } else if (interop.hasMembers(value)) {
+            } else if (interop.hasHashEntries(value) || interop.hasMembers(value)) {
                 return asJavaObject(hostContext, value, Map.class, null, false);
             } else if (interop.hasIterator(value)) {
                 return asJavaObject(hostContext, value, Iterable.class, null, false);
