@@ -106,7 +106,9 @@ meth public final int codePointAtByteIndexUncached(int,com.oracle.truffle.api.st
 meth public final int codePointAtIndexUncached(int,com.oracle.truffle.api.strings.TruffleString$Encoding)
 meth public final int codePointIndexToByteIndexUncached(int,int,com.oracle.truffle.api.strings.TruffleString$Encoding)
 meth public final int codePointLengthUncached(com.oracle.truffle.api.strings.TruffleString$Encoding)
-meth public final int compareUncached(com.oracle.truffle.api.strings.AbstractTruffleString,com.oracle.truffle.api.strings.TruffleString$Encoding)
+meth public final int compareBytesUncached(com.oracle.truffle.api.strings.AbstractTruffleString,com.oracle.truffle.api.strings.TruffleString$Encoding)
+meth public final int compareCharsUTF16Uncached(com.oracle.truffle.api.strings.AbstractTruffleString)
+meth public final int compareIntsUTF32Uncached(com.oracle.truffle.api.strings.AbstractTruffleString)
 meth public final int hashCode()
 meth public final int hashCodeUncached(com.oracle.truffle.api.strings.TruffleString$Encoding)
 meth public final int indexOfCodePointUncached(int,int,int,com.oracle.truffle.api.strings.TruffleString$Encoding)
@@ -250,7 +252,9 @@ innr public abstract static CodePointAtIndexNode
 innr public abstract static CodePointIndexToByteIndexNode
 innr public abstract static CodePointLengthNode
 innr public abstract static CodeRangeEqualsNode
-innr public abstract static CompareNode
+innr public abstract static CompareBytesNode
+innr public abstract static CompareCharsUTF16Node
+innr public abstract static CompareIntsUTF32Node
 innr public abstract static ConcatNode
 innr public abstract static CopyToByteArrayNode
 innr public abstract static CopyToNativeMemoryNode
@@ -410,11 +414,25 @@ meth public static com.oracle.truffle.api.strings.TruffleString$CodeRangeEqualsN
 meth public static com.oracle.truffle.api.strings.TruffleString$CodeRangeEqualsNode getUncached()
 supr com.oracle.truffle.api.nodes.Node
 
-CLSS public abstract static com.oracle.truffle.api.strings.TruffleString$CompareNode
+CLSS public abstract static com.oracle.truffle.api.strings.TruffleString$CompareBytesNode
  outer com.oracle.truffle.api.strings.TruffleString
 meth public abstract int execute(com.oracle.truffle.api.strings.AbstractTruffleString,com.oracle.truffle.api.strings.AbstractTruffleString,com.oracle.truffle.api.strings.TruffleString$Encoding)
-meth public static com.oracle.truffle.api.strings.TruffleString$CompareNode create()
-meth public static com.oracle.truffle.api.strings.TruffleString$CompareNode getUncached()
+meth public static com.oracle.truffle.api.strings.TruffleString$CompareBytesNode create()
+meth public static com.oracle.truffle.api.strings.TruffleString$CompareBytesNode getUncached()
+supr com.oracle.truffle.api.nodes.Node
+
+CLSS public abstract static com.oracle.truffle.api.strings.TruffleString$CompareCharsUTF16Node
+ outer com.oracle.truffle.api.strings.TruffleString
+meth public abstract int execute(com.oracle.truffle.api.strings.AbstractTruffleString,com.oracle.truffle.api.strings.AbstractTruffleString)
+meth public static com.oracle.truffle.api.strings.TruffleString$CompareCharsUTF16Node create()
+meth public static com.oracle.truffle.api.strings.TruffleString$CompareCharsUTF16Node getUncached()
+supr com.oracle.truffle.api.nodes.Node
+
+CLSS public abstract static com.oracle.truffle.api.strings.TruffleString$CompareIntsUTF32Node
+ outer com.oracle.truffle.api.strings.TruffleString
+meth public abstract int execute(com.oracle.truffle.api.strings.AbstractTruffleString,com.oracle.truffle.api.strings.AbstractTruffleString)
+meth public static com.oracle.truffle.api.strings.TruffleString$CompareIntsUTF32Node create()
+meth public static com.oracle.truffle.api.strings.TruffleString$CompareIntsUTF32Node getUncached()
 supr com.oracle.truffle.api.nodes.Node
 
 CLSS public abstract static com.oracle.truffle.api.strings.TruffleString$ConcatNode
@@ -560,7 +578,7 @@ meth public static com.oracle.truffle.api.strings.TruffleString$Encoding fromJCo
 meth public static com.oracle.truffle.api.strings.TruffleString$Encoding valueOf(java.lang.String)
 meth public static com.oracle.truffle.api.strings.TruffleString$Encoding[] values()
 supr java.lang.Enum<com.oracle.truffle.api.strings.TruffleString$Encoding>
-hfds EMPTY_STRINGS,ENCODINGS_TABLE,J_CODINGS_NAME_MAP,J_CODINGS_TABLE,MAX_COMPATIBLE_CODE_RANGE,NATURAL_STRIDE,id,jCoding,maxCompatibleCodeRange,name,naturalStride
+hfds EMPTY_STRINGS,ENCODINGS_TABLE,J_CODINGS_NAME_MAP,J_CODINGS_TABLE,MAX_COMPATIBLE_CODE_RANGE,id,jCoding,maxCompatibleCodeRange,name,naturalStride
 
 CLSS public abstract static com.oracle.truffle.api.strings.TruffleString$EqualNode
  outer com.oracle.truffle.api.strings.TruffleString
@@ -826,7 +844,7 @@ meth public static com.oracle.truffle.api.strings.TruffleString$WithMask create(
 meth public static com.oracle.truffle.api.strings.TruffleString$WithMask createUTF16(com.oracle.truffle.api.strings.AbstractTruffleString,char[])
 meth public static com.oracle.truffle.api.strings.TruffleString$WithMask createUTF32(com.oracle.truffle.api.strings.AbstractTruffleString,int[])
 supr java.lang.Object
-hfds mask,string
+hfds DUMMY,mask,string
 
 CLSS public final com.oracle.truffle.api.strings.TruffleStringBuilder
 innr public abstract static AppendByteNode
@@ -929,7 +947,7 @@ hcls AppendArrayIntlNodeGen,AppendByteNodeGen,AppendCharArrayIntlNodeGen,AppendC
 CLSS public final com.oracle.truffle.api.strings.TruffleStringFactory
 cons public init()
 supr java.lang.Object
-hcls AsManagedNodeGen,AsTruffleStringNodeGen,ByteIndexOfAnyByteNodeGen,ByteIndexOfCodePointNodeGen,ByteIndexOfStringNodeGen,ByteLengthOfCodePointNodeGen,CharIndexOfAnyCharUTF16NodeGen,CodePointAtByteIndexNodeGen,CodePointAtIndexNodeGen,CodePointIndexToByteIndexNodeGen,CodePointLengthNodeGen,CodeRangeEqualsNodeGen,CompareNodeGen,ConcatNodeGen,CopyToByteArrayNodeGen,CopyToNativeMemoryNodeGen,CreateBackwardCodePointIteratorNodeGen,CreateCodePointIteratorNodeGen,EqualNodeGen,ForceEncodingNodeGen,FromByteArrayNodeGen,FromCharArrayUTF16NodeGen,FromCodePointNodeGen,FromIntArrayUTF32NodeGen,FromJavaStringNodeGen,FromLongNodeGen,FromNativePointerNodeGen,GetByteCodeRangeNodeGen,GetCodeRangeNodeGen,GetInternalByteArrayNodeGen,GetInternalNativePointerNodeGen,HashCodeNodeGen,IndexOfCodePointNodeGen,IndexOfStringNodeGen,IntIndexOfAnyIntUTF32NodeGen,IsValidNodeGen,LastByteIndexOfCodePointNodeGen,LastByteIndexOfStringNodeGen,LastIndexOfCodePointNodeGen,LastIndexOfStringNodeGen,MaterializeNodeGen,ParseDoubleNodeGen,ParseIntNodeGen,ParseLongNodeGen,ReadByteNodeGen,ReadCharUTF16NodeGen,RegionEqualByteIndexNodeGen,RegionEqualNodeGen,RepeatNodeGen,SubstringByteIndexNodeGen,SubstringNodeGen,SwitchEncodingNodeGen,ToIndexableNodeGen,ToJavaStringNodeGen
+hcls AsManagedNodeGen,AsTruffleStringNodeGen,ByteIndexOfAnyByteNodeGen,ByteIndexOfCodePointNodeGen,ByteIndexOfStringNodeGen,ByteLengthOfCodePointNodeGen,CharIndexOfAnyCharUTF16NodeGen,CodePointAtByteIndexNodeGen,CodePointAtIndexNodeGen,CodePointIndexToByteIndexNodeGen,CodePointLengthNodeGen,CodeRangeEqualsNodeGen,CompareBytesNodeGen,CompareCharsUTF16NodeGen,CompareIntsUTF32NodeGen,ConcatNodeGen,CopyToByteArrayNodeGen,CopyToNativeMemoryNodeGen,CreateBackwardCodePointIteratorNodeGen,CreateCodePointIteratorNodeGen,EqualNodeGen,ForceEncodingNodeGen,FromByteArrayNodeGen,FromCharArrayUTF16NodeGen,FromCodePointNodeGen,FromIntArrayUTF32NodeGen,FromJavaStringNodeGen,FromLongNodeGen,FromNativePointerNodeGen,GetByteCodeRangeNodeGen,GetCodeRangeNodeGen,GetInternalByteArrayNodeGen,GetInternalNativePointerNodeGen,HashCodeNodeGen,IndexOfCodePointNodeGen,IndexOfStringNodeGen,IntIndexOfAnyIntUTF32NodeGen,IsValidNodeGen,LastByteIndexOfCodePointNodeGen,LastByteIndexOfStringNodeGen,LastIndexOfCodePointNodeGen,LastIndexOfStringNodeGen,MaterializeNodeGen,ParseDoubleNodeGen,ParseIntNodeGen,ParseLongNodeGen,ReadByteNodeGen,ReadCharUTF16NodeGen,RegionEqualByteIndexNodeGen,RegionEqualNodeGen,RepeatNodeGen,SubstringByteIndexNodeGen,SubstringNodeGen,SwitchEncodingNodeGen,ToIndexableNodeGen,ToJavaStringNodeGen
 
 CLSS public final com.oracle.truffle.api.strings.TruffleStringIterator
 innr public abstract static NextNode

@@ -221,8 +221,8 @@ public class TStringTestDummyLanguage extends TruffleLanguage<TStringTestDummyLa
 
         @Specialization
         int bench(TruffleString a, TruffleString b,
-                        @Cached TruffleString.CompareNode compareNode) {
-            return compareNode.execute(a, b, TruffleString.Encoding.UTF_16);
+                        @Cached TruffleString.CompareCharsUTF16Node compareNode) {
+            return compareNode.execute(a, b);
         }
 
         @Specialization

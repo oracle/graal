@@ -204,6 +204,10 @@ public class TStringTestBase {
         void run(AbstractTruffleString a, TruffleString.Encoding encoding);
     }
 
+    public interface TestSS {
+        void run(AbstractTruffleString a, AbstractTruffleString b);
+    }
+
     public interface TestSEE {
         void run(AbstractTruffleString a, TruffleString.Encoding expectedEncoding, TruffleString.Encoding targetEncoding);
     }
@@ -255,6 +259,11 @@ public class TStringTestBase {
         expectNullPointerException(() -> test.run(null, UTF_8, UTF_8));
         expectNullPointerException(() -> test.run(S_UTF8, null, UTF_8));
         expectNullPointerException(() -> test.run(S_UTF8, UTF_8, null));
+    }
+
+    public static void checkNullSS(TestSS test) throws Exception {
+        expectNullPointerException(() -> test.run(null, S_UTF8));
+        expectNullPointerException(() -> test.run(S_UTF8, null));
     }
 
     public static void checkNullSSE(TestSSE test) throws Exception {

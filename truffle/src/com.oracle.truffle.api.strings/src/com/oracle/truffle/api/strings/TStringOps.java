@@ -696,6 +696,93 @@ final class TStringOps {
         }
     }
 
+    static int memcmpBytesWithStride(Node location, AbstractTruffleString a, Object arrayA, int strideA, AbstractTruffleString b, Object arrayB, int strideB, int lengthCMP) {
+        assert lengthCMP <= a.length();
+        assert lengthCMP <= b.length();
+        return memcmpBytesWithStrideIntl(location, arrayA, a.offset(), strideA, arrayB, b.offset(), strideB, lengthCMP);
+    }
+
+    private static int memcmpBytesWithStrideIntl(
+                    Node location, Object arrayA, int offsetA, int strideA,
+                    Object arrayB, int offsetB, int strideB, int lengthCMP) {
+        if (lengthCMP == 0) {
+            return 0;
+        }
+        final boolean isNativeA = isNativePointer(arrayA);
+        final boolean isNativeB = isNativePointer(arrayB);
+        final Object stubArrayA = stubArray(arrayA, isNativeA);
+        final Object stubArrayB = stubArray(arrayB, isNativeB);
+        validateRegion(stubArrayA, offsetA, lengthCMP, strideA, isNativeA);
+        validateRegion(stubArrayB, offsetB, lengthCMP, strideB, isNativeB);
+        final long stubOffsetA = stubOffset(arrayA, offsetA, isNativeA);
+        final long stubOffsetB = stubOffset(arrayB, offsetB, isNativeB);
+        if (strideA == strideB) {
+            switch (strideA) {
+                case 0:
+                    return runMemCmp(location,
+                                    stubArrayA, stubOffsetA, 0, isNativeA,
+                                    stubArrayB, stubOffsetB, 0, isNativeB, lengthCMP);
+                case 1:
+                    return runMemCmpBytes(location,
+                                    stubArrayA, stubOffsetA, 1, isNativeA,
+                                    stubArrayB, stubOffsetB, 1, isNativeB, lengthCMP);
+                default:
+                    assert strideA == 2;
+                    return runMemCmpBytes(location,
+                                    stubArrayA, stubOffsetA, 2, isNativeA,
+                                    stubArrayB, stubOffsetB, 2, isNativeB, lengthCMP);
+            }
+        }
+        final int swappedStrideA;
+        final int swappedStrideB;
+        final Object swappedArrayA;
+        final Object swappedArrayB;
+        final long swappedOffsetA;
+        final long swappedOffsetB;
+        final boolean swappedIsNativeA;
+        final boolean swappedIsNativeB;
+        final int swappedResult;
+        if (strideA < strideB) {
+            swappedStrideA = strideB;
+            swappedStrideB = strideA;
+            swappedArrayA = stubArrayB;
+            swappedArrayB = stubArrayA;
+            swappedOffsetA = stubOffsetB;
+            swappedOffsetB = stubOffsetA;
+            swappedIsNativeA = isNativeB;
+            swappedIsNativeB = isNativeA;
+            swappedResult = -1;
+        } else {
+            swappedStrideA = strideA;
+            swappedStrideB = strideB;
+            swappedArrayA = stubArrayA;
+            swappedArrayB = stubArrayB;
+            swappedOffsetA = stubOffsetA;
+            swappedOffsetB = stubOffsetB;
+            swappedIsNativeA = isNativeA;
+            swappedIsNativeB = isNativeB;
+            swappedResult = 1;
+        }
+        if (swappedStrideA == 1) {
+            assert swappedStrideB == 0;
+            return swappedResult * runMemCmpBytes(location,
+                            swappedArrayA, swappedOffsetA, 1, swappedIsNativeA,
+                            swappedArrayB, swappedOffsetB, 0, swappedIsNativeB, lengthCMP);
+        } else {
+            assert swappedStrideA == 2;
+            if (swappedStrideB == 0) {
+                return swappedResult * runMemCmpBytes(location,
+                                swappedArrayA, swappedOffsetA, 2, swappedIsNativeA,
+                                swappedArrayB, swappedOffsetB, 0, swappedIsNativeB, lengthCMP);
+            } else {
+                assert swappedStrideB == 1;
+                return swappedResult * runMemCmpBytes(location,
+                                swappedArrayA, swappedOffsetA, 2, swappedIsNativeA,
+                                swappedArrayB, swappedOffsetB, 1, swappedIsNativeB, lengthCMP);
+            }
+        }
+    }
+
     static int hashCodeWithStride(Node location, AbstractTruffleString a, Object arrayA, int stride) {
         return hashCodeWithStrideIntl(location, arrayA, a.offset(), a.length(), stride);
     }
@@ -1088,6 +1175,33 @@ final class TStringOps {
             int cmp = readValue(arrayA, offsetA, strideA, i, isNativeA) - readValue(arrayB, offsetB, strideB, i, isNativeB);
             if (cmp != 0) {
                 return cmp;
+            }
+            TStringConstants.truffleSafePointPoll(location, i + 1);
+        }
+        return 0;
+    }
+
+    private static int runMemCmpBytes(Node location,
+                    Object arrayA, long offsetA, int strideA, boolean isNativeA,
+                    Object arrayB, long offsetB, int strideB, boolean isNativeB, int lengthCMP) {
+        assert strideA >= strideB;
+        for (int i = 0; i < lengthCMP; i++) {
+            int valueA = readValue(arrayA, offsetA, strideA, i, isNativeA);
+            int valueB = readValue(arrayB, offsetB, strideB, i, isNativeB);
+            for (int j = 0; j < 4; j++) {
+                final int cmp;
+                if (TStringGuards.littleEndian()) {
+                    cmp = (valueA & 0xff) - (valueB & 0xff);
+                    valueA >>= 8;
+                    valueB >>= 8;
+                } else {
+                    cmp = ((valueA >> 24) & 0xff) - ((valueB >> 24) & 0xff);
+                    valueA <<= 8;
+                    valueB <<= 8;
+                }
+                if (cmp != 0) {
+                    return cmp;
+                }
             }
             TStringConstants.truffleSafePointPoll(location, i + 1);
         }

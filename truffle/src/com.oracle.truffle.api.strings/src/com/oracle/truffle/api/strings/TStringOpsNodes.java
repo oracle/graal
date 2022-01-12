@@ -299,19 +299,35 @@ final class TStringOpsNodes {
         int cached(AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB,
                         @Cached(value = "stride(a)", allowUncached = true) int cachedStrideA,
                         @Cached(value = "stride(b)", allowUncached = true) int cachedStrideB) {
-            int lengthA = a.length();
-            int lengthB = b.length();
-            int minLength = Math.min(lengthA, lengthB);
-            int cmp = TStringOps.memcmpWithStride(this, a, arrayA, cachedStrideA, b, arrayB, cachedStrideB, minLength);
-            if (cmp == 0) {
-                if (lengthA == lengthB) {
-                    return 0;
-                } else {
-                    return lengthA < lengthB ? -1 : 1;
-                }
+            int cmp = TStringOps.memcmpWithStride(this, a, arrayA, cachedStrideA, b, arrayB, cachedStrideB, Math.min(a.length(), b.length()));
+            return memCmpTail(cmp, a.length(), b.length());
+        }
+    }
+
+    @ImportStatic(TStringGuards.class)
+    @GenerateUncached
+    abstract static class RawMemCmpBytesNode extends Node {
+
+        abstract int execute(AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB);
+
+        @Specialization(guards = {"stride(a) == cachedStrideA", "stride(b) == cachedStrideB"}, limit = LIMIT_STRIDE)
+        int cached(AbstractTruffleString a, Object arrayA, AbstractTruffleString b, Object arrayB,
+                        @Cached(value = "stride(a)", allowUncached = true) int cachedStrideA,
+                        @Cached(value = "stride(b)", allowUncached = true) int cachedStrideB) {
+            int cmp = TStringOps.memcmpBytesWithStride(this, a, arrayA, cachedStrideA, b, arrayB, cachedStrideB, Math.min(a.length(), b.length()));
+            return memCmpTail(cmp, a.length(), b.length());
+        }
+    }
+
+    private static int memCmpTail(int cmp, int lengthA, int lengthB) {
+        if (cmp == 0) {
+            if (lengthA == lengthB) {
+                return 0;
             } else {
-                return cmp > 0 ? 1 : -1;
+                return lengthA < lengthB ? -1 : 1;
             }
+        } else {
+            return cmp > 0 ? 1 : -1;
         }
     }
 

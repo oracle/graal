@@ -210,9 +210,9 @@ public class TStringConstructorTests extends TStringTestBase {
                     }
                     sbCMP.appendCodePointUncached(codepoints[codepoints.length - 1] - 1);
                     TruffleString cmp = sbCMP.toStringUncached();
-                    Assert.assertEquals(0, s.compareUncached(s, encoding));
-                    Assert.assertTrue(s.compareUncached(cmp, encoding) > 0);
-                    Assert.assertTrue(cmp.compareUncached(s, encoding) < 0);
+                    Assert.assertEquals(0, s.compareBytesUncached(s, encoding));
+                    Assert.assertTrue(s.compareBytesUncached(cmp, encoding) > 0);
+                    Assert.assertTrue(cmp.compareBytesUncached(s, encoding) < 0);
                     s.toJavaStringUncached();
                     TruffleStringIterator it = s.createCodePointIteratorUncached(encoding);
                     Assert.assertEquals(codepoints.length, s.codePointLengthUncached(encoding));

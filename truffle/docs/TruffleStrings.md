@@ -102,8 +102,12 @@ The list of currently available operations is:
   Find the last occurrence of a given substring in a string and return its codepoint-based index.
 * [LastByteIndexOfString](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.LastByteIndexOfStringNode.html):
   Find the last occurrence of a given substring in a string and return its byte-based index.
-* [Compare](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.CompareNode.html):
+* [CompareBytes](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.CompareBytesNode.html):
   Compare two strings byte-by-byte.
+* [CompareCharsUTF16](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.CompareCharsUTF16Node.html):
+  Compare two UTF-16 strings char-by-char.
+* [CompareIntsUTF32](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.CompareIntsUTF32Node.html):
+  Compare two UTF-32 strings int-by-int.
 * [RegionEqual](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.RegionEqualNode.html):
   Check if two strings are equal in a given region defined by a codepoint-based offset and length.
 * [RegionEqualByteIndex](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.RegionEqualByteIndexNode.html):

@@ -57,20 +57,39 @@ import com.oracle.truffle.api.strings.test.TStringTestBase;
 @RunWith(Parameterized.class)
 public class TStringCompareTest extends TStringTestBase {
 
-    @Parameter public TruffleString.CompareNode node;
+    @Parameter(0) public TruffleString.CompareBytesNode node;
+    @Parameter(1) public TruffleString.CompareCharsUTF16Node nodeUTF16;
+    @Parameter(2) public TruffleString.CompareIntsUTF32Node nodeUTF32;
 
     @Parameters(name = "{0}")
-    public static Iterable<TruffleString.CompareNode> data() {
-        return Arrays.asList(TruffleString.CompareNode.create(), TruffleString.CompareNode.getUncached());
+    public static Iterable<Object[]> data() {
+        return Arrays.asList(
+                        new Object[]{TruffleString.CompareBytesNode.create(), TruffleString.CompareCharsUTF16Node.create(), TruffleString.CompareIntsUTF32Node.create()},
+                        new Object[]{TruffleString.CompareBytesNode.getUncached(), TruffleString.CompareCharsUTF16Node.getUncached(), TruffleString.CompareIntsUTF32Node.getUncached()});
     }
 
     @Test
     public void testAll() throws Exception {
         forAllStrings(true, (a, arrayA, codeRangeA, isValidA, encodingA, codepointsA, byteIndicesA) -> {
             forAllStrings(new TruffleString.Encoding[]{encodingA}, true, (b, arrayB, codeRangeB, isValidB, encodingB, codepointsB, byteIndicesB) -> {
-                Assert.assertEquals(compare(codepointsA, codepointsB), node.execute(a, b, encodingA));
+                Assert.assertEquals(compare(arrayA, arrayB), node.execute(a, b, encodingA));
+                if (encodingA == TruffleString.Encoding.UTF_16) {
+                    Assert.assertEquals(compare(codepointsA, codepointsB), nodeUTF16.execute(a, b));
+                } else if (encodingA == TruffleString.Encoding.UTF_32) {
+                    Assert.assertEquals(compare(codepointsA, codepointsB), nodeUTF32.execute(a, b));
+                }
             });
         });
+    }
+
+    private static int compare(byte[] a, byte[] b) {
+        for (int i = 0; i < Math.min(a.length, b.length); i++) {
+            int cmp = Byte.toUnsignedInt(a[i]) - Byte.toUnsignedInt(b[i]);
+            if (cmp != 0) {
+                return cmp > 0 ? 1 : -1;
+            }
+        }
+        return compareTail(a.length, b.length);
     }
 
     private static int compare(int[] a, int[] b) {
@@ -80,15 +99,21 @@ public class TStringCompareTest extends TStringTestBase {
                 return cmp > 0 ? 1 : -1;
             }
         }
-        if (a.length == b.length) {
+        return compareTail(a.length, b.length);
+    }
+
+    private static int compareTail(int lengthA, int lengthB) {
+        if (lengthA == lengthB) {
             return 0;
         } else {
-            return a.length < b.length ? -1 : 1;
+            return lengthA < lengthB ? -1 : 1;
         }
     }
 
     @Test
     public void testNull() throws Exception {
         checkNullSSE((s1, s2, e) -> node.execute(s1, s2, e));
+        checkNullSS((s1, s2) -> nodeUTF16.execute(s1, s2));
+        checkNullSS((s1, s2) -> nodeUTF32.execute(s1, s2));
     }
 }

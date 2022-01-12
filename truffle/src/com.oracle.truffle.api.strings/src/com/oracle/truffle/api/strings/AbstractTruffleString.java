@@ -766,13 +766,33 @@ public abstract class AbstractTruffleString {
     }
 
     /**
-     * Shorthand for calling the uncached version of {@link TruffleString.CompareNode}.
+     * Shorthand for calling the uncached version of {@link TruffleString.CompareBytesNode}.
      *
      * @since 22.1
      */
     @TruffleBoundary
-    public final int compareUncached(AbstractTruffleString b, TruffleString.Encoding expectedEncoding) {
-        return TruffleString.CompareNode.getUncached().execute(this, b, expectedEncoding);
+    public final int compareBytesUncached(AbstractTruffleString b, TruffleString.Encoding expectedEncoding) {
+        return TruffleString.CompareBytesNode.getUncached().execute(this, b, expectedEncoding);
+    }
+
+    /**
+     * Shorthand for calling the uncached version of {@link TruffleString.CompareCharsUTF16Node}.
+     *
+     * @since 22.1
+     */
+    @TruffleBoundary
+    public final int compareCharsUTF16Uncached(AbstractTruffleString b) {
+        return TruffleString.CompareCharsUTF16Node.getUncached().execute(this, b);
+    }
+
+    /**
+     * Shorthand for calling the uncached version of {@link TruffleString.CompareIntsUTF32Node}.
+     *
+     * @since 22.1
+     */
+    @TruffleBoundary
+    public final int compareIntsUTF32Uncached(AbstractTruffleString b) {
+        return TruffleString.CompareIntsUTF32Node.getUncached().execute(this, b);
     }
 
     /**

@@ -3605,7 +3605,7 @@ public final class TruffleString extends AbstractTruffleString {
     }
 
     /**
-     * Node to compare two strings. See
+     * Node to compare two strings byte-by-byte. See
      * {@link #execute(AbstractTruffleString, AbstractTruffleString, TruffleString.Encoding)} for
      * details.
      *
@@ -3614,31 +3614,30 @@ public final class TruffleString extends AbstractTruffleString {
     @ImportStatic(TStringGuards.class)
     @GeneratePackagePrivate
     @GenerateUncached
-    public abstract static class CompareNode extends Node {
+    public abstract static class CompareBytesNode extends Node {
 
-        CompareNode() {
+        CompareBytesNode() {
         }
 
         /**
-         * Compare strings {@code a} and {@code b} byte-by-byte. Exceptions: UTF-16 strings are
-         * compared char-by-char, and UTF-32 strings are compared int-by-int. Returns zero if
-         * {@code a} and {@code b} are equal. If {@code a} is equal to {@code b} up to its length,
-         * but {@code b} is longer than {@code a}, a negative value is returned. In the inverse
-         * case, a positive value is returned. Otherwise, elements {@code a[i]} and {@code b[i]} at
-         * a byte index {@code i} are different. If {@code a[i]} is greater than {@code b[i]}, a
-         * positive value is returned, otherwise a negative value is returned.
+         * Compare strings {@code a} and {@code b} byte-by-byte. Returns zero if {@code a} and
+         * {@code b} are equal. If {@code a} is equal to {@code b} up to its length, but {@code b}
+         * is longer than {@code a}, a negative value is returned. In the inverse case, a positive
+         * value is returned. Otherwise, elements {@code a[i]} and {@code b[i]} at a byte index
+         * {@code i} are different. If {@code a[i]} is greater than {@code b[i]}, a positive value
+         * is returned, otherwise a negative value is returned.
          *
          * @since 22.1
          */
         public abstract int execute(AbstractTruffleString a, AbstractTruffleString b, Encoding expectedEncoding);
 
         @Specialization
-        static int compare(AbstractTruffleString a, AbstractTruffleString b, Encoding expectedEncoding,
+        int compare(AbstractTruffleString a, AbstractTruffleString b, Encoding expectedEncoding,
                         @Cached ToIndexableNode toIndexableNodeA,
                         @Cached ToIndexableNode toIndexableNodeB,
                         @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeANode,
                         @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeBNode,
-                        @Cached TStringOpsNodes.RawMemCmpNode cmp) {
+                        @Cached TStringOpsNodes.RawMemCmpBytesNode cmp) {
             nullCheck(expectedEncoding);
             if (a == b) {
                 return 0;
@@ -3651,21 +3650,145 @@ public final class TruffleString extends AbstractTruffleString {
         }
 
         /**
-         * Create a new {@link CompareNode}.
+         * Create a new {@link CompareBytesNode}.
          *
          * @since 22.1
          */
-        public static CompareNode create() {
-            return TruffleStringFactory.CompareNodeGen.create();
+        public static CompareBytesNode create() {
+            return TruffleStringFactory.CompareBytesNodeGen.create();
         }
 
         /**
-         * Get the uncached version of {@link CompareNode}.
+         * Get the uncached version of {@link CompareBytesNode}.
          *
          * @since 22.1
          */
-        public static CompareNode getUncached() {
-            return TruffleStringFactory.CompareNodeGen.getUncached();
+        public static CompareBytesNode getUncached() {
+            return TruffleStringFactory.CompareBytesNodeGen.getUncached();
+        }
+    }
+
+    /**
+     * Node to compare two UTF-16 strings. See
+     * {@link #execute(AbstractTruffleString, AbstractTruffleString)} for details.
+     *
+     * @since 22.1
+     */
+    @ImportStatic(TStringGuards.class)
+    @GeneratePackagePrivate
+    @GenerateUncached
+    public abstract static class CompareCharsUTF16Node extends Node {
+
+        CompareCharsUTF16Node() {
+        }
+
+        /**
+         * Compare UTF-16 strings {@code a} and {@code b} char-by-char. Returns zero if {@code a}
+         * and {@code b} are equal. If {@code a} is equal to {@code b} up to its length, but
+         * {@code b} is longer than {@code a}, a negative value is returned. In the inverse case, a
+         * positive value is returned. Otherwise, elements {@code a[i]} and {@code b[i]} at an index
+         * {@code i} are different. If {@code a[i]} is greater than {@code b[i]}, a positive value
+         * is returned, otherwise a negative value is returned.
+         *
+         * @since 22.1
+         */
+        public abstract int execute(AbstractTruffleString a, AbstractTruffleString b);
+
+        @Specialization
+        static int compare(AbstractTruffleString a, AbstractTruffleString b,
+                        @Cached ToIndexableNode toIndexableNodeA,
+                        @Cached ToIndexableNode toIndexableNodeB,
+                        @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeANode,
+                        @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeBNode,
+                        @Cached TStringOpsNodes.RawMemCmpNode cmp) {
+            if (a == b) {
+                return 0;
+            }
+            final int codeRangeA = getCodeRangeANode.execute(a);
+            final int codeRangeB = getCodeRangeBNode.execute(b);
+            a.looseCheckEncoding(Encoding.UTF_16, codeRangeA);
+            b.looseCheckEncoding(Encoding.UTF_16, codeRangeB);
+            return cmp.execute(a, toIndexableNodeA.execute(a, a.data()), b, toIndexableNodeB.execute(b, b.data()));
+        }
+
+        /**
+         * Create a new {@link CompareCharsUTF16Node}.
+         *
+         * @since 22.1
+         */
+        public static CompareCharsUTF16Node create() {
+            return TruffleStringFactory.CompareCharsUTF16NodeGen.create();
+        }
+
+        /**
+         * Get the uncached version of {@link CompareCharsUTF16Node}.
+         *
+         * @since 22.1
+         */
+        public static CompareCharsUTF16Node getUncached() {
+            return TruffleStringFactory.CompareCharsUTF16NodeGen.getUncached();
+        }
+    }
+
+    /**
+     * Node to compare two UTF-32 strings. See
+     * {@link #execute(AbstractTruffleString, AbstractTruffleString)} for details.
+     *
+     * @since 22.1
+     */
+    @ImportStatic(TStringGuards.class)
+    @GeneratePackagePrivate
+    @GenerateUncached
+    public abstract static class CompareIntsUTF32Node extends Node {
+
+        CompareIntsUTF32Node() {
+        }
+
+        /**
+         * Compare UTF-32 strings {@code a} and {@code b} int-by-int. Returns zero if {@code a} and
+         * {@code b} are equal. If {@code a} is equal to {@code b} up to its length, but {@code b}
+         * is longer than {@code a}, a negative value is returned. In the inverse case, a positive
+         * value is returned. Otherwise, elements {@code a[i]} and {@code b[i]} at an index
+         * {@code i} are different. If {@code a[i]} is greater than {@code b[i]}, a positive value
+         * is returned, otherwise a negative value is returned.
+         *
+         * @since 22.1
+         */
+        public abstract int execute(AbstractTruffleString a, AbstractTruffleString b);
+
+        @Specialization
+        static int compare(AbstractTruffleString a, AbstractTruffleString b,
+                        @Cached ToIndexableNode toIndexableNodeA,
+                        @Cached ToIndexableNode toIndexableNodeB,
+                        @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeANode,
+                        @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeBNode,
+                        @Cached TStringOpsNodes.RawMemCmpNode cmp) {
+            if (a == b) {
+                return 0;
+            }
+            final int codeRangeA = getCodeRangeANode.execute(a);
+            final int codeRangeB = getCodeRangeBNode.execute(b);
+            a.looseCheckEncoding(Encoding.UTF_32, codeRangeA);
+            b.looseCheckEncoding(Encoding.UTF_32, codeRangeB);
+            return cmp.execute(a, toIndexableNodeA.execute(a, a.data()), b, toIndexableNodeB.execute(b, b.data()));
+        }
+
+        /**
+         * Create a new {@link CompareIntsUTF32Node}.
+         *
+         * @since 22.1
+         */
+        public static CompareIntsUTF32Node create() {
+            return TruffleStringFactory.CompareIntsUTF32NodeGen.create();
+        }
+
+        /**
+         * Get the uncached version of {@link CompareIntsUTF32Node}.
+         *
+         * @since 22.1
+         */
+        public static CompareIntsUTF32Node getUncached() {
+            return TruffleStringFactory.CompareIntsUTF32NodeGen.getUncached();
         }
     }
 
