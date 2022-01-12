@@ -34,7 +34,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import org.graalvm.compiler.bytecode.BytecodeDisassembler;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.DisassemblerProvider;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
@@ -46,7 +45,6 @@ import org.graalvm.compiler.debug.DebugDumpScope;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.PathUtilities;
 import org.graalvm.compiler.debug.TTY;
-import org.graalvm.compiler.java.BciBlockMapping;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.debug.IntervalDumper;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
@@ -140,14 +138,8 @@ public class CFGPrinterObserver implements DebugDumpHandler {
 
     public void dumpSandboxed(DebugContext debug, Object object, boolean forced, String message) {
         OptionValues options = debug.getOptions();
-        if (object instanceof BciBlockMapping) {
-            if (!PrintCFG.getValue(options) && !forced) {
-                return;
-            }
-        } else {
-            if (!PrintBackendCFG.getValue(options) && !forced) {
-                return;
-            }
+        if (!PrintBackendCFG.getValue(options) && !PrintCFG.getValue(options) && !forced) {
+            return;
         }
         dumpSandboxed(debug, object, message);
     }
@@ -192,15 +184,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
                 cfgPrinter.target = codeCache.getTarget();
             }
 
-            if (object instanceof BciBlockMapping) {
-                BciBlockMapping blockMap = (BciBlockMapping) object;
-                if (blockMap.getBlocks() != null) {
-                    cfgPrinter.printCFG(message, blockMap);
-                    if (blockMap.code.getCode() != null) {
-                        cfgPrinter.printBytecodes(new BytecodeDisassembler(false).disassemble(blockMap.code));
-                    }
-                }
-            } else if (object instanceof LIR) {
+            if (object instanceof LIR) {
                 // Currently no node printing for lir
                 cfgPrinter.printCFG(message, cfgPrinter.lir.codeEmittingOrder());
                 lastLIR = (LIR) object;

@@ -139,7 +139,7 @@ public class DebugOptions {
     @Option(help = "Print the name of each dump file path as it's created.")
     public static final OptionKey<Boolean> ShowDumpFiles = new OptionKey<>(false);
 
-    @Option(help = "Enable dumping of BciBlockMappings to C1Visualizer.", type = OptionType.Debug)
+    @Option(help = "Alias for PrintBackendCFG.", type = OptionType.Debug)
     public static final OptionKey<Boolean> PrintCFG = new OptionKey<>(false);
     @Option(help = "Enable dumping scheduled HIR, LIR, register allocation and code generation info to the C1Visualizer.", type = OptionType.Debug)
     public static final OptionKey<Boolean> PrintBackendCFG = new OptionKey<>(false);
