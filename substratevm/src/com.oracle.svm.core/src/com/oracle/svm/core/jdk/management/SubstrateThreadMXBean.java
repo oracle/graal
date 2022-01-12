@@ -26,6 +26,8 @@ package com.oracle.svm.core.jdk.management;
 
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadInfo;
+import java.util.Arrays;
+import java.util.Objects;
 
 import javax.management.ObjectName;
 
@@ -35,11 +37,12 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicInteger;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicLong;
+import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.util.VMError;
 
 import sun.management.Util;
 
-final class SubstrateThreadMXBean implements com.sun.management.ThreadMXBean {
+public final class SubstrateThreadMXBean implements com.sun.management.ThreadMXBean {
 
     private static final String MSG = "ThreadMXBean methods";
 
@@ -48,8 +51,15 @@ final class SubstrateThreadMXBean implements com.sun.management.ThreadMXBean {
     private final AtomicInteger threadCount = new AtomicInteger(0);
     private final AtomicInteger daemonThreadCount = new AtomicInteger(0);
 
+    private boolean allocatedMemoryEnabled;
+
     @Platforms(Platform.HOSTED_ONLY.class)
     SubstrateThreadMXBean() {
+        /*
+         * We always track the amount of memory that is allocated by each thread, so this MX bean
+         * feature can be on by default.
+         */
+        this.allocatedMemoryEnabled = true;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -86,12 +96,12 @@ final class SubstrateThreadMXBean implements com.sun.management.ThreadMXBean {
 
     @Override
     public boolean isThreadAllocatedMemoryEnabled() {
-        return false;
+        return allocatedMemoryEnabled;
     }
 
     @Override
     public boolean isThreadAllocatedMemorySupported() {
-        return false;
+        return true;
     }
 
     @Override
@@ -231,13 +241,48 @@ final class SubstrateThreadMXBean implements com.sun.management.ThreadMXBean {
     }
 
     @Override
-    public long getThreadAllocatedBytes(long arg0) {
-        throw VMError.unsupportedFeature(MSG);
+    public long getThreadAllocatedBytes(long id) {
+        boolean valid = verifyThreadAllocatedMemory(id);
+        if (!valid) {
+            return -1;
+        }
+
+        return JavaThreads.getThreadAllocatedBytes(id);
     }
 
     @Override
-    public long[] getThreadAllocatedBytes(long[] arg0) {
-        throw VMError.unsupportedFeature(MSG);
+    public long[] getThreadAllocatedBytes(long[] ids) {
+        Objects.requireNonNull(ids);
+        boolean valid = verifyThreadAllocatedMemory(ids);
+
+        long[] sizes = new long[ids.length];
+        Arrays.fill(sizes, -1);
+        if (valid) {
+            JavaThreads.getThreadAllocatedBytes(ids, sizes);
+        }
+        return sizes;
+    }
+
+    private boolean verifyThreadAllocatedMemory(long id) {
+        verifyThreadId(id);
+        return isThreadAllocatedMemoryEnabled();
+    }
+
+    private boolean verifyThreadAllocatedMemory(long[] ids) {
+        verifyThreadIds(ids);
+        return isThreadAllocatedMemoryEnabled();
+    }
+
+    private static void verifyThreadId(long id) {
+        if (id <= 0) {
+            throw new IllegalArgumentException("Invalid thread ID parameter: " + id);
+        }
+    }
+
+    private static void verifyThreadIds(long[] ids) {
+        for (int i = 0; i < ids.length; i++) {
+            verifyThreadId(ids[i]);
+        }
     }
 
     @Override
@@ -251,7 +296,7 @@ final class SubstrateThreadMXBean implements com.sun.management.ThreadMXBean {
     }
 
     @Override
-    public void setThreadAllocatedMemoryEnabled(boolean arg0) {
-        throw VMError.unsupportedFeature(MSG);
+    public void setThreadAllocatedMemoryEnabled(boolean value) {
+        allocatedMemoryEnabled = value;
     }
 }
