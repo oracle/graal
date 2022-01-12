@@ -129,6 +129,7 @@ fastr_linux: ${fastr} {
     PKG_LDFLAGS_OVERRIDE : "-L/cm/shared/apps/zlib/1.2.11/lib -L/cm/shared/apps/bzip2/1.0.6/lib -L/cm/shared/apps/xz/5.2.2/lib -L/cm/shared/apps/pcre2/10.37/lib -L/cm/shared/apps/curl/7.50.1/lib -L/cm/shared/apps/gcc/4.8.5/lib64"
     FASTR_FC: "/cm/shared/apps/gcc/4.8.5/bin/gfortran"
     FASTR_CC: "/cm/shared/apps/gcc/4.8.5/bin/gcc"
+    GNUR_HOME_BINARY: "/cm/shared/apps/gnur/4.0.3_gcc4.8.5_pcre2-10.37/R-4.0.3"
   }
   downloads: {
     BLAS_LAPACK_DIR: { name: "fastr-403-blas-lapack-gcc", version: "4.8.5", platformspecific: true },
