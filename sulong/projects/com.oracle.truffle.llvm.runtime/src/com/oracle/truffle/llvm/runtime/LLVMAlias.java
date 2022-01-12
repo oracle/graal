@@ -29,33 +29,23 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
-import org.graalvm.collections.EconomicSet;
-import org.graalvm.collections.Equivalence;
 
 public class LLVMAlias extends LLVMSymbol {
 
-    @CompilationFinal private LLVMSymbol target;
+    private final LLVMSymbol target;
 
     public LLVMAlias(String name, LLVMSymbol target, boolean exported) {
         super(name, IDGenerater.INVALID_ID, LLVMSymbol.INVALID_INDEX, exported, false);
-        this.target = target;
-        setTarget();
+        if (target instanceof LLVMAlias) {
+            this.target = ((LLVMAlias) target).getTarget();
+        } else {
+            this.target = target;
+        }
     }
 
     public LLVMSymbol getTarget() {
         return target;
-    }
-
-    public void setTarget() {
-        if (target instanceof LLVMAlias) {
-            EconomicSet<LLVMAlias> visited = EconomicSet.create(Equivalence.IDENTITY);
-            LLVMSymbol result = unwindAlias((LLVMAlias) target, visited);
-            assert !result.isAlias();
-            this.target = result;
-        }
     }
 
     @Override
@@ -86,17 +76,6 @@ public class LLVMAlias extends LLVMSymbol {
     @Override
     public String toString() {
         return super.getName() + " -> " + target.toString();
-    }
-
-    private static LLVMSymbol unwindAlias(LLVMAlias alias, EconomicSet<LLVMAlias> visited) {
-        if (visited.contains(alias)) {
-            throw new LLVMLinkerException("Found a cycle between the following aliases: " + visited.toString());
-        }
-        visited.add(alias);
-        if (alias.getTarget() instanceof LLVMAlias) {
-            return unwindAlias((LLVMAlias) alias.getTarget(), visited);
-        }
-        return alias.getTarget();
     }
 
     public static LLVMSymbol resolveAlias(LLVMSymbol symbol) {
