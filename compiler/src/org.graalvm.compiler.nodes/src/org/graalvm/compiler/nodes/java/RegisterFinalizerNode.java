@@ -101,6 +101,12 @@ public class RegisterFinalizerNode extends AbstractStateSplit implements Canonic
     public static boolean mayHaveFinalizer(ValueNode object, MetaAccessProvider metaAccess, Assumptions assumptions) {
         ObjectStamp objectStamp = (ObjectStamp) object.stamp(NodeView.DEFAULT);
         ResolvedJavaType objectType = StampTool.typeOrNull(objectStamp, metaAccess);
+        if (objectType == null) {
+            /* For native image we need to return false because finalizers are not supported at all. This is currently
+             * achieved through objectType.hasFinalizableSubclass which always returns false. So when objectType == null
+             * we need to replace it with java.lang.Object and do the check for hasFinalizableSubclass. */
+            objectType = metaAccess.lookupJavaType(Object.class);
+        }
         if (objectStamp.isExactType()) {
             return objectType.hasFinalizer();
         }
