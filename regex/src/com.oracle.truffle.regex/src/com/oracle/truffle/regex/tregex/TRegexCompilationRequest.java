@@ -192,10 +192,10 @@ public final class TRegexCompilationRequest {
             if (pureNFA.getASTSubtree(lookAround).asLookAroundAssertion().isLiteral()) {
                 lookAroundExecutors[i] = new TRegexLiteralLookAroundExecutorNode(pureNFA.getASTSubtree(lookAround).asLookAroundAssertion(), compilationBuffer);
             } else {
-                lookAroundExecutors[i] = new TRegexBacktrackingNFAExecutorNode(pureNFA, lookAround, lookAroundExecutors, compilationBuffer);
+                lookAroundExecutors[i] = new TRegexBacktrackingNFAExecutorNode(pureNFA, lookAround, lookAroundExecutors, false, compilationBuffer);
             }
         }
-        return new TRegexBacktrackingNFAExecutorNode(pureNFA, pureNFA.getRoot(), lookAroundExecutors, compilationBuffer);
+        return new TRegexBacktrackingNFAExecutorNode(pureNFA, pureNFA.getRoot(), lookAroundExecutors, ast.getOptions().isMustAdvance(), compilationBuffer);
     }
 
     @TruffleBoundary

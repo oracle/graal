@@ -125,7 +125,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
     @Child InputIndexOfStringNode indexOfNode;
     private final CharMatcher loopbackInitialStateMatcher;
 
-    public TRegexBacktrackingNFAExecutorNode(PureNFAMap nfaMap, PureNFA nfa, TRegexExecutorNode[] lookAroundExecutors, CompilationBuffer compilationBuffer) {
+    public TRegexBacktrackingNFAExecutorNode(PureNFAMap nfaMap, PureNFA nfa, TRegexExecutorNode[] lookAroundExecutors, boolean mustAdvance, CompilationBuffer compilationBuffer) {
         RegexASTSubtreeRootNode subtree = nfaMap.getASTSubtree(nfa);
         this.nfa = nfa;
         this.writesCaptureGroups = subtree.hasCaptureGroups();
@@ -137,7 +137,7 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexExecutorNode 
         this.transitionMatchesStepByStep = nfaMap.getAst().getOptions().getFlavor().emptyChecksMonitorCaptureGroups();
         this.trackLastGroup = nfaMap.getAst().getOptions().getFlavor().usesLastGroupResultField();
         this.returnsFirstGroup = !this.forward && nfaMap.getAst().getOptions().getFlavor().lookBehindsRunLeftToRight();
-        this.mustAdvance = nfaMap.getAst().getOptions().isMustAdvance();
+        this.mustAdvance = mustAdvance;
         this.loneSurrogates = nfaMap.getAst().getProperties().hasLoneSurrogates();
         this.nQuantifiers = nfaMap.getAst().getQuantifierCount().getCount();
         this.nZeroWidthQuantifiers = nfaMap.getAst().getZeroWidthQuantifiables().size();
