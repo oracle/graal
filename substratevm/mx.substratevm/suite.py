@@ -3,7 +3,7 @@ suite = {
     "mxversion": "5.310.0",
     "name": "substratevm",
     "version" : "22.0.0",
-    "release" : False,
+    "release" : True,
     "url" : "https://github.com/oracle/graal/tree/master/substratevm",
 
     "groupId" : "org.graalvm.nativeimage",
