@@ -42,7 +42,6 @@ import org.graalvm.compiler.core.match.ComplexMatchValue;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.graph.Position;
-import org.graalvm.compiler.java.BciBlockMapping;
 import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.debug.IntervalDumper;
@@ -63,7 +62,6 @@ import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 
 import jdk.vm.ci.code.DebugInfo;
-import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Value;
@@ -73,7 +71,6 @@ import jdk.vm.ci.meta.Value;
  */
 class CFGPrinter extends CompilationPrinter {
 
-    protected TargetDescription target;
     protected LIR lir;
     protected NodeLIRBuilder nodeLirGenerator;
     protected ControlFlowGraph cfg;
@@ -88,59 +85,6 @@ class CFGPrinter extends CompilationPrinter {
      */
     CFGPrinter(OutputStream out) {
         super(out);
-    }
-
-    /**
-     * Prints the control flow graph denoted by a given block map.
-     *
-     * @param label A label describing the compilation phase that produced the control flow graph.
-     * @param blockMap A data structure describing the blocks in a method and how they are
-     *            connected.
-     */
-    public void printCFG(String label, BciBlockMapping blockMap) {
-        begin("cfg");
-        out.print("name \"").print(label).println('"');
-        for (BciBlockMapping.BciBlock block : blockMap.getBlocks()) {
-            begin("block");
-            printBlock(block);
-            end("block");
-        }
-        end("cfg");
-    }
-
-    private void printBlock(BciBlockMapping.BciBlock block) {
-        out.print("name \"B").print(block.getStartBci()).println('"');
-        out.print("from_bci ").println(block.getStartBci());
-        out.print("to_bci ").println(block.getEndBci());
-
-        out.println("predecessors ");
-
-        out.print("successors ");
-        for (BciBlockMapping.BciBlock succ : block.getSuccessors()) {
-            if (!succ.isExceptionEntry()) {
-                out.print("\"B").print(succ.getStartBci()).print("\" ");
-            }
-        }
-        out.println();
-
-        out.print("xhandlers");
-        for (BciBlockMapping.BciBlock succ : block.getSuccessors()) {
-            if (succ.isExceptionEntry()) {
-                out.print("\"B").print(succ.getStartBci()).print("\" ");
-            }
-        }
-        out.println();
-
-        out.print("flags ");
-        if (block.isExceptionEntry()) {
-            out.print("\"ex\" ");
-        }
-        if (block.isLoopHeader()) {
-            out.print("\"plh\" ");
-        }
-        out.println();
-
-        out.print("loop_depth ").println(block.getLoops().cardinality());
     }
 
     private NodeBitMap printedNodes;

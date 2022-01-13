@@ -25,7 +25,6 @@
 package org.graalvm.compiler.printer;
 
 import static org.graalvm.compiler.debug.DebugOptions.PrintBackendCFG;
-import static org.graalvm.compiler.debug.DebugOptions.PrintCFG;
 
 import java.io.BufferedOutputStream;
 import java.io.IOException;
@@ -138,7 +137,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
 
     public void dumpSandboxed(DebugContext debug, Object object, boolean forced, String message) {
         OptionValues options = debug.getOptions();
-        if (!PrintBackendCFG.getValue(options) && !PrintCFG.getValue(options) && !forced) {
+        if (!PrintBackendCFG.getValue(options) && !forced) {
             return;
         }
         dumpSandboxed(debug, object, message);
@@ -172,18 +171,11 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             }
             cfgPrinter.nodeLirGenerator = debug.contextLookup(NodeLIRBuilder.class);
             cfgPrinter.res = debug.contextLookup(LIRGenerationResult.class);
-            if (cfgPrinter.nodeLirGenerator != null) {
-                cfgPrinter.target = cfgPrinter.nodeLirGenerator.getLIRGeneratorTool().target();
-            }
             if (cfgPrinter.lir != null && cfgPrinter.lir.getControlFlowGraph() instanceof ControlFlowGraph) {
                 cfgPrinter.cfg = (ControlFlowGraph) cfgPrinter.lir.getControlFlowGraph();
             }
 
             CodeCacheProvider codeCache = debug.contextLookup(CodeCacheProvider.class);
-            if (codeCache != null) {
-                cfgPrinter.target = codeCache.getTarget();
-            }
-
             if (object instanceof LIR) {
                 // Currently no node printing for lir
                 cfgPrinter.printCFG(message, cfgPrinter.lir.codeEmittingOrder());
@@ -215,7 +207,6 @@ public class CFGPrinterObserver implements DebugDumpHandler {
                 cfgPrinter.printCFG(message, (AbstractBlockBase<?>[]) object);
             }
         } finally {
-            cfgPrinter.target = null;
             cfgPrinter.lir = null;
             cfgPrinter.res = null;
             cfgPrinter.nodeLirGenerator = null;
@@ -270,12 +261,5 @@ public class CFGPrinterObserver implements DebugDumpHandler {
             curMethod = null;
             curCompilation = null;
         }
-    }
-
-    public String getDumpPath() {
-        if (cfgFile != null) {
-            return PathUtilities.getAbsolutePath(cfgFile);
-        }
-        return null;
     }
 }
