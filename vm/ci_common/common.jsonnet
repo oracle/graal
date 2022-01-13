@@ -276,6 +276,18 @@ local devkits = common_json.devkits;
     targets+: ['daily'],
   },
 
+  daily_vm_windows: self.vm_windows + {
+    targets+: ['daily'],
+  },
+
+  daily_vm_windows_jdk11: self.vm_windows_jdk11 + {
+    targets+: ['daily'],
+  },
+
+  daily_vm_windows_jdk17: self.vm_windows_jdk17 + {
+    targets+: ['daily'],
+  },
+
   weekly_vm_linux_amd64: self.vm_linux_amd64 + {
     targets+: ['weekly'],
   },
@@ -285,6 +297,18 @@ local devkits = common_json.devkits;
   },
 
   weekly_vm_darwin: self.vm_darwin + {
+    targets+: ['weekly'],
+  },
+
+  weekly_vm_windows: self.vm_windows + {
+    targets+: ['weekly'],
+  },
+
+  weekly_vm_windows_jdk11: self.vm_windows_jdk11 + {
+    targets+: ['weekly'],
+  },
+
+  weekly_vm_windows_jdk17: self.vm_windows_jdk17 + {
     targets+: ['weekly'],
   },
 
