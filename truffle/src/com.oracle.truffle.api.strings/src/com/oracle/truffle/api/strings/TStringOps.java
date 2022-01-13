@@ -981,58 +981,100 @@ final class TStringOps {
         return runCalcStringAttributesUTF32(location, stubArray, stubOffset, length, isNative);
     }
 
+    /**
+     * Intrinsic candidate.
+     */
     private static int runReadS0Managed(Object array, long byteOffset) {
         return uInt(TStringUnsafe.getByteManaged(array, byteOffset));
     }
 
+    /**
+     * Intrinsic candidate.
+     */
     private static int runReadS0Native(long array, long byteOffset) {
         return uInt(TStringUnsafe.getByteNative(array, byteOffset));
     }
 
+    /**
+     * Intrinsic candidate.
+     */
     private static int runReadS1Managed(Object array, long byteOffset) {
         return TStringUnsafe.getCharManaged(array, byteOffset);
     }
 
+    /**
+     * Intrinsic candidate.
+     */
     private static int runReadS1Native(long array, long byteOffset) {
         return TStringUnsafe.getCharNative(array, byteOffset);
     }
 
+    /**
+     * Intrinsic candidate.
+     */
     private static int runReadS2Managed(Object array, long byteOffset) {
         return TStringUnsafe.getIntManaged(array, byteOffset);
     }
 
+    /**
+     * Intrinsic candidate.
+     */
     private static int runReadS2Native(long array, long byteOffset) {
         return TStringUnsafe.getIntNative(array, byteOffset);
     }
 
+    /**
+     * Intrinsic candidate.
+     */
     private static long runReadS3Managed(Object array, long byteOffset) {
         return TStringUnsafe.getLongManaged(array, byteOffset);
     }
 
+    /**
+     * Intrinsic candidate.
+     */
     private static long runReadS3Native(long array) {
         return TStringUnsafe.getLongNative(array);
     }
 
+    /**
+     * Intrinsic candidate.
+     */
     private static void runWriteS0Managed(byte[] array, long byteOffset, byte value) {
         TStringUnsafe.putByteManaged(array, byteOffset, value);
     }
 
+    /**
+     * Intrinsic candidate.
+     */
     private static void runWriteS0Native(long array, long byteOffset, byte value) {
         TStringUnsafe.putByteNative(array, byteOffset, value);
     }
 
+    /**
+     * Intrinsic candidate.
+     */
     private static void runWriteS1Managed(byte[] array, long byteOffset, char value) {
         TStringUnsafe.putCharManaged(array, byteOffset, value);
     }
 
+    /**
+     * Intrinsic candidate.
+     */
     private static void runWriteS1Native(long array, long byteOffset, char value) {
         TStringUnsafe.putCharNative(array, byteOffset, value);
     }
 
+    /**
+     * Intrinsic candidate.
+     */
     private static void runWriteS2Managed(byte[] array, long byteOffset, int value) {
         TStringUnsafe.putIntManaged(array, byteOffset, value);
     }
 
+    /**
+     * Intrinsic candidate.
+     */
     private static void runWriteS2Native(long array, long byteOffset, int value) {
         TStringUnsafe.putIntNative(array, byteOffset, value);
     }
@@ -1076,22 +1118,37 @@ final class TStringOps {
         return -1;
     }
 
+    /**
+     * Intrinsic candidate.
+     */
     private static int runIndexOfAny1(Node location, Object array, long offset, int length, int stride, boolean isNative, int fromIndex, int v0) {
         return runIndexOfAnyInt(location, array, offset, length, stride, isNative, fromIndex, v0);
     }
 
+    /**
+     * Intrinsic candidate.
+     */
     private static int runIndexOfAny2(Node location, Object array, long offset, int length, int stride, boolean isNative, int fromIndex, int v0, int v1) {
         return runIndexOfAnyInt(location, array, offset, length, stride, isNative, fromIndex, v0, v1);
     }
 
+    /**
+     * Intrinsic candidate.
+     */
     private static int runIndexOfAny3(Node location, Object array, long offset, int length, int stride, boolean isNative, int fromIndex, int v0, int v1, int v2) {
         return runIndexOfAnyInt(location, array, offset, length, stride, isNative, fromIndex, v0, v1, v2);
     }
 
+    /**
+     * Intrinsic candidate.
+     */
     private static int runIndexOfAny4(Node location, Object array, long offset, int length, int stride, boolean isNative, int fromIndex, int v0, int v1, int v2, int v3) {
         return runIndexOfAnyInt(location, array, offset, length, stride, isNative, fromIndex, v0, v1, v2, v3);
     }
 
+    /**
+     * Intrinsic candidate.
+     */
     private static int runIndexOfWithOrMaskWithStride(Node location, Object array, long offset, int length, int stride, boolean isNative, int fromIndex, int needle, int mask) {
         for (int i = fromIndex; i < length; i++) {
             if ((readValue(array, offset, stride, i, isNative) | mask) == needle) {
@@ -1112,6 +1169,9 @@ final class TStringOps {
         return -1;
     }
 
+    /**
+     * Intrinsic candidate.
+     */
     private static int runIndexOf2ConsecutiveWithStride(Node location, Object array, long offset, int length, int stride, boolean isNative, int fromIndex, int c1, int c2) {
         for (int i = fromIndex + 1; i < length; i++) {
             if (readValue(array, offset, stride, i - 1, isNative) == c1 && readValue(array, offset, stride, i, isNative) == c2) {
@@ -1122,6 +1182,9 @@ final class TStringOps {
         return -1;
     }
 
+    /**
+     * Intrinsic candidate.
+     */
     private static int runIndexOf2ConsecutiveWithOrMaskWithStride(Node location, Object array, long offset, int length, int stride, boolean isNative, int fromIndex,
                     int c1, int c2, int mask1, int mask2) {
         for (int i = fromIndex + 1; i < length; i++) {
@@ -1144,6 +1207,9 @@ final class TStringOps {
         return -1;
     }
 
+    /**
+     * Intrinsic candidate.
+     */
     private static boolean runRegionEqualsWithStride(Node location,
                     Object arrayA, long offsetA, int strideA, boolean isNativeA,
                     Object arrayB, long offsetB, int strideB, boolean isNativeB, int length) {
@@ -1156,6 +1222,9 @@ final class TStringOps {
         return true;
     }
 
+    /**
+     * Intrinsic candidate.
+     */
     private static boolean runRegionEqualsWithOrMaskWithStride(Node location,
                     Object arrayA, long offsetA, int strideA, boolean isNativeA,
                     Object arrayB, long offsetB, int strideB, boolean isNativeB, byte[] arrayMask, int lengthCMP) {
@@ -1168,6 +1237,9 @@ final class TStringOps {
         return true;
     }
 
+    /**
+     * Intrinsic candidate.
+     */
     private static int runMemCmp(Node location,
                     Object arrayA, long offsetA, int strideA, boolean isNativeA,
                     Object arrayB, long offsetB, int strideB, boolean isNativeB, int lengthCMP) {
@@ -1217,6 +1289,9 @@ final class TStringOps {
         return hash;
     }
 
+    /**
+     * Intrinsic candidate.
+     */
     private static void runArrayCopy(Node location,
                     Object arrayA, long offsetA, int strideA, boolean isNativeA,
                     Object arrayB, long offsetB, int strideB, boolean isNativeB, int lengthCPY) {
@@ -1226,6 +1301,9 @@ final class TStringOps {
         }
     }
 
+    /**
+     * Intrinsic candidate.
+     */
     private static int runCalcStringAttributesLatin1(Node location, Object array, long offset, int length, boolean isNative) {
         for (int i = 0; i < length; i++) {
             if (readValueS0(array, offset, i, isNative) > 0x7f) {
@@ -1236,6 +1314,9 @@ final class TStringOps {
         return TSCodeRange.get7Bit();
     }
 
+    /**
+     * Intrinsic candidate.
+     */
     private static int runCalcStringAttributesBMP(Node location, Object array, long offset, int length, boolean isNative) {
         int codeRange = TSCodeRange.get7Bit();
         int i = 0;
@@ -1262,6 +1343,9 @@ final class TStringOps {
         return runCalcStringAttributesUTF32(location, array, offset, length, false);
     }
 
+    /**
+     * Intrinsic candidate.
+     */
     private static int runCalcStringAttributesUTF32(Node location, Object array, long offset, int length, boolean isNative) {
         int codeRange = TSCodeRange.get7Bit();
         int i = 0;
@@ -1337,6 +1421,9 @@ final class TStringOps {
     };
     private static final byte UTF8_ACCEPT = 0;
 
+    /**
+     * Intrinsic candidate.
+     */
     private static long runCalcStringAttributesUTF8(Node location, Object array, long offset, int length, boolean isNative, boolean assumeValid) {
         int codeRange = TSCodeRange.get7Bit();
         int i = 0;
@@ -1388,6 +1475,9 @@ final class TStringOps {
         return runCalcStringAttributesUTF16(location, array, offset, length, false, false);
     }
 
+    /**
+     * Intrinsic candidate.
+     */
     private static long runCalcStringAttributesUTF16(Node location, Object array, long offset, int length, boolean isNative, boolean assumeValid) {
         int codeRange = TSCodeRange.get7Bit();
         int i = 0;

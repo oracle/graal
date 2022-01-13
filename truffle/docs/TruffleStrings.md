@@ -283,6 +283,10 @@ Byte-equivalency between encodings is determined *with* string compaction on UTF
 UTF-16 string is byte-equivalent to ISO-8859-1, and if all of its characters are in the ASCII range (see `CodeRange`),
 it is also byte-equivalent to UTF-8.
 
+To check if your code is switching encodings properly, run your unit tests with the system
+variable `truffle.strings.debug-strict-encoding-checks=true`. This disables re-using string objects when switching
+encodings, and makes all encoding checks more strict.
+
 All TruffleString operations with more than one string parameter require the strings to be in a common encoding!
 
 ```java
