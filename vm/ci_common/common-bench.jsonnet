@@ -10,7 +10,7 @@ local vm_common = import '../ci_common/common.jsonnet';
     timelimit: '1:30:00',
   },
 
-  vm_bench_js_linux: vm.vm_java_17 + vm_common.svm_common_linux_amd64 + vm_common.sulong_linux + vm.custom_vm_linux + self.vm_bench_common + {
+  vm_bench_js_linux_amd64: vm.vm_java_17 + vm_common.svm_common_linux_amd64 + vm_common.sulong_linux + vm.custom_vm_linux + self.vm_bench_common + {
     cmd_base:: vm_common.mx_vm_common + ['--dynamicimports', 'js-benchmarks', 'benchmark', '--results-file', self.result_file],
     config_base:: ['--js-vm=graal-js', '--js-vm-config=default', '--jvm=graalvm-${VM_ENV}-java${BASE_JDK_SHORT_VERSION}'],
     cmd:: self.cmd_base + ['${BENCH_SUITE}:*', '--'] + self.config_base,
@@ -135,13 +135,13 @@ local vm_common = import '../ci_common/common.jsonnet';
 
   builds: [
     # We used to expand `${common_vm_linux}` here to work around some limitations in the version of pyhocon that we use in the CI
-    vm_common.common_vm_linux + self.vm_bench_js_linux + { environment+: { BENCH_SUITE: 'octane' },    name: 'bench-vm-' + vm.vm_setup.short_name + '-js-octane-linux'},
-    vm_common.common_vm_linux + self.vm_bench_js_linux + { environment+: { BENCH_SUITE: 'jetstream' }, name: 'bench-vm-' + vm.vm_setup.short_name + '-js-jetstream-linux'},
-    vm_common.common_vm_linux + self.vm_bench_js_linux + { environment+: { BENCH_SUITE: 'jetstream2'}, name: 'bench-vm-' + vm.vm_setup.short_name + '-js-jetstream2-linux'},
-    vm_common.common_vm_linux + self.vm_bench_js_linux + { environment+: { BENCH_SUITE: 'micro' },     name: 'bench-vm-' + vm.vm_setup.short_name + '-js-micro-linux'},
-    vm_common.common_vm_linux + self.vm_bench_js_linux + { environment+: { BENCH_SUITE: 'v8js' },      name: 'bench-vm-' + vm.vm_setup.short_name + '-js-v8js-linux'},
-    vm_common.common_vm_linux + self.vm_bench_js_linux + { environment+: { BENCH_SUITE: 'misc' },      name: 'bench-vm-' + vm.vm_setup.short_name + '-js-misc-linux'},
-    vm_common.common_vm_linux + self.vm_bench_js_linux + { environment+: { BENCH_SUITE: 'npm-regex' }, name: 'bench-vm-' + vm.vm_setup.short_name + '-js-npm-regex-linux'},
+    vm_common.common_vm_linux + self.vm_bench_js_linux_amd64 + { environment+: { BENCH_SUITE: 'octane' },    name: 'bench-vm-' + vm.vm_setup.short_name + '-js-octane-linux'},
+    vm_common.common_vm_linux + self.vm_bench_js_linux_amd64 + { environment+: { BENCH_SUITE: 'jetstream' }, name: 'bench-vm-' + vm.vm_setup.short_name + '-js-jetstream-linux'},
+    vm_common.common_vm_linux + self.vm_bench_js_linux_amd64 + { environment+: { BENCH_SUITE: 'jetstream2'}, name: 'bench-vm-' + vm.vm_setup.short_name + '-js-jetstream2-linux'},
+    vm_common.common_vm_linux + self.vm_bench_js_linux_amd64 + { environment+: { BENCH_SUITE: 'micro' },     name: 'bench-vm-' + vm.vm_setup.short_name + '-js-micro-linux'},
+    vm_common.common_vm_linux + self.vm_bench_js_linux_amd64 + { environment+: { BENCH_SUITE: 'v8js' },      name: 'bench-vm-' + vm.vm_setup.short_name + '-js-v8js-linux'},
+    vm_common.common_vm_linux + self.vm_bench_js_linux_amd64 + { environment+: { BENCH_SUITE: 'misc' },      name: 'bench-vm-' + vm.vm_setup.short_name + '-js-misc-linux'},
+    vm_common.common_vm_linux + self.vm_bench_js_linux_amd64 + { environment+: { BENCH_SUITE: 'npm-regex' }, name: 'bench-vm-' + vm.vm_setup.short_name + '-js-npm-regex-linux'},
 
     vm_common.common_vm_linux + self.vm_bench_polybench_linux_interpreter + {name: 'bench-vm-' + vm.vm_setup.short_name + '-polybench-linux'},
     vm_common.common_vm_linux + self.vm_bench_polybench_linux_compiler + {name: 'bench-vm-' + vm.vm_setup.short_name + '-polybench-compiler-linux'},
@@ -153,11 +153,11 @@ local vm_common = import '../ci_common/common.jsonnet';
     vm_common.common_vm_linux + self.vm_bench_polybench_nfi_linux_amd64 + vm.vm_java_11 + {name: 'bench-vm-' + vm.vm_setup.short_name + '-polybench-nfi-linux-amd64-java11'},
     vm_common.common_vm_linux + self.vm_bench_polybench_nfi_linux_amd64 + vm.vm_java_17 + {name: 'bench-vm-' + vm.vm_setup.short_name + '-polybench-nfi-linux-amd64-java17'},
 
-    vm_common.bench_daily_vm_linux + self.vm_bench_js_linux + {
+    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_js_linux_amd64 + {
       run+: [
-        vm_common.mx_vm_common + ['benchmark', '--results-file', $.vm_bench_js_linux.result_file, 'agentscript-graal-js:*', '--', '--jvm=graalvm-${VM_ENV}', '--jvm-config=jvm', '--js=graal-js', '--js-config=default'],
+        vm_common.mx_vm_common + ['benchmark', '--results-file', $.vm_bench_js_linux_amd64.result_file, 'agentscript-graal-js:*', '--', '--jvm=graalvm-${VM_ENV}', '--jvm-config=jvm', '--js=graal-js', '--js-config=default'],
         $.vm_bench_common.upload,
-        vm_common.mx_vm_common + ['benchmark', '--results-file', $.vm_bench_js_linux.result_file, 'agentscript-graal-js:*', '--', '--jvm=graalvm-${VM_ENV}', '--jvm-config=native', '--js=graal-js', '--js-config=default'],
+        vm_common.mx_vm_common + ['benchmark', '--results-file', $.vm_bench_js_linux_amd64.result_file, 'agentscript-graal-js:*', '--', '--jvm=graalvm-${VM_ENV}', '--jvm-config=native', '--js=graal-js', '--js-config=default'],
         $.vm_bench_common.upload,
       ],
       targets+: ['bench', 'daily'],

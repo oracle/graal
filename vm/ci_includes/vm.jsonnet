@@ -133,7 +133,7 @@ local jdks = common_json.jdks;
   },
 
   builds: vm_common.builds + vm_common_bench.builds + vm_bench.builds + vm_native.builds + [
-    self.vm_java_8 + vm_common.gate_vm_linux + self.vm_unittest + {
+    self.vm_java_8 + vm_common.gate_vm_linux_amd64 + self.vm_unittest + {
       run: [
         ['mx', 'build'],
         ['mx', 'unittest', '--suite', 'vm'],
@@ -147,7 +147,7 @@ local jdks = common_json.jdks;
       ],
       name: 'gate-vm-unittest-windows',
     },
-    self.vm_java_11 + vm_common.gate_vm_linux + vm_common.sulong_linux + {
+    self.vm_java_11 + vm_common.gate_vm_linux_amd64 + vm_common.sulong_linux + {
       environment+: {
         DYNAMIC_IMPORTS: '/tools,/substratevm,/sulong',
         NATIVE_IMAGES: 'polyglot',
@@ -158,14 +158,14 @@ local jdks = common_json.jdks;
       ],
       name: 'gate-vm-build-without-vcs',
     },
-    vm_common.linux_deploy + vm_common.gate_vm_linux + self.maven_base_8_11 + vm_common.sulong_linux + {
+    vm_common.linux_deploy + vm_common.gate_vm_linux_amd64 + self.maven_base_8_11 + vm_common.sulong_linux + {
       run: [
         $.maven_base_8_11.build,
         $.maven_base_8_11.deploy + ['--dry-run', 'lafo-maven'],
       ],
       name: 'gate-vm-maven-dry-run-linux-amd64',
     },
-    vm_common.linux_deploy + vm_common.gate_vm_linux + self.maven_base_8_11 + vm_common.sulong_linux + {
+    vm_common.linux_deploy + vm_common.gate_vm_linux_amd64 + self.maven_base_8_11 + vm_common.sulong_linux + {
       downloads+: {
         OPEN_JDK_11: common_json.jdks.openjdk11,
       },
@@ -180,7 +180,7 @@ local jdks = common_json.jdks;
       ],
       name: 'gate-vm-js-on-jdk11-maven-linux-amd64',
     },
-    vm_common.linux_deploy + vm_common.deploy_vm_linux + self.maven_base_8_11 + vm_common.sulong_linux + {
+    vm_common.linux_deploy + vm_common.deploy_vm_linux_amd64 + self.maven_base_8_11 + vm_common.sulong_linux + {
       run: [
         $.maven_base_8_11.build,
         $.maven_base_8_11.deploy + ['lafo-maven'],

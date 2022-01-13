@@ -3,7 +3,7 @@ local vm_common_bench = import '../ci_common/common-bench.jsonnet';
 
 {
   builds: [
-    vm_common.bench_vm_linux +  vm_common_bench.vm_bench_js_linux + {
+    vm_common.bench_vm_linux_amd64 +  vm_common_bench.vm_bench_js_linux_amd64 + {
       setup+: [
         ['set-export', 'VM_ENV', '${VM_ENV}-no_native'],
         vm_common.mx_vm_common + ['build'],

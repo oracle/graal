@@ -176,7 +176,7 @@ local devkits = common_json.devkits;
 
   graalpython_darwin: self.sulong_darwin + {},
 
-  vm_linux: self.common_vm_linux + graal_common.linux_amd64 + {
+  vm_linux_amd64: self.common_vm_linux + graal_common.linux_amd64 + {
     capabilities+: ['manycores', 'ram16gb', 'fast'],
   },
 
@@ -192,7 +192,7 @@ local devkits = common_json.devkits;
 
   vm_windows_jdk17: self.common_vm_windows_jdk17 + graal_common.windows_server_2016_amd64,
 
-  gate_vm_linux: self.vm_linux + {
+  gate_vm_linux_amd64: self.vm_linux_amd64 + {
     targets+: ['gate']
   },
 
@@ -208,7 +208,7 @@ local devkits = common_json.devkits;
     targets+: ['gate'],
   },
 
-  bench_vm_linux: self.vm_linux + {
+  bench_vm_linux_amd64: self.vm_linux_amd64 + {
     targets+: ['bench', 'post-merge'],
   },
 
@@ -216,7 +216,7 @@ local devkits = common_json.devkits;
     targets+: ['bench', 'post-merge'],
   },
 
-  bench_daily_vm_linux: self.vm_linux + {
+  bench_daily_vm_linux_amd64: self.vm_linux_amd64 + {
     targets+: ['bench', 'daily'],
   },
 
@@ -224,7 +224,7 @@ local devkits = common_json.devkits;
     targets+: ['bench', 'daily'],
   },
 
-  deploy_vm_linux: self.vm_linux + {
+  deploy_vm_linux_amd64: self.vm_linux_amd64 + {
     targets+: ['deploy', 'post-merge'],
   },
 
@@ -232,7 +232,7 @@ local devkits = common_json.devkits;
     targets+: ['deploy', 'post-merge'],
   },
 
-  deploy_daily_vm_linux: self.vm_linux + {
+  deploy_daily_vm_linux_amd64: self.vm_linux_amd64 + {
     targets+: ['deploy', 'daily'],
   },
 
@@ -256,7 +256,7 @@ local devkits = common_json.devkits;
     targets+: ['deploy', 'daily'],
   },
 
-  postmerge_vm_linux: self.vm_linux + {
+  postmerge_vm_linux_amd64: self.vm_linux_amd64 + {
     targets+: ['post-merge'],
   },
 
@@ -264,7 +264,11 @@ local devkits = common_json.devkits;
     targets+: ['post-merge'],
   },
 
-  daily_vm_linux: self.vm_linux + {
+  daily_vm_linux_amd64: self.vm_linux_amd64 + {
+    targets+: ['daily'],
+  },
+
+  daily_vm_linux_aarch64: self.vm_linux_aarch64 + {
     targets+: ['daily'],
   },
 
@@ -272,7 +276,11 @@ local devkits = common_json.devkits;
     targets+: ['daily'],
   },
 
-  weekly_vm_linux: self.vm_linux + {
+  weekly_vm_linux_amd64: self.vm_linux_amd64 + {
+    targets+: ['weekly'],
+  },
+
+  weekly_vm_linux_aarch64: self.vm_linux_aarch64 + {
     targets+: ['weekly'],
   },
 
@@ -280,7 +288,7 @@ local devkits = common_json.devkits;
     targets+: ['weekly'],
   },
 
-  ondemand_vm_linux: self.vm_linux + {
+  ondemand_vm_linux_amd64: self.vm_linux_amd64 + {
     targets+: ['ondemand'],
   },
 
@@ -332,7 +340,7 @@ local devkits = common_json.devkits;
       '--extra-image-builder-argument=-ea',
       'build'
   ],
-  libgraal_compiler: self.svm_common_linux_amd64 + vm.custom_vm_linux + self.vm_linux + {
+  libgraal_compiler: self.svm_common_linux_amd64 + vm.custom_vm_linux + self.vm_linux_amd64 + {
     run+: [
       # enable asserts in the JVM building the image and enable asserts in the resulting native image
       $.libgraal_build,
@@ -341,7 +349,7 @@ local devkits = common_json.devkits;
     timelimit: '1:00:00',
     targets: ['gate'],
   },
-  libgraal_truffle: self.svm_common_linux_amd64 + vm.custom_vm_linux + self.vm_linux + {
+  libgraal_truffle: self.svm_common_linux_amd64 + vm.custom_vm_linux + self.vm_linux_amd64 + {
     environment+: {
       # The Truffle TCK tests run as a part of Truffle TCK gate
       TEST_LIBGRAAL_EXCLUDE: 'com.oracle.truffle.tck.tests.*'
@@ -500,8 +508,8 @@ local devkits = common_json.devkits;
   #
 
   # Linux/AMD64
-  deploy_vm_java11_linux_amd64: vm.vm_linux_amd64_java_11 + self.full_vm_build_linux + self.linux_deploy + self.deploy_vm_linux + self.deploy_graalvm_linux_amd64 + {name: 'deploy-vm-java11-linux-amd64'},
-  deploy_vm_java17_linux_amd64: vm.vm_linux_amd64_java_17 + self.full_vm_build_linux + self.linux_deploy + self.deploy_vm_linux + self.deploy_graalvm_linux_amd64 + {name: 'deploy-vm-java17-linux-amd64'},
+  deploy_vm_java11_linux_amd64: vm.vm_linux_amd64_java_11 + self.full_vm_build_linux + self.linux_deploy + self.deploy_vm_linux_amd64 + self.deploy_graalvm_linux_amd64 + {name: 'deploy-vm-java11-linux-amd64'},
+  deploy_vm_java17_linux_amd64: vm.vm_linux_amd64_java_17 + self.full_vm_build_linux + self.linux_deploy + self.deploy_vm_linux_amd64 + self.deploy_graalvm_linux_amd64 + {name: 'deploy-vm-java17-linux-amd64'},
 
   # Linux/AARCH64
   deploy_vm_java11_linux_aarch64: vm.vm_java_11 + self.full_vm_build_linux_aarch64 + self.linux_deploy + self.deploy_daily_vm_linux_aarch64 + self.deploy_graalvm_linux_aarch64 + {name: 'deploy-vm-java11-linux-aarch64'},
@@ -523,7 +531,7 @@ local devkits = common_json.devkits;
   # Deploy the GraalVM Ruby image (GraalVM Base + ruby - js)
   #
 
-  deploy_vm_ruby_java11_linux_amd64: vm.vm_java_11 + self.ruby_vm_build_linux + self.linux_deploy + self.deploy_daily_vm_linux + self.deploy_graalvm_ruby + {name: 'deploy-vm-ruby-java11-linux-amd64'},
+  deploy_vm_ruby_java11_linux_amd64: vm.vm_java_11 + self.ruby_vm_build_linux + self.linux_deploy + self.deploy_daily_vm_linux_amd64 + self.deploy_graalvm_ruby + {name: 'deploy-vm-ruby-java11-linux-amd64'},
   deploy_vm_ruby_java11_darwin_amd64: vm.vm_java_11 + self.ruby_vm_build_darwin + self.darwin_deploy + self.deploy_daily_vm_darwin + self.deploy_graalvm_ruby + {name: 'deploy-vm-ruby-java11-darwin-amd64'},
 
   #
@@ -531,7 +539,7 @@ local devkits = common_json.devkits;
   #
 
   # Linux/AMD64
-  deploy_vm_complete_java11_linux_amd64: vm.vm_linux_amd64_java_11 + self.full_vm_build_linux + self.linux_deploy + self.ondemand_vm_linux + {
+  deploy_vm_complete_java11_linux_amd64: vm.vm_linux_amd64_java_11 + self.full_vm_build_linux + self.linux_deploy + self.ondemand_vm_linux_amd64 + {
     run+: [
       $.mx_vm_installables + ['graalvm-show'],
       $.mx_vm_installables + ['build'],
@@ -558,7 +566,7 @@ local devkits = common_json.devkits;
     #
     # Gates
     #
-    vm.vm_java_17 + common_json.downloads.eclipse + common_json.downloads.jdt + self.gate_vm_linux + {
+    vm.vm_java_17 + common_json.downloads.eclipse + common_json.downloads.jdt + self.gate_vm_linux_amd64 + {
       run: [
         ['mx', 'gate', '-B=--force-deprecation-as-warning', '--tags', 'style,fullbuild'],
       ],
@@ -570,7 +578,7 @@ local devkits = common_json.devkits;
     self.libgraal_truffle + vm.vm_java_11 + vm.vm_unittest + { name: 'gate-vm-libgraal-truffle-11-linux-amd64' },
     self.libgraal_truffle + vm.vm_java_17 + vm.vm_unittest + { name: 'gate-vm-libgraal-truffle-17-linux-amd64' },
 
-    vm.vm_java_17 + self.svm_common_linux_amd64 + self.sulong_linux + vm.custom_vm_linux + self.gate_vm_linux + vm.vm_unittest + {
+    vm.vm_java_17 + self.svm_common_linux_amd64 + self.sulong_linux + vm.custom_vm_linux + self.gate_vm_linux_amd64 + vm.vm_unittest + {
       run: [
         ['export', 'SVM_SUITE=' + vm.svm_suite],
         ['mx', '--dynamicimports', '$SVM_SUITE,/sulong', '--disable-polyglot', '--disable-libpolyglot', 'gate', '--no-warning-as-error', '--tags', 'build,sulong'],
