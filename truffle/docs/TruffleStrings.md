@@ -32,7 +32,7 @@ indexing and byte-based indexing. Byte-based indexing is indicated by the `ByteI
 name, otherwise indices are based on codepoints. For example, the index parameter of`CodePointAtIndex` is
 codepoint-based, whereas `CodePointAtByteIndex` uses a byte-based index.
 
-The list of currently available operations is:
+The list of currently available operation nodes is:
 
 * [FromCodePoint](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.FromCodePointNode.html):
   Create a new TruffleString from a given codepoint.
@@ -143,6 +143,23 @@ The list of currently available operations is:
 * [CreateBackwardCodePointIterator](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.CreateBackwardCodePointIteratorNode.html):
   Return a `TruffleStringIterator` object suitable for iterating the string's code points, starting from the end of the
   string.
+
+The list of currently available instance methods is:
+
+* [isEmpty](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/AbstractTruffleString.html#isEmpty--):
+  Check if a string is empty.
+* [byteLength](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/AbstractTruffleString.html#byteLength-com.oracle.truffle.api.strings.TruffleString.Encoding-):
+  Get a string's length in bytes.
+* [isCompatibleTo](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/AbstractTruffleString.html#isCompatibleTo-com.oracle.truffle.api.strings.TruffleString.Encoding-):
+  Check if a string is compatible to / can be viewed in a given encoding.
+* [isManaged](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/AbstractTruffleString.html#isManaged--):
+  Check if a string is not backed by a native buffer.
+* [isNative](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/AbstractTruffleString.html#isNative--):
+  Check if a string is backed by a native buffer.
+* [isImmutable](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/AbstractTruffleString.html#isImmutable--):
+  Check if a string is an instance of `TruffleString`.
+* [isMutable](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/AbstractTruffleString.html#isMutable--):
+  Check if a string is an instance of `MutableTruffleString`.
 
 ### Instantiation
 

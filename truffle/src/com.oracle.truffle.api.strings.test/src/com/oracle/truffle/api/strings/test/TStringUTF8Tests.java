@@ -65,6 +65,7 @@ public class TStringUTF8Tests extends TStringTestBase {
 
     private static final byte[][] INVALID = {
                     TStringTestUtil.byteArray(0x80),
+                    TStringTestUtil.byteArray(0xc0, 0x80),
                     TStringTestUtil.byteArray(0b11000000),
                     TStringTestUtil.byteArray(0b11000000, 0x80, 0x80),
                     TStringTestUtil.byteArray(0b11100000),
