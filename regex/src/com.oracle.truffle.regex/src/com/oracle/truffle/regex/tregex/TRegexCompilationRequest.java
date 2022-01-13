@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex;
 
+import java.util.StringJoiner;
 import java.util.logging.Level;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -271,47 +272,33 @@ public final class TRegexCompilationRequest {
     @TruffleBoundary
     private static String canTransformToDFAFailureReason(RegexAST ast) throws UnsupportedRegexException {
         RegexProperties p = ast.getProperties();
-        StringBuilder sb = new StringBuilder();
+        StringJoiner sb = new StringJoiner(", ");
         if (ast.getNumberOfNodes() > TRegexOptions.TRegexMaxParseTreeSizeForDFA) {
-            sb.append("Parser tree has too many nodes: ").append(ast.getNumberOfNodes()).append(" (threshold: ").append(TRegexOptions.TRegexMaxParseTreeSizeForDFA).append(")");
+            sb.add(String.format("Parser tree has too many nodes: %d (threshold: %d)", ast.getNumberOfNodes(), TRegexOptions.TRegexMaxParseTreeSizeForDFA));
         }
         if (ast.getNumberOfCaptureGroups() > TRegexOptions.TRegexMaxNumberOfCaptureGroupsForDFA) {
-            stringBuilderAppendComma(sb);
-            sb.append("regex has too many capture groups: ").append(ast.getNumberOfCaptureGroups()).append(" (threshold: ").append(TRegexOptions.TRegexMaxNumberOfCaptureGroupsForDFA).append(")");
+            sb.add(String.format("regex has too many capture groups: %d (threshold: %d)", ast.getNumberOfCaptureGroups(), TRegexOptions.TRegexMaxNumberOfCaptureGroupsForDFA));
         }
         if (ast.getRoot().hasBackReferences()) {
-            stringBuilderAppendComma(sb);
-            sb.append("regex has back-references");
+            sb.add("regex has back-references");
         }
         if (p.hasLargeCountedRepetitions()) {
-            stringBuilderAppendComma(sb);
-            sb.append("regex has large counted repetitions").append(" (threshold: ").append(TRegexOptions.TRegexQuantifierUnrollThresholdSingleCC).append(" for single CC, ").append(
-                            TRegexOptions.TRegexQuantifierUnrollThresholdGroup).append(" for groups)");
+            sb.add(String.format("regex has large counted repetitions (threshold: %d for single CC, %d for groups)",
+                            TRegexOptions.TRegexQuantifierUnrollThresholdSingleCC, TRegexOptions.TRegexQuantifierUnrollThresholdGroup));
         }
         if (p.hasNegativeLookAheadAssertions()) {
-            stringBuilderAppendComma(sb);
-            sb.append("regex has negative look-ahead assertions");
+            sb.add("regex has negative look-ahead assertions");
         }
         if (p.hasNegativeLookBehindAssertions()) {
-            stringBuilderAppendComma(sb);
-            sb.append("regex has negative look-behind assertions");
+            sb.add("regex has negative look-behind assertions");
         }
         if (p.hasNonLiteralLookBehindAssertions()) {
-            stringBuilderAppendComma(sb);
-            sb.append("regex has non-literal look-behind assertions");
+            sb.add("regex has non-literal look-behind assertions");
         }
         if (ast.getRoot().hasQuantifiers()) {
-            stringBuilderAppendComma(sb);
-            sb.append("could not unroll all quantifiers");
+            sb.add("could not unroll all quantifiers");
         }
         return sb.toString();
-    }
-
-    @TruffleBoundary
-    private static void stringBuilderAppendComma(StringBuilder sb) {
-        if (sb.length() > 0) {
-            sb.append(", ");
-        }
     }
 
     private void createAST() {

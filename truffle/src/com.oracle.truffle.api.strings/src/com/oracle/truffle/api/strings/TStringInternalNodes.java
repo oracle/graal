@@ -1376,13 +1376,13 @@ final class TStringInternalNodes {
         FromJavaStringUTF16Node() {
         }
 
-        abstract TruffleString execute(String value, int charOffset, int length, boolean lazy);
+        abstract TruffleString execute(String value, int charOffset, int length, boolean copy);
 
         @Specialization
-        TruffleString doNonEmpty(String javaString, int charOffset, int length, final boolean lazy,
+        TruffleString doNonEmpty(String javaString, int charOffset, int length, final boolean copy,
                         @Cached ConditionProfile utf16CompactProfile) {
             checkArrayRange(javaString.length(), charOffset, length);
-            CompilerAsserts.partialEvaluationConstant(lazy);
+            CompilerAsserts.partialEvaluationConstant(copy);
             if (length == 0) {
                 return TruffleString.Encoding.UTF_16.getEmpty();
             }
@@ -1430,7 +1430,7 @@ final class TStringInternalNodes {
                     codePointLength = StringAttributes.getCodePointLength(attrs);
                     codeRange = StringAttributes.getCodeRange(attrs);
                 }
-                if (lazy || length == javaString.length()) {
+                if (!copy || length == javaString.length()) {
                     stride = strideJS;
                     offset = offsetJS;
                     array = arrayJS;

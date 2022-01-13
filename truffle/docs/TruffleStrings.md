@@ -302,7 +302,8 @@ it is also byte-equivalent to UTF-8.
 
 To check if your code is switching encodings properly, run your unit tests with the system
 variable `truffle.strings.debug-strict-encoding-checks=true`. This disables re-using string objects when switching
-encodings, and makes all encoding checks more strict.
+encodings, and makes encoding checks more strict: all operations working on a single string will enforce an exact match,
+whereas operations working on two strings will still allow re-interpretations.
 
 All TruffleString operations with more than one string parameter require the strings to be in a common encoding!
 
@@ -386,8 +387,8 @@ so, match their content. Otherwise, the strings are deemed not equal, no automat
 Note that since TruffleString's `hashCode` and `equals` methods are sensitive to string encoding, TruffleString objects
 must always be converted to a common encoding before e.g. using them as keys in a `HashMap`.
 
-TruffleString also provides `CompareNode`, which is analogous to `java.lang.String#compareTo(String)`. This operation
-will compare UTF-32 strings int-by-int, UTF-16 strings char-by-char, and all other encodings byte-by-byte.
+TruffleString also provides three comparison nodes `CompareBytesNode`, `CompareCharsUTF16Node`,
+and `CompareIntsUTF32Node`, to compare strings byte-by-byte, char-by-char, and int-by-int, respectively.
 
 ### Concatenation
 

@@ -308,7 +308,7 @@ meth public static com.oracle.truffle.api.strings.TruffleString fromCodePointUnc
 meth public static com.oracle.truffle.api.strings.TruffleString fromIntArrayUTF32Uncached(int[])
 meth public static com.oracle.truffle.api.strings.TruffleString fromIntArrayUTF32Uncached(int[],int,int)
 meth public static com.oracle.truffle.api.strings.TruffleString fromJavaStringUncached(java.lang.String,com.oracle.truffle.api.strings.TruffleString$Encoding)
-meth public static com.oracle.truffle.api.strings.TruffleString fromJavaStringUncached(java.lang.String,int,int,boolean,com.oracle.truffle.api.strings.TruffleString$Encoding)
+meth public static com.oracle.truffle.api.strings.TruffleString fromJavaStringUncached(java.lang.String,int,int,com.oracle.truffle.api.strings.TruffleString$Encoding,boolean)
 meth public static com.oracle.truffle.api.strings.TruffleString fromLongUncached(long,com.oracle.truffle.api.strings.TruffleString$Encoding,boolean)
 meth public static com.oracle.truffle.api.strings.TruffleString fromNativePointerUncached(java.lang.Object,int,int,com.oracle.truffle.api.strings.TruffleString$Encoding,boolean)
 supr com.oracle.truffle.api.strings.AbstractTruffleString
@@ -628,7 +628,7 @@ supr com.oracle.truffle.api.nodes.Node
 
 CLSS public abstract static com.oracle.truffle.api.strings.TruffleString$FromJavaStringNode
  outer com.oracle.truffle.api.strings.TruffleString
-meth public abstract com.oracle.truffle.api.strings.TruffleString execute(java.lang.String,int,int,boolean,com.oracle.truffle.api.strings.TruffleString$Encoding)
+meth public abstract com.oracle.truffle.api.strings.TruffleString execute(java.lang.String,int,int,com.oracle.truffle.api.strings.TruffleString$Encoding,boolean)
 meth public final com.oracle.truffle.api.strings.TruffleString execute(java.lang.String,com.oracle.truffle.api.strings.TruffleString$Encoding)
 meth public static com.oracle.truffle.api.strings.TruffleString$FromJavaStringNode create()
 meth public static com.oracle.truffle.api.strings.TruffleString$FromJavaStringNode getUncached()

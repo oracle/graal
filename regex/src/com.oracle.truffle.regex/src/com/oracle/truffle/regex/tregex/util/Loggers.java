@@ -55,6 +55,7 @@ import com.oracle.truffle.api.TruffleLogger;
  *  -Dpolyglot.log.regex.CompilerFallback.level=ALL
  *  -Dpolyglot.log.regex.InternalErrors.level=ALL
  *  -Dpolyglot.log.regex.TRegexCompilations.level=ALL
+ *  -Dpolyglot.log.regex.MatchingStrategy.level=ALL
  * }
  * </pre>
  */

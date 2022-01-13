@@ -174,8 +174,8 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
     public Object execute(final TRegexExecutorLocals abstractLocals, final TruffleString.CodeRange codeRange) {
         TRegexDFAExecutorLocals locals = (TRegexDFAExecutorLocals) abstractLocals;
         CompilerDirectives.ensureVirtualized(locals);
-        CompilerAsserts.compilationConstant(states);
-        CompilerAsserts.compilationConstant(states.length);
+        CompilerAsserts.partialEvaluationConstant(states);
+        CompilerAsserts.partialEvaluationConstant(states.length);
         CompilerAsserts.partialEvaluationConstant(codeRange);
         if (!validArgs(locals)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();

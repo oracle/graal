@@ -677,7 +677,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
          * <p>
          * If no lossless conversion is possible, the string is converted on a best-effort basis; no
          * exception is thrown and characters which cannot be mapped in the target encoding are
-         * replaced by {@code '�'} (for UTF-*) or {@code '?'}.
+         * replaced by {@code '\ufffd'} (for UTF-*) or {@code '?'}.
          *
          * @since 22.1
          */

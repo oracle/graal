@@ -1143,9 +1143,8 @@ public final class TruffleString extends AbstractTruffleString {
         /**
          * All codepoints in this string are part of the ISO-8859-1 character set (0x00 - 0xff),
          * which is equivalent to the union of the Basic Latin and the Latin-1 Supplement Unicode
-         * block. At least one codepoint is outside the ASCII range (greater than 0x7f). Only
-         * applicable to {@link Encoding#ISO_8859_1}, {@link Encoding#UTF_16} and
-         * {@link Encoding#UTF_32}.
+         * block. At least one codepoint is outside the ASCII range (greater than 0x7f). Applicable
+         * to {@link Encoding#ISO_8859_1}, {@link Encoding#UTF_16} and {@link Encoding#UTF_32} only.
          *
          * @since 22.1
          */
@@ -1154,7 +1153,7 @@ public final class TruffleString extends AbstractTruffleString {
         /**
          * All codepoints in this string are part of the Unicode Basic Multilingual Plane (BMP) (
          * 0x0000 - 0xffff). At least one codepoint is outside the LATIN_1 range (greater than
-         * 0xff). Only applicable to {@link Encoding#UTF_16} and {@link Encoding#UTF_32}.
+         * 0xff). Applicable to {@link Encoding#UTF_16} and {@link Encoding#UTF_32} only.
          *
          * @since 22.1
          */
@@ -1879,7 +1878,7 @@ public final class TruffleString extends AbstractTruffleString {
 
     /**
      * Node to create a new {@link TruffleString} from a Java string. See
-     * {@link #execute(String, int, int, boolean, TruffleString.Encoding)} for details.
+     * {@link #execute(String, int, int, TruffleString.Encoding, boolean)} for details.
      *
      * @since 22.1
      */
@@ -1898,29 +1897,29 @@ public final class TruffleString extends AbstractTruffleString {
          * @since 22.1
          */
         public final TruffleString execute(String value, Encoding encoding) {
-            return execute(value, 0, value.length(), false, encoding);
+            return execute(value, 0, value.length(), encoding, true);
         }
 
         /**
          * Creates a {@link TruffleString} from a given region in a Java string, re-using its
-         * internal byte array if possible and the region covers the entire string. If {@code lazy}
-         * is {@code true}, the Java string's internal byte array will be re-used even if the region
-         * does not cover the entire string. Note that this will keep the Java string's byte array
-         * alive as long as the resulting {@link TruffleString} is alive.
+         * internal byte array if possible and the region covers the entire string. If {@code copy}
+         * is {@code false}, the Java string's internal byte array will be re-used even if the
+         * region does not cover the entire string. Note that this will keep the Java string's byte
+         * array alive as long as the resulting {@link TruffleString} is alive.
          *
          * @since 22.1
          */
-        public abstract TruffleString execute(String value, int charOffset, int length, boolean lazy, Encoding encoding);
+        public abstract TruffleString execute(String value, int charOffset, int length, Encoding encoding, boolean copy);
 
         @Specialization
-        static TruffleString doUTF16(String javaString, int charOffset, int length, final boolean lazy, Encoding encoding,
+        static TruffleString doUTF16(String javaString, int charOffset, int length, Encoding encoding, final boolean copy,
                         @Cached TStringInternalNodes.FromJavaStringUTF16Node fromJavaStringUTF16Node,
                         @Cached SwitchEncodingNode switchEncodingNode,
                         @Cached ConditionProfile utf16Profile) {
             if (javaString.isEmpty()) {
                 return Encoding.UTF_16.getEmpty();
             }
-            TruffleString utf16String = fromJavaStringUTF16Node.execute(javaString, charOffset, length, lazy);
+            TruffleString utf16String = fromJavaStringUTF16Node.execute(javaString, charOffset, length, copy);
             if (utf16Profile.profile(encoding == Encoding.UTF_16)) {
                 return utf16String;
             }
@@ -1962,8 +1961,8 @@ public final class TruffleString extends AbstractTruffleString {
      * @since 22.1
      */
     @TruffleBoundary
-    public static TruffleString fromJavaStringUncached(String s, int charOffset, int length, boolean lazy, Encoding encoding) {
-        return FromJavaStringNode.getUncached().execute(s, charOffset, length, lazy, encoding);
+    public static TruffleString fromJavaStringUncached(String s, int charOffset, int length, Encoding encoding, boolean copy) {
+        return FromJavaStringNode.getUncached().execute(s, charOffset, length, encoding, copy);
     }
 
     /**
@@ -4469,8 +4468,9 @@ public final class TruffleString extends AbstractTruffleString {
         /**
          * Returns {@code true} if {@code a} and {@code b} are byte-by-byte equal when considered in
          * {@code expectedEncoding}. Note that this method requires both strings to be
-         * {@link #isCompatibleTo(Encoding) compatible} to the {@code expectedEncoding}, just like
-         * all other operations with an {@code expectedEncoding} parameter!
+         * {@link #isCompatibleTo(TruffleString.Encoding) compatible} to the
+         * {@code expectedEncoding}, just like all other operations with an {@code expectedEncoding}
+         * parameter!
          * <p>
          * The {@link TruffleString#equals(Object)}-method delegates to this method.
          *
@@ -5057,7 +5057,7 @@ public final class TruffleString extends AbstractTruffleString {
 
         /**
          * Return a {@link java.lang.String} representation of the given {@link TruffleString}. For
-         * the {@link Encoding.BYTES} encoding, the returned String uses "\xNN" for every byte >=
+         * the {@link Encoding#BYTES} encoding, the returned String uses "\xNN" for every byte >=
          * 128 as the actual interpretation of those bytes is unknown.
          *
          * @since 22.1
@@ -5153,7 +5153,7 @@ public final class TruffleString extends AbstractTruffleString {
          * <p>
          * If no lossless conversion is possible, the string is converted on a best-effort basis; no
          * exception is thrown and characters which cannot be mapped in the target encoding are
-         * replaced by {@code '�'} (for UTF-*) or {@code '?'}.
+         * replaced by {@code '\ufffd'} (for UTF-*) or {@code '?'}.
          *
          * @since 22.1
          */
