@@ -365,25 +365,30 @@ public class Field extends Member<Type> implements FieldRef {
             // class hierarchy changes have been made, so enable
             // additional type checks to guard against reading
             // a now invalid value
-            Object result;
+            StaticObject result;
             if (isVolatile() || forceVolatile) {
-                result = linkedField.getObjectVolatile(obj);
+                result = (StaticObject) linkedField.getObjectVolatile(obj);
             } else {
-                result = linkedField.getObject(obj);
+                result = (StaticObject) linkedField.getObject(obj);
             }
             if (result == StaticObject.NULL) {
                 return result;
             }
-            try {
-                Klass klass = resolveTypeKlass();
-                if (klass != null && !klass.isAssignableFrom(((StaticObject) result).getKlass())) {
-                    result = StaticObject.NULL;
-                }
-            } catch (EspressoException e) {
-                // ignore if type klass cannot be resolved
-            }
-            return result;
+            return checkGetValueValidity(result);
         }
+    }
+
+    protected StaticObject checkGetValueValidity(StaticObject object) {
+        StaticObject result = object;
+        try {
+            Klass klass = resolveTypeKlass();
+            if (klass != null && !klass.isAssignableFrom((result).getKlass())) {
+                result = StaticObject.NULL;
+            }
+        } catch (EspressoException e) {
+            // ignore if type klass cannot be resolved
+        }
+        return result;
     }
 
     private void setObjectHelper(StaticObject obj, Object value, boolean forceVolatile) {
@@ -391,22 +396,26 @@ public class Field extends Member<Type> implements FieldRef {
         assert getDeclaringKlass().isAssignableFrom(obj.getKlass()) : this + " does not exist in " + obj.getKlass();
 
         if (getDeclaringKlass().getContext().anyHierarchyChanged()) {
-            if (value != StaticObject.NULL && value instanceof StaticObject) {
-                Klass klass = null;
-                try {
-                    klass = resolveTypeKlass();
-                } catch (EspressoException e) {
-                    // ignore if type klass cannot be resolved
-                }
-                if (klass != null && !klass.isAssignableFrom(((StaticObject) value).getKlass())) {
-                    throw getDeclaringKlass().getMeta().throwException(getDeclaringKlass().getMeta().java_lang_IncompatibleClassChangeError);
-                }
-            }
+            checkSetValueValifity(value);
         }
         if (isVolatile() || forceVolatile) {
             linkedField.setObjectVolatile(obj, value);
         } else {
             linkedField.setObject(obj, value);
+        }
+    }
+
+    protected void checkSetValueValifity(Object value) {
+        if (value != StaticObject.NULL && value instanceof StaticObject) {
+            Klass klass = null;
+            try {
+                klass = resolveTypeKlass();
+            } catch (EspressoException e) {
+                // ignore if type klass cannot be resolved
+            }
+            if (klass != null && !klass.isAssignableFrom(((StaticObject) value).getKlass())) {
+                throw getDeclaringKlass().getMeta().throwException(getDeclaringKlass().getMeta().java_lang_IncompatibleClassChangeError);
+            }
         }
     }
     // endregion helper methods

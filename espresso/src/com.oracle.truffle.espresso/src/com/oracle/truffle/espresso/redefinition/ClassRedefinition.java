@@ -102,7 +102,6 @@ public final class ClassRedefinition {
         ADD_METHOD,
         REMOVE_METHOD,
         NEW_CLASS,
-        // currently supported under option
         SCHEMA_CHANGE,
         CLASS_HIERARCHY_CHANGED,
         INVALID;
