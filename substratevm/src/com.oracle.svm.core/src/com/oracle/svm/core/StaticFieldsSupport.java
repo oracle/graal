@@ -124,14 +124,14 @@ final class StaticFieldsFeature implements GraalFeature {
     @Override
     public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, Plugins plugins, ParsingReason reason) {
         Registration r = new Registration(plugins.getInvocationPlugins(), StaticFieldsSupport.class);
-        r.register0("getStaticObjectFields", new InvocationPlugin() {
+        r.registerRequired("getStaticObjectFields", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused) {
                 b.addPush(JavaKind.Object, new StaticFieldBaseNode(false));
                 return true;
             }
         });
-        r.register0("getStaticPrimitiveFields", new InvocationPlugin() {
+        r.registerRequired("getStaticPrimitiveFields", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused) {
                 b.addPush(JavaKind.Object, new StaticFieldBaseNode(true));

@@ -89,7 +89,7 @@ public class ConditionalEliminationRegressionTest extends GraalCompilerTest {
     @Override
     protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
         Registration r = new Registration(conf.getPlugins().getInvocationPlugins(), ConditionalEliminationRegressionTest.class);
-        r.register0("deoptimizeAndInvalidateUnreached", new InvocationPlugin() {
+        r.register("deoptimizeAndInvalidateUnreached", new InvocationPlugin() {
             @Override
             public boolean inlineOnly() {
                 return true;
@@ -101,7 +101,7 @@ public class ConditionalEliminationRegressionTest extends GraalCompilerTest {
                 return true;
             }
         });
-        r.register3("guardingBoolean", Object.class, boolean.class, boolean.class, new InvocationPlugin() {
+        r.register("guardingBoolean", new InvocationPlugin() {
             @Override
             public boolean inlineOnly() {
                 return true;
@@ -125,7 +125,7 @@ public class ConditionalEliminationRegressionTest extends GraalCompilerTest {
                 b.addPush(value.getStackKind(), PiNode.create(value, objectNonNull(), guardingNode.asNode()));
                 return true;
             }
-        });
+        }, Object.class, boolean.class, boolean.class);
         return super.editGraphBuilderConfiguration(conf);
     }
 

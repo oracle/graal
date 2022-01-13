@@ -105,7 +105,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
 
     public void registerLoadLibraryPlugin(Plugins plugins, Class<?> clazz) {
         Registration r = new Registration(plugins.getInvocationPlugins(), clazz);
-        r.register1("loadLibrary", String.class, new InvocationPlugin() {
+        r.registerRequired("loadLibrary", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode libnameNode) {
                 /*
@@ -119,7 +119,7 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
                 /* We never want to do any actual intrinsification, process the original invoke. */
                 return false;
             }
-        });
+        }, String.class);
     }
 
     void registerLibrary(String libname) {

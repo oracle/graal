@@ -228,7 +228,7 @@ public class CheckIndexTest extends MethodSubstitutionTest {
             }
         };
         final Registration objects = new Registration(invocationPlugins, Objects.class);
-        objects.register1("requireNonNull", Object.class, requireNonNullPlugin);
+        objects.register("requireNonNull", requireNonNullPlugin, Object.class);
     }
 
     @Override

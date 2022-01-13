@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -462,7 +462,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
     private static void registerInvocationPlugins(InvocationPlugins plugins, Replacements replacements) {
         Registration r = new Registration(plugins, "java.lang.invoke.DirectMethodHandle", replacements);
-        r.register1("ensureInitialized", Receiver.class, new InvocationPlugin() {
+        r.registerRequired("ensureInitialized", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 /*
@@ -473,10 +473,10 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                  */
                 return true;
             }
-        });
+        }, Receiver.class);
 
         r = new Registration(plugins, "java.lang.invoke.Invokers", replacements);
-        r.registerOptional1("maybeCustomize", MethodHandle.class, new InvocationPlugin() {
+        r.registerOptional("maybeCustomize", true, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode mh) {
                 /*
@@ -486,10 +486,10 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                  */
                 return true;
             }
-        });
+        }, MethodHandle.class);
 
         r = new Registration(plugins, Objects.class, replacements);
-        r.register1("requireNonNull", Object.class, new InvocationPlugin() {
+        r.registerRequired("requireNonNull", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode object) {
                 /*
@@ -499,7 +499,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                 b.push(JavaKind.Object, b.addNonNullCast(object));
                 return true;
             }
-        });
+        }, Object.class);
     }
 
     @SuppressWarnings("try")

@@ -123,7 +123,7 @@ public abstract class ArrayCopySnippets implements Snippets {
     }
 
     public static void registerSystemArraycopyPlugin(InvocationPlugins.Registration r, boolean forceAnyLocation) {
-        r.register5("arraycopy", Object.class, int.class, Object.class, int.class, int.class, new InvocationPlugin() {
+        r.register("arraycopy", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode src, ValueNode srcPos, ValueNode dst, ValueNode dstPos, ValueNode length) {
                 ValueNode nonNullSrc = b.nullCheckedValue(src);
@@ -131,7 +131,7 @@ public abstract class ArrayCopySnippets implements Snippets {
                 b.add(new ArrayCopyNode(b.bci(), nonNullSrc, srcPos, nonNullDst, dstPos, length, forceAnyLocation));
                 return true;
             }
-        });
+        }, Object.class, int.class, Object.class, int.class, int.class);
     }
 
     protected enum ArrayCopyTypeCheck {

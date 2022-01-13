@@ -185,7 +185,7 @@ public final class ReflectionPlugins {
                         "parameterType", "parameterCount", "returnType", "lastParameterType");
 
         Registration r = new Registration(plugins, MethodHandles.class);
-        r.register0("lookup", new InvocationPlugin() {
+        r.registerRequired("lookup", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 return processMethodHandlesLookup(b, targetMethod);
@@ -204,13 +204,13 @@ public final class ReflectionPlugins {
                         "getDeclaredField", "getDeclaredMethod", "getDeclaredConstructor");
 
         Registration r = new Registration(plugins, Class.class);
-        r.register1("forName", String.class, new InvocationPlugin() {
+        r.registerRequired("forName", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode nameNode) {
                 return processClassForName(b, targetMethod, nameNode, ConstantNode.forBoolean(true));
             }
-        });
-        r.register3("forName", String.class, boolean.class, ClassLoader.class, new InvocationPlugin() {
+        }, String.class);
+        r.registerRequired("forName", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode nameNode, ValueNode initializeNode, ValueNode classLoaderNode) {
                 /*
@@ -221,13 +221,13 @@ public final class ReflectionPlugins {
                  */
                 return processClassForName(b, targetMethod, nameNode, initializeNode);
             }
-        });
-        r.register1("getClassLoader", Receiver.class, new InvocationPlugin() {
+        }, String.class, boolean.class, ClassLoader.class);
+        r.registerRequired("getClassLoader", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 return processClassGetClassLoader(b, targetMethod, receiver);
             }
-        });
+        }, Receiver.class);
     }
 
     private static final Constructor<MethodHandles.Lookup> LOOKUP_CONSTRUCTOR = ReflectionUtil.lookupConstructor(MethodHandles.Lookup.class, Class.class);

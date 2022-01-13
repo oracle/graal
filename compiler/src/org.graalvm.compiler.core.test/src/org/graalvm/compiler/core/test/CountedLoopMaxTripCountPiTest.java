@@ -67,14 +67,14 @@ public class CountedLoopMaxTripCountPiTest extends GraalCompilerTest {
         super.registerInvocationPlugins(invocationPlugins);
         Registration r = new Registration(invocationPlugins, CountedLoopMaxTripCountPiTest.class);
 
-        r.register1("positivePi", int.class, new InvocationPlugin() {
+        r.register("positivePi", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod method, Receiver receiver, ValueNode n) {
                 BeginNode begin = b.add(new BeginNode());
                 b.addPush(JavaKind.Int, PiNode.create(n, StampFactory.positiveInt().improveWith(n.stamp(NodeView.DEFAULT)), begin));
                 return true;
             }
-        });
+        }, int.class);
     }
 
     int ascendingSnippet(int start, int limit) {

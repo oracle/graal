@@ -597,7 +597,7 @@ public class CountedLoopTest extends GraalCompilerTest {
     }
 
     private void registerPlugins(Registration r, JavaKind ivKind) {
-        r.register2("get", IVProperty.class, ivKind.toJavaClass(), new InvocationPlugin() {
+        r.register("get", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg1, ValueNode arg2) {
                 IVProperty property = null;
@@ -611,8 +611,8 @@ public class CountedLoopTest extends GraalCompilerTest {
                     return false;
                 }
             }
-        });
-        r.register4("get", IVProperty.class, StaticIVProperty.class, IVPredicate.class, ivKind.toJavaClass(), new InvocationPlugin() {
+        }, IVProperty.class, ivKind.toJavaClass());
+        r.register("get", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg1, ValueNode arg2, ValueNode arg3, ValueNode arg4) {
                 IVProperty property = null;
@@ -634,7 +634,7 @@ public class CountedLoopTest extends GraalCompilerTest {
                     return false;
                 }
             }
-        });
+        }, IVProperty.class, StaticIVProperty.class, IVPredicate.class, ivKind.toJavaClass());
     }
 
     @Override

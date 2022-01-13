@@ -62,7 +62,6 @@ import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 /**
  * Manages a set of {@link InvocationPlugin}s.
@@ -284,349 +283,48 @@ public class InvocationPlugins {
         }
 
         /**
-         * Registers a plugin for a method with no arguments.
-         *
+         * Registers a plugin for a method.
+         * 
          * @param name the name of the method
          * @param plugin the plugin to be registered
          */
-        public void register0(String name, InvocationPlugin plugin) {
-            plugins.register(plugin, false, allowOverwrite, declaringType, name);
+        public void register(String name, InvocationPlugin plugin, Type... argumentTypes) {
+            plugins.register(plugin, false, allowOverwrite, true, declaringType, name, argumentTypes);
         }
 
         /**
-         * Registers a plugin for a method with 1 argument.
+         * Registers a plugin that cannot be disabled for a method.
          *
          * @param name the name of the method
          * @param plugin the plugin to be registered
          */
-        public void register1(String name, Type arg, InvocationPlugin plugin) {
-            plugins.register(plugin, false, allowOverwrite, declaringType, name, arg);
+        public void registerRequired(String name, InvocationPlugin plugin, Type... argumentTypes) {
+            plugins.register(plugin, false, allowOverwrite, false, declaringType, name, argumentTypes);
         }
 
         /**
-         * Registers a plugin for a method with 2 arguments.
+         * Registers a plugin for an optional method. The platform may or may not support the method
+         * if {@code optional} is true.
          *
          * @param name the name of the method
          * @param plugin the plugin to be registered
          */
-        public void register2(String name, Type arg1, Type arg2, InvocationPlugin plugin) {
-            plugins.register(plugin, false, allowOverwrite, declaringType, name, arg1, arg2);
+        public void registerOptional(String name, boolean optional, InvocationPlugin plugin, Type... argumentTypes) {
+            plugins.register(plugin, optional, allowOverwrite, true, declaringType, name, argumentTypes);
         }
 
         /**
-         * Registers a plugin for a method with 3 arguments.
-         *
+         * Registers a plugin for a method that is conditionally enabled. This ensures that
+         * {@code Replacements} is aware of this plugin.
+         * 
          * @param name the name of the method
          * @param plugin the plugin to be registered
          */
-        public void register3(String name, Type arg1, Type arg2, Type arg3, InvocationPlugin plugin) {
-            plugins.register(plugin, false, allowOverwrite, declaringType, name, arg1, arg2, arg3);
-        }
-
-        /**
-         * Registers a plugin for a method with 4 arguments.
-         *
-         * @param name the name of the method
-         * @param plugin the plugin to be registered
-         */
-        public void register4(String name, Type arg1, Type arg2, Type arg3, Type arg4, InvocationPlugin plugin) {
-            plugins.register(plugin, false, allowOverwrite, declaringType, name, arg1, arg2, arg3, arg4);
-        }
-
-        /**
-         * Registers a plugin for a method with 5 arguments.
-         *
-         * @param name the name of the method
-         * @param plugin the plugin to be registered
-         */
-        public void register5(String name, Type arg1, Type arg2, Type arg3, Type arg4, Type arg5, InvocationPlugin plugin) {
-            plugins.register(plugin, false, allowOverwrite, declaringType, name, arg1, arg2, arg3, arg4, arg5);
-        }
-
-        /**
-         * Registers a plugin for a method with 6 arguments.
-         *
-         * @param name the name of the method
-         * @param plugin the plugin to be registered
-         */
-        public void register6(String name, Type arg1, Type arg2, Type arg3, Type arg4, Type arg5, Type arg6, InvocationPlugin plugin) {
-            plugins.register(plugin, false, allowOverwrite, declaringType, name, arg1, arg2, arg3, arg4, arg5, arg6);
-        }
-
-        /**
-         * Registers a plugin for a method with 7 arguments.
-         *
-         * @param name the name of the method
-         * @param plugin the plugin to be registered
-         */
-        public void register7(String name, Type arg1, Type arg2, Type arg3, Type arg4, Type arg5, Type arg6, Type arg7, InvocationPlugin plugin) {
-            plugins.register(plugin, false, allowOverwrite, declaringType, name, arg1, arg2, arg3, arg4, arg5, arg6, arg7);
-        }
-
-        /**
-         * Registers a plugin for a method with no arguments that is conditionally enabled. This
-         * ensures that {@code Replacements} is aware of this plugin.
-         *
-         * @param name the name of the method
-         * @param plugin the plugin to be registered
-         */
-        public void registerConditional0(boolean isEnabled, String name, InvocationPlugin plugin) {
+        public void registerConditional(boolean isEnabled, String name, InvocationPlugin plugin, Type... argumentTypes) {
             replacements.registerConditionalPlugin(plugin);
             if (isEnabled) {
-                plugins.register(plugin, false, allowOverwrite, declaringType, name);
+                plugins.register(plugin, false, allowOverwrite, true, declaringType, name, argumentTypes);
             }
-        }
-
-        /**
-         * Registers a plugin for a method with 1 argument that is conditionally enabled. This
-         * ensures that {@code Replacements} is aware of this plugin.
-         *
-         * @param name the name of the method
-         * @param plugin the plugin to be registered
-         */
-        public void registerConditional1(boolean isEnabled, String name, Type arg, InvocationPlugin plugin) {
-            replacements.registerConditionalPlugin(plugin);
-            if (isEnabled) {
-                plugins.register(plugin, false, allowOverwrite, declaringType, name, arg);
-            }
-        }
-
-        /**
-         * Registers a plugin for a method with 2 arguments that is conditionally enabled. This
-         * ensures that {@code Replacements} is aware of this plugin.
-         *
-         * @param name the name of the method
-         * @param plugin the plugin to be registered
-         */
-        public void registerConditional2(boolean isEnabled, String name, Type arg1, Type arg2, InvocationPlugin plugin) {
-            replacements.registerConditionalPlugin(plugin);
-            if (isEnabled) {
-                plugins.register(plugin, false, allowOverwrite, declaringType, name, arg1, arg2);
-            }
-        }
-
-        /**
-         * Registers a plugin for a method with 3 arguments that is conditionally enabled. This
-         * ensures that {@code Replacements} is aware of this plugin.
-         *
-         * @param name the name of the method
-         * @param plugin the plugin to be registered
-         */
-        public void registerConditional3(boolean isEnabled, String name, Type arg1, Type arg2, Type arg3, InvocationPlugin plugin) {
-            replacements.registerConditionalPlugin(plugin);
-            if (isEnabled) {
-                plugins.register(plugin, false, allowOverwrite, declaringType, name, arg1, arg2, arg3);
-            }
-        }
-
-        /**
-         * Registers a plugin for a method with 4 arguments that is conditionally enabled. This
-         * ensures that {@code Replacements} is aware of this plugin.
-         *
-         * @param name the name of the method
-         * @param plugin the plugin to be registered
-         */
-        public void registerConditional4(boolean isEnabled, String name, Type arg1, Type arg2, Type arg3, Type arg4, InvocationPlugin plugin) {
-            replacements.registerConditionalPlugin(plugin);
-            if (isEnabled) {
-                plugins.register(plugin, false, allowOverwrite, declaringType, name, arg1, arg2, arg3, arg4);
-            }
-        }
-
-        /**
-         * Registers a plugin for a method with 5 arguments that is conditionally enabled. This
-         * ensures that {@code Replacements} is aware of this plugin.
-         *
-         * @param name the name of the method
-         * @param plugin the plugin to be registered
-         */
-        public void registerConditional5(boolean isEnabled, String name, Type arg1, Type arg2, Type arg3, Type arg4, Type arg5, InvocationPlugin plugin) {
-            replacements.registerConditionalPlugin(plugin);
-            if (isEnabled) {
-                plugins.register(plugin, false, allowOverwrite, declaringType, name, arg1, arg2, arg3, arg4, arg5);
-            }
-        }
-
-        /**
-         * Registers a plugin for a method with 6 arguments that is conditionally enabled. This
-         * ensures that {@code Replacements} is aware of this plugin.
-         *
-         * @param name the name of the method
-         * @param plugin the plugin to be registered
-         */
-        public void registerConditional6(boolean isEnabled, String name, Type arg1, Type arg2, Type arg3, Type arg4, Type arg5, Type arg6, InvocationPlugin plugin) {
-            replacements.registerConditionalPlugin(plugin);
-            if (isEnabled) {
-                plugins.register(plugin, false, allowOverwrite, declaringType, name, arg1, arg2, arg3, arg4, arg5, arg6);
-            }
-        }
-
-        /**
-         * Registers a plugin for a method with 7 arguments that is conditionally enabled. This
-         * ensures that {@code Replacements} is aware of this plugin.
-         *
-         * @param name the name of the method
-         * @param plugin the plugin to be registered
-         */
-        public void registerConditional7(boolean isEnabled, String name, Type arg1, Type arg2, Type arg3, Type arg4, Type arg5, Type arg6, Type arg7, InvocationPlugin plugin) {
-            replacements.registerConditionalPlugin(plugin);
-            if (isEnabled) {
-                plugins.register(plugin, false, allowOverwrite, declaringType, name, arg1, arg2, arg3, arg4, arg5, arg6, arg7);
-            }
-        }
-
-        /**
-         * Registers a plugin for an optional method with no arguments.
-         *
-         * @param name the name of the method
-         * @param plugin the plugin to be registered
-         */
-        public void registerOptional0(String name, InvocationPlugin plugin) {
-            plugins.register(plugin, true, allowOverwrite, declaringType, name);
-        }
-
-        /**
-         * Registers a plugin for an optional method with 1 argument.
-         *
-         * @param name the name of the method
-         * @param plugin the plugin to be registered
-         */
-        public void registerOptional1(String name, Type arg, InvocationPlugin plugin) {
-            plugins.register(plugin, true, allowOverwrite, declaringType, name, arg);
-        }
-
-        /**
-         * Registers a plugin for an optional method with 2 arguments.
-         *
-         * @param name the name of the method
-         * @param plugin the plugin to be registered
-         */
-        public void registerOptional2(String name, Type arg1, Type arg2, InvocationPlugin plugin) {
-            plugins.register(plugin, true, allowOverwrite, declaringType, name, arg1, arg2);
-        }
-
-        /**
-         * Registers a plugin for an optional method with 3 arguments.
-         *
-         * @param name the name of the method
-         * @param plugin the plugin to be registered
-         */
-        public void registerOptional3(String name, Type arg1, Type arg2, Type arg3, InvocationPlugin plugin) {
-            plugins.register(plugin, true, allowOverwrite, declaringType, name, arg1, arg2, arg3);
-        }
-
-        /**
-         * Registers a plugin for an optional method with 4 arguments.
-         *
-         * @param name the name of the method
-         * @param plugin the plugin to be registered
-         */
-        public void registerOptional4(String name, Type arg1, Type arg2, Type arg3, Type arg4, InvocationPlugin plugin) {
-            plugins.register(plugin, true, allowOverwrite, declaringType, name, arg1, arg2, arg3, arg4);
-        }
-
-        /**
-         * Registers a plugin for an optional method with 5 arguments.
-         *
-         * @param name the name of the method
-         * @param plugin the plugin to be registered
-         */
-        public void registerOptional5(String name, Type arg1, Type arg2, Type arg3, Type arg4, Type arg5, InvocationPlugin plugin) {
-            plugins.register(plugin, true, allowOverwrite, declaringType, name, arg1, arg2, arg3, arg4, arg5);
-        }
-
-        /**
-         * Registers a plugin for an optional method with 6 arguments.
-         *
-         * @param name the name of the method
-         * @param plugin the plugin to be registered
-         */
-        public void registerOptional6(String name, Type arg1, Type arg2, Type arg3, Type arg4, Type arg5, Type arg6, InvocationPlugin plugin) {
-            plugins.register(plugin, true, allowOverwrite, declaringType, name, arg1, arg2, arg3, arg4, arg5, arg6);
-        }
-
-        /**
-         * Registers a plugin for a method with no arguments if the Java version is greater than the
-         * given Java version, or an optional plugin in case it may be backported.
-         *
-         * @param name the name of the method
-         * @param introducedVersion the Java version where this intrinsic is introduced
-         * @param plugin the plugin to be registered
-         */
-        public void registerOptionalBackport0(String name, int introducedVersion, InvocationPlugin plugin) {
-            plugins.register(plugin, JavaVersionUtil.JAVA_SPEC < introducedVersion, allowOverwrite, declaringType, name);
-        }
-
-        /**
-         * Registers a plugin for a method with 1 argument if the Java version is greater than the
-         * given Java version, or an optional plugin in case it may be backported.
-         *
-         * @param name the name of the method
-         * @param introducedVersion the Java version where this intrinsic is introduced
-         * @param plugin the plugin to be registered
-         */
-        public void registerOptionalBackport1(String name, int introducedVersion, Type arg, InvocationPlugin plugin) {
-            plugins.register(plugin, JavaVersionUtil.JAVA_SPEC < introducedVersion, allowOverwrite, declaringType, name, arg);
-        }
-
-        /**
-         * Registers a plugin for a method with 2 arguments if the Java version is greater than the
-         * given Java version, or an optional plugin in case it may be backported.
-         *
-         * @param name the name of the method
-         * @param introducedVersion the Java version where this intrinsic is introduced
-         * @param plugin the plugin to be registered
-         */
-        public void registerOptionalBackport2(String name, int introducedVersion, Type arg1, Type arg2, InvocationPlugin plugin) {
-            plugins.register(plugin, JavaVersionUtil.JAVA_SPEC < introducedVersion, allowOverwrite, declaringType, name, arg1, arg2);
-        }
-
-        /**
-         * Registers a plugin for a method with 3 arguments if the Java version is greater than the
-         * given Java version, or an optional plugin in case it may be backported.
-         *
-         * @param name the name of the method
-         * @param introducedVersion the Java version where this intrinsic is introduced
-         * @param plugin the plugin to be registered
-         */
-        public void registerOptionalBackport3(String name, int introducedVersion, Type arg1, Type arg2, Type arg3, InvocationPlugin plugin) {
-            plugins.register(plugin, JavaVersionUtil.JAVA_SPEC < introducedVersion, allowOverwrite, declaringType, name, arg1, arg2, arg3);
-        }
-
-        /**
-         * Registers a plugin for a method with 4 arguments if the Java version is greater than the
-         * given Java version, or an optional plugin in case it may be backported.
-         *
-         * @param name the name of the method
-         * @param introducedVersion the Java version where this intrinsic is introduced
-         * @param plugin the plugin to be registered
-         */
-        public void registerOptionalBackport4(String name, int introducedVersion, Type arg1, Type arg2, Type arg3, Type arg4, InvocationPlugin plugin) {
-            plugins.register(plugin, JavaVersionUtil.JAVA_SPEC < introducedVersion, allowOverwrite, declaringType, name, arg1, arg2, arg3, arg4);
-        }
-
-        /**
-         * Registers a plugin for a method with 5 arguments if the Java version is greater than the
-         * given Java version, or an optional plugin in case it may be backported.
-         *
-         * @param name the name of the method
-         * @param introducedVersion the Java version where this intrinsic is introduced
-         * @param plugin the plugin to be registered
-         */
-        public void registerOptionalBackport5(String name, int introducedVersion, Type arg1, Type arg2, Type arg3, Type arg4, Type arg5, InvocationPlugin plugin) {
-            plugins.register(plugin, JavaVersionUtil.JAVA_SPEC < introducedVersion, allowOverwrite, declaringType, name, arg1, arg2, arg3, arg4, arg5);
-        }
-
-        /**
-         * Registers a plugin for a method with 6 arguments if the Java version is greater than the
-         * given Java version, or an optional plugin in case it may be backported.
-         *
-         * @param name the name of the method
-         * @param introducedVersion the Java version where this intrinsic is introduced
-         * @param plugin the plugin to be registered
-         */
-        public void registerOptionalBackport6(String name, int introducedVersion, Type arg1, Type arg2, Type arg3, Type arg4, Type arg5, Type arg6, InvocationPlugin plugin) {
-            plugins.register(plugin, JavaVersionUtil.JAVA_SPEC < introducedVersion, allowOverwrite, declaringType, name, arg1, arg2, arg3, arg4, arg5, arg6);
         }
 
         /**
@@ -701,7 +399,7 @@ public class InvocationPlugins {
                 replacements.registerConditionalPlugin(plugin);
             }
             if (isEnabled) {
-                plugins.register(plugin, false, allowOverwrite, declaringType, name, argumentTypes);
+                plugins.register(plugin, false, allowOverwrite, false, declaringType, name, argumentTypes);
             }
         }
     }
@@ -1266,7 +964,8 @@ public class InvocationPlugins {
         this.resolvedRegistrations = map;
     }
 
-    protected void register(InvocationPlugin plugin, boolean isOptional, boolean allowOverwrite, Type declaringClass, String name, Type... argumentTypes) {
+    protected void register(InvocationPlugin plugin, boolean isOptional, boolean allowOverwrite, boolean disableable,
+                    Type declaringClass, String name, Type... argumentTypes) {
         boolean isStatic = argumentTypes.length == 0 || argumentTypes[0] != InvocationPlugin.Receiver.class;
         if (!isStatic) {
             argumentTypes[0] = declaringClass;
@@ -1286,11 +985,11 @@ public class InvocationPlugins {
      *            {@code declaringClass}
      */
     public final void register(InvocationPlugin plugin, Type declaringClass, String name, Type... argumentTypes) {
-        register(plugin, false, false, declaringClass, name, argumentTypes);
+        register(plugin, false, false, false, declaringClass, name, argumentTypes);
     }
 
     public final void register(InvocationPlugin plugin, String declaringClass, String name, Type... argumentTypes) {
-        register(plugin, false, false, new OptionalLazySymbol(declaringClass), name, argumentTypes);
+        register(plugin, false, false, false, new OptionalLazySymbol(declaringClass), name, argumentTypes);
     }
 
     /**
@@ -1303,7 +1002,7 @@ public class InvocationPlugins {
      *            {@code declaringClass}
      */
     public final void registerOptional(InvocationPlugin plugin, Type declaringClass, String name, Type... argumentTypes) {
-        register(plugin, true, false, declaringClass, name, argumentTypes);
+        register(plugin, true, false, false, declaringClass, name, argumentTypes);
     }
 
     /**

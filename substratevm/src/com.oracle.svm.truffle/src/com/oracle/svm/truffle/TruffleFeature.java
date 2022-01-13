@@ -245,18 +245,18 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
     private void registerNeverPartOfCompilation(InvocationPlugins plugins) {
         InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins, CompilerAsserts.class);
         r.setAllowOverwrite(true);
-        r.register0("neverPartOfCompilation", new InvocationPlugin() {
+        r.registerRequired("neverPartOfCompilation", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 return handleNeverPartOfCompilation(b, targetMethod, null);
             }
         });
-        r.register1("neverPartOfCompilation", String.class, new InvocationPlugin() {
+        r.registerRequired("neverPartOfCompilation", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode message) {
                 return handleNeverPartOfCompilation(b, targetMethod, message);
             }
-        });
+        }, String.class);
     }
 
     private boolean handleNeverPartOfCompilation(GraphBuilderContext b, ResolvedJavaMethod targetMethod, ValueNode messageNode) {

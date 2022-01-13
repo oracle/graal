@@ -195,6 +195,22 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
         return inlineNotify && notifyAllAddress != 0;
     }
 
+    public boolean useCRC32Intrinsics() {
+        return useCRC32Intrinsics && updateBytesCRC32Stub != 0;
+    }
+
+    public boolean useCRC32CIntrinsics() {
+        return useCRC32CIntrinsics && updateBytesCRC32C != 0;
+    }
+
+    public boolean useAESCTRIntrinsics() {
+        return useAESCTRIntrinsics && counterModeAESCrypt != 0;
+    }
+
+    public boolean useVectorizedMismatchIntrinsic() {
+        return useVectorizedMismatchIntrinsic && vectorizedMismatch != 0;
+    }
+
     public final boolean useG1GC = getFlag("UseG1GC", Boolean.class);
     public final boolean useCMSGC = getFlag("UseConcMarkSweepGC", Boolean.class, false, JDK < 14); // JDK-8231559
 

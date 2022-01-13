@@ -91,7 +91,7 @@ public class AMD64HotSpotBackendFactory extends HotSpotBackendFactory {
                         replacements,
                         options,
                         target);
-        AMD64GraphBuilderPlugins.register(plugins, replacements, (AMD64) target.arch, config.useFMAIntrinsics, options);
+        AMD64GraphBuilderPlugins.register(plugins, replacements, (AMD64) target.arch, options);
         return plugins;
     }
 

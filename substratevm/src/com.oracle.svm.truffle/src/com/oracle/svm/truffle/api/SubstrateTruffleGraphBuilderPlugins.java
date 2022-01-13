@@ -44,7 +44,7 @@ public class SubstrateTruffleGraphBuilderPlugins {
 
     private static void registerCompilationFinalReferencePlugins(InvocationPlugins plugins, boolean canDelayIntrinsification, SubstrateKnownTruffleTypes types) {
         InvocationPlugins.Registration r0 = new InvocationPlugins.Registration(plugins, Reference.class);
-        r0.register1("get", InvocationPlugin.Receiver.class, new InvocationPlugin() {
+        r0.registerRequired("get", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 if (!canDelayIntrinsification && receiver.isConstant()) {
@@ -58,12 +58,12 @@ public class SubstrateTruffleGraphBuilderPlugins {
                 return false;
             }
 
-        });
+        }, InvocationPlugin.Receiver.class);
     }
 
     private static void registerOptimizedCallTargetPlugins(InvocationPlugins plugins) {
         InvocationPlugins.Registration r0 = new InvocationPlugins.Registration(plugins, SubstrateOptimizedCallTarget.class);
-        r0.register0("safepointBarrier", new InvocationPlugin() {
+        r0.registerRequired("safepointBarrier", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.add(new MembarNode(MembarNode.FenceKind.NONE));

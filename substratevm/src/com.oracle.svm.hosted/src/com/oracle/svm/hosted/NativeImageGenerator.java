@@ -1083,14 +1083,14 @@ public class NativeImageGenerator {
         }
 
         @Override
-        protected void register(InvocationPlugin plugin, boolean isOptional, boolean allowOverwrite, Type declaringClass, String name, Type... argumentTypes) {
+        protected void register(InvocationPlugin plugin, boolean isOptional, boolean allowOverwrite, boolean disableable, Type declaringClass, String name, Type... argumentTypes) {
             Type targetClass;
             if (declaringClass instanceof Class) {
                 targetClass = annotationSubstitutionProcessor.getTargetClass((Class<?>) declaringClass);
             } else {
                 targetClass = declaringClass;
             }
-            super.register(plugin, isOptional, allowOverwrite, targetClass, name, argumentTypes);
+            super.register(plugin, isOptional, allowOverwrite, disableable, targetClass, name, argumentTypes);
         }
     }
 
@@ -1170,7 +1170,7 @@ public class NativeImageGenerator {
         Architecture architecture = ConfigurationValues.getTarget().arch;
         OptionValues options = aUniverse.hostVM().options();
         ImageSingletons.lookup(TargetGraphBuilderPlugins.class).register(plugins, replacements, architecture,
-                        /* registerForeignCallMath */ false, true, options);
+                        /* registerForeignCallMath */ false, options);
 
         /*
          * When the context is hosted, i.e., ahead-of-time compilation, and after the analysis we

@@ -112,7 +112,7 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
     }
 
     @Override
-    protected void register(InvocationPlugin plugin, boolean isOptional, boolean allowOverwrite, Type declaringClass, String name, Type... argumentTypes) {
+    protected void register(InvocationPlugin plugin, boolean isOptional, boolean allowOverwrite, boolean disableable, Type declaringClass, String name, Type... argumentTypes) {
         if (!config.usePopCountInstruction) {
             if (name.equals("bitCount")) {
                 GraalError.guarantee(declaringClass.equals(Integer.class) || declaringClass.equals(Long.class), declaringClass.getTypeName());
@@ -128,12 +128,18 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
         boolean isStatic = argumentTypes.length == 0 || argumentTypes[0] != InvocationPlugin.Receiver.class;
         if (disabledIntrinsicsFilter != null &&
                         disabledIntrinsicsFilter.matches(declaringClass.getTypeName(), name, isStatic ? argumentTypes : Arrays.copyOfRange(argumentTypes, 1, argumentTypes.length))) {
-            if (logDisabledIntrinsics) {
-                TTY.println("[Warning] Intrinsic %s.%s%s is disabled.", declaringClass.getTypeName(), name, toArgumentDescriptor(isStatic, argumentTypes));
+            if (disableable) {
+                if (logDisabledIntrinsics) {
+                    TTY.println("[Warning] Intrinsic %s.%s%s is disabled.", declaringClass.getTypeName(), name, toArgumentDescriptor(isStatic, argumentTypes));
+                }
+                return;
+            } else {
+                if (logDisabledIntrinsics) {
+                    TTY.println("[Warning] Intrinsic %s.%s%s cannot be disabled.", declaringClass.getTypeName(), name, toArgumentDescriptor(isStatic, argumentTypes));
+                }
             }
-            return;
         }
-        super.register(plugin, isOptional, allowOverwrite, declaringClass, name, argumentTypes);
+        super.register(plugin, isOptional, allowOverwrite, disableable, declaringClass, name, argumentTypes);
     }
 
     @Override

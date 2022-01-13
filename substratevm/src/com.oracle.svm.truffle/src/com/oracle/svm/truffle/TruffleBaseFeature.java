@@ -252,7 +252,7 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
          * that we get exact types for fields that store profiles.
          */
         Registration r = new Registration(plugins.getInvocationPlugins(), Profile.class);
-        r.register0("isProfilingEnabled", new InvocationPlugin() {
+        r.registerRequired("isProfilingEnabled", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(profilingEnabled));
@@ -490,7 +490,7 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
             if (reason == ParsingReason.PointsToAnalysis) {
                 InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins.getInvocationPlugins(),
                                 StaticShape.Builder.class);
-                r.register3("build", InvocationPlugin.Receiver.class, Class.class, Class.class, new InvocationPlugin() {
+                r.registerRequired("build", new InvocationPlugin() {
                     @Override
                     public boolean inlineOnly() {
                         // Use the plugin only during parsing.
@@ -499,13 +499,13 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
 
                     @Override
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod,
-                                    InvocationPlugin.Receiver receiver, ValueNode arg1, ValueNode arg2) {
+                                    Receiver receiver, ValueNode arg1, ValueNode arg2) {
                         Class<?> superClass = getArgumentClass(b, targetMethod, 1, arg1);
                         Class<?> factoryInterface = getArgumentClass(b, targetMethod, 2, arg2);
                         generate(superClass, factoryInterface, beforeAnalysisAccess);
                         return false;
                     }
-                });
+                }, InvocationPlugin.Receiver.class, Class.class, Class.class);
             }
         }
 

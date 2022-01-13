@@ -52,12 +52,12 @@ public class InvocationPluginsTest extends GraalCompilerTest {
         assertTrue(invocationPlugins.isEmpty());
 
         Registration r = new Registration(invocationPlugins, Class.class);
-        r.register1("isAnonymousClass", Receiver.class, new InvocationPlugin() {
+        r.register("isAnonymousClass", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 return false;
             }
-        });
+        }, Receiver.class);
 
         assertNotIsEmpty(invocationPlugins);
     }
@@ -71,12 +71,12 @@ public class InvocationPluginsTest extends GraalCompilerTest {
             @Override
             public void run() {
                 Registration r = new Registration(invocationPlugins, Class.class);
-                r.register1("isAnonymousClass", Receiver.class, new InvocationPlugin() {
+                r.register("isAnonymousClass", new InvocationPlugin() {
                     @Override
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                         return false;
                     }
-                });
+                }, Receiver.class);
             }
         });
 

@@ -76,7 +76,7 @@ public class DataPatchTest extends HotSpotGraalCompilerTest {
     @Override
     protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
         Registration r = new Registration(invocationPlugins, DataPatchTest.class);
-        r.register1("compressUncompress", Object.class, new InvocationPlugin() {
+        r.register("compressUncompress", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
                 CompressEncoding encoding = runtime().getVMConfig().getOopEncoding();
@@ -85,7 +85,7 @@ public class DataPatchTest extends HotSpotGraalCompilerTest {
                 b.addPush(JavaKind.Object, HotSpotCompressionNode.uncompress(proxy, encoding));
                 return true;
             }
-        });
+        }, Object.class);
         super.registerInvocationPlugins(invocationPlugins);
     }
 }

@@ -124,7 +124,7 @@ public class CGlobalDataFeature implements GraalFeature {
     @Override
     public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, Plugins plugins, ParsingReason reason) {
         Registration r = new Registration(plugins.getInvocationPlugins(), CGlobalData.class);
-        r.register1("get", Receiver.class, new InvocationPlugin() {
+        r.registerRequired("get", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 ValueNode cGlobalDataNode = receiver.get();
@@ -182,7 +182,7 @@ public class CGlobalDataFeature implements GraalFeature {
                 }
                 return true;
             }
-        });
+        }, Receiver.class);
     }
 
     public CGlobalDataInfo registerAsAccessedOrGet(CGlobalData<?> obj) {

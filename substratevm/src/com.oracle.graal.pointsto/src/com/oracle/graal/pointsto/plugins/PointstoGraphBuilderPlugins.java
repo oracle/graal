@@ -47,14 +47,14 @@ public class PointstoGraphBuilderPlugins {
 
     public static void registerObjectPlugins(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, Object.class);
-        r.register1("clone", Receiver.class, new InvocationPlugin() {
+        r.registerRequired("clone", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 ValueNode object = receiver.get();
                 b.addPush(JavaKind.Object, new AnalysisObjectCloneNode(MacroParams.of(b, targetMethod, object)));
                 return true;
             }
-        });
+        }, Receiver.class);
     }
 
 }

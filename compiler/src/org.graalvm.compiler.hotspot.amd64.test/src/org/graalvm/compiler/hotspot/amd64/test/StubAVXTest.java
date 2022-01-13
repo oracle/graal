@@ -214,7 +214,7 @@ public class StubAVXTest extends LIRTest {
     protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
         InvocationPlugins invocationPlugins = conf.getPlugins().getInvocationPlugins();
         InvocationPlugins.Registration r = new InvocationPlugins.Registration(invocationPlugins, TestStub.class);
-        r.register0("testStub", new InvocationPlugin() {
+        r.register("testStub", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver) {
                 b.add(new ForeignCallNode(getProviders().getForeignCalls(), TEST_STUB));

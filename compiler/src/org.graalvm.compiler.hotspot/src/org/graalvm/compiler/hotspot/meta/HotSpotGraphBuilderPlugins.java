@@ -133,6 +133,7 @@ import org.graalvm.compiler.replacements.arraycopy.ArrayCopyForeignCalls;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopySnippets;
 import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
 import org.graalvm.compiler.serviceprovider.GraalServices;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.word.LocationIdentity;
 
@@ -230,13 +231,8 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     private static void registerTrufflePlugins(InvocationPlugins plugins, WordTypes wordTypes, GraalHotSpotVMConfig config) {
-        if (config.jvmciReservedReference0Offset == -1) {
-            // cannot install intrinsics without
-            return;
-        }
-
         InvocationPlugins.Registration tl = new InvocationPlugins.Registration(plugins, "org.graalvm.compiler.truffle.runtime.hotspot.HotSpotFastThreadLocal");
-        tl.register1("get", InvocationPlugin.Receiver.class, new InvocationPlugin() {
+        tl.registerConditional(config.jvmciReservedReference0Offset != -1, "get", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 int jvmciReservedReference0Offset = config.jvmciReservedReference0Offset;
@@ -245,8 +241,8 @@ public class HotSpotGraphBuilderPlugins {
                 return true;
             }
 
-        });
-        tl.register2("set", InvocationPlugin.Receiver.class, Object[].class, new InvocationPlugin() {
+        }, Receiver.class);
+        tl.registerConditional(config.jvmciReservedReference0Offset != -1, "set", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
                             ValueNode value) {
@@ -255,13 +251,12 @@ public class HotSpotGraphBuilderPlugins {
                 b.add(new HotSpotStoreReservedReferenceNode(wordTypes, value, jvmciReservedReference0Offset));
                 return true;
             }
-        });
-
+        }, Receiver.class, Object[].class);
     }
 
     private static void registerObjectPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
         Registration r = new Registration(plugins, Object.class, replacements);
-        r.register1("clone", Receiver.class, new InvocationPlugin() {
+        r.register("clone", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 ValueNode object = receiver.get();
@@ -273,8 +268,8 @@ public class HotSpotGraphBuilderPlugins {
             public boolean inlineOnly() {
                 return true;
             }
-        });
-        r.register1("hashCode", Receiver.class, new InvocationPlugin() {
+        }, Receiver.class);
+        r.register("hashCode", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 ValueNode object = receiver.get();
@@ -286,43 +281,39 @@ public class HotSpotGraphBuilderPlugins {
             public boolean inlineOnly() {
                 return true;
             }
-        });
-        if (config.inlineNotify()) {
-            r.register1("notify", Receiver.class, new InvocationPlugin() {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                    ValueNode object = receiver.get();
-                    b.add(new FastNotifyNode(object, false, b.bci()));
-                    return true;
-                }
+        }, Receiver.class);
+        r.registerConditional(config.inlineNotify(), "notify", new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                ValueNode object = receiver.get();
+                b.add(new FastNotifyNode(object, false, b.bci()));
+                return true;
+            }
 
-                @Override
-                public boolean inlineOnly() {
-                    return true;
-                }
-            });
-        }
-        if (config.inlineNotifyAll()) {
-            r.register1("notifyAll", Receiver.class, new InvocationPlugin() {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                    ValueNode object = receiver.get();
-                    b.add(new FastNotifyNode(object, true, b.bci()));
-                    return true;
-                }
+            @Override
+            public boolean inlineOnly() {
+                return true;
+            }
+        }, Receiver.class);
+        r.registerConditional(config.inlineNotifyAll(), "notifyAll", new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                ValueNode object = receiver.get();
+                b.add(new FastNotifyNode(object, true, b.bci()));
+                return true;
+            }
 
-                @Override
-                public boolean inlineOnly() {
-                    return true;
-                }
-            });
-        }
+            @Override
+            public boolean inlineOnly() {
+                return true;
+            }
+        }, Receiver.class);
     }
 
     private static void registerClassPlugins(Plugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
         Registration r = new Registration(plugins.getInvocationPlugins(), Class.class, replacements);
 
-        r.register1("getModifiers", Receiver.class, new InvocationPlugin() {
+        r.register("getModifiers", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
@@ -334,8 +325,8 @@ public class HotSpotGraphBuilderPlugins {
                 }
                 return true;
             }
-        });
-        r.register1("isInterface", Receiver.class, new InvocationPlugin() {
+        }, Receiver.class);
+        r.register("isInterface", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
@@ -349,8 +340,8 @@ public class HotSpotGraphBuilderPlugins {
                 }
                 return true;
             }
-        });
-        r.register1("isPrimitive", Receiver.class, new InvocationPlugin() {
+        }, Receiver.class);
+        r.register("isPrimitive", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
@@ -360,8 +351,8 @@ public class HotSpotGraphBuilderPlugins {
                 }
                 return true;
             }
-        });
-        r.register1("getSuperclass", Receiver.class, new InvocationPlugin() {
+        }, Receiver.class);
+        r.register("getSuperclass", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
@@ -393,48 +384,23 @@ public class HotSpotGraphBuilderPlugins {
                 }
                 return true;
             }
-        });
+        }, Receiver.class);
 
-        if (config.jvmAccIsHiddenClass != 0) {
-            r.register1("isHidden", Receiver.class, new InvocationPlugin() {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                    try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
-                        ValueNode klass = helper.readKlassFromClass(receiver.get());
-                        // Primitive Class case returns false
-                        ValueNode nonNullKlass = helper.emitNullReturnGuard(klass, ConstantNode.forBoolean(false), GraalDirectives.UNLIKELY_PROBABILITY);
-                        // return (Klass::_access_flags & jvmAccIsHiddenClass) == 0 ? false : true
-                        ValueNode accessFlags = helper.readKlassAccessFlags(nonNullKlass);
-                        LogicNode test = IntegerTestNode.create(accessFlags, ConstantNode.forInt(config.jvmAccIsHiddenClass), NodeView.DEFAULT);
-                        helper.emitFinalReturn(JavaKind.Boolean, ConditionalNode.create(test, ConstantNode.forBoolean(false), ConstantNode.forBoolean(true), NodeView.DEFAULT));
-                    }
-                    return true;
+        r.registerConditional(config.jvmAccIsHiddenClass != 0, "isHidden", new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
+                    ValueNode klass = helper.readKlassFromClass(receiver.get());
+                    // Primitive Class case returns false
+                    ValueNode nonNullKlass = helper.emitNullReturnGuard(klass, ConstantNode.forBoolean(false), GraalDirectives.UNLIKELY_PROBABILITY);
+                    // return (Klass::_access_flags & jvmAccIsHiddenClass) == 0 ? false : true
+                    ValueNode accessFlags = helper.readKlassAccessFlags(nonNullKlass);
+                    LogicNode test = IntegerTestNode.create(accessFlags, ConstantNode.forInt(config.jvmAccIsHiddenClass), NodeView.DEFAULT);
+                    helper.emitFinalReturn(JavaKind.Boolean, ConditionalNode.create(test, ConstantNode.forBoolean(false), ConstantNode.forBoolean(true), NodeView.DEFAULT));
                 }
-            });
-        }
-
-        if (config.getFieldOffset("ArrayKlass::_component_mirror", Integer.class, "oop", Integer.MAX_VALUE, JDK <= 8) != Integer.MAX_VALUE) {
-            r.register1("getComponentType", Receiver.class, new InvocationPlugin() {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                    try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
-                        ValueNode klass = helper.readKlassFromClass(receiver.get());
-                        // Primitive Class case returns null
-                        final ConstantNode nullValue = ConstantNode.defaultForKind(JavaKind.Object);
-                        ValueNode klassNonNull = helper.emitNullReturnGuard(klass, nullValue, GraalDirectives.UNLIKELY_PROBABILITY);
-                        // Non-array case
-                        // if (Klass::_layout_helper >= 0) return null
-                        ValueNode layoutHelper = helper.klassLayoutHelper(klassNonNull);
-                        GuardingNode guard = helper.emitReturnIf(layoutHelper, Condition.GE, ConstantNode.forInt(config.klassLayoutHelperNeutralValue), nullValue,
-                                        GraalDirectives.UNLIKELY_PROBABILITY);
-                        // Return ArrayKlass::_component_mirror
-                        ValueNode componentMirror = helper.readArrayKlassComponentMirror(klassNonNull, guard);
-                        helper.emitFinalReturn(JavaKind.Object, componentMirror);
-                    }
-                    return true;
-                }
-            });
-        }
+                return true;
+            }
+        }, Receiver.class);
     }
 
     private static void registerCallSitePlugins(InvocationPlugins plugins) {
@@ -463,7 +429,7 @@ public class HotSpotGraphBuilderPlugins {
 
     private static void registerReflectionPlugins(InvocationPlugins plugins, Replacements replacements, GraalHotSpotVMConfig config) {
         Registration r = new Registration(plugins, reflectionClass, replacements);
-        r.register0("getCallerClass", new InvocationPlugin() {
+        r.register("getCallerClass", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.addPush(JavaKind.Object, new HotSpotReflectionGetCallerClassNode(MacroParams.of(b, targetMethod)));
@@ -475,7 +441,7 @@ public class HotSpotGraphBuilderPlugins {
                 return true;
             }
         });
-        r.register1("getClassAccessFlags", Class.class, new InvocationPlugin() {
+        r.register("getClassAccessFlags", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
                 try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
@@ -488,22 +454,21 @@ public class HotSpotGraphBuilderPlugins {
                 }
                 return true;
             }
-        });
+        }, Class.class);
     }
 
     private static void registerUnsafePlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
         Registration r = new Registration(plugins, "jdk.internal.misc.Unsafe", replacements);
-        r.register6(HotSpotBackend.copyMemoryName, Receiver.class, Object.class, long.class, Object.class,
-                        long.class, long.class, new InvocationPlugin() {
-                            @Override
-                            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode srcBase, ValueNode srcOffset, ValueNode destBase,
-                                            ValueNode destOffset, ValueNode bytes) {
-                                b.add(new UnsafeCopyMemoryNode(config.doingUnsafeAccessOffset != Integer.MAX_VALUE, receiver.get(), srcBase, srcOffset, destBase, destOffset, bytes));
-                                return true;
-                            }
-                        });
+        r.register(HotSpotBackend.copyMemoryName, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode srcBase, ValueNode srcOffset, ValueNode destBase,
+                            ValueNode destOffset, ValueNode bytes) {
+                b.add(new UnsafeCopyMemoryNode(config.doingUnsafeAccessOffset != Integer.MAX_VALUE, receiver.get(), srcBase, srcOffset, destBase, destOffset, bytes));
+                return true;
+            }
+        }, Receiver.class, Object.class, long.class, Object.class, long.class, long.class);
 
-        r.register2("allocateInstance", Receiver.class, Class.class, new InvocationPlugin() {
+        r.register("allocateInstance", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode clazz) {
                 /* Emits a null-check for the otherwise unused receiver. */
@@ -517,14 +482,14 @@ public class HotSpotGraphBuilderPlugins {
                 DynamicNewInstanceNode.createAndPush(b, clazz);
                 return true;
             }
-        });
+        }, Receiver.class, Class.class);
     }
 
     private static void registerSystemPlugins(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, System.class);
-        r.register0("currentTimeMillis", new ForeignCallPlugin(HotSpotHostForeignCallsProvider.JAVA_TIME_MILLIS));
-        r.register0("nanoTime", new ForeignCallPlugin(HotSpotHostForeignCallsProvider.JAVA_TIME_NANOS));
-        r.register1("identityHashCode", Object.class, new InvocationPlugin() {
+        r.register("currentTimeMillis", new ForeignCallPlugin(HotSpotHostForeignCallsProvider.JAVA_TIME_MILLIS));
+        r.register("nanoTime", new ForeignCallPlugin(HotSpotHostForeignCallsProvider.JAVA_TIME_NANOS));
+        r.register("identityHashCode", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
                 b.addPush(JavaKind.Int, new HotSpotIdentityHashCodeNode(object, b.bci()));
@@ -535,14 +500,14 @@ public class HotSpotGraphBuilderPlugins {
             public boolean inlineOnly() {
                 return true;
             }
-        });
+        }, Object.class);
         ArrayCopySnippets.registerSystemArraycopyPlugin(r);
     }
 
     private static void registerArrayPlugins(InvocationPlugins plugins, Replacements replacements, GraalHotSpotVMConfig config) {
         Registration r = new Registration(plugins, Array.class, replacements);
         r.setAllowOverwrite(true);
-        r.register2("newInstance", Class.class, int.class, new InvocationPlugin() {
+        r.register("newInstance", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode componentType, ValueNode length) {
                 try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
@@ -558,12 +523,12 @@ public class HotSpotGraphBuilderPlugins {
                 }
                 return true;
             }
-        });
+        }, Class.class, int.class);
     }
 
     private static void registerStringPlugins(InvocationPlugins plugins, Replacements replacements, WordTypes wordTypes, ArrayCopyForeignCalls foreignCalls, GraalHotSpotVMConfig vmConfig) {
         final Registration utf16r = new Registration(plugins, "java.lang.StringUTF16", replacements);
-        utf16r.register3("toBytes", char[].class, int.class, int.class, new InvocationPlugin() {
+        utf16r.register("toBytes", new InvocationPlugin() {
             private static final int MAX_LENGTH = Integer.MAX_VALUE >> 1;
 
             @Override
@@ -584,8 +549,8 @@ public class HotSpotGraphBuilderPlugins {
                 }
                 return true;
             }
-        });
-        utf16r.register5("getChars", byte[].class, int.class, int.class, char[].class, int.class, new InvocationPlugin() {
+        }, char[].class, int.class, int.class);
+        utf16r.register("getChars", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode srcBegin, ValueNode srcEnd, ValueNode dst,
                             ValueNode dstBegin) {
@@ -602,12 +567,12 @@ public class HotSpotGraphBuilderPlugins {
                 }
                 return true;
             }
-        });
+        }, byte[].class, int.class, int.class, char[].class, int.class);
     }
 
     private static void registerThreadPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
         Registration r = new Registration(plugins, Thread.class, replacements);
-        r.register0("currentThread", new InvocationPlugin() {
+        r.register("currentThread", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
@@ -618,37 +583,33 @@ public class HotSpotGraphBuilderPlugins {
             }
         });
 
-        if (config.osThreadInterruptedOffset != Integer.MAX_VALUE) {
-            // This substitution is no longer in used when threadObj is a handle
-            assert !config.threadObjectFieldIsHandle;
-            r.register2("isInterrupted", Receiver.class, boolean.class, new InvocationPlugin() {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode clearInterrupted) {
-                    try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
-                        ValueNode receiverThreadObject = receiver.get();
-                        CurrentJavaThreadNode thread = b.add(new CurrentJavaThreadNode(helper.getWordKind()));
-                        ValueNode currentThreadObject = helper.readCurrentThreadObject(thread);
+        // This substitution is no longer in used when threadObj is a handle
+        r.registerConditional(config.osThreadInterruptedOffset != Integer.MAX_VALUE && !config.threadObjectFieldIsHandle, "isInterrupted", new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode clearInterrupted) {
+                try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
+                    ValueNode receiverThreadObject = receiver.get();
+                    CurrentJavaThreadNode thread = b.add(new CurrentJavaThreadNode(helper.getWordKind()));
+                    ValueNode currentThreadObject = helper.readCurrentThreadObject(thread);
 
-                        // if (this != Thread.currentThread()) do fallback
-                        helper.doFallbackIf(receiverThreadObject, NE, currentThreadObject, GraalDirectives.UNLIKELY_PROBABILITY);
-                        ValueNode osThread = helper.readOsThread(thread);
-                        ValueNode interrupted = helper.readOsThreadInterrupted(osThread);
+                    // if (this != Thread.currentThread()) do fallback
+                    helper.doFallbackIf(receiverThreadObject, NE, currentThreadObject, GraalDirectives.UNLIKELY_PROBABILITY);
+                    ValueNode osThread = helper.readOsThread(thread);
+                    ValueNode interrupted = helper.readOsThreadInterrupted(osThread);
 
-                        // if (thread._osthread._isinterrupted == 0) return false
-                        helper.emitReturnIf(interrupted, EQ, ConstantNode.forInt(0), ConstantNode.forBoolean(false), GraalDirectives.LIKELY_PROBABILITY);
+                    // if (thread._osthread._isinterrupted == 0) return false
+                    helper.emitReturnIf(interrupted, EQ, ConstantNode.forInt(0), ConstantNode.forBoolean(false), GraalDirectives.LIKELY_PROBABILITY);
 
-                        // if (clearInterrupted) fallback to invoke
-                        helper.doFallbackIf(clearInterrupted, EQ, ConstantNode.forBoolean(true), GraalDirectives.UNLIKELY_PROBABILITY);
+                    // if (clearInterrupted) fallback to invoke
+                    helper.doFallbackIf(clearInterrupted, EQ, ConstantNode.forBoolean(true), GraalDirectives.UNLIKELY_PROBABILITY);
 
-                        // return interrupted == 0 ? false : true
-                        LogicNode test = helper.createCompare(interrupted, CanonicalCondition.EQ, ConstantNode.forInt(0));
-                        helper.emitFinalReturn(JavaKind.Boolean, ConditionalNode.create(test, ConstantNode.forBoolean(false), ConstantNode.forBoolean(true), NodeView.DEFAULT));
-                    }
-                    return true;
+                    // return interrupted == 0 ? false : true
+                    LogicNode test = helper.createCompare(interrupted, CanonicalCondition.EQ, ConstantNode.forInt(0));
+                    helper.emitFinalReturn(JavaKind.Boolean, ConditionalNode.create(test, ConstantNode.forBoolean(false), ConstantNode.forBoolean(true), NodeView.DEFAULT));
                 }
-            });
-        }
-
+                return true;
+            }
+        }, Receiver.class, boolean.class);
     }
 
     public static final String reflectionClass = "jdk.internal.reflect.Reflection";
@@ -824,126 +785,86 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     private static void registerAESPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
-        if (config.useAESIntrinsics) {
-            assert config.aescryptEncryptBlockStub != 0L;
-            assert config.aescryptDecryptBlockStub != 0L;
-            assert config.cipherBlockChainingEncryptAESCryptStub != 0L;
-            assert config.cipherBlockChainingDecryptAESCryptStub != 0L;
+        Registration r = new Registration(plugins, "com.sun.crypto.provider.CipherBlockChaining", replacements);
+        r.registerConditional(config.useAESIntrinsics && config.cipherBlockChainingEncryptAESCryptStub != 0L, "implEncrypt", new CipherBlockChainingCryptPlugin(true),
+                        Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class);
+        r.registerConditional(config.useAESIntrinsics && config.cipherBlockChainingDecryptAESCryptStub != 0L, "implDecrypt", new CipherBlockChainingCryptPlugin(false),
+                        Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class);
 
-            Registration r = new Registration(plugins, "com.sun.crypto.provider.CipherBlockChaining", replacements);
-
-            Pair<String, String> cbcEncryptName = selectIntrinsicName(config, "com/sun/crypto/provider/CipherBlockChaining", "implEncrypt", "encrypt");
-            try {
-                r.registerOptional6(cbcEncryptName.getLeft(), Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class, new CipherBlockChainingCryptPlugin(true));
-            } catch (NoSuchMethodError e3) {
-                throw new GraalError(e3, "Found method named '%s' instead of '%s' in class '%s'. This is most likely because the JVMCI JDK in %s was built on an incompatible base JDK.",
-                                cbcEncryptName.getRight(), cbcEncryptName.getLeft(), r.getDeclaringType().getTypeName(), Services.getSavedProperties().get("java.home"));
-            }
-
-            Pair<String, String> cbcDecryptName = selectIntrinsicName(config, "com/sun/crypto/provider/CipherBlockChaining", "implDecrypt", "decrypt");
-            try {
-                r.registerOptional6(cbcDecryptName.getLeft(), Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class, new CipherBlockChainingCryptPlugin(false));
-            } catch (NoSuchMethodError e2) {
-                throw new GraalError(e2, "Found method named '%s' instead of '%s' in class '%s'. This is most likely because the JVMCI JDK in %s was built on an incompatible base JDK.",
-                                cbcDecryptName.getRight(), cbcDecryptName.getLeft(), r.getDeclaringType().getTypeName(), Services.getSavedProperties().get("java.home"));
-            }
-
-            r = new Registration(plugins, "com.sun.crypto.provider.AESCrypt", replacements);
-
-            Pair<String, String> aesEncryptName = selectIntrinsicName(config, "com/sun/crypto/provider/AESCrypt", "implEncryptBlock", "encryptBlock");
-            try {
-                r.registerOptional5(aesEncryptName.getLeft(), Receiver.class, byte[].class, int.class, byte[].class, int.class, new AESCryptPlugin(true));
-            } catch (NoSuchMethodError e1) {
-                throw new GraalError(e1, "Found method named '%s' instead of '%s' in class '%s'. This is most likely because the JVMCI JDK in %s was built on an incompatible base JDK.",
-                                aesEncryptName.getRight(), aesEncryptName.getLeft(), r.getDeclaringType().getTypeName(), Services.getSavedProperties().get("java.home"));
-            }
-
-            Pair<String, String> aesDecryptName = selectIntrinsicName(config, "com/sun/crypto/provider/AESCrypt", "implDecryptBlock", "decryptBlock");
-            try {
-                r.registerOptional5(aesDecryptName.getLeft(), Receiver.class, byte[].class, int.class, byte[].class, int.class, new AESCryptPlugin(false));
-            } catch (NoSuchMethodError e) {
-                throw new GraalError(e, "Found method named '%s' instead of '%s' in class '%s'. This is most likely because the JVMCI JDK in %s was built on an incompatible base JDK.",
-                                aesDecryptName.getRight(), aesDecryptName.getLeft(), r.getDeclaringType().getTypeName(), Services.getSavedProperties().get("java.home"));
-            }
-        }
+        r = new Registration(plugins, "com.sun.crypto.provider.AESCrypt", replacements);
+        r.registerConditional(config.useAESIntrinsics && config.aescryptEncryptBlockStub != 0L, "implEncryptBlock", new AESCryptPlugin(true),
+                        Receiver.class, byte[].class, int.class, byte[].class, int.class);
+        r.registerConditional(config.useAESIntrinsics && config.aescryptDecryptBlockStub != 0L, "implDecryptBlock", new AESCryptPlugin(false),
+                        Receiver.class, byte[].class, int.class, byte[].class, int.class);
     }
 
     private static void registerBigIntegerPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
         Registration r = new Registration(plugins, BigInteger.class, replacements);
-        assert !config.useMultiplyToLenIntrinsic() || config.multiplyToLen != 0L;
         r.registerConditionalMethodSubstitution(config.useMultiplyToLenIntrinsic(), BigIntegerSubstitutions.class, "implMultiplyToLen", "multiplyToLenStatic", int[].class, int.class, int[].class,
                         int.class, int[].class);
-        if (config.useMulAddIntrinsic()) {
-            r.register5("implMulAdd", int[].class, int[].class, int.class, int.class, int.class, new InvocationPlugin() {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode out, ValueNode in, ValueNode offset, ValueNode len, ValueNode k) {
-                    try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                        ValueNode outNonNull = b.nullCheckedValue(out);
-                        ValueNode outNonNullLength = b.add(new ArrayLengthNode(outNonNull));
-                        ValueNode newOffset = new SubNode(outNonNullLength, offset);
-                        ForeignCallNode call = new ForeignCallNode(HotSpotBackend.MUL_ADD, helper.arrayStart(outNonNull, JavaKind.Int), helper.arrayStart(in, JavaKind.Int), newOffset, len, k);
-                        b.addPush(JavaKind.Int, call);
-                    }
-                    return true;
+        r.registerConditional(config.useMulAddIntrinsic(), "implMulAdd", new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode out, ValueNode in, ValueNode offset, ValueNode len, ValueNode k) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    ValueNode outNonNull = b.nullCheckedValue(out);
+                    ValueNode outNonNullLength = b.add(new ArrayLengthNode(outNonNull));
+                    ValueNode newOffset = new SubNode(outNonNullLength, offset);
+                    ForeignCallNode call = new ForeignCallNode(HotSpotBackend.MUL_ADD, helper.arrayStart(outNonNull, JavaKind.Int), helper.arrayStart(in, JavaKind.Int), newOffset, len, k);
+                    b.addPush(JavaKind.Int, call);
                 }
-            });
-        }
-        if (config.useMontgomeryMultiplyIntrinsic()) {
-            /*
-             * static int[] implMontgomeryMultiply(int[] a, int[] b, int[] n, int len, long inv,
-             * int[] product)
-             */
-            r.register6("implMontgomeryMultiply", int[].class, int[].class, int[].class, int.class, long.class, int[].class, new InvocationPlugin() {
+                return true;
+            }
+        }, int[].class, int[].class, int.class, int.class, int.class);
+        /*
+         * static int[] implMontgomeryMultiply(int[] a, int[] b, int[] n, int len, long inv, int[]
+         * product)
+         */
+        r.registerConditional(config.useMontgomeryMultiplyIntrinsic(), "implMontgomeryMultiply", new InvocationPlugin() {
 
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode a, ValueNode bObject, ValueNode n, ValueNode len, ValueNode inv,
-                                ValueNode product) {
-                    try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                        // The stub doesn't return the right value for the intrinsic so push it here
-                        // and the proper after FrameState will be put on ForeignCallNode by add.
-                        b.addPush(JavaKind.Object, product);
-                        b.add(new ForeignCallNode(HotSpotBackend.MONTGOMERY_MULTIPLY, helper.arrayStart(a, JavaKind.Int), helper.arrayStart(bObject, JavaKind.Int),
-                                        helper.arrayStart(n, JavaKind.Int), len, inv, helper.arrayStart(product, JavaKind.Int)));
-                    }
-                    return true;
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode a, ValueNode bObject, ValueNode n, ValueNode len, ValueNode inv,
+                            ValueNode product) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    // The stub doesn't return the right value for the intrinsic so push it here
+                    // and the proper after FrameState will be put on ForeignCallNode by add.
+                    b.addPush(JavaKind.Object, product);
+                    b.add(new ForeignCallNode(HotSpotBackend.MONTGOMERY_MULTIPLY, helper.arrayStart(a, JavaKind.Int), helper.arrayStart(bObject, JavaKind.Int),
+                                    helper.arrayStart(n, JavaKind.Int), len, inv, helper.arrayStart(product, JavaKind.Int)));
                 }
-            });
-        }
-        if (config.useMontgomerySquareIntrinsic()) {
-            /*
-             * static int[] implMontgomerySquare(int[] a, int[] n, int len, long inv, int[] product)
-             */
-            r.register5("implMontgomerySquare", int[].class, int[].class, int.class, long.class, int[].class, new InvocationPlugin() {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode a, ValueNode n, ValueNode len, ValueNode inv, ValueNode product) {
-                    try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                        // The stub doesn't return the right value for the intrinsic so push it here
-                        // and the proper after FrameState will be put on ForeignCallNode by add.
-                        b.addPush(JavaKind.Object, product);
-                        b.add(new ForeignCallNode(HotSpotBackend.MONTGOMERY_SQUARE, helper.arrayStart(a, JavaKind.Int), helper.arrayStart(n, JavaKind.Int), len, inv,
-                                        helper.arrayStart(product, JavaKind.Int)));
-                    }
-                    return true;
+                return true;
+            }
+        }, int[].class, int[].class, int[].class, int.class, long.class, int[].class);
+        /*
+         * static int[] implMontgomerySquare(int[] a, int[] n, int len, long inv, int[] product)
+         */
+        r.registerConditional(config.useMontgomerySquareIntrinsic(), "implMontgomerySquare", new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode a, ValueNode n, ValueNode len, ValueNode inv, ValueNode product) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    // The stub doesn't return the right value for the intrinsic so push it here
+                    // and the proper after FrameState will be put on ForeignCallNode by add.
+                    b.addPush(JavaKind.Object, product);
+                    b.add(new ForeignCallNode(HotSpotBackend.MONTGOMERY_SQUARE, helper.arrayStart(a, JavaKind.Int), helper.arrayStart(n, JavaKind.Int), len, inv,
+                                    helper.arrayStart(product, JavaKind.Int)));
                 }
-            });
-        }
-        if (config.useSquareToLenIntrinsic()) {
-            /*
-             * static int[] implSquareToLen(int[] x, int len, int[] z, int zLen)
-             */
-            r.register4("implSquareToLen", int[].class, int.class, int[].class, int.class, new InvocationPlugin() {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode len, ValueNode z, ValueNode zlen) {
-                    try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                        // The stub doesn't return the right value for the intrinsic so push it here
-                        // and the proper after FrameState will be put on ForeignCallNode by add.
-                        b.addPush(JavaKind.Object, z);
-                        b.add(new ForeignCallNode(HotSpotBackend.SQUARE_TO_LEN, helper.arrayStart(x, JavaKind.Int), len, helper.arrayStart(z, JavaKind.Int), zlen));
-                    }
-                    return true;
+                return true;
+            }
+        }, int[].class, int[].class, int.class, long.class, int[].class);
+        /*
+         * static int[] implSquareToLen(int[] x, int len, int[] z, int zLen)
+         */
+        r.registerConditional(config.useSquareToLenIntrinsic(), "implSquareToLen", new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode len, ValueNode z, ValueNode zlen) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    // The stub doesn't return the right value for the intrinsic so push it here
+                    // and the proper after FrameState will be put on ForeignCallNode by add.
+                    b.addPush(JavaKind.Object, z);
+                    b.add(new ForeignCallNode(HotSpotBackend.SQUARE_TO_LEN, helper.arrayStart(x, JavaKind.Int), len, helper.arrayStart(z, JavaKind.Int), zlen));
                 }
-            });
-        }
+                return true;
+            }
+        }, int[].class, int.class, int[].class, int.class);
     }
 
     static class SHAInvocationPlugin implements InvocationPlugin {
@@ -979,73 +900,35 @@ public class HotSpotGraphBuilderPlugins {
             r.registerMethodSubstitution(DigestBaseSubstitutions.class, "implCompressMultiBlock0", Receiver.class, byte[].class, int.class, int.class);
         }
 
-        Pair<String, String> implCompressName = selectIntrinsicName(config, "sun/security/provider/SHA", "implCompress", "implCompress0");
-        if (useSha1) {
-            assert config.sha1ImplCompress != 0L;
-            Registration r = new Registration(plugins, "sun.security.provider.SHA", replacements);
-            InvocationPlugin plugin = new SHAInvocationPlugin(HotSpotBackend.SHA_IMPL_COMPRESS);
-            try {
-                r.register3(implCompressName.getLeft(), Receiver.class, byte[].class, int.class, plugin);
-            } catch (NoSuchMethodError e) {
-                throw new GraalError(e, "Found method named '%s' instead of '%s' in class '%s'. This is most likely because the JVMCI JDK in %s was built on an incompatible base JDK.",
-                                implCompressName.getRight(), implCompressName.getLeft(), r.getDeclaringType().getTypeName(), Services.getSavedProperties().get("java.home"));
-            }
-        }
-        if (useSha256) {
-            assert config.sha256ImplCompress != 0L;
-            Registration r = new Registration(plugins, "sun.security.provider.SHA2", replacements);
-            InvocationPlugin plugin = new SHAInvocationPlugin(HotSpotBackend.SHA2_IMPL_COMPRESS);
-            try {
-                r.register3(implCompressName.getLeft(), Receiver.class, byte[].class, int.class, plugin);
-            } catch (NoSuchMethodError e) {
-                throw new GraalError(e, "Found method named '%s' instead of '%s' in class '%s'. This is most likely because the JVMCI JDK in %s was built on an incompatible base JDK.",
-                                implCompressName.getRight(), implCompressName.getLeft(), r.getDeclaringType().getTypeName(), Services.getSavedProperties().get("java.home"));
-            }
-        }
-        if (useSha512) {
-            assert config.sha512ImplCompress != 0L;
-            Registration r = new Registration(plugins, "sun.security.provider.SHA5", replacements);
-            InvocationPlugin plugin = new SHAInvocationPlugin(HotSpotBackend.SHA5_IMPL_COMPRESS);
-            try {
-                r.register3(implCompressName.getLeft(), Receiver.class, byte[].class, int.class, plugin);
-            } catch (NoSuchMethodError e) {
-                throw new GraalError(e, "Found method named '%s' instead of '%s' in class '%s'. This is most likely because the JVMCI JDK in %s was built on an incompatible base JDK.",
-                                implCompressName.getRight(), implCompressName.getLeft(), r.getDeclaringType().getTypeName(), Services.getSavedProperties().get("java.home"));
-            }
-        }
+        Registration rSha1 = new Registration(plugins, "sun.security.provider.SHA", replacements);
+        rSha1.registerConditional(config.useSHA1Intrinsics(), "implCompress0", new SHAInvocationPlugin(HotSpotBackend.SHA_IMPL_COMPRESS),
+                        Receiver.class, byte[].class, int.class);
+
+        Registration rSha256 = new Registration(plugins, "sun.security.provider.SHA2", replacements);
+        rSha256.registerConditional(config.useSHA256Intrinsics(), "implCompress0", new SHAInvocationPlugin(HotSpotBackend.SHA2_IMPL_COMPRESS),
+                        Receiver.class, byte[].class, int.class);
+
+        Registration rSha512 = new Registration(plugins, "sun.security.provider.SHA5", replacements);
+        rSha512.registerConditional(config.useSHA512Intrinsics(), "implCompress0", new SHAInvocationPlugin(HotSpotBackend.SHA5_IMPL_COMPRESS),
+                        Receiver.class, byte[].class, int.class);
     }
 
     private static void registerGHASHPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, MetaAccessProvider metaAccess) {
-        if (config.useGHASHIntrinsics()) {
-            assert config.ghashProcessBlocks != 0L;
-            Registration r = new Registration(plugins, "com.sun.crypto.provider.GHASH");
-            r.register5("processBlocks",
-                            byte[].class,
-                            int.class,
-                            int.class,
-                            long[].class,
-                            long[].class,
-                            new InvocationPlugin() {
-                                @Override
-                                public boolean apply(GraphBuilderContext b,
-                                                ResolvedJavaMethod targetMethod,
-                                                Receiver receiver,
-                                                ValueNode data,
-                                                ValueNode inOffset,
-                                                ValueNode blocks,
-                                                ValueNode state,
-                                                ValueNode hashSubkey) {
-                                    int longArrayBaseOffset = metaAccess.getArrayBaseOffset(JavaKind.Long);
-                                    int byteArrayBaseOffset = metaAccess.getArrayBaseOffset(JavaKind.Byte);
-                                    ValueNode dataOffset = AddNode.create(ConstantNode.forInt(byteArrayBaseOffset), inOffset, NodeView.DEFAULT);
-                                    ComputeObjectAddressNode dataAddress = b.add(new ComputeObjectAddressNode(data, dataOffset));
-                                    ComputeObjectAddressNode stateAddress = b.add(new ComputeObjectAddressNode(state, ConstantNode.forInt(longArrayBaseOffset)));
-                                    ComputeObjectAddressNode hashSubkeyAddress = b.add(new ComputeObjectAddressNode(hashSubkey, ConstantNode.forInt(longArrayBaseOffset)));
-                                    b.add(new ForeignCallNode(GHASH_PROCESS_BLOCKS, stateAddress, hashSubkeyAddress, dataAddress, blocks));
-                                    return true;
-                                }
-                            });
-        }
+        Registration r = new Registration(plugins, "com.sun.crypto.provider.GHASH");
+        r.registerConditional(config.useGHASHIntrinsics(), "processBlocks", new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
+                            ValueNode data, ValueNode inOffset, ValueNode blocks, ValueNode state, ValueNode hashSubkey) {
+                int longArrayBaseOffset = metaAccess.getArrayBaseOffset(JavaKind.Long);
+                int byteArrayBaseOffset = metaAccess.getArrayBaseOffset(JavaKind.Byte);
+                ValueNode dataOffset = AddNode.create(ConstantNode.forInt(byteArrayBaseOffset), inOffset, NodeView.DEFAULT);
+                ComputeObjectAddressNode dataAddress = b.add(new ComputeObjectAddressNode(data, dataOffset));
+                ComputeObjectAddressNode stateAddress = b.add(new ComputeObjectAddressNode(state, ConstantNode.forInt(longArrayBaseOffset)));
+                ComputeObjectAddressNode hashSubkeyAddress = b.add(new ComputeObjectAddressNode(hashSubkey, ConstantNode.forInt(longArrayBaseOffset)));
+                b.add(new ForeignCallNode(GHASH_PROCESS_BLOCKS, stateAddress, hashSubkeyAddress, dataAddress, blocks));
+                return true;
+            }
+        }, byte[].class, int.class, int.class, long[].class, long[].class);
     }
 
     static class CounterModeCryptPlugin implements InvocationPlugin {
@@ -1110,127 +993,99 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     private static void registerCounterModePlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
-        if (isIntrinsicName(config, "com/sun/crypto/provider/CounterMode", "implCrypt") && config.useAESCTRIntrinsics) {
-            assert config.counterModeAESCrypt != 0L;
-            Registration r = new Registration(plugins, "com.sun.crypto.provider.CounterMode", replacements);
-            r.register6("implCrypt", Receiver.class, byte[].class, int.class, int.class, byte[].class,
-                            int.class, new CounterModeCryptPlugin());
-        }
+        Registration r = new Registration(plugins, "com.sun.crypto.provider.CounterMode", replacements);
+        r.registerConditional(isIntrinsicName(config, "com/sun/crypto/provider/CounterMode", "implCrypt") && config.useAESCTRIntrinsics(), "implCrypt", new CounterModeCryptPlugin(),
+                        Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class);
     }
 
     private static void registerBase64Plugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, MetaAccessProvider metaAccess) {
-        if (config.useBase64Intrinsics()) {
-            Registration r = new Registration(plugins, "java.util.Base64$Encoder");
-            r.register7("encodeBlock",
-                            Receiver.class,
-                            byte[].class,
-                            int.class,
-                            int.class,
-                            byte[].class,
-                            int.class,
-                            boolean.class,
-                            new InvocationPlugin() {
-                                @Override
-                                public boolean apply(GraphBuilderContext b,
-                                                ResolvedJavaMethod targetMethod,
-                                                Receiver receiver,
-                                                ValueNode src,
-                                                ValueNode sp,
-                                                ValueNode sl,
-                                                ValueNode dst,
-                                                ValueNode dp,
-                                                ValueNode isURL) {
-                                    int byteArrayBaseOffset = metaAccess.getArrayBaseOffset(JavaKind.Byte);
-                                    ComputeObjectAddressNode srcAddress = b.add(new ComputeObjectAddressNode(src, ConstantNode.forInt(byteArrayBaseOffset)));
-                                    ComputeObjectAddressNode dstAddress = b.add(new ComputeObjectAddressNode(dst, ConstantNode.forInt(byteArrayBaseOffset)));
-                                    b.add(new ForeignCallNode(BASE64_ENCODE_BLOCK, srcAddress, sp, sl, dstAddress, dp, isURL));
-                                    return true;
-                                }
-                            });
-        }
+        Registration r = new Registration(plugins, "java.util.Base64$Encoder");
+        r.registerConditional(config.useBase64Intrinsics(), "encodeBlock", new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode src,
+                            ValueNode sp, ValueNode sl, ValueNode dst, ValueNode dp, ValueNode isURL) {
+                int byteArrayBaseOffset = metaAccess.getArrayBaseOffset(JavaKind.Byte);
+                ComputeObjectAddressNode srcAddress = b.add(new ComputeObjectAddressNode(src, ConstantNode.forInt(byteArrayBaseOffset)));
+                ComputeObjectAddressNode dstAddress = b.add(new ComputeObjectAddressNode(dst, ConstantNode.forInt(byteArrayBaseOffset)));
+                b.add(new ForeignCallNode(BASE64_ENCODE_BLOCK, srcAddress, sp, sl, dstAddress, dp, isURL));
+                return true;
+            }
+        }, Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class, boolean.class);
     }
 
     private static void registerCRC32Plugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
-        if (config.useCRC32Intrinsics) {
-            Registration r = new Registration(plugins, CRC32.class, replacements);
-            r.register2("update", int.class, int.class, new InvocationPlugin() {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode crc, ValueNode arg) {
-                    final ValueNode crcTableRawAddress = ConstantNode.forLong(config.crcTableAddress);
-                    ValueNode c = new XorNode(crc, ConstantNode.forInt(-1));
-                    ValueNode index = new AndNode(new XorNode(arg, c), ConstantNode.forInt(0xff));
-                    ValueNode offset = new LeftShiftNode(index, ConstantNode.forInt(2));
-                    AddressNode address = new OffsetAddressNode(crcTableRawAddress, new SignExtendNode(offset, 32, 64));
-                    ValueNode result = b.add(new JavaReadNode(JavaKind.Int, address, CRC_TABLE_LOCATION, BarrierType.NONE, false));
-                    result = new XorNode(result, new UnsignedRightShiftNode(c, ConstantNode.forInt(8)));
-                    b.addPush(JavaKind.Int, new XorNode(result, ConstantNode.forInt(-1)));
-                    return true;
-                }
-            });
-            r.register4("updateBytes0", int.class, byte[].class, int.class, int.class, new InvocationPlugin() {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode crc, ValueNode buf, ValueNode off, ValueNode len) {
-                    int byteArrayBaseOffset = b.getMetaAccess().getArrayBaseOffset(JavaKind.Byte);
-                    ValueNode bufAddr = b.add(new ComputeObjectAddressNode(buf, new AddNode(ConstantNode.forInt(byteArrayBaseOffset), off)));
-                    b.addPush(JavaKind.Int, new ForeignCallNode(UPDATE_BYTES_CRC32, crc, bufAddr, len));
-                    return true;
-                }
-            });
-            r.register4("updateByteBuffer0", int.class, long.class, int.class, int.class, new InvocationPlugin() {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode crc, ValueNode addr, ValueNode off, ValueNode len) {
-                    ValueNode bufAddr = b.add(new AddNode(addr, new SignExtendNode(off, 32, 64)));
-                    b.addPush(JavaKind.Int, new ForeignCallNode(UPDATE_BYTES_CRC32, crc, bufAddr, len));
-                    return true;
-                }
-            });
-        }
+        Registration r = new Registration(plugins, CRC32.class, replacements);
+        r.registerConditional(config.useCRC32Intrinsics() && config.crcTableAddress != 0, "update", new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode crc, ValueNode arg) {
+                final ValueNode crcTableRawAddress = ConstantNode.forLong(config.crcTableAddress);
+                ValueNode c = new XorNode(crc, ConstantNode.forInt(-1));
+                ValueNode index = new AndNode(new XorNode(arg, c), ConstantNode.forInt(0xff));
+                ValueNode offset = new LeftShiftNode(index, ConstantNode.forInt(2));
+                AddressNode address = new OffsetAddressNode(crcTableRawAddress, new SignExtendNode(offset, 32, 64));
+                ValueNode result = b.add(new JavaReadNode(JavaKind.Int, address, CRC_TABLE_LOCATION, BarrierType.NONE, false));
+                result = new XorNode(result, new UnsignedRightShiftNode(c, ConstantNode.forInt(8)));
+                b.addPush(JavaKind.Int, new XorNode(result, ConstantNode.forInt(-1)));
+                return true;
+            }
+        }, int.class, int.class);
+        r.registerConditional(config.useCRC32Intrinsics(), "updateBytes0", new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode crc, ValueNode buf, ValueNode off, ValueNode len) {
+                int byteArrayBaseOffset = b.getMetaAccess().getArrayBaseOffset(JavaKind.Byte);
+                ValueNode bufAddr = b.add(new ComputeObjectAddressNode(buf, new AddNode(ConstantNode.forInt(byteArrayBaseOffset), off)));
+                b.addPush(JavaKind.Int, new ForeignCallNode(UPDATE_BYTES_CRC32, crc, bufAddr, len));
+                return true;
+            }
+        }, int.class, byte[].class, int.class, int.class);
+        r.registerConditional(config.useCRC32Intrinsics(), "updateByteBuffer0", new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode crc, ValueNode addr, ValueNode off, ValueNode len) {
+                ValueNode bufAddr = b.add(new AddNode(addr, new SignExtendNode(off, 32, 64)));
+                b.addPush(JavaKind.Int, new ForeignCallNode(UPDATE_BYTES_CRC32, crc, bufAddr, len));
+                return true;
+            }
+        }, int.class, long.class, int.class, int.class);
     }
 
     private static void registerCRC32CPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
-        if (config.useCRC32CIntrinsics) {
-            Registration r = new Registration(plugins, "java.util.zip.CRC32C", replacements);
-            r.register4("updateBytes", int.class, byte[].class, int.class, int.class, new InvocationPlugin() {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode crc, ValueNode buf, ValueNode off, ValueNode end) {
-                    int byteArrayBaseOffset = b.getMetaAccess().getArrayBaseOffset(JavaKind.Byte);
-                    ValueNode bufAddr = b.add(new ComputeObjectAddressNode(buf, new AddNode(ConstantNode.forInt(byteArrayBaseOffset), off)));
-                    b.addPush(JavaKind.Int, new ForeignCallNode(UPDATE_BYTES_CRC32C, crc, bufAddr, new SubNode(end, off)));
-                    return true;
-                }
-            });
-            r.register4("updateDirectByteBuffer", int.class, long.class, int.class, int.class, new InvocationPlugin() {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode crc, ValueNode addr, ValueNode off, ValueNode end) {
-                    ValueNode bufAddr = b.add(new AddNode(addr, new SignExtendNode(off, 32, 64)));
-                    b.addPush(JavaKind.Int, new ForeignCallNode(UPDATE_BYTES_CRC32C, crc, bufAddr, new SubNode(end, off)));
-                    return true;
-                }
-            });
-        }
+        Registration r = new Registration(plugins, "java.util.zip.CRC32C", replacements);
+        r.registerConditional(config.useCRC32CIntrinsics(), "updateBytes", new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode crc, ValueNode buf, ValueNode off, ValueNode end) {
+                int byteArrayBaseOffset = b.getMetaAccess().getArrayBaseOffset(JavaKind.Byte);
+                ValueNode bufAddr = b.add(new ComputeObjectAddressNode(buf, new AddNode(ConstantNode.forInt(byteArrayBaseOffset), off)));
+                b.addPush(JavaKind.Int, new ForeignCallNode(UPDATE_BYTES_CRC32C, crc, bufAddr, new SubNode(end, off)));
+                return true;
+            }
+        }, int.class, byte[].class, int.class, int.class);
+        r.registerConditional(config.useCRC32CIntrinsics(), "updateDirectByteBuffer", new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode crc, ValueNode addr, ValueNode off, ValueNode end) {
+                ValueNode bufAddr = b.add(new AddNode(addr, new SignExtendNode(off, 32, 64)));
+                b.addPush(JavaKind.Int, new ForeignCallNode(UPDATE_BYTES_CRC32C, crc, bufAddr, new SubNode(end, off)));
+                return true;
+            }
+        }, int.class, long.class, int.class, int.class);
     }
 
     private static void registerArraysSupportPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
-        if (config.useVectorizedMismatchIntrinsic) {
-            Registration r = new Registration(plugins, "jdk.internal.util.ArraysSupport", replacements);
-            r.register6("vectorizedMismatch", Object.class, long.class, Object.class, long.class,
-                            int.class, int.class, new InvocationPlugin() {
-                                @Override
-                                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode a, ValueNode aOffset, ValueNode bObject, ValueNode bOffset,
-                                                ValueNode length, ValueNode log2ArrayIndexScale) {
-                                    ValueNode aAddr = b.add(new ComputeObjectAddressNode(a, aOffset));
-                                    ValueNode bAddr = b.add(new ComputeObjectAddressNode(bObject, bOffset));
-                                    b.addPush(JavaKind.Int, new ForeignCallNode(HotSpotBackend.VECTORIZED_MISMATCH, aAddr, bAddr, length, log2ArrayIndexScale));
-                                    return true;
-                                }
-                            });
-
-        }
+        Registration r = new Registration(plugins, "jdk.internal.util.ArraysSupport", replacements);
+        r.registerConditional(config.useVectorizedMismatchIntrinsic(), "vectorizedMismatch", new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode a, ValueNode aOffset, ValueNode bObject, ValueNode bOffset,
+                            ValueNode length, ValueNode log2ArrayIndexScale) {
+                ValueNode aAddr = b.add(new ComputeObjectAddressNode(a, aOffset));
+                ValueNode bAddr = b.add(new ComputeObjectAddressNode(bObject, bOffset));
+                b.addPush(JavaKind.Int, new ForeignCallNode(HotSpotBackend.VECTORIZED_MISMATCH, aAddr, bAddr, length, log2ArrayIndexScale));
+                return true;
+            }
+        }, Object.class, long.class, Object.class, long.class, int.class, int.class);
     }
 
     private static void registerReferencePlugins(InvocationPlugins plugins, Replacements replacements) {
         Registration r = new Registration(plugins, Reference.class, replacements);
-        r.registerOptionalBackport2("refersTo0", 16, Receiver.class, Object.class, new InvocationPlugin() {
+        r.registerOptional("refersTo0", JavaVersionUtil.JAVA_SPEC < 16, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode o) {
                 ValueNode offset = b.add(ConstantNode.forLong(HotSpotReplacementsUtil.referentOffset(b.getMetaAccess())));
@@ -1246,9 +1101,9 @@ public class HotSpotGraphBuilderPlugins {
             public boolean inlineOnly() {
                 return true;
             }
-        });
+        }, Receiver.class, Object.class);
         r = new Registration(plugins, PhantomReference.class, replacements);
-        r.registerOptionalBackport2("refersTo0", 16, Receiver.class, Object.class, new InvocationPlugin() {
+        r.registerOptional("refersTo0", JavaVersionUtil.JAVA_SPEC < 16, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode o) {
                 ValueNode offset = b.add(ConstantNode.forLong(HotSpotReplacementsUtil.referentOffset(b.getMetaAccess())));
@@ -1264,6 +1119,6 @@ public class HotSpotGraphBuilderPlugins {
             public boolean inlineOnly() {
                 return true;
             }
-        });
+        }, Receiver.class, Object.class);
     }
 }
