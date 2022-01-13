@@ -169,8 +169,6 @@ public final class NFAGenerator {
             }
         }
 
-        pruneDeadStates();
-
         NFAStateTransition initialLoopBack;
         assert transitionGBUpdateIndices.isEmpty() && transitionGBClearIndices.isEmpty();
         if (ast.getOptions().isMustAdvance()) {
@@ -197,6 +195,8 @@ public final class NFAGenerator {
             }
             initialLoopBack = createTransition(initialStates[0], initialStates[0], ast.getEncoding().getFullSet(), -1);
         }
+
+        pruneDeadStates();
 
         return new NFA(ast, dummyInitialState, anchoredEntries, unAnchoredEntries, anchoredReverseEntry, unAnchoredReverseEntry, nfaStates.values(), stateID, transitionID, initialLoopBack, null);
     }
