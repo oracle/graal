@@ -79,12 +79,6 @@ public final class SulongEngineOption {
             help = "Enables using C++ code and features via interop.")
     public static final OptionKey<Boolean> CXX_INTEROP = new OptionKey<>(false);
 
-    @Option(name = "llvm.debugSysCalls",
-            category = OptionCategory.INTERNAL,
-            help = "Turns syscall debugging on/off. " +
-                   "Set value to \'stdout\', \'stderr\' or \'file://<path to writable file>\' to enable.")
-    public static final OptionKey<String> DEBUG_SYSCALLS = new OptionKey<>(String.valueOf(false));
-
     @Option(name = "llvm.optimizeFrameSlots",
             category = OptionCategory.INTERNAL,
             help = "Enable fusing of instructions producing values with instructions consuming values.")

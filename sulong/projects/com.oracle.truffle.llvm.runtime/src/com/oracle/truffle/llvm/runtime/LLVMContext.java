@@ -89,6 +89,7 @@ public final class LLVMContext {
     private static final String START_METHOD_NAME = "_start";
 
     private static final Level NATIVE_CALL_STATISTICS_LEVEL = Level.FINER;
+    private static final Level SYSCALLS_LOGGING_LEVEL = Level.FINER;
 
     private final List<Path> libraryPaths = new ArrayList<>();
     private final Object libraryPathsLock = new Object();
@@ -271,9 +272,7 @@ public final class LLVMContext {
         assert this.threadingStack == null;
         this.contextExtensions = contextExtens;
 
-        String opt = env.getOptions().get(SulongEngineOption.DEBUG_SYSCALLS);
-        this.syscallTraceStream = SulongEngineOption.optionEnabled(opt) ? new TargetStream(env, opt) : null;
-        opt = env.getOptions().get(SulongEngineOption.LL_DEBUG_VERBOSE);
+        String opt = env.getOptions().get(SulongEngineOption.LL_DEBUG_VERBOSE);
         this.llDebugVerboseStream = (SulongEngineOption.optionEnabled(opt) && env.getOptions().get(SulongEngineOption.LL_DEBUG)) ? new TargetStream(env, opt) : null;
         opt = env.getOptions().get(SulongEngineOption.TRACE_IR);
         if (SulongEngineOption.optionEnabled(opt)) {
@@ -565,10 +564,6 @@ public final class LLVMContext {
 
         if (tracer != null) {
             tracer.dispose();
-        }
-
-        if (syscallTraceStream != null) {
-            syscallTraceStream.dispose();
         }
     }
 
@@ -1121,10 +1116,19 @@ public final class LLVMContext {
         return loaderLogger;
     }
 
-    @CompilationFinal private TargetStream syscallTraceStream;
+    private static final TruffleLogger sysCallsLogger = TruffleLogger.getLogger("llvm", "SysCalls");
 
-    public TargetStream syscallTraceStream() {
-        return syscallTraceStream;
+    public static TruffleLogger sysCallsLogger() {
+        return sysCallsLogger;
+    }
+
+    public static boolean logSysCallsEnabled() {
+        return sysCallsLogger().isLoggable(SYSCALLS_LOGGING_LEVEL);
+    }
+
+    @TruffleBoundary
+    public static void logSysCall(String message) {
+        sysCallsLogger().log(SYSCALLS_LOGGING_LEVEL, message);
     }
 
     private static final TruffleLogger nativeCallStatsLogger = TruffleLogger.getLogger("llvm", "NativeCallStats");
