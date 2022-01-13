@@ -141,11 +141,11 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
 
     @Override
     public Iterable<Node> getKeys() {
-        return new Iterable<Node>() {
+        return new Iterable<>() {
 
             @Override
             public Iterator<Node> iterator() {
-                return new Iterator<Node>() {
+                return new Iterator<>() {
 
                     int i = 0;
 
@@ -181,7 +181,7 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
 
     @Override
     public MapCursor<Node, T> getEntries() {
-        return new MapCursor<Node, T>() {
+        return new MapCursor<>() {
 
             int current = -1;
 
@@ -223,11 +223,11 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
 
     @Override
     public Iterable<T> getValues() {
-        return new Iterable<T>() {
+        return new Iterable<>() {
 
             @Override
             public Iterator<T> iterator() {
-                return new Iterator<T>() {
+                return new Iterator<>() {
 
                     int i = 0;
 

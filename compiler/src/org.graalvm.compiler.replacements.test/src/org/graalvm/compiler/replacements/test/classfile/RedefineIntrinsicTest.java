@@ -46,15 +46,12 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarOutputStream;
 import java.util.jar.Manifest;
 
-import javax.tools.ToolProvider;
-
 import org.graalvm.compiler.api.replacements.ClassSubstitution;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.replacements.test.ReplacementsTest;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.test.SubprocessUtil;
 import org.graalvm.compiler.test.SubprocessUtil.Subprocess;
 import org.junit.Assert;
@@ -112,7 +109,7 @@ public class RedefineIntrinsicTest extends ReplacementsTest {
             return;
         }
         String recursionPropName = getClass().getName() + ".recursion";
-        if (JavaVersionUtil.JAVA_SPEC <= 8 || Boolean.getBoolean(recursionPropName)) {
+        if (Boolean.getBoolean(recursionPropName)) {
             testHelper();
         } else {
             List<String> vmArgs = withoutDebuggerArguments(getVMCommandLine());
@@ -209,23 +206,18 @@ public class RedefineIntrinsicTest extends ReplacementsTest {
         assumeTrue("VM name not in <pid>@<host> format: " + vmName, p != -1);
         String pid = vmName.substring(0, p);
         Class<?> c;
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            ClassLoader cl = ToolProvider.getSystemToolClassLoader();
-            c = Class.forName("com.sun.tools.attach.VirtualMachine", true, cl);
-        } else {
+        try {
+            // I don't know what changed to make this necessary...
+            c = Class.forName("com.sun.tools.attach.VirtualMachine", true, RedefineIntrinsicTest.class.getClassLoader());
+        } catch (ClassNotFoundException ex) {
             try {
-                // I don't know what changed to make this necessary...
-                c = Class.forName("com.sun.tools.attach.VirtualMachine", true, RedefineIntrinsicTest.class.getClassLoader());
-            } catch (ClassNotFoundException ex) {
-                try {
-                    Class.forName("javax.naming.Reference");
-                } catch (ClassNotFoundException coreNamingMissing) {
-                    // if core JDK classes aren't found, we are probably running in a
-                    // JDK9 java.base environment and then missing class is OK
-                    return false;
-                }
-                throw ex;
+                Class.forName("javax.naming.Reference");
+            } catch (ClassNotFoundException coreNamingMissing) {
+                // if core JDK classes aren't found, we are probably running in a
+                // JDK9 java.base environment and then missing class is OK
+                return false;
             }
+            throw ex;
         }
         Method attach = c.getDeclaredMethod("attach", String.class);
         Method loadAgent = c.getDeclaredMethod("loadAgent", String.class, String.class);

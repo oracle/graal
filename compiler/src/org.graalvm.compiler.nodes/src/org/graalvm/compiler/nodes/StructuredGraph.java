@@ -759,13 +759,13 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     public Iterable<Invoke> getInvokes() {
         final Iterator<MethodCallTargetNode> callTargets = getNodes(MethodCallTargetNode.TYPE).iterator();
-        return new Iterable<Invoke>() {
+        return new Iterable<>() {
 
             private Invoke next;
 
             @Override
             public Iterator<Invoke> iterator() {
-                return new Iterator<Invoke>() {
+                return new Iterator<>() {
 
                     @Override
                     public boolean hasNext() {

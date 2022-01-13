@@ -143,7 +143,6 @@ import jdk.vm.ci.services.Services;
 public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleCompilerRuntime {
 
     private static final int JAVA_SPECIFICATION_VERSION = getJavaSpecificationVersion();
-    private static final boolean Java8OrEarlier = JAVA_SPECIFICATION_VERSION <= 8;
 
     /**
      * Used only to reset state for native image compilation.
@@ -693,7 +692,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         try {
             return loadServiceProvider(capability, false);
         } catch (ServiceConfigurationError e) {
-            // Happens on JDK 9 when a service type has not been exported to Graal
+            // Happens when a service type has not been exported to Graal
             // or Graal's module descriptor does not declare a use of capability.
             return null;
         }
@@ -927,18 +926,14 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
 
     private static <T> List<ServiceLoader<T>> loadService(Class<T> service) {
         ServiceLoader<T> graalLoader = ServiceLoader.load(service, GraalTruffleRuntime.class.getClassLoader());
-        if (Java8OrEarlier) {
-            return Collections.singletonList(graalLoader);
-        } else {
-            /*
-             * The Graal module (i.e., jdk.internal.vm.compiler) is loaded by the platform class
-             * loader on JDK 9+. Its module dependencies such as Truffle are supplied via
-             * --module-path which means they are loaded by the app class loader. As such, we need
-             * to search the app class loader path as well.
-             */
-            ServiceLoader<T> appLoader = ServiceLoader.load(service, service.getClassLoader());
-            return Arrays.asList(graalLoader, appLoader);
-        }
+        /*
+         * The Graal module (i.e., jdk.internal.vm.compiler) is loaded by the platform class loader.
+         * Its module dependencies such as Truffle are supplied via --module-path which means they
+         * are loaded by the app class loader. As such, we need to search the app class loader path
+         * as well.
+         */
+        ServiceLoader<T> appLoader = ServiceLoader.load(service, service.getClassLoader());
+        return Arrays.asList(graalLoader, appLoader);
     }
 
     private static LayoutFactory selectObjectLayoutFactory(Iterable<? extends Iterable<LayoutFactory>> availableLayoutFactories) {

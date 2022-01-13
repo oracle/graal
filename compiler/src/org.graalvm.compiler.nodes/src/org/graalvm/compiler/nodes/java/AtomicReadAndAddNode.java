@@ -41,7 +41,7 @@ import jdk.vm.ci.meta.JavaKind;
 
 /**
  * Represents an atomic read-and-add operation like
- * {@link sun.misc.Unsafe#getAndAddInt(Object, long, int)}.
+ * {@code sun.misc.Unsafe.getAndAddInt(Object, long, int)}.
  */
 @NodeInfo(allowedUsageTypes = Memory, cycles = CYCLES_8, size = SIZE_2)
 public final class AtomicReadAndAddNode extends AbstractMemoryCheckpoint implements Lowerable, SingleMemoryKill {

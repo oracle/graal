@@ -382,11 +382,11 @@ public final class ScopeImpl implements DebugContext.Scope {
     @Override
     public Iterable<Object> getCurrentContext() {
         final ScopeImpl scope = this;
-        return new Iterable<Object>() {
+        return new Iterable<>() {
 
             @Override
             public Iterator<Object> iterator() {
-                return new Iterator<Object>() {
+                return new Iterator<>() {
 
                     ScopeImpl currentScope = scope;
                     int objectIndex;

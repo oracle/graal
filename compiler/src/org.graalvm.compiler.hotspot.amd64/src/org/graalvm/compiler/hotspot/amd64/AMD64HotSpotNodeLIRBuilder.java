@@ -164,9 +164,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
         RegisterValue exceptionPcFixed = (RegisterValue) outgoingCc.getArgument(1);
         gen.emitMove(exceptionFixed, operand(exception));
         gen.emitMove(exceptionPcFixed, operand(exceptionPc));
-        Register thread = getGen().getProviders().getRegisters().getThreadRegister();
-        AMD64HotSpotJumpToExceptionHandlerInCallerOp op = new AMD64HotSpotJumpToExceptionHandlerInCallerOp(handler, exceptionFixed, exceptionPcFixed, getGen().config.threadIsMethodHandleReturnOffset,
-                        thread);
+        AMD64HotSpotJumpToExceptionHandlerInCallerOp op = new AMD64HotSpotJumpToExceptionHandlerInCallerOp(handler, exceptionFixed, exceptionPcFixed);
         append(op);
     }
 

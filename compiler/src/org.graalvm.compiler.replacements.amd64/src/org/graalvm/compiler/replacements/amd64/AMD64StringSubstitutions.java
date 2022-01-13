@@ -35,7 +35,6 @@ import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.replacements.ArrayIndexOf;
-import org.graalvm.compiler.replacements.StringSubstitutions;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -97,27 +96,6 @@ public class AMD64StringSubstitutions {
                 totalOffset++;
             }
             return -1;
-        }
-    }
-
-    // Only exists in JDK <= 8
-    @MethodSubstitution(isStatic = false, optional = true)
-    public static int indexOf(String source, int ch, int origFromIndex) {
-        int fromIndex = origFromIndex;
-        char[] sourceArray = StringSubstitutions.getValue(source);
-        final int sourceCount = sourceArray.length;
-        if (injectBranchProbability(UNLIKELY_PROBABILITY, fromIndex >= sourceCount)) {
-            // Note: fromIndex might be near -1>>>1.
-            return -1;
-        }
-        if (injectBranchProbability(UNLIKELY_PROBABILITY, fromIndex < 0)) {
-            fromIndex = 0;
-        }
-
-        if (injectBranchProbability(LIKELY_PROBABILITY, ch < Character.MIN_SUPPLEMENTARY_CODE_POINT)) {
-            return ArrayIndexOf.indexOfC1S2(sourceArray, sourceCount, fromIndex, (char) ch);
-        } else {
-            return indexOf(source, ch, origFromIndex);
         }
     }
 }

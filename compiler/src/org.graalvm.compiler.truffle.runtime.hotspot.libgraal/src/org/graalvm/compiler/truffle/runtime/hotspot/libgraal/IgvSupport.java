@@ -28,7 +28,6 @@ import static org.graalvm.libgraal.LibGraalScope.getIsolateThread;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
 import java.util.Collections;
@@ -149,13 +148,6 @@ final class IgvSupport extends LibGraalObject implements TruffleDebugContext {
             super(handle);
         }
 
-        /**
-         * See {@code org.graalvm.compiler.serviceprovider.BufferUtil}.
-         */
-        static Buffer asBaseBuffer(Buffer obj) {
-            return obj;
-        }
-
         @Override
         public int write(ByteBuffer src) throws IOException {
             if (src.hasArray()) {
@@ -166,7 +158,7 @@ final class IgvSupport extends LibGraalObject implements TruffleDebugContext {
             int limit = src.limit();
             int written = TruffleToLibGraalCalls.dumpChannelWrite(getIsolateThread(), getHandle(), src, capacity, pos, limit);
             if (written > 0) {
-                asBaseBuffer(src).position(pos + written);
+                src.position(pos + written);
             }
             return written;
         }
