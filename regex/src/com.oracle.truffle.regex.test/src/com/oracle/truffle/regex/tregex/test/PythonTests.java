@@ -255,4 +255,23 @@ public class PythonTests extends RegexTestBase {
         test("\\Z", "", "MustAdvance=true", "", 0, false);
         test("\\A\\Z", "", "MustAdvance=true", "", 0, false);
     }
+
+    @Test
+    public void cpythonTestBug817234() {
+        test(".*", "", "MustAdvance=false", "asdf", 0, true, 0, 4, -1);
+        test(".*", "", "MustAdvance=false", "asdf", 4, true, 4, 4, -1);
+        test(".*", "", "MustAdvance=true", "asdf", 4, false);
+    }
+
+    @Test
+    public void cpythonTestDollarMatchesTwice() {
+        test("$", "", "MustAdvance=false", "a\nb\n", 0, true, 3, 3, -1);
+        test("$", "", "MustAdvance=true", "a\nb\n", 3, true, 4, 4, -1);
+        test("$", "", "MustAdvance=true", "a\nb\n", 4, false);
+
+        test("$", "m", "MustAdvance=false", "a\nb\n", 0, true, 1, 1, -1);
+        test("$", "m", "MustAdvance=true", "a\nb\n", 1, true, 3, 3, -1);
+        test("$", "m", "MustAdvance=true", "a\nb\n", 3, true, 4, 4, -1);
+        test("$", "m", "MustAdvance=true", "a\nb\n", 4, false);
+    }
 }
