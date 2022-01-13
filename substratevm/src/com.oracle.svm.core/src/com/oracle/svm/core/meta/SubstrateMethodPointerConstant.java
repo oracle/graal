@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,34 +22,50 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.meta;
+package com.oracle.svm.core.meta;
 
-import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.meta.SubstrateMethodPointerStamp;
-import jdk.vm.ci.meta.MetaAccessProvider;
-import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
-import org.graalvm.compiler.core.common.type.ObjectStamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.core.common.type.TypeReference;
-import org.graalvm.compiler.nodes.spi.StampProvider;
+import java.util.Objects;
 
-public class SubstrateStampProvider implements StampProvider {
+import jdk.vm.ci.meta.VMConstant;
 
-    private final AbstractPointerStamp hubStamp;
-    private final AbstractPointerStamp methodStamp;
+public class SubstrateMethodPointerConstant implements VMConstant {
 
-    public SubstrateStampProvider(MetaAccessProvider metaAccess) {
-        this.hubStamp = StampFactory.objectNonNull(TypeReference.createExactTrusted(metaAccess.lookupJavaType(DynamicHub.class)));
-        this.methodStamp = SubstrateMethodPointerStamp.methodNonNull();
+    private final MethodPointer pointer;
+
+    public SubstrateMethodPointerConstant(MethodPointer pointer) {
+        this.pointer = pointer;
+    }
+
+    public MethodPointer pointer() {
+        return pointer;
     }
 
     @Override
-    public AbstractPointerStamp createHubStamp(ObjectStamp object) {
-        return hubStamp;
+    public boolean isDefaultForKind() {
+        return false;
     }
 
     @Override
-    public AbstractPointerStamp createMethodStamp() {
-        return methodStamp;
+    public String toValueString() {
+        return "SVMMethodPointerConstant";
+    }
+
+    @Override
+    public String toString() {
+        return "method: " + pointer.getMethod().format("%H.%n");
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof SubstrateMethodPointerConstant)) {
+            return false;
+        }
+        SubstrateMethodPointerConstant that = (SubstrateMethodPointerConstant) obj;
+        return this == obj || this.pointer.getMethod().equals(that.pointer.getMethod());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(pointer.getMethod());
     }
 }
