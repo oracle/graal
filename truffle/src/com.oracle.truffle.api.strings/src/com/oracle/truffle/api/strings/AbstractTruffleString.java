@@ -172,7 +172,7 @@ public abstract class AbstractTruffleString {
     }
 
     /**
-     * Get this string's length in bytes.
+     * Get this string's length in bytes. This method is allowed to be used on fast paths.
      *
      * @since 22.1
      */
@@ -182,7 +182,10 @@ public abstract class AbstractTruffleString {
     }
 
     /**
-     * Returns {@code true} if this string is compatible to the given encoding.
+     * Returns {@code true} if this string is compatible to the given encoding. Compatible for
+     * {@link TruffleString} means it is byte-equivalent in both the encoding used to create this
+     * string and the given encoding. For {@link MutableTruffleString} this method only returned
+     * true if the passed encoding is the same encoding used to create this string.
      *
      * @since 22.1
      */
@@ -191,7 +194,7 @@ public abstract class AbstractTruffleString {
     }
 
     /**
-     * Returns {@code true} if this string is <i>not</i> backed by a native buffer.
+     * Returns {@code true} if this string is <i>not</i> backed by a native pointer.
      *
      * @since 22.1
      */
@@ -200,7 +203,7 @@ public abstract class AbstractTruffleString {
     }
 
     /**
-     * Returns {@code true} if this string is backed by a native buffer.
+     * Returns {@code true} if this string is backed by a native pointer.
      *
      * @since 22.1
      */
@@ -1202,7 +1205,7 @@ public abstract class AbstractTruffleString {
 
         /**
          * The Interop object the long pointer was extracted from. We keep this reference in case
-         * the native buffer's lifetime depends on the object's lifetime.
+         * the native pointer's lifetime depends on the pointer object's lifetime.
          */
         private final Object pointerObject;
         final long pointer;

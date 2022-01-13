@@ -1143,8 +1143,9 @@ public final class TruffleString extends AbstractTruffleString {
         /**
          * All codepoints in this string are part of the ISO-8859-1 character set (0x00 - 0xff),
          * which is equivalent to the union of the Basic Latin and the Latin-1 Supplement Unicode
-         * block. At least one codepoint is outside the ASCII range (greater than 0x7f). Applicable
-         * to {@link Encoding#ISO_8859_1}, {@link Encoding#UTF_16} and {@link Encoding#UTF_32}.
+         * block. At least one codepoint is outside the ASCII range (greater than 0x7f). Only
+         * applicable to {@link Encoding#ISO_8859_1}, {@link Encoding#UTF_16} and
+         * {@link Encoding#UTF_32}.
          *
          * @since 22.1
          */
@@ -1153,7 +1154,7 @@ public final class TruffleString extends AbstractTruffleString {
         /**
          * All codepoints in this string are part of the Unicode Basic Multilingual Plane (BMP) (
          * 0x0000 - 0xffff). At least one codepoint is outside the LATIN_1 range (greater than
-         * 0xff). Applicable {@link Encoding#UTF_16} and {@link Encoding#UTF_32}.
+         * 0xff). Only applicable to {@link Encoding#UTF_16} and {@link Encoding#UTF_32}.
          *
          * @since 22.1
          */
@@ -2079,11 +2080,11 @@ public final class TruffleString extends AbstractTruffleString {
          * Create a new {@link TruffleString} from an interop object representing a native pointer (
          * {@code isPointer(pointerObject)} must return {@code true}). The pointer is immediately
          * unboxed with ({@code asPointer(pointerObject)}) and saved in the {@link TruffleString}
-         * instance, i.e. {@link TruffleString} assumes that the pointer value does not change. The
-         * pointer's content is assumed to be encoded in the given encoding already. If {@code copy}
-         * is {@code false}, the native pointer is used directly as the new string's backing
-         * storage. Caution: {@link TruffleString} assumes the pointer's content to be immutable, do
-         * not modify the pointer's content after passing it to this operation!
+         * instance, i.e. {@link TruffleString} assumes that the pointer address does not change.
+         * The pointer's content is assumed to be encoded in the given encoding already. If
+         * {@code copy} is {@code false}, the native pointer is used directly as the new string's
+         * backing storage. Caution: {@link TruffleString} assumes the pointer's content to be
+         * immutable, do not modify the pointer's content after passing it to this operation!
          *
          * <p>
          * <b>WARNING:</b> {@link TruffleString} cannot reason about the lifetime of the native
@@ -2206,7 +2207,7 @@ public final class TruffleString extends AbstractTruffleString {
 
     /**
      * Node to get the given {@link AbstractTruffleString} as a managed {@link TruffleString},
-     * meaning that the resulting string's backing memory is not a native buffer. See
+     * meaning that the resulting string's backing memory is not a native pointer. See
      * {@link #execute(AbstractTruffleString, TruffleString.Encoding)} for details.
      *
      * @since 22.1
@@ -2220,9 +2221,9 @@ public final class TruffleString extends AbstractTruffleString {
         }
 
         /**
-         * If the given string is already a managed (i.e. not backed by a native buffer) string,
-         * return it. Otherwise, copy the string's native buffer into a Java byte array and return a
-         * new string backed by the byte array.
+         * If the given string is already a managed (i.e. not backed by a native pointer) string,
+         * return it. Otherwise, copy the string's native pointer content into a Java byte array and
+         * return a new string backed by the byte array.
          *
          * @since 22.1
          */
@@ -2428,6 +2429,8 @@ public final class TruffleString extends AbstractTruffleString {
          * <li>{@link CodeRange#LATIN_1} and {@link CodeRange#BMP} are mapped to
          * {@link CodeRange#VALID}</li>.
          * </ul>
+         * The return value is always one of {@link CodeRange#ASCII}, {@link CodeRange#VALID} or
+         * {@link CodeRange#BROKEN}.
          *
          * @since 22.1
          */
@@ -2578,6 +2581,10 @@ public final class TruffleString extends AbstractTruffleString {
 
         /**
          * Return the number of codepoints in the string.
+         * <p>
+         * If the string is not encoded correctly (if its coderange is {@link CodeRange#BROKEN}),
+         * every broken minimum-length sequence in the encoding (4 bytes for UTF-32, 2 bytes for
+         * UTF-16, 1 byte for other encodings) adds 1 to the length.
          *
          * @since 22.1
          */
@@ -2882,7 +2889,7 @@ public final class TruffleString extends AbstractTruffleString {
     }
 
     /**
-     * Node to read a codepoint at a given index. See
+     * Node to read a codepoint at a given codepoint index. See
      * {@link #execute(AbstractTruffleString, int, TruffleString.Encoding)} for details.
      *
      * @since 22.1
@@ -3309,7 +3316,7 @@ public final class TruffleString extends AbstractTruffleString {
     }
 
     /**
-     * Node to find the index of the last occurrence of a given code point. See
+     * Node to find the codepoint index of the last occurrence of a given code point. See
      * {@link #execute(AbstractTruffleString, int, int, int, TruffleString.Encoding)} for details.
      *
      * @since 22.1
@@ -3950,7 +3957,8 @@ public final class TruffleString extends AbstractTruffleString {
         }
 
         /**
-         * Checks for codepoint equality in a region.
+         * Checks for codepoint equality in a region with the given codepoint index and codepoint
+         * length.
          * <p>
          * Equivalent to:
          *
@@ -4253,9 +4261,7 @@ public final class TruffleString extends AbstractTruffleString {
         }
 
         /**
-         * Create a new string by concatenating {@code a} and {@code b}. If {@code lazy} is
-         * {@code true}, the creation of the new string's internal array may be delayed until it is
-         * required by another operation.
+         * Create a new string by repeating {@code n} times string {@code a}.
          *
          * @since 22.1
          */
@@ -4340,13 +4346,13 @@ public final class TruffleString extends AbstractTruffleString {
         }
 
         /**
-         * Create a substring of {@code a}, starting from {@code fromIndex}, with length
-         * {@code length}. If {@code lazy} is {@code true}, {@code a}'s internal buffer will be
-         * re-used instead of creating a copy of the requested range. Since the resulting string
-         * will have a reference to {@code a}'s internal buffer, and {@link TruffleString} currently
-         * does <i>not</i> resize/trim the substring's internal buffer at any point, the
-         * {@code lazy} variant effectively creates a memory leak! The caller is responsible for
-         * deciding whether this is acceptable or not.
+         * Create a substring of {@code a}, starting from codepoint index {@code fromIndex}, with
+         * codepoint length {@code length}. If {@code lazy} is {@code true}, {@code a}'s internal
+         * storage will be re-used instead of creating a copy of the requested range. Since the
+         * resulting string will have a reference to {@code a}'s internal storage, and
+         * {@link TruffleString} currently does <i>not</i> resize/trim the substring's internal
+         * storage at any point, the {@code lazy} variant effectively creates a memory leak! The
+         * caller is responsible for deciding whether this is acceptable or not.
          *
          * @since 22.1
          */
@@ -4461,7 +4467,10 @@ public final class TruffleString extends AbstractTruffleString {
         }
 
         /**
-         * Returns {@code true} if {@code a} and {@code b} are equal.
+         * Returns {@code true} if {@code a} and {@code b} are byte-by-byte equal when considered in
+         * {@code expectedEncoding}. Note that this method requires both strings to be
+         * {@link #isCompatibleTo(Encoding) compatible} to the {@code expectedEncoding}, just like
+         * all other operations with an {@code expectedEncoding} parameter!
          * <p>
          * The {@link TruffleString#equals(Object)}-method delegates to this method.
          *
@@ -4522,9 +4531,9 @@ public final class TruffleString extends AbstractTruffleString {
     }
 
     /**
-     * This exception may be thrown by {@link ParseIntNode} and {@link ParseLongNode} to indicate
-     * that the given string cannot be parsed as an integer or long value. This exception does not
-     * record stack traces for performance reasons.
+     * This exception may be thrown by {@link ParseIntNode}, {@link ParseLongNode} or
+     * {@link ParseDoubleNode} to indicate that the given string cannot be parsed as an integer,
+     * long or double value. This exception does not record stack traces for performance reasons.
      *
      * @since 22.1
      */
@@ -4566,7 +4575,7 @@ public final class TruffleString extends AbstractTruffleString {
         }
 
         /**
-         * Parse the given string as an int value.
+         * Parse the given string as an int value, or throw {@link NumberFormatException}.
          *
          * @since 22.1
          */
@@ -4626,7 +4635,7 @@ public final class TruffleString extends AbstractTruffleString {
         }
 
         /**
-         * Parse the given string as a long value.
+         * Parse the given string as a long value, or throw {@link NumberFormatException}.
          *
          * @since 22.1
          */
@@ -4680,7 +4689,7 @@ public final class TruffleString extends AbstractTruffleString {
         }
 
         /**
-         * Parse the given string as a double value.
+         * Parse the given string as a double value, or throw {@link NumberFormatException}.
          *
          * @since 22.1
          */
@@ -4812,7 +4821,7 @@ public final class TruffleString extends AbstractTruffleString {
     }
 
     /**
-     * Node to get a string's internal native pointer. See
+     * Node to get a {@link AbstractTruffleString#isNative() native} string's pointer object. See
      * {@link #execute(AbstractTruffleString, TruffleString.Encoding)} for details.
      *
      * @since 22.1
@@ -4825,12 +4834,12 @@ public final class TruffleString extends AbstractTruffleString {
         }
 
         /**
-         * Get the given string's internal native pointer. If the string is not backed by a native
-         * pointer, this node will throw an {@link UnsupportedOperationException}. Use
-         * {@link AbstractTruffleString#isNative()} to check whether the string is actually backed
-         * by a native pointer before calling this node. Caution: If the given string is a
-         * {@link TruffleString}, the native buffer must not be modified as long as the string is
-         * used.
+         * Get the given string's pointer object which was passed to {@link FromNativePointerNode}.
+         * If the string is not backed by a native pointer, this node will throw an
+         * {@link UnsupportedOperationException}. Use {@link AbstractTruffleString#isNative()} to
+         * check whether the string is actually backed by a native pointer before calling this node.
+         * Caution: If the given string is a {@link TruffleString}, the native pointer must not be
+         * modified as long as the string is used.
          *
          * @since 22.1
          */
@@ -4990,8 +4999,12 @@ public final class TruffleString extends AbstractTruffleString {
 
         /**
          * Copy a region of the given {@link TruffleString} {@code a}, bounded by
-         * {@code byteFromIndexA} and {@code byteLength} into the given native buffer, at starting
-         * at {@code byteFromIndexDst}.
+         * {@code byteFromIndexA} and {@code byteLength} into the given interop object representing
+         * a native pointer ({@code isPointer(pointerObject)} must return {@code true}), starting at
+         * {@code byteFromIndexDst}.
+         * <p>
+         * This operation requires native access permissions
+         * ({@code TruffleLanguage.Env#isNativeAccessAllowed()}).
          *
          * @since 22.1
          */
@@ -5043,7 +5056,9 @@ public final class TruffleString extends AbstractTruffleString {
         }
 
         /**
-         * Return a {@link java.lang.String} representation of the given {@link TruffleString}.
+         * Return a {@link java.lang.String} representation of the given {@link TruffleString}. For
+         * the {@link Encoding.BYTES} encoding, the returned String uses "\xNN" for every byte >=
+         * 128 as the actual interpretation of those bytes is unknown.
          *
          * @since 22.1
          */
@@ -5137,7 +5152,8 @@ public final class TruffleString extends AbstractTruffleString {
          * byte-equivalent in both encodings.
          * <p>
          * If no lossless conversion is possible, the string is converted on a best-effort basis; no
-         * exception is thrown.
+         * exception is thrown and characters which cannot be mapped in the target encoding are
+         * replaced by {@code '�'} (for UTF-*) or {@code '?'}.
          *
          * @since 22.1
          */

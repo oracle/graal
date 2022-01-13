@@ -63,10 +63,11 @@ import com.oracle.truffle.api.strings.TruffleString.AsTruffleStringNode;
 /**
  * Represents a mutable variant of a {@link TruffleString}. This class also accepts all operations
  * of TruffleString. This class is not thread-safe and allows overwriting bytes in its internal byte
- * array or native buffer via {@link WriteByteNode}. The internal array or native buffer may also be
- * modified externally, but the corresponding MutableTruffleString must be notified of this via
- * notifyExternalMutation. MutableTruffleString is not a Truffle interop type, and must be converted
- * to an immutable TruffleString via {@link AsTruffleStringNode} before passing a language boundary.
+ * array or native pointer via {@link WriteByteNode}. The internal array or native pointer may also
+ * be modified externally, but the corresponding MutableTruffleString must be notified of this via
+ * {@link #notifyExternalMutation()}. MutableTruffleString is not a Truffle interop type, and must
+ * be converted to an immutable {@link TruffleString} via {@link AsTruffleStringNode} before passing
+ * a language boundary.
  *
  * @see TruffleString
  * @since 22.1
@@ -113,10 +114,10 @@ public final class MutableTruffleString extends AbstractTruffleString {
     /**
      * Notify this mutable string of an external modification of its internal content. This method
      * must be called after every direct write (not via {@link WriteByteNode}) to the byte array or
-     * native buffer the string is using as internal storage. Exemplary usage scenario: Suppose a
-     * {@link MutableTruffleString} was created by wrapping a native buffer via
-     * {@link FromNativePointerNode}. If the native buffer is passed to a native function that may
-     * modify the buffer, this method must be called afterwards, to ensure consistency.
+     * native pointer the string is using as internal storage. Exemplary usage scenario: Suppose a
+     * {@link MutableTruffleString} was created by wrapping a native pointer via
+     * {@link FromNativePointerNode}. If the native pointer is passed to a native function that may
+     * modify the pointer's contents, this method must be called afterwards, to ensure consistency.
      *
      * @since 22.1
      */
@@ -212,25 +213,28 @@ public final class MutableTruffleString extends AbstractTruffleString {
 
         /**
          * Create a new {@link MutableTruffleString} from an interop object representing a native
-         * pointer ( {@code isPointer(pointerObject)} must return {@code true}). The pointer is
+         * pointer ({@code isPointer(pointerObject)} must return {@code true}). The pointer is
          * immediately unboxed with ({@code asPointer(pointerObject)}) and saved until the end of
-         * the string's lifetime, i.e. {@link MutableTruffleString} assumes that the pointer value
-         * does not change. The buffer content is assumed to be encoded in the given encoding
-         * already. If {@code copy} is {@code false}, the native buffer is used directly as the new
-         * string's backing buffer. If the buffer is modified after string creation, the string must
-         * be notified of this via {@link MutableTruffleString#notifyExternalMutation()}.
+         * the string's lifetime, i.e. {@link MutableTruffleString} assumes that the pointer address
+         * does not change. The pointer's content is assumed to be encoded in the given encoding
+         * already. If {@code copy} is {@code false}, the native pointer is used directly as the new
+         * string's backing storage. Caution: If the pointer's content is modified after string
+         * creation, the string must be notified of this via
+         * {@link MutableTruffleString#notifyExternalMutation()}.
          *
          * <p>
          * <b>WARNING:</b> {@link MutableTruffleString} cannot reason about the lifetime of the
-         * native buffer, so it is up to the user to <b>make sure that the buffer is alive as long
-         * the resulting {@link MutableTruffleString} is in use</b> (if {@code copy} is
-         * {@code false}). In order to be able to use the string past the native buffer's life time,
-         * convert it to a managed string via {@link MutableTruffleString.AsManagedNode} <b>before
-         * the native buffer is freed</b>.
+         * native pointer, so it is up to the user to <b>make sure that the native pointer is valid
+         * to access and not freed as long the {@code pointerObject} is alive</b> (if {@code copy}
+         * is {@code false}). To help with this the MutableTruffleString keeps a reference to the
+         * given {@code pointerObject}, so the {@code pointerObject} is kept alive at least as long
+         * as the MutableTruffleString is used. In order to be able to use the string past the
+         * native pointer's life time, convert it to a managed string via
+         * {@link MutableTruffleString.AsManagedNode} <b>before the native pointer is freed</b>.
          * </p>
          * <p>
-         * If {@code copy} is {@code true}, the buffer's contents are copied to a Java byte array,
-         * and the buffer can be freed safely after the operation completes.
+         * If {@code copy} is {@code true}, the pointer's contents are copied to a Java byte array,
+         * and the pointer can be freed safely after the operation completes.
          * </p>
          * This operation requires native access permissions
          * ({@code TruffleLanguage.Env#isNativeAccessAllowed()}).
@@ -342,7 +346,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
     /**
      * Node to get the given {@link AbstractTruffleString} as a managed
      * {@link MutableTruffleString}, meaning that the resulting string's backing memory is not a
-     * native buffer. See {@link #execute(AbstractTruffleString, TruffleString.Encoding)} for
+     * native pointer. See {@link #execute(AbstractTruffleString, TruffleString.Encoding)} for
      * details.
      *
      * @since 22.1
@@ -356,9 +360,9 @@ public final class MutableTruffleString extends AbstractTruffleString {
         }
 
         /**
-         * If the given string is already a managed (i.e. not backed by a native buffer) string,
-         * return it. Otherwise, copy the string's native buffer into a Java byte array and return a
-         * new string backed by the byte array.
+         * If the given string is already a managed (i.e. not backed by a native pointer) string,
+         * return it. Otherwise, copy the string's native pointer content into a Java byte array and
+         * return a new string backed by the byte array.
          *
          * @since 22.1
          */
@@ -469,7 +473,8 @@ public final class MutableTruffleString extends AbstractTruffleString {
         }
 
         /**
-         * Creates a new {@link MutableTruffleString} by concatenating two strings.
+         * Creates a new {@link MutableTruffleString} by concatenating two strings. The
+         * concatenation is performed eagerly since return value is mutable.
          *
          * @since 22.1
          */
@@ -534,7 +539,7 @@ public final class MutableTruffleString extends AbstractTruffleString {
 
         /**
          * Create a new mutable substring of {@code a}, starting from {@code fromIndex}, with length
-         * {@code length}.
+         * {@code length}. The substring is performed eagerly since return value is mutable.
          *
          * @since 22.1
          */
@@ -671,7 +676,8 @@ public final class MutableTruffleString extends AbstractTruffleString {
          * the string itself or a converted version.
          * <p>
          * If no lossless conversion is possible, the string is converted on a best-effort basis; no
-         * exception is thrown.
+         * exception is thrown and characters which cannot be mapped in the target encoding are
+         * replaced by {@code '�'} (for UTF-*) or {@code '?'}.
          *
          * @since 22.1
          */
