@@ -15,10 +15,11 @@ encouraged to use Truffle Strings as their language's string type for easier int
 * `UTF-32`
 * `US-ASCII`
 * `ISO-8859-1`
+* `BYTES`
 
 ### TruffleString API
 
-All operations exposed by `TruffleString` are provided as an inner `Node`, and as a static- or instance method. Users
+All operations exposed by `TruffleString` are provided as an inner `Node`, and as a static or instance methods. Users
 should use the provided nodes where possible, as the static/instance methods are just shorthands for executing their
 respective node's uncached version. All nodes are named `{NameOfOperation}Node`, and all convenience methods are
 named `{nameOfOperation}Uncached`.
@@ -32,7 +33,9 @@ indexing and byte-based indexing. Byte-based indexing is indicated by the `ByteI
 name, otherwise indices are based on codepoints. For example, the index parameter of`CodePointAtIndex` is
 codepoint-based, whereas `CodePointAtByteIndex` uses a byte-based index.
 
-The list of currently available operation nodes is:
+The list of currently available operations is listed below and grouped by category.
+
+Creating a new TruffleString:
 
 * [FromCodePoint](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.FromCodePointNode.html):
   Create a new TruffleString from a given codepoint.
@@ -48,38 +51,106 @@ The list of currently available operation nodes is:
   Create a TruffleString from a given `java.lang.String`.
 * [FromNativePointer](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.FromNativePointerNode.html):
   Create a new TruffleString from a given native pointer.
+* [Encoding#getEmpty](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.Encoding.html#getEmpty--):
+  Get an empty TruffleString in that encoding.
+
+Query string properties:
+
+* [isEmpty](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/AbstractTruffleString.html#isEmpty--):
+  Check if a string is empty.
 * [CodePointLength](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.CodePointLengthNode.html):
   Get a string's length in codepoints.
-* [AsTruffleString](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.AsTruffleStringNode.html):
-  Convert a MutableTruffleString to an immutable TruffleString.
-* [AsManaged](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.AsManagedNode.html):
-  Convert a TruffleString backed by a native buffer to one backed by a java byte array.
-* [Materialize](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.MaterializeNode.html):
-  Force evaluation of lazily calculated string properties and materialization of a string's backing array.
-* [CodeRange](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.CodeRangeNode.html):
+* [byteLength](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/AbstractTruffleString.html#byteLength-com.oracle.truffle.api.strings.TruffleString.Encoding-):
+  Get a string's length in bytes.
+* [IsValid](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.IsValidNode.html):
+  Check whether a string is encoded correctly.
+* [GetCodeRange](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.GetCodeRange.html):
   Get coarse information about the string's content (are all codepoints in this string from the ASCII/LATIN-1/BMP
   range?).
 * [GetByteCodeRange](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.GetByteCodeRangeNode.html):
   Get coarse information about the string's content, without taking 16/32-bit based encodings into account.
 * [CodeRangeEquals](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.CodeRangeEqualsNode.html):
   Check whether a string's code range equals the given code range.
-* [IsValid](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.IsValidNode.html):
-  Check whether a string is encoded correctly.
-* [CodePointLength](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.CodePointLengthNode.html):
-  Get a string's length in codepoints.
+* [isCompatibleTo](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/AbstractTruffleString.html#isCompatibleTo-com.oracle.truffle.api.strings.TruffleString.Encoding-):
+  Check if a string is compatible to / can be viewed in a given encoding.
+* [isManaged](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/AbstractTruffleString.html#isManaged--):
+  Check if a string is not backed by a native pointer.
+* [isNative](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/AbstractTruffleString.html#isNative--):
+  Check if a string is backed by a native pointer.
+* [isImmutable](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/AbstractTruffleString.html#isImmutable--):
+  Check if a string is an instance of `TruffleString`.
+* [isMutable](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/AbstractTruffleString.html#isMutable--):
+  Check if a string is an instance of `MutableTruffleString`.
+
+Comparison:
+
+* [Equal](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.EqualNode.html):
+  Check if two strings are equal. Note that this operation is encoding-sensitive!
+* [RegionEqual](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.RegionEqualNode.html):
+  Check if two strings are equal in a given region defined by a codepoint-based offset and length.
+* [RegionEqualByteIndex](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.RegionEqualByteIndexNode.html):
+  Check if two strings are equal in a given region defined by a byte-based offset and length.
+* [CompareBytes](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.CompareBytesNode.html):
+  Compare two strings byte-by-byte.
+* [CompareCharsUTF16](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.CompareCharsUTF16Node.html):
+  Compare two UTF-16 strings char-by-char.
+* [CompareIntsUTF32](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.CompareIntsUTF32Node.html):
+  Compare two UTF-32 strings int-by-int.
 * [HashCode](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.HashCodeNode.html):
-  Get a string's hash code. Strings with the same codepoints but different encodings have different hash codes for
-  efficiency.
+  Get a string's hash code. The hash code is based on the string's bytes, so strings with the same codepoints but
+  different encodings may have different hash codes.
+
+Conversion:
+
+* [SwitchEncoding](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.SwitchEncodingNode.html):
+  Convert a string to a given encoding.
+* [ForceEncoding](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.ForceEncodingNode.html):
+  Create a string containing the same bytes as the given string, but assigned to the given encoding.
+* [AsTruffleString](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.AsTruffleStringNode.html):
+  Convert a MutableTruffleString to an immutable TruffleString.
+* [AsManaged](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.AsManagedNode.html):
+  Convert a TruffleString backed by a native pointer to one backed by a java byte array.
+* [Materialize](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.MaterializeNode.html):
+  Force evaluation of lazily calculated string properties and materialization of a string's backing array.
+* [CopyToByteArray](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.CopyToByteArrayNode.html):
+  Copy a string's content into a byte array.
+* [GetInternalByteArray](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.GetInternalByteArrayNode.html):
+  Get a string's internal byte array.
+* [CopyToNativeMemory](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.CopyToNativeMemoryNode.html):
+  Copy a string's content into a native pointer.
+* [GetInternalNativePointer](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.GetInternalNativePointerNode.html):
+  Get a native string's pointer object.
+* [ToJavaString](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.ToJavaStringNode.html):
+  Convert a string to a `java.lang.String`.
+* [ParseInt](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.ParseIntNode.html):
+  Parse a string's content as an int value.
+* [ParseLong](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.ParseLongNode.html):
+  Parse a string's content as a long value.
+* [ParseDouble](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.ParseDoubleNode.html):
+  Parse a string's content as a double value.
+
+Accessing codepoints and bytes:
+
 * [ReadByte](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.ReadByteNode.html):
   Read a single byte from a string.
 * [ReadCharUTF16](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.ReadCharUTF16Node.html):
   Read a single char from a UTF-16 string.
+* [CodePointAtIndex](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.CodePointAtIndexNode.html):
+  Read a single codepoint from a string at a given codepoint-based index.
+* [CodePointAtByteIndex](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.CodePointAtByteIndexNode.html):
+  Read a single codepoint from a string at a given byte-based index.
+* [CreateCodePointIterator](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.CreateCodePointIteratorNode.html):
+  Return a `TruffleStringIterator` object suitable for iterating the string's codepoints.
+* [CreateBackwardCodePointIterator](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.CreateBackwardCodePointIteratorNode.html):
+  Return a `TruffleStringIterator` object suitable for iterating the string's codepoints, starting from the end of the
+  string.
+* [ByteLengthOfCodePoint](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.ByteLengthOfCodePointNode.html):
+  Return the number of bytes occupied by the codepoint starting at a given byte index.
 * [CodePointIndexToByteIndex](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.CodePointIndexToByteIndexNode.html):
   Convert a given codepoint index to a byte index on a given string.
-* [CodePointAtIndex](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.CodePointAtIndexNode.html):
-  Read a single code point from a string at a given codepoint-based index.
-* [CodePointAtByteIndex](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.CodePointAtByteIndexNode.html):
-  Read a single code point from a string at a given byte-based index.
+
+Search:
+
 * [ByteIndexOfAnyByte](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.ByteIndexOfAnyByteNode.html):
   Find the first occurrence of any of a set of given bytes in a string and return its byte-based index.
 * [CharIndexOfAnyCharUTF16](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.CharIndexOfAnyCharUTF16Node.html):
@@ -102,64 +173,17 @@ The list of currently available operation nodes is:
   Find the last occurrence of a given substring in a string and return its codepoint-based index.
 * [LastByteIndexOfString](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.LastByteIndexOfStringNode.html):
   Find the last occurrence of a given substring in a string and return its byte-based index.
-* [CompareBytes](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.CompareBytesNode.html):
-  Compare two strings byte-by-byte.
-* [CompareCharsUTF16](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.CompareCharsUTF16Node.html):
-  Compare two UTF-16 strings char-by-char.
-* [CompareIntsUTF32](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.CompareIntsUTF32Node.html):
-  Compare two UTF-32 strings int-by-int.
-* [RegionEqual](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.RegionEqualNode.html):
-  Check if two strings are equal in a given region defined by a codepoint-based offset and length.
-* [RegionEqualByteIndex](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.RegionEqualByteIndexNode.html):
-  Check if two strings are equal in a given region defined by a byte-based offset and length.
+
+Combining:
+
 * [Concat](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.ConcatNode.html):
-  Concat two strings.
+  Concatenate two strings.
 * [Substring](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.SubstringNode.html):
   Create a substring from a given string, bounded by a codepoint-based offset and length.
 * [SubstringByteIndex](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.SubstringByteIndexNode.html):
   Create a substring from a given string, bounded by a byte-based offset and length.
-* [Equal](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.EqualNode.html):
-  Check if two strings are equal. Note that this operation is encoding-sensitive!
-* [ParseInt](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.ParseIntNode.html):
-  Parse a string's content as an int value.
-* [ParseLong](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.ParseLongNode.html):
-  Parse a string's content as a long value.
-* [ParseDouble](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.ParseDoubleNode.html):
-  Parse a string's content as a double value.
-* [GetInternalByteArray](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.GetInternalByteArrayNode.html):
-  Get a string's internal byte array.
-* [CopyToByteArray](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.CopyToByteArrayNode.html):
-  Copy a string's content into a byte array.
-* [CopyToNativeMemory](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.CopyToNativeMemoryNode.html):
-  Copy a string's content into a native buffer.
-* [ToJavaString](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.ToJavaStringNode.html):
-  Convert a string to a `java.lang.String`.
-* [SwitchEncoding](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.SwitchEncodingNode.html):
-  Convert a string to a given encoding.
-* [ForceEncoding](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.ForceEncodingNode.html):
-  Create a string containing the same bytes as the given string, but assigned to the given encoding.
-* [CreateCodePointIterator](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.CreateCodePointIteratorNode.html):
-  Return a `TruffleStringIterator` object suitable for iterating the string's code points.
-* [CreateBackwardCodePointIterator](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.CreateBackwardCodePointIteratorNode.html):
-  Return a `TruffleStringIterator` object suitable for iterating the string's code points, starting from the end of the
-  string.
-
-The list of currently available instance methods is:
-
-* [isEmpty](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/AbstractTruffleString.html#isEmpty--):
-  Check if a string is empty.
-* [byteLength](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/AbstractTruffleString.html#byteLength-com.oracle.truffle.api.strings.TruffleString.Encoding-):
-  Get a string's length in bytes.
-* [isCompatibleTo](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/AbstractTruffleString.html#isCompatibleTo-com.oracle.truffle.api.strings.TruffleString.Encoding-):
-  Check if a string is compatible to / can be viewed in a given encoding.
-* [isManaged](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/AbstractTruffleString.html#isManaged--):
-  Check if a string is not backed by a native buffer.
-* [isNative](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/AbstractTruffleString.html#isNative--):
-  Check if a string is backed by a native buffer.
-* [isImmutable](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/AbstractTruffleString.html#isImmutable--):
-  Check if a string is an instance of `TruffleString`.
-* [isMutable](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/AbstractTruffleString.html#isMutable--):
-  Check if a string is an instance of `MutableTruffleString`.
+* [Repeat](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleString.RepeatNode.html):
+  Repeat a given string *n* times.
 
 ### Instantiation
 
@@ -198,7 +222,7 @@ to `java.lang.StringBuilder`.
 * [AppendCharUTF16](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleStringBuilder.AppendCharUTF16Node.html):
   Append a single char to a UTF-16 string builder.
 * [AppendCodePoint](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleStringBuilder.AppendCodePointNode.html):
-  Append a single code point to string builder.
+  Append a single codepoint to string builder.
 * [AppendIntNumber](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleStringBuilder.AppendIntNumberNode.html):
   Append an integer number to a string builder.
 * [AppendLongNumber](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/TruffleStringBuilder.AppendLongNumberNode.html):
@@ -253,11 +277,11 @@ TruffleString is fully optimized for the following encodings:
 * `UTF-32`
 * `US-ASCII`
 * `ISO-8859-1`
+* `BYTES`
 
 Many other encodings are supported, but not fully optimized. To use them, they must be enabled by
 setting `needsAllEncodings = true` in
-the [Truffle language registration](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Registration.html)
-.
+the [Truffle language registration](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Registration.html).
 
 A TruffleString's internal encoding is not exposed. Instead of querying a string's encoding, languages should pass
 an `expectedEncoding` parameter to all methods where the string's encoding matters (which is almost all operations).
@@ -301,11 +325,16 @@ UTF-16 string is byte-equivalent to ISO-8859-1, and if all of its characters are
 it is also byte-equivalent to UTF-8.
 
 To check if your code is switching encodings properly, run your unit tests with the system
-variable `truffle.strings.debug-strict-encoding-checks=true`. This disables re-using string objects when switching
+property `truffle.strings.debug-strict-encoding-checks=true`. This disables re-using string objects when switching
 encodings, and makes encoding checks more strict: all operations working on a single string will enforce an exact match,
-whereas operations working on two strings will still allow re-interpretations.
+whereas operations working on two strings will still allow byte-equivalent re-interpretations.
 
-All TruffleString operations with more than one string parameter require the strings to be in a common encoding!
+All TruffleString operations with more than one string parameter require the strings to be in an encoding compatible
+with the result encoding.
+So either the strings need to be in the same encoding, or the caller must ensure that both strings are
+[compatible](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/AbstractTruffleString.html#isCompatibleTo-com.oracle.truffle.api.strings.TruffleString.Encoding-)
+with the resulting encoding.
+This enable callers which already know the SwitchEncodingNodes would be noops to just skip them for footprint reasons.
 
 ```java
 import com.oracle.truffle.api.dsl.Cached;
@@ -333,7 +362,7 @@ abstract static class SomeNode extends Node {
 TruffleString strings expose the following properties:
 
 * `byteLength`: The string's length in bytes, exposed via the `byteLength` method.
-* `codePointLength`: The string's length in code points, exposed via `CodePointLengthNode`.
+* `codePointLength`: The string's length in codepoints, exposed via `CodePointLengthNode`.
 * `isValid`: Can be queried via `IsValidNode` to check whether the string is encoded correctly.
 * `codeRange`: Provides coarse information about the string's content, exposed via `GetCodeRangeNode`. This property can
   have the following values:
@@ -341,9 +370,9 @@ TruffleString strings expose the following properties:
       0x7f).
     * `LATIN-1`: All codepoints in this string are part of the ISO-8859-1 character set (0x00 - 0xff), which is
       equivalent to the union of the Basic Latin and the Latin-1 Supplement Unicode block. At least one codepoint in the
-      string is greater than 0x7f. Applicable to: ISO-8859-1, UTF-16 and UTF-32.
+      string is greater than 0x7f. Only applicable to ISO-8859-1, UTF-16 and UTF-32.
     * `BMP`: All codepoints in this string are part of the Unicode Basic Multilingual Plane (BMP) (0x0000 - 0xffff). At
-      least one codepoint in the string is greater than 0xff. Applicable to: UTF-16 and UTF-32.
+      least one codepoint in the string is greater than 0xff. Only applicable to UTF-16 and UTF-32.
     * `VALID`: This string is encoded correctly, and contains at least one codepoint outside the other applicable code
       ranges (e.g. for UTF-8, this means there is one codepoint outside the ASCII range, and for UTF-16 this means that
       there is one codepoint outside the BMP range).
@@ -388,7 +417,7 @@ Note that since TruffleString's `hashCode` and `equals` methods are sensitive to
 must always be converted to a common encoding before e.g. using them as keys in a `HashMap`.
 
 TruffleString also provides three comparison nodes `CompareBytesNode`, `CompareCharsUTF16Node`,
-and `CompareIntsUTF32Node`, to compare strings byte-by-byte, char-by-char, and int-by-int, respectively.
+and `CompareIntsUTF32Node`, to compare strings respectively byte-by-byte, char-by-char, and int-by-int.
 
 ### Concatenation
 
@@ -467,9 +496,9 @@ abstract static class SomeNode extends Node {
 
 ### Codepoint Iterators
 
-TruffleString provides `TruffleStringIterator` as a means of iterating over a string's code points. This method should
+TruffleString provides `TruffleStringIterator` as a means of iterating over a string's codepoints. This method should
 be preferred over using `CodePointAtIndexNode` in a loop, especially on variable-width encodings such as UTF-8,
-since `CodePointAtIndexNode` may have to re-calculate the byte index equivalent of the given code point index on every
+since `CodePointAtIndexNode` may have to re-calculate the byte index equivalent of the given codepoint index on every
 call.
 
 Example:
@@ -489,7 +518,7 @@ abstract static class SomeNode extends Node {
             @Cached TruffleString.CodePointLengthNode codePointLengthNode,
             @Cached TruffleString.CodePointAtIndexNode codePointAtIndexNode) {
 
-        // iterating over a string's code points using TruffleStringIterator
+        // iterating over a string's codepoints using TruffleStringIterator
         TruffleStringIterator iterator = createCodePointIteratorNode.execute(string, TruffleString.Encoding.UTF_8);
         while (iterator.hasNext()) {
             System.out.printf("%x%n", nextNode.execute(iterator));
@@ -510,7 +539,7 @@ abstract static class SomeNode extends Node {
 
 TruffleString also provides a mutable string variant called `MutableTruffleString`, which is also accepted in all nodes
 of `TruffleString`. `MutableTruffleString` is *not thread-safe* and allows overwriting bytes in its internal byte array
-or native buffer via `WriteByteNode`. The internal array or native buffer may also be modified externally, but the
-corresponding `MutableTruffleString` must be notified of this via `notifyExternalMutation`. `MutableTruffleString` is
-*not* a Truffle interop type, and must be converted to an immutable `TruffleString` via
+or native pointer via `WriteByteNode`. The internal array or native pointer's content may also be modified externally,
+but the corresponding `MutableTruffleString` must be notified of this via `notifyExternalMutation()`.
+`MutableTruffleString` is *not* a Truffle interop type, and must be converted to an immutable `TruffleString` via
 `TruffleString.AsTruffleString` before passing a language boundary.
