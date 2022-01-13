@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.c;
 
-// Checkstyle: allow reflection
-
 import java.lang.reflect.Array;
 import java.nio.ByteBuffer;
 import java.util.Arrays;

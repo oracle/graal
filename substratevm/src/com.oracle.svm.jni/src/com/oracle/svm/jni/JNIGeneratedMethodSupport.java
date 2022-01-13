@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.jni;
 
-// Checkstyle: allow reflection
-
 import java.lang.reflect.Array;
 
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;

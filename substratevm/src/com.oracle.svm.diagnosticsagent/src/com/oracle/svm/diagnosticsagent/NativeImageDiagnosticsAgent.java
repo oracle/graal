@@ -33,7 +33,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -59,7 +58,6 @@ import com.oracle.svm.jvmtiagentbase.JvmtiAgentBase;
 import com.oracle.svm.jvmtiagentbase.Support;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiCapabilities;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEnv;
-import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEnv11;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEvent;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEventCallbacks;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEventMode;
@@ -136,9 +134,7 @@ public class NativeImageDiagnosticsAgent extends JvmtiAgentBase<NativeImageDiagn
 
     @Override
     protected void onVMInitCallback(JvmtiEnv jvmti, JNIEnvironment jni, JNIObjectHandle thread) {
-        if (JavaVersionUtil.JAVA_SPEC > 8) {
-            openInstrumentationModuleToAllOtherModules((JvmtiEnv11) jvmti, jni);
-        }
+        openInstrumentationModuleToAllOtherModules(jvmti, jni);
         handles().initializeTrackingSupportHandles(jni);
         /*
          * This is the earliest VM phase in which we can set breakpoints. This means that we cannot
@@ -251,7 +247,7 @@ public class NativeImageDiagnosticsAgent extends JvmtiAgentBase<NativeImageDiagn
         UnmanagedMemory.free(capabilities);
     }
 
-    private void openInstrumentationModuleToAllOtherModules(JvmtiEnv11 jvmti, JNIEnvironment jni) {
+    private void openInstrumentationModuleToAllOtherModules(JvmtiEnv jvmti, JNIEnvironment jni) {
         /*
          * JNI access from JVMTI is still limited by module visibility rules. Since a
          * ClassPrepareEvent can come from any thread that is executing code from any module, we
@@ -364,10 +360,7 @@ public class NativeImageDiagnosticsAgent extends JvmtiAgentBase<NativeImageDiagn
 
     @Override
     protected int getRequiredJvmtiVersion() {
-        if (JavaVersionUtil.JAVA_SPEC > 8) {
-            return JvmtiInterface.JVMTI_VERSION_9;
-        }
-        return JvmtiInterface.JVMTI_VERSION_1_2;
+        return JvmtiInterface.JVMTI_VERSION_9;
     }
 
     public static class RegistrationFeature implements Feature {

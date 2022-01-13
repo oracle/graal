@@ -24,10 +24,14 @@
  */
 package com.oracle.svm.hosted.code;
 
+import java.lang.annotation.Annotation;
+import java.util.Objects;
+
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -36,8 +40,10 @@ import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.NeverInlineTrivial;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -48,13 +54,47 @@ import jdk.vm.ci.meta.Signature;
 public final class FactoryMethod extends NonBytecodeStaticMethod {
 
     private final ResolvedJavaMethod targetConstructor;
+    private final boolean throwAllocatedObject;
 
-    FactoryMethod(ResolvedJavaMethod targetConstructor, ResolvedJavaType declaringClass, Signature signature, ConstantPool constantPool) {
+    FactoryMethod(ResolvedJavaMethod targetConstructor, ResolvedJavaType declaringClass, Signature signature, ConstantPool constantPool, boolean throwAllocatedObject) {
         super(SubstrateUtil.uniqueShortName(targetConstructor), declaringClass, signature, constantPool);
         this.targetConstructor = targetConstructor;
+        this.throwAllocatedObject = throwAllocatedObject;
 
         assert targetConstructor.isConstructor();
         assert !(targetConstructor instanceof AnalysisMethod) && !(targetConstructor instanceof HostedMethod);
+    }
+
+    /**
+     * Even though factory methods have few Graal nodes and are therefore considered "trivial", we
+     * do not want them inlined immediately by the trivial method inliner because we know that the
+     * machine code for allocations is large. Note that this does not preclude later inlining of the
+     * method as part of the regular AOT compilation pipeline.
+     */
+    @NeverInlineTrivial("FactoryMethod")
+    @SuppressWarnings("unused")
+    private static void annotationHolder() {
+    }
+
+    private static final NeverInlineTrivial INLINE_ANNOTATION = Objects.requireNonNull(
+                    ReflectionUtil.lookupMethod(FactoryMethod.class, "annotationHolder").getAnnotation(NeverInlineTrivial.class));
+
+    @Override
+    public <T extends Annotation> T getAnnotation(Class<T> annotationClass) {
+        if (annotationClass.isInstance(INLINE_ANNOTATION)) {
+            return annotationClass.cast(INLINE_ANNOTATION);
+        }
+        return null;
+    }
+
+    @Override
+    public Annotation[] getAnnotations() {
+        return new Annotation[]{INLINE_ANNOTATION};
+    }
+
+    @Override
+    public Annotation[] getDeclaredAnnotations() {
+        return new Annotation[]{INLINE_ANNOTATION};
     }
 
     @Override
@@ -76,7 +116,11 @@ public final class FactoryMethod extends NonBytecodeStaticMethod {
             kit.inline(invoke, "Constructor in FactoryMethod", "FactoryMethod");
         }
 
-        kit.createReturn(newInstance, newInstance.getStackKind());
+        if (throwAllocatedObject) {
+            kit.append(new UnwindNode(newInstance));
+        } else {
+            kit.createReturn(newInstance, newInstance.getStackKind());
+        }
         return kit.finalizeGraph();
     }
 

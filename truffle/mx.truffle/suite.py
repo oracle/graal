@@ -605,6 +605,7 @@ suite = {
         "com.oracle.truffle.nfi.backend.spi",
       ],
       "checkstyle" : "com.oracle.truffle.api",
+      "spotbugsIgnoresGenerated" : True,
       "javaCompliance" : "8+",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle",

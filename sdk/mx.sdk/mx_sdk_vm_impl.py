@@ -826,8 +826,6 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
         :type parent_release_file: str | None
         :rtype: str
         """
-        def quote(string):
-            return '"{}"'.format(string)
 
         _commit_info = {}
         for _s in suites:
@@ -840,28 +838,22 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
                     "commit.committer": _info['committer'] if _s.vc.kind != 'binary' else 'unknown',
                     "commit.committer-ts": _info['committer-ts'],
                 }
-        _metadata_dict = OrderedDict()
-        if parent_release_file is not None and exists(parent_release_file):
-            with open(parent_release_file, 'r') as f:
-                for line in f:
-                    if line.strip() != '':  # on Windows, the release file might have extra line terminators
-                        assert line.count('=') > 0, "The release file of the base JDK ('{}') contains a line without the '=' sign: '{}'".format(parent_release_file, line)
-                        k, v = line.strip().split('=', 1)
-                        _metadata_dict[k] = v
+        if parent_release_file:
+            _metadata_dict = mx_sdk_vm.parse_release_file(parent_release_file)
+        else:
+            _metadata_dict = OrderedDict()
 
-        _metadata_dict.setdefault('JAVA_VERSION', quote(_src_jdk.version))
-        _metadata_dict.setdefault('OS_NAME', quote(get_graalvm_os()))
-        _metadata_dict.setdefault('OS_ARCH', quote(mx.get_arch()))
+        _metadata_dict.setdefault('JAVA_VERSION', _src_jdk.version)
+        _metadata_dict.setdefault('OS_NAME', get_graalvm_os())
+        _metadata_dict.setdefault('OS_ARCH', mx.get_arch())
 
-        _metadata_dict['GRAALVM_VERSION'] = quote(_suite.release_version())
+        _metadata_dict['GRAALVM_VERSION'] = _suite.release_version()
         _source = _metadata_dict.get('SOURCE') or ''
         if _source:
-            if len(_source) > 1 and _source[0] == '"' and _source[-1] == '"':
-                _source = _source[1:-1]
             _source += ' '
         _source += ' '.join(['{}:{}'.format(_s.name, _s.version()) for _s in suites])
-        _metadata_dict['SOURCE'] = quote(_source)
-        _metadata_dict['COMMIT_INFO'] = json.dumps(_commit_info, sort_keys=True)  # unquoted to simplify JSON parsing
+        _metadata_dict['SOURCE'] = _source
+        _metadata_dict['COMMIT_INFO'] = json.dumps(_commit_info, sort_keys=True)
         if _suite.is_release():
             catalog = _release_catalog()
         else:
@@ -871,9 +863,10 @@ class BaseGraalVmLayoutDistribution(_with_metaclass(ABCMeta, mx.LayoutDistributi
             else:
                 catalog = None
         if catalog:
-            _metadata_dict['component_catalog'] = quote(catalog)
+            _metadata_dict['component_catalog'] = catalog
 
-        return '\n'.join(['{}={}'.format(k, v) for k, v in _metadata_dict.items()])
+        # COMMIT_INFO is unquoted to simplify JSON parsing
+        return mx_sdk_vm.format_release_file(_metadata_dict, {'COMMIT_INFO'})
 
 
 class BaseGraalVmLayoutDistributionTask(mx.LayoutArchiveTask):
@@ -2354,6 +2347,10 @@ class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDis
         for component_ in extra_components:
             library_configs += _get_library_configs(component_)
 
+        extra_installable_qualifiers = list(component.extra_installable_qualifiers)
+        for component_ in extra_components:
+            extra_installable_qualifiers += component_.extra_installable_qualifiers
+
         other_involved_components = []
         if self.main_component.short_name not in ('svm', 'svmee') \
                 and _get_svm_support().is_supported() \
@@ -2367,7 +2364,9 @@ class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDis
             if _skip_libraries(library_config):
                 name += '_S' + basename(library_config.destination).upper()
         if other_involved_components:
-            name += '_' + '_'.join(sorted((component.short_name.upper() for component in other_involved_components)))
+            extra_installable_qualifiers += [component.short_name for component in other_involved_components]
+        if extra_installable_qualifiers:
+            name += '_' + '_'.join(sorted(q.upper() for q in extra_installable_qualifiers))
         name += '_JAVA{}'.format(_src_jdk_version)
         self.maven = _graalvm_maven_attributes(tag='installable')
         components = [component]
@@ -2866,19 +2865,59 @@ def has_svm_launchers(components, fatalIfMissing=False):
     return all((has_svm_launcher(component, fatalIfMissing=fatalIfMissing) for component in components))
 
 
-def get_native_image_locations(name, image_name, fatal_if_missing=True):
-    c = name if isinstance(name, mx_sdk.GraalVmComponent) else get_component(name)
-    configs = _get_library_configs(c) + _get_launcher_configs(c)
-    libgraal_libs = [l for l in configs if image_name in basename(l.destination)]
-    if libgraal_libs:
-        library_config = libgraal_libs[0]
-        dist = get_final_graalvm_distribution()
-        source_type = 'skip' if _skip_libraries(library_config) else 'dependency'
-        source_location = dist.find_single_source_location(
-            source_type + ':' + GraalVmLibrary.project_name(library_config), fatal_if_missing=fatal_if_missing)
-        if source_location:
-            return join(graalvm_output_root(), source_location)
-    return None
+def get_native_image_locations(component, image_name, fatal_if_missing=True):
+    """
+    :type component: mx_sdk.GraalVmComponent | str
+    :type image_name: str
+    :type fatal_if_missing: bool
+    :rtype: str | None
+    """
+    def _get_library_config():
+        name = mx.add_lib_prefix(mx.add_lib_suffix(remove_lib_prefix_suffix(image_name, require_suffix_prefix=False)))
+        configs = _get_library_configs(component)
+        return _get_config(name, configs)
+
+    def _get_launcher_config():
+        name = mx.exe_suffix(remove_exe_suffix(image_name, require_suffix=False))
+        configs = _get_launcher_configs(component)
+        return _get_config(name, configs)
+
+    def _get_config(name, configs):
+        configs = [c for c in configs if basename(c.destination) == name]
+        if configs:
+            if len(configs) > 1:
+                raise mx.abort("Found multiple locations for '{}' in '{}': {}".format(image_name, component.name, configs))
+            return configs[0]
+        return None
+
+    component = component if isinstance(component, mx_sdk.GraalVmComponent) else get_component(component)
+    graalvm_dist = get_final_graalvm_distribution()
+    source_location = None
+    lib_config = _get_library_config()
+    if lib_config:
+        source_type = 'skip' if _skip_libraries(lib_config) else 'dependency'
+        source_location = graalvm_dist.find_single_source_location(source_type + ':' + GraalVmLibrary.project_name(lib_config), abort_on_multiple=True)
+    if source_location is None:
+        launcher_config = _get_launcher_config()
+        if launcher_config:
+            source_location = graalvm_dist.find_single_source_location('dependency:' + GraalVmNativeImage.project_name(launcher_config), fatal_if_missing=False, abort_on_multiple=True)
+    if source_location is None and fatal_if_missing:
+        raise mx.abort("Cannot find native image location of '{}' in '{}'".format(image_name, component.name))
+    return source_location if source_location is None else join(graalvm_output_root(), source_location)
+
+
+def get_all_native_image_locations(include_libraries=True, include_launchers=True, abs_path=False):
+    configs = []
+    for component in mx_sdk_vm.graalvm_components():
+        if include_libraries:
+            configs += [c for c in _get_library_configs(component) if not _skip_libraries(c)]
+        if include_launchers:
+            configs += [c for c in _get_launcher_configs(component) if not _force_bash_launchers(c)]
+    graalvm_dist = get_final_graalvm_distribution()
+    locations = [graalvm_dist.find_single_source_location('dependency:' + GraalVmNativeImage.project_name(config)) for config in configs]
+    if abs_path:
+        locations = [join(graalvm_output_root(), location) for location in locations]
+    return locations
 
 
 def get_component(name, fatalIfMissing=False, stage1=False):

@@ -101,7 +101,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                 Meta meta = getMeta();
                 throw meta.throwException(meta.java_lang_NullPointerException);
             }
-            if (StaticObject.isNull(value) || instanceOfDynamic.execute(targetClass.getMirrorKlass(), value.getKlass())) {
+            if (StaticObject.isNull(value) || instanceOfDynamic.execute(value.getKlass(), targetClass.getMirrorKlass())) {
                 return value;
             }
             return castImpl.execute(getContext(), targetClass.getMirrorKlass(), value);
@@ -145,7 +145,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                         @JavaType(Object.class) StaticObject value,
                         @Cached InstanceOf.Dynamic instanceOfDynamic,
                         @Cached BranchProfile exceptionProfile) {
-            if (isNull(value) || instanceOfDynamic.execute(targetKlass, value.getKlass())) {
+            if (isNull(value) || instanceOfDynamic.execute(value.getKlass(), targetKlass)) {
                 return value;
             }
             exceptionProfile.enter();

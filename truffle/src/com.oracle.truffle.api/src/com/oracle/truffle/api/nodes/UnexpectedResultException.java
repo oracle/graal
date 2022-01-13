@@ -49,6 +49,7 @@ import com.oracle.truffle.api.CompilerDirectives;
  * 
  * @since 0.8 or earlier
  */
+@SuppressWarnings("serial")
 public final class UnexpectedResultException extends SlowPathException {
 
     private static final long serialVersionUID = 3676602078425211386L;

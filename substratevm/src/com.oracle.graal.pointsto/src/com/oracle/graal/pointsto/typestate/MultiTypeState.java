@@ -175,7 +175,7 @@ public class MultiTypeState extends TypeState {
      */
     @Override
     public Iterator<AnalysisType> typesIterator(BigBang bb) {
-        return new Iterator<AnalysisType>() {
+        return new Iterator<>() {
 
             /** Initialize to the index of the first set bit. */
             private int currentTypeId = typesBitSet.nextSetBit(0);
@@ -291,7 +291,7 @@ public class MultiTypeState extends TypeState {
 
     @Override
     public Iterator<AnalysisObject> objectsIterator(AnalysisType exactType) {
-        return new Iterator<AnalysisObject>() {
+        return new Iterator<>() {
             private Range typeRange = findTypeRange(exactType);
             private int idx = typeRange.left;
 

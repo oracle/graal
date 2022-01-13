@@ -217,8 +217,10 @@ public final class Target_java_lang_Thread {
             meta.getThreadAccess().fromRunnable(thread, State.TIMED_WAITING);
             Thread.sleep(millis);
         } catch (InterruptedException e) {
-            meta.getThreadAccess().clearInterruptStatus(thread);
-            throw meta.throwExceptionWithMessage(meta.java_lang_InterruptedException, e.getMessage());
+            if (meta.getThreadAccess().isInterrupted(thread, true)) {
+                throw meta.throwExceptionWithMessage(meta.java_lang_InterruptedException, e.getMessage());
+            }
+            meta.getThreadAccess().checkDeprecation();
         } catch (IllegalArgumentException e) {
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, e.getMessage());
         } finally {

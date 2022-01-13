@@ -40,8 +40,6 @@ import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
 import static org.graalvm.compiler.lir.LIRValueUtil.isIntConstant;
 import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 
-import java.util.Optional;
-
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64MIOp;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64RMOp;
@@ -90,7 +88,7 @@ import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.FloatCondSetOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.HashTableSwitchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.ReturnOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.StrategySwitchOp;
-import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.TableSwitchOp;
+import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.RangeTableSwitchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.TestBranchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.TestByteBranchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.TestConstBranchOp;
@@ -109,7 +107,6 @@ import org.graalvm.compiler.lir.amd64.vector.AMD64VectorCompareOp;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGenerator;
 import org.graalvm.compiler.lir.gen.MoveFactory;
-import org.graalvm.compiler.lir.hashing.IntHasher;
 import org.graalvm.compiler.phases.util.Providers;
 
 import jdk.vm.ci.amd64.AMD64;
@@ -678,33 +675,14 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected void emitTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value key) {
-        append(new TableSwitchOp(lowKey, defaultTarget, targets, key, newVariable(LIRKind.value(target().arch.getWordKind())), newVariable(key.getValueKind())));
+    protected void emitRangeTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value key) {
+        Variable scratch = newVariable(LIRKind.value(target().arch.getWordKind()));
+        Variable idxScratch = newVariable(key.getValueKind());
+        append(new RangeTableSwitchOp(lowKey, defaultTarget, targets, key, scratch, idxScratch));
     }
 
     @Override
-    protected Optional<IntHasher> hasherFor(JavaConstant[] keyConstants, double minDensity) {
-        int[] keys = new int[keyConstants.length];
-        for (int i = 0; i < keyConstants.length; i++) {
-            keys[i] = keyConstants[i].asInt();
-        }
-        return IntHasher.forKeys(keys);
-    }
-
-    @Override
-    protected void emitHashTableSwitch(IntHasher hasher, JavaConstant[] keys, LabelRef defaultTarget, LabelRef[] targets, Value value) {
-        Value hash = value;
-        if (hasher.factor > 1) {
-            Value factor = emitJavaConstant(JavaConstant.forShort(hasher.factor));
-            hash = arithmeticLIRGen.emitMul(hash, factor, false);
-        }
-        if (hasher.shift > 0) {
-            Value shift = emitJavaConstant(JavaConstant.forByte(hasher.shift));
-            hash = arithmeticLIRGen.emitShr(hash, shift);
-        }
-        Value cardinalityAnd = emitJavaConstant(JavaConstant.forInt(hasher.cardinality - 1));
-        hash = arithmeticLIRGen.emitAnd(hash, cardinalityAnd);
-
+    protected void emitHashTableSwitch(JavaConstant[] keys, LabelRef defaultTarget, LabelRef[] targets, Value value, Value hash) {
         Variable scratch = newVariable(LIRKind.value(target().arch.getWordKind()));
         Variable entryScratch = newVariable(LIRKind.value(target().arch.getWordKind()));
         append(new HashTableSwitchOp(keys, defaultTarget, targets, value, hash, scratch, entryScratch));

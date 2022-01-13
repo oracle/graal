@@ -105,4 +105,41 @@ public class JsTests extends RegexTestBase {
         test("\\B", "y", "abc", 0, false);
         test("(?<=[a-z])[A-Z]", "y", "aA", 0, false);
     }
+
+    @Test
+    public void lastGroupNotSet() {
+        // IndexOf
+        test("(a)", "", "a", 0, true, 0, 1, 0, 1, -1);
+        // StartsWith
+        test("^(a)", "", "a", 0, true, 0, 1, 0, 1, -1);
+        // EndsWith
+        test("(a)$", "", "a", 0, true, 0, 1, 0, 1, -1);
+        // Equals
+        test("^(a)$", "", "a", 0, true, 0, 1, 0, 1, -1);
+        // RegionMatches
+        test("(a)", "y", "a", 0, true, 0, 1, 0, 1, -1);
+        // EmptyIndexOf
+        test("()", "", "", 0, true, 0, 0, 0, 0, -1);
+        // EmptyStartsWith
+        test("^()", "", "", 0, true, 0, 0, 0, 0, -1);
+        // EmptyEndsWith
+        test("()$", "", "", 0, true, 0, 0, 0, 0, -1);
+        // EmptyEquals
+        test("^()$", "", "", 0, true, 0, 0, 0, 0, -1);
+
+        // Single possible CG result: exercises NFA, DFA and backtracker.
+        test("([a0-9])", "", "a", 0, true, 0, 1, 0, 1, -1);
+        // TraceFinder: exercises NFA, DFA and backtracker.
+        test("x?([a0-9])", "", "a", 0, true, 0, 1, 0, 1, -1);
+        // Unbounded length of match, unambiguous: exercises NFA, lazy DFA, simpleCG DFA and
+        // backtracker.
+        test("x*([a0-9])", "", "a", 0, true, 0, 1, 0, 1, -1);
+        // Unbounded length of match, ambiguous: exercises NFA, lazy DFA, eager DFA and backtracker.
+        test(".*([a0-9])", "", "a", 0, true, 0, 1, 0, 1, -1);
+    }
+
+    @Test
+    public void gr35771() {
+        test("(^\\s*)|(\\s*$)", "", "", 0, true, 0, 0, 0, 0, -1, -1);
+    }
 }

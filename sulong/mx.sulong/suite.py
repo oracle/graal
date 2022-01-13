@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.305.3",
+  "mxversion" : "5.317.0",
   "name" : "sulong",
   "versionConflictResolution" : "latest",
 
@@ -320,6 +320,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "truffle:TRUFFLE_API",
+        "truffle:TRUFFLE_NFI",
         "com.oracle.truffle.llvm.api",
         "com.oracle.truffle.llvm.spi",
         "com.oracle.truffle.llvm.toolchain.config",
@@ -993,6 +994,25 @@ suite = {
       "testProject" : True,
       "defaultBuild" : False,
     },
+    "com.oracle.truffle.llvm.tests.embedded.pthread.native" : {
+      "subDir" : "tests",
+      "class" : "SulongCMakeTestSuite",
+      "variants" : ["toolchain-plain"],
+      "buildRef" : False,
+      "buildSharedObject" : True,
+      "bundledLLVMOnly" : True,
+      "cmakeConfig" : {
+        "CMAKE_C_FLAGS" : "-pthread",
+        "CMAKE_C_LINK_FLAGS" : "-pthread",
+        "TOOLCHAIN_CLANG" : "<toolchainGetToolPath:native,CC>",
+        "TOOLCHAIN_CLANGXX" : "<toolchainGetToolPath:native,CXX>",
+      },
+      "dependencies" : [
+        "SULONG_TEST",
+      ],
+      "testProject" : True,
+      "defaultBuild" : False,
+    },
     "com.oracle.truffle.llvm.tests.sulongcpp.native" : {
       "subDir" : "tests",
       "class" : "SulongCMakeTestSuite",
@@ -1377,6 +1397,7 @@ suite = {
       ],
       "distDependencies" : [
         "truffle:TRUFFLE_API",
+        "truffle:TRUFFLE_NFI",
         "truffle:ANTLR4",
         "SULONG_API",
         "SULONG_TOOLCHAIN_CONFIG",
@@ -1527,6 +1548,7 @@ suite = {
       "layout": {
         "./": "dependency:bootstrap-toolchain-launchers/*",
       },
+      "asm_requires_cpp": False,
       "buildDependencies" : [
         "SULONG_TOOLCHAIN_LAUNCHERS",
       ],
@@ -1676,6 +1698,7 @@ suite = {
           "dependency:com.oracle.truffle.llvm.tests.debugexpr.native/*",
           "dependency:com.oracle.truffle.llvm.tests.irdebug.native/*",
           "dependency:com.oracle.truffle.llvm.tests.embedded.custom.native/*",
+          "dependency:com.oracle.truffle.llvm.tests.embedded.pthread.native/*",
           "dependency:com.oracle.truffle.llvm.tests.bitcode.other.native/*",
           # the reload tests are not only ran as standalone test (SulongSuite) but also as embedded test (LoaderTest)
           "dependency:com.oracle.truffle.llvm.tests.linker.native/reload",

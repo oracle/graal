@@ -314,7 +314,10 @@ public abstract class ClassRegistry implements ContextAccess {
             loadKlassCacheHitsInc();
         }
         assert entry != null;
-        entry.checkPackageAccess(getMeta(), getClassLoader(), protectionDomain);
+        StaticObject classLoader = getClassLoader();
+        if (!StaticObject.isNull(classLoader)) {
+            entry.checkPackageAccess(getMeta(), classLoader, protectionDomain);
+        }
         return entry.klass();
     }
 

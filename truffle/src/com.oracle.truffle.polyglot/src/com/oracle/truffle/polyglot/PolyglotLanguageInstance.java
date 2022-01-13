@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.polyglot;
 
-import static com.oracle.truffle.polyglot.EngineAccessor.HOST;
 import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 
 import java.util.List;
@@ -84,6 +83,8 @@ final class PolyglotLanguageInstance implements VMObject {
     LocalLocation[] contextLocalLocations;
     LocalLocation[] contextThreadLocalLocations;
 
+    @CompilationFinal Object guestToHostCodeCache;
+
     @SuppressWarnings("unchecked")
     PolyglotLanguageInstance(PolyglotLanguage language, PolyglotSharingLayer layer) {
         this.language = language;
@@ -93,7 +94,7 @@ final class PolyglotLanguageInstance implements VMObject {
         this.callTargetCache = new ConcurrentHashMap<>();
         try {
             this.spi = (TruffleLanguage<Object>) language.cache.loadLanguage();
-            LANGUAGE.initializeLanguage(spi, language.info, language, HOST.isHostLanguage(spi.getClass()) ? null : this);
+            LANGUAGE.initializeLanguage(spi, language.info, language, language.isHost() ? null : this);
         } catch (Exception e) {
             throw new IllegalStateException(String.format("Error initializing language '%s' using class '%s'.", language.cache.getId(), language.cache.getClassName()), e);
         }

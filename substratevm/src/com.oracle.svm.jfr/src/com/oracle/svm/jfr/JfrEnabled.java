@@ -26,10 +26,8 @@ package com.oracle.svm.jfr;
 
 import java.util.function.BooleanSupplier;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-
-import com.oracle.svm.core.OS;
-import com.oracle.svm.core.VMInspectionOptions;
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.ImageSingletons;
 
 /**
  * Used to include/exclude JFR feature and substitutions.
@@ -40,15 +38,8 @@ public class JfrEnabled implements BooleanSupplier {
         return get();
     }
 
+    @Fold
     public static boolean get() {
-        return VMInspectionOptions.AllowVMInspection.getValue() && jvmVersionSupported() && osSupported();
-    }
-
-    private static boolean jvmVersionSupported() {
-        return JavaVersionUtil.JAVA_SPEC >= 11;
-    }
-
-    private static boolean osSupported() {
-        return OS.getCurrent() == OS.LINUX || OS.getCurrent() == OS.DARWIN;
+        return ImageSingletons.contains(JfrFeature.class);
     }
 }

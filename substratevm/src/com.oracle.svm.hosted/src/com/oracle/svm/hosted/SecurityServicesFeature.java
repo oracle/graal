@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.hosted;
 
-// Checkstyle: allow reflection
-
 import static com.oracle.svm.hosted.SecurityServicesFeature.SecurityServicesPrinter.dedent;
 import static com.oracle.svm.hosted.SecurityServicesFeature.SecurityServicesPrinter.indent;
 
@@ -237,23 +235,17 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
         rci.rerunInitialization(clazz(access, "sun.security.provider.SeedGenerator"), "for substitutions");
         rci.rerunInitialization(clazz(access, "sun.security.provider.SecureRandom$SeederHolder"), "for substitutions");
 
-        if (JavaVersionUtil.JAVA_SPEC >= 11) {
-            /*
-             * sun.security.provider.AbstractDrbg$SeederHolder has a static final EntropySource
-             * seeder field that needs to be re-initialized at run time because it captures the
-             * result of SeedGenerator.getSystemEntropy().
-             */
-            rci.rerunInitialization(clazz(access, "sun.security.provider.AbstractDrbg$SeederHolder"), "for substitutions");
-            if (isWindows()) {
-                /* PRNG.<clinit> creates a Cleaner (see JDK-8210476), which starts its thread. */
-                rci.rerunInitialization(clazz(access, "sun.security.mscapi.PRNG"), "for substitutions");
-            }
+        /*
+         * sun.security.provider.AbstractDrbg$SeederHolder has a static final EntropySource seeder
+         * field that needs to be re-initialized at run time because it captures the result of
+         * SeedGenerator.getSystemEntropy().
+         */
+        rci.rerunInitialization(clazz(access, "sun.security.provider.AbstractDrbg$SeederHolder"), "for substitutions");
+        if (isWindows()) {
+            /* PRNG.<clinit> creates a Cleaner (see JDK-8210476), which starts its thread. */
+            rci.rerunInitialization(clazz(access, "sun.security.mscapi.PRNG"), "for substitutions");
         }
-
-        if (JavaVersionUtil.JAVA_SPEC > 8) {
-            rci.rerunInitialization(clazz(access, "sun.security.provider.FileInputStreamPool"), "for substitutions");
-        }
-
+        rci.rerunInitialization(clazz(access, "sun.security.provider.FileInputStreamPool"), "for substitutions");
         /* java.util.UUID$Holder has a static final SecureRandom field. */
         rci.rerunInitialization(clazz(access, "java.util.UUID$Holder"), "for substitutions");
 
@@ -451,7 +443,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
 
         NativeLibraries nativeLibraries = ((DuringAnalysisAccessImpl) a).getNativeLibraries();
         /* We can statically link jaas, thus we classify it as builtIn library */
-        NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary(JavaVersionUtil.JAVA_SPEC >= 11 ? "jaas" : "jaas_unix");
+        NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("jaas");
         nativeLibraries.addStaticJniLibrary("jaas");
     }
 
@@ -740,8 +732,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
     @SuppressWarnings("unchecked")
     private Function<Object, Object> constructVerificationCacheCleaner() {
         /*
-         * For JDK 8 and JDK 11, the verification cache is a Provider -> Verification result
-         * IdentityHashMap.
+         * For JDK 11, the verification cache is a Provider -> Verification result IdentityHashMap.
          */
         if (JavaVersionUtil.JAVA_SPEC <= 11) {
             return obj -> {
@@ -879,9 +870,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
 
         SecurityServicesPrinter() {
             File reportFile = reportFile(SubstrateOptions.reportsPath());
-            // Checkstyle: stop
             System.out.println("# Printing security services automatic registration to: " + reportFile);
-            // Checkstyle: resume
             try {
                 writer = new PrintWriter(new FileWriter(reportFile));
             } catch (IOException e) {

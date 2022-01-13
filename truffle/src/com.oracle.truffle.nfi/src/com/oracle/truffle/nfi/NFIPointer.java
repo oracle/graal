@@ -45,8 +45,10 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.nfi.api.NativePointerLibrary;
 
 @ExportLibrary(InteropLibrary.class)
+@ExportLibrary(value = NativePointerLibrary.class, useForAOT = true, useForAOTPriority = 1)
 final class NFIPointer implements TruffleObject {
 
     final long raw;

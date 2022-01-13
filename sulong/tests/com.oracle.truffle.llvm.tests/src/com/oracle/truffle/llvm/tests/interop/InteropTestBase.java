@@ -73,8 +73,12 @@ public class InteropTestBase {
     protected static final Path testBase = Paths.get(TestOptions.getTestDistribution("SULONG_EMBEDDED_TEST_SUITES"), "interop");
     public static final String TEST_FILE_NAME = "toolchain-plain.so";
 
+    protected static File getTestBitcodeFile(String name) {
+        return Paths.get(testBase.toString(), name + CommonTestUtils.TEST_DIR_EXT, TEST_FILE_NAME).toFile();
+    }
+
     protected static Object loadTestBitcodeInternal(String name) {
-        File file = Paths.get(testBase.toString(), name + CommonTestUtils.TEST_DIR_EXT, TEST_FILE_NAME).toFile();
+        File file = getTestBitcodeFile(name);
         CallTarget target = getTestBitcodeCallTarget(file);
         return target.call();
     }
@@ -90,7 +94,7 @@ public class InteropTestBase {
     }
 
     protected static Value loadTestBitcodeValue(String name) {
-        File file = Paths.get(testBase.toString(), name + CommonTestUtils.TEST_DIR_EXT, TEST_FILE_NAME).toFile();
+        File file = getTestBitcodeFile(name);
         org.graalvm.polyglot.Source source;
         try {
             source = org.graalvm.polyglot.Source.newBuilder("llvm", file).build();

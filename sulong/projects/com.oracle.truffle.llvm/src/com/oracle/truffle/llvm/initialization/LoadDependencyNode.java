@@ -72,12 +72,12 @@ public final class LoadDependencyNode extends LLVMNode {
             return callTarget;
         } else {
             // only create a source if the library has not already been parsed.
-            TruffleFile file = createTruffleFile(libraryName, null, libraryLocator);
+            TruffleFile file = createTruffleFile(libraryName, libraryLocator);
             CallTarget calls = getLanguage().getCachedLibrary(file.getPath());
             if (calls != null) {
                 return calls;
             } else {
-                Object sourceOrCallTarget = createDependencySource(libraryName, libraryName, true, file);
+                Object sourceOrCallTarget = createDependencySource(libraryName, libraryName, file);
                 // A source is null if it's a native library, which will be added to the NFI
                 // context extension instead.
                 if (sourceOrCallTarget instanceof Source) {
@@ -91,19 +91,24 @@ public final class LoadDependencyNode extends LLVMNode {
     }
 
     @TruffleBoundary
-    private Object createDependencySource(String libName, String libPath, boolean isNative, TruffleFile file) {
+    private Object createDependencySource(String libName, String libPath, TruffleFile file) {
         assert file != null;
-        if (!file.isRegularFile()) {
-            if (!isNative) {
-                throw new LLVMParserException("'" + file.getName() + "' is not a file or does not exist.");
-            } else {
-                TruffleFile nativeFile = createNativeTruffleFile(libName, libPath);
-                // null is returned if the NFIContextExtension does not exists.
-                if (nativeFile == null) {
-                    return null;
-                }
-                return createNativeLibraryCallTarget(nativeFile);
+        boolean createNative = false;
+        try {
+            if (!file.isRegularFile()) {
+                createNative = true;
             }
+        } catch (SecurityException se) {
+            createNative = true;
+        }
+
+        if (createNative) {
+            TruffleFile nativeFile = createNativeTruffleFile(libName, libPath);
+            // null is returned if the NFIContextExtension does not exists.
+            if (nativeFile == null) {
+                return null;
+            }
+            return createNativeLibraryCallTarget(nativeFile);
         }
 
         Source source;
@@ -147,17 +152,13 @@ public final class LoadDependencyNode extends LLVMNode {
     }
 
     @TruffleBoundary
-    private TruffleFile createTruffleFile(String libName, String libPath, LibraryLocator locator) {
+    private TruffleFile createTruffleFile(String libName, LibraryLocator locator) {
         LLVMContext context = getContext();
         TruffleFile file = locator.locate(context, libName, reason);
         if (file == null) {
-            if (libPath != null) {
-                file = context.getEnv().getInternalTruffleFile(libPath);
-            } else {
-                Path path = Paths.get(libName);
-                LibraryLocator.traceDelegateNative(context, path);
-                file = context.getEnv().getInternalTruffleFile(path.toUri());
-            }
+            Path path = Paths.get(libName);
+            LibraryLocator.traceDelegateNative(context, path);
+            file = context.getEnv().getInternalTruffleFile(path.toUri());
         }
         return file;
     }

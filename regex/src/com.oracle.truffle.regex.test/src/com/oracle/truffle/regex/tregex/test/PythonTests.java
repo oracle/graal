@@ -59,12 +59,12 @@ public class PythonTests extends RegexTestBase {
 
     @Test
     public void gr15012() {
-        test("(-*[A-]*)", "", "A", 0, true, 0, 1, 0, 1);
+        test("(-*[A-]*)", "", "A", 0, true, 0, 1, 0, 1, 1);
     }
 
     @Test
     public void gr15243() {
-        test("^(\\s*)([rRuUbB]{,2})(\"\"\"(?:.|\\n)*?\"\"\")", "", "R\"\"\"\"\"\"", 0, true, 0, 7, 0, 0, 0, 1, 1, 7);
+        test("^(\\s*)([rRuUbB]{,2})(\"\"\"(?:.|\\n)*?\"\"\")", "", "R\"\"\"\"\"\"", 0, true, 0, 7, 0, 0, 0, 1, 1, 7, 3);
         test("A{,}", "", "AAAA", 0, true, 0, 4);
     }
 
@@ -93,8 +93,8 @@ public class PythonTests extends RegexTestBase {
     public void gr28905() {
         test("\\B", "y", "abc", 0, false);
         test("\\B", "", "", 0, false);
-        test("\\B(b.)\\B", "", "abc bcd bc abxd", 0, true, 12, 14, 12, 14);
-        test("\\b(b.)\\b", "a", "abcd abc bcd bx", 0, true, 13, 15, 13, 15);
+        test("\\B(b.)\\B", "", "abc bcd bc abxd", 0, true, 12, 14, 12, 14, 1);
+        test("\\b(b.)\\b", "a", "abcd abc bcd bx", 0, true, 13, 15, 13, 15, 1);
     }
 
     @Test
@@ -107,7 +107,7 @@ public class PythonTests extends RegexTestBase {
     public void gr29318() {
         // \11 is a backreference to group 11
         expectSyntaxError("\\11", "", PyErrorMessages.invalidGroupReference("11"));
-        test("()()()()()()()()()()()\\11", "", "", 0, true, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        test("()()()()()()()()()()()\\11", "", "", 0, true, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11);
         // \011 is an octal escape
         test("\\011", "", "\011", 0, true, 0, 1);
         // \111 is an octal escape (\111 = I)
@@ -116,7 +116,7 @@ public class PythonTests extends RegexTestBase {
         test("\\1111", "", "I1", 0, true, 0, 2);
         // \11 is a backreference to group 11 and it is followed by a literal 9
         expectSyntaxError("\\119", "", PyErrorMessages.invalidGroupReference("11"));
-        test("()()()()()()()()()()()\\119", "", "9", 0, true, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        test("()()()()()()()()()()()\\119", "", "9", 0, true, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11);
     }
 
     @Test
@@ -131,35 +131,103 @@ public class PythonTests extends RegexTestBase {
 
     @Test
     public void nestedCaptureGroupsKeptOnLoopReentry() {
-        test("(?:(a)|(b))+", "", "ab", 0, true, 0, 2, 0, 1, 1, 2);
-        test("(?:(a)|b\\1){2}", "", "aba", 0, true, 0, 3, 0, 1);
+        test("(?:(a)|(b))+", "", "ab", 0, true, 0, 2, 0, 1, 1, 2, 2);
+        test("(?:(a)|b\\1){2}", "", "aba", 0, true, 0, 3, 0, 1, 1);
     }
 
     @Test
     public void failingEmptyChecksDontBacktrack() {
         test("(?:|a)?", "", "a", 0, true, 0, 0);
-        test("(?:a|())*", "", "a", 0, true, 0, 1, 1, 1);
+        test("(?:a|())*", "", "a", 0, true, 0, 1, 1, 1, 1);
     }
 
     @Test
     public void emptyChecksBacktrackingAndNestedCaptureGroupInteractions() {
-        test("()??\\1", "", "", 0, true, 0, 0, 0, 0);
-        test("(?:a|())*?\\1", "", "a", 0, true, 0, 1, 1, 1);
+        test("()??\\1", "", "", 0, true, 0, 0, 0, 0, 1);
+        test("(?:a|())*?\\1", "", "a", 0, true, 0, 1, 1, 1, 1);
     }
 
     @Test
     public void quantifiersOnLookaroundAssertions() {
-        test("(?=(a))?", "", "a", 0, true, 0, 0, 0, 1);
+        test("(?=(a))?", "", "a", 0, true, 0, 0, 0, 1, 1);
         test("(?=(a))??", "", "a", 0, true, 0, 0, -1, -1);
-        test("(?=(a))??\\1", "", "a", 0, true, 0, 1, 0, 1);
+        test("(?=(a))??\\1", "", "a", 0, true, 0, 1, 0, 1, 1);
 
-        test("a(?<=(a))?", "", "aa", 0, true, 0, 1, 0, 1);
+        test("a(?<=(a))?", "", "aa", 0, true, 0, 1, 0, 1, 1);
         test("a(?<=(a))??", "", "aa", 0, true, 0, 1, -1, -1);
-        test("a(?<=(a))??\\1", "", "aa", 0, true, 0, 2, 0, 1);
+        test("a(?<=(a))??\\1", "", "aa", 0, true, 0, 2, 0, 1, 1);
     }
 
     @Test
     public void gr32018() {
         test("\\s*(?:#\\s*)?$", "y", new String(new char[1000000]).replace('\0', '\t') + "##", 0, false);
+    }
+
+    @Test
+    public void gr32537() {
+        // Tests from the original issue. These test the literal engine.
+        test("(a)(b)", "", "ab", 0, true, 0, 2, 0, 1, 1, 2, 2);
+        test("(a(b))", "", "ab", 0, true, 0, 2, 0, 2, 1, 2, 1);
+        test("(a)()", "", "ab", 0, true, 0, 1, 0, 1, 1, 1, 2);
+        test("(a())", "", "ab", 0, true, 0, 1, 0, 1, 1, 1, 1);
+
+        // Modified tests that use the NFA, TraceFinder, lazy DFA, eager DFA, simpleCG DFA
+        // and backtracking engines in regression test mode.
+
+        // Single possible CG result: exercises NFA, DFA and backtracker.
+        // NB: Using [X0-9] instead of X precludes the use of the specializations in
+        // LiteralRegexEngine.
+        test("([a0-9])([b0-9])", "", "ab", 0, true, 0, 2, 0, 1, 1, 2, 2);
+        test("([a0-9]([b0-9]))", "", "ab", 0, true, 0, 2, 0, 2, 1, 2, 1);
+        test("([a0-9])()", "", "ab", 0, true, 0, 1, 0, 1, 1, 1, 2);
+        test("([a0-9]())", "", "ab", 0, true, 0, 1, 0, 1, 1, 1, 1);
+
+        // TraceFinder: exercises NFA, DFA, and backtracker.
+        // NB: Introducing x? leads to multiple different lengths of capture group 0 matches. This
+        // means we end up having to use TraceFinder to track down the correct capture groups.
+        // x? is
+        test("x?([a0-9])([b0-9])", "", "ab", 0, true, 0, 2, 0, 1, 1, 2, 2);
+        test("x?([a0-9]([b0-9]))", "", "ab", 0, true, 0, 2, 0, 2, 1, 2, 1);
+        test("x?([a0-9])()", "", "ab", 0, true, 0, 1, 0, 1, 1, 1, 2);
+        test("x?([a0-9]())", "", "ab", 0, true, 0, 1, 0, 1, 1, 1, 1);
+
+        // Unbounded length of match, unambiguous: exercises NFA, lazy DFA, simpleCG DFA and
+        // backtracker.
+        // NB: x* as a prefix leads to unambiguous states in the NFA (allowing the use of the
+        // simpleCG DFA) and it can also lead to an unbounded length of the match, which precludes
+        // the use of TraceFinder.
+        test("x*([a0-9])([b0-9])", "", "ab", 0, true, 0, 2, 0, 1, 1, 2, 2);
+        test("x*([a0-9]([b0-9]))", "", "ab", 0, true, 0, 2, 0, 2, 1, 2, 1);
+        test("x*([a0-9])()", "", "ab", 0, true, 0, 1, 0, 1, 1, 1, 2);
+        test("x*([a0-9]())", "", "ab", 0, true, 0, 1, 0, 1, 1, 1, 1);
+
+        // Unbounded length of match, ambiguous: exercises NFA, lazy DFA, eager DFA and backtracker.
+        test(".*([a0-9])([b0-9])", "", "ab", 0, true, 0, 2, 0, 1, 1, 2, 2);
+        test(".*([a0-9]([b0-9]))", "", "ab", 0, true, 0, 2, 0, 2, 1, 2, 1);
+        test(".*([a0-9])()", "", "ab", 0, true, 0, 1, 0, 1, 1, 1, 2);
+        test(".*([a0-9]())", "", "ab", 0, true, 0, 1, 0, 1, 1, 1, 1);
+    }
+
+    @Test
+    public void testLastGroupInLookbehind() {
+        // Here we test whether we get the correct order of lastGroup updates inside lookbehinds.
+        test("(?<=(a)(b))", "", "ab", 0, true, 2, 2, 0, 1, 1, 2, 2);
+        test("(?<=(a(b)))", "", "ab", 0, true, 2, 2, 0, 2, 1, 2, 1);
+        test("(?<=(a)())", "", "ab", 0, true, 1, 1, 0, 1, 1, 1, 2);
+        test("(?<=(a()))", "", "ab", 0, true, 1, 1, 0, 1, 1, 1, 1);
+    }
+
+    @Test
+    public void testLastGroupInLookaround() {
+        // Here we test the interaction of lastGroup updates across lookaround assertions.
+        test("(?=(a)b)(a)b", "", "ab", 0, true, 0, 2, 0, 1, 0, 1, 2);
+        test("(?=(a)b)a(b)", "", "ab", 0, true, 0, 2, 0, 1, 1, 2, 2);
+        test("(?=a(b))(a)b", "", "ab", 0, true, 0, 2, 1, 2, 0, 1, 2);
+        test("(?=a(b))a(b)", "", "ab", 0, true, 0, 2, 1, 2, 1, 2, 2);
+
+        test("(a)b(?<=(a)b)", "", "ab", 0, true, 0, 2, 0, 1, 0, 1, 2);
+        test("(a)b(?<=a(b))", "", "ab", 0, true, 0, 2, 0, 1, 1, 2, 2);
+        test("a(b)(?<=(a)b)", "", "ab", 0, true, 0, 2, 1, 2, 0, 1, 2);
+        test("a(b)(?<=a(b))", "", "ab", 0, true, 0, 2, 1, 2, 1, 2, 2);
     }
 }

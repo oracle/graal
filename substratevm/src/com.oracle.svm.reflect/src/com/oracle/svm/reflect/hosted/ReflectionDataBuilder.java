@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.reflect.hosted;
 
-//Checkstyle: allow reflection
-
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Constructor;
@@ -51,7 +49,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.jdk.SealedClassSupport;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
@@ -67,6 +64,7 @@ import com.oracle.svm.core.hub.AnnotationTypeSupport;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.RecordSupport;
+import com.oracle.svm.core.jdk.SealedClassSupport;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
@@ -618,9 +616,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
         String messages = errors.stream().map(e -> e.getClass().getTypeName() + ": " + e.getMessage())
                         .distinct().collect(Collectors.joining(", "));
-        // Checkstyle: stop
         System.out.println("Warning: Could not register complete reflection metadata for " + clazz.getTypeName() + ". Reason(s): " + messages);
-        // Checkstyle: resume
     }
 
     protected void afterAnalysis() {

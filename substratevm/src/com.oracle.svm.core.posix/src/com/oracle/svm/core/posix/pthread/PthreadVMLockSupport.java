@@ -66,14 +66,14 @@ import jdk.vm.ci.meta.JavaKind;
 @AutomaticFeature
 final class PthreadVMLockFeature implements Feature {
 
-    private final ClassInstanceReplacer<VMMutex, VMMutex> mutexReplacer = new ClassInstanceReplacer<VMMutex, VMMutex>(VMMutex.class) {
+    private final ClassInstanceReplacer<VMMutex, VMMutex> mutexReplacer = new ClassInstanceReplacer<>(VMMutex.class) {
         @Override
         protected VMMutex createReplacement(VMMutex source) {
             return new PthreadVMMutex(source.getName());
         }
     };
 
-    private final ClassInstanceReplacer<VMCondition, VMCondition> conditionReplacer = new ClassInstanceReplacer<VMCondition, VMCondition>(VMCondition.class) {
+    private final ClassInstanceReplacer<VMCondition, VMCondition> conditionReplacer = new ClassInstanceReplacer<>(VMCondition.class) {
         @Override
         protected VMCondition createReplacement(VMCondition source) {
             return new PthreadVMCondition((PthreadVMMutex) mutexReplacer.apply(source.getMutex()));

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,19 +28,34 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
+import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
+import com.oracle.svm.jni.JNIJavaCallTrampolines;
+import com.oracle.svm.jni.access.JNIAccessFeature;
 
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Substitutes methods declared as {@code native} with {@link JNINativeCallWrapperMethod} instances
  * that take care of performing the actual native calls.
  */
 class JNINativeCallWrapperSubstitutionProcessor extends SubstitutionProcessor {
+    private final MetaAccessProvider originalMetaAccess;
+    private final ResolvedJavaType trampolinesType;
     private final Map<ResolvedJavaMethod, JNINativeCallWrapperMethod> callWrappers = new ConcurrentHashMap<>();
+
+    JNINativeCallWrapperSubstitutionProcessor(DuringSetupAccessImpl access) {
+        this.originalMetaAccess = access.getMetaAccess().getWrapped();
+        this.trampolinesType = originalMetaAccess.lookupJavaType(JNIJavaCallTrampolines.class);
+    }
 
     @Override
     public ResolvedJavaMethod lookup(ResolvedJavaMethod method) {
         assert method.isNative() : "Must have been registered as a native substitution processor";
+        if (method.getDeclaringClass().equals(trampolinesType)) {
+            return JNIAccessFeature.singleton().getOrCreateCallTrampolineMethod(originalMetaAccess, method.getName());
+        }
         return callWrappers.computeIfAbsent(method, JNINativeCallWrapperMethod::new);
     }
 
@@ -48,6 +63,8 @@ class JNINativeCallWrapperSubstitutionProcessor extends SubstitutionProcessor {
     public ResolvedJavaMethod resolve(ResolvedJavaMethod method) {
         if (method instanceof JNINativeCallWrapperMethod) {
             return ((JNINativeCallWrapperMethod) method).getOriginal();
+        } else if (method instanceof JNICallTrampolineMethod) {
+            return ((JNICallTrampolineMethod) method).getOriginal();
         }
         return method;
     }

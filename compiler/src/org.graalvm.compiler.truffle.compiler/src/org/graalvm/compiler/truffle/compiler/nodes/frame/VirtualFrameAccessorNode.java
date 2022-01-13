@@ -57,9 +57,13 @@ public abstract class VirtualFrameAccessorNode extends FixedWithNextNode impleme
     protected final VirtualFrameAccessType type;
 
     protected VirtualFrameAccessorNode(NodeClass<? extends VirtualFrameAccessorNode> c, Stamp stamp, Receiver frame, int frameSlotIndex, int accessTag, VirtualFrameAccessType type) {
+        this(c, stamp, (NewFrameNode) frame.get(), frameSlotIndex, accessTag, type);
+    }
+
+    protected VirtualFrameAccessorNode(NodeClass<? extends VirtualFrameAccessorNode> c, Stamp stamp, NewFrameNode frame, int frameSlotIndex, int accessTag, VirtualFrameAccessType type) {
         super(c, stamp);
         this.type = type;
-        this.frame = (NewFrameNode) frame.get();
+        this.frame = frame;
         this.frameSlotIndex = frameSlotIndex;
         this.accessTag = accessTag;
     }

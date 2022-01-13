@@ -105,24 +105,31 @@ Watch  video version of the enhanced HotSwap capabilities with Java on Truffle d
 ### Supported Changes
 
 The plan is to support arbitrary code changes when running applications with Java on Truffle.
-As of GraalVM 21.1.0 the following changes are supported:
-1. Add and remove methods
-2. Add and remove constructors
-3. Add and remove methods from interfaces
-4. Change access modifiers of methods
-5. Change access modifiers of constructors
-6. Changes to Lambdas
-7. Add new anonymous inner classes
-8. Remove anonymous inner classes
+As of GraalVM 22.0.0 the following changes are supported:
 
-As of GraalVM 21.1.0, the following limitations remain:
-1. Changes to fields
-2. Changes to class access modifiers, e.g., from abstract to concrete
-3. Changing the superclass
-4. Changing implemented interfaces
-5. Changes to enums
+* Add and remove methods
+* Add and remove constructors
+* Add and remove methods from interfaces
+* Change access modifiers of methods
+* Change access modifiers of constructors
+* Changes to Lambdas
+* Add new anonymous inner classes
+* Remove anonymous inner classes
+
+The following changes are supported under the new flag `--java.ArbitraryChangesSupport=true`:
+
+* Add and remove fields
+* Change field type
+* Changes to class access modifiers, e.g. abstract and final modifiers
+
+As of GraalVM 22.0.0, the following limitations remain:
+
+* Changing the superclass
+* Changing implemented interfaces
+* Changes to Enums
 
 ## Mixing AOT and JIT for Java
+
 GraalVM Native Image technology allows compiling applications ahead-of-time (AOT) to executable native binaries which:
 * are standalone
 * start instantly

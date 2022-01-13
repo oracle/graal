@@ -39,13 +39,13 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
-import com.oracle.graal.pointsto.BigBang;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.java.BytecodeParser.BytecodeParserError;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.util.GuardedAnnotationAccess;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
@@ -72,7 +72,6 @@ import jdk.vm.ci.meta.SpeculationLog;
 
 public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider, OriginalMethodProvider {
 
-    private final AnalysisUniverse universe;
     public final ResolvedJavaMethod wrapped;
 
     private final int id;
@@ -103,7 +102,6 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
     protected AnalysisMethod[] implementations;
 
     public AnalysisMethod(AnalysisUniverse universe, ResolvedJavaMethod wrapped) {
-        this.universe = universe;
         this.wrapped = wrapped;
         this.id = universe.nextMethodId.getAndIncrement();
         declaringClass = universe.lookup(wrapped.getDeclaringClass());
@@ -118,7 +116,7 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
         exceptionHandlers = new ExceptionHandler[original.length];
         for (int i = 0; i < original.length; i++) {
             ExceptionHandler h = original[i];
-            JavaType catchType = getCatchType(h);
+            JavaType catchType = getCatchType(universe, h);
             exceptionHandlers[i] = new ExceptionHandler(h.getStartBCI(), h.getEndBCI(), h.getHandlerBCI(), h.catchTypeCPI(), catchType);
         }
 
@@ -148,7 +146,7 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
         return qualifiedName;
     }
 
-    private JavaType getCatchType(ExceptionHandler handler) {
+    private JavaType getCatchType(AnalysisUniverse universe, ExceptionHandler handler) {
         JavaType catchType = handler.getCatchType();
         if (catchType == null) {
             return null;
@@ -165,6 +163,11 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
             return catchType;
         }
         return universe.lookup(resolvedCatchType);
+    }
+
+    private AnalysisUniverse getUniverse() {
+        /* Access the universe via the declaring class to avoid storing it here. */
+        return declaringClass.getUniverse();
     }
 
     public void cleanupAfterAnalysis() {
@@ -308,7 +311,7 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
 
     @Override
     public WrappedSignature getSignature() {
-        return universe.lookup(wrapped.getSignature(), getDeclaringClass());
+        return getUniverse().lookup(wrapped.getSignature(), getDeclaringClass());
     }
 
     @Override
@@ -396,7 +399,7 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
     }
 
     public AnalysisMethod[] getImplementations() {
-        assert universe.analysisDataValid;
+        assert getUniverse().analysisDataValid;
         if (implementations == null) {
             return new AnalysisMethod[0];
         }
@@ -424,7 +427,7 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
 
     @Override
     public ConstantPool getConstantPool() {
-        return universe.lookup(wrapped.getConstantPool(), getDeclaringClass());
+        return getUniverse().lookup(wrapped.getConstantPool(), getDeclaringClass());
     }
 
     @Override
@@ -519,7 +522,7 @@ public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider
 
     @Override
     public Executable getJavaMethod() {
-        return OriginalMethodProvider.getJavaMethod(universe.getOriginalSnippetReflection(), wrapped);
+        return OriginalMethodProvider.getJavaMethod(getUniverse().getOriginalSnippetReflection(), wrapped);
     }
 
     /**

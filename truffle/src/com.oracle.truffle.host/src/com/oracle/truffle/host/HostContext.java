@@ -132,7 +132,13 @@ final class HostContext {
     }
 
     GuestToHostCodeCache getGuestToHostCache() {
-        return language.getGuestToHostCache();
+        GuestToHostCodeCache cache = (GuestToHostCodeCache) HostAccessor.ENGINE.getGuestToHostCodeCache(internalContext);
+        if (cache == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            cache = new GuestToHostCodeCache(language);
+            HostAccessor.ENGINE.setGuestToHostCodeCache(internalContext, cache);
+        }
+        return cache;
     }
 
     @TruffleBoundary

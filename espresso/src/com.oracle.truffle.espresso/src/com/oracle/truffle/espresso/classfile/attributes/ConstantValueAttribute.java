@@ -62,7 +62,7 @@ public final class ConstantValueAttribute extends Attribute {
         if (other == null || getClass() != other.getClass()) {
             return false;
         }
-        if (!super.equals(other)) {
+        if (!super.sameAs(other)) {
             return false;
         }
         ConstantValueAttribute that = (ConstantValueAttribute) other;

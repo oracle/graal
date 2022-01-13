@@ -52,6 +52,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 @ExportLibrary(InteropLibrary.class)
+@SuppressWarnings("serial")
 public class SLParseError extends AbstractTruffleException {
 
     public static final long serialVersionUID = 1L;

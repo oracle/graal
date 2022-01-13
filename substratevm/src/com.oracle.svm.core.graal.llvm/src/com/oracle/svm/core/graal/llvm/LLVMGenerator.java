@@ -2030,9 +2030,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
             return 0;
         }
         try {
-            // Checkstyle: stop
             Class<?> c = Class.forName("jdk.internal.misc.UnsafeConstants");
-            // Checkstyle: resume
             return ReflectionUtil.readStaticField(c, "DATA_CACHE_LINE_FLUSH_SIZE");
         } catch (ClassNotFoundException e) {
             throw new GraalError(e, "Expected UnsafeConstants.DATA_CACHE_LINE_FLUSH_SIZE to exist and be readable");

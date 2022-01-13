@@ -56,9 +56,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
-import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.meta.PointsToAnalysisFactory;
-import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.Fold;
@@ -106,7 +103,6 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.replacements.NodeIntrinsificationProvider;
 import org.graalvm.compiler.replacements.TargetGraphBuilderPlugins;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.WordOperationPlugin;
 import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.nativeimage.ImageInfo;
@@ -135,6 +131,7 @@ import com.oracle.graal.pointsto.AnalysisPolicy;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.BytecodeSensitiveAnalysisPolicy;
 import com.oracle.graal.pointsto.DefaultAnalysisPolicy;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
@@ -146,6 +143,8 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisFactory;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.reports.AnalysisReporter;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
@@ -220,6 +219,7 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeUniverseBuildingAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.OnAnalysisExitAccessImpl;
+import com.oracle.svm.hosted.ProgressReporter.ReporterClosable;
 import com.oracle.svm.hosted.ameta.AnalysisConstantFieldProvider;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 import com.oracle.svm.hosted.analysis.Inflation;
@@ -270,8 +270,6 @@ import com.oracle.svm.hosted.phases.IntrinsifyMethodHandlesInvocationPlugin;
 import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
 import com.oracle.svm.hosted.phases.VerifyDeoptFrameStatesLIRPhase;
 import com.oracle.svm.hosted.phases.VerifyNoGuardsPhase;
-import com.oracle.svm.hosted.reporting.ProgressReporter;
-import com.oracle.svm.hosted.reporting.ProgressReporter.ReporterClosable;
 import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 import com.oracle.svm.hosted.substitute.DeletedFieldsPlugin;
@@ -494,6 +492,7 @@ public class NativeImageGenerator {
                 ImageSingletons.add(TemporaryBuildDirectoryProvider.class, tempDirectoryProvider);
                 doRun(entryPoints, javaMainSupport, imageName, classlistTimer, k, harnessSubstitutions, compilationExecutor, analysisExecutor);
             } finally {
+                reporter.ensureCreationStageEndCompleted();
                 watchdog.close();
             }
         } finally {
@@ -680,7 +679,7 @@ public class NativeImageGenerator {
                 featureHandler.forEachFeature(feature -> feature.afterImageWrite(afterConfig));
             }
             reporter.printCreationEnd(imageTimer, writeTimer, image.getImageSize(), bb.getUniverse(), heap.getObjectCount(), image.getImageHeapSize(), codeCache.getCodeCacheSize(),
-                            codeCache.getCompilations().size());
+                            codeCache.getCompilations().size(), image.getDebugInfoSize());
             if (SubstrateOptions.BuildOutputBreakdowns.getValue()) {
                 ProgressReporter.singleton().printBreakdowns(compileQueue.getCompilationTasks(), image.getHeap().getObjects());
             }
@@ -700,8 +699,10 @@ public class NativeImageGenerator {
                 DuringAnalysisAccessImpl config = new DuringAnalysisAccessImpl(featureHandler, loader, bb, nativeLibraries, debug);
                 try {
                     bb.runAnalysis(debug, (universe) -> {
-                        bb.getHostVM().notifyClassReachabilityListener(universe, config);
-                        featureHandler.forEachFeature(feature -> feature.duringAnalysis(config));
+                        try (StopTimer t2 = bb.getProcessFeaturesTimer().start()) {
+                            bb.getHostVM().notifyClassReachabilityListener(universe, config);
+                            featureHandler.forEachFeature(feature -> feature.duringAnalysis(config));
+                        }
                         return !config.getAndResetRequireAnalysisIteration();
                     });
                 } catch (AnalysisError e) {
@@ -874,7 +875,7 @@ public class NativeImageGenerator {
         SubstitutionProcessor aSubstitutions = createAnalysisSubstitutionProcessor(originalMetaAccess, originalSnippetReflection, cEnumProcessor, automaticSubstitutions,
                         annotationSubstitutions, additionalSubstitutions);
 
-        SVMHost hostVM = HostedConfiguration.instance().createHostVM(options, loader.getClassLoader(), classInitializationSupport, automaticSubstitutions, loader.platform);
+        SVMHost hostVM = HostedConfiguration.instance().createHostVM(options, loader.getClassLoader(), classInitializationSupport, automaticSubstitutions, loader.platform, originalSnippetReflection);
 
         automaticSubstitutions.init(loader, originalMetaAccess);
         AnalysisPolicy analysisPolicy = PointstoOptions.AllocationSiteSensitiveHeap.getValue(options) ? new BytecodeSensitiveAnalysisPolicy(options)
@@ -1169,7 +1170,7 @@ public class NativeImageGenerator {
         Architecture architecture = ConfigurationValues.getTarget().arch;
         OptionValues options = aUniverse.hostVM().options();
         ImageSingletons.lookup(TargetGraphBuilderPlugins.class).register(plugins, replacements, architecture,
-                        /* registerForeignCallMath */ false, JavaVersionUtil.JAVA_SPEC >= 11, options);
+                        /* registerForeignCallMath */ false, true, options);
 
         /*
          * When the context is hosted, i.e., ahead-of-time compilation, and after the analysis we

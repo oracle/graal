@@ -85,24 +85,6 @@ public final class SulongEngineOption {
                    "Set value to \'stdout\', \'stderr\' or \'file://<path to writable file>\' to enable.")
     public static final OptionKey<String> DEBUG_SYSCALLS = new OptionKey<>(String.valueOf(false));
 
-    @Option(name = "llvm.printNativeCallStats",
-            category = OptionCategory.INTERNAL,
-            help = "Outputs stats about native call site frequencies." +
-                   "Set value to \'stdout\', \'stderr\' or \'file://<path to writable file>\' to enable.")
-    public static final OptionKey<String> NATIVE_CALL_STATS = new OptionKey<>(String.valueOf(false));
-
-    @Option(name = "llvm.printLifetimeAnalysisStats",
-            category = OptionCategory.INTERNAL,
-            help = "Prints the results of the lifetime analysis." +
-                   "Set value to \'stdout\', \'stderr\' or \'file://<path to writable file>\' to enable.")
-    public static final OptionKey<String> PRINT_LIFE_TIME_ANALYSIS_STATS = new OptionKey<>(String.valueOf(false));
-
-    @Option(name = "llvm.debugLoader",
-            category = OptionCategory.EXPERT,
-            help = "Turns dynamic loader debugging on/off. " +
-                   "Set value to \'stdout\', \'stderr\' or \'file://<path to writable file>\' to enable.")
-    public static final OptionKey<String> LD_DEBUG = new OptionKey<>(String.valueOf(false));
-
     @Option(name = "llvm.optimizeFrameSlots",
             category = OptionCategory.INTERNAL,
             help = "Enable fusing of instructions producing values with instructions consuming values.")

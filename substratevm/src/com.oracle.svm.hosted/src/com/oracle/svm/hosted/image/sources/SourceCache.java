@@ -40,16 +40,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.option.OptionUtils;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
-import com.oracle.svm.util.ModuleSupport;
 
 /**
  * An abstract cache manager for some subspace of the JDK, GraalVM or application source file space.
@@ -106,16 +103,7 @@ public class SourceCache {
         String javaHome = System.getProperty("java.home");
         assert javaHome != null;
         Path javaHomePath = Paths.get("", javaHome);
-        Path srcZipPath;
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            Path srcZipDir = javaHomePath.getParent();
-            if (srcZipDir == null) {
-                VMError.shouldNotReachHere("Cannot resolve parent directory of " + javaHome);
-            }
-            srcZipPath = srcZipDir.resolve("src.zip");
-        } else {
-            srcZipPath = javaHomePath.resolve("lib").resolve("src.zip");
-        }
+        Path srcZipPath = javaHomePath.resolve("lib").resolve("src.zip");
         if (!srcZipPath.toFile().exists()) {
             return;
         }
@@ -123,14 +111,12 @@ public class SourceCache {
             FileSystem srcFileSystem = FileSystems.newFileSystem(srcZipPath, (ClassLoader) null);
             for (Path root : srcFileSystem.getRootDirectories()) {
                 srcRoots.add(new SourceRoot(root, true));
-                if (JavaVersionUtil.JAVA_SPEC >= 11) {
-                    // add dirs named "src" as extra roots for special modules
-                    for (String specialRootModule : specialRootModules) {
-                        ArrayList<Path> rootsList = new ArrayList<>();
-                        specialSrcRoots.put(specialRootModule, rootsList);
-                        Path specialModuleRoot = root.resolve(specialRootModule);
-                        Files.find(specialModuleRoot, 2, (path, attributes) -> path.endsWith("src")).forEach(rootsList::add);
-                    }
+                // add dirs named "src" as extra roots for special modules
+                for (String specialRootModule : specialRootModules) {
+                    ArrayList<Path> rootsList = new ArrayList<>();
+                    specialSrcRoots.put(specialRootModule, rootsList);
+                    Path specialModuleRoot = root.resolve(specialRootModule);
+                    Files.find(specialModuleRoot, 2, (path, attributes) -> path.endsWith("src")).forEach(rootsList::add);
                 }
             }
         } catch (IOException | FileSystemNotFoundException ioe) {
@@ -308,9 +294,9 @@ public class SourceCache {
     protected Path tryCacheFile(Path filePath, Class<?> clazz) {
         final Path targetPath = cachedPath(filePath);
         String moduleName = null;
-        if (JavaVersionUtil.JAVA_SPEC >= 11 && clazz != null) {
-            /* JDK11+ paths require the module name as prefix */
-            moduleName = ModuleSupport.getModuleName(clazz);
+        if (clazz != null) {
+            /* Paths require the module name as prefix */
+            moduleName = clazz.getModule().getName();
         }
 
         if (moduleName != null) {
@@ -372,9 +358,9 @@ public class SourceCache {
     protected Path checkCacheFile(Path filePath, Class<?> clazz) {
         Path targetPath = cachedPath(filePath);
         String moduleName = null;
-        if (JavaVersionUtil.JAVA_SPEC >= 11 && clazz != null) {
-            /* JDK11+ paths require the module name as prefix */
-            moduleName = ModuleSupport.getModuleName(clazz);
+        if (clazz != null) {
+            /* Paths require the module name as prefix */
+            moduleName = clazz.getModule().getName();
         }
 
         if (moduleName != null) {

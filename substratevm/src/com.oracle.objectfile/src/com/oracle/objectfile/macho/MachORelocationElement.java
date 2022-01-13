@@ -322,13 +322,11 @@ final class MachORelocationInfo implements RelocationRecord, RelocationMethod {
          * case-splitting for endianness.
          */
         int remainingWord = 0;
-        //@formatter:off
         remainingWord |= symbolNum & 0x00ffffff;
         remainingWord |= (kind.isPCRelative() ? 1 : 0) << 24;
-        remainingWord |=            (log2length & 0x3) << 25;
-        remainingWord |=          (isExtern() ? 1 : 0) << 27;
-        remainingWord |=       (kind.getValue() & 0xf) << 28;
-        //@formatter:on
+        remainingWord |= (log2length & 0x3) << 25;
+        remainingWord |= (isExtern() ? 1 : 0) << 27;
+        remainingWord |= (kind.getValue() & 0xf) << 28;
         oa.write4Byte(remainingWord);
         assert oa.pos() - startPos == 8; // check we wrote how much we expected
     }

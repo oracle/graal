@@ -404,8 +404,9 @@ public class ContextInterruptStandaloneTest extends AbstractPolyglotTest {
             }
             Assert.fail();
         } catch (Exception e) {
-            Assert.assertTrue(e instanceof IllegalStateException);
-            Assert.assertEquals("Cannot interrupt context from a thread where its child context is active.", e.getMessage());
+            if (!(e instanceof IllegalStateException) || !"Cannot interrupt context from a thread where its child context is active.".equals(e.getMessage())) {
+                throw new AssertionError(e);
+            }
         } finally {
             ctx[0].close();
         }

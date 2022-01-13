@@ -872,13 +872,27 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     license_files=[],
     third_party_license_files=[],
     dependencies=['Truffle'],
-    truffle_jars=['truffle:TRUFFLE_NFI', 'truffle:TRUFFLE_NFI_LIBFFI'],
+    truffle_jars=['truffle:TRUFFLE_NFI'],
     support_distributions=['truffle:TRUFFLE_NFI_GRAALVM_SUPPORT'],
     support_libraries_distributions=['truffle:TRUFFLE_NFI_NATIVE_GRAALVM_SUPPORT'],
     installable=False,
     stability="supported",
 ))
 
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
+    suite=_suite,
+    name='Truffle NFI LIBFFI',
+    short_name='nfi-libffi',
+    dir_name='nfi-libffi',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['Truffle', 'Truffle NFI'],
+    truffle_jars=['truffle:TRUFFLE_NFI_LIBFFI'],
+    support_distributions=['truffle:TRUFFLE_NFI_GRAALVM_SUPPORT'],
+    support_libraries_distributions=['truffle:TRUFFLE_NFI_NATIVE_GRAALVM_SUPPORT'],
+    installable=False,
+    stability="supported",
+))
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,

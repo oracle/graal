@@ -81,7 +81,6 @@ import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.stack.JavaStackWalk;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.ThreadStackPrinter;
-import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.NativeVMOperation;
 import com.oracle.svm.core.thread.NativeVMOperationData;
@@ -148,12 +147,11 @@ public final class GCImpl implements GC {
 
     private void collect(GCCause cause, boolean forceFullGC) {
         if (!hasNeverCollectPolicy()) {
-            UnsignedWord requestingEpoch = possibleCollectionPrologue();
             boolean outOfMemory = collectWithoutAllocating(cause, forceFullGC);
             if (outOfMemory) {
                 throw OUT_OF_MEMORY_ERROR;
             }
-            possibleCollectionEpilogue(requestingEpoch);
+            doReferenceHandling();
         }
     }
 
@@ -1057,50 +1055,53 @@ public final class GCImpl implements GC {
         collectionInProgress = false;
     }
 
-    UnsignedWord possibleCollectionPrologue() {
-        return getCollectionEpoch();
-    }
-
     /**
-     * Do whatever is necessary if a collection occurred since the call to
-     * {@link #possibleCollectionPrologue()}. Note that this method may get called by several
-     * threads for the same collection.
+     * NOTE: All code that is transitively reachable from this method may get executed as a side
+     * effect of a GC or as a side effect of an allocation slow path. To prevent hard to debug
+     * transient issues, we execute as little code as possible in this method. Multiple threads may
+     * execute this method concurrently.
+     *
+     * Without a dedicated reference handler thread, arbitrary complex code can get executed as a
+     * side effect of this method. So, allocations of Java objects or an explicitly triggered GC can
+     * result in a recursive invocation of methods.
+     *
+     * This can have the effect that global state changes unexpectedly and may result in issues that
+     * look similar to races but that can even happen in single-threaded environments, e.g.:
+     *
+     * <pre>
+     * {@code
+     * private static Object singleton;
+     *
+     * private static synchronized Object createSingleton() {
+     *     if (singleton == null) {
+     *         Object o = new Object();
+     *         // If the allocation above enters the allocation slow path code, then it is possible
+     *         // that doReferenceHandling() gets executed by the current thread. If the method
+     *         // createSingleton() is called as a side effect of doReferenceHandling(), then the
+     *         // assertion below may fail because the singleton got already initialized by the same
+     *         // thread in the meanwhile.
+     *         assert singleton == null;
+     *         singleton = o;
+     *     }
+     *     return result;
+     * }
+     * }
+     * </pre>
      */
-    void possibleCollectionEpilogue(UnsignedWord requestingEpoch) {
-        if (requestingEpoch.aboveOrEqual(getCollectionEpoch())) {
-            /* No GC happened, so do not run any epilogue. */
-            return;
-
-        } else if (VMOperation.isInProgress()) {
-            /*
-             * We are inside a VMOperation where we are not allowed to do certain things, e.g.,
-             * perform a synchronization (because it can deadlock when a lock is held outside the
-             * VMOperation).
-             *
-             * Note that the GC operation we are running the epilogue for is no longer in progress,
-             * otherwise this check would always return.
-             */
-            return;
-
-        } else if (!JavaThreads.currentJavaThreadInitialized()) {
-            /*
-             * Too early in the attach sequence of a thread to do anything useful, e.g., perform a
-             * synchronization. Probably the allocation slow path for the first allocation of that
-             * thread caused this epilogue.
-             */
+    static void doReferenceHandling() {
+        if (ReferenceHandler.useDedicatedThread()) {
             return;
         }
 
-        Timer refsTimer = new Timer("Enqueuing pending references and invoking internal cleaners");
-        Timer timer = refsTimer.open();
-        try {
-            ReferenceHandler.maybeProcessCurrentlyPending();
-        } finally {
-            timer.close();
-        }
-        if (SubstrateGCOptions.VerboseGC.getValue() && HeapOptions.PrintGCTimes.getValue()) {
-            Timers.logOneTimer(Log.log(), "[GC epilogue reference processing: ", refsTimer);
-            Log.log().string("]");
+        /* Most of the time, we won't have a pending reference list. So, we do that check first. */
+        if (HeapImpl.getHeapImpl().hasReferencePendingListUnsafe() && ReferenceHandler.isReferenceHandlingAllowed()) {
+            long startTime = System.nanoTime();
+            ReferenceHandler.processPendingReferencesInRegularThread();
+
+            if (SubstrateGCOptions.VerboseGC.getValue() && HeapOptions.PrintGCTimes.getValue()) {
+                long executionTime = System.nanoTime() - startTime;
+                Log.log().string("[GC epilogue reference processing and cleaners: ").signed(executionTime).string("]").newline();
+            }
         }
     }
 

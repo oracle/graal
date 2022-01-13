@@ -70,6 +70,7 @@ import com.oracle.truffle.api.source.SourceSection;
  *
  * @since 19.0
  */
+@SuppressWarnings("serial")
 public final class DebugException extends RuntimeException {
 
     private static final long serialVersionUID = 5017970176581546348L;

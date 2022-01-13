@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -60,6 +60,7 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
 
     private final RegexAST ast;
     private int index = 0;
+    private int lastGroup = -1;
     private final AbstractStringBuffer literal;
     private final AbstractStringBuffer mask;
     private final PreCalculatedResultFactory result;
@@ -67,7 +68,7 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
 
     private PreCalcResultVisitor(RegexAST ast, boolean extractLiteral) {
         this.ast = ast;
-        result = new PreCalculatedResultFactory(ast.getNumberOfCaptureGroups());
+        result = new PreCalculatedResultFactory(ast.getNumberOfCaptureGroups(), ast.getOptions().getFlavor().usesLastGroupResultField());
         this.extractLiteral = extractLiteral;
         if (extractLiteral) {
             literal = ast.getEncoding().createStringBuffer(ast.getRoot().getMinPath());
@@ -93,6 +94,9 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
         PreCalcResultVisitor visitor = new PreCalcResultVisitor(ast, extractLiteral);
         visitor.run(ast.getRoot());
         visitor.result.setLength(visitor.index);
+        if (ast.getOptions().getFlavor().usesLastGroupResultField()) {
+            visitor.result.setLastGroup(visitor.lastGroup);
+        }
         return visitor;
     }
 
@@ -100,6 +104,9 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
         PreCalcResultVisitor visitor = new PreCalcResultVisitor(ast, false);
         visitor.run(ast.getRoot());
         visitor.result.setLength(visitor.index);
+        if (ast.getOptions().getFlavor().usesLastGroupResultField()) {
+            visitor.result.setLastGroup(visitor.lastGroup);
+        }
         return visitor.result;
     }
 
@@ -131,6 +138,9 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
     protected void leave(Group group) {
         if (group.isCapturing()) {
             result.setEnd(group.getGroupNumber(), index);
+            if (group.getGroupNumber() != 0) {
+                lastGroup = group.getGroupNumber();
+            }
         }
         if (unrollGroups && group.hasNotUnrolledQuantifier()) {
             assert group.getQuantifier().getMin() == group.getQuantifier().getMax();
@@ -142,6 +152,9 @@ public final class PreCalcResultVisitor extends DepthFirstTraversalRegexASTVisit
                 groupUnroller.run(group);
             }
             index = groupUnroller.index;
+            if (groupUnroller.lastGroup != -1) {
+                lastGroup = groupUnroller.lastGroup;
+            }
         }
     }
 

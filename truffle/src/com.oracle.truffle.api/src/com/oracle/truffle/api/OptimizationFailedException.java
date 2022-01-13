@@ -41,6 +41,7 @@
 package com.oracle.truffle.api;
 
 /** @since 0.8 or earlier */
+@SuppressWarnings("serial")
 public class OptimizationFailedException extends RuntimeException {
 
     private final RootCallTarget callTarget;

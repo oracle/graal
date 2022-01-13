@@ -32,11 +32,17 @@ import org.junit.Test;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.graalvm.compiler.phases.OptimisticOptimizations;
 
 public class DeoptimizeDirectiveTest extends GraalCompilerTest {
 
     public static boolean inCompiledCode() {
         return GraalDirectives.inCompiledCode();
+    }
+
+    @Override
+    protected OptimisticOptimizations getOptimisticOptimizations() {
+        return OptimisticOptimizations.ALL;
     }
 
     @Test

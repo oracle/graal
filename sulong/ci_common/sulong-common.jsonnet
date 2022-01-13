@@ -5,10 +5,10 @@
   local composable = (import "../../common-utils.libsonnet").composable,
   local sulong_deps = composable((import "../../common.json").sulong.deps),
 
-  local linux_amd64 = common["linux-amd64"],
-  local linux_aarch64 = common["linux-aarch64"],
-  local darwin_amd64 = common["darwin-amd64"],
-  local windows_amd64 = common["windows-amd64"],
+  local linux_amd64 = common.linux_amd64,
+  local linux_aarch64 = common.linux_aarch64,
+  local darwin_amd64 = common.darwin_amd64,
+  local windows_amd64 = common.windows_amd64,
 
   nameOrEmpty(b):: if std.objectHas(b, "name") then
     ' (build "%s")' % b.name

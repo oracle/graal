@@ -26,7 +26,6 @@ package com.oracle.svm.core.graal.snippets;
 
 import static com.oracle.svm.core.SubstrateOptions.MultiThreaded;
 import static com.oracle.svm.core.SubstrateOptions.SpawnIsolates;
-import static com.oracle.svm.core.SubstrateOptions.UseDedicatedVMOperationThread;
 import static com.oracle.svm.core.annotate.RestrictHeapAccess.Access.NO_ALLOCATION;
 import static com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode.writeCurrentVMThread;
 import static com.oracle.svm.core.graal.nodes.WriteHeapBaseNode.writeCurrentVMHeapBase;
@@ -88,7 +87,7 @@ import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode;
 import com.oracle.svm.core.heap.ReferenceHandler;
-import com.oracle.svm.core.heap.ReferenceHandlerThreadSupport;
+import com.oracle.svm.core.heap.ReferenceHandlerThread;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
@@ -105,9 +104,7 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.util.VMError;
 
-// Checkstyle: stop
 import sun.misc.Unsafe;
-// Checkstyle: resume
 
 /**
  * Snippets for calling from C to Java. See {@link CEntryPointActions} and
@@ -279,7 +276,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
          * The VM operation thread must be started early as no VM operations can be scheduled before
          * this thread is fully started.
          */
-        if (UseDedicatedVMOperationThread.getValue()) {
+        if (VMOperationControl.useDedicatedVMOperationThread()) {
             VMOperationControl.startVMOperationThread();
         }
 
@@ -289,7 +286,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
          * result in deadlocks if ReferenceInternals.waitForReferenceProcessing() is called.
          */
         if (ReferenceHandler.useDedicatedThread()) {
-            ImageSingletons.lookup(ReferenceHandlerThreadSupport.class).getThread().start();
+            ReferenceHandlerThread.start();
         }
 
         /*
@@ -324,9 +321,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         try {
             RuntimeSupport.executeInitializationHooks();
         } catch (Throwable t) {
-            // Checkstyle: stop (printStackTrace below is going to write to System.err too)
             System.err.println("Uncaught exception while running initialization hooks:");
-            // Checkstyle: resume
             t.printStackTrace();
             return CEntryPointErrors.ISOLATE_INITIALIZATION_FAILED;
         }

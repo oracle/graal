@@ -72,6 +72,11 @@ public class WindowsUtils {
         /** Invalidates the standard FileDescriptors, which are allowed in the image heap. */
         static class InvalidHandleValueComputer implements CustomFieldValueComputer {
             @Override
+            public RecomputeFieldValue.ValueAvailability valueAvailability() {
+                return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+            }
+
+            @Override
             public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
                 return -1L;
             }

@@ -29,8 +29,6 @@
  */
 package com.oracle.truffle.llvm.nfi;
 
-import java.io.IOException;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -50,6 +48,8 @@ import com.oracle.truffle.nfi.backend.spi.NFIBackendLibrary;
 import com.oracle.truffle.nfi.backend.spi.NFIBackendTools;
 import com.oracle.truffle.nfi.backend.spi.types.NativeLibraryDescriptor;
 import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
+
+import java.io.IOException;
 
 @TruffleLanguage.Registration(id = "internal/nfi-llvm", name = "nfi-llvm", version = "6.0.0", internal = true, interactive = false, //
                 services = NFIBackendFactory.class, contextPolicy = ContextPolicy.SHARED, dependentLanguages = "llvm")

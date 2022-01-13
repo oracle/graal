@@ -35,16 +35,17 @@ import org.graalvm.nativeimage.hosted.Feature;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.code.FactoryMethodHolder;
+import com.oracle.svm.core.code.FactoryThrowMethodHolder;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 
 import jdk.vm.ci.meta.ConstantPool;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
@@ -56,8 +57,9 @@ public class FactoryMethodSupport {
     }
 
     private final Map<AnalysisMethod, FactoryMethod> factoryMethods = new ConcurrentHashMap<>();
+    private final Map<AnalysisMethod, FactoryMethod> factoryThrowMethods = new ConcurrentHashMap<>();
 
-    public ResolvedJavaMethod lookup(UniverseMetaAccess metaAccess, ResolvedJavaMethod constructor) {
+    public ResolvedJavaMethod lookup(UniverseMetaAccess metaAccess, ResolvedJavaMethod constructor, boolean throwAllocatedObject) {
         HostedUniverse hUniverse;
         AnalysisMetaAccess aMetaAccess;
         if (metaAccess instanceof HostedMetaAccess) {
@@ -67,16 +69,25 @@ public class FactoryMethodSupport {
             hUniverse = null;
             aMetaAccess = (AnalysisMetaAccess) metaAccess;
         }
-        AnalysisUniverse aUniverse = (AnalysisUniverse) aMetaAccess.getUniverse();
-        MetaAccessProvider unwrappedMetaAccess = aMetaAccess.getWrapped();
+        AnalysisUniverse aUniverse = aMetaAccess.getUniverse();
 
         AnalysisMethod aConstructor = constructor instanceof HostedMethod ? ((HostedMethod) constructor).getWrapped() : (AnalysisMethod) constructor;
-        FactoryMethod factoryMethod = factoryMethods.computeIfAbsent(aConstructor, key -> {
+        Map<AnalysisMethod, FactoryMethod> methods = throwAllocatedObject ? factoryThrowMethods : factoryMethods;
+        FactoryMethod factoryMethod = methods.computeIfAbsent(aConstructor, key -> {
+            /*
+             * Computing the signature types via the analysis universe ensures that we have all
+             * substitutions applied and all types already resolved.
+             */
+            ResolvedJavaType[] unwrappedParameterTypes = new ResolvedJavaType[aConstructor.getSignature().getParameterCount(false)];
+            for (int i = 0; i < unwrappedParameterTypes.length; i++) {
+                unwrappedParameterTypes[i] = ((AnalysisType) aConstructor.getSignature().getParameterType(i, null)).getWrappedWithoutResolve();
+            }
+            ResolvedJavaType unwrappedReturnType = (throwAllocatedObject ? aMetaAccess.lookupJavaType(void.class) : aConstructor.getDeclaringClass()).getWrappedWithoutResolve();
+            Signature unwrappedSignature = new SimpleSignature(unwrappedParameterTypes, unwrappedReturnType);
             ResolvedJavaMethod unwrappedConstructor = aConstructor.getWrapped();
-            ResolvedJavaType declaringClass = unwrappedMetaAccess.lookupJavaType(FactoryMethodHolder.class);
-            Signature signature = new SimpleSignature(unwrappedConstructor.toParameterTypes(), unwrappedConstructor.getDeclaringClass());
-            ConstantPool constantPool = unwrappedConstructor.getConstantPool();
-            return new FactoryMethod(unwrappedConstructor, declaringClass, signature, constantPool);
+            ResolvedJavaType unwrappedDeclaringClass = (aMetaAccess.lookupJavaType(throwAllocatedObject ? FactoryThrowMethodHolder.class : FactoryMethodHolder.class)).getWrappedWithoutResolve();
+            ConstantPool unwrappedConstantPool = unwrappedConstructor.getConstantPool();
+            return new FactoryMethod(unwrappedConstructor, unwrappedDeclaringClass, unwrappedSignature, unwrappedConstantPool, throwAllocatedObject);
         });
 
         AnalysisMethod aFactoryMethod = aUniverse.lookup(factoryMethod);

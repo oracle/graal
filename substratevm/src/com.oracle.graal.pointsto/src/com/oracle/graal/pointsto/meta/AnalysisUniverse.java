@@ -52,6 +52,7 @@ import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.infrastructure.WrappedConstantPool;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
+import com.oracle.graal.pointsto.meta.AnalysisType.UsageKind;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
 import jdk.vm.ci.code.BytecodePosition;
@@ -210,7 +211,7 @@ public class AnalysisUniverse implements Universe {
 
     @SuppressFBWarnings(value = {"ES_COMPARING_STRINGS_WITH_EQ"}, justification = "Bug in findbugs")
     private AnalysisType createType(ResolvedJavaType type) {
-        if (!hostVM.platformSupported(this, type)) {
+        if (!hostVM.platformSupported(type)) {
             throw new UnsupportedFeatureException("type is not available in this platform: " + type.toJavaName(true));
         }
         if (sealed && !type.isArray()) {
@@ -382,7 +383,7 @@ public class AnalysisUniverse implements Universe {
     }
 
     private AnalysisField createField(ResolvedJavaField field) {
-        if (!hostVM.platformSupported(this, field)) {
+        if (!hostVM.platformSupported(field)) {
             throw new UnsupportedFeatureException("field is not available in this platform: " + field.format("%H.%n"));
         }
         if (sealed) {
@@ -425,7 +426,7 @@ public class AnalysisUniverse implements Universe {
     }
 
     private AnalysisMethod createMethod(ResolvedJavaMethod method) {
-        if (!hostVM.platformSupported(this, method)) {
+        if (!hostVM.platformSupported(method)) {
             throw new UnsupportedFeatureException("Method " + method.format("%H.%n(%p)" + " is not available in this platform."));
         }
         if (sealed) {
@@ -439,7 +440,7 @@ public class AnalysisUniverse implements Universe {
     public AnalysisMethod[] lookup(JavaMethod[] inputs) {
         List<AnalysisMethod> result = new ArrayList<>(inputs.length);
         for (JavaMethod method : inputs) {
-            if (hostVM.platformSupported(this, (ResolvedJavaMethod) method)) {
+            if (hostVM.platformSupported((ResolvedJavaMethod) method)) {
                 AnalysisMethod aMethod = lookup(method);
                 if (aMethod != null) {
                     result.add(aMethod);
@@ -488,7 +489,7 @@ public class AnalysisUniverse implements Universe {
         if (constant == null) {
             return null;
         } else if (constant.getJavaKind().isObject() && !constant.isNull()) {
-            return originalSnippetReflection.forObject(getSnippetReflection().asObject(Object.class, constant));
+            return originalSnippetReflection.forObject(snippetReflection.asObject(Object.class, constant));
         } else {
             return constant;
         }
@@ -587,7 +588,7 @@ public class AnalysisUniverse implements Universe {
     public static Set<AnalysisMethod> getMethodImplementations(BigBang bb, AnalysisMethod method, boolean includeInlinedMethods) {
         Set<AnalysisMethod> implementations = new LinkedHashSet<>();
         if (method.wrapped.canBeStaticallyBound() || method.isConstructor()) {
-            if (method.isImplementationInvoked()) {
+            if (includeInlinedMethods ? method.isReachable() : method.isImplementationInvoked()) {
                 implementations.add(method);
             }
         } else {
@@ -674,6 +675,14 @@ public class AnalysisUniverse implements Universe {
         return objectClass;
     }
 
+    public void onFieldAccessed(AnalysisField field) {
+        bb.onFieldAccessed(field);
+    }
+
+    public void onTypeInstantiated(AnalysisType type, UsageKind usage) {
+        bb.onTypeInstantiated(type, usage);
+    }
+
     public SubstitutionProcessor getSubstitutions() {
         return substitutions;
     }
@@ -690,7 +699,4 @@ public class AnalysisUniverse implements Universe {
         this.bb = bb;
     }
 
-    public BigBang getBigbang() {
-        return bb;
-    }
 }

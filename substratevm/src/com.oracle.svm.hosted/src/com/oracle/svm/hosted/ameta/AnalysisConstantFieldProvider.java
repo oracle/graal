@@ -30,6 +30,7 @@ import org.graalvm.nativeimage.Platforms;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.meta.ReadableJavaField;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
@@ -58,17 +59,24 @@ public class AnalysisConstantFieldProvider extends SharedConstantFieldProvider {
         if (SVMHost.isUnknownObjectField(f) || SVMHost.isUnknownPrimitiveField(f)) {
             return null;
         }
+        T foldedValue = null;
         if (f.wrapped instanceof ReadableJavaField) {
             ReadableJavaField readableField = (ReadableJavaField) f.wrapped;
             if (readableField.allowConstantFolding()) {
                 JavaConstant fieldValue = readableField.readValue(metaAccess, universe.toHosted(analysisTool.getReceiver()));
                 if (fieldValue != null) {
-                    return analysisTool.foldConstant(constantReflection.interceptValue(f, universe.lookup(fieldValue)));
+                    foldedValue = analysisTool.foldConstant(constantReflection.interceptValue(f, universe.lookup(fieldValue)));
                 }
             }
-            return null;
+        } else {
+            foldedValue = super.readConstantField(field, analysisTool);
         }
 
-        return super.readConstantField(field, analysisTool);
+        if (foldedValue != null) {
+            if (!BuildPhaseProvider.isAnalysisFinished()) {
+                f.markFolded();
+            }
+        }
+        return foldedValue;
     }
 }

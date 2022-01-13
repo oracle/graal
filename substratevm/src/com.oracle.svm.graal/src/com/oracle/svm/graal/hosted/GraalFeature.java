@@ -42,7 +42,6 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
-import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
@@ -90,6 +89,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
@@ -121,6 +121,7 @@ import com.oracle.svm.hosted.FeatureImpl.CompilationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.NativeImageGenerator;
+import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.CompilationInfoSupport;
@@ -133,7 +134,6 @@ import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.phases.StrengthenStampsPhase;
 import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
 import com.oracle.svm.hosted.phases.SubstrateGraphBuilderPhase;
-import com.oracle.svm.hosted.reporting.ProgressReporter;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -888,7 +888,7 @@ public final class GraalFeature implements Feature {
         CompilationAccessImpl config = (CompilationAccessImpl) a;
 
         HostedMetaAccess hMetaAccess = config.getMetaAccess();
-        HostedUniverse hUniverse = (HostedUniverse) hMetaAccess.getUniverse();
+        HostedUniverse hUniverse = hMetaAccess.getUniverse();
         objectReplacer.updateSubstrateDataAfterCompilation(hUniverse, config.getProviders().getConstantFieldProvider());
 
         objectReplacer.registerImmutableObjects(config);
@@ -900,7 +900,7 @@ public final class GraalFeature implements Feature {
     public void afterHeapLayout(AfterHeapLayoutAccess a) {
         AfterHeapLayoutAccessImpl config = (AfterHeapLayoutAccessImpl) a;
         HostedMetaAccess hMetaAccess = config.getMetaAccess();
-        HostedUniverse hUniverse = (HostedUniverse) hMetaAccess.getUniverse();
+        HostedUniverse hUniverse = hMetaAccess.getUniverse();
         objectReplacer.updateSubstrateDataAfterHeapLayout(hUniverse);
     }
 }

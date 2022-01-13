@@ -42,7 +42,6 @@ public class IsolateListenerSupport {
         listeners = new IsolateListener[0];
     }
 
-    // Checkstyle: allow synchronization.
     @Platforms(Platform.HOSTED_ONLY.class)
     public synchronized void register(IsolateListener listener) {
         assert listener != null;
@@ -50,7 +49,6 @@ public class IsolateListenerSupport {
         listeners = Arrays.copyOf(listeners, oldLength + 1);
         listeners[oldLength] = listener;
     }
-    // Checkstyle: disallow synchronization.
 
     @Fold
     public static IsolateListenerSupport singleton() {

@@ -25,7 +25,6 @@
 package com.oracle.graal.pointsto.meta;
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -410,7 +409,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     public boolean registerAsInHeap() {
         registerAsReachable();
         if (AtomicUtils.atomicMark(isInHeap)) {
-            registerAsInstantiated(UsageKind.InHeap);
+            universe.onTypeInstantiated(this, UsageKind.InHeap);
             return true;
         }
         return false;
@@ -422,27 +421,10 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     public boolean registerAsAllocated(Node node) {
         registerAsReachable();
         if (AtomicUtils.atomicMark(isAllocated)) {
-            registerAsInstantiated(UsageKind.Allocated);
+            universe.onTypeInstantiated(this, UsageKind.Allocated);
             return true;
         }
         return false;
-    }
-
-    /** Register the type as instantiated with all its super types. */
-    private void registerAsInstantiated(UsageKind usageKind) {
-        assert isAllocated.get() || isInHeap.get();
-        assert isArray() || (isInstanceClass() && !Modifier.isAbstract(getModifiers())) : this;
-        universe.hostVM.checkForbidden(this, usageKind);
-
-        PointsToAnalysis bb = ((PointsToAnalysis) universe.getBigbang());
-        TypeState typeState = TypeState.forExactType(bb, this, true);
-        TypeState typeStateNonNull = TypeState.forExactType(bb, this, false);
-
-        /* Register the instantiated type with its super types. */
-        forAllSuperTypes(t -> {
-            t.instantiatedTypes.addState(bb, typeState);
-            t.instantiatedTypesNonNull.addState(bb, typeStateNonNull);
-        });
     }
 
     /**
@@ -504,7 +486,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
      * reachable directly, but also through java.lang.GenericDeclaration, so it will be processed
      * twice.
      */
-    private void forAllSuperTypes(Consumer<AnalysisType> superTypeConsumer) {
+    public void forAllSuperTypes(Consumer<AnalysisType> superTypeConsumer) {
         forAllSuperTypes(superTypeConsumer, true);
     }
 
@@ -1059,6 +1041,14 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         return wrapped.isLinked();
     }
 
+    public boolean isInHeap() {
+        return isInHeap.get();
+    }
+
+    public boolean isAllocated() {
+        return isAllocated.get();
+    }
+
     @Override
     public void link() {
         wrapped.link();
@@ -1083,6 +1073,10 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     @Override
     public ResolvedJavaType getHostClass() {
         return universe.lookup(wrapped.getHostClass());
+    }
+
+    AnalysisUniverse getUniverse() {
+        return universe;
     }
 
     @Override

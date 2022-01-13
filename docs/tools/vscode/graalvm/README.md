@@ -11,7 +11,7 @@ permalink: /tools/vscode/graalvm-extension/
 Users can edit and debug applications written in the GraalVM supported languages (Java, JS, Ruby, R, and Python) without the need to install any other additional extensions.
 The extension is Technology Preview.
 
-#### Table of contents
+### Table of contents
 - [Features](#features)
 - [Installation and Setup](#installation-and-setup)
 - [Java Development and Debugging](#java-development-and-debugging)

@@ -164,21 +164,23 @@ CLSS public final static org.graalvm.nativeimage.Isolates$CreateIsolateParameter
  outer org.graalvm.nativeimage.Isolates
 innr public final static Builder
 meth public java.lang.String getAuxiliaryImagePath()
+meth public java.util.List<java.lang.String> getArguments()
 meth public org.graalvm.word.UnsignedWord getAuxiliaryImageReservedSpaceSize()
 meth public org.graalvm.word.UnsignedWord getReservedAddressSpaceSize()
 meth public static org.graalvm.nativeimage.Isolates$CreateIsolateParameters getDefault()
 supr java.lang.Object
-hfds DEFAULT,auxiliaryImagePath,auxiliaryImageReservedSpaceSize,reservedAddressSpaceSize
+hfds DEFAULT,arguments,auxiliaryImagePath,auxiliaryImageReservedSpaceSize,reservedAddressSpaceSize
 
 CLSS public final static org.graalvm.nativeimage.Isolates$CreateIsolateParameters$Builder
  outer org.graalvm.nativeimage.Isolates$CreateIsolateParameters
 cons public init()
 meth public org.graalvm.nativeimage.Isolates$CreateIsolateParameters build()
+meth public org.graalvm.nativeimage.Isolates$CreateIsolateParameters$Builder appendArgument(java.lang.String)
 meth public org.graalvm.nativeimage.Isolates$CreateIsolateParameters$Builder auxiliaryImagePath(java.lang.String)
 meth public org.graalvm.nativeimage.Isolates$CreateIsolateParameters$Builder auxiliaryImageReservedSpaceSize(org.graalvm.word.UnsignedWord)
 meth public org.graalvm.nativeimage.Isolates$CreateIsolateParameters$Builder reservedAddressSpaceSize(org.graalvm.word.UnsignedWord)
 supr java.lang.Object
-hfds auxiliaryImagePath,auxiliaryImageReservedSpaceSize,reservedAddressSpaceSize
+hfds arguments,auxiliaryImagePath,auxiliaryImageReservedSpaceSize,reservedAddressSpaceSize
 
 CLSS public final static org.graalvm.nativeimage.Isolates$IsolateException
  outer org.graalvm.nativeimage.Isolates
@@ -475,7 +477,7 @@ innr public final static FatalExceptionHandler
 innr public final static NotIncludedAutomatically
 intf java.lang.annotation.Annotation
 meth public abstract !hasdefault java.lang.Class<? extends java.util.function.BooleanSupplier> include()
-meth public abstract !hasdefault java.lang.Class<? extends org.graalvm.nativeimage.c.function.CEntryPoint$ExceptionHandler> exceptionHandler()
+meth public abstract !hasdefault java.lang.Class<?> exceptionHandler()
 meth public abstract !hasdefault java.lang.String name()
 meth public abstract !hasdefault java.lang.String[] documentation()
 meth public abstract !hasdefault org.graalvm.nativeimage.c.function.CEntryPoint$Builtin builtin()

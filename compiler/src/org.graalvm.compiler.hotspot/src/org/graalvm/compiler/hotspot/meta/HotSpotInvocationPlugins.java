@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -62,7 +62,7 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
     private final HotSpotGraalRuntimeProvider graalRuntime;
     private final GraalHotSpotVMConfig config;
     private final UnimplementedGraalIntrinsics unimplementedIntrinsics;
-    private final Map<String, Integer> missingIntrinsicMetrics;
+    private Map<String, Integer> missingIntrinsicMetrics;
 
     public static class Options {
         @Option(help = "Print a warning when a missing intrinsic is seen.", type = OptionType.Debug) public static final OptionKey<Boolean> WarnMissingIntrinsic = new OptionKey<>(false);
@@ -77,20 +77,12 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
                     TargetDescription target, OptionValues options) {
         this.graalRuntime = graalRuntime;
         this.config = config;
-
         if (Options.WarnMissingIntrinsic.getValue(options)) {
             this.unimplementedIntrinsics = new UnimplementedGraalIntrinsics(config, target.arch);
-            this.missingIntrinsicMetrics = new HashMap<>();
-            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-                TTY.println("[Warning] Missing intrinsics found: %d", missingIntrinsicMetrics.size());
-                missingIntrinsicMetrics.entrySet().stream().sorted(Comparator.comparing(Entry::getValue, Comparator.reverseOrder())).forEach(entry -> {
-                    TTY.println("        - %d occurrences during parsing: %s", entry.getValue(), entry.getKey());
-                });
-            }));
         } else {
             this.unimplementedIntrinsics = null;
-            this.missingIntrinsicMetrics = null;
         }
+        this.missingIntrinsicMetrics = null;
         registerIntrinsificationPredicate(runtime().getIntrinsificationTrustPredicate(compilerConfiguration.getClass()));
     }
 
@@ -149,7 +141,22 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
             String method = String.format("%s.%s%s", targetMethod.getDeclaringClass().toJavaName().replace('.', '/'), targetMethod.getName(), targetMethod.getSignature().toMethodDescriptor());
             if (unimplementedIntrinsics.isMissing(method)) {
                 int currentCount;
-                synchronized (missingIntrinsicMetrics) {
+                synchronized (unimplementedIntrinsics) {
+                    if (missingIntrinsicMetrics == null) {
+                        missingIntrinsicMetrics = new HashMap<>();
+                        try {
+                            Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                                if (missingIntrinsicMetrics.size() > 0) {
+                                    TTY.println("[Warning] Missing intrinsics found: %d", missingIntrinsicMetrics.size());
+                                    missingIntrinsicMetrics.entrySet().stream().sorted(Comparator.comparing(Entry::getValue, Comparator.reverseOrder())).forEach(entry -> {
+                                        TTY.println("        - %d occurrences during parsing: %s", entry.getValue(), entry.getKey());
+                                    });
+                                }
+                            }));
+                        } catch (IllegalStateException e) {
+                            // shutdown in progress, no need to register the hook
+                        }
+                    }
                     currentCount = missingIntrinsicMetrics.compute(method, (key, cnt) -> cnt == null ? 1 : Math.addExact(cnt, 1));
                 }
                 if (currentCount == 1) {

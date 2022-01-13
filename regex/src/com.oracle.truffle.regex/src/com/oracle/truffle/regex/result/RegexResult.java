@@ -82,6 +82,9 @@ import java.util.Arrays;
  * with the given number was found. If the result is no match, the returned value is undefined.
  * Capture group number {@code 0} denotes the boundaries of the entire expression. If no match was
  * found for a particular capture group, the returned value is {@code -1}.</li>
+ * <li>{@code int lastGroup}: The index of the last capture group that was matched. -1 if no capture
+ * group was matched. This property is only tracked for Python regular expressions. For other
+ * flavors of regular expressions, this always has the value -1.</li>
  * </ol>
  * </li>
  */
@@ -91,24 +94,25 @@ public final class RegexResult extends AbstractConstantKeysObject {
     static final String PROP_IS_MATCH = "isMatch";
     static final String PROP_GET_START = "getStart";
     static final String PROP_GET_END = "getEnd";
+    static final String PROP_LAST_GROUP = "lastGroup";
 
-    private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray(PROP_IS_MATCH, PROP_GET_START, PROP_GET_END);
+    private static final TruffleReadOnlyKeysArray KEYS = new TruffleReadOnlyKeysArray(PROP_IS_MATCH, PROP_GET_START, PROP_GET_END, PROP_LAST_GROUP);
 
     private final Object input;
     private final int fromIndex;
 
     private final int start;
     private final int end;
-    private int[] indices;
+    private int[] result;
 
     private final CallTarget lazyCallTarget;
 
-    protected RegexResult(Object input, int fromIndex, int start, int end, int[] indices, CallTarget lazyCallTarget) {
+    protected RegexResult(Object input, int fromIndex, int start, int end, int[] result, CallTarget lazyCallTarget) {
         this.input = input;
         this.fromIndex = fromIndex;
         this.start = start;
         this.end = end;
-        this.indices = indices;
+        this.result = result;
         this.lazyCallTarget = lazyCallTarget;
     }
 
@@ -122,14 +126,16 @@ public final class RegexResult extends AbstractConstantKeysObject {
         return new RegexResult(null, -1, 0, 0, new int[]{start, end}, null);
     }
 
-    public static RegexResult create(int[] indices) {
-        assert indices != null && indices.length >= 2;
-        return new RegexResult(null, -1, 0, 0, indices, null);
+    public static RegexResult create(int[] result) {
+        assert result != null && result.length >= 2;
+        return new RegexResult(null, -1, 0, 0, result, null);
     }
 
-    public static RegexResult create(Object input, int[] indices) {
-        assert indices != null && indices.length >= 2;
-        return new RegexResult(input, -1, 0, 0, indices, null);
+    public static RegexResult createFromExecutorResult(Object executorResult) {
+        if (executorResult == null) {
+            return RegexResult.getNoMatchInstance();
+        }
+        return RegexResult.create((int[]) executorResult);
     }
 
     public static RegexResult createLazy(Object input, int fromIndex, int start, int end, CallTarget lazyCallTarget) {
@@ -152,18 +158,22 @@ public final class RegexResult extends AbstractConstantKeysObject {
         return end;
     }
 
-    public void setIndices(int[] indices) {
-        this.indices = indices;
+    public void setResult(int[] result) {
+        this.result = result;
     }
 
     public int getStart(int groupNumber) {
         int index = groupNumber * 2;
-        return index >= indices.length ? -1 : indices[index];
+        return groupNumber >= result.length >> 1 ? -1 : result[index];
     }
 
     public int getEnd(int groupNumber) {
         int index = groupNumber * 2 + 1;
-        return index >= indices.length ? -1 : indices[index];
+        return groupNumber >= result.length >> 1 ? -1 : result[index];
+    }
+
+    public int getLastGroup() {
+        return (result.length & 1) == 0 ? -1 : result[result.length - 1];
     }
 
     @ExportMessage
@@ -217,6 +227,20 @@ public final class RegexResult extends AbstractConstantKeysObject {
             return new RegexResultGetEndMethod(receiver);
         }
 
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"symbol == cachedSymbol", "cachedSymbol.equals(PROP_LAST_GROUP)"}, limit = "2")
+        static int lastGroupIdentity(RegexResult receiver, String symbol,
+                        @Cached("symbol") String cachedSymbol) {
+            return receiver.getLastGroup();
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"symbol.equals(cachedSymbol)", "cachedSymbol.equals(PROP_LAST_GROUP)"}, limit = "2", replaces = "lastGroupIdentity")
+        static int lastGroupEquals(RegexResult receiver, String symbol,
+                        @Cached("symbol") String cachedSymbol) {
+            return receiver.getLastGroup();
+        }
+
         @ReportPolymorphism.Megamorphic
         @Specialization(replaces = {"isMatchEquals", "getStartEquals", "getEndEquals"})
         static Object readGeneric(RegexResult receiver, String symbol) throws UnknownIdentifierException {
@@ -227,6 +251,8 @@ public final class RegexResult extends AbstractConstantKeysObject {
                     return new RegexResultGetStartMethod(receiver);
                 case PROP_GET_END:
                     return new RegexResultGetEndMethod(receiver);
+                case PROP_LAST_GROUP:
+                    return receiver.getLastGroup();
                 default:
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw UnknownIdentifierException.create(symbol);
@@ -238,7 +264,7 @@ public final class RegexResult extends AbstractConstantKeysObject {
     abstract static class IsMemberReadable {
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"symbol == cachedSymbol", "result"}, limit = "3")
+        @Specialization(guards = {"symbol == cachedSymbol", "result"}, limit = "4")
         static boolean cacheIdentity(RegexResult receiver, String symbol,
                         @Cached("symbol") String cachedSymbol,
                         @Cached("isReadable(receiver, cachedSymbol)") boolean result) {
@@ -246,7 +272,7 @@ public final class RegexResult extends AbstractConstantKeysObject {
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"symbol.equals(cachedSymbol)", "result"}, limit = "3", replaces = "cacheIdentity")
+        @Specialization(guards = {"symbol.equals(cachedSymbol)", "result"}, limit = "4", replaces = "cacheIdentity")
         static boolean cacheEquals(RegexResult receiver, String symbol,
                         @Cached("symbol") String cachedSymbol,
                         @Cached("isReadable(receiver, cachedSymbol)") boolean result) {
@@ -274,6 +300,8 @@ public final class RegexResult extends AbstractConstantKeysObject {
                 return new RegexResultGetStartMethod(this);
             case PROP_GET_END:
                 return new RegexResultGetEndMethod(this);
+            case PROP_LAST_GROUP:
+                return getLastGroup();
             default:
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw UnknownIdentifierException.create(symbol);
@@ -444,10 +472,10 @@ public final class RegexResult extends AbstractConstantKeysObject {
     public void debugForceEvaluation() {
         CompilerAsserts.neverPartOfCompilation();
         assert this != getNoMatchInstance();
-        if (indices == null) {
+        if (result == null) {
             lazyCallTarget.call(this);
         }
-        assert indices != null;
+        assert result != null;
     }
 
     private static final int INVALID_RESULT_INDEX = -1;
@@ -461,12 +489,12 @@ public final class RegexResult extends AbstractConstantKeysObject {
         static int doResult(RegexResult receiver, int groupNumber,
                         @Cached ConditionProfile lazyProfile,
                         @Cached DispatchNode getIndicesCall) {
-            if (lazyProfile.profile(receiver.indices == null)) {
+            if (lazyProfile.profile(receiver.result == null)) {
                 assert receiver.lazyCallTarget != null;
                 getIndicesCall.execute(receiver.lazyCallTarget, receiver);
             }
             int i = groupNumber * 2 + 1;
-            return i < 0 || i >= receiver.indices.length ? INVALID_RESULT_INDEX : receiver.indices[i];
+            return i < 0 || i >= receiver.result.length ? INVALID_RESULT_INDEX : receiver.result[i];
         }
     }
 
@@ -483,12 +511,12 @@ public final class RegexResult extends AbstractConstantKeysObject {
         static int doResult(RegexResult receiver, int groupNumber,
                         @Cached ConditionProfile lazyProfile,
                         @Cached DispatchNode getIndicesCall) {
-            if (lazyProfile.profile(receiver.indices == null)) {
+            if (lazyProfile.profile(receiver.result == null)) {
                 assert receiver.lazyCallTarget != null;
                 getIndicesCall.execute(receiver.lazyCallTarget, receiver);
             }
             int i = groupNumber * 2;
-            return i < 0 || i >= receiver.indices.length ? INVALID_RESULT_INDEX : receiver.indices[i];
+            return i < 0 || i >= receiver.result.length ? INVALID_RESULT_INDEX : receiver.result[i];
         }
     }
 
@@ -498,10 +526,10 @@ public final class RegexResult extends AbstractConstantKeysObject {
         if (this == getNoMatchInstance()) {
             return "NO_MATCH";
         }
-        if (indices == null) {
+        if (result == null) {
             return "[ _lazy_ ]";
         }
-        return Arrays.toString(indices);
+        return Arrays.toString(result);
     }
 
     @TruffleBoundary

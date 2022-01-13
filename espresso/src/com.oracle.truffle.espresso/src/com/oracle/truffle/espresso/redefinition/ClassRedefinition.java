@@ -41,6 +41,7 @@ import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.attributes.CodeAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.Local;
@@ -620,7 +621,7 @@ public final class ClassRedefinition {
     private static boolean isUnchangedField(Field oldField, ParserField newField, Map<ParserField, Field> compatibleFields) {
         boolean sameName = oldField.getName() == newField.getName();
         boolean sameType = oldField.getType() == newField.getType();
-        boolean sameFlags = oldField.getModifiers() == newField.getFlags();
+        boolean sameFlags = oldField.getModifiers() == (newField.getFlags() & Constants.JVM_RECOGNIZED_FIELD_MODIFIERS);
 
         if (sameName && sameType) {
             if (sameFlags) {

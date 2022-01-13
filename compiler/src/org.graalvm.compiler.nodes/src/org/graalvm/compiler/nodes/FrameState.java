@@ -382,6 +382,11 @@ public final class FrameState extends VirtualState implements IterableNodeType {
         return duplicateModified(graph(), bci, rethrowException, duringCall, popKind, new JavaKind[]{pushedSlotKind}, new ValueNode[]{pushedValue}, pushedVirtualObjectMappings);
     }
 
+    public FrameState duplicateModified(StructuredGraph graph, int newBci, boolean newRethrowException, boolean newDuringCall, JavaKind popKind, JavaKind[] pushedSlotKinds, ValueNode[] pushedValues,
+                    List<EscapeObjectState> pushedVirtualObjectMappings) {
+        return duplicateModified(graph, newBci, newRethrowException, newDuringCall, popKind, pushedSlotKinds, pushedValues, pushedVirtualObjectMappings, true);
+    }
+
     /**
      * Creates a copy of this frame state with one stack element of type popKind popped from the
      * stack and the values in pushedValues pushed on the stack. The pushedValues will be formatted
@@ -389,7 +394,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
      * changed to newBci.
      */
     public FrameState duplicateModified(StructuredGraph graph, int newBci, boolean newRethrowException, boolean newDuringCall, JavaKind popKind, JavaKind[] pushedSlotKinds, ValueNode[] pushedValues,
-                    List<EscapeObjectState> pushedVirtualObjectMappings) {
+                    List<EscapeObjectState> pushedVirtualObjectMappings, boolean checkStackDepth) {
         List<EscapeObjectState> copiedVirtualObjectMappings = null;
         ArrayList<ValueNode> copy;
         if (newRethrowException && !rethrowException && popKind == JavaKind.Void) {
@@ -422,7 +427,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
         int newStackSize = copy.size() - localsSize;
         copy.addAll(values.subList(localsSize + stackSize, values.size()));
 
-        assert checkStackDepth(bci, stackSize, duringCall, rethrowException, newBci, newStackSize, newDuringCall, newRethrowException);
+        assert !checkStackDepth || checkStackDepth(bci, stackSize, duringCall, rethrowException, newBci, newStackSize, newDuringCall, newRethrowException);
         return graph.add(new FrameState(outerFrameState(), code, newBci, copy, localsSize, newStackSize, newRethrowException, newDuringCall, monitorIds,
                         copiedVirtualObjectMappings != null ? copiedVirtualObjectMappings : virtualObjectMappings));
     }

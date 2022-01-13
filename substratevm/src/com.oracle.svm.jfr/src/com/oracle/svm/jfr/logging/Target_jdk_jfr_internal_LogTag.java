@@ -47,6 +47,11 @@ final class Target_jdk_jfr_internal_LogTag {
 @Platforms(Platform.HOSTED_ONLY.class)
 class ComputeTagSetLevel implements RecomputeFieldValue.CustomFieldValueComputer {
     @Override
+    public RecomputeFieldValue.ValueAvailability valueAvailability() {
+        return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+    }
+
+    @Override
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
         // Reset the value as it gets set during the image build.
         return JfrLogConfiguration.JfrLogLevel.OFF.level;
