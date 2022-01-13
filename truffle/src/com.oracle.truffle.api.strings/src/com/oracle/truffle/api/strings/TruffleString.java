@@ -91,8 +91,13 @@ import com.oracle.truffle.api.profiles.IntValueProfile;
  * Represents a primitive String type, which can be reused across languages. Language implementers
  * are encouraged to use Truffle Strings as their language's string type for easier interoperability
  * and better performance. Truffle strings can be encoded in a number of {@link Encoding encodings}.
- * It is implemented to keep multiple representations of the same string in multiple encodings
- * cached.
+ * A {@link TruffleString} object can cache multiple representations (in multiple encodings) of the
+ * same string in the string object itself. A single {@link TruffleString} instance can also
+ * represent the same string in multiple encodings, if the string's content would be equal in all
+ * such encodings (e.g. a string containing only ASCII characters can be viewed as being encoded in
+ * almost any encoding, since the encoded bytes would be equal). To facilitate this, all methods
+ * have an {@code expectedEncoding} parameter to indicate which encoding a given string should be
+ * viewed in.
  * <p>
  * {@link TruffleString} instances can be created via one of the following nodes, or via
  * {@link TruffleStringBuilder}.
