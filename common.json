@@ -8,8 +8,8 @@
 
     "openjdk11":          {"name": "openjdk",   "version": "11.0.11+9", "platformspecific": true },
     "oraclejdk11":        {"name": "oraclejdk", "version": "11.0.11+9", "platformspecific": true },
-    "labsjdk-ce-11":      {"name": "labsjdk",   "version": "ce-11.0.14+8-jvmci-22.0-b03", "platformspecific": true },
-    "labsjdk-ce-11-llvm": {"name": "labsjdk",   "version": "ce-11.0.14+8-jvmci-22.0-b03-sulong", "platformspecific": true },
+    "labsjdk-ce-11":      {"name": "labsjdk",   "version": "ce-11.0.14+9-jvmci-22.0-b04-20211228204229-me_GR_34639-master-bb74398a05_70cd4b3d2f", "platformspecific": true },
+    "labsjdk-ce-11-llvm": {"name": "labsjdk",   "version": "ce-11.0.14+9-jvmci-22.0-b04-20211228204229-me_GR_34639-master-bb74398a05_70cd4b3d2f-sulong", "platformspecific": true },
     "labsjdk-ee-11":      {"name": "labsjdk",   "version": "ee-11.0.14+8-jvmci-22.0-b03", "platformspecific": true },
     "labsjdk-ee-11-llvm": {"name": "labsjdk",   "version": "ee-11.0.14+8-jvmci-22.0-b03-sulong", "platformspecific": true },
 
