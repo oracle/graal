@@ -163,37 +163,28 @@ public final class NFAGenerator {
             expandNFAState(expansionQueue.pop());
         }
 
-        for (NFAState s : nfaStates.values()) {
-            if (s != dummyInitialState && (ast.getHardPrefixNodes().isDisjoint(s.getStateSet()) || ast.getFlags().isSticky())) {
-                s.linkPredecessors();
-            }
-        }
-
         NFAStateTransition initialLoopBack;
         assert transitionGBUpdateIndices.isEmpty() && transitionGBClearIndices.isEmpty();
         if (ast.getOptions().isMustAdvance()) {
             for (int i = 1; i < initialStates.length; i++) {
-                // check if state was eliminated by pruneDeadStates
-                if (nfaStates.containsKey(NFAStateID.of(initialStates[i]))) {
-                    initialStates[i].addLoopBackNext(createTransition(initialStates[i], advancedInitialStates[i - 1], ast.getEncoding().getFullSet(), -1));
-                }
+                addNewLoopBackTransition(initialStates[i], advancedInitialStates[i - 1]);
             }
             for (int i = 1; i < advancedInitialStates.length; i++) {
-                if (nfaStates.containsKey(NFAStateID.of(advancedInitialStates[i]))) {
-                    advancedInitialStates[i].addLoopBackNext(createTransition(advancedInitialStates[i], advancedInitialStates[i - 1], ast.getEncoding().getFullSet(), -1));
-                }
+                addNewLoopBackTransition(advancedInitialStates[i], advancedInitialStates[i - 1]);
             }
-            if (nfaStates.containsKey(NFAStateID.of(initialStates[0]))) {
-                initialStates[0].addLoopBackNext(createTransition(initialStates[0], advancedInitialStates[0], ast.getEncoding().getFullSet(), -1));
-            }
+            addNewLoopBackTransition(initialStates[0], advancedInitialStates[0]);
             initialLoopBack = createTransition(advancedInitialStates[0], advancedInitialStates[0], ast.getEncoding().getFullSet(), -1);
         } else {
             for (int i = 1; i < initialStates.length; i++) {
-                if (nfaStates.containsKey(NFAStateID.of(initialStates[i]))) {
-                    initialStates[i].addLoopBackNext(createTransition(initialStates[i], initialStates[i - 1], ast.getEncoding().getFullSet(), -1));
-                }
+                addNewLoopBackTransition(initialStates[i], initialStates[i - 1]);
             }
             initialLoopBack = createTransition(initialStates[0], initialStates[0], ast.getEncoding().getFullSet(), -1);
+        }
+
+        for (NFAState s : nfaStates.values()) {
+            if (s != dummyInitialState && (ast.getHardPrefixNodes().isDisjoint(s.getStateSet()) || ast.getFlags().isSticky())) {
+                s.linkPredecessors();
+            }
         }
 
         pruneDeadStates();
@@ -337,6 +328,13 @@ public final class NFAGenerator {
             expansionQueue.push(state);
             nfaStates.put(nfaStateID, state);
             return state;
+        }
+    }
+
+    private void addNewLoopBackTransition(NFAState source, NFAState target) {
+        source.addLoopBackNext(createTransition(source, target, ast.getEncoding().getFullSet(), -1));
+        if (ast.getHardPrefixNodes().isDisjoint(source.getStateSet()) || ast.getFlags().isSticky()) {
+            target.incPredecessors();
         }
     }
 
