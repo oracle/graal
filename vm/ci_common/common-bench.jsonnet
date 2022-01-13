@@ -5,8 +5,7 @@ local vm_common = import '../ci_common/common.jsonnet';
   vm_bench_common: {
     result_file:: 'results.json',
     upload:: ['bench-uploader.py', self.result_file],
-    capabilities+: ['no_frequency_scaling', 'tmpfs25g', 'x52', 'linux', 'amd64'],
-    targets+: ['bench'],
+    capabilities+: ['tmpfs25g', 'x52'],
     timelimit: '1:30:00',
   },
 
@@ -42,7 +41,6 @@ local vm_common = import '../ci_common/common.jsonnet';
       $.vm_polybench_linux_commands.base_cmd + ['build', '--dependencies=POLYBENCH_BENCHMARKS'],
     ],
     notify_emails: [ 'aleksandar.prokopec@oracle.com' ],
-    targets: ['bench', 'daily'],
   },
 
   vm_bench_polybench_linux_interpreter: self.vm_bench_polybench_linux_common + vm.vm_java_17 + {
@@ -110,7 +108,6 @@ local vm_common = import '../ci_common/common.jsonnet';
       self.warmup_bench_cmd + ['--polybench-vm-config=native-standard', '--metric=one-shot'],
     ],
     timelimit: '1:00:00',
-    targets: ['gate'],
     notify_emails: [],
   },
 
@@ -128,43 +125,41 @@ local vm_common = import '../ci_common/common.jsonnet';
       $.vm_bench_common.upload,
     ],
     notify_groups:: ['sulong'],
-    targets: ['bench', 'daily'],
   },
 
   vm_bench_polybench_nfi_linux_amd64: self.vm_bench_common + vm_common.svm_common_linux_amd64 + self.vm_bench_polybench_nfi,
 
   builds: [
     # We used to expand `${common_vm_linux}` here to work around some limitations in the version of pyhocon that we use in the CI
-    vm_common.common_vm_linux + self.vm_bench_js_linux_amd64 + { environment+: { BENCH_SUITE: 'octane' },    name: 'bench-vm-' + vm.vm_setup.short_name + '-js-octane-linux'},
-    vm_common.common_vm_linux + self.vm_bench_js_linux_amd64 + { environment+: { BENCH_SUITE: 'jetstream' }, name: 'bench-vm-' + vm.vm_setup.short_name + '-js-jetstream-linux'},
-    vm_common.common_vm_linux + self.vm_bench_js_linux_amd64 + { environment+: { BENCH_SUITE: 'jetstream2'}, name: 'bench-vm-' + vm.vm_setup.short_name + '-js-jetstream2-linux'},
-    vm_common.common_vm_linux + self.vm_bench_js_linux_amd64 + { environment+: { BENCH_SUITE: 'micro' },     name: 'bench-vm-' + vm.vm_setup.short_name + '-js-micro-linux'},
-    vm_common.common_vm_linux + self.vm_bench_js_linux_amd64 + { environment+: { BENCH_SUITE: 'v8js' },      name: 'bench-vm-' + vm.vm_setup.short_name + '-js-v8js-linux'},
-    vm_common.common_vm_linux + self.vm_bench_js_linux_amd64 + { environment+: { BENCH_SUITE: 'misc' },      name: 'bench-vm-' + vm.vm_setup.short_name + '-js-misc-linux'},
-    vm_common.common_vm_linux + self.vm_bench_js_linux_amd64 + { environment+: { BENCH_SUITE: 'npm-regex' }, name: 'bench-vm-' + vm.vm_setup.short_name + '-js-npm-regex-linux'},
+    vm_common.ondemand_bench_vm_linux_amd64 + self.vm_bench_js_linux_amd64 + { environment+: { BENCH_SUITE: 'octane' },    name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-octane-linux'},
+    vm_common.ondemand_bench_vm_linux_amd64 + self.vm_bench_js_linux_amd64 + { environment+: { BENCH_SUITE: 'jetstream' }, name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-jetstream-linux'},
+    vm_common.ondemand_bench_vm_linux_amd64 + self.vm_bench_js_linux_amd64 + { environment+: { BENCH_SUITE: 'jetstream2'}, name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-jetstream2-linux'},
+    vm_common.ondemand_bench_vm_linux_amd64 + self.vm_bench_js_linux_amd64 + { environment+: { BENCH_SUITE: 'micro' },     name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-micro-linux'},
+    vm_common.ondemand_bench_vm_linux_amd64 + self.vm_bench_js_linux_amd64 + { environment+: { BENCH_SUITE: 'v8js' },      name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-v8js-linux'},
+    vm_common.ondemand_bench_vm_linux_amd64 + self.vm_bench_js_linux_amd64 + { environment+: { BENCH_SUITE: 'misc' },      name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-misc-linux'},
+    vm_common.ondemand_bench_vm_linux_amd64 + self.vm_bench_js_linux_amd64 + { environment+: { BENCH_SUITE: 'npm-regex' }, name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-npm-regex-linux'},
 
-    vm_common.common_vm_linux + self.vm_bench_polybench_linux_interpreter + {name: 'bench-vm-' + vm.vm_setup.short_name + '-polybench-linux'},
-    vm_common.common_vm_linux + self.vm_bench_polybench_linux_compiler + {name: 'bench-vm-' + vm.vm_setup.short_name + '-polybench-compiler-linux'},
-    vm_common.common_vm_linux + self.vm_bench_polybench_linux_context_init + {name: 'bench-vm-' + vm.vm_setup.short_name + '-polybench-context-init-linux'},
-    vm_common.common_vm_linux + self.vm_bench_polybench_linux_warmup + {name: 'bench-vm-' + vm.vm_setup.short_name + '-polybench-warmup-linux'},
-    vm_common.common_vm_linux + self.vm_bench_polybench_linux_allocated_bytes + {name: 'bench-vm-' + vm.vm_setup.short_name + '-polybench-allocated-bytes-linux'},
+    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_linux_interpreter     + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-linux'},
+    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_linux_compiler        + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-compiler-linux'},
+    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_linux_context_init    + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-context-init-linux'},
+    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_linux_warmup          + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-warmup-linux'},
+    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_linux_allocated_bytes + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-allocated-bytes-linux'},
 
-    vm_common.common_vm_linux + self.vm_bench_polybench_nfi_linux_amd64 + vm.vm_java_8 + {name: 'bench-vm-' + vm.vm_setup.short_name + '-polybench-nfi-linux-amd64-java8'},
-    vm_common.common_vm_linux + self.vm_bench_polybench_nfi_linux_amd64 + vm.vm_java_11 + {name: 'bench-vm-' + vm.vm_setup.short_name + '-polybench-nfi-linux-amd64-java11'},
-    vm_common.common_vm_linux + self.vm_bench_polybench_nfi_linux_amd64 + vm.vm_java_17 + {name: 'bench-vm-' + vm.vm_setup.short_name + '-polybench-nfi-linux-amd64-java17'},
+    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_nfi_linux_amd64 + vm.vm_java_8  + {name: 'bench-vm-' + vm.vm_setup.short_name + '-polybench-nfi-linux-amd64-java8'},
+    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_nfi_linux_amd64 + vm.vm_java_11 + {name: 'bench-vm-' + vm.vm_setup.short_name + '-polybench-nfi-linux-amd64-java11'},
+    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_nfi_linux_amd64 + vm.vm_java_17 + {name: 'bench-vm-' + vm.vm_setup.short_name + '-polybench-nfi-linux-amd64-java17'},
 
-    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_js_linux_amd64 + {
+    vm_common.daily_vm_linux_amd64 + self.vm_bench_js_linux_amd64 + {
       run+: [
         vm_common.mx_vm_common + ['benchmark', '--results-file', $.vm_bench_js_linux_amd64.result_file, 'agentscript-graal-js:*', '--', '--jvm=graalvm-${VM_ENV}', '--jvm-config=jvm', '--js=graal-js', '--js-config=default'],
         $.vm_bench_common.upload,
         vm_common.mx_vm_common + ['benchmark', '--results-file', $.vm_bench_js_linux_amd64.result_file, 'agentscript-graal-js:*', '--', '--jvm=graalvm-${VM_ENV}', '--jvm-config=native', '--js=graal-js', '--js-config=default'],
         $.vm_bench_common.upload,
       ],
-      targets+: ['bench', 'daily'],
       timelimit: '45:00',
-      name: 'bench-vm-' + vm.vm_setup.short_name + '-agentscript-js-java17-linux-amd64',
+      name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-agentscript-js-java17-linux-amd64',
     },
 
-    vm_common.common_vm_linux + self.vm_gate_polybench_linux + {name: 'gate-vm-' + vm.vm_setup.short_name + '-polybench-linux'},
+    vm_common.gate_vm_linux_amd64 + self.vm_gate_polybench_linux + {name: 'gate-vm-' + vm.vm_setup.short_name + '-polybench-linux'},
   ],
 }

@@ -140,7 +140,7 @@ local jdks = common_json.jdks;
       ],
       name: 'gate-vm-unittest-linux-amd64',
     },
-    graal_common.windows_amd64 + graal_common.oraclejdk8 + common_json.devkits['windows-oraclejdk8'] + vm_common.gate_vm_windows + self.vm_unittest + {
+    graal_common.oraclejdk8 + common_json.devkits['windows-oraclejdk8'] + vm_common.gate_vm_windows + self.vm_unittest + {
       run: [
           ['mx', 'build'],
           ['mx', 'unittest', '--suite', 'vm'],

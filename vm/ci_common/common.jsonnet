@@ -6,7 +6,7 @@ local common_json = composable(import '../../common.json');
 local devkits = common_json.devkits;
 
 {
-  common_vm: graal_common.common + vm.vm_setup + {
+  common_vm: vm.vm_setup + {
     python_version: 3,
     logs+: [
       '*/mxbuild/dists/stripped/*.map',
@@ -65,7 +65,7 @@ local devkits = common_json.devkits;
     },
   },
 
-  js_windows_jdk11: self.common_vm_windows_jdk11 + self.js_windows_common + {
+  js_windows_jdk11: self.js_windows_common + {
     setup+: [
       # Keep in sync with the 'devkits' object defined in the top level common.json file.
       # When this file has been converted to jsonnet, the value can be computed instead
@@ -74,7 +74,7 @@ local devkits = common_json.devkits;
     ],
   },
 
-  js_windows_jdk17: self.common_vm_windows_jdk17 + self.js_windows_common + {
+  js_windows_jdk17: self.js_windows_common + {
     setup+: [
       # Keep in sync with the 'devkits' object defined in the top level common.json file.
       # When this file has been converted to jsonnet, the value can be computed instead
@@ -83,7 +83,7 @@ local devkits = common_json.devkits;
     ],
   },
 
-  js_windows: self.common_vm_windows + self.js_windows_common + {
+  js_windows: self.js_windows_common + {
     setup+: [
       # Keep in sync with the 'devkits' object defined in the top level common.json file.
       # When this file has been converted to jsonnet, the value can be computed instead
@@ -209,18 +209,22 @@ local devkits = common_json.devkits;
   },
 
   bench_vm_linux_amd64: self.vm_linux_amd64 + {
+    capabilities+: ['no_frequency_scaling'],
     targets+: ['bench', 'post-merge'],
   },
 
   bench_vm_darwin: self.vm_darwin + {
+    capabilities+: ['no_frequency_scaling'],
     targets+: ['bench', 'post-merge'],
   },
 
   bench_daily_vm_linux_amd64: self.vm_linux_amd64 + {
+    capabilities+: ['no_frequency_scaling'],
     targets+: ['bench', 'daily'],
   },
 
   bench_daily_vm_darwin: self.vm_darwin + {
+    capabilities+: ['no_frequency_scaling'],
     targets+: ['bench', 'daily'],
   },
 
@@ -320,18 +324,22 @@ local devkits = common_json.devkits;
     targets+: ['ondemand'],
   },
 
+  ondemand_bench_vm_linux_amd64: self.vm_linux_amd64 + {
+    capabilities+: ['no_frequency_scaling'],
+    targets+: ['ondemand', 'bench'],
+  },
+
   mx_vm_cmd_suffix: ['--sources=sdk:GRAAL_SDK,truffle:TRUFFLE_API,compiler:GRAAL,substratevm:SVM', '--with-debuginfo', '--base-jdk-info=${BASE_JDK_NAME}:${BASE_JDK_VERSION}'],
   mx_vm_common: ['mx', '--env', '${VM_ENV}'] + self.mx_vm_cmd_suffix,
   mx_vm_installables: ['mx', '--env', '${VM_ENV}-complete'] + self.mx_vm_cmd_suffix,
 
-  svm_common:: graal_common.mx + common_json.svm.deps.common,
-  svm_common_linux_amd64: self.svm_common + common_json.svm.deps.linux_amd64 + graal_common.linux_amd64,
-  svm_common_linux_aarch64: self.svm_common + common_json.svm.deps.linux_aarch64 + graal_common.linux_aarch64,
-  svm_common_darwin: self.svm_common + common_json.svm.deps.darwin + graal_common.darwin_amd64,
-  svm_common_windows_openjdk8: self.svm_common + common_json.svm.deps.windows + graal_common.windows_amd64 + common_json.devkits['windows-openjdk8'],
-  svm_common_windows_oraclejdk8: self.svm_common + common_json.svm.deps.windows + graal_common.windows_amd64 + common_json.devkits['windows-oraclejdk8'],
-  svm_common_windows_jdk11: self.svm_common + common_json.svm.deps.windows + graal_common.windows_amd64 + common_json.devkits['windows-jdk11'],
-  svm_common_windows_jdk17: self.svm_common + common_json.svm.deps.windows + graal_common.windows_amd64 + common_json.devkits['windows-jdk17'],
+  svm_common_linux_amd64:        { environment+: common_json.svm.deps.common.environment, logs+: common_json.svm.deps.common.logs} + common_json.svm.deps.linux_amd64,
+  svm_common_linux_aarch64:      { environment+: common_json.svm.deps.common.environment, logs+: common_json.svm.deps.common.logs} + common_json.svm.deps.linux_aarch64,
+  svm_common_darwin:             { environment+: common_json.svm.deps.common.environment, logs+: common_json.svm.deps.common.logs} + common_json.svm.deps.darwin,
+  svm_common_windows_openjdk8:   { environment+: common_json.svm.deps.common.environment, logs+: common_json.svm.deps.common.logs} + common_json.svm.deps.windows       + common_json.devkits['windows-openjdk8'],
+  svm_common_windows_oraclejdk8: { environment+: common_json.svm.deps.common.environment, logs+: common_json.svm.deps.common.logs} + common_json.svm.deps.windows       + common_json.devkits['windows-oraclejdk8'],
+  svm_common_windows_jdk11:      { environment+: common_json.svm.deps.common.environment, logs+: common_json.svm.deps.common.logs} + common_json.svm.deps.windows       + common_json.devkits['windows-jdk11'],
+  svm_common_windows_jdk17:      { environment+: common_json.svm.deps.common.environment, logs+: common_json.svm.deps.common.logs} + common_json.svm.deps.windows       + common_json.devkits['windows-jdk17'],
 
   maven_deploy_sdk: ['--suite', 'sdk', 'maven-deploy', '--validate', 'none', '--all-distribution-types', '--with-suite-revisions-metadata'],
   maven_deploy_sdk_base:               self.maven_deploy_sdk + ['--tags', 'graalvm',                             vm.binaries_repository],
@@ -364,16 +372,15 @@ local devkits = common_json.devkits;
       '--extra-image-builder-argument=-ea',
       'build'
   ],
-  libgraal_compiler: self.svm_common_linux_amd64 + vm.custom_vm_linux + self.vm_linux_amd64 + {
+  libgraal_compiler: self.svm_common_linux_amd64 + vm.custom_vm_linux + {
     run+: [
       # enable asserts in the JVM building the image and enable asserts in the resulting native image
       $.libgraal_build,
       ['mx', '--env', vm.libgraal_env, 'gate', '--task', 'LibGraal Compiler'],
     ],
     timelimit: '1:00:00',
-    targets: ['gate'],
   },
-  libgraal_truffle: self.svm_common_linux_amd64 + vm.custom_vm_linux + self.vm_linux_amd64 + {
+  libgraal_truffle: self.svm_common_linux_amd64 + vm.custom_vm_linux + {
     environment+: {
       # The Truffle TCK tests run as a part of Truffle TCK gate
       TEST_LIBGRAAL_EXCLUDE: 'com.oracle.truffle.tck.tests.*'
@@ -383,9 +390,8 @@ local devkits = common_json.devkits;
       $.libgraal_build_ea_only,
       ['mx', '--env', vm.libgraal_env, 'gate', '--task', 'LibGraal Truffle'],
     ],
-    logs+: ['*/graal-compiler.log', '*/es-*.json'],
+    logs+: ['*/graal-compiler.log'],
     timelimit: '45:00',
-    targets: ['gate'],
   },
 
   # for cases where a maven package is not easily accessible
@@ -398,13 +404,13 @@ local devkits = common_json.devkits;
     },
   },
 
-  linux_deploy: graal_common.linux + {
+  linux_deploy: {
     packages+: {
       maven: '>=3.3.9',
     },
   },
 
-  darwin_deploy: graal_common.darwin + self.maven_download_unix + {
+  darwin_deploy: self.maven_download_unix + {
     environment+: {
       PATH: '$MAVEN_HOME/bin:$JAVA_HOME/bin:/usr/local/bin:$PATH',
     },
@@ -596,11 +602,11 @@ local devkits = common_json.devkits;
       ],
       name: 'gate-vm-style-jdk17-linux-amd64',
     },
-    self.libgraal_compiler + vm.vm_java_11 + { name: 'gate-vm-libgraal-compiler-11-linux-amd64' },
-    self.libgraal_compiler + vm.vm_java_17 + { name: 'gate-vm-libgraal-compiler-17-linux-amd64' },
+    self.gate_vm_linux_amd64 + self.libgraal_compiler + vm.vm_java_11 + { name: 'gate-vm-libgraal-compiler-11-linux-amd64' },
+    self.gate_vm_linux_amd64 + self.libgraal_compiler + vm.vm_java_17 + { name: 'gate-vm-libgraal-compiler-17-linux-amd64' },
 
-    self.libgraal_truffle + vm.vm_java_11 + vm.vm_unittest + { name: 'gate-vm-libgraal-truffle-11-linux-amd64' },
-    self.libgraal_truffle + vm.vm_java_17 + vm.vm_unittest + { name: 'gate-vm-libgraal-truffle-17-linux-amd64' },
+    self.gate_vm_linux_amd64 + self.libgraal_truffle + vm.vm_java_11 + vm.vm_unittest + { name: 'gate-vm-libgraal-truffle-11-linux-amd64' },
+    self.gate_vm_linux_amd64 + self.libgraal_truffle + vm.vm_java_17 + vm.vm_unittest + { name: 'gate-vm-libgraal-truffle-17-linux-amd64' },
 
     vm.vm_java_17 + self.svm_common_linux_amd64 + self.sulong_linux + vm.custom_vm_linux + self.gate_vm_linux_amd64 + vm.vm_unittest + {
       run: [
