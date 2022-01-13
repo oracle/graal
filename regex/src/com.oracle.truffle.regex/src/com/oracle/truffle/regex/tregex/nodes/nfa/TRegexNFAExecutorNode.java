@@ -200,7 +200,10 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
                 return;
             }
         }
-        if (searching && !locals.hasResult()) {
+        // We only expand the loopBack state if index > fromIndex. Expanding the loopBack state
+        // when index == fromIndex is: a) redundant and b) breaks MustAdvance where the actual
+        // loopBack state is only accessible after consuming at least one character.
+        if (searching && !locals.hasResult() && locals.getIndex() > locals.getFromIndex()) {
             expandStateAtEnd(locals, nfa.getInitialLoopBackTransition().getTarget(), true);
         }
     }
