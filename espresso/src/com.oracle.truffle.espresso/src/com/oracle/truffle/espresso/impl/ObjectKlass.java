@@ -1281,7 +1281,7 @@ public final class ObjectKlass extends Klass {
 
                         int nextFieldSlot = getContext().getClassRedefinition().getNextAvailableFieldSlot();
                         LinkedField.IdMode mode = LinkedKlassFieldLayout.getIdMode(getLinkedKlass().getParserKlass());
-                        LinkedField linkedField = new LinkedField(declaredField.linkedField.getParserField(), nextFieldSlot, mode, Constants.FIELD_REDEFINE_ADDED);
+                        LinkedField linkedField = new LinkedField(declaredField.linkedField.getParserField(), nextFieldSlot, mode);
                         Field field = new RedefineAddedField(getKlassVersion(), linkedField, getConstantPool(), false);
                         extension.addNewInstanceField(field);
                     }
