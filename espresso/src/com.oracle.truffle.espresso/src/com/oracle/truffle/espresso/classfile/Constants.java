@@ -58,7 +58,6 @@ public final class Constants {
 
     public static final int FIELD_ID_TYPE            = 0x01000000;
     public static final int FIELD_ID_OBFUSCATE       = 0x02000000;
-    public static final int FIELD_REDEFINE_ADDED     = 0x08000000;
 
     public static final int JVM_ACC_WRITTEN_FLAGS    = 0x00007FFF;
     // @formatter:on

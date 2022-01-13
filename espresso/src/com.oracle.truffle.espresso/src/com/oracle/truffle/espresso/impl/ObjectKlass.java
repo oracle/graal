@@ -1404,22 +1404,6 @@ public final class ObjectKlass extends Klass {
         }
     }
 
-    public ExtensionFieldObject getStaticExtensionFieldObject() {
-        Field extensionField = staticFieldTable[staticFieldTable.length - 1];
-        Object object = extensionField.getHiddenObject(getStatics());
-        if (object == StaticObject.NULL) {
-            // create new Extension field object
-            synchronized (extensionField) {
-                object = extensionField.getHiddenObject(getStatics());
-                if (object == StaticObject.NULL) {
-                    object = new ExtensionFieldObject();
-                    extensionField.setHiddenObject(getStatics(), object);
-                }
-            }
-        }
-        return (ExtensionFieldObject) object;
-    }
-
     /**
      * This getter must only be used by {@link ClassHierarchyOracle}, which is ensured by
      * {@code assumptionAccessor}. The assumption is stored in ObjectKlass for easy mapping between

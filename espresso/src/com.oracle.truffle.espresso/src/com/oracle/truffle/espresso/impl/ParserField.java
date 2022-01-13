@@ -34,7 +34,6 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import java.lang.reflect.Modifier;
 
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FINALIZER;
-import static com.oracle.truffle.espresso.classfile.Constants.FIELD_REDEFINE_ADDED;
 
 public final class ParserField {
 
@@ -80,10 +79,6 @@ public final class ParserField {
 
     public boolean isHidden() {
         return (flags & HIDDEN) != 0;
-    }
-
-    public boolean isRedefineAdded() {
-        return (flags & FIELD_REDEFINE_ADDED) != 0;
     }
 
     public boolean isStatic() {

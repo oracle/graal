@@ -221,15 +221,9 @@ public final class ClassRedefinition {
                 case CLASS_NAME_CHANGED:
                 case ADD_METHOD:
                 case REMOVE_METHOD:
+                case SCHEMA_CHANGE:
                     doRedefineClass(packet, invalidatedClasses, redefinedClasses);
                     return 0;
-                case SCHEMA_CHANGE:
-                    if (context.arbitraryChangesSupported()) {
-                        doRedefineClass(packet, invalidatedClasses, redefinedClasses);
-                        return 0;
-                    } else {
-                        return ErrorCodes.SCHEMA_CHANGE_NOT_IMPLEMENTED;
-                    }
                 case NEW_CLASS:
                     ClassInfo classInfo = packet.info;
 

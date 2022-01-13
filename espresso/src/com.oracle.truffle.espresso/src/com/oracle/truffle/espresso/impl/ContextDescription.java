@@ -29,11 +29,9 @@ public final class ContextDescription {
 
     final EspressoLanguage language;
     final JavaVersion javaVersion;
-    final boolean usesExtensionField;
 
-    public ContextDescription(EspressoLanguage language, JavaVersion javaVersion, boolean usesExtensionField) {
+    public ContextDescription(EspressoLanguage language, JavaVersion javaVersion) {
         this.language = language;
         this.javaVersion = javaVersion;
-        this.usesExtensionField = usesExtensionField;
     }
 }
