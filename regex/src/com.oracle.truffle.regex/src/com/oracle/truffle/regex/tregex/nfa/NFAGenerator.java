@@ -104,7 +104,7 @@ public final class NFAGenerator {
         this.transitionGBClearIndices = new TBitSet(ast.getNumberOfCaptureGroups() * 2);
         this.astTransitionCanonicalizer = new ASTTransitionCanonicalizer(ast, true, false);
         this.compilationBuffer = compilationBuffer;
-        dummyInitialState = new NFAState((short) stateID.inc(), StateSet.create(ast, ast.getWrappedRoot()), CodePointSet.getEmpty(), Collections.emptySet(), false, false);
+        dummyInitialState = new NFAState((short) stateID.inc(), StateSet.create(ast, ast.getWrappedRoot()), CodePointSet.getEmpty(), Collections.emptySet(), false, ast.getOptions().isMustAdvance());
         nfaStates.put(NFAStateID.of(dummyInitialState), dummyInitialState);
         anchoredFinalState = createFinalState(StateSet.create(ast, ast.getReachableDollars()), false);
         anchoredFinalState.setAnchoredFinalState();
