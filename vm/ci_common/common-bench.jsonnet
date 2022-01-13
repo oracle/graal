@@ -131,13 +131,13 @@ local vm_common = import '../ci_common/common.jsonnet';
 
   builds: [
     # We used to expand `${common_vm_linux}` here to work around some limitations in the version of pyhocon that we use in the CI
-    vm_common.ondemand_bench_vm_linux_amd64 + self.vm_bench_js_linux_amd64 + { environment+: { BENCH_SUITE: 'octane' },    name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-octane-linux'},
-    vm_common.ondemand_bench_vm_linux_amd64 + self.vm_bench_js_linux_amd64 + { environment+: { BENCH_SUITE: 'jetstream' }, name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-jetstream-linux'},
-    vm_common.ondemand_bench_vm_linux_amd64 + self.vm_bench_js_linux_amd64 + { environment+: { BENCH_SUITE: 'jetstream2'}, name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-jetstream2-linux'},
-    vm_common.ondemand_bench_vm_linux_amd64 + self.vm_bench_js_linux_amd64 + { environment+: { BENCH_SUITE: 'micro' },     name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-micro-linux'},
-    vm_common.ondemand_bench_vm_linux_amd64 + self.vm_bench_js_linux_amd64 + { environment+: { BENCH_SUITE: 'v8js' },      name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-v8js-linux'},
-    vm_common.ondemand_bench_vm_linux_amd64 + self.vm_bench_js_linux_amd64 + { environment+: { BENCH_SUITE: 'misc' },      name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-misc-linux'},
-    vm_common.ondemand_bench_vm_linux_amd64 + self.vm_bench_js_linux_amd64 + { environment+: { BENCH_SUITE: 'npm-regex' }, name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-npm-regex-linux'},
+    vm_common.bench_ondemand_vm_linux_amd64 + self.vm_bench_js_linux_amd64 + { environment+: { BENCH_SUITE: 'octane' },    name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-octane-linux'},
+    vm_common.bench_ondemand_vm_linux_amd64 + self.vm_bench_js_linux_amd64 + { environment+: { BENCH_SUITE: 'jetstream' }, name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-jetstream-linux'},
+    vm_common.bench_ondemand_vm_linux_amd64 + self.vm_bench_js_linux_amd64 + { environment+: { BENCH_SUITE: 'jetstream2'}, name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-jetstream2-linux'},
+    vm_common.bench_ondemand_vm_linux_amd64 + self.vm_bench_js_linux_amd64 + { environment+: { BENCH_SUITE: 'micro' },     name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-micro-linux'},
+    vm_common.bench_ondemand_vm_linux_amd64 + self.vm_bench_js_linux_amd64 + { environment+: { BENCH_SUITE: 'v8js' },      name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-v8js-linux'},
+    vm_common.bench_ondemand_vm_linux_amd64 + self.vm_bench_js_linux_amd64 + { environment+: { BENCH_SUITE: 'misc' },      name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-misc-linux'},
+    vm_common.bench_ondemand_vm_linux_amd64 + self.vm_bench_js_linux_amd64 + { environment+: { BENCH_SUITE: 'npm-regex' }, name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-npm-regex-linux'},
 
     vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_linux_interpreter     + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-linux'},
     vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_linux_compiler        + {name: 'daily-bench-vm-' + vm.vm_setup.short_name + '-polybench-compiler-linux'},

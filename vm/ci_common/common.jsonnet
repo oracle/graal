@@ -228,6 +228,11 @@ local devkits = common_json.devkits;
     targets+: ['bench', 'daily'],
   },
 
+  bench_ondemand_vm_linux_amd64: self.vm_linux_amd64 + {
+    capabilities+: ['no_frequency_scaling'],
+    targets+: ['ondemand', 'bench'],
+  },
+
   deploy_vm_linux_amd64: self.vm_linux_amd64 + {
     targets+: ['deploy', 'post-merge'],
   },
@@ -322,11 +327,6 @@ local devkits = common_json.devkits;
 
   ondemand_vm_darwin: self.vm_darwin + {
     targets+: ['ondemand'],
-  },
-
-  ondemand_bench_vm_linux_amd64: self.vm_linux_amd64 + {
-    capabilities+: ['no_frequency_scaling'],
-    targets+: ['ondemand', 'bench'],
   },
 
   mx_vm_cmd_suffix: ['--sources=sdk:GRAAL_SDK,truffle:TRUFFLE_API,compiler:GRAAL,substratevm:SVM', '--with-debuginfo', '--base-jdk-info=${BASE_JDK_NAME}:${BASE_JDK_VERSION}'],
