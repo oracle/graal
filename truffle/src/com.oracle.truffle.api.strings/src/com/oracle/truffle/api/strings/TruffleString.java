@@ -361,32 +361,32 @@ public final class TruffleString extends AbstractTruffleString {
 
         /* directly supported encodings */
         /**
-         * UTF_32LE. Directly supported if the current system is little-endian.
+         * UTF-32LE. Directly supported if the current system is little-endian.
          *
          * @since 22.1
          */
         UTF_32LE(littleEndian() ? 0 : 97, "UTF_32LE", littleEndian() ? 2 : 0),
         /**
-         * UTF_32BE. Directly supported if the current system is big-endian.
+         * UTF-32BE. Directly supported if the current system is big-endian.
          *
          * @since 22.1
          */
         UTF_32BE(littleEndian() ? 97 : 0, "UTF_32BE", littleEndian() ? 0 : 2),
         /**
-         * UTF_16LE. Directly supported if the current system is little-endian.
+         * UTF-16LE. Directly supported if the current system is little-endian.
          *
          * @since 22.1
          */
         UTF_16LE(littleEndian() ? 1 : 98, "UTF_16LE", littleEndian() ? 1 : 0),
         /**
-         * UTF_16BE. Directly supported if the current system is big-endian.
+         * UTF-16BE. Directly supported if the current system is big-endian.
          *
          * @since 22.1
          */
         UTF_16BE(littleEndian() ? 98 : 1, "UTF_16BE", littleEndian() ? 0 : 1),
         /**
-         * ISO_8859_1, also known as LATIN-1, which is equivalent to the ASCII + LATIN-1 Supplement
-         * Unicode block.
+         * ISO-8859-1, also known as LATIN-1, which is equivalent to US-ASCII + the LATIN-1
+         * Supplement Unicode block.
          *
          * @since 22.1
          */
@@ -398,17 +398,18 @@ public final class TruffleString extends AbstractTruffleString {
          */
         UTF_8(3, "UTF_8"),
         /**
-         * US-ASCII.
+         * US-ASCII, which maps only 7-bit characters.
          *
          * @since 22.1
          */
         US_ASCII(4, "US_ASCII"),
         /**
-         * Special "encoding" BYTES: This encoding is identical to US_ASCII, but treats all values
-         * outside the ascii range as valid codepoints as well. Caution: no codepoint mappings are
-         * defined for non-ascii values in this encoding, so {@link SwitchEncodingNode} will replace
-         * all of them with {@code '?'} when converting from or to BYTES! To preserve all bytes and
-         * "reinterpret" a BYTES string in another encoding, use {@link ForceEncodingNode}.
+         * Special "encoding" BYTES: This encoding is identical to US-ASCII, but treats all values
+         * outside the us-ascii range as valid codepoints as well. Caution: no codepoint mappings
+         * are defined for non-us-ascii values in this encoding, so {@link SwitchEncodingNode} will
+         * replace all of them with {@code '?'} when converting from or to BYTES! To preserve all
+         * bytes and "reinterpret" a BYTES string in another encoding, use
+         * {@link ForceEncodingNode}.
          *
          * @since 22.1
          */
@@ -423,13 +424,13 @@ public final class TruffleString extends AbstractTruffleString {
          */
         Big5(6, "Big5"),
         /**
-         * Big5_HKSCS.
+         * Big5-HKSCS.
          *
          * @since 22.1
          */
         Big5_HKSCS(7, "Big5_HKSCS"),
         /**
-         * Big5_UAO.
+         * Big5-UAO.
          *
          * @since 22.1
          */
@@ -477,37 +478,37 @@ public final class TruffleString extends AbstractTruffleString {
          */
         CP951(15, "CP951"),
         /**
-         * EUC_JIS_2004.
+         * EUC-JIS-2004.
          *
          * @since 22.1
          */
         EUC_JIS_2004(16, "EUC_JIS_2004"),
         /**
-         * EUC_JP.
+         * EUC-JP.
          *
          * @since 22.1
          */
         EUC_JP(17, "EUC_JP"),
         /**
-         * EUC_KR.
+         * EUC-KR.
          *
          * @since 22.1
          */
         EUC_KR(18, "EUC_KR"),
         /**
-         * EUC_TW.
+         * EUC-TW.
          *
          * @since 22.1
          */
         EUC_TW(19, "EUC_TW"),
         /**
-         * Emacs_Mule.
+         * Emacs-Mule.
          *
          * @since 22.1
          */
         Emacs_Mule(20, "Emacs_Mule"),
         /**
-         * EucJP_ms.
+         * EucJP-ms.
          *
          * @since 22.1
          */
@@ -627,97 +628,97 @@ public final class TruffleString extends AbstractTruffleString {
          */
         IBM869(40, "IBM869"),
         /**
-         * ISO_8859_10.
+         * ISO-8859-10.
          *
          * @since 22.1
          */
         ISO_8859_10(41, "ISO_8859_10"),
         /**
-         * ISO_8859_11.
+         * ISO-8859-11.
          *
          * @since 22.1
          */
         ISO_8859_11(42, "ISO_8859_11"),
         /**
-         * ISO_8859_13.
+         * ISO-8859-13.
          *
          * @since 22.1
          */
         ISO_8859_13(43, "ISO_8859_13"),
         /**
-         * ISO_8859_14.
+         * ISO-8859-14.
          *
          * @since 22.1
          */
         ISO_8859_14(44, "ISO_8859_14"),
         /**
-         * ISO_8859_15.
+         * ISO-8859-15.
          *
          * @since 22.1
          */
         ISO_8859_15(45, "ISO_8859_15"),
         /**
-         * ISO_8859_16.
+         * ISO-8859-16.
          *
          * @since 22.1
          */
         ISO_8859_16(46, "ISO_8859_16"),
         /**
-         * ISO_8859_2.
+         * ISO-8859-2.
          *
          * @since 22.1
          */
         ISO_8859_2(47, "ISO_8859_2"),
         /**
-         * ISO_8859_3.
+         * ISO-8859-3.
          *
          * @since 22.1
          */
         ISO_8859_3(48, "ISO_8859_3"),
         /**
-         * ISO_8859_4.
+         * ISO-8859-4.
          *
          * @since 22.1
          */
         ISO_8859_4(49, "ISO_8859_4"),
         /**
-         * ISO_8859_5.
+         * ISO-8859-5.
          *
          * @since 22.1
          */
         ISO_8859_5(50, "ISO_8859_5"),
         /**
-         * ISO_8859_6.
+         * ISO-8859-6.
          *
          * @since 22.1
          */
         ISO_8859_6(51, "ISO_8859_6"),
         /**
-         * ISO_8859_7.
+         * ISO-8859-7.
          *
          * @since 22.1
          */
         ISO_8859_7(52, "ISO_8859_7"),
         /**
-         * ISO_8859_8.
+         * ISO-8859-8.
          *
          * @since 22.1
          */
         ISO_8859_8(53, "ISO_8859_8"),
         /**
-         * ISO_8859_9.
+         * ISO-8859-9.
          *
          * @since 22.1
          */
         ISO_8859_9(54, "ISO_8859_9"),
         /**
-         * KOI8_R.
+         * KOI8-R.
          *
          * @since 22.1
          */
         KOI8_R(55, "KOI8_R"),
         /**
-         * KOI8_U.
+         * KOI8-U.
          *
          * @since 22.1
          */
@@ -789,133 +790,133 @@ public final class TruffleString extends AbstractTruffleString {
          */
         MacUkraine(67, "MacUkraine"),
         /**
-         * SJIS_DoCoMo.
+         * SJIS-DoCoMo.
          *
          * @since 22.1
          */
         SJIS_DoCoMo(68, "SJIS_DoCoMo"),
         /**
-         * SJIS_KDDI.
+         * SJIS-KDDI.
          *
          * @since 22.1
          */
         SJIS_KDDI(69, "SJIS_KDDI"),
         /**
-         * SJIS_SoftBank.
+         * SJIS-SoftBank.
          *
          * @since 22.1
          */
         SJIS_SoftBank(70, "SJIS_SoftBank"),
         /**
-         * Shift_JIS.
+         * Shift-JIS.
          *
          * @since 22.1
          */
         Shift_JIS(71, "Shift_JIS"),
         /**
-         * Stateless_ISO_2022_JP.
+         * Stateless-ISO-2022-JP.
          *
          * @since 22.1
          */
         Stateless_ISO_2022_JP(72, "Stateless_ISO_2022_JP"),
         /**
-         * Stateless_ISO_2022_JP_KDDI.
+         * Stateless-ISO-2022-JP-KDDI.
          *
          * @since 22.1
          */
         Stateless_ISO_2022_JP_KDDI(73, "Stateless_ISO_2022_JP_KDDI"),
         /**
-         * TIS_620.
+         * TIS-620.
          *
          * @since 22.1
          */
         TIS_620(74, "TIS_620"),
         /**
-         * UTF8_DoCoMo.
+         * UTF8-DoCoMo.
          *
          * @since 22.1
          */
         UTF8_DoCoMo(75, "UTF8_DoCoMo"),
         /**
-         * UTF8_KDDI.
+         * UTF8-KDDI.
          *
          * @since 22.1
          */
         UTF8_KDDI(76, "UTF8_KDDI"),
         /**
-         * UTF8_MAC.
+         * UTF8-MAC.
          *
          * @since 22.1
          */
         UTF8_MAC(77, "UTF8_MAC"),
         /**
-         * UTF8_SoftBank.
+         * UTF8-SoftBank.
          *
          * @since 22.1
          */
         UTF8_SoftBank(78, "UTF8_SoftBank"),
         /**
-         * Windows_1250.
+         * Windows-1250.
          *
          * @since 22.1
          */
         Windows_1250(79, "Windows_1250"),
         /**
-         * Windows_1251.
+         * Windows-1251.
          *
          * @since 22.1
          */
         Windows_1251(80, "Windows_1251"),
         /**
-         * Windows_1252.
+         * Windows-1252.
          *
          * @since 22.1
          */
         Windows_1252(81, "Windows_1252"),
         /**
-         * Windows_1253.
+         * Windows-1253.
          *
          * @since 22.1
          */
         Windows_1253(82, "Windows_1253"),
         /**
-         * Windows_1254.
+         * Windows-1254.
          *
          * @since 22.1
          */
         Windows_1254(83, "Windows_1254"),
         /**
-         * Windows_1255.
+         * Windows-1255.
          *
          * @since 22.1
          */
         Windows_1255(84, "Windows_1255"),
         /**
-         * Windows_1256.
+         * Windows-1256.
          *
          * @since 22.1
          */
         Windows_1256(85, "Windows_1256"),
         /**
-         * Windows_1257.
+         * Windows-1257.
          *
          * @since 22.1
          */
         Windows_1257(86, "Windows_1257"),
         /**
-         * Windows_1258.
+         * Windows-1258.
          *
          * @since 22.1
          */
         Windows_1258(87, "Windows_1258"),
         /**
-         * Windows_31J.
+         * Windows-31J.
          *
          * @since 22.1
          */
         Windows_31J(88, "Windows_31J"),
         /**
-         * Windows_874.
+         * Windows-874.
          *
          * @since 22.1
          */
@@ -940,25 +941,25 @@ public final class TruffleString extends AbstractTruffleString {
          */
         IBM037(92, "IBM037"),
         /**
-         * ISO_2022_JP.
+         * ISO-2022-JP.
          *
          * @since 22.1
          */
         ISO_2022_JP(93, "ISO_2022_JP"),
         /**
-         * ISO_2022_JP_2.
+         * ISO-2022-JP-2.
          *
          * @since 22.1
          */
         ISO_2022_JP_2(94, "ISO_2022_JP_2"),
         /**
-         * ISO_2022_JP_KDDI.
+         * ISO-2022-JP-KDDI.
          *
          * @since 22.1
          */
         ISO_2022_JP_KDDI(95, "ISO_2022_JP_KDDI"),
         /**
-         * UTF_7.
+         * UTF-7.
          *
          * @since 22.1
          */
@@ -1168,8 +1169,8 @@ public final class TruffleString extends AbstractTruffleString {
         VALID,
 
         /**
-         * This string is not encoded correctly ({@link IsValidNode} returns {@code false}), and may
-         * contain any valid or invalid codepoint.
+         * This string is not encoded correctly ({@link IsValidNode} returns {@code false}), and
+         * contains at least one invalid codepoint.
          *
          * @since 22.1
          */
@@ -1239,7 +1240,7 @@ public final class TruffleString extends AbstractTruffleString {
      * other, in the following way:
      * <p>
      * Given a parameter {@link TruffleString} {@code a} and {@link WithMask} {@code b}, region
-     * equality will be checked according as shown in this exemplary method:
+     * equality will be checked as shown in this exemplary method:
      *
      * <pre>
      * {@code
@@ -1467,7 +1468,7 @@ public final class TruffleString extends AbstractTruffleString {
     }
 
     /**
-     * Node to create a new {@link TruffleString} from a codepoint.
+     * Node to create a new {@link TruffleString} from a single codepoint.
      *
      * @since 22.1
      */
@@ -1619,7 +1620,8 @@ public final class TruffleString extends AbstractTruffleString {
         /**
          * Creates a 10's complement string from the given long value, using ASCII digits (0x30 -
          * 0x39). This operation does not support encodings that are incompatible with the ASCII
-         * character set.
+         * character set. If {@code lazy} is true, the string representation of the number is
+         * computed lazily the first time it is needed.
          *
          * @since 22.1
          */
@@ -2076,23 +2078,26 @@ public final class TruffleString extends AbstractTruffleString {
         /**
          * Create a new {@link TruffleString} from an interop object representing a native pointer (
          * {@code isPointer(pointerObject)} must return {@code true}). The pointer is immediately
-         * unboxed with ({@code asPointer(pointerObject)}) and saved until the end of the string's
-         * lifetime, i.e. {@link TruffleString} assumes that the pointer value does not change. The
-         * buffer content is assumed to be encoded in the given encoding already. If {@code copy} is
-         * {@code false}, the native buffer is used directly as the new string's backing buffer.
-         * Caution: {@link TruffleString} assumes the buffer to be immutable, do not modify the
-         * buffer after passing it to this operation!
+         * unboxed with ({@code asPointer(pointerObject)}) and saved in the {@link TruffleString}
+         * instance, i.e. {@link TruffleString} assumes that the pointer value does not change. The
+         * pointer's content is assumed to be encoded in the given encoding already. If {@code copy}
+         * is {@code false}, the native pointer is used directly as the new string's backing
+         * storage. Caution: {@link TruffleString} assumes the pointer's content to be immutable, do
+         * not modify the pointer's content after passing it to this operation!
          *
          * <p>
          * <b>WARNING:</b> {@link TruffleString} cannot reason about the lifetime of the native
-         * buffer, so it is up to the user to <b>make sure that the buffer is alive as long the
-         * resulting {@link TruffleString} is in use</b> (if {@code copy} is {@code false}). In
-         * order to be able to use the string past the native buffer's life time, convert it to a
-         * managed string via {@link AsManagedNode} <b>before the native buffer is freed</b>.
+         * pointer, so it is up to the user to <b>make sure that the native pointer is valid to
+         * access and not freed as long the {@code pointerObject} is alive</b> (if {@code copy} is
+         * {@code false}). To help with this the TruffleString keeps a reference to the given
+         * {@code pointerObject}, so the {@code pointerObject} is kept alive at least as long as the
+         * TruffleString is used. In order to be able to use the string past the native pointer's
+         * life time, convert it to a managed string via {@link AsManagedNode} <b>before the native
+         * pointer is freed</b>.
          * </p>
          * <p>
-         * If {@code copy} is {@code true}, the buffer's contents are copied to a Java byte array,
-         * and the buffer can be freed safely after the operation completes.
+         * If {@code copy} is {@code true}, the pointer's contents are copied to a Java byte array,
+         * and the pointer can be freed safely after the operation completes.
          * </p>
          * This operation requires native access permissions
          * ({@code TruffleLanguage.Env#isNativeAccessAllowed()}).
