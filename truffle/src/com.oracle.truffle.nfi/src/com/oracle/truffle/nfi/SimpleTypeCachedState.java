@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.nfi;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateAOT;
@@ -51,6 +52,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.nfi.NFIType.TypeCachedState;
 import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.InjectedFactory;
 import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.NopConvertFactory;
@@ -63,6 +65,7 @@ import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.ToInt16Factory;
 import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.ToInt32Factory;
 import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.ToInt64Factory;
 import com.oracle.truffle.nfi.SimpleTypeCachedStateFactory.ToInt8Factory;
+import com.oracle.truffle.nfi.backend.spi.BackendNativePointerLibrary;
 import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 
 final class SimpleTypeCachedState {
@@ -181,8 +184,14 @@ final class SimpleTypeCachedState {
         }
 
         @Specialization(guards = "arg != null")
-        Object doObject(@SuppressWarnings("unused") NFIType type, Object arg) {
-            return arg;
+        Object doObject(@SuppressWarnings("unused") NFIType type, Object arg,
+                        @CachedLibrary(limit = "1") BackendNativePointerLibrary library,
+                        @Cached("createBinaryProfile()") ConditionProfile isPointerProfile) {
+            try {
+                return isPointerProfile.profile(library.isPointer(arg)) ? NFIPointer.create(library.asPointer(arg)) : arg;
+            } catch (UnsupportedMessageException e) {
+                throw CompilerDirectives.shouldNotReachHere();
+            }
         }
     }
 
