@@ -62,6 +62,10 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
         for (Thread activeThread : activeThreads) {
             activeThread.interrupt();
         }
+        // close the connection to the debugger
+        if (connection != null) {
+            connection.close();
+        }
         // wait for threads to fully stop
         boolean stillRunning = true;
         while (stillRunning) {
@@ -87,11 +91,6 @@ public final class JDWPInstrument extends TruffleInstrument implements Runnable 
 
         // resume all threads
         controller.resumeAll(true);
-
-        // close the connection to the debugger
-        if (connection != null) {
-            connection.close();
-        }
 
         if (prepareForReconnect) {
             // replace the controller instance

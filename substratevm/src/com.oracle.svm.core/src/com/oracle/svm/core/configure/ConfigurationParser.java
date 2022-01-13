@@ -100,9 +100,7 @@ public abstract class ConfigurationParser {
         if (strictConfiguration) {
             throw new JSONParserException(message);
         } else {
-            // Checkstyle: stop
             System.err.println("Warning: " + message);
-            // Checkstyle: resume
         }
     }
 

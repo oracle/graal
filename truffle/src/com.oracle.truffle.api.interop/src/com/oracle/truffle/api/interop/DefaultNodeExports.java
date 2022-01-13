@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,23 +62,25 @@ import com.oracle.truffle.api.source.SourceSection;
 @SuppressWarnings("static-method")
 final class DefaultNodeExports {
 
+    @TruffleBoundary
     @ExportMessage
     @SuppressWarnings("unused")
     static boolean hasScope(Node node, Frame frame) {
         RootNode root = node.getRootNode();
         TruffleLanguage<?> language = InteropAccessor.NODES.getLanguage(root);
-        return language != null;
+        return language != null && (node == root || InteropAccessor.ACCESSOR.instrumentSupport().isInstrumentable(node));
     }
 
+    @TruffleBoundary
     @ExportMessage
     @SuppressWarnings({"unchecked", "unused"})
     static Object getScope(Node node, Frame frame, boolean nodeEnter) throws UnsupportedMessageException {
         RootNode root = node.getRootNode();
         TruffleLanguage<?> language = InteropAccessor.NODES.getLanguage(root);
-        if (language == null) {
-            throw UnsupportedMessageException.create();
+        if (language != null && (node == root || InteropAccessor.ACCESSOR.instrumentSupport().isInstrumentable(node))) {
+            return createDefaultScope(root, frame, (Class<? extends TruffleLanguage<?>>) language.getClass());
         }
-        return createDefaultScope(root, frame, (Class<? extends TruffleLanguage<?>>) language.getClass());
+        throw UnsupportedMessageException.create();
     }
 
     private static boolean isInternal(Object identifier) {

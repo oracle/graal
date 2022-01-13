@@ -24,11 +24,6 @@
  */
 package com.oracle.svm.hosted.jdk;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-
-import java.util.Optional;
-
-import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -36,14 +31,9 @@ import org.graalvm.nativeimage.hosted.Feature;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 
-import jdk.vm.ci.services.Services;
-
 @Platforms(Platform.WINDOWS.class)
 @AutomaticFeature
 public class JNIRegistrationAWTSupport implements Feature {
-
-    private static final int JDK_UPDATE = GraalServices.getJavaUpdateVersion();
-    private static final boolean IS_OPENJDK = Optional.ofNullable(Services.getSavedProperties().get("java.vm.name")).orElse("").startsWith("OpenJDK");
 
     @Override
     public void beforeImageWrite(BeforeImageWriteAccess access) {
@@ -85,38 +75,16 @@ public class JNIRegistrationAWTSupport implements Feature {
                 return linkerInvocation;
             });
         }
-        if (jniRegistrationSupport.isRegisteredLibrary("dcpr") && JavaVersionUtil.JAVA_SPEC == 8) {
-            jniRegistrationSupport.addJavaShimExports(
-                            "JNU_ThrowClassNotFoundException");
-        }
-        // harfbuzz became a separate library in OpenJDK 16/11.0.10 (JDK-8249821) and then went back
-        // to be included in fontmanager library in OpenJDK 17/11.0.13 (or 11.0.12 for OracleJDK).
-        // See JDK-8255790.
-        int jdk11HbUpdateBound = IS_OPENJDK ? 12 : 11;
-        if (jniRegistrationSupport.isRegisteredLibrary("fontmanager") &&
-                        ((JavaVersionUtil.JAVA_SPEC == 11 && JDK_UPDATE >= 10 && JDK_UPDATE <= jdk11HbUpdateBound) || JavaVersionUtil.JAVA_SPEC == 16)) {
-            /*
-             * Dependency on `harfbuzz` may not be expressed in Java, so we register it manually
-             * here just in case.
-             */
-            jniRegistrationSupport.registerLibrary("harfbuzz");
-        }
-        if (jniRegistrationSupport.isRegisteredLibrary("javaaccessbridge") && JavaVersionUtil.JAVA_SPEC > 8) {
+        if (jniRegistrationSupport.isRegisteredLibrary("javaaccessbridge")) {
             /* Dependency on `jawt` is not expressed in Java, so we register it manually here. */
             jniRegistrationSupport.registerLibrary("jawt");
         }
-        if (jniRegistrationSupport.isRegisteredLibrary(JavaVersionUtil.JAVA_SPEC > 8 ? "javajpeg" : "jpeg")) {
+        if (jniRegistrationSupport.isRegisteredLibrary("javajpeg")) {
             jniRegistrationSupport.addJavaShimExports(
                             "JNU_GetEnv",
                             "JNU_ThrowByName",
                             "JNU_ThrowNullPointerException",
                             "jio_snprintf");
-        }
-        if (jniRegistrationSupport.isRegisteredLibrary("jpeg") && JavaVersionUtil.JAVA_SPEC == 8) {
-            jniRegistrationSupport.addJavaShimExports(
-                            "JNU_CallMethodByName",
-                            "JNU_CallStaticMethodByName",
-                            "JNU_NewObjectByName");
         }
     }
 }

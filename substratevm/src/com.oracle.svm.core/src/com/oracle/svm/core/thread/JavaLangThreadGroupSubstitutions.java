@@ -107,6 +107,11 @@ class ThreadGroupIdAccessor {
 @Platforms(Platform.HOSTED_ONLY.class)
 class ThreadIdRecomputation implements RecomputeFieldValue.CustomFieldValueComputer {
     @Override
+    public RecomputeFieldValue.ValueAvailability valueAvailability() {
+        return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+    }
+
+    @Override
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
         Thread thread = (Thread) receiver;
         return JavaThreadsFeature.threadId(thread);
@@ -115,6 +120,11 @@ class ThreadIdRecomputation implements RecomputeFieldValue.CustomFieldValueCompu
 
 @Platforms(Platform.HOSTED_ONLY.class)
 class ThreadStatusRecomputation implements RecomputeFieldValue.CustomFieldValueComputer {
+    @Override
+    public RecomputeFieldValue.ValueAvailability valueAvailability() {
+        return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+    }
+
     @Override
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
         Thread thread = (Thread) receiver;
@@ -135,6 +145,11 @@ class ThreadStatusRecomputation implements RecomputeFieldValue.CustomFieldValueC
 @Platforms(Platform.HOSTED_ONLY.class)
 class ThreadGroupNUnstartedThreadsRecomputation implements RecomputeFieldValue.CustomFieldValueComputer {
     @Override
+    public RecomputeFieldValue.ValueAvailability valueAvailability() {
+        return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+    }
+
+    @Override
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
         ThreadGroup group = (ThreadGroup) receiver;
         int result = 0;
@@ -150,6 +165,11 @@ class ThreadGroupNUnstartedThreadsRecomputation implements RecomputeFieldValue.C
 
 @Platforms(Platform.HOSTED_ONLY.class)
 class ThreadGroupNThreadsRecomputation implements RecomputeFieldValue.CustomFieldValueComputer {
+    @Override
+    public RecomputeFieldValue.ValueAvailability valueAvailability() {
+        return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+    }
+
     @Override
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
         ThreadGroup group = (ThreadGroup) receiver;
@@ -167,6 +187,11 @@ class ThreadGroupNThreadsRecomputation implements RecomputeFieldValue.CustomFiel
 @Platforms(Platform.HOSTED_ONLY.class)
 class ThreadGroupThreadsRecomputation implements RecomputeFieldValue.CustomFieldValueComputer {
     @Override
+    public RecomputeFieldValue.ValueAvailability valueAvailability() {
+        return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+    }
+
+    @Override
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
         ThreadGroup group = (ThreadGroup) receiver;
 
@@ -183,6 +208,11 @@ class ThreadGroupThreadsRecomputation implements RecomputeFieldValue.CustomField
 @Platforms(Platform.HOSTED_ONLY.class)
 class ThreadGroupNGroupsRecomputation implements RecomputeFieldValue.CustomFieldValueComputer {
     @Override
+    public RecomputeFieldValue.ValueAvailability valueAvailability() {
+        return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+    }
+
+    @Override
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
         ThreadGroup group = (ThreadGroup) receiver;
         return JavaThreadsFeature.singleton().reachableThreadGroups.get(group).ngroups;
@@ -191,6 +221,11 @@ class ThreadGroupNGroupsRecomputation implements RecomputeFieldValue.CustomField
 
 @Platforms(Platform.HOSTED_ONLY.class)
 class ThreadGroupGroupsRecomputation implements RecomputeFieldValue.CustomFieldValueComputer {
+    @Override
+    public RecomputeFieldValue.ValueAvailability valueAvailability() {
+        return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+    }
+
     @Override
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
         ThreadGroup group = (ThreadGroup) receiver;

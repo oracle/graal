@@ -52,6 +52,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
  * @see InteropLibrary
  * @since 21.1.0
  */
+@SuppressWarnings("serial")
 public final class UnknownKeyException extends InteropException {
 
     private static final long serialVersionUID = 1857745390734085182L;

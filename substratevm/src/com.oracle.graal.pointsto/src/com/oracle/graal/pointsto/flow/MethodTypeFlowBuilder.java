@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.TypeReference;
@@ -133,13 +134,14 @@ import com.oracle.graal.pointsto.typestate.TypeState;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.common.JVMCIError;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
 public class MethodTypeFlowBuilder {
 
     protected final PointsToAnalysis bb;
     protected final MethodTypeFlow methodFlow;
-    protected final AnalysisMethod method;
+    protected final PointsToAnalysisMethod method;
     protected StructuredGraph graph;
     private NodeBitMap processedNodes;
     private Map<PhiNode, TypeFlowBuilder<?>> loopPhiFlows;
@@ -156,7 +158,7 @@ public class MethodTypeFlowBuilder {
     public MethodTypeFlowBuilder(PointsToAnalysis bb, StructuredGraph graph) {
         this.bb = bb;
         this.graph = graph;
-        this.method = (AnalysisMethod) graph.method();
+        this.method = (PointsToAnalysisMethod) graph.method();
         this.methodFlow = method.getTypeFlow();
         this.typeFlowGraphBuilder = null;
     }
@@ -315,12 +317,13 @@ public class MethodTypeFlowBuilder {
     }
 
     private void registerEmbeddedRoot(ConstantNode cn) {
-        if (bb.scanningPolicy().trackConstant(bb, cn.asJavaConstant())) {
+        JavaConstant root = cn.asJavaConstant();
+        if (bb.scanningPolicy().trackConstant(bb, root)) {
             BytecodePosition position = cn.getNodeSourcePosition();
             if (position == null) {
                 position = new BytecodePosition(null, method, 0);
             }
-            bb.getUniverse().registerEmbeddedRoot(cn.asJavaConstant(), position);
+            bb.getUniverse().registerEmbeddedRoot(root, position);
         }
     }
 
@@ -691,7 +694,7 @@ public class MethodTypeFlowBuilder {
                      * An InstanceOf with negative BCI is not useful. This can happen for example
                      * for instanceof bytecodes for exception unwind. However, the filtering below
                      * is still useful for other further operations in the exception handler.
-                     * 
+                     *
                      * When strengthenGraalGraphs is true, then there is never a need for an
                      * InstanceOfTypeFlow. The information is taken from the FilterTypeFlow instead,
                      * i.e., when the filtered type flow of either the true or false successor is
@@ -852,7 +855,7 @@ public class MethodTypeFlowBuilder {
                 /*
                  * Without precise type information the dynamic new array node has to generate a
                  * heap object for each instantiated array type.
-                 * 
+                 *
                  * The node can allocate subclasses of Object[] but also primitive arrays. So there
                  * is no better type than java.lang.Object that we can use.
                  */
@@ -1171,7 +1174,7 @@ public class MethodTypeFlowBuilder {
                                     invoke.stateAfter(), invoke.stateAfter().outerFrameState());
                     MethodCallTargetNode target = (MethodCallTargetNode) invoke.callTarget();
 
-                    processMethodInvocation(invoke.asFixedNode(), target.invokeKind(), invoke.bci(), (AnalysisMethod) target.targetMethod(), target.arguments());
+                    processMethodInvocation(invoke.asFixedNode(), target.invokeKind(), invoke.bci(), (PointsToAnalysisMethod) target.targetMethod(), target.arguments());
                 }
 
             } else if (n instanceof ObjectClone) {
@@ -1205,19 +1208,19 @@ public class MethodTypeFlowBuilder {
                  * Macro nodes can either be constant folded during compilation, or lowered back to
                  * invocations if constant folding is not possible. So the static analysis needs to
                  * treat them as possible invocations.
-                 * 
+                 *
                  * Note that some macro nodes, like for object cloning, are handled separately
                  * above.
                  */
                 MacroInvokable node = (MacroInvokable) n;
-                processMethodInvocation(n, node.getInvokeKind(), node.bci(), (AnalysisMethod) node.getTargetMethod(), node.getArguments());
+                processMethodInvocation(n, node.getInvokeKind(), node.bci(), (PointsToAnalysisMethod) node.getTargetMethod(), node.getArguments());
 
             } else {
                 delegateNodeProcessing(n, state);
             }
         }
 
-        private void processMethodInvocation(ValueNode invoke, InvokeKind invokeKind, int bci, AnalysisMethod targetMethod, NodeInputList<ValueNode> arguments) {
+        private void processMethodInvocation(ValueNode invoke, InvokeKind invokeKind, int bci, PointsToAnalysisMethod targetMethod, NodeInputList<ValueNode> arguments) {
             // check if the call is allowed
             AnalysisMethod callerMethod = methodFlow.getMethod();
             bb.isCallAllowed(bb, callerMethod, targetMethod, invoke.getNodeSourcePosition());
@@ -1358,13 +1361,13 @@ public class MethodTypeFlowBuilder {
          *
          * In the analysis this is used to model both {@link AtomicReadAndWriteNode}, i.e., an
          * atomic read-and-write operation like
-         * {@link sun.misc.Unsafe#getAndSetObject(Object, long, Object)}, and a
+         * {@code sun.misc.Unsafe#getAndSetObject(Object, long, Object)}, and a
          * {@link UnsafeCompareAndExchangeNode}, i.e., an atomic compare-and-swap operation like
          * jdk.internal.misc.Unsafe#compareAndExchangeObject(Object, long, Object, Object) where the
          * result is the current value of the memory location that was compared. The
          * jdk.internal.misc.Unsafe.compareAndExchangeObject(Object, long, Object, Object) operation
          * is similar to the
-         * {@link sun.misc.Unsafe#compareAndSwapObject(Object, long, Object, Object)} operation.
+         * {@code sun.misc.Unsafe#compareAndSwapObject(Object, long, Object, Object)} operation.
          * However, from the analysis stand point in both the "expected" value is ignored, but
          * Unsafe.compareAndExchangeObject() returns the previous value, therefore it is equivalent
          * to the model for Unsafe.getAndSetObject().

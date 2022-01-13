@@ -56,7 +56,7 @@ public class SubstrateGCOptions {
     public static final RuntimeOptionKey<Boolean> PrintGC = new GCRuntimeOptionKey<>(false);
 
     @Option(help = "The minimum heap size at run-time, in bytes.", type = OptionType.User)//
-    public static final RuntimeOptionKey<Long> MinHeapSize = new ImmutableGCRuntimeOptionKey<Long>(0L) {
+    public static final RuntimeOptionKey<Long> MinHeapSize = new ImmutableGCRuntimeOptionKey<>(0L) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
             if (!SubstrateUtil.HOSTED) {
@@ -67,7 +67,7 @@ public class SubstrateGCOptions {
     };
 
     @Option(help = "The maximum heap size at run-time, in bytes.", type = OptionType.User)//
-    public static final RuntimeOptionKey<Long> MaxHeapSize = new ImmutableGCRuntimeOptionKey<Long>(0L) {
+    public static final RuntimeOptionKey<Long> MaxHeapSize = new ImmutableGCRuntimeOptionKey<>(0L) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
             if (!SubstrateUtil.HOSTED) {
@@ -78,7 +78,7 @@ public class SubstrateGCOptions {
     };
 
     @Option(help = "The maximum size of the young generation at run-time, in bytes", type = OptionType.User)//
-    public static final RuntimeOptionKey<Long> MaxNewSize = new ImmutableGCRuntimeOptionKey<Long>(0L) {
+    public static final RuntimeOptionKey<Long> MaxNewSize = new ImmutableGCRuntimeOptionKey<>(0L) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
             if (!SubstrateUtil.HOSTED) {

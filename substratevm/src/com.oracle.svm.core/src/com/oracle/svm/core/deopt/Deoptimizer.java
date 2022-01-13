@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.deopt;
 
-// Checkstyle: allow reflection
-
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -751,7 +749,7 @@ public final class Deoptimizer {
     };
 
     public static void logRecentDeoptimizationEvents(Log log) {
-        log.string("Recent deoptimization events:").indent(true);
+        log.string("Recent deoptimization events (oldest first):").indent(true);
         recentDeoptimizationEvents.foreach(log, deoptEventsConsumer);
         log.indent(false);
     }

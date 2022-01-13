@@ -498,14 +498,17 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
             contextBuilder.logHandler(handler);
         }
 
-        switch (getExtension(config.path)) {
-            // Set Java class path before spawning context.
-            case "jar":
-                contextBuilder.option("java.Classpath", config.path);
-                break;
-            case "wasm":
-                contextBuilder.option("wasm.Builtins", "wasi_snapshot_preview1");
-                break;
+        String extension = getExtension(config.path);
+        if (extension != null) {
+            switch (extension) {
+                // Set Java class path before spawning context.
+                case "jar":
+                    contextBuilder.option("java.Classpath", config.path);
+                    break;
+                case "wasm":
+                    contextBuilder.option("wasm.Builtins", "wasi_snapshot_preview1");
+                    break;
+            }
         }
 
         try (Context context = contextBuilder.build()) {

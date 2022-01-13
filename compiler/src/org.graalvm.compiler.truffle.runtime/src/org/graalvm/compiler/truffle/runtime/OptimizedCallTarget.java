@@ -134,6 +134,7 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     /** Whether this call target was cloned, compiled or called. */
     @CompilationFinal protected volatile boolean initialized;
+    @CompilationFinal private volatile boolean loaded;
 
     /**
      * The call threshold is counted up for each real call until it reaches a
@@ -293,9 +294,9 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
     private volatile RootNode uninitializedRootNode;
 
     /**
-     * The speculation log to keep track of assumptions taken and failed for previous compialtions.
+     * The speculation log to keep track of assumptions taken and failed for previous compilations.
      */
-    private volatile SpeculationLog speculationLog;
+    protected volatile SpeculationLog speculationLog;
 
     /** Source target if this target was duplicated. */
     private final OptimizedCallTarget sourceCallTarget;
@@ -1628,6 +1629,15 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
 
     final void setNonTrivialNodeCount(int nonTrivialNodeCount) {
         this.cachedNonTrivialNodeCount = nonTrivialNodeCount;
+    }
+
+    final boolean isLoaded() {
+        return loaded;
+    }
+
+    final void setLoaded() {
+        CompilerAsserts.neverPartOfCompilation();
+        this.loaded = true;
     }
 
     public final boolean prepareForAOT() {

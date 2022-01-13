@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -79,6 +79,7 @@ import com.oracle.truffle.regex.tregex.nodes.dfa.DFAAbstractStateNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.DFACaptureGroupLazyTransition;
 import com.oracle.truffle.regex.tregex.nodes.dfa.DFACaptureGroupPartialTransition;
 import com.oracle.truffle.regex.tregex.nodes.dfa.DFACaptureGroupPartialTransition.IndexOperation;
+import com.oracle.truffle.regex.tregex.nodes.dfa.DFACaptureGroupPartialTransition.LastGroupUpdate;
 import com.oracle.truffle.regex.tregex.nodes.dfa.DFAFindInnerLiteralStateNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.DFAInitialStateNode;
 import com.oracle.truffle.regex.tregex.nodes.dfa.DFASimpleCG;
@@ -456,6 +457,9 @@ public final class DFAGenerator implements JsonConvertible {
     }
 
     private TransitionSet<NFA, NFAState, NFAStateTransition> createNFATransitionSet(NFAStateTransition t1, NFAStateTransition t2) {
+        if (t1 == t2) {
+            return createNFATransitionSet(t1);
+        }
         StateSet<NFA, NFAState> targetStateSet = StateSet.create(nfa, t1.getTarget(isForward()));
         targetStateSet.add(t2.getTarget(isForward()));
         return new TransitionSet<>(new NFAStateTransition[]{t1, t2}, targetStateSet);
@@ -719,7 +723,7 @@ public final class DFAGenerator implements JsonConvertible {
                 nfa.getReverseAnchoredEntry().setSource(literalFirstState);
                 nfa.getReverseUnAnchoredEntry().setSource(literalFirstState);
                 prefixMatcher = compilationReqest.createDFAExecutor(nfa, new TRegexDFAExecutorProperties(false, false, false, doSimpleCG, getOptions().isRegressionTestMode(),
-                                rootSeq.getTerms().get(literalStart - 1).getMinPath()), "innerLiteralPrefix");
+                                false, rootSeq.getTerms().get(literalStart - 1).getMinPath()), "innerLiteralPrefix");
                 prefixMatcher.setRoot(compilationReqest.getRoot());
                 prefixMatcher.getProperties().setSimpleCGMustCopy(false);
                 doSimpleCG = doSimpleCG && prefixMatcher.isSimpleCG();
@@ -1020,17 +1024,23 @@ public final class DFAGenerator implements JsonConvertible {
         GroupBoundaries groupBoundaries = transition.getGroupBoundaries();
         IndexOperation[] indexUpdates = DFACaptureGroupPartialTransition.EMPTY_INDEX_UPDATES;
         IndexOperation[] indexClears = DFACaptureGroupPartialTransition.EMPTY_INDEX_CLEARS;
+        LastGroupUpdate[] lastGroupUpdates = DFACaptureGroupPartialTransition.EMPTY_LAST_GROUP_UPDATES;
         if (groupBoundaries.hasIndexUpdates()) {
             indexUpdates = new IndexOperation[]{new IndexOperation(0, groupBoundaries.updatesToByteArray())};
         }
         if (groupBoundaries.hasIndexClears()) {
             indexClears = new IndexOperation[]{new IndexOperation(0, groupBoundaries.clearsToByteArray())};
         }
+        if (groupBoundaries.hasLastGroup()) {
+            lastGroupUpdates = new LastGroupUpdate[]{new LastGroupUpdate(0, groupBoundaries.getLastGroup())};
+        }
         DFACaptureGroupPartialTransition partialTransitionNode = DFACaptureGroupPartialTransition.create(this,
                         DFACaptureGroupPartialTransition.EMPTY_REORDER_SWAPS,
                         DFACaptureGroupPartialTransition.EMPTY_ARRAY_COPIES,
                         indexUpdates,
-                        indexClears, (byte) DFACaptureGroupPartialTransition.FINAL_STATE_RESULT_INDEX);
+                        indexClears,
+                        lastGroupUpdates,
+                        (byte) DFACaptureGroupPartialTransition.FINAL_STATE_RESULT_INDEX);
         if (debugMode()) {
             DFACaptureGroupTransitionBuilder.PartialTransitionDebugInfo debugInfo = new DFACaptureGroupTransitionBuilder.PartialTransitionDebugInfo(partialTransitionNode, 1);
             debugInfo.mapResultToNFATransition(0, transition);

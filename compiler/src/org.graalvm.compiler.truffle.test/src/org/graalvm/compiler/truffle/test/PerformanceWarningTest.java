@@ -431,9 +431,9 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
             Object[] args = frame.getArguments();
 
             if ((boolean) args[0]) {
-                frame.clear(0);
+                frame.setDouble(0, 5);
             } else {
-                frame.setInt(0, 0);
+                frame.setInt(0, 1);
             }
             // Expected Perf warn
             boundary();

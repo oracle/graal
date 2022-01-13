@@ -29,7 +29,7 @@
 
 #include <sys/resource.h>
 
-JNIEXPORT jlong JNICALL Java_com_oracle_svm_hosted_reporting_ProgressReporterCHelper_getPeakRSS0(void *env, void * ignored) {
+JNIEXPORT jlong JNICALL Java_com_oracle_svm_hosted_ProgressReporterCHelper_getPeakRSS0(void *env, void * ignored) {
     struct rusage rusage;
     if (getrusage(RUSAGE_SELF, &rusage) == 0) {
         return (size_t)rusage.ru_maxrss * 1024; /* (in kilobytes) */
@@ -44,7 +44,7 @@ JNIEXPORT jlong JNICALL Java_com_oracle_svm_hosted_reporting_ProgressReporterCHe
 #include <sys/resource.h>
 #include <mach/mach.h>
 
-JNIEXPORT jlong JNICALL Java_com_oracle_svm_hosted_reporting_ProgressReporterCHelper_getPeakRSS0(void *env, void * ignored) {
+JNIEXPORT jlong JNICALL Java_com_oracle_svm_hosted_ProgressReporterCHelper_getPeakRSS0(void *env, void * ignored) {
     struct mach_task_basic_info info;
     mach_msg_type_number_t count = MACH_TASK_BASIC_INFO_COUNT;
     if (task_info(mach_task_self(), MACH_TASK_BASIC_INFO, (task_info_t)&info, &count) == KERN_SUCCESS) {
@@ -59,7 +59,7 @@ JNIEXPORT jlong JNICALL Java_com_oracle_svm_hosted_reporting_ProgressReporterCHe
 #include <windows.h>
 #include <psapi.h>
 
-JNIEXPORT jlong JNICALL Java_com_oracle_svm_hosted_reporting_ProgressReporterCHelper_getPeakRSS0(void *env, void * ignored) {
+JNIEXPORT jlong JNICALL Java_com_oracle_svm_hosted_ProgressReporterCHelper_getPeakRSS0(void *env, void * ignored) {
     PROCESS_MEMORY_COUNTERS memCounter;
     if (GetProcessMemoryInfo(GetCurrentProcess(), &memCounter, sizeof memCounter)) {
         return (size_t)memCounter.PeakWorkingSetSize;

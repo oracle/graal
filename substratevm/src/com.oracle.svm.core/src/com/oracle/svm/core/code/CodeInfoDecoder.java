@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.code;
 
-// Checkstyle: allow reflection
-
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import org.graalvm.compiler.api.replacements.Fold;

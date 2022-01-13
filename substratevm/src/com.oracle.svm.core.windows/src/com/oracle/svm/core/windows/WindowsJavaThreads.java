@@ -168,7 +168,8 @@ class WindowsParkEvent extends ParkEvent {
 
     @Override
     protected void reset() {
-        SynchAPI.ResetEvent(eventHandle);
+        int status = SynchAPI.ResetEvent(eventHandle);
+        VMError.guarantee(status != 0, "ResetEvent failed");
     }
 
     @Override
@@ -201,7 +202,8 @@ class WindowsParkEvent extends ParkEvent {
 
     @Override
     protected void unpark() {
-        SynchAPI.SetEvent(eventHandle);
+        int status = SynchAPI.SetEvent(eventHandle);
+        VMError.guarantee(status != 0, "SetEvent failed");
     }
 }
 

@@ -30,7 +30,6 @@ import java.util.Map;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
 import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 
@@ -80,7 +79,7 @@ final class ExtensionFieldsMetadata {
         for (ParserField newField : fields) {
             int nextFieldSlot = classRedefinition.getNextAvailableFieldSlot();
             LinkedField.IdMode mode = LinkedKlassFieldLayout.getIdMode(holder.linkedKlass.getParserKlass());
-            LinkedField linkedField = new LinkedField(newField, nextFieldSlot, mode, Constants.FIELD_REDEFINE_ADDED);
+            LinkedField linkedField = new LinkedField(newField, nextFieldSlot, mode);
             Field field = new RedefineAddedField(holder, linkedField, pool, false);
             if (field.isStatic()) {
                 // init constant value if any

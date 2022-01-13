@@ -115,6 +115,11 @@ public final class DebugContext implements AutoCloseable {
      */
     boolean metricsEnabled;
 
+    /**
+     * Determines whether debug context was closed.
+     */
+    boolean closed;
+
     DebugConfigImpl currentConfig;
     ScopeImpl currentScope;
     CloseableCounter currentTimer;
@@ -140,7 +145,11 @@ public final class DebugContext implements AutoCloseable {
     private long[] metricValues;
 
     public static PrintStream getDefaultLogStream() {
-        return TTY.out;
+        // The PrintStream in the TTY#out field cannot be used because it does not respect current
+        // thread TTY.Filter. We have to use TTY#out(), which returns a LogStream that respects
+        // current thread TTY.filter. Truffle uses TTY.Filter to redirect Graal logging into engine
+        // logger.
+        return TTY.out().out();
     }
 
     /**
@@ -980,7 +989,7 @@ public final class DebugContext implements AutoCloseable {
         if (immutable.scopesEnabled) {
             if (currentScope == null) {
                 // In an active DisabledScope
-                return true;
+                return !closed;
             }
             return !currentScope.isTopLevel();
         } else {
@@ -2203,6 +2212,10 @@ public final class DebugContext implements AutoCloseable {
             }
         }
         prototypeOutput = null;
+        lastClosedScope = null;
+        currentScope = null;
+        currentConfig = null;
+        closed = true;
     }
 
     public void closeDumpHandlers(boolean ignoreErrors) {

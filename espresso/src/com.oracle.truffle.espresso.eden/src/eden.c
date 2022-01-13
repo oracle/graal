@@ -46,52 +46,36 @@ static int eden_debug = 0;
 #define LOG(fmt, ...) do { if (eden_debug) fprintf(stderr, "[eden #%ld] " fmt, namespace_id, ##__VA_ARGS__); } while (0)
 #define FATAL(fmt, ...) do { fprintf(stderr, "[eden #%ld] FATAL ERROR " fmt, namespace_id, ##__VA_ARGS__); exit(-1); } while (0)
 
-static void *get_libc() {
-    static void *libc = NULL;
-    if (libc == NULL) {
-        LOG("__libc_dlopen_mode(libc.so.6, RTLD_LAZY)\n");
-        libc = __libc_dlopen_mode("libc.so.6", RTLD_LAZY);
-    }
-    LOG("get_libc(libc.so.6) => %p\n", libc);
-    return libc;
-}
-
-static void *get_libdl() {
-    static void *libdl = NULL;
-    if (libdl == NULL) {
-        LOG("__libc_dlopen_mode(libdl.so.2, RTLD_LAZY)\n");        
-        libdl = __libc_dlopen_mode("libdl.so.2", RTLD_LAZY);
-    }
-    LOG("get_libdl(libdl.so.2) => %p\n", libdl);
-    return libdl;
-}
+static int glibc_major = 0;
+static int glibc_minor = 0;
 
 static void *real_dlopen(const char *filename, int flags) {
     LOG("real_dlopen(%s, %d)\n", filename, flags);
     static void *(*the_real_dlopen)(const char *, int) = NULL;
     if (the_real_dlopen == NULL) {
-        LOG("__libc_dlsym(get_libdl(), dlopen)\n");
-        the_real_dlopen = __libc_dlsym(get_libdl(), "dlopen");
-        LOG("__libc_dlsym(get_libdl(), dlopen) => %p\n", the_real_dlopen);
+        LOG("dlsym(RTLD_NEXT, dlopen)\n");
+        the_real_dlopen = dlsym(RTLD_NEXT, "dlopen");
+        LOG("dlsym(RTLD_NEXT, dlopen) => %p\n", the_real_dlopen);
     }
     void *result = the_real_dlopen(filename, flags);
     LOG("real_dlopen(%s, %d) => %p\n", filename, flags, result);
     return result;
 }
 
+static void *get_libc() {
+    static void *libc = NULL;
+    if (libc == NULL) {
+        LOG("__libc_dlopen_mode(libc.so.6, RTLD_LAZY)\n");
+        libc = real_dlopen("libc.so.6", RTLD_LAZY);
+    }
+    LOG("get_libc(libc.so.6) => %p\n", libc);
+    return libc;
+}
+
 static void *get_libeden() {
     static void *libeden = NULL;
     if (libeden == NULL) {
-        int major = 0;
-        int minor = 0;
-        if (sscanf(gnu_get_libc_version(), "%d.%d", &major, &minor) != 2) {
-            FATAL("couldn't parse glibc version\n");
-        }
-        LOG("glibc version parsed as %d.%d\n", major, minor);
-        if (major != 2) {
-            FATAL("Incorrect glibc major version: %d.%d\n", major, minor);
-        }
-        if (minor < 17) { // glibc version < 2.17
+        if (glibc_minor < 17 || glibc_minor > 33) { // glibc version < 2.17 or > 2.33
             LOG("real_dlopen(libeden.so, RTLD_LAZY)\n");
             libeden = real_dlopen("libeden.so", RTLD_LAZY);
         } else {
@@ -107,9 +91,9 @@ static void *real_dlmopen(Lmid_t lmid, const char *filename, int flags) {
     LOG("real_dlmopen(%ld, %s, %d)\n", lmid, filename, flags);
     static void *(*the_real_dlmopen)(Lmid_t, const char *, int) = NULL;
     if (the_real_dlmopen == NULL) {
-        LOG("__libc_dlsym(get_libdl(), dlmopen)\n");
-        the_real_dlmopen = __libc_dlsym(get_libdl(), "dlmopen");
-        LOG("__libc_dlsym(get_libdl(), dlmopen) => %p\n", the_real_dlmopen);
+        LOG("dlsym(RTLD_NEXT, dlmopen)\n");
+        the_real_dlmopen = dlsym(RTLD_NEXT, "dlmopen");
+        LOG("dlsym(RTLD_NEXT, dlmopen) => %p\n", the_real_dlmopen);
     }
     void *result = the_real_dlmopen(lmid, filename, flags);
     LOG("real_dlmopen(%ld, %s, %d) => %p\n", lmid, filename, flags, result);
@@ -120,25 +104,12 @@ static int real_dlclose(void *handle) {
     LOG("real_dlclose(%p)\n", handle);
     static int (*the_real_dlclose)(void *) = NULL;
     if (the_real_dlclose == NULL) {
-        LOG("__libc_dlsym(get_libdl(), dlclose)\n");
-        the_real_dlclose = __libc_dlsym(get_libdl(), "dlclose");
-        LOG("__libc_dlsym(get_libdl(), dlclose) => %p\n", the_real_dlclose);
+        LOG("dlsym(RTLD_NEXT, dlclose)\n");
+        the_real_dlclose = dlsym(RTLD_NEXT, "dlclose");
+        LOG("dlsym(RTLD_NEXT, dlclose) => %p\n", the_real_dlclose);
     }
     int result = the_real_dlclose(handle);
     LOG("real_dlclose(%p) => %d\n", handle, result);
-    return result;
-}
-
-static void *real_dlsym(void *handle, const char *symbol) {
-    LOG("real_dlsym(%p, %s)\n", handle, symbol);
-    static void *(*the_real_dlsym)(void *, const char *) = NULL;
-    if (the_real_dlsym == NULL) {
-        LOG("__libc_dlsym(get_libdl(), dlsym)\n");
-        the_real_dlsym = __libc_dlsym(get_libdl(), "dlsym");
-        LOG("__libc_dlsym(get_libdl(), dlsym) => %p\n", the_real_dlsym);
-    }
-    void *result = the_real_dlsym(handle, symbol);
-    LOG("real_dlsym(%p, %s) => %p\n", handle, symbol, result);
     return result;
 }
 
@@ -193,20 +164,18 @@ int dlclose(void *handle) {
     return result;
 }
 
-void *dlsym(void *handle, const char *symbol) {
-    LOG("dlsym(%p, %s)\n", handle, symbol);
-    void *result = real_dlsym(handle, symbol);
-    LOG("dlsym(%p, %s) => %p\n", handle, symbol, result);
-    return result;
-}
-
 void eden_ctypeInit(void) {
     static void (*the_real__ctype_init)(void) = UNINITIALIZED;
     LOG("eden_ctypeInit() with __ctype_init = %p\n", the_real__ctype_init);
     if (the_real__ctype_init == UNINITIALIZED) {
-        // __libc_dlsym is used here instead of the hooked dlsym to avoid crashes on glibc 2.17.
-        LOG("__libc_dlsym(get_libc(), __ctype_init)\n");
-        the_real__ctype_init = __libc_dlsym(get_libc(), "__ctype_init");
+        if (glibc_minor < 34) {
+            // __libc_dlsym is used here instead of the hooked dlsym to avoid crashes on glibc 2.17.
+            LOG("__libc_dlsym(get_libc(), __ctype_init)\n");
+            the_real__ctype_init = __libc_dlsym(get_libc(), "__ctype_init");
+        } else {
+            LOG("dlsym(get_libc(), __ctype_init)\n");
+            the_real__ctype_init = dlsym(get_libc(), "__ctype_init");
+        }
     }
     // Older versions of glibc do not have __ctype_init since they do not use TLS.
     if (the_real__ctype_init != NULL) {
@@ -225,8 +194,14 @@ static __attribute__((constructor)) void initialize(void) {
     if (mode != NULL) {
         eden_debug = (strcmp("true", mode) == 0) || (strcmp("1", mode) == 0);
     }
-
     LOG("initialize() GNU libc version %s\n", gnu_get_libc_version());
+    if (sscanf(gnu_get_libc_version(), "%d.%d", &glibc_major, &glibc_minor) != 2) {
+        FATAL("couldn't parse glibc version\n");
+    }
+    LOG("glibc version parsed as %d.%d\n", glibc_major, glibc_minor);
+    if (glibc_major != 2) {
+        FATAL("Incorrect glibc major version: %d.%d\n", glibc_major, glibc_minor);
+    }
     if (dlinfo(get_libeden(), RTLD_DI_LMID, &namespace_id) != 0) {
         FATAL("initialize Error obtaining namespace (dlinfo): %s\n", dlerror());
     }

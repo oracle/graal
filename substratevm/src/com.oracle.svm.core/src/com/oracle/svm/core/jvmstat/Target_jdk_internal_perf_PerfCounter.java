@@ -32,7 +32,7 @@ import com.oracle.svm.core.annotate.TargetClass;
  * PerfCounter.lb). Accessing this buffer would result in a segfault, so we substitute all methods
  * that may access this buffer.
  */
-@TargetClass(classNameProvider = Package_jdk_internal_perf.class, className = "PerfCounter")
+@TargetClass(className = "jdk.internal.perf.PerfCounter")
 final class Target_jdk_internal_perf_PerfCounter {
     @Substitute
     @SuppressWarnings("static-method")

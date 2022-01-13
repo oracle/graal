@@ -31,8 +31,8 @@ import com.oracle.svm.core.heap.Heap;
  * Notifies the {@link Heap} implementation after the value of the option has changed.
  */
 public class GCRuntimeOptionKey<T> extends RuntimeOptionKey<T> {
-    public GCRuntimeOptionKey(T defaultValue) {
-        super(defaultValue);
+    public GCRuntimeOptionKey(T defaultValue, RuntimeOptionKeyFlag... flags) {
+        super(defaultValue, flags);
     }
 
     @Override

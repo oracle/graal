@@ -690,8 +690,14 @@ public final class ObjectKlass extends Klass {
     @Override
     public Field[] getDeclaredFields() {
         // Speculate that there are no hidden fields
-        Field[] declaredFields = Arrays.copyOf(staticFieldTable, staticFieldTable.length + fieldTable.length - localFieldTableIndex);
-        int insertionIndex = staticFieldTable.length;
+        Field[] declaredFields = new Field[staticFieldTable.length + fieldTable.length - localFieldTableIndex];
+        int insertionIndex = 0;
+        for (int i = 0; i < staticFieldTable.length; i++) {
+            Field f = staticFieldTable[i];
+            if (!f.isHidden() && !f.isRemoved()) {
+                declaredFields[insertionIndex++] = f;
+            }
+        }
         for (int i = localFieldTableIndex; i < fieldTable.length; i++) {
             Field f = fieldTable[i];
             if (!f.isHidden() && !f.isRemoved()) {
@@ -1455,22 +1461,6 @@ public final class ObjectKlass extends Klass {
         for (Method declaredMethod : getDeclaredMethods()) {
             declaredMethod.removedByRedefinition();
         }
-    }
-
-    public ExtensionFieldObject getStaticExtensionFieldObject() {
-        Field extensionField = staticFieldTable[staticFieldTable.length - 1];
-        Object object = extensionField.getHiddenObject(getStatics());
-        if (object == StaticObject.NULL) {
-            // create new Extension field object
-            synchronized (extensionField) {
-                object = extensionField.getHiddenObject(getStatics());
-                if (object == StaticObject.NULL) {
-                    object = new ExtensionFieldObject();
-                    extensionField.setHiddenObject(getStatics(), object);
-                }
-            }
-        }
-        return (ExtensionFieldObject) object;
     }
 
     /**

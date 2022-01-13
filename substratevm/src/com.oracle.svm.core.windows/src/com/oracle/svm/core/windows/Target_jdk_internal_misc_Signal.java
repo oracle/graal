@@ -38,14 +38,13 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.Jvm;
-import com.oracle.svm.core.jdk.Package_jdk_internal_misc;
 import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.windows.headers.WinBase;
 
-@TargetClass(classNameProvider = Package_jdk_internal_misc.class, className = "Signal")
+@TargetClass(className = "jdk.internal.misc.Signal")
 final class Target_jdk_internal_misc_Signal {
     // Checkstyle: stop
     @Alias @RecomputeFieldValue(kind = FromAlias)//

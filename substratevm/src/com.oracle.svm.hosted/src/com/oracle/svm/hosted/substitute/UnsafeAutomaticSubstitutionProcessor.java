@@ -172,16 +172,13 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             fieldGetMethod = originalMetaAccess.lookupJavaMethod(fieldGet);
             neverInlineSet.add(fieldGetMethod);
 
-            if (JavaVersionUtil.JAVA_SPEC > 8) {
-                /*
-                 * Various factory methods in VarHandle query the array base/index or field offsets.
-                 * There is no need to analyze these calls because VarHandle accesses are
-                 * intrinsified to simple array and field access nodes in
-                 * IntrinsifyMethodHandlesInvocationPlugin.
-                 */
-                for (Method method : loader.findClassOrFail("java.lang.invoke.VarHandles").getDeclaredMethods()) {
-                    neverInlineSet.add(originalMetaAccess.lookupJavaMethod(method));
-                }
+            /*
+             * Various factory methods in VarHandle query the array base/index or field offsets.
+             * There is no need to analyze these calls because VarHandle accesses are intrinsified
+             * to simple array and field access nodes in IntrinsifyMethodHandlesInvocationPlugin.
+             */
+            for (Method method : loader.findClassOrFail("java.lang.invoke.VarHandles").getDeclaredMethods()) {
+                neverInlineSet.add(originalMetaAccess.lookupJavaMethod(method));
             }
 
             Class<?> unsafeClass;
@@ -189,11 +186,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
 
             try {
                 sunMiscUnsafeClass = Class.forName("sun.misc.Unsafe");
-                if (JavaVersionUtil.JAVA_SPEC <= 8) {
-                    unsafeClass = sunMiscUnsafeClass;
-                } else {
-                    unsafeClass = Class.forName("jdk.internal.misc.Unsafe");
-                }
+                unsafeClass = Class.forName("jdk.internal.misc.Unsafe");
             } catch (ClassNotFoundException cnfe) {
                 throw VMError.shouldNotReachHere(cnfe);
             }
@@ -206,13 +199,10 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             noCheckedExceptionsSet.add(unsafeObjectFieldOffsetFieldMethod);
             neverInlineSet.add(unsafeObjectFieldOffsetFieldMethod);
 
-            if (JavaVersionUtil.JAVA_SPEC >= 11) {
-                /* JDK 11 and later have Unsafe.objectFieldOffset(Class, String). */
-                Method unsafeObjectClassStringOffset = unsafeClass.getMethod("objectFieldOffset", java.lang.Class.class, String.class);
-                unsafeObjectFieldOffsetClassStringMethod = originalMetaAccess.lookupJavaMethod(unsafeObjectClassStringOffset);
-                noCheckedExceptionsSet.add(unsafeObjectFieldOffsetClassStringMethod);
-                neverInlineSet.add(unsafeObjectFieldOffsetClassStringMethod);
-            }
+            Method unsafeObjectClassStringOffset = unsafeClass.getMethod("objectFieldOffset", java.lang.Class.class, String.class);
+            unsafeObjectFieldOffsetClassStringMethod = originalMetaAccess.lookupJavaMethod(unsafeObjectClassStringOffset);
+            noCheckedExceptionsSet.add(unsafeObjectFieldOffsetClassStringMethod);
+            neverInlineSet.add(unsafeObjectFieldOffsetClassStringMethod);
 
             if (JavaVersionUtil.JAVA_SPEC >= 17) {
                 /*

@@ -24,13 +24,6 @@
  */
 package com.oracle.svm.core.jdk;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.Delete;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
-
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
@@ -41,7 +34,12 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.WeakHashMap;
 
-@TargetClass(classNameProvider = Package_jdk_internal_loader.class, className = "URLClassPath")
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetClass;
+
+@TargetClass(className = "jdk.internal.loader.URLClassPath")
 @SuppressWarnings({"unused", "static-method"})
 final class Target_jdk_internal_loader_URLClassPath {
 
@@ -57,53 +55,13 @@ final class Target_jdk_internal_loader_URLClassPath {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = ArrayList.class)//
     private ArrayList<URL> path;
 
-    /*
-     * We are defensive and also handle private native methods by marking them as deleted. If they
-     * are reachable, the user is certainly doing something wrong. But we do not want to fail with a
-     * linking error.
-     */
-
-    @Delete
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private static native URL[] getLookupCacheURLs(ClassLoader loader);
-
-    @Delete
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private static native int[] getLookupCacheForClassLoader(ClassLoader loader, String name);
-
-    @Delete
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private static native boolean knownToNotExist0(ClassLoader loader, String className);
-
     @Substitute
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    boolean knownToNotExist(String className) {
-        return false;
-    }
-
-    @Substitute
-    @TargetElement(name = "getResource", onlyWith = JDK11OrLater.class)
-    public Target_jdk_internal_loader_Resource_JDK11OrLater getResourceJDK11OrLater(String name, boolean check) {
+    public Target_jdk_internal_loader_Resource getResource(String name, boolean check) {
         return ResourcesHelper.nameToResource(name);
     }
 
     @Substitute
-    @TargetElement(name = "getResources", onlyWith = JDK11OrLater.class)
-    public Enumeration<Target_jdk_internal_loader_Resource_JDK11OrLater> getResourcesJDK11OrLater(final String name,
-                    final boolean check) {
-        return ResourcesHelper.nameToResources(name);
-    }
-
-    @Substitute
-    @TargetElement(name = "getResource", onlyWith = JDK8OrEarlier.class)
-    public Target_sun_misc_Resource_JDK8OrEarlier getResourceJDK8OrEarlier(String name, boolean check) {
-        return ResourcesHelper.nameToResource(name);
-    }
-
-    @Substitute
-    @TargetElement(name = "getResources", onlyWith = JDK8OrEarlier.class)
-    public Enumeration<Target_sun_misc_Resource_JDK8OrEarlier> getResourcesJDK8OrEarlier(final String name,
-                    final boolean check) {
+    public Enumeration<Target_jdk_internal_loader_Resource> getResources(final String name, final boolean check) {
         return ResourcesHelper.nameToResources(name);
     }
 }

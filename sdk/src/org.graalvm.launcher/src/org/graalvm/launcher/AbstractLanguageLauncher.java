@@ -165,6 +165,10 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
         }
 
         launcher.launch(arguments);
+
+        // shut down the launcher - do this in favor of calling the JNI DestroyJavaVM API, which
+        // might hang waiting for daemon threads on SVM (GR-35345)
+        System.exit(0);
     }
 
     /**

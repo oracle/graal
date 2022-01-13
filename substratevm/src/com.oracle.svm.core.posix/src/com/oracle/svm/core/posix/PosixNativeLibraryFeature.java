@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.posix;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -59,9 +58,7 @@ class PosixNativeLibraryFeature implements Feature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        if (JavaVersionUtil.JAVA_SPEC >= 11) {
-            NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("extnet");
-        }
+        NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("extnet");
     }
 }
 
@@ -98,7 +95,6 @@ final class PosixNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
         if (Platform.includedIn(InternalPlatform.PLATFORM_JNI.class)) {
             try {
                 loadJavaLibrary();
-                loadZipLibrary();
                 loadNetLibrary();
                 /*
                  * The JDK uses posix_spawn on the Mac to launch executables. This requires a

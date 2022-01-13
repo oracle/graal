@@ -224,4 +224,12 @@ public abstract class Heap {
      * Notify the GC that the value of a GC-relevant option changed.
      */
     public abstract void optionValueChanged(RuntimeOptionKey<?> key);
+
+    /**
+     * Returns the number of bytes that were allocated by the given thread. The caller of this
+     * method must ensure that the given {@link IsolateThread} remains alive during the execution of
+     * this method.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public abstract long getThreadAllocatedMemory(IsolateThread thread);
 }

@@ -29,7 +29,7 @@ The conceptual overview and advantages of GraalVM Enterprise are described on th
 
 The preceding diagram illustrates a complete high-level architecture of GraalVM Enterprise.
 
-GraalVM adds an [advanced just-in-time (JIT) optimizing compiler](../reference-manual/compiler.md), which is written in Java, to the HotSpot Java Virtual Machine.
+GraalVM adds an [advanced just-in-time (JIT) optimizing compiler](../reference-manual/java/compiler.md), which is written in Java, to the HotSpot Java Virtual Machine.
 
 In addition to running Java and JVM-based languages, [GraalVM's language implementation framework (Truffle)](../../truffle/docs/README.md), makes it possible to run JavaScript, Ruby, Python, and a number of other popular languages on the JVM.
 With Truffle, Java and other supported languages can directly interoperate with each other and pass data back and forth in the same memory space.
@@ -39,7 +39,7 @@ With Truffle, Java and other supported languages can directly interoperate with 
 GraalVM Enterprise is unique as a runtime environment offering several modes of operation: JVM runtime mode, Native Image, Java on Truffle (the same Java applications can be run on either).
 
 #### JVM Runtime Mode
-When running programs on the HotSpot JVM, GraalVM defaults to the [GraalVM compiler](../reference-manual/compiler.md) as the top-tier JIT compiler.
+When running programs on the HotSpot JVM, GraalVM defaults to the [GraalVM compiler](../reference-manual/java/compiler.md) as the top-tier JIT compiler.
 At runtime, an application is loaded and executed normally on the JVM.
 The JVM passes bytecodes for Java or any other JVM-native language to the compiler, which compiles that to the machine code and returns it to the JVM.
 Interpreters for supported languages, written on top of the [Truffle framework](../../truffle/docs/README.md), are themselves Java programs that run on the JVM.
@@ -140,7 +140,7 @@ The following table lists supported and experimental features in GraalVM Enterpr
 | LLVM toolchain | supported | supported | supported | not available |
 | JavaScript | supported | supported | supported | supported |
 | Node.js  | supported | supported | supported | supported |
-| Java on Truffle | experimental | experimental | experimental | experimental |
+| Java on Truffle | supported | experimental | experimental | experimental |
 | Python | experimental | not available | experimental | not available |
 | Ruby | experimental | experimental | experimental | not available |
 | R | experimental | not available | experimental | not available |

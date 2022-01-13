@@ -16,7 +16,7 @@ environment for their workloads.
 
 [Native Image](native-image/README.md) - learn in detail about Native Image: GraalVM's innovative technology that can ahead-of-time compile Java code to a self-contained native executable.
 
-[Compiler](compiler.md) - learn about the uniqueness of the GraalVM compiler and its advantages.
+[Compiler](java/compiler.md) - learn about the uniqueness of the Graal compiler and its advantages.
 
 [Updater](graalvm-updater.md) - learn how to add more capabilities and upgrade the core GraalVM installation.
 

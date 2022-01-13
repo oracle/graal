@@ -27,12 +27,14 @@ package org.graalvm.nativebridge.processor;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.IntersectionType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
@@ -171,18 +173,22 @@ abstract class AbstractBridgeGenerator {
     }
 
     final CodeBuilder overrideMethod(CodeBuilder builder, MethodData methodData) {
-        builder.lineStart().annotation(typeCache.override, null).lineEnd("");
         for (AnnotationMirror mirror : methodData.element.getAnnotationMirrors()) {
             if (Utilities.contains(parser.copyAnnotations, mirror.getAnnotationType(), types)) {
                 builder.lineStart().annotation(mirror.getAnnotationType(), null).lineEnd("");
             }
         }
-        Set<Modifier> newModifiers = EnumSet.copyOf(methodData.element.getModifiers());
+        return overrideMethod(builder, methodData.element, methodData.type);
+    }
+
+    final CodeBuilder overrideMethod(CodeBuilder builder, ExecutableElement methodElement, ExecutableType methodType) {
+        builder.lineStart().annotation(typeCache.override, null).lineEnd("");
+        Set<Modifier> newModifiers = EnumSet.copyOf(methodElement.getModifiers());
         newModifiers.remove(Modifier.ABSTRACT);
-        builder.methodStart(newModifiers, methodData.element.getSimpleName(),
-                        methodData.type.getReturnType(),
-                        CodeBuilder.newParameters(methodData.element.getParameters(), methodData.type.getParameterTypes()),
-                        methodData.type.getThrownTypes());
+        builder.methodStart(newModifiers, methodElement.getSimpleName(),
+                        methodType.getReturnType(),
+                        CodeBuilder.newParameters(methodElement.getParameters(), methodType.getParameterTypes()),
+                        methodType.getThrownTypes());
         return builder;
     }
 
@@ -693,7 +699,18 @@ abstract class AbstractBridgeGenerator {
         }
 
         CodeBuilder cast(TypeMirror type, CharSequence value) {
-            return write("(").write(type).write(")").space().write(value);
+            return cast(type, value, false);
+        }
+
+        CodeBuilder cast(TypeMirror type, CharSequence value, boolean brackets) {
+            if (brackets) {
+                write("(");
+            }
+            write("(").write(type).write(")").space().write(value);
+            if (brackets) {
+                write(")");
+            }
+            return this;
         }
 
         CodeBuilder writeAnnotationAttributeValue(Object value) {

@@ -312,7 +312,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
         if (simpleCG != null && locals.getIndex() > preLoopIndex) {
             int curIndex = locals.getIndex();
             executor.inputSkipReverse(locals);
-            applySimpleCGTransition(simpleCG.getTransitions()[getLoopToSelf()], locals);
+            applySimpleCGTransition(simpleCG.getTransitions()[getLoopToSelf()], executor, locals);
             locals.setIndex(curIndex);
         }
         checkFinalState(locals, executor);
@@ -364,7 +364,7 @@ public class DFAStateNode extends DFAAbstractStateNode {
      */
     void successorFound(TRegexDFAExecutorLocals locals, @SuppressWarnings("unused") TRegexDFAExecutorNode executor, int i) {
         if (simpleCG != null) {
-            applySimpleCGTransition(simpleCG.getTransitions()[i], locals);
+            applySimpleCGTransition(simpleCG.getTransitions()[i], executor, locals);
         }
     }
 
@@ -383,16 +383,12 @@ public class DFAStateNode extends DFAAbstractStateNode {
         }
     }
 
-    static int[] simpleCGFinalTransitionTargetArray(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
-        return executor.getProperties().isSimpleCGMustCopy() ? locals.getCGData().currentResult : locals.getCGData().results;
-    }
-
-    void applySimpleCGTransition(DFASimpleCGTransition transition, TRegexDFAExecutorLocals locals) {
-        transition.apply(locals.getCGData().results, locals.getIndex());
+    void applySimpleCGTransition(DFASimpleCGTransition transition, TRegexDFAExecutorNode executor, TRegexDFAExecutorLocals locals) {
+        transition.apply(locals.getCGData().results, locals.getIndex(), executor.getProperties().tracksLastGroup());
     }
 
     void applySimpleCGFinalTransition(DFASimpleCGTransition transition, TRegexDFAExecutorNode executor, TRegexDFAExecutorLocals locals) {
-        transition.apply(simpleCGFinalTransitionTargetArray(locals, executor), locals.getIndex());
+        transition.applyFinal(locals.getCGData(), locals.getIndex(), executor.getProperties().isSimpleCGMustCopy(), executor.getProperties().tracksLastGroup());
     }
 
     @TruffleBoundary

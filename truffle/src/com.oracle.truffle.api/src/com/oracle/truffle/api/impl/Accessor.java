@@ -217,6 +217,8 @@ public abstract class Accessor {
         public abstract void invalidateAfterPreinitialiation(Source source);
 
         public abstract void mergeLoadedSources(Source[] sources);
+
+        public abstract void setEmbedderSource(SourceBuilder builder, boolean b);
     }
 
     public abstract static class InteropSupport extends Support {
@@ -628,6 +630,12 @@ public abstract class Accessor {
 
         public abstract boolean isResourceLimitCancelExecution(Throwable cancelExecution);
 
+        public abstract boolean isPolyglotEngineException(Throwable throwable);
+
+        public abstract Throwable getPolyglotEngineExceptionCause(Throwable engineException);
+
+        public abstract RuntimeException createPolyglotEngineException(RuntimeException cause);
+
         public abstract int getExitExceptionExitCode(Throwable cancelExecution);
 
         public abstract SourceSection getCancelExecutionSourceLocation(Throwable cancelExecution);
@@ -655,6 +663,10 @@ public abstract class Accessor {
         public abstract boolean isPolyglotThread(Thread thread);
 
         public abstract Object getHostNull();
+
+        public abstract Object getGuestToHostCodeCache(Object polyglotContextImpl);
+
+        public abstract void setGuestToHostCodeCache(Object polyglotContextImpl, Object cache);
     }
 
     public abstract static class LanguageSupport extends Support {
@@ -987,6 +999,10 @@ public abstract class Accessor {
 
         public abstract RootCallTarget newCallTarget(CallTarget source, RootNode rootNode);
 
+        public abstract boolean isLoaded(CallTarget callTarget);
+
+        public abstract void notifyOnLoad(CallTarget callTarget);
+
         public ThreadLocalHandshake getThreadLocalHandshake() {
             return DefaultThreadLocalHandshake.SINGLETON;
         }
@@ -1219,7 +1235,7 @@ public abstract class Accessor {
         } else if ("com.oracle.truffle.api.debug.Debugger$AccessorDebug".equals(thisClassName) ||
                         "com.oracle.truffle.tck.instrumentation.VerifierInstrument$TruffleTCKAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.api.instrumentation.test.AbstractInstrumentationTest$TestAccessor".equals(thisClassName) ||
-                        "com.oracle.truffle.api.test.polyglot.TestAPIAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.api.test.TestAPIAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.api.impl.TVMCIAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.api.impl.DefaultRuntimeAccessor".equals(thisClassName) ||
                         "org.graalvm.compiler.truffle.runtime.GraalRuntimeAccessor".equals(thisClassName) ||

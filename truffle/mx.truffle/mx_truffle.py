@@ -741,18 +741,21 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
                                                   'include/ffitarget.h'],
                                                  mx.join(self.out_dir, 'libffi-build'),
                                                  mx.join(self.out_dir, 'libffi-3.3'))
+            configure_args = ['--disable-dependency-tracking',
+                              '--disable-shared',
+                              '--with-pic',
+                              ' CFLAGS="{}"'.format(' '.join(['-g', '-O3'] + (['-m64'] if mx.get_os() == 'solaris' else []))),
+                              'CPPFLAGS="-DNO_JAVA_RAW_API"',
+                             ]
+            if mx.get_os() == 'darwin' and mx.get_arch() == 'aarch64':
+                # configure wrongly autodetects as 'arm-apple-darwin20.0.0', see https://github.com/libffi/libffi/issues/571
+                # force it until it is fixed upstream, tracked in GR-35554
+                configure_args.append('--build=aarch64-apple-darwin20.0.0')
+
             self.delegate.buildEnv = dict(
                 SOURCES=mx.basename(self.delegate.dir),
                 OUTPUT=mx.basename(self.delegate.getOutput()),
-                CONFIGURE_ARGS=' '.join([
-                    '--disable-dependency-tracking',
-                    '--disable-shared',
-                    '--with-pic',
-                    'CFLAGS="{}"'.format(' '.join(
-                        ['-g', '-O3'] + (['-m64'] if mx.get_os() == 'solaris' else [])
-                    )),
-                    'CPPFLAGS="-DNO_JAVA_RAW_API"',
-                ])
+                CONFIGURE_ARGS=' '.join(configure_args)
             )
 
         self.include_dirs = self.delegate.include_dirs
@@ -869,13 +872,27 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     license_files=[],
     third_party_license_files=[],
     dependencies=['Truffle'],
-    truffle_jars=['truffle:TRUFFLE_NFI', 'truffle:TRUFFLE_NFI_LIBFFI'],
+    truffle_jars=['truffle:TRUFFLE_NFI'],
     support_distributions=['truffle:TRUFFLE_NFI_GRAALVM_SUPPORT'],
     support_libraries_distributions=['truffle:TRUFFLE_NFI_NATIVE_GRAALVM_SUPPORT'],
     installable=False,
     stability="supported",
 ))
 
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
+    suite=_suite,
+    name='Truffle NFI LIBFFI',
+    short_name='nfi-libffi',
+    dir_name='nfi-libffi',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['Truffle', 'Truffle NFI'],
+    truffle_jars=['truffle:TRUFFLE_NFI_LIBFFI'],
+    support_distributions=['truffle:TRUFFLE_NFI_GRAALVM_SUPPORT'],
+    support_libraries_distributions=['truffle:TRUFFLE_NFI_NATIVE_GRAALVM_SUPPORT'],
+    installable=False,
+    stability="supported",
+))
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,

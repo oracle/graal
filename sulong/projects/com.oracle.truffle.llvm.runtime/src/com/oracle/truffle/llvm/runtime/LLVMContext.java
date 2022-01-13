@@ -38,6 +38,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.ControlFlowException;
@@ -77,6 +78,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Level;
 import java.util.stream.Collectors;
 
 public final class LLVMContext {
@@ -85,6 +87,8 @@ public final class LLVMContext {
     public static final String SULONG_DISPOSE_CONTEXT = "__sulong_dispose_context";
 
     private static final String START_METHOD_NAME = "_start";
+
+    private static final Level NATIVE_CALL_STATISTICS_LEVEL = Level.FINER;
 
     private final List<Path> libraryPaths = new ArrayList<>();
     private final Object libraryPathsLock = new Object();
@@ -144,6 +148,9 @@ public final class LLVMContext {
     // Source cache (for reusing bitcode IDs).
     protected final EconomicMap<BitcodeID, Source> sourceCache = EconomicMap.create();
 
+    // Calltarget Cache for SOName.
+    protected final EconomicMap<String, CallTarget> calltargetCache = EconomicMap.create();
+
     // signals
     private final LLVMNativePointer sigDfl;
     private final LLVMNativePointer sigIgn;
@@ -165,7 +172,7 @@ public final class LLVMContext {
 
     protected boolean initialized;
     protected boolean cleanupNecessary;
-    private boolean initializeContextCalled;
+    private State contextState;
     private final LLVMLanguage language;
 
     private LLVMTracerInstrument tracer;    // effectively final after initialization
@@ -193,7 +200,7 @@ public final class LLVMContext {
         this.initialized = false;
         this.cleanupNecessary = false;
         // this.destructorFunctions = new ArrayList<>();
-        this.nativeCallStatistics = SulongEngineOption.optionEnabled(env.getOptions().get(SulongEngineOption.NATIVE_CALL_STATS)) ? new ConcurrentHashMap<>() : null;
+        this.nativeCallStatistics = logNativeCallStatsEnabled() ? new ConcurrentHashMap<>() : null;
         this.sigDfl = LLVMNativePointer.create(0);
         this.sigIgn = LLVMNativePointer.create(1);
         this.sigErr = LLVMNativePointer.create(-1);
@@ -226,15 +233,30 @@ public final class LLVMContext {
         symbolFinalStorage = symbolDynamicStorage = new LLVMPointer[10][];
         libraryLoaded = new boolean[10];
         destructorFunctions = new RootCallTarget[10];
+        contextState = State.CREATED;
     }
 
-    boolean patchContext(Env newEnv) {
-        if (this.initializeContextCalled) {
-            return false;
+    /**
+     * Marks a context whose initialization was requested at context pre-initialization time and was
+     * deferred to {@link #patchContext(Env, ContextExtension[])} .
+     */
+    void initializationDeferred() {
+        contextState = State.INITIALIZATION_DEFERRED;
+    }
+
+    boolean patchContext(Env newEnv, ContextExtension[] contextExtens) {
+        if (contextState == State.INITIALIZED) {
+            // Context already initialized.
+            throw CompilerDirectives.shouldNotReachHere("Context cannot be initialized during context pre-initialization");
         }
         this.env = newEnv;
-        this.nativeCallStatistics = SulongEngineOption.optionEnabled(this.env.getOptions().get(SulongEngineOption.NATIVE_CALL_STATS)) ? new ConcurrentHashMap<>() : null;
+        this.nativeCallStatistics = logNativeCallStatsEnabled() ? new ConcurrentHashMap<>() : null;
         this.mainArguments = getMainArguments(newEnv);
+        if (contextState == State.INITIALIZATION_DEFERRED) {
+            // Context initialization was requested at context pre-initialization time and was
+            // deferred to image execution time. Perform it now.
+            initialize(contextExtens);
+        }
         return true;
     }
 
@@ -245,18 +267,12 @@ public final class LLVMContext {
 
     @SuppressWarnings("unchecked")
     void initialize(ContextExtension[] contextExtens) {
-        this.initializeContextCalled = true;
+        contextState = State.INITIALIZED;
         assert this.threadingStack == null;
         this.contextExtensions = contextExtens;
 
-        String opt = env.getOptions().get(SulongEngineOption.LD_DEBUG);
-        this.loaderTraceStream = SulongEngineOption.optionEnabled(opt) ? new TargetStream(env, opt) : null;
-        opt = env.getOptions().get(SulongEngineOption.DEBUG_SYSCALLS);
+        String opt = env.getOptions().get(SulongEngineOption.DEBUG_SYSCALLS);
         this.syscallTraceStream = SulongEngineOption.optionEnabled(opt) ? new TargetStream(env, opt) : null;
-        opt = env.getOptions().get(SulongEngineOption.NATIVE_CALL_STATS);
-        this.nativeCallStatsStream = SulongEngineOption.optionEnabled(opt) ? new TargetStream(env, opt) : null;
-        opt = env.getOptions().get(SulongEngineOption.PRINT_LIFE_TIME_ANALYSIS_STATS);
-        this.lifetimeAnalysisStream = SulongEngineOption.optionEnabled(opt) ? new TargetStream(env, opt) : null;
         opt = env.getOptions().get(SulongEngineOption.LL_DEBUG_VERBOSE);
         this.llDebugVerboseStream = (SulongEngineOption.optionEnabled(opt) && env.getOptions().get(SulongEngineOption.LL_DEBUG)) ? new TargetStream(env, opt) : null;
         opt = env.getOptions().get(SulongEngineOption.TRACE_IR);
@@ -551,21 +567,8 @@ public final class LLVMContext {
             tracer.dispose();
         }
 
-        if (loaderTraceStream != null) {
-            loaderTraceStream.dispose();
-        }
-
         if (syscallTraceStream != null) {
             syscallTraceStream.dispose();
-        }
-
-        if (nativeCallStatsStream != null) {
-            assert nativeCallStatistics != null;
-            nativeCallStatsStream.dispose();
-        }
-
-        if (lifetimeAnalysisStream != null) {
-            lifetimeAnalysisStream.dispose();
         }
     }
 
@@ -677,6 +680,18 @@ public final class LLVMContext {
         if (!sourceCache.containsKey(bitcodeID)) {
             sourceCache.put(bitcodeID, source);
         }
+    }
+
+    @TruffleBoundary
+    public void addCalltargetForCache(String soName, CallTarget callTarget) {
+        if (!calltargetCache.containsKey(soName)) {
+            calltargetCache.put(soName, callTarget);
+        }
+    }
+
+    @TruffleBoundary
+    public CallTarget getCalltargetFromCache(String soName) {
+        return calltargetCache.get(soName);
     }
 
     public LLVMLanguage getLanguage() {
@@ -828,8 +843,6 @@ public final class LLVMContext {
             int index = bitcodeID.getId();
             assert symbolDynamicStorage == symbolFinalStorage;
             if (index < symbolDynamicStorage.length && symbolDynamicStorage[index] != null) {
-                // throw new IllegalStateException("Registering a new symbol table for an existing
-                // id.");
                 return;
             }
             if (index >= symbolDynamicStorage.length) {
@@ -1060,15 +1073,14 @@ public final class LLVMContext {
     }
 
     private void printNativeCallStatistics() {
-        if (nativeCallStatistics != null) {
+        if (logNativeCallStatsEnabled()) {
             LinkedHashMap<String, Integer> sorted = nativeCallStatistics.entrySet().stream().sorted(Map.Entry.comparingByValue()).collect(Collectors.toMap(
                             Map.Entry::getKey,
                             Map.Entry::getValue,
                             (e1, e2) -> e1,
                             LinkedHashMap::new));
-            TargetStream stream = nativeCallStatsStream();
             for (String s : sorted.keySet()) {
-                stream.printf("Function %s \t count: %d\n", s, sorted.get(s));
+                nativeCallStatsLogger.log(NATIVE_CALL_STATISTICS_LEVEL, String.format("Function %s \t count: %d\n", s, sorted.get(s)));
             }
         }
     }
@@ -1103,10 +1115,10 @@ public final class LLVMContext {
         }
     }
 
-    @CompilationFinal private TargetStream loaderTraceStream;
+    private static final TruffleLogger loaderLogger = TruffleLogger.getLogger("llvm", "Loader");
 
-    public TargetStream loaderTraceStream() {
-        return loaderTraceStream;
+    public static TruffleLogger loaderLogger() {
+        return loaderLogger;
     }
 
     @CompilationFinal private TargetStream syscallTraceStream;
@@ -1115,21 +1127,42 @@ public final class LLVMContext {
         return syscallTraceStream;
     }
 
-    @CompilationFinal private TargetStream nativeCallStatsStream;
+    private static final TruffleLogger nativeCallStatsLogger = TruffleLogger.getLogger("llvm", "NativeCallStats");
 
-    public TargetStream nativeCallStatsStream() {
-        return nativeCallStatsStream;
+    public static boolean logNativeCallStatsEnabled() {
+        return nativeCallStatsLogger.isLoggable(NATIVE_CALL_STATISTICS_LEVEL);
     }
 
-    @CompilationFinal private TargetStream lifetimeAnalysisStream;
+    private static final TruffleLogger lifetimeAnalysisLogger = TruffleLogger.getLogger("llvm", "LifetimeAnalysis");
 
-    public TargetStream lifetimeAnalysisStream() {
-        return lifetimeAnalysisStream;
+    public static TruffleLogger lifetimeAnalysisLogger() {
+        return lifetimeAnalysisLogger;
     }
 
     @CompilationFinal private TargetStream llDebugVerboseStream;
 
     public TargetStream llDebugVerboseStream() {
         return llDebugVerboseStream;
+    }
+
+    /**
+     * Context initialization state.
+     */
+    private enum State {
+        /**
+         * {@link LLVMContext} is created but not initialized.
+         */
+        CREATED,
+
+        /**
+         * The initialization was requested during context pre-initialization and was deferred into
+         * {@link LLVMContext#patchContext(Env, ContextExtension[])}.
+         */
+        INITIALIZATION_DEFERRED,
+
+        /**
+         * {@link LLVMContext} is initialized.
+         */
+        INITIALIZED
     }
 }

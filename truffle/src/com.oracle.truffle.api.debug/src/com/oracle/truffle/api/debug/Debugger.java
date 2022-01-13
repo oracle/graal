@@ -370,12 +370,12 @@ public final class Debugger {
 
     static final AccessorDebug ACCESSOR = new AccessorDebug();
 
-    static {
-        DebuggerInstrument.setFactory(new DebuggerInstrument.DebuggerFactory() {
+    static DebuggerInstrument.DebuggerFactory createFactory() {
+        return new DebuggerInstrument.DebuggerFactory() {
             public Debugger create(Env env) {
                 return new Debugger(env);
             }
-        });
+        };
     }
 
 }

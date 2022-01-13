@@ -69,6 +69,8 @@ import static jdk.vm.ci.aarch64.AArch64.zr;
 
 import java.util.ArrayList;
 
+import org.graalvm.compiler.core.common.NumUtil;
+
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.config.ObjectLayout;
@@ -154,7 +156,7 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
          *
          * https://docs.microsoft.com/en-us/cpp/build/arm64-windows-abi-conventions
          */
-        if (OS.getCurrent() == OS.DARWIN || OS.getCurrent() == OS.WINDOWS) {
+        if (OS.DARWIN.isCurrent() || OS.WINDOWS.isCurrent()) {
             regs.remove(r18);
         }
         allocatableRegs = new RegisterArray(regs);
@@ -231,6 +233,32 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
         return preserveFramePointer;
     }
 
+    private int javaStackParameterAssignment(ValueKindFactory<?> valueKindFactory, AllocatableValue[] locations, int index, JavaKind kind, int currentStackOffset, boolean isOutgoing) {
+        /* All parameters within Java are assigned slots of at least 8 bytes */
+        ValueKind<?> valueKind = valueKindFactory.getValueKind(kind.getStackKind());
+        int alignment = Math.max(valueKind.getPlatformKind().getSizeInBytes(), target.wordSize);
+        locations[index] = StackSlot.get(valueKind, currentStackOffset, !isOutgoing);
+        return currentStackOffset + alignment;
+    }
+
+    /**
+     * The Darwin calling convention expects arguments to be aligned to the argument kind.
+     *
+     * For more details, see <a
+     * href=https://developer.apple.com/documentation/xcode/writing-arm64-code-for-apple-platforms>https://developer.apple.com/documentation/xcode/writing-arm64-code-for-apple-platforms</a>.
+     */
+    private int darwinNativeStackParameterAssignment(ValueKindFactory<?> valueKindFactory, AllocatableValue[] locations, int index, JavaKind kind, int currentStackOffset, boolean isOutgoing) {
+        if (isOutgoing) {
+            int paramByteSize = kind.getByteCount();
+            int alignedStackOffset = NumUtil.roundUp(currentStackOffset, paramByteSize);
+            locations[index] = StackSlot.get(valueKindFactory.getValueKind(kind), alignedStackOffset, false);
+            return alignedStackOffset + paramByteSize;
+        } else {
+            /* Native-to-Java calls follow the normal Java convention. */
+            return javaStackParameterAssignment(valueKindFactory, locations, index, kind, currentStackOffset, isOutgoing);
+        }
+    }
+
     @Override
     public CallingConvention getCallingConvention(Type t, JavaType returnType, JavaType[] parameterTypes, ValueKindFactory<?> valueKindFactory) {
         SubstrateCallingConventionType type = (SubstrateCallingConventionType) t;
@@ -283,9 +311,11 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
             if (register != null) {
                 locations[i] = register.asValue(valueKindFactory.getValueKind(kind.getStackKind()));
             } else {
-                ValueKind<?> valueKind = valueKindFactory.getValueKind(kind.getStackKind());
-                locations[i] = StackSlot.get(valueKind, currentStackOffset, !type.outgoing);
-                currentStackOffset += Math.max(valueKind.getPlatformKind().getSizeInBytes(), target.wordSize);
+                if (type.nativeABI() && OS.DARWIN.isCurrent()) {
+                    currentStackOffset = darwinNativeStackParameterAssignment(valueKindFactory, locations, i, kind, currentStackOffset, type.outgoing);
+                } else {
+                    currentStackOffset = javaStackParameterAssignment(valueKindFactory, locations, i, kind, currentStackOffset, type.outgoing);
+                }
             }
         }
 

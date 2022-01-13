@@ -157,7 +157,6 @@ class ReachableThreadGroup {
     ThreadGroup[] groups;
 
     /* Copy of ThreadGroup.add(). */
-    // Checkstyle: allow synchronization
     synchronized void add(ThreadGroup g) {
         if (groups == null) {
             groups = new ThreadGroup[4];

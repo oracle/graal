@@ -6,28 +6,41 @@
 >[0] js --insight=iterateFrames.js fib.js
 dumping locals
     at fib (fib.js:8:3) n has value 1
+    at fib (fib.js:8:3) this has value [object global]
     at fib (fib.js:10:15) n has value 2
+    at fib (fib.js:10:15) this has value [object global]
     at fib (fib.js:10:15) n has value 3
+    at fib (fib.js:10:15) this has value [object global]
     at fib (fib.js:10:15) n has value 4
+    at fib (fib.js:10:15) this has value [object global]
 .*at.*main.*fib.js.*prefix has value Three is the result
 .*at.*main.*fib.js.*fib4 has value undefined
-.*at.*program.*fib.js:.*return.*has value undefined
+.*at.*main.*fib.js.*this has value .*
+.*at.*program.*fib.js:.*this has value .*
 end of locals
 dumping locals
     at fib (fib.js:8:3) n has value 1
+    at fib (fib.js:8:3) this has value [object global]
     at fib (fib.js:10:34) n has value 3
+    at fib (fib.js:10:34) this has value [object global]
     at fib (fib.js:10:15) n has value 4
+    at fib (fib.js:10:15) this has value [object global]
 .*at.*main.*fib.js.*prefix has value The result is three
 .*at.*main.*fib.js.*fib4 has value undefined
-.*at.*program.*fib.js:.*return.*has value undefined
+.*at.*main.*fib.js.*this has value .*
+.*at.*program.*fib.js:.*this has value .*
 end of locals
 dumping locals
     at fib (fib.js:8:3) n has value 1
+    at fib (fib.js:8:3) this has value [object global]
     at fib (fib.js:10:15) n has value 2
+    at fib (fib.js:10:15) this has value [object global]
     at fib (fib.js:10:34) n has value 4
+    at fib (fib.js:10:34) this has value [object global]
 .*at.*main.*fib.js.*prefix has value The result is three
 .*at.*main.*fib.js.*fib4 has value undefined
-.*at.*program.*fib.js:.*return.*has value undefined
+.*at.*main.*fib.js.*this has value .*
+.*at.*program.*fib.js:.*this has value .*
 end of locals
 The result is three 3
 > cat >err0.js

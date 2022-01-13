@@ -106,7 +106,7 @@ class NFIRootNode extends RootNode {
 
         @Specialization(limit = "5", guards = "backend == cachedBackend")
         Object doCached(NFIBackend backend,
-                        @Cached("backend") NFIBackend cachedBackend,
+                        @Cached(value = "backend", weak = true) NFIBackend cachedBackend,
                         @Cached("create(parseLibrary(cachedBackend))") DirectCallNode callNode) {
             assert backend == cachedBackend;
             return callNode.call();

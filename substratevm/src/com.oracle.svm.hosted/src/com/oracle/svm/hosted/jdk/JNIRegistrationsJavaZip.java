@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.jdk;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.InternalPlatform;
@@ -40,35 +39,17 @@ class JNIRegistrationsJavaZip extends JNIRegistrationUtil implements Feature {
     @Override
     public void duringSetup(DuringSetupAccess a) {
         rerunClassInit(a, "java.util.zip.Inflater", "java.util.zip.Deflater");
-        if (JavaVersionUtil.JAVA_SPEC >= 11) {
-            /*
-             * On JDK 11 and later, these classes have class initializers that lazily load the zip
-             * library. On JDK 8, the zip library is loaded by the VM early during startup.
-             */
-            rerunClassInit(a, "java.util.zip.Adler32", "java.util.zip.CRC32");
-            rerunClassInit(a, "sun.net.www.protocol.jar.JarFileFactory", "sun.net.www.protocol.jar.JarURLConnection");
-        }
+        /* These classes have class initializers that lazily load the zip library. */
+        rerunClassInit(a, "java.util.zip.Adler32", "java.util.zip.CRC32");
+        rerunClassInit(a, "sun.net.www.protocol.jar.JarFileFactory", "sun.net.www.protocol.jar.JarURLConnection");
     }
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
-        if (JavaVersionUtil.JAVA_SPEC >= 11) {
-            a.registerReachabilityHandler(JNIRegistrationsJavaZip::registerJDK11InflaterInitIDs, method(a, "java.util.zip.Inflater", "initIDs"));
-        } else {
-            a.registerReachabilityHandler(JNIRegistrationsJavaZip::registerJDK8InflaterInitIDs, method(a, "java.util.zip.Inflater", "initIDs"));
-            a.registerReachabilityHandler(JNIRegistrationsJavaZip::registerJDK8DeflaterInitIDs, method(a, "java.util.zip.Deflater", "initIDs"));
-        }
+        a.registerReachabilityHandler(JNIRegistrationsJavaZip::registerJDK11InflaterInitIDs, method(a, "java.util.zip.Inflater", "initIDs"));
     }
 
     private static void registerJDK11InflaterInitIDs(DuringAnalysisAccess a) {
         JNIRuntimeAccess.register(fields(a, "java.util.zip.Inflater", "inputConsumed", "outputConsumed"));
-    }
-
-    private static void registerJDK8InflaterInitIDs(DuringAnalysisAccess a) {
-        JNIRuntimeAccess.register(fields(a, "java.util.zip.Inflater", "needDict", "finished", "buf", "off", "len"));
-    }
-
-    private static void registerJDK8DeflaterInitIDs(DuringAnalysisAccess a) {
-        JNIRuntimeAccess.register(fields(a, "java.util.zip.Deflater", "level", "strategy", "setParams", "finish", "finished", "buf", "off", "len"));
     }
 }

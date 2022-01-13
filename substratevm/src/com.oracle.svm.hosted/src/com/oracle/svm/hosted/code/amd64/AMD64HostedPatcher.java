@@ -59,7 +59,7 @@ class AMD64HostedPatcherFeature implements Feature {
         ImageSingletons.add(PatchConsumerFactory.HostedPatchConsumerFactory.class, new PatchConsumerFactory.HostedPatchConsumerFactory() {
             @Override
             public Consumer<Assembler.CodeAnnotation> newConsumer(CompilationResult compilationResult) {
-                return new Consumer<Assembler.CodeAnnotation>() {
+                return new Consumer<>() {
                     @Override
                     public void accept(Assembler.CodeAnnotation annotation) {
                         if (annotation instanceof OperandDataAnnotation) {

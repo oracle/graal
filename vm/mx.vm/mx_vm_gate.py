@@ -34,10 +34,12 @@ import mx_sdk_vm_impl
 
 import functools
 import glob
+import re
+import sys
 from mx_gate import Task
 
 from os import environ, listdir, remove, linesep
-from os.path import join, exists, dirname, isdir, isfile, getsize
+from os.path import join, exists, dirname, isdir, isfile, getsize, abspath
 from tempfile import NamedTemporaryFile, mkdtemp
 from contextlib import contextmanager
 
@@ -63,6 +65,174 @@ class VmGateTasks:
     svm_sl_tck = 'svm_sl_tck'
     svm_truffle_tck_js = 'svm-truffle-tck-js'
 
+def _check_compiler_log(compiler_log_file, expectations):
+    """
+    Checks that `compiler_log_file` exists and that its contents match each regular expression in `expectations`.
+    If all checks succeed, `compiler_log_file` is deleted.
+    """
+    in_exception_path = sys.exc_info() != (None, None, None)
+    if not exists(compiler_log_file):
+        mx.abort('No output written to ' + compiler_log_file)
+    with open(compiler_log_file) as fp:
+        compiler_log = fp.read()
+    if not isinstance(expectations, list):
+        expectations = [expectations]
+    for pattern in expectations:
+        if not re.search(pattern, compiler_log):
+            mx.abort('Did not find expected pattern ("{}") in compiler log:{}{}'.format(pattern, linesep, compiler_log))
+    if mx.get_opts().verbose or in_exception_path:
+        mx.log(compiler_log)
+    remove(compiler_log_file)
+
+def _test_libgraal_basic(extra_vm_arguments):
+    """
+    Tests basic libgraal execution by running a DaCapo benchmark, ensuring it has a 0 exit code
+    and that the output for -DgraalShowConfiguration=info describes a libgraal execution.
+    """
+    expect = r"Using compiler configuration '[^']+' provided by [\.\w]+ loaded from JVMCI native library"
+    compiler_log_file = abspath('graal-compiler.log')
+    args = ['-Dgraal.ShowConfiguration=info',
+            '-Dgraal.LogFile=' + compiler_log_file,
+            '-jar', mx.library('DACAPO').get_path(True), 'avrora', '-n', '1']
+
+    # Verify execution via raw java launcher in `mx graalvm-home`.
+    try:
+        mx.run([join(mx_sdk_vm_impl.graalvm_home(), 'bin', 'java')] + args)
+    finally:
+        _check_compiler_log(compiler_log_file, expect)
+
+    # Verify execution via `mx vm`.
+    import mx_compiler
+    try:
+        mx_compiler.run_vm(extra_vm_arguments + args)
+    finally:
+        _check_compiler_log(compiler_log_file, expect)
+
+def _test_libgraal_fatal_error_handling():
+    """
+    Tests that fatal errors in libgraal route back to HotSpot fatal error handling.
+    """
+    vmargs = ['-XX:+PrintFlagsFinal',
+              '-Dlibgraal.CrashAt=length,hashCode',
+              '-Dlibgraal.CrashAtIsFatal=true']
+    cmd = ["dacapo:avrora", "--tracker=none", "--"] + vmargs + ["--", "--preserve"]
+    out = mx.OutputCapture()
+    exitcode, bench_suite, _ = mx_benchmark.gate_mx_benchmark(cmd, out=out, err=out, nonZeroIsFatal=False)
+    if exitcode == 0:
+        if 'CrashAtIsFatal: no fatalError function pointer installed' in out.data:
+            # Executing a VM that does not configure fatal errors handling
+            # in libgraal to route back through the VM.
+            pass
+        else:
+            mx.abort('Expected benchmark to result in non-zero exit code: ' + ' '.join(cmd) + linesep + out.data)
+    else:
+        if len(bench_suite.scratchDirs()) == 0:
+            mx.abort("No scratch dir found despite error being expected!")
+        latest_scratch_dir = bench_suite.scratchDirs()[-1]
+        seen_libjvmci_log = False
+        hs_errs = glob.glob(join(latest_scratch_dir, 'hs_err_pid*.log'))
+        if not hs_errs:
+            mx.abort('Expected a file starting with "hs_err_pid" in test directory. Entries found=' + str(listdir(latest_scratch_dir)))
+
+        for hs_err in hs_errs:
+            mx.log("Verifying content of {}".format(join(latest_scratch_dir, hs_err)))
+            with open(join(latest_scratch_dir, hs_err)) as fp:
+                contents = fp.read()
+            if 'libjvmci' in hs_err:
+                seen_libjvmci_log = True
+                if 'Fatal error: Forced crash' not in contents:
+                    mx.abort('Expected "Fatal error: Forced crash" to be in contents of ' + hs_err + ':' + linesep + contents)
+            else:
+                if 'Fatal error in JVMCI' not in contents:
+                    mx.abort('Expected "Fatal error in JVMCI" to be in contents of ' + hs_err + ':' + linesep + contents)
+
+        if 'JVMCINativeLibraryErrorFile' in out.data and not seen_libjvmci_log:
+            mx.abort('Expected a file matching "hs_err_pid*_libjvmci.log" in test directory. Entries found=' + str(listdir(latest_scratch_dir)))
+
+    # Only clean up scratch dir on success
+    for scratch_dir in bench_suite.scratchDirs():
+        mx.log("Cleaning up scratch dir after gate task completion: {}".format(scratch_dir))
+        mx.rmtree(scratch_dir)
+
+def _jdk_has_ForceTranslateFailure_jvmci_option(jdk):
+    """
+    Determines if `jdk` supports the `-Djvmci.ForceTranslateFailure` option.
+    """
+    sink = mx.OutputCapture()
+    res = mx.run([jdk.java, '-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI', '-XX:+EagerJVMCI', '-Djvmci.ForceTranslateFailure=test', '-version'], nonZeroIsFatal=False, out=sink, err=sink)
+    if res == 0:
+        return True
+    if 'Could not find option jvmci.ForceTranslateFailure' in sink.data:
+        return False
+    mx.abort(sink.data)
+
+def _test_libgraal_ctw(extra_vm_arguments):
+    import mx_compiler
+
+    if _jdk_has_ForceTranslateFailure_jvmci_option(mx_compiler.jdk):
+        # Tests that failures in HotSpotJVMCIRuntime.translate do not cause the VM to exit.
+        # This test is only possible if the jvmci.ForceTranslateFailure option exists.
+        compiler_log_file = abspath('graal-compiler-ctw.log')
+        fail_to_translate_value = 'nmethod/StackOverflowError:hotspot,method/String.hashCode:native,valueOf'
+        expectations = ['ForceTranslateFailure filter "{}"'.format(f) for f in fail_to_translate_value.split(',')]
+        try:
+            mx_compiler.ctw([
+                '-DCompileTheWorld.Config=Inline=false ' + ' '.join(mx_compiler._compiler_error_options(prefix='')),
+                '-XX:+EnableJVMCI',
+                '-Dgraal.InlineDuringParsing=false',
+                '-Dgraal.TrackNodeSourcePosition=true',
+                '-Dgraal.LogFile=' + compiler_log_file,
+                '-DCompileTheWorld.Verbose=true',
+                '-DCompileTheWorld.MethodFilter=StackOverflowError.*,String.*',
+                '-Djvmci.ForceTranslateFailure=nmethod/StackOverflowError:hotspot,method/String.hashCode:native,valueOf',
+            ], extra_vm_arguments)
+        finally:
+            _check_compiler_log(compiler_log_file, expectations)
+
+    mx_compiler.ctw([
+            '-DCompileTheWorld.Config=Inline=false ' + ' '.join(mx_compiler._compiler_error_options(prefix='')),
+            '-esa',
+            '-XX:+EnableJVMCI',
+            '-DCompileTheWorld.MultiThreaded=true',
+            '-Dgraal.InlineDuringParsing=false',
+            '-Dgraal.TrackNodeSourcePosition=true',
+            '-DCompileTheWorld.Verbose=false',
+            '-DCompileTheWorld.HugeMethodLimit=4000',
+            '-DCompileTheWorld.MaxCompiles=150000',
+            '-XX:ReservedCodeCacheSize=300m',
+        ], extra_vm_arguments)
+
+def _test_libgraal_truffle(extra_vm_arguments):
+    def _unittest_config_participant(config):
+        vmArgs, mainClass, mainClassArgs = config
+        def is_truffle_fallback(arg):
+            fallback_args = [
+                "-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime",
+                "-Dgraalvm.ForcePolyglotInvalid=true"
+            ]
+            return arg in fallback_args
+        newVmArgs = [arg for arg in vmArgs if not is_truffle_fallback(arg)]
+        return (newVmArgs, mainClass, mainClassArgs)
+    mx_unittest.add_config_participant(_unittest_config_participant)
+    excluded_tests = environ.get("TEST_LIBGRAAL_EXCLUDE")
+    if excluded_tests:
+        with NamedTemporaryFile(prefix='blacklist.', mode='w', delete=False) as fp:
+            fp.file.writelines([l + '\n' for l in excluded_tests.split()])
+            unittest_args = ["--blacklist", fp.name]
+    else:
+        unittest_args = []
+    unittest_args = unittest_args + ["--enable-timing", "--verbose"]
+    compiler_log_file = "graal-compiler.log"
+    mx_unittest.unittest(unittest_args + extra_vm_arguments + [
+        "-Dpolyglot.engine.AllowExperimentalOptions=true",
+        "-Dpolyglot.engine.CompileImmediately=true",
+        "-Dpolyglot.engine.BackgroundCompilation=false",
+        "-Dpolyglot.engine.TraceCompilation=true",
+        "-Dpolyglot.log.file={0}".format(compiler_log_file),
+        "-Dgraalvm.locatorDisabled=true",
+        "truffle"])
+    if exists(compiler_log_file):
+        remove(compiler_log_file)
 
 def gate_body(args, tasks):
     with Task('Vm: GraalVM dist names', tasks, tags=['names']) as t:
@@ -83,111 +253,21 @@ def gate_body(args, tasks):
             extra_vm_arguments = ['-XX:+UseJVMCICompiler', '-XX:+UseJVMCINativeLibrary', '-XX:JVMCILibPath=' + dirname(libgraal_location)]
             if args.extra_vm_argument:
                 extra_vm_arguments += args.extra_vm_argument
-            import mx_compiler
 
             # run avrora on the GraalVM binary itself
-            with Task('LibGraal Compiler:GraalVM DaCapo-avrora', tasks, tags=[VmGateTasks.libgraal]) as t:
-                if t:
-                    java_exe = join(mx_sdk_vm_impl.graalvm_home(), 'bin', 'java')
-                    mx.run([java_exe,
-                            '-XX:+UseJVMCICompiler',
-                            '-XX:+UseJVMCINativeLibrary',
-                            '-jar', mx.library('DACAPO').get_path(True), 'avrora', '-n', '1'])
-
-                    # Ensure that fatal errors in libgraal route back to HotSpot
-                    vmargs = ['-XX:+UseJVMCICompiler',
-                              '-XX:+UseJVMCINativeLibrary',
-                              '-XX:+PrintFlagsFinal',
-                              '-Dlibgraal.CrashAt=length,hashCode',
-                              '-Dlibgraal.CrashAtIsFatal=true']
-                    cmd = ["dacapo:avrora", "--tracker=none", "--"] + vmargs + ["--", "--preserve"]
-                    out = mx.OutputCapture()
-                    exitcode, bench_suite, _ = mx_benchmark.gate_mx_benchmark(cmd, out=out, err=out, nonZeroIsFatal=False)
-                    if exitcode == 0:
-                        if 'CrashAtIsFatal: no fatalError function pointer installed' in out.data:
-                            # Executing a VM that does not configure fatal errors handling
-                            # in libgraal to route back through the VM.
-                            pass
-                        else:
-                            mx.abort('Expected following benchmark to result in non-zero exit code: ' + ' '.join(cmd))
-                    else:
-                        if len(bench_suite.scratchDirs()) == 0:
-                            mx.abort("No scratch dir found despite error being expected!")
-                        latest_scratch_dir = bench_suite.scratchDirs()[-1]
-                        seen_libjvmci_log = False
-                        hs_errs = glob.glob(join(latest_scratch_dir, 'hs_err_pid*.log'))
-                        if not hs_errs:
-                            mx.abort('Expected a file starting with "hs_err_pid" in test directory. Entries found=' + str(listdir(latest_scratch_dir)))
-
-                        for hs_err in hs_errs:
-                            mx.log("Verifying content of {}".format(join(latest_scratch_dir, hs_err)))
-                            with open(join(latest_scratch_dir, hs_err)) as fp:
-                                contents = fp.read()
-                            if 'libjvmci' in hs_err:
-                                seen_libjvmci_log = True
-                                if 'Fatal error: Forced crash' not in contents:
-                                    mx.abort('Expected "Fatal error: Forced crash" to be in contents of ' + hs_err + ':' + linesep + contents)
-                            else:
-                                if 'Fatal error in JVMCI' not in contents:
-                                    mx.abort('Expected "Fatal error in JVMCI" to be in contents of ' + hs_err + ':' + linesep + contents)
-
-                        if 'JVMCINativeLibraryErrorFile' in out.data and not seen_libjvmci_log:
-                            mx.abort('Expected a file matching "hs_err_pid*_libjvmci.log" in test directory. Entries found=' + str(listdir(latest_scratch_dir)))
-
-                    # Only clean up scratch dir on success
-                    for scratch_dir in bench_suite.scratchDirs():
-                        mx.log("Cleaning up scratch dir after gate task completion: {}".format(scratch_dir))
-                        mx.rmtree(scratch_dir)
+            with Task('LibGraal Compiler:Basic', tasks, tags=[VmGateTasks.libgraal]) as t:
+                if t: _test_libgraal_basic(extra_vm_arguments)
+            with Task('LibGraal Compiler:FatalErrorHandling', tasks, tags=[VmGateTasks.libgraal]) as t:
+                if t: _test_libgraal_fatal_error_handling()
 
             with Task('LibGraal Compiler:CTW', tasks, tags=[VmGateTasks.libgraal]) as t:
-                if t:
-                    mx_compiler.ctw([
-                            '-DCompileTheWorld.Config=Inline=false ' + ' '.join(mx_compiler._compiler_error_options(prefix='')),
-                            '-esa',
-                            '-XX:+EnableJVMCI',
-                            '-DCompileTheWorld.MultiThreaded=true',
-                            '-Dgraal.InlineDuringParsing=false',
-                            '-Dgraal.TrackNodeSourcePosition=true',
-                            '-DCompileTheWorld.Verbose=false',
-                            '-DCompileTheWorld.HugeMethodLimit=4000',
-                            '-DCompileTheWorld.MaxCompiles=150000',
-                            '-XX:ReservedCodeCacheSize=300m',
-                        ], extra_vm_arguments)
+                if t: _test_libgraal_ctw(extra_vm_arguments)
 
+            import mx_compiler
             mx_compiler.compiler_gate_benchmark_runner(tasks, extra_vm_arguments, prefix='LibGraal Compiler:')
 
             with Task('LibGraal Truffle:unittest', tasks, tags=[VmGateTasks.libgraal]) as t:
-                if t:
-                    def _unittest_config_participant(config):
-                        vmArgs, mainClass, mainClassArgs = config
-                        def is_truffle_fallback(arg):
-                            fallback_args = [
-                                "-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime",
-                                "-Dgraalvm.ForcePolyglotInvalid=true"
-                            ]
-                            return arg in fallback_args
-                        newVmArgs = [arg for arg in vmArgs if not is_truffle_fallback(arg)]
-                        return (newVmArgs, mainClass, mainClassArgs)
-                    mx_unittest.add_config_participant(_unittest_config_participant)
-                    excluded_tests = environ.get("TEST_LIBGRAAL_EXCLUDE")
-                    if excluded_tests:
-                        with NamedTemporaryFile(prefix='blacklist.', mode='w', delete=False) as fp:
-                            fp.file.writelines([l + '\n' for l in excluded_tests.split()])
-                            unittest_args = ["--blacklist", fp.name]
-                    else:
-                        unittest_args = []
-                    unittest_args = unittest_args + ["--enable-timing", "--verbose"]
-                    compiler_log_file = "graal-compiler.log"
-                    mx_unittest.unittest(unittest_args + extra_vm_arguments + [
-                        "-Dpolyglot.engine.AllowExperimentalOptions=true",
-                        "-Dpolyglot.engine.CompileImmediately=true",
-                        "-Dpolyglot.engine.BackgroundCompilation=false",
-                        "-Dpolyglot.engine.TraceCompilation=true",
-                        "-Dpolyglot.log.file={0}".format(compiler_log_file),
-                        "-Dgraalvm.locatorDisabled=true",
-                        "truffle"])
-                    if exists(compiler_log_file):
-                        remove(compiler_log_file)
+                if t: _test_libgraal_truffle(extra_vm_arguments)
     else:
         mx.warn("Skipping libgraal tests: component not enabled")
 

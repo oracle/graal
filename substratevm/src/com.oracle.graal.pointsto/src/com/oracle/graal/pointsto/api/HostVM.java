@@ -122,7 +122,7 @@ public interface HostVM {
     }
 
     @SuppressWarnings("unused")
-    default boolean platformSupported(AnalysisUniverse universe, AnnotatedElement element) {
+    default boolean platformSupported(AnnotatedElement element) {
         return true;
     }
 }

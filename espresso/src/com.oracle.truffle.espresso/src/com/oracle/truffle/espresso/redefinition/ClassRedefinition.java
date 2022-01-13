@@ -41,6 +41,7 @@ import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
+import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.attributes.CodeAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.LineNumberTableAttribute;
 import com.oracle.truffle.espresso.classfile.attributes.Local;
@@ -251,23 +252,13 @@ public final class ClassRedefinition {
                 case CLASS_NAME_CHANGED:
                 case ADD_METHOD:
                 case REMOVE_METHOD:
+                case SCHEMA_CHANGE:
                     doRedefineClass(packet, invalidatedClasses, redefinedClasses);
                     return 0;
-                case SCHEMA_CHANGE:
-                    if (context.arbitraryChangesSupported()) {
-                        doRedefineClass(packet, invalidatedClasses, redefinedClasses);
-                        return 0;
-                    } else {
-                        return ErrorCodes.SCHEMA_CHANGE_NOT_IMPLEMENTED;
-                    }
                 case CLASS_HIERARCHY_CHANGED:
-                    if (context.arbitraryChangesSupported()) {
-                        context.markChangedHierarchy();
-                        doRedefineClass(packet, invalidatedClasses, redefinedClasses);
-                        return 0;
-                    } else {
-                        return ErrorCodes.HIERARCHY_CHANGE_NOT_IMPLEMENTED;
-                    }
+                    context.markChangedHierarchy();
+                    doRedefineClass(packet, invalidatedClasses, redefinedClasses);
+                    return 0;
                 case NEW_CLASS:
                     ClassInfo classInfo = packet.info;
 
@@ -696,7 +687,7 @@ public final class ClassRedefinition {
     private static boolean isUnchangedField(Field oldField, ParserField newField, Map<ParserField, Field> compatibleFields) {
         boolean sameName = oldField.getName() == newField.getName();
         boolean sameType = oldField.getType() == newField.getType();
-        boolean sameFlags = oldField.getModifiers() == newField.getFlags();
+        boolean sameFlags = oldField.getModifiers() == (newField.getFlags() & Constants.JVM_RECOGNIZED_FIELD_MODIFIERS);
 
         if (sameName && sameType) {
             if (sameFlags) {

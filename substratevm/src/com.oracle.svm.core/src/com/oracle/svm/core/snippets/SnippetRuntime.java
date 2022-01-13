@@ -26,8 +26,6 @@ package com.oracle.svm.core.snippets;
 
 import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.TLAB_LOCATIONS;
 
-//Checkstyle: allow reflection
-
 import java.lang.reflect.Method;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;

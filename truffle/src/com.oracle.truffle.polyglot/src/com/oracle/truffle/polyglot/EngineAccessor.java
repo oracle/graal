@@ -1480,6 +1480,21 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
+        public boolean isPolyglotEngineException(Throwable throwable) {
+            return throwable instanceof PolyglotEngineException;
+        }
+
+        @Override
+        public RuntimeException getPolyglotEngineExceptionCause(Throwable polyglotEngineException) {
+            return ((PolyglotEngineException) polyglotEngineException).e;
+        }
+
+        @Override
+        public RuntimeException createPolyglotEngineException(RuntimeException cause) {
+            return new PolyglotEngineException(cause);
+        }
+
+        @Override
         public int getExitExceptionExitCode(Throwable exitException) {
             return ((PolyglotContextImpl.ExitException) exitException).getExitCode();
         }
@@ -1553,6 +1568,16 @@ final class EngineAccessor extends Accessor {
         @Override
         public Object getPolyglotSharingLayer(Object polyglotLanguageInstance) {
             return ((PolyglotLanguageInstance) polyglotLanguageInstance).sharing;
+        }
+
+        @Override
+        public Object getGuestToHostCodeCache(Object polyglotContextImpl) {
+            return ((PolyglotContextImpl) polyglotContextImpl).getHostContext().getLanguageInstance().guestToHostCodeCache;
+        }
+
+        @Override
+        public void setGuestToHostCodeCache(Object polyglotContextImpl, Object cache) {
+            ((PolyglotContextImpl) polyglotContextImpl).getHostContext().getLanguageInstance().guestToHostCodeCache = cache;
         }
     }
 

@@ -27,11 +27,15 @@ package com.oracle.svm.hosted.code;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.DeoptTest;
 import com.oracle.svm.core.annotate.Specialize;
+import com.oracle.svm.core.graal.nodes.WriteCurrentVMThreadNode;
+import com.oracle.svm.core.graal.nodes.WriteHeapBaseNode;
 import com.oracle.svm.hosted.code.CompileQueue.CompileFunction;
 import com.oracle.svm.hosted.code.CompileQueue.ParseFunction;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -52,6 +56,8 @@ public class CompilationInfo {
     protected boolean isTrivialMethod;
 
     protected boolean canDeoptForTesting;
+
+    protected boolean modifiesSpecialRegisters;
 
     /**
      * The constant arguments for a {@link DeoptTest} method called by a {@link Specialize} method.
@@ -125,6 +131,14 @@ public class CompilationInfo {
 
     public void setGraph(StructuredGraph graph) {
         this.graph = graph;
+        if (SubstrateOptions.useLLVMBackend()) {
+            this.modifiesSpecialRegisters = false;
+            for (Node node : graph.getNodes()) {
+                if (node instanceof WriteCurrentVMThreadNode || node instanceof WriteHeapBaseNode) {
+                    this.modifiesSpecialRegisters = true;
+                }
+            }
+        }
     }
 
     public void clear() {
@@ -134,6 +148,11 @@ public class CompilationInfo {
 
     public StructuredGraph getGraph() {
         return graph;
+    }
+
+    public boolean modifiesSpecialRegisters() {
+        assert SubstrateOptions.useLLVMBackend();
+        return modifiesSpecialRegisters;
     }
 
     public boolean isTrivialMethod() {

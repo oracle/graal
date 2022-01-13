@@ -64,8 +64,6 @@ class SubstituteHelperClass {
 
     @NeverInline("For testing purposes")
     private static void nestedGreet() {
-        // Checkstyle: stop
         System.out.println("Hello, substituted world!");
-        // Checkstyle: resume
     }
 }

@@ -208,26 +208,16 @@ public class ManualSamplingTest extends AbstractPolyglotTest {
                                         "CALL(sample))",
 
         }, (samples, i) -> {
-            if (i == 0) {
-                assertEquals(1, samples.size());
-                Iterator<StackTraceEntry> iterator = samples.values().iterator().next().iterator();
-                // first time we are in sample
-                assertEntry(iterator, "sample", 14);
-                assertEntry(iterator, "", 0);
-                assertFalse(iterator.hasNext());
-            } else {
-                // assert in or after first sample call, but never in second sample
-                if (samples.size() > 0) {
-                    List<StackTraceEntry> entries = samples.values().iterator().next();
-                    Iterator<StackTraceEntry> iterator = entries.iterator();
-                    if (entries.size() == 2) {
-                        assertEntry(iterator, "sample", 14);
-                        assertEntry(iterator, "", 0);
-                        assertFalse(iterator.hasNext());
-                    } else {
-                        assertEntry(iterator, "", 0);
-                        assertFalse(iterator.hasNext());
-                    }
+            if (samples.size() > 0) {
+                List<StackTraceEntry> entries = samples.values().iterator().next();
+                Iterator<StackTraceEntry> iterator = entries.iterator();
+                if (entries.size() == 2) {
+                    assertEntry(iterator, "sample", 14);
+                    assertEntry(iterator, "", 0);
+                    assertFalse(iterator.hasNext());
+                } else {
+                    assertEntry(iterator, "", 0);
+                    assertFalse(iterator.hasNext());
                 }
             }
         }, 2, 1);

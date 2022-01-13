@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -31,12 +31,25 @@ package com.oracle.truffle.llvm.runtime.nodes.intrinsics.llvm;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.GenerateAOT;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.llvm.runtime.memory.LLVMStack.LLVMStackAccess;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMRootNode;
 
 abstract class LLVMStackBuiltin extends LLVMBuiltin {
 
     @CompilationFinal private LLVMStackAccess stackAccess;
+
+    /**
+     * Eager initialization of stackAccess during AOT preparation.
+     */
+    @Child private AOTInitHelper aotInitHelper = new AOTInitHelper(new GenerateAOT.Provider() {
+        @Override
+        public void prepareForAOT(TruffleLanguage<?> language, RootNode root) {
+            stackAccess = ((LLVMRootNode) root).getStackAccess();
+        }
+    });
 
     protected LLVMStackAccess ensureStackAccess() {
         if (stackAccess == null) {

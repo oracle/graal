@@ -175,14 +175,14 @@ public @interface CEntryPointOptions {
      * calling {@link CEntryPointActions#failFatally}), so no extra bailout-related code will be
      * generated.
      */
-    Class<?> prologue() default AutomaticPrologue.class;
+    Class<? extends Prologue> prologue() default AutomaticPrologue.class;
 
     /**
      * Specifies a class that is used when an early bailout occurs in the prologue. The given class
      * must have exactly one static {@link Uninterruptible} method with an int argument. This method
      * is invoked if the prologue methods returns a non-zero value.
      */
-    Class<?> prologueBailout() default AutomaticPrologueBailout.class;
+    Class<? extends PrologueBailout> prologueBailout() default AutomaticPrologueBailout.class;
 
     /** Marker interface for all epilogue classes. */
     interface Epilogue {
@@ -204,7 +204,7 @@ public @interface CEntryPointOptions {
      * parameters. Within the epilogue method, {@link CEntryPointActions} can be used to leave the
      * execution context.
      */
-    Class<?> epilogue() default LeaveEpilogue.class;
+    Class<? extends Epilogue> epilogue() default LeaveEpilogue.class;
 
     enum Publish {
         /**

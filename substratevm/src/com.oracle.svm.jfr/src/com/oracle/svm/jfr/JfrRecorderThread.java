@@ -99,11 +99,9 @@ public class JfrRecorderThread extends Thread {
             if (isFullEnough(buffer)) {
                 boolean shouldNotify = persistBuffer(chunkWriter, buffer);
                 if (shouldNotify) {
-                    // Checkstyle: stop
                     synchronized (Target_jdk_jfr_internal_JVM.FILE_DELTA_CHANGE) {
                         Target_jdk_jfr_internal_JVM.FILE_DELTA_CHANGE.notifyAll();
                     }
-                    // Checkstyle: resume
                 }
             }
         }

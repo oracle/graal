@@ -294,7 +294,7 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
         vmArgs.push_back(cp.str());
     #endif
 
-    vmInitArgs->options = (JavaVMOption *)malloc(vmArgs.size() * sizeof(JavaVMOption));
+    vmInitArgs->options = new JavaVMOption[vmArgs.size()];;
     vmInitArgs->nOptions = vmArgs.size();
     JavaVMOption *curOpt = vmInitArgs->options;
     for(const auto& arg: vmArgs) {
@@ -338,7 +338,7 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < vmInitArgs.nOptions; i++) {
         free(vmInitArgs.options[i].optionString);
     }
-    free(vmInitArgs.options);
+    delete vmInitArgs.options;
 
     jclass byteArrayClass = env->FindClass("[B");
     if (byteArrayClass == NULL) {

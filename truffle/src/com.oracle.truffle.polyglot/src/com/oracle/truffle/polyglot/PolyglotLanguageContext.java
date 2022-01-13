@@ -527,7 +527,6 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
             boolean removed = lazy.activePolyglotThreads.remove(thread);
             assert removed : "thread was not removed";
         }
-        EngineAccessor.INSTRUMENT.notifyThreadFinished(context.engine, context.creatorTruffleContext, thread);
     }
 
     boolean isCreated() {

@@ -57,7 +57,7 @@ public class AnalysisMetaAccess extends UniverseMetaAccess {
         if (result != null) {
             return Optional.of(result);
         }
-        result = ((AnalysisUniverse) getUniverse()).optionalLookup(getWrapped().lookupJavaType(clazz));
+        result = getUniverse().optionalLookup(getWrapped().lookupJavaType(clazz));
         return Optional.ofNullable(result);
     }
 
@@ -85,4 +85,10 @@ public class AnalysisMetaAccess extends UniverseMetaAccess {
     public int getArrayBaseOffset(JavaKind elementKind) {
         throw shouldNotReachHere();
     }
+
+    @Override
+    public AnalysisUniverse getUniverse() {
+        return (AnalysisUniverse) universe;
+    }
+
 }

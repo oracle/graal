@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.jdk.management;
 
-// Checkstyle: stop
-
 import java.lang.management.ManagementFactory;
 import java.lang.management.PlatformManagedObject;
 import java.util.ArrayList;
@@ -55,9 +53,6 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.thread.ThreadListener;
 import com.oracle.svm.core.util.UserError;
 import com.sun.jmx.mbeanserver.MXBeanLookup;
-
-// Checkstyle: resume
-// Checkstyle: allow synchronization
 
 /**
  * This class provides the SVM support implementation for the MXBean that provide VM introspection,
