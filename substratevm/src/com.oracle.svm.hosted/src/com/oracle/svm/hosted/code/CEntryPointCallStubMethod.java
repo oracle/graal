@@ -25,10 +25,16 @@
 package com.oracle.svm.hosted.code;
 
 import java.lang.annotation.Annotation;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.List;
 
+import com.oracle.svm.core.OS;
+import com.oracle.svm.core.graal.nodes.ReadCallerStackPointerNode;
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.FloatConvert;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
@@ -45,8 +51,10 @@ import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
+import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.nativeimage.c.constant.CEnumLookup;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -81,6 +89,7 @@ import com.oracle.svm.hosted.phases.CInterfaceEnumTool;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 
 import jdk.vm.ci.meta.ConstantPool;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -149,7 +158,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
 
         parameterEnumInfos = adaptParameterTypes(providers, nativeLibraries, kit, parameterTypes, parameterLoadTypes, purpose);
 
-        ValueNode[] args = kit.loadArguments(parameterLoadTypes).toArray(new ValueNode[0]);
+        ValueNode[] args = loadArguments(providers, kit, parameterTypes, parameterLoadTypes).toArray(new ValueNode[0]);
 
         InvokeWithExceptionNode invokePrologue = generatePrologue(providers, kit, parameterLoadTypes, targetMethod.getParameterAnnotations(), args);
         if (invokePrologue != null) {
@@ -219,6 +228,57 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
         kit.createReturn(returnValue, returnValue.getStackKind());
 
         return kit.finalizeGraph();
+    }
+
+    private static List<ValueNode> loadArguments(HostedProviders providers, HostedGraphKit kit, JavaType[] parameterTypes, JavaType[] parameterLoadTypes) {
+        if (!Platform.includedIn(Platform.AARCH64.class)) {
+            return kit.loadArguments(parameterLoadTypes);
+        }
+        JavaKind wordKind = providers.getWordTypes().getWordKind();
+        List<ValueNode> arguments = new ArrayList<>();
+        ValueNode spBase = null;
+        int spOffset = 0;
+        int javaIndex = 0;
+        int intArgs = 0;
+        int fpArgs = 0;
+        for (int i = 0; i < parameterLoadTypes.length; i++) {
+            JavaType type = parameterTypes[i];
+            JavaKind kind = type.getJavaKind();
+            if ((kind.isNumericFloat() && fpArgs < 8) || (!kind.isNumericFloat() && intArgs < 8)) {
+                arguments.add(kit.loadLocal(javaIndex, kind));
+            } else {
+                assert fpArgs >= 8 || intArgs >= 8;
+                if (spBase == null) {
+                    spBase = kit.append(new ReadCallerStackPointerNode());
+                }
+                int argOffset;
+                if (OS.DARWIN.isCurrent()) {
+                    int paramByteSize = kind.isObject() ? wordKind.getByteCount() : kind.getByteCount();
+                    argOffset = NumUtil.roundUp(spOffset, paramByteSize);
+                    spOffset = argOffset + paramByteSize;
+                } else {
+                    assert OS.LINUX.isCurrent();
+                    argOffset = spOffset;
+                    int wordByteSize = wordKind.getByteCount();
+                    int alignment = Math.max(kind.isObject() ? wordByteSize : kind.getStackKind().getByteCount(), wordByteSize);
+                    spOffset += alignment;
+                }
+                ConstantNode offsetConstant = kit.createConstant(JavaConstant.forIntegerKind(wordKind, argOffset), wordKind);
+                OffsetAddressNode address = kit.unique(new OffsetAddressNode(spBase, offsetConstant));
+
+                ResolvedJavaType rType = (ResolvedJavaType) type;
+                Stamp stamp = kind.isNumericInteger() ? getNarrowIntegerStamp(kind) : StampFactory.forKind(kind);
+                arguments.add(kit.createArgumentNode(i, rType, kind, address, null, stamp, false));
+            }
+            javaIndex += kind.getSlotCount();
+
+            if (kind.isNumericFloat()) {
+                fpArgs++;
+            } else {
+                intArgs++;
+            }
+        }
+        return arguments;
     }
 
     private StructuredGraph buildBuiltinGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers) {

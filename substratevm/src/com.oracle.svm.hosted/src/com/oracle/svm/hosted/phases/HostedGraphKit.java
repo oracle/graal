@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.hosted.phases;
 
+import com.oracle.svm.core.graal.nodes.CInterfaceReadNode;
+import org.graalvm.compiler.core.common.calc.FloatConvert;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugContext;
@@ -39,7 +42,10 @@ import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
+import org.graalvm.compiler.nodes.calc.FloatConvertNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
+import org.graalvm.compiler.nodes.calc.SignExtendNode;
+import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
@@ -47,6 +53,8 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess;
+import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 
@@ -66,6 +74,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.word.LocationIdentity;
 
 public class HostedGraphKit extends SubstrateGraphKit {
 
@@ -154,5 +163,28 @@ public class HostedGraphKit extends SubstrateGraphKit {
         }
         createCheckThrowingBytecodeException(IsNullNode.create(object), true, BytecodeExceptionNode.BytecodeExceptionKind.NULL_POINTER);
         return append(PiNode.create(object, StampFactory.objectNonNull()));
+    }
+
+    public ValueNode createArgumentNode(int i, ResolvedJavaType type, JavaKind readKind, OffsetAddressNode address, LocationIdentity locationIdentity, Stamp readStamp, boolean convertFloat) {
+        LocationIdentity li = locationIdentity == null ? LocationIdentity.any() : locationIdentity;
+        ValueNode value = append(new CInterfaceReadNode(address, li, readStamp, OnHeapMemoryAccess.BarrierType.NONE, "args[" + i + "]"));
+        JavaKind stackKind = readKind.getStackKind();
+        if (type.getJavaKind() == JavaKind.Float && convertFloat) {
+            value = unique(new FloatConvertNode(FloatConvert.D2F, value));
+        } else if (readKind != stackKind) {
+            assert stackKind.getBitCount() > readKind.getBitCount() : "read kind must be narrower than stack kind";
+            if (readKind.isUnsigned()) { // needed or another op may illegally sign-extend
+                value = unique(new ZeroExtendNode(value, stackKind.getBitCount()));
+            } else {
+                value = unique(new SignExtendNode(value, stackKind.getBitCount()));
+            }
+        } else if (readKind.isObject()) {
+            value = unboxHandle(value);
+        }
+        return value;
+    }
+
+    public ValueNode unboxHandle(ValueNode value) {
+        return value;
     }
 }

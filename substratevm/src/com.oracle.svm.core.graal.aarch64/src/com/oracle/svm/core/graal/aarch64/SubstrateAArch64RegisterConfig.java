@@ -254,7 +254,7 @@ public class SubstrateAArch64RegisterConfig implements SubstrateRegisterConfig {
             locations[index] = StackSlot.get(valueKindFactory.getValueKind(kind), alignedStackOffset, false);
             return alignedStackOffset + paramByteSize;
         } else {
-            /* Native-to-Java calls follow the normal Java convention. */
+            /* Native-to-Java calls are handled in CEntryPointCallStubMethod. */
             return javaStackParameterAssignment(valueKindFactory, locations, index, kind, currentStackOffset, isOutgoing);
         }
     }

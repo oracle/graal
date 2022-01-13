@@ -54,14 +54,11 @@ import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.FloatConvertNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
-import org.graalvm.compiler.nodes.calc.SignExtendNode;
-import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
-import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.nativeimage.Platform;
@@ -76,7 +73,6 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode.LeaveAction;
-import com.oracle.svm.core.graal.nodes.CInterfaceReadNode;
 import com.oracle.svm.core.graal.nodes.ReadCallerStackPointerNode;
 import com.oracle.svm.core.graal.nodes.VaListNextArgNode;
 import com.oracle.svm.core.util.VMError;
@@ -441,24 +437,10 @@ public final class JNIJavaCallWrapperMethod extends EntryPointCallStubMethod {
                 ConstantNode offsetConstant = kit.createConstant(JavaConstant.forIntegerKind(wordKind, offset), wordKind);
                 OffsetAddressNode address = kit.unique(new OffsetAddressNode(array, offsetConstant));
                 LocationIdentity locationIdentity = fieldInfo.getLocationIdentity();
-                if (locationIdentity == null) {
-                    locationIdentity = LocationIdentity.any();
-                }
+
                 Stamp readStamp = getNarrowStamp(providers, readKind);
-                ValueNode value = kit.append(new CInterfaceReadNode(address, locationIdentity, readStamp, BarrierType.NONE, "args[" + i + "]"));
-                JavaKind stackKind = readKind.getStackKind();
-                if (type.getJavaKind() == JavaKind.Float && (callVariant == CallVariant.VARARGS || callVariant == CallVariant.VA_LIST)) {
-                    value = kit.unique(new FloatConvertNode(FloatConvert.D2F, value));
-                } else if (readKind != stackKind) {
-                    assert stackKind.getBitCount() > readKind.getBitCount() : "read kind must be narrower than stack kind";
-                    if (readKind.isUnsigned()) { // needed or another op may illegally sign-extend
-                        value = kit.unique(new ZeroExtendNode(value, stackKind.getBitCount()));
-                    } else {
-                        value = kit.unique(new SignExtendNode(value, stackKind.getBitCount()));
-                    }
-                } else if (readKind.isObject()) {
-                    value = kit.unboxHandle(value);
-                }
+                boolean convertFloat = callVariant == CallVariant.VARARGS || callVariant == CallVariant.VA_LIST;
+                ValueNode value = kit.createArgumentNode(i, type, readKind, address, locationIdentity, readStamp, convertFloat);
                 args.add(Pair.create(value, type));
             }
         } else if (callVariant == CallVariant.VARARGS) {
@@ -510,12 +492,7 @@ public final class JNIJavaCallWrapperMethod extends EntryPointCallStubMethod {
 
     private static Stamp getNarrowStamp(HostedProviders providers, JavaKind kind) {
         if (kind.isNumericInteger()) {
-            // avoid widened stamp to prevent reading undefined bits
-            if (kind.isUnsigned()) {
-                return StampFactory.forUnsignedInteger(kind.getBitCount(), kind.getMinValue(), kind.getMaxValue());
-            } else {
-                return StampFactory.forInteger(kind.getBitCount(), kind.getMinValue(), kind.getMaxValue());
-            }
+            return getNarrowIntegerStamp(kind);
         } else if (kind.isObject()) {
             ResolvedJavaType objectHandle = providers.getMetaAccess().lookupJavaType(JNIObjectHandle.class);
             return providers.getWordTypes().getWordStamp(objectHandle);

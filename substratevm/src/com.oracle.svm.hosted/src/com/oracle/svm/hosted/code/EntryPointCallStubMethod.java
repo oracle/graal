@@ -31,8 +31,11 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.ConstantPool;
+import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
+import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.core.common.type.StampFactory;
 
 public abstract class EntryPointCallStubMethod extends NonBytecodeStaticMethod {
 
@@ -70,5 +73,15 @@ public abstract class EntryPointCallStubMethod extends NonBytecodeStaticMethod {
     @Override
     public final Annotation[] getDeclaredAnnotations() {
         return new Annotation[]{UNINTERRUPTIBLE_ANNOTATION};
+    }
+
+    protected static IntegerStamp getNarrowIntegerStamp(JavaKind kind) {
+        assert kind.isNumericInteger();
+        // avoid widened stamp to prevent reading undefined bits
+        if (kind.isUnsigned()) {
+            return StampFactory.forUnsignedInteger(kind.getBitCount(), kind.getMinValue(), kind.getMaxValue());
+        } else {
+            return StampFactory.forInteger(kind.getBitCount(), kind.getMinValue(), kind.getMaxValue());
+        }
     }
 }

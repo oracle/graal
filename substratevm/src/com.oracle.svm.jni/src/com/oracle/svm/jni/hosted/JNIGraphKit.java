@@ -84,6 +84,7 @@ public class JNIGraphKit extends HostedGraphKit {
         return createStaticInvoke("boxObjectInLocalHandle", obj);
     }
 
+    @Override
     public InvokeWithExceptionNode unboxHandle(ValueNode handle) {
         return createStaticInvoke("unboxHandle", handle);
     }
