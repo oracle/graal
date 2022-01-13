@@ -1099,9 +1099,15 @@ public abstract class AbstractTruffleString {
         return toJavaStringUncached();
     }
 
+    /**
+     * Returns debug information about this string. For debugging purposes only. The format of the
+     * information returned by this method is unspecified and may change at any time.
+     *
+     * @since 22.1
+     */
     @SuppressWarnings("unused")
     @TruffleBoundary
-    String toStringDebug() {
+    public final String toStringDebug() {
         return String.format("TString(%s, %s, off: %d, len: %d, str: %d, cpLen: %d, \"%s\")",
                         TruffleString.Encoding.get(encoding()),
                         TSCodeRange.toString(this instanceof TruffleString ? ((TruffleString) this).codeRange() : ((MutableTruffleString) this).codeRange()),

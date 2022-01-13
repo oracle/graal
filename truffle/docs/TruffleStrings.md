@@ -494,6 +494,9 @@ abstract static class SomeNode extends Node {
 }
 ```
 
+TruffleString also exposes `#toStringDebug()` for debugging purposes. Do not use this method for anything other than
+debugging, as its return value is unspecified and may change at any time.
+
 ### Codepoint Iterators
 
 TruffleString provides `TruffleStringIterator` as a means of iterating over a string's codepoints. This method should
