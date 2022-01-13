@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1612,12 +1612,12 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public Object getGuestToHostCodeCache(Object polyglotContextImpl) {
-            return ((PolyglotContextImpl) polyglotContextImpl).getHostContext().getLanguageInstance().guestToHostCodeCache;
+            return ((PolyglotContextImpl) polyglotContextImpl).getHostContext().getLanguageInstance().getGuestToHostCodeCache();
         }
 
         @Override
-        public void setGuestToHostCodeCache(Object polyglotContextImpl, Object cache) {
-            ((PolyglotContextImpl) polyglotContextImpl).getHostContext().getLanguageInstance().guestToHostCodeCache = cache;
+        public Object installGuestToHostCodeCache(Object polyglotContextImpl, Object cache) {
+            return ((PolyglotContextImpl) polyglotContextImpl).getHostContext().getLanguageInstance().installGuestToHostCodeCache(cache);
         }
     }
 

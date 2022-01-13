@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -673,7 +673,7 @@ public abstract class Accessor {
 
         public abstract Object getGuestToHostCodeCache(Object polyglotContextImpl);
 
-        public abstract void setGuestToHostCodeCache(Object polyglotContextImpl, Object cache);
+        public abstract Object installGuestToHostCodeCache(Object polyglotContextImpl, Object cache);
 
         public abstract boolean getNeedsAllEncodings();
 
