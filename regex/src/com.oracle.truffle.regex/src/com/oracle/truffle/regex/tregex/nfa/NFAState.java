@@ -155,38 +155,26 @@ public final class NFAState extends BasicState<NFAState, NFAStateTransition> imp
     }
 
     public boolean hasTransitionToAnchoredFinalState(boolean forward) {
-        return (forward ? transitionToAnchoredFinalState : revTransitionToAnchoredFinalState) >= 0;
+        return getTransitionToAnchoredFinalStateId(forward) >= 0;
     }
 
     public short getTransitionToAnchoredFinalStateId(boolean forward) {
         return forward ? transitionToAnchoredFinalState : revTransitionToAnchoredFinalState;
     }
 
-    /**
-     * If the transition to the unanchored final state dominates the transition to the anchored
-     * final state, then this will return the transition to the anchored final state instead of the
-     * transition to the unanchored final state.
-     */
     public NFAStateTransition getTransitionToAnchoredFinalState(boolean forward) {
         assert hasTransitionToAnchoredFinalState(forward);
-        NFAStateTransition[] transitions = forward ? getSuccessors() : getPredecessors();
-        int transitionToAFS = forward ? transitionToAnchoredFinalState : revTransitionToAnchoredFinalState;
-        int transitionToUFS = forward ? transitionToUnAnchoredFinalState : revTransitionToUnAnchoredFinalState;
-        if (transitionToUFS >= 0 && transitionToUFS < transitionToAFS) {
-            return transitions[transitionToUFS];
-        } else {
-            return transitions[transitionToAFS];
-        }
+        return getSuccessors(forward)[getTransitionToAnchoredFinalStateId(forward)];
     }
 
     @Override
     public boolean hasTransitionToUnAnchoredFinalState(boolean forward) {
-        return (forward ? transitionToUnAnchoredFinalState : revTransitionToUnAnchoredFinalState) >= 0;
+        return getTransitionToUnAnchoredFinalStateId(forward) >= 0;
     }
 
     public NFAStateTransition getTransitionToUnAnchoredFinalState(boolean forward) {
         assert hasTransitionToUnAnchoredFinalState(forward);
-        return forward ? getSuccessors()[transitionToUnAnchoredFinalState] : getPredecessors()[revTransitionToUnAnchoredFinalState];
+        return getSuccessors(forward)[getTransitionToUnAnchoredFinalStateId(forward)];
     }
 
     public short getTransitionToUnAnchoredFinalStateId(boolean forward) {
