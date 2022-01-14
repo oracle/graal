@@ -1022,7 +1022,7 @@ public final class TruffleString extends AbstractTruffleString {
                 J_CODINGS_TABLE[e.id] = e.jCoding;
                 MAX_COMPATIBLE_CODE_RANGE[e.id] = e.maxCompatibleCodeRange;
                 if (JCodings.ENABLED) {
-                    J_CODINGS_NAME_MAP.put(e.jCoding.toString(), e);
+                    J_CODINGS_NAME_MAP.put(JCodings.getInstance().name(e.jCoding), e);
                 }
             }
             assert UTF_16.naturalStride == 1;
@@ -1065,7 +1065,7 @@ public final class TruffleString extends AbstractTruffleString {
         public static Encoding fromJCodingName(String name) {
             Encoding encoding = J_CODINGS_NAME_MAP.get(name, null);
             if (encoding == null) {
-                throw InternalErrors.illegalArgument("unknown encoding");
+                throw InternalErrors.unknownEncoding(name);
             }
             return encoding;
         }

@@ -111,6 +111,11 @@ final class JCodingsImpl implements JCodings {
     }
 
     @Override
+    public String name(Encoding jCoding) {
+        return unwrap(jCoding).toString();
+    }
+
+    @Override
     public int minLength(Encoding jCoding) {
         return unwrap(jCoding).minLength();
     }
