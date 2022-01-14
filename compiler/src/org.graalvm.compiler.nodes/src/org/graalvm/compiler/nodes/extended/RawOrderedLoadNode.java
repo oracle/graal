@@ -26,22 +26,25 @@
 
 package org.graalvm.compiler.nodes.extended;
 
-import jdk.vm.ci.meta.JavaKind;
+import static org.graalvm.compiler.nodeinfo.InputType.Memory;
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
+
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.word.LocationIdentity;
 
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
+import jdk.vm.ci.meta.JavaKind;
 
-@NodeInfo(cycles = CYCLES_2, size = SIZE_1)
-public class RawVolatileLoadNode extends RawLoadNode implements SingleMemoryKill {
-    public static final NodeClass<RawVolatileLoadNode> TYPE = NodeClass.create(RawVolatileLoadNode.class);
+@NodeInfo(allowedUsageTypes = Memory, cycles = CYCLES_2, size = SIZE_1)
+public class RawOrderedLoadNode extends RawLoadNode implements SingleMemoryKill {
+    public static final NodeClass<RawOrderedLoadNode> TYPE = NodeClass.create(RawOrderedLoadNode.class);
 
-    public RawVolatileLoadNode(ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity) {
-        super(TYPE, object, offset, accessKind, locationIdentity);
+    public RawOrderedLoadNode(ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity, MemoryOrderMode memoryOrder) {
+        super(TYPE, object, offset, accessKind, locationIdentity, memoryOrder);
     }
 
     @Override
@@ -49,8 +52,4 @@ public class RawVolatileLoadNode extends RawLoadNode implements SingleMemoryKill
         return LocationIdentity.any();
     }
 
-    @Override
-    public boolean isVolatile() {
-        return true;
-    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,39 +22,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.pointsto.nodes;
+package com.oracle.svm.core.graal.thread;
 
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.nodeinfo.InputType;
+import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.extended.RawStoreNode;
+import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.word.LocationIdentity;
 
-import com.oracle.svm.util.UnsafePartitionKind;
+import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaType;
+@NodeInfo(allowedUsageTypes = InputType.Memory, cycles = NodeCycles.CYCLES_2, size = NodeSize.SIZE_1)
+public class VolatileStoreVMThreadLocalNode extends StoreVMThreadLocalNode implements SingleMemoryKill {
+    public static final NodeClass<VolatileStoreVMThreadLocalNode> TYPE = NodeClass.create(VolatileStoreVMThreadLocalNode.class);
 
-@NodeInfo
-public class UnsafePartitionStoreNode extends RawStoreNode {
-    public static final NodeClass<UnsafePartitionStoreNode> TYPE = NodeClass.create(UnsafePartitionStoreNode.class);
-
-    protected final UnsafePartitionKind partitionKind;
-    protected final ResolvedJavaType partitionType;
-
-    public UnsafePartitionStoreNode(ValueNode object, ValueNode offset, ValueNode value, JavaKind accessKind, LocationIdentity locationIdentity, UnsafePartitionKind partitionKind,
-                    ResolvedJavaType partitionType) {
-        super(TYPE, object, offset, value, accessKind, locationIdentity, true, MemoryOrderMode.PLAIN, null, false);
-        this.partitionKind = partitionKind;
-        this.partitionType = partitionType;
+    public VolatileStoreVMThreadLocalNode(VMThreadLocalInfo threadLocalInfo, ValueNode holder, ValueNode value, OnHeapMemoryAccess.BarrierType barrierType) {
+        super(TYPE, threadLocalInfo, holder, value, barrierType, MemoryOrderMode.VOLATILE);
     }
 
-    public UnsafePartitionKind partitionKind() {
-        return partitionKind;
-    }
-
-    public ResolvedJavaType partitionType() {
-        return partitionType;
+    @Override
+    public LocationIdentity getKilledLocationIdentity() {
+        return LocationIdentity.any();
     }
 }

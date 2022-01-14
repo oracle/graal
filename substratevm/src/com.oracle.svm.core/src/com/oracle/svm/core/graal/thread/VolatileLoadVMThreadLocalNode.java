@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,36 +22,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.core.graal.thread;
 
-package org.graalvm.compiler.nodes.memory;
-
-import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.nodeinfo.InputType;
+import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.memory.address.AddressNode;
-import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.word.LocationIdentity;
 
-@NodeInfo(nameTemplate = "VolatileWrite#{p#location/s}")
-public class VolatileWriteNode extends WriteNode implements Lowerable, OrderedMemoryAccess {
-    public static final NodeClass<VolatileWriteNode> TYPE = NodeClass.create(VolatileWriteNode.class);
+import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 
-    public VolatileWriteNode(AddressNode address, LocationIdentity location, ValueNode value, BarrierType barrierType) {
-        super(TYPE, address, location, LocationIdentity.any(), value, barrierType);
+import jdk.vm.ci.meta.MetaAccessProvider;
+
+@NodeInfo(allowedUsageTypes = InputType.Memory, cycles = NodeCycles.CYCLES_2, size = NodeSize.SIZE_1)
+public class VolatileLoadVMThreadLocalNode extends LoadVMThreadLocalNode implements SingleMemoryKill {
+    public static final NodeClass<VolatileLoadVMThreadLocalNode> TYPE = NodeClass.create(VolatileLoadVMThreadLocalNode.class);
+
+    public VolatileLoadVMThreadLocalNode(MetaAccessProvider metaAccess, VMThreadLocalInfo threadLocalInfo, ValueNode holder, OnHeapMemoryAccess.BarrierType barrierType) {
+        super(TYPE, metaAccess, threadLocalInfo, holder, barrierType, MemoryOrderMode.VOLATILE);
     }
 
     @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        LIRKind writeKind = gen.getLIRGeneratorTool().getLIRKind(value().stamp(NodeView.DEFAULT));
-        gen.getLIRGeneratorTool().getArithmetic().emitVolatileStore(writeKind, gen.operand(address), gen.operand(value()), gen.state(this));
-    }
-
-    @Override
-    public MemoryOrderMode getMemoryOrder() {
-        return MemoryOrderMode.VOLATILE;
+    public LocationIdentity getKilledLocationIdentity() {
+        return LocationIdentity.any();
     }
 }
