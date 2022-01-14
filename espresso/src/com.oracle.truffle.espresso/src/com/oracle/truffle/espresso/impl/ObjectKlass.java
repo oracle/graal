@@ -1746,12 +1746,11 @@ public final class ObjectKlass extends Klass {
             Klass[] supertypes = supertypesWithSelfCache;
             if (supertypes == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                Klass supertype = getSupertype();
-                if (supertype == null) {
+                if (superKlass == null) {
                     this.supertypesWithSelfCache = new Klass[]{this.getKlass()};
                     return supertypesWithSelfCache;
                 }
-                Klass[] superKlassTypes = supertype.getSuperTypes();
+                Klass[] superKlassTypes = superKlass.getSuperTypes();
                 supertypes = new Klass[superKlassTypes.length + 1];
                 int depth = getHierarchyDepth();
                 assert supertypes.length == depth + 1;
@@ -1766,11 +1765,11 @@ public final class ObjectKlass extends Klass {
             int result = hierarchyDepth;
             if (result == -1) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                if (getSupertype() == null) {
-                    // Primitives or java.lang.Object
+                if (superKlass == null) {
+                    // java.lang.Object
                     result = 0;
                 } else {
-                    result = getSupertype().getHierarchyDepth() + 1;
+                    result = superKlass.getHierarchyDepth() + 1;
                 }
                 hierarchyDepth = result;
             }
@@ -1782,7 +1781,7 @@ public final class ObjectKlass extends Klass {
             if (transitiveInterfaces == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 // Use the itable construction.
-                transitiveInterfaces = getKlass().getiKlassTable();
+                transitiveInterfaces = iKlassTable;
                 transitiveInterfaceCache = transitiveInterfaces;
             }
             return transitiveInterfaces;

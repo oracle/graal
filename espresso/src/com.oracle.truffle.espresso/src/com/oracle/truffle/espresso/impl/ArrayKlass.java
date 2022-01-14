@@ -30,6 +30,8 @@ import static com.oracle.truffle.espresso.classfile.Constants.ACC_PROTECTED;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PUBLIC;
 import static com.oracle.truffle.espresso.meta.EspressoError.cat;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -49,6 +51,10 @@ public final class ArrayKlass extends Klass {
     private final Klass componentType;
     private final Klass elementalType;
     private final int dimension;
+
+    @CompilationFinal(dimensions = 1) protected Klass[] supertypesWithSelfCache;
+    @CompilationFinal private int hierarchyDepth = -1;
+    @CompilationFinal(dimensions = 1) private ObjectKlass.KlassVersion[] transitiveInterfaceCache;
 
     ArrayKlass(Klass componentType) {
         super(componentType.getContext(),
@@ -206,5 +212,54 @@ public final class ArrayKlass extends Klass {
     @TruffleBoundary
     private String fixupAnonymousExternalName(String base) {
         return base.replace(";", cat("/", getElementalType().getId(), ";"));
+    }
+
+    // index 0 is Object, index hierarchyDepth is this
+    @Override
+    protected Klass[] getSuperTypes() {
+        Klass[] supertypes = supertypesWithSelfCache;
+        if (supertypes == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            Klass[] superKlassTypes = getArraySuperType().getSuperTypes();
+            supertypes = new Klass[superKlassTypes.length + 1];
+            int depth = getHierarchyDepth();
+            assert supertypes.length == depth + 1;
+            supertypes[depth] = this;
+            System.arraycopy(superKlassTypes, 0, supertypes, 0, depth);
+            supertypesWithSelfCache = supertypes;
+        }
+        return supertypes;
+    }
+
+    @Override
+    protected int getHierarchyDepth() {
+        int result = hierarchyDepth;
+        if (result == -1) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            result = hierarchyDepth = getArraySuperType().getHierarchyDepth() + 1;
+        }
+        return result;
+    }
+
+    @Override
+    protected ObjectKlass.KlassVersion[] getTransitiveInterfacesList() {
+        ObjectKlass.KlassVersion[] transitiveInterfaces = transitiveInterfaceCache;
+        if (transitiveInterfaces == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            ObjectKlass[] superItfs = getSuperInterfaces();
+            transitiveInterfaces = new ObjectKlass.KlassVersion[superItfs.length];
+            for (int i = 0; i < superItfs.length; i++) {
+                transitiveInterfaces[i] = superItfs[i].getKlassVersion();
+            }
+            transitiveInterfaceCache = transitiveInterfaces;
+        }
+        return transitiveInterfaces;
+    }
+
+    private Klass getArraySuperType() {
+        if (this == getMeta().java_lang_Object.array() || componentType.isPrimitive()) {
+            return getMeta().java_lang_Object;
+        }
+        return componentType.getSupertype().array();
     }
 }

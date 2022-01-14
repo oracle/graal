@@ -488,8 +488,6 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     @CompilationFinal //
     private Class<?> dispatch;
 
-    @CompilationFinal private int hierarchyDepth = -1;
-
     protected Object prepareThread;
 
     // Raw modifiers provided by the VM.
@@ -1029,60 +1027,20 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return !isInterface();
     }
 
-    @CompilationFinal(dimensions = 1) //
-    protected Klass[] supertypesWithSelfCache;
-
     // index 0 is Object, index hierarchyDepth is this
     protected Klass[] getSuperTypes() {
-        Klass[] supertypes = supertypesWithSelfCache;
-        if (supertypes == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            Klass supertype = getSupertype();
-            if (supertype == null) {
-                this.supertypesWithSelfCache = new Klass[]{this};
-                return supertypesWithSelfCache;
-            }
-            Klass[] superKlassTypes = supertype.getSuperTypes();
-            supertypes = new Klass[superKlassTypes.length + 1];
-            int depth = getHierarchyDepth();
-            assert supertypes.length == depth + 1;
-            supertypes[depth] = this;
-            System.arraycopy(superKlassTypes, 0, supertypes, 0, depth);
-            supertypesWithSelfCache = supertypes;
-        }
-        return supertypes;
+        // default implementation for primitive classes
+        return new Klass[]{this};
     }
 
     protected int getHierarchyDepth() {
-        int result = hierarchyDepth;
-        if (result == -1) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            if (getSupertype() == null) {
-                // Primitives or java.lang.Object
-                result = 0;
-            } else {
-                result = getSupertype().getHierarchyDepth() + 1;
-            }
-            hierarchyDepth = result;
-        }
-        return result;
+        // default implementation for primitive classes
+        return 0;
     }
 
-    @CompilationFinal(dimensions = 1) private ObjectKlass.KlassVersion[] transitiveInterfaceCache;
-
     protected ObjectKlass.KlassVersion[] getTransitiveInterfacesList() {
-        ObjectKlass.KlassVersion[] transitiveInterfaces = transitiveInterfaceCache;
-        if (transitiveInterfaces == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            assert this.isArray() || this.isPrimitive();
-            ObjectKlass[] superItfs = this.getSuperInterfaces();
-            transitiveInterfaces = new ObjectKlass.KlassVersion[superItfs.length];
-            for (int i = 0; i < superItfs.length; i++) {
-                transitiveInterfaces[i] = superItfs[i].getKlassVersion();
-            }
-            transitiveInterfaceCache = transitiveInterfaces;
-        }
-        return transitiveInterfaces;
+        // default implementation for primitive classes
+        return ObjectKlass.EMPTY_KLASSVERSION_ARRAY;
     }
 
     @TruffleBoundary
