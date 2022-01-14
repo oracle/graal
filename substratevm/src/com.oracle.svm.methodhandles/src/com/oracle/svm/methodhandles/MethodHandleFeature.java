@@ -208,6 +208,9 @@ public class MethodHandleFeature implements Feature {
                         access.findClassByName("java.lang.invoke.VarHandle$AccessDescriptor")));
         RuntimeReflection.register(ReflectionUtil.lookupMethod(invokersClazz, "checkVarHandleExactType", access.findClassByName("java.lang.invoke.VarHandle"),
                         access.findClassByName("java.lang.invoke.VarHandle$AccessDescriptor")));
+        if (JavaVersionUtil.JAVA_SPEC >= 17) {
+            RuntimeReflection.register(ReflectionUtil.lookupMethod(invokersClazz, "directVarHandleTarget", access.findClassByName("java.lang.invoke.VarHandle")));
+        }
     }
 
     private static void registerValueConversionBoxFunctionsForReflection(DuringAnalysisAccess access) {
