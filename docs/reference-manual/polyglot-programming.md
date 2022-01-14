@@ -17,7 +17,7 @@ permalink: /reference-manual/polyglot-programming/
 GraalVM allows users to write polyglot applications that seamlessly pass values from one language to another by means of the [Truffle language implementation framework](../../truffle/docs/README.md) (henceforth "Truffle").
 
 Truffle is a Java library for building programming languages implementations as interpreters for self-modifying Abstract Syntax Trees.
-When writing a language interpreter with Truffle, it will automatically use the GraalVM compiler as a just-in-time compiler for the language.
+When writing a language interpreter with Truffle, it will automatically use the Graal compiler as a just-in-time compiler for the language.
 By having access to this framework, a Ruby application, for example, can run on the same JVM as a Java application.
 Also, a host JVM-based language and a guest language can directly interoperate with each other and pass data back and forth in the same memory space.
 
