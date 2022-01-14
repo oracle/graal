@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -107,12 +107,12 @@ import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
 import com.oracle.truffle.regex.util.BitSets;
+import com.oracle.truffle.regex.util.EmptyArrays;
 import com.oracle.truffle.regex.util.TBitSet;
 
 public final class DFAGenerator implements JsonConvertible {
 
     private static final DFAStateTransitionBuilder[] EMPTY_TRANSITIONS_ARRAY = new DFAStateTransitionBuilder[0];
-    private static final short[] EMPTY_SHORT_ARRAY = {};
 
     private final TRegexCompilationRequest compilationReqest;
     private final NFA nfa;
@@ -845,12 +845,8 @@ public final class DFAGenerator implements JsonConvertible {
                 matchers = getEncoding().toMatchers(matchersBuilder);
             }
 
-            short[] successors = s.getNumberOfSuccessors() > 0 ? new short[s.getNumberOfSuccessors()] : EMPTY_SHORT_ARRAY;
+            short[] successors = s.getNumberOfSuccessors() > 0 ? new short[s.getNumberOfSuccessors()] : EmptyArrays.SHORT;
             DFAStateNode.LoopOptimizationNode loopOptimizationNode = null;
-            if (isGenericCG()) {
-                DFAStateTransitionBuilder[] precedingTransitions = s.getPredecessors();
-                assert precedingTransitions.length != 0;
-            }
             short loopToSelf = -1;
             for (int i = 0; i < s.getSuccessors().length; i++) {
                 successors[i] = (short) s.getSuccessors()[i].getTarget().getId();
@@ -1262,8 +1258,8 @@ public final class DFAGenerator implements JsonConvertible {
             return null;
         }
         GroupBoundaries groupBoundaries = transition.getGroupBoundaries();
-        IndexOperation[] indexUpdates = DFACaptureGroupPartialTransition.EMPTY_INDEX_UPDATES;
-        IndexOperation[] indexClears = DFACaptureGroupPartialTransition.EMPTY_INDEX_CLEARS;
+        IndexOperation[] indexUpdates = DFACaptureGroupPartialTransition.EMPTY_INDEX_OPS;
+        IndexOperation[] indexClears = DFACaptureGroupPartialTransition.EMPTY_INDEX_OPS;
         LastGroupUpdate[] lastGroupUpdates = DFACaptureGroupPartialTransition.EMPTY_LAST_GROUP_UPDATES;
         if (groupBoundaries.hasIndexUpdates()) {
             indexUpdates = new IndexOperation[]{new IndexOperation(0, groupBoundaries.updatesToByteArray())};
@@ -1275,8 +1271,8 @@ public final class DFAGenerator implements JsonConvertible {
             lastGroupUpdates = new LastGroupUpdate[]{new LastGroupUpdate(0, groupBoundaries.getLastGroup())};
         }
         DFACaptureGroupPartialTransition partialTransitionNode = DFACaptureGroupPartialTransition.create(this,
-                        DFACaptureGroupPartialTransition.EMPTY_REORDER_SWAPS,
-                        DFACaptureGroupPartialTransition.EMPTY_ARRAY_COPIES,
+                DFACaptureGroupPartialTransition.EMPTY,
+                DFACaptureGroupPartialTransition.EMPTY,
                         indexUpdates,
                         indexClears,
                         lastGroupUpdates,

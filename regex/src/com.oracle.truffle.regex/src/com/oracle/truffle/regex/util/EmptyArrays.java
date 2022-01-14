@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,33 +38,13 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.regex.runtime.nodes;
+package com.oracle.truffle.regex.util;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.GenerateUncached;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.api.nodes.IndirectCallNode;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.regex.result.RegexResult;
+public final class EmptyArrays {
 
-@GenerateUncached
-public abstract class DispatchNode extends Node {
-
-    public abstract Object execute(CallTarget receiver, RegexResult result);
-
-    @SuppressWarnings("unused")
-    @Specialization(guards = {"target == cachedTarget"})
-    static Object executeDirect(CallTarget target, RegexResult result,
-                    @Cached("target") CallTarget cachedTarget,
-                    @Cached("create(cachedTarget)") DirectCallNode callNode) {
-        return callNode.call(result);
-    }
-
-    @Specialization(replaces = "executeDirect")
-    static Object executeIndirect(CallTarget target, RegexResult result,
-                    @Cached IndirectCallNode callNode) {
-        return callNode.call(target, result);
-    }
+    public static final byte[] BYTE = {};
+    public static final short[] SHORT = {};
+    public static final char[] CHAR = {};
+    public static final int[] INT = {};
+    public static final long[] LONG = {};
 }

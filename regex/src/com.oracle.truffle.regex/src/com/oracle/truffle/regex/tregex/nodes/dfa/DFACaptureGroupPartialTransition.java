@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,21 +58,18 @@ import com.oracle.truffle.regex.tregex.util.json.JsonArray;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonObject;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
+import com.oracle.truffle.regex.util.EmptyArrays;
 
 public final class DFACaptureGroupPartialTransition implements JsonConvertible {
 
     public static final int FINAL_STATE_RESULT_INDEX = 0;
 
-    public static final byte[] EMPTY = {};
-    public static final byte[] EMPTY_REORDER_SWAPS = EMPTY;
-    public static final byte[] EMPTY_ARRAY_COPIES = EMPTY;
+    public static final byte[] EMPTY = EmptyArrays.BYTE;
     public static final IndexOperation[] EMPTY_INDEX_OPS = {};
-    public static final IndexOperation[] EMPTY_INDEX_UPDATES = EMPTY_INDEX_OPS;
-    public static final IndexOperation[] EMPTY_INDEX_CLEARS = EMPTY_INDEX_OPS;
     public static final LastGroupUpdate[] EMPTY_LAST_GROUP_UPDATES = {};
 
     private static final DFACaptureGroupPartialTransition EMPTY_INSTANCE = new DFACaptureGroupPartialTransition(
-                    0, EMPTY_REORDER_SWAPS, EMPTY_ARRAY_COPIES, EMPTY_INDEX_UPDATES, EMPTY_INDEX_CLEARS, EMPTY_LAST_GROUP_UPDATES, (byte) 0);
+                    0, EMPTY, EMPTY, EMPTY_INDEX_OPS, EMPTY_INDEX_OPS, EMPTY_LAST_GROUP_UPDATES, (byte) 0);
 
     private final int id;
     @CompilationFinal(dimensions = 1) private final byte[] reorderSwaps;

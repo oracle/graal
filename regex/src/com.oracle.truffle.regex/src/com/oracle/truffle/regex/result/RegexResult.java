@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,6 +65,7 @@ import com.oracle.truffle.regex.AbstractRegexObject;
 import com.oracle.truffle.regex.RegexObject;
 import com.oracle.truffle.regex.runtime.nodes.DispatchNode;
 import com.oracle.truffle.regex.runtime.nodes.ToIntNode;
+import com.oracle.truffle.regex.util.EmptyArrays;
 import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
 
 /**
@@ -116,8 +117,8 @@ public final class RegexResult extends AbstractConstantKeysObject {
         this.lazyCallTarget = lazyCallTarget;
     }
 
-    private static final RegexResult NO_MATCH_RESULT = new RegexResult(null, -1, -1, -1, new int[]{}, null);
-    private static final RegexResult BOOLEAN_MATCH_RESULT = new RegexResult(null, -1, -1, -1, new int[]{}, null);
+    private static final RegexResult NO_MATCH_RESULT = new RegexResult(null, -1, -1, -1, EmptyArrays.INT, null);
+    private static final RegexResult BOOLEAN_MATCH_RESULT = new RegexResult(null, -1, -1, -1, EmptyArrays.INT, null);
 
     public static RegexResult getNoMatchInstance() {
         return NO_MATCH_RESULT;

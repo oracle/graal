@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -167,13 +167,13 @@ public class DFACaptureGroupTransitionBuilder extends DFAStateTransitionBuilder 
         // important: don't change the order, because newOrderToSequenceOfSwaps() reuses
         // CompilationBuffer#getByteArrayBuffer()
         byte[] byteArrayCopies = arrayCopies.toArray();
-        byte[] reorderSwaps = skipReorder() ? DFACaptureGroupPartialTransition.EMPTY_REORDER_SWAPS : newOrderToSequenceOfSwaps(newOrder, compilationBuffer);
+        byte[] reorderSwaps = skipReorder() ? DFACaptureGroupPartialTransition.EMPTY : newOrderToSequenceOfSwaps(newOrder, compilationBuffer);
         DFACaptureGroupPartialTransition dfaCaptureGroupPartialTransitionNode = DFACaptureGroupPartialTransition.create(
                         dfaGen,
                         reorderSwaps,
                         byteArrayCopies,
-                        indexUpdates.toArray(DFACaptureGroupPartialTransition.EMPTY_INDEX_UPDATES),
-                        indexClears.toArray(DFACaptureGroupPartialTransition.EMPTY_INDEX_CLEARS),
+                        indexUpdates.toArray(DFACaptureGroupPartialTransition.EMPTY_INDEX_OPS),
+                        indexClears.toArray(DFACaptureGroupPartialTransition.EMPTY_INDEX_OPS),
                         lastGroupUpdates.toArray(DFACaptureGroupPartialTransition.EMPTY_LAST_GROUP_UPDATES),
                         preReorderFinalStateResultIndex);
         if (dfaGen.getOptions().isDumpAutomata()) {

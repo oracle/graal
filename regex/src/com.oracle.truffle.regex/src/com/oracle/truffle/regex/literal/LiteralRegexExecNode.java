@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -129,15 +129,15 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
             return "";
         }
 
-        int inputLength(Object input) {
+        final int inputLength(Object input) {
             return ((RegexExecNode) getParent()).inputLength(input);
         }
 
-        RegexResult createFromStart(int start) {
+        final RegexResult createFromStart(int start) {
             return resultFactory == null ? RegexResult.getBooleanMatchInstance() : resultFactory.createFromStart(start);
         }
 
-        RegexResult createFromEnd(int end) {
+        final RegexResult createFromEnd(int end) {
             return resultFactory == null ? RegexResult.getBooleanMatchInstance() : resultFactory.createFromEnd(end);
         }
 
