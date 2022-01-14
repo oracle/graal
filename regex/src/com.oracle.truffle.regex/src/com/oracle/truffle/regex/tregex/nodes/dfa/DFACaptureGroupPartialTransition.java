@@ -605,8 +605,7 @@ public final class DFACaptureGroupPartialTransition implements JsonConvertible {
         @Override
         public String toString() {
             StringBuilder sb = new StringBuilder();
-            final int targetArray = getTargetArray();
-            sb.append(targetArray).append(" <- [");
+            sb.append(getTargetArray()).append(" <- [");
             for (int i = 0; i < getNumberOfIndices(); i++) {
                 if (i > 0) {
                     sb.append(", ");

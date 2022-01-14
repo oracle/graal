@@ -919,7 +919,7 @@ public final class DFAGenerator implements JsonConvertible {
         int nMaps = s.getSuccessors().length;
         int iTransitionToFinalState = firstPredecessor.getTransitionToFinalState() == null ? -1 : nMaps++;
         int iTransitionToAnchoredFinalState = firstPredecessor.getTransitionToAnchoredFinalState() == null ? -1 : nMaps++;
-        EconomicMap<DFACaptureGroupPartialTransition, ArrayList<Integer>>[] maps = (EconomicMap<DFACaptureGroupPartialTransition, ArrayList<Integer>>[]) new EconomicMap[nMaps];
+        EconomicMap<DFACaptureGroupPartialTransition, ArrayList<Integer>>[] maps = new EconomicMap[nMaps];
         int maxDedupSize = 0;
         // for every successor, group all preceding transitions by DFACaptureGroupPartialTransition
         for (int i = 0; i < maps.length; i++) {
@@ -1092,7 +1092,7 @@ public final class DFAGenerator implements JsonConvertible {
         return DFACaptureGroupLazyTransition.BranchesDirect.create(transitions);
     }
 
-    private DFACaptureGroupLazyTransition.Single createSingleLazyTransition(EconomicMap<DFACaptureGroupPartialTransition, ArrayList<Integer>>[] maps, int i) {
+    private static DFACaptureGroupLazyTransition.Single createSingleLazyTransition(EconomicMap<DFACaptureGroupPartialTransition, ArrayList<Integer>>[] maps, int i) {
         if (i < 0) {
             return null;
         }
@@ -1119,7 +1119,7 @@ public final class DFAGenerator implements JsonConvertible {
         return ((DFACaptureGroupTransitionBuilder) precedingTransitions).toLazyTransition(compilationBuffer);
     }
 
-    private boolean allSameValues(EconomicMap<DFACaptureGroupPartialTransition, ArrayList<Integer>>[] maps) {
+    private static boolean allSameValues(EconomicMap<DFACaptureGroupPartialTransition, ArrayList<Integer>>[] maps) {
         for (int i = 1; i < maps.length; i++) {
             if (maps[0].size() != maps[i].size()) {
                 return false;
@@ -1135,7 +1135,7 @@ public final class DFAGenerator implements JsonConvertible {
         return true;
     }
 
-    private boolean allSameValuesInner(EconomicMap<DFACaptureGroupPartialTransition, ArrayList<Integer>> map, ArrayList<Integer> value) {
+    private static boolean allSameValuesInner(EconomicMap<DFACaptureGroupPartialTransition, ArrayList<Integer>> map, ArrayList<Integer> value) {
         for (ArrayList<Integer> v : map.getValues()) {
             if (value.equals(v)) {
                 return true;
