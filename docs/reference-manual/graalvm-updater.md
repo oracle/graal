@@ -175,14 +175,15 @@ The downgrades to an older version, and from GraalVM Enterprise to Community Edi
 
 The installation command of GraalVM Updater accepts multiple options and parameters, and allows this syntax:
 ```shell
-gu install [-0cCfFiLnorsuvyxY] param [param ...]
+gu install [-0CcDfiLMnosruvyxY] param [param ...]
 ```
+
 The following options are currently supported:
 * `-0, --dry-run`: dry run, do not change anything
 * `-c, --catalog`: treat parameters as component IDs from the GraalVM components catalog. This is the default
 * `-C, --custom-catalog <url>`: use a specific catalog URL to locate components
 * `-L, --local-file`: treat parameters as local filenames of packaged components
-* `-M, `:
+* `-M`: force `gu` to ignore dependencies of installed components
 * `-f, --force`: force overwrite, bypass version checks
 * `-i, --fail-existing`: fail on an existing component
 * `-n, --no-progress`: do not display the downloading progress
