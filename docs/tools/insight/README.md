@@ -7,22 +7,24 @@ permalink: /tools/graalvm-insight/
 
 # GraalVM Insight
 
-* [Start Using GraalVM Insight](#start-using-graalvm-insight)
+* [Get Started](#get-started)
 * [Polyglot Tracing](#polyglot-tracing)
 * [Inspecting Values](#inspecting-values)
+* [What to Read Next](#what-to-read-next)
 
-GraalVM Insight is a multipurpose, flexible tool for writing reliable microservices solutions that traces program runtime behavior and gathers insights.
+GraalVM Insight is a multipurpose, flexible tool that traces program runtime behavior and gathers insights.
 
 The dynamic nature of the tool helps users to selectively apply tracing pointcuts on already running applications with no loss of performance.
 GraalVM Insight also provides detailed access to runtime behavior of a program, allowing users to inspect values and types at invocation or allocation sites.
 The tool further permits users to modify computed values, interrupt execution, and quickly experiment with behavioral changes without modifying the application code.
+The implementation details of the tool can be found in the [API specification](https://www.graalvm.org/tools/javadoc/org/graalvm/tools/insight/Insight.html).
 
 This page provides information on GraalVM Insight as of the 20.1 version.
 To learn about Insight on versions 20.0 and 19.3, proceed [here](https://github.com/oracle/graal/blob/release/graal-vm/20.0/tools/docs/T-Trace.md).
 
 Note: The GraalVM Insight tool is offered as a technology preview and requires the user to pass the `--experimental-options` option in order to enable the `--insight` instrument.
 
-## Start Using GraalVM Insight
+## Get Started
 
 1. Create a simple _source-tracing.js_ script with the following content:
 ```javascript
@@ -205,6 +207,29 @@ fib for 1
 Two is the result 2
 ```
 
-To learn more about GraalVM Insight, go to [Insight Manual](https://github.com/oracle/graal/blob/master/tools/docs/Insight-Manual.md).
+## What to Read Next
 
-Documentation on the `insight` object properties and functions is available as part of the [Javadoc](https://www.graalvm.org/tools/javadoc/org/graalvm/tools/insight/Insight.html).
+### Insight Deep Dive
+
+Any moderately skilled developer can easily create own so called "hooks" and dynamically apply them to the actual programs.
+That provides ultimate insights into execution and behavior of one's application without compromising the execution speed.
+
+To continue learning and deep dive into GraalVM Insight, proceed to the [Insight Manual](Insight-Manual.md) which starts with an obligatory _HelloWorld_ example and then demonstrates more challenging tasks.
+
+### Embeddeding GraalVM Insight into Applications
+
+GraalVM languages (languages implemented with the Truffle framework) can be embedded into custom applications via [Polyglot Context API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.html).
+GraalVM Insight can also be controlled via the same API.
+
+Read the [embedding documentation](Insight-Embedding.md) to learn how to integrate GraalVM Insight capabilities into applications in a secure way.
+
+### Tracing with GraalVM Insight
+
+GraalVM Insight dynamically adds tracing capabilities into existing code.
+Write your application as normally and apply [Open Telemetry](https://opentelemetry.io/) traces dynamicall when needed.
+Read more about Insight and Jaeger integration in a [dedicated guide](Insight-Tracing.md).
+
+### API Specification
+
+If you are interested in the implementation details, check the [API specification](https://www.graalvm.org/tools/javadoc/org/graalvm/tools/insight/Insight.html).
+There you will find the information on the `insight` object properties, functions, etc.
