@@ -375,7 +375,7 @@ public class InvocationPlugins {
 
         /**
          * Registers a plugin that implements a method based on the bytecode of a substitute method
-         * that is conditinally enabled. This ensures that {@code Replacements} is aware of this
+         * that is conditionally enabled. This ensures that {@code Replacements} is aware of this
          * plugin.
          *
          * @param isEnabled whether the plugin is enabled in the current compiler
@@ -990,19 +990,6 @@ public class InvocationPlugins {
 
     public final void register(InvocationPlugin plugin, String declaringClass, String name, Type... argumentTypes) {
         register(plugin, false, false, false, new OptionalLazySymbol(declaringClass), name, argumentTypes);
-    }
-
-    /**
-     * Registers an invocation plugin for a given, optional method. There must be no plugin
-     * currently registered for {@code method}.
-     *
-     * @param argumentTypes the argument types of the method. Element 0 of this array must be the
-     *            {@link Class} value for {@link InvocationPlugin.Receiver} iff the method is
-     *            non-static. Upon returning, element 0 will have been rewritten to
-     *            {@code declaringClass}
-     */
-    public final void registerOptional(InvocationPlugin plugin, Type declaringClass, String name, Type... argumentTypes) {
-        register(plugin, true, false, false, declaringClass, name, argumentTypes);
     }
 
     /**
