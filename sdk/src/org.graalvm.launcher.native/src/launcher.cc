@@ -84,9 +84,9 @@
 #define VM_ARG_OFFSET (sizeof(VM_ARG_PREFIX)-1)
 #define VM_CP_ARG_OFFSET (sizeof(VM_CP_ARG_PREFIX)-1)
 #define VM_CLASSPATH_ARG_OFFSET (sizeof(VM_CLASSPATH_ARG_PREFIX)-1)
-#define IS_VM_ARG(ARG) (strncmp(ARG, VM_ARG_PREFIX, VM_ARG_OFFSET) == 0)
-#define IS_VM_CP_ARG(ARG) (strncmp(ARG, VM_CP_ARG_PREFIX, VM_CP_ARG_OFFSET) == 0)
-#define IS_VM_CLASSPATH_ARG(ARG) (strncmp(ARG, VM_CLASSPATH_ARG_PREFIX, VM_CLASSPATH_ARG_OFFSET) == 0)
+#define IS_VM_ARG(ARG) (ARG.find(VM_ARG_PREFIX, 0, VM_ARG_OFFSET) != std::string::npos)
+#define IS_VM_CP_ARG(ARG) (ARG.find(VM_CP_ARG_PREFIX, 0, VM_CP_ARG_OFFSET) != std::string::npos)
+#define IS_VM_CLASSPATH_ARG(ARG) (ARG.find(VM_CLASSPATH_ARG_PREFIX, 0, VM_CLASSPATH_ARG_OFFSET) != std::string::npos)
 
 #if defined (__linux__)
     #include <dlfcn.h>
@@ -199,6 +199,18 @@ std::string vm_path(std::string exeDir, bool jvmMode) {
     return liblangPath.str();
 }
 
+void parse_vm_option(std::vector<std::string> *vmArgs, std::stringstream *cp, std::string option) {
+    if (IS_VM_CP_ARG(option)) {
+        *cp << CP_SEP_STR << option.substr(VM_CP_ARG_OFFSET);
+    } else if (IS_VM_CLASSPATH_ARG(option)) {
+        *cp << CP_SEP_STR << option.substr(VM_CLASSPATH_ARG_OFFSET);
+    } else if (IS_VM_ARG(option)) {
+        std::stringstream opt;
+        opt << '-' << option.substr(VM_ARG_OFFSET);
+        vmArgs->push_back(opt.str());
+    }
+}
+
 // parse the VM arguments that should be passed to JNI_CreateJavaVM
 void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs *vmInitArgs, bool jvmMode) {
     std::vector<std::string> vmArgs;
@@ -241,15 +253,7 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
     // handle CLI arguments
     if (!vmArgInfo) {
         for (int i = 0; i < argc; i++) {
-            if (IS_VM_CP_ARG(argv[i])) {
-                cp << CP_SEP_STR << argv[i]+VM_CP_ARG_OFFSET;
-            } else if (IS_VM_CLASSPATH_ARG(argv[i])) {
-                cp << CP_SEP_STR << argv[i]+VM_CLASSPATH_ARG_OFFSET;
-            } else if (IS_VM_ARG(argv[i])) {
-                std::stringstream opt;
-                opt << '-' << argv[i]+VM_ARG_OFFSET;
-                vmArgs.push_back(opt.str());
-            }
+            parse_vm_option(&vmArgs, &cp, std::string(argv[i]));
         }
     }
 
@@ -267,15 +271,7 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
                 std::cerr << "VM arguments specified: " << vmArgCount << " but argument " << i << "missing" << std::endl;
                 break;
             }
-            if (IS_VM_CP_ARG(cur)) {
-                cp << CP_SEP_STR << cur+VM_CP_ARG_OFFSET;
-            } else if (IS_VM_CLASSPATH_ARG(cur)) {
-                cp << CP_SEP_STR << cur+VM_CLASSPATH_ARG_OFFSET;
-            } else if (IS_VM_ARG(cur)) {
-                std::stringstream opt;
-                opt << '-' << cur+VM_ARG_OFFSET;
-                vmArgs.push_back(opt.str());
-            }
+            parse_vm_option(&vmArgs, &cp, std::string(cur));
             // clean up env variable
             setenv(envKey, "");
         }
@@ -284,15 +280,23 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
     // handle optional vm args from LanguageLibraryConfig.option_vars
     #ifdef LAUNCHER_OPTION_VARS
     for (int i = 0; i < sizeof(launcherOptionVars)/sizeof(char*); i++) {
-        if (IS_VM_CP_ARG(launcherOptionVars[i])) {
-            cp << CP_SEP_STR << launcherOptionVars[i]+VM_CP_ARG_OFFSET;
-        } else if (IS_VM_CLASSPATH_ARG(launcherOptionVars[i])) {
-            cp << CP_SEP_STR << launcherOptionVars[i]+VM_CLASSPATH_ARG_OFFSET;
-        } else if (IS_VM_ARG(launcherOptionVars[i])) {
-            std::stringstream opt;
-            opt << '-' << launcherOptionVars[i]+VM_ARG_OFFSET;
-            vmArgs.push_back(opt.str());
+        char *optionVar = getenv(launcherOptionVars[i]);
+        if (!optionVar) {
+            continue;
         }
+        if (debug) {
+            std::cout << "Launcher option_var found: " << launcherOptionVars[i] << "=" << optionVar << std::endl;
+        }
+        // we split on spaces
+        std::string optionLine(optionVar);
+        size_t last = 0;
+        size_t next = 0;
+        while ((next = optionLine.find(" ", last)) != std::string::npos) {
+            std::string option = optionLine.substr(last, next-last);
+            parse_vm_option(&vmArgs, &cp, option);
+            last = next + 1;
+        };
+        parse_vm_option(&vmArgs, &cp, optionLine.substr(last));
     }
     #endif
 
