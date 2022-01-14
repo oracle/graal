@@ -5,6 +5,7 @@ This changelog summarizes major changes between TRegex versions relevant to lang
 ## Version 22.1.0
 
 * Added a `lastGroup` field to regex results. Its value is tracked when using the Python regex dialect and it indicates the last capture group to have been matched.
+* Added boolean matching mode (`execBoolean`), which allows omitting `RegexResult` objects in cases where capture groups are known to never be queried.
 
 ## Version 22.0.0
 
