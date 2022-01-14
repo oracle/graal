@@ -1284,4 +1284,54 @@ public class GraphUtil {
         }
         return null;
     }
+
+    public static FrameState findLastFrameState(FixedNode start) {
+        FrameState state = findLastFrameState(start, false);
+        if (state == null) {
+            // keep in branch to avoid eager evaluation of findLastFrameState(start, true)
+            throw GraalError.shouldNotReachHere("Must find a prev state (this can be transitively broken) for node " + start + " " + findLastFrameState(start, true));
+        }
+        return state;
+    }
+
+    public static FrameState findLastFrameState(FixedNode start, boolean log) {
+        assert start != null;
+        FixedNode lastFixedNode = null;
+        FixedNode currentStart = start;
+        while (true) {
+            for (FixedNode fixed : GraphUtil.predecessorIterable(currentStart)) {
+                if (fixed instanceof StateSplit) {
+                    StateSplit stateSplit = (StateSplit) fixed;
+                    assert !stateSplit.hasSideEffect() || stateSplit.stateAfter() != null : "Found state split with side-effect without framestate=" + stateSplit;
+                    if (stateSplit.stateAfter() != null) {
+                        return stateSplit.stateAfter();
+                    }
+                }
+                lastFixedNode = fixed;
+            }
+            if (lastFixedNode instanceof LoopBeginNode) {
+                currentStart = ((LoopBeginNode) lastFixedNode).forwardEnd();
+                continue;
+            }
+            if (log) {
+                NodeSourcePosition p = lastFixedNode.getNodeSourcePosition();
+                DebugContext debug = start.getDebug();
+                debug.log(DebugContext.VERY_DETAILED_LEVEL, "Last fixed node %s\n with source position -> %s", lastFixedNode,
+                                p == null ? "null" : p.toString());
+                if (lastFixedNode instanceof MergeNode) {
+                    MergeNode merge = (MergeNode) lastFixedNode;
+                    debug.log(DebugContext.VERY_DETAILED_LEVEL, "Last fixed node is a merge with predecessors:");
+                    for (EndNode end : merge.forwardEnds()) {
+                        for (FixedNode fixed : GraphUtil.predecessorIterable(end)) {
+                            NodeSourcePosition sp = fixed.getNodeSourcePosition();
+                            debug.log(DebugContext.VERY_DETAILED_LEVEL, "%s:source position%s", fixed, sp != null ? sp.toString() : "null");
+                        }
+                    }
+                }
+            }
+            break;
+        }
+        return null;
+    }
+
 }

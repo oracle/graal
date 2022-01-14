@@ -1003,7 +1003,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
          * actually be used.
          */
         ArrayList<MonitorEnterNode> enters = null;
-        FrameState stateBefore = SnippetTemplate.findLastFrameState(insertionPoint);
+        FrameState stateBefore = GraphUtil.findLastFrameState(insertionPoint);
         for (int objIndex = 0; objIndex < commit.getVirtualObjects().size(); objIndex++) {
             List<MonitorIdNode> locks = commit.getLocks(objIndex);
             if (locks.size() > 1) {

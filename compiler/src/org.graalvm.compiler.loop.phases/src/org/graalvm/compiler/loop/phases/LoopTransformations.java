@@ -63,6 +63,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.ValueProxyNode;
 import org.graalvm.compiler.nodes.VirtualState.NodePositionClosure;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
@@ -81,6 +82,7 @@ import org.graalvm.compiler.nodes.spi.Simplifiable;
 import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.util.IntegerHelper;
+import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
 
@@ -372,10 +374,22 @@ public abstract class LoopTransformations {
              * Fix the framestates for the pre loop exit node and the main loop exit node.
              *
              * The only exit that actually really exits the original loop is the loop exit of the
-             * post-loop. We can never go from pre/main loop directly to the code after the loop, we
-             * always have to go through the original loop header, thus we need to fix the correct
-             * state on the pre/main loop exit, which is the loop header state with the values fixed
-             * (proxies if need be),
+             * post-loop. All other paths have to fully go through pre->main->post loops. We can
+             * never go from pre/main loop directly to the code after the loop, we always have to go
+             * through the original loop header, thus we need to fix the correct state on the
+             * pre/main loop exit.
+             *
+             * However, depending on the shape of the loop this is either
+             *
+             * for head counted loops: the loop header state with the values fixed
+             *
+             * for tail counted loops: the last state inside the body of the loop dominating the
+             * tail check (This is different since tail counted loops have protection control flow
+             * meaning it is possible to go pre -> after post, pre->main->after post, pre -> post ->
+             * after post. For the protected main and post loops it is enough to deopt to the last
+             * body state and the interpreter can then re-execute any failing counter check).
+             *
+             * For both scenarios we proxy the necessary nodes.
              */
             createExitState(preLoopBegin, (LoopExitNode) preLoopExitNode, loop.counted().isInverted(), preLoop);
             createExitState(mainLoopBegin, (LoopExitNode) mainLoopExitNode, loop.counted().isInverted(), mainLoop);
@@ -531,27 +545,44 @@ public abstract class LoopTransformations {
         merge.graph().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, merge.graph(), "After deleting unused phis");
     }
 
+    /**
+     *
+     * @param begin
+     * @param lex
+     * @param inverted
+     * @param loop
+     */
     private static void createExitState(LoopBeginNode begin, LoopExitNode lex, boolean inverted, LoopFragment loop) {
-        FrameState loopHeaderState = begin.stateAfter().duplicateWithVirtualState();
-        loopHeaderState.applyToNonVirtual(new NodePositionClosure<Node>() {
+        FrameState stateToUse;
+        if (inverted) {
+            stateToUse = GraphUtil.findLastFrameState((FixedNode) lex.predecessor()).duplicateWithVirtualState();
+        } else {
+            stateToUse = begin.stateAfter().duplicateWithVirtualState();
+        }
+        stateToUse.applyToNonVirtual(new NodePositionClosure<Node>() {
             @Override
             public void apply(Node from, Position p) {
-                ValueNode usage = (ValueNode) p.get(from);
-                if (begin.isPhiAtMerge(usage)) {
-                    PhiNode phi = (PhiNode) usage;
-                    ValueNode toProxy = inverted ? phi.singleBackValueOrThis() : phi;
-                    Node replacement;
-                    if (loop.contains(toProxy)) {
-                        // do not proxy values that are dominating the loop and are outside
-                        replacement = LoopFragmentInside.patchProxyAtPhi((PhiNode) usage, lex, toProxy);
-                    } else {
-                        replacement = toProxy;
-                    }
-                    p.set(from, replacement);
+                final ValueNode toProxy = (ValueNode) p.get(from);
+                if (toProxy instanceof VirtualObjectNode) {
+                    /*
+                     * VirtualObjectNodes: though they are leaf nodes they are considered to be
+                     * inside a loop for duplication purposes of loop optimizations. However, we do
+                     * not need/must proxy them: see LoopFragement::computeNodes for details.
+                     */
+                    return;
                 }
+                Node replacement;
+                // we are reasoning about a framestate here, it can only ever have
+                // InputType.Value inputs.
+                if (loop.contains(toProxy)) {
+                    replacement = lex.graph().addOrUnique(new ValueProxyNode(toProxy, lex));
+                } else {
+                    replacement = toProxy;
+                }
+                p.set(from, replacement);
             }
         });
-        lex.setStateAfter(loopHeaderState);
+        lex.setStateAfter(stateToUse);
         begin.graph().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, begin.graph(), "After proxy-ing phis for exit state");
     }
 

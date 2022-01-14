@@ -94,7 +94,6 @@ import org.graalvm.compiler.nodes.ControlSinkNode;
 import org.graalvm.compiler.nodes.DeoptBciSupplier;
 import org.graalvm.compiler.nodes.DeoptimizingNode;
 import org.graalvm.compiler.nodes.DeoptimizingNode.DeoptBefore;
-import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
@@ -1964,7 +1963,7 @@ public class SnippetTemplate {
              * We dont have a state split as a replacee, thus we take the prev state as the state
              * after for the node in the snippet.
              */
-            stateAfter = findLastFrameState(replaceeGraphCFGPredecessor);
+            stateAfter = GraphUtil.findLastFrameState(replaceeGraphCFGPredecessor);
         }
         NodeMap<NodeStateAssignment> assignedStateMappings = frameStateAssignment.getStateMapping();
         MapCursor<Node, NodeStateAssignment> stateAssignments = assignedStateMappings.getEntries();
@@ -1988,7 +1987,7 @@ public class SnippetTemplate {
                     ((StateSplit) duplicates.get(nodeRequiringState)).setStateAfter(newState);
                     break;
                 case BEFORE_BCI:
-                    FrameState stateBeforeSnippet = findLastFrameState(replaceeGraphCFGPredecessor);
+                    FrameState stateBeforeSnippet = GraphUtil.findLastFrameState(replaceeGraphCFGPredecessor);
                     ((StateSplit) duplicates.get(nodeRequiringState)).setStateAfter(stateBeforeSnippet.duplicate());
                     break;
                 case INVALID:
@@ -2056,52 +2055,6 @@ public class SnippetTemplate {
                 }
             }
         }
-    }
-
-    public static FrameState findLastFrameState(FixedNode start) {
-        FrameState state = findLastFrameState(start, false);
-        assert state != null : "Must find a prev state (this can be transitively broken) for node " + start + " " + findLastFrameState(start, true);
-        return state;
-    }
-
-    public static FrameState findLastFrameState(FixedNode start, boolean log) {
-        assert start != null;
-        FixedNode lastFixedNode = null;
-        FixedNode currentStart = start;
-        while (true) {
-            for (FixedNode fixed : GraphUtil.predecessorIterable(currentStart)) {
-                if (fixed instanceof StateSplit) {
-                    StateSplit stateSplit = (StateSplit) fixed;
-                    assert !stateSplit.hasSideEffect() || stateSplit.stateAfter() != null : "Found state split with side-effect without framestate=" + stateSplit;
-                    if (stateSplit.stateAfter() != null) {
-                        return stateSplit.stateAfter();
-                    }
-                }
-                lastFixedNode = fixed;
-            }
-            if (lastFixedNode instanceof LoopBeginNode) {
-                currentStart = ((LoopBeginNode) lastFixedNode).forwardEnd();
-                continue;
-            }
-            if (log) {
-                NodeSourcePosition p = lastFixedNode.getNodeSourcePosition();
-                DebugContext debug = start.getDebug();
-                debug.log(DebugContext.VERY_DETAILED_LEVEL, "Last fixed node %s\n with source position -> %s", lastFixedNode,
-                                p == null ? "null" : p.toString());
-                if (lastFixedNode instanceof MergeNode) {
-                    MergeNode merge = (MergeNode) lastFixedNode;
-                    debug.log(DebugContext.VERY_DETAILED_LEVEL, "Last fixed node is a merge with predecessors:");
-                    for (EndNode end : merge.forwardEnds()) {
-                        for (FixedNode fixed : GraphUtil.predecessorIterable(end)) {
-                            NodeSourcePosition sp = fixed.getNodeSourcePosition();
-                            debug.log(DebugContext.VERY_DETAILED_LEVEL, "%s:source position%s", fixed, sp != null ? sp.toString() : "null");
-                        }
-                    }
-                }
-            }
-            break;
-        }
-        return null;
     }
 
     @Override
