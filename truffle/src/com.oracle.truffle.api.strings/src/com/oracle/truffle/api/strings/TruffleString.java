@@ -4146,13 +4146,17 @@ public final class TruffleString extends AbstractTruffleString {
         @SuppressWarnings("unused")
         @Specialization(guards = "isEmpty(a)")
         static TruffleString aEmptyMutable(AbstractTruffleString a, MutableTruffleString b, Encoding expectedEncoding, boolean lazy,
-                        @Cached AsTruffleStringNode asTruffleStringNode) {
+                        @Cached TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNode,
+                        @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeNode,
+                        @Cached TStringInternalNodes.FromBufferWithStringCompactionKnownAttributesNode fromBufferWithStringCompactionNode) {
             CompilerAsserts.partialEvaluationConstant(lazy);
             if (AbstractTruffleString.DEBUG_STRICT_ENCODING_CHECKS) {
                 b.looseCheckEncoding(expectedEncoding, TStringInternalNodes.GetCodeRangeNode.getUncached().execute(b));
                 return b.switchEncodingUncached(expectedEncoding);
             }
-            return asTruffleStringNode.execute(b, expectedEncoding);
+            int codeRange = getCodeRangeNode.execute(b);
+            b.looseCheckEncoding(expectedEncoding, codeRange);
+            return fromBufferWithStringCompactionNode.execute(b.data(), b.offset(), b.length() << b.stride(), expectedEncoding.id, getCodePointLengthNode.execute(b), codeRange);
         }
 
         @SuppressWarnings("unused")
@@ -4170,13 +4174,17 @@ public final class TruffleString extends AbstractTruffleString {
         @SuppressWarnings("unused")
         @Specialization(guards = "isEmpty(b)")
         static TruffleString bEmptyMutable(MutableTruffleString a, AbstractTruffleString b, Encoding expectedEncoding, boolean lazy,
-                        @Cached AsTruffleStringNode asTruffleStringNode) {
+                        @Cached TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNode,
+                        @Cached TStringInternalNodes.GetCodeRangeNode getCodeRangeNode,
+                        @Cached TStringInternalNodes.FromBufferWithStringCompactionKnownAttributesNode fromBufferWithStringCompactionNode) {
             CompilerAsserts.partialEvaluationConstant(lazy);
             if (AbstractTruffleString.DEBUG_STRICT_ENCODING_CHECKS) {
                 a.looseCheckEncoding(expectedEncoding, TStringInternalNodes.GetCodeRangeNode.getUncached().execute(a));
                 return a.switchEncodingUncached(expectedEncoding);
             }
-            return asTruffleStringNode.execute(a, expectedEncoding);
+            int codeRange = getCodeRangeNode.execute(a);
+            a.looseCheckEncoding(expectedEncoding, codeRange);
+            return fromBufferWithStringCompactionNode.execute(a.data(), a.offset(), a.length() << a.stride(), expectedEncoding.id, getCodePointLengthNode.execute(a), codeRange);
         }
 
         @Specialization(guards = {"!isEmpty(a)", "!isEmpty(b)"})

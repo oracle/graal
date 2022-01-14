@@ -43,6 +43,7 @@ package com.oracle.truffle.api.strings.test;
 
 import static com.oracle.truffle.api.strings.test.TStringTestUtil.byteArray;
 
+import com.oracle.truffle.api.strings.MutableTruffleString;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -62,5 +63,12 @@ public class TStringCornerCaseTests extends TStringTestBase {
         TruffleString a = TruffleString.fromJavaStringUncached("abc", TruffleString.Encoding.UTF_8);
         TruffleString forced = a.forceEncodingUncached(TruffleString.Encoding.UTF_8, TruffleString.Encoding.UTF_8);
         Assert.assertEquals(3, forced.byteLength(TruffleString.Encoding.UTF_8));
+    }
+
+    @Test
+    public void testConcatMutable() {
+        TruffleString a = TruffleString.Encoding.UTF_8.getEmpty();
+        MutableTruffleString b = MutableTruffleString.fromByteArrayUncached(new byte[0], 0, 0, TruffleString.Encoding.BYTES, false);
+        Assert.assertTrue(a.concatUncached(b, TruffleString.Encoding.UTF_8, true).isEmpty());
     }
 }
