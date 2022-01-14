@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.regex.result;
 
+import java.util.Arrays;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -63,10 +65,7 @@ import com.oracle.truffle.regex.AbstractRegexObject;
 import com.oracle.truffle.regex.RegexObject;
 import com.oracle.truffle.regex.runtime.nodes.DispatchNode;
 import com.oracle.truffle.regex.runtime.nodes.ToIntNode;
-import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorNode;
 import com.oracle.truffle.regex.util.TruffleReadOnlyKeysArray;
-
-import java.util.Arrays;
 
 /**
  * {@link RegexResult} is a {@link TruffleObject} that represents the result of matching a regular
