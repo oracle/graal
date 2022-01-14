@@ -87,6 +87,7 @@ supr java.lang.Object
 CLSS public abstract interface org.graalvm.collections.MapCursor<%0 extends java.lang.Object, %1 extends java.lang.Object>
 intf org.graalvm.collections.UnmodifiableMapCursor<{org.graalvm.collections.MapCursor%0},{org.graalvm.collections.MapCursor%1}>
 meth public abstract void remove()
+meth public {org.graalvm.collections.MapCursor%1} setValue({org.graalvm.collections.MapCursor%1})
 
 CLSS public final org.graalvm.collections.Pair<%0 extends java.lang.Object, %1 extends java.lang.Object>
 meth public boolean equals(java.lang.Object)
