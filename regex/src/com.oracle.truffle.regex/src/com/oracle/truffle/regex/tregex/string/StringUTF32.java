@@ -43,6 +43,7 @@ package com.oracle.truffle.regex.tregex.string;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.strings.TruffleString;
 
 public final class StringUTF32 implements AbstractString {
 
@@ -84,6 +85,16 @@ public final class StringUTF32 implements AbstractString {
             }
         }
         return true;
+    }
+
+    @Override
+    public TruffleString asTString() {
+        return TruffleString.fromIntArrayUTF32Uncached(str, 0, str.length);
+    }
+
+    @Override
+    public TruffleString.WithMask asTStringMask(TruffleString pattern) {
+        return TruffleString.WithMask.createUTF32Uncached(pattern, str);
     }
 
     @Override

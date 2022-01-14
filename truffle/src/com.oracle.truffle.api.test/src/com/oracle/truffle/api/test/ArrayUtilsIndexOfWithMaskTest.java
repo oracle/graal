@@ -44,6 +44,7 @@ import static com.oracle.truffle.api.test.ArrayUtilsTest.toByteArray;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -67,7 +68,7 @@ public class ArrayUtilsIndexOfWithMaskTest {
                     "cusa\u016f et justo duo dolores 0";
 
     @Parameters(name = "{index}: haystack {0} fromIndex {1} length {2} needle {3} expected {5}")
-    public static Iterable<Object[]> data() {
+    public static List<Object[]> data() {
         ArrayList<Object[]> ret = new ArrayList<>();
         for (int length : new int[]{15, 16, 17, strAlphabet.length()}) {
             for (String str : new String[]{strAlphabet.substring(0, length), strAlphabet.substring(0, length).toLowerCase()}) {

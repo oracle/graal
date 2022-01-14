@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex;
 
+import java.util.StringJoiner;
 import java.util.logging.Level;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -154,22 +155,28 @@ public final class TRegexCompilationRequest {
         }
         debugAST();
         if (ast.getRoot().isDead()) {
+            Loggers.LOG_MATCHING_STRATEGY.fine(() -> "regex cannot match, using dummy matcher");
             return new DeadRegexExecNode(language, source);
         }
         LiteralRegexExecNode literal = LiteralRegexEngine.createNode(language, ast);
         if (literal != null) {
+            Loggers.LOG_MATCHING_STRATEGY.fine(() -> "using literal matcher " + literal.getClass().getSimpleName());
             return literal;
         }
         if (canTransformToDFA(ast)) {
             try {
                 createNFA();
                 if (nfa.isDead()) {
+                    Loggers.LOG_MATCHING_STRATEGY.fine(() -> "regex cannot match, using dummy matcher");
                     return new DeadRegexExecNode(language, source);
                 }
                 return new TRegexExecNode(ast, new TRegexNFAExecutorNode(nfa, ast.getOptions().getFlavor().usesLastGroupResultField()));
             } catch (UnsupportedRegexException e) {
                 // fall back to backtracking executor
+                Loggers.LOG_MATCHING_STRATEGY.fine(() -> "NFA generator bailout: " + e.getReason() + ", using back-tracking matcher");
             }
+        } else {
+            Loggers.LOG_MATCHING_STRATEGY.fine(() -> "using back-tracking matcher, reason: " + canTransformToDFAFailureReason(ast));
         }
         return new TRegexExecNode(ast, compileBacktrackingExecutor());
     }
@@ -260,6 +267,38 @@ public final class TRegexCompilationRequest {
                                         p.hasNegativeLookBehindAssertions() ||
                                         ast.getRoot().hasQuantifiers()) &&
                         couldCalculateLastGroup;
+    }
+
+    @TruffleBoundary
+    private static String canTransformToDFAFailureReason(RegexAST ast) throws UnsupportedRegexException {
+        RegexProperties p = ast.getProperties();
+        StringJoiner sb = new StringJoiner(", ");
+        if (ast.getNumberOfNodes() > TRegexOptions.TRegexMaxParseTreeSizeForDFA) {
+            sb.add(String.format("Parser tree has too many nodes: %d (threshold: %d)", ast.getNumberOfNodes(), TRegexOptions.TRegexMaxParseTreeSizeForDFA));
+        }
+        if (ast.getNumberOfCaptureGroups() > TRegexOptions.TRegexMaxNumberOfCaptureGroupsForDFA) {
+            sb.add(String.format("regex has too many capture groups: %d (threshold: %d)", ast.getNumberOfCaptureGroups(), TRegexOptions.TRegexMaxNumberOfCaptureGroupsForDFA));
+        }
+        if (ast.getRoot().hasBackReferences()) {
+            sb.add("regex has back-references");
+        }
+        if (p.hasLargeCountedRepetitions()) {
+            sb.add(String.format("regex has large counted repetitions (threshold: %d for single CC, %d for groups)",
+                            TRegexOptions.TRegexQuantifierUnrollThresholdSingleCC, TRegexOptions.TRegexQuantifierUnrollThresholdGroup));
+        }
+        if (p.hasNegativeLookAheadAssertions()) {
+            sb.add("regex has negative look-ahead assertions");
+        }
+        if (p.hasNegativeLookBehindAssertions()) {
+            sb.add("regex has negative look-behind assertions");
+        }
+        if (p.hasNonLiteralLookBehindAssertions()) {
+            sb.add("regex has non-literal look-behind assertions");
+        }
+        if (ast.getRoot().hasQuantifiers()) {
+            sb.add("could not unroll all quantifiers");
+        }
+        return sb.toString();
     }
 
     private void createAST() {

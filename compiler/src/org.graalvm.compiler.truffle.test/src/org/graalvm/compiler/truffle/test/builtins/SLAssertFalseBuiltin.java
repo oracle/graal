@@ -25,8 +25,10 @@
 package org.graalvm.compiler.truffle.test.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.builtins.SLBuiltinNode;
 import com.oracle.truffle.sl.runtime.SLNull;
 
@@ -38,17 +40,18 @@ import com.oracle.truffle.sl.runtime.SLNull;
 public abstract class SLAssertFalseBuiltin extends SLBuiltinNode {
 
     @Specialization
-    public boolean doAssert(boolean value, String message) {
+    public boolean doAssert(boolean value, TruffleString message,
+                    @Cached TruffleString.ToJavaStringNode toJavaStringNode) {
         if (value) {
             CompilerDirectives.transferToInterpreter();
-            throw new SLAssertionError(message == null ? "" : message, this);
+            throw new SLAssertionError(message == null ? "" : toJavaStringNode.execute(message), this);
         }
         return value;
     }
 
     @Specialization
     public boolean doAssertNull(boolean value, @SuppressWarnings("unused") SLNull message) {
-        return doAssert(value, null);
+        return doAssert(value, null, null);
     }
 
 }

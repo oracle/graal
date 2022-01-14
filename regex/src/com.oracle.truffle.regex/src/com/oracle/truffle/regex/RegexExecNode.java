@@ -61,7 +61,7 @@ public abstract class RegexExecNode extends RegexBodyNode {
     public final RegexResult execute(VirtualFrame frame) {
         Object[] args = frame.getArguments();
         assert args.length == 2;
-        return executeDirect(args[0], (int) args[1]);
+        return adjustIndexAndRun(args[0], (int) args[1]);
     }
 
     private int adjustFromIndex(int fromIndex, Object input) {
@@ -78,7 +78,7 @@ public abstract class RegexExecNode extends RegexBodyNode {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             lengthNode = insert(InputLengthNode.create());
         }
-        return lengthNode.execute(input);
+        return lengthNode.execute(input, getEncoding());
     }
 
     public int inputRead(Object input, int i) {
@@ -86,10 +86,10 @@ public abstract class RegexExecNode extends RegexBodyNode {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             charAtNode = insert(InputReadNode.create());
         }
-        return charAtNode.execute(input, i);
+        return charAtNode.execute(input, i, getEncoding());
     }
 
-    public RegexResult executeDirect(Object input, int fromIndex) {
+    private RegexResult adjustIndexAndRun(Object input, int fromIndex) {
         if (fromIndex < 0 || fromIndex > inputLength(input)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new IllegalArgumentException(String.format("got illegal fromIndex value: %d. fromIndex must be >= 0 and <= input length (%d)", fromIndex, inputLength(input)));

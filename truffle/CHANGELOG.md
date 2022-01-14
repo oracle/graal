@@ -5,6 +5,8 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 ## Version 22.1.0
 
 * GR-35924 Context preinitialization in combination with auxiliary engine caching now preinitializes a context for each sharing layer with the common configuration of previously created contexts.
+* Added [TruffleStrings](https://github.com/oracle/graal/blob/master/truffle/docs/TruffleStrings.md), a flexible string implementation for all Truffle languages.
+* Added a `@GeneratePackagePrivate` annotation to change the visibility of generated nodes to package-private even if the template node is public.
 
 ## Version 22.0.0
 * Truffle DSL generated code now inherits all annotations on constructor parameters to the static create factory method.
@@ -37,6 +39,7 @@ No active inner context is allowed after `TruffleLanguage.finalizeContext(Object
 * Removed deprecated method `LoopNode.executeLoop`.
 * Removed many deprecated methods in `TruffleLanguage`, `TruffleLanguage.Env` and `TruffleInstrument.Env`. All of which were already deprecated for at least four releases.
 * Removed deprecated `GraphPrintVisitor`.
+
 * Added new APIs to `com.oracle.truffle.api.frame.Frame` and `com.oracle.truffle.api.frame.FrameDescriptor`:
     * Added a new "namespace" of index-based slots in `Frame` that is defined during construction of the frame descriptor and cannot be changed afterwards, and that is accessed using `int` indexes instead of `FrameSlot`s.
     * Added a second new "namespace" of slots (called auxiliary slots) in `Frame` that can be added to the frame descriptor dynamically (and which only supports "object" slots).

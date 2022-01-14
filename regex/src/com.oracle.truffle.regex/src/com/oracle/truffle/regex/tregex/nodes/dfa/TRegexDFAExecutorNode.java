@@ -46,7 +46,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.LoopNode;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
@@ -171,11 +171,12 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
      */
     @Override
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
-    public Object execute(final TRegexExecutorLocals abstractLocals, final boolean compactString) {
+    public Object execute(final TRegexExecutorLocals abstractLocals, final TruffleString.CodeRange codeRange) {
         TRegexDFAExecutorLocals locals = (TRegexDFAExecutorLocals) abstractLocals;
         CompilerDirectives.ensureVirtualized(locals);
-        CompilerAsserts.compilationConstant(states);
-        CompilerAsserts.compilationConstant(states.length);
+        CompilerAsserts.partialEvaluationConstant(states);
+        CompilerAsserts.partialEvaluationConstant(states.length);
+        CompilerAsserts.partialEvaluationConstant(codeRange);
         if (!validArgs(locals)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw new IllegalArgumentException(String.format("Got illegal args! (fromIndex %d, initialIndex %d, maxIndex %d)",
@@ -203,7 +204,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
         }
         int ip = 0;
         outer: while (true) {
-            LoopNode.reportLoopCount(this, 1);
+            locals.incLoopCount(this);
             if (CompilerDirectives.inInterpreter()) {
                 RegexRootNode.checkThreadInterrupted();
             }
@@ -291,8 +292,8 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                      */
                     inputAdvance(locals);
                     state.beforeFindSuccessor(locals, this);
-                    if (isForward() && state.canDoIndexOf()) {
-                        int indexOfResult = state.loopOptimizationNode.execute(locals.getInput(), locals.getIndex(), getMaxIndex(locals));
+                    if (isForward() && state.canDoIndexOf() && inputHasNext(locals)) {
+                        int indexOfResult = state.loopOptimizationNode.execute(locals.getInput(), locals.getIndex(), getMaxIndex(locals), getEncoding());
                         int postLoopIndex = indexOfResult < 0 ? getMaxIndex(locals) : indexOfResult;
                         state.afterIndexOf(locals, this, locals.getIndex(), postLoopIndex);
                         assert locals.getIndex() == postLoopIndex;
@@ -354,7 +355,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                         CharMatcher[] enc3 = utf8Matchers.getEnc3();
                         CharMatcher[] enc4 = utf8Matchers.getEnc4();
                         int c = inputReadRaw(locals);
-                        if (c < 128) {
+                        if (codeRange == TruffleString.CodeRange.ASCII || c < 128) {
                             inputIncNextIndexRaw(locals);
                             if (ascii != null) {
                                 for (int i = 0; i < ascii.length; i++) {
@@ -426,11 +427,13 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                          * UTF-16 interpreted as raw 16-bit values, no decoding
                          */
                         final int c = inputReadAndDecode(locals);
+                        CharMatcher[] ascii = ((UTF16RawMatchers) matchers).getAscii();
                         CharMatcher[] latin1 = ((UTF16RawMatchers) matchers).getLatin1();
                         CharMatcher[] bmp = ((UTF16RawMatchers) matchers).getBmp();
-                        if (latin1 != null && (bmp == null || compactString || c < 256)) {
-                            for (int i = 0; i < latin1.length; i++) {
-                                if (match(latin1, i, c)) {
+                        if (latin1 != null && (bmp == null || codeRange.isSubsetOf(TruffleString.CodeRange.LATIN_1) || c < 256)) {
+                            CharMatcher[] byteMatchers = codeRange == TruffleString.CodeRange.ASCII && ascii != null ? ascii : latin1;
+                            for (int i = 0; i < byteMatchers.length; i++) {
+                                if (match(byteMatchers, i, c)) {
                                     ip = transitionMatch(state, i);
                                     continue outer;
                                 }
@@ -451,6 +454,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                         assert matchers instanceof UTF16Matchers;
                         assert getEncoding() == Encodings.UTF_16;
                         UTF16Matchers utf16Matchers = (UTF16Matchers) matchers;
+                        CharMatcher[] ascii = utf16Matchers.getAscii();
                         CharMatcher[] latin1 = utf16Matchers.getLatin1();
                         CharMatcher[] bmp = utf16Matchers.getBmp();
                         CharMatcher[] astral = utf16Matchers.getAstral();
@@ -458,10 +462,12 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                         int c = inputReadRaw(locals);
                         inputIncNextIndexRaw(locals);
 
-                        if (!compactString && state.utf16MustDecode() && inputUTF16IsHighSurrogate(c) && inputHasNext(locals, locals.getNextIndex())) {
+                        if (codeRange.isSupersetOf(TruffleString.CodeRange.VALID) && state.utf16MustDecode() && inputUTF16IsHighSurrogate(c) &&
+                                        (codeRange == TruffleString.CodeRange.VALID || inputHasNext(locals, locals.getNextIndex()))) {
                             getAstralProfile().enter();
                             int c2 = inputReadRaw(locals, locals.getNextIndex());
-                            if (inputUTF16IsLowSurrogate(c2)) {
+                            if (codeRange == TruffleString.CodeRange.VALID || inputUTF16IsLowSurrogate(c2)) {
+                                assert inputUTF16IsLowSurrogate(c2);
                                 locals.setNextIndex(inputIncRaw(locals.getNextIndex()));
                                 if (astral != null) {
                                     c = inputUTF16ToCodePoint(c, c2);
@@ -475,14 +481,15 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                                     }
                                 }
                             }
-                        } else if (latin1 != null && (bmp == null || compactString || c < 256)) {
-                            for (int i = 0; i < latin1.length; i++) {
-                                if (match(latin1, i, c)) {
+                        } else if (latin1 != null && (bmp == null || codeRange.isSubsetOf(TruffleString.CodeRange.LATIN_1) || c < 256)) {
+                            CharMatcher[] byteMatchers = codeRange == TruffleString.CodeRange.ASCII && ascii != null ? ascii : latin1;
+                            for (int i = 0; i < byteMatchers.length; i++) {
+                                if (match(byteMatchers, i, c)) {
                                     ip = transitionMatch(state, i);
                                     continue outer;
                                 }
                             }
-                        } else if (bmp != null) {
+                        } else if (bmp != null && codeRange.isSupersetOf(TruffleString.CodeRange.BMP)) {
                             getBMPProfile().enter();
                             for (int i = 0; i < bmp.length; i++) {
                                 if (match(bmp, i, c)) {
@@ -510,7 +517,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
                     if (locals.getIndex() < 0) {
                         break outer;
                     }
-                    if (!state.hasPrefixMatcher() || state.prefixMatcherMatches(locals, compactString)) {
+                    if (!state.hasPrefixMatcher() || state.prefixMatcherMatches(locals, codeRange)) {
                         if (!state.hasPrefixMatcher() && isSimpleCG()) {
                             locals.getCGData().results[0] = locals.getIndex();
                         }
@@ -576,8 +583,7 @@ public final class TRegexDFAExecutorNode extends TRegexExecutorNode {
 
     private int inputUTF8Decode2(TRegexDFAExecutorLocals locals, int c, int codepoint) {
         if (isForward()) {
-            return ((c & 0x3f) << 6) |
-                            (inputReadRaw(locals, locals.getIndex() + 1) & 0x3f);
+            return ((c & 0x3f) << 6) | (inputReadRaw(locals, locals.getIndex() + 1) & 0x3f);
         }
         return codepoint;
     }

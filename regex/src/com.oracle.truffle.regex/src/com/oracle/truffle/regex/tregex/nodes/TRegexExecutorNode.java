@@ -45,6 +45,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding.UTF16;
@@ -351,6 +352,6 @@ public abstract class TRegexExecutorNode extends Node {
 
     public abstract TRegexExecutorLocals createLocals(Object input, int fromIndex, int index, int maxIndex);
 
-    public abstract Object execute(TRegexExecutorLocals locals, boolean compactString);
+    public abstract Object execute(TRegexExecutorLocals locals, TruffleString.CodeRange codeRange);
 
 }
