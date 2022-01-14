@@ -48,6 +48,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.regex.result.RegexResult;
 import com.oracle.truffle.regex.tregex.parser.flavors.ECMAScriptFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.PythonFlavor;
+import com.oracle.truffle.regex.tregex.parser.flavors.PythonMethod;
 import com.oracle.truffle.regex.tregex.parser.flavors.RegexFlavor;
 import com.oracle.truffle.regex.tregex.parser.flavors.RubyFlavor;
 import com.oracle.truffle.regex.tregex.string.Encodings;
@@ -60,7 +61,8 @@ import com.oracle.truffle.regex.tregex.string.Encodings;
  * <li><b>Flavor</b>: specifies the regex dialect to use. Possible values:
  * <ul>
  * <li><b>ECMAScript</b>: ECMAScript/JavaScript syntax (default).</li>
- * <li><b>Python</b>: Python 3 syntax.</li>
+ * <li><b>PythonStr</b>: Python 3 syntax, as executed on {@code str} objects.</li>
+ * <li><b>PythonBytes</b>: Python 3 syntax, as executed on {@code bytes}-like objects.</li>
  * <li><b>Ruby</b>: Ruby syntax.</li>
  * </ul>
  * </li>
@@ -71,6 +73,14 @@ import com.oracle.truffle.regex.tregex.string.Encodings;
  * <li><b>UTF-32</b></li>
  * <li><b>LATIN-1</b></li>
  * <li><b>BYTES</b> (equivalent to LATIN-1)</li>
+ * </ul>
+ * </li>
+ * <li><b>PythonMethod</b>: specifies which Python {@code Pattern} method was called (Python flavors
+ * only). Possible values:
+ * <ul>
+ * <li><b>search</b></li>
+ * <li><b>match</b></li>
+ * <li><b>fullmatch</b></li>
  * </ul>
  * </li>
  * <li><b>Validate</b>: don't generate a regex matcher object, just check the regex for syntax
@@ -89,8 +99,12 @@ import com.oracle.truffle.regex.tregex.string.Encodings;
  * generate debugging dumps of most relevant data structures in JSON, GraphViz and LaTex
  * format.</li>
  * <li><b>StepExecution</b>: dump tracing information about all DFA matcher runs.</li>
+ * <li><b>IgnoreAtomicGroups</b>: treat atomic groups as ordinary groups (experimental).</li>
+ * <li><b>MustAdvance</b>: force the matcher to advance by at least one character, either by finding
+ * a non-zero-width match or by skipping at least one character before matching.</li>
  * </ul>
- * All options except {@code Flavor} and {@code Encoding} are boolean and {@code false} by default.
+ * All options except {@code Flavor}, {@code Encoding} and {@code PythonMethod} are boolean and
+ * {@code false} by default.
  */
 public final class RegexOptions {
 
@@ -127,16 +141,24 @@ public final class RegexOptions {
 
     public static final String ENCODING_NAME = "Encoding";
 
-    public static final RegexOptions DEFAULT = new RegexOptions(0, ECMAScriptFlavor.INSTANCE, Encodings.UTF_16_RAW);
+    public static final String PYTHON_METHOD_NAME = "PythonMethod";
+    public static final String PYTHON_METHOD_SEARCH = "search";
+    public static final String PYTHON_METHOD_MATCH = "match";
+    public static final String PYTHON_METHOD_FULLMATCH = "fullmatch";
+    private static final String[] PYTHON_METHOD_OPTIONS = {PYTHON_METHOD_SEARCH, PYTHON_METHOD_MATCH, PYTHON_METHOD_FULLMATCH};
+
+    public static final RegexOptions DEFAULT = new RegexOptions(0, ECMAScriptFlavor.INSTANCE, Encodings.UTF_16_RAW, null);
 
     private final int options;
     private final RegexFlavor flavor;
     private final Encodings.Encoding encoding;
+    private final PythonMethod pythonMethod;
 
-    private RegexOptions(int options, RegexFlavor flavor, Encodings.Encoding encoding) {
+    private RegexOptions(int options, RegexFlavor flavor, Encodings.Encoding encoding, PythonMethod pythonMethod) {
         this.options = options;
         this.flavor = flavor;
         this.encoding = encoding;
+        this.pythonMethod = pythonMethod;
     }
 
     public static Builder builder(Source source, String sourceString) {
@@ -234,8 +256,16 @@ public final class RegexOptions {
         return encoding;
     }
 
+    public PythonMethod getPythonMethod() {
+        return pythonMethod;
+    }
+
     public RegexOptions withEncoding(Encodings.Encoding newEnc) {
-        return newEnc == encoding ? this : new RegexOptions(options, flavor, newEnc);
+        return newEnc == encoding ? this : new RegexOptions(options, flavor, newEnc, pythonMethod);
+    }
+
+    public RegexOptions withoutPythonMethod() {
+        return pythonMethod == null ? this : new RegexOptions(options, flavor, encoding, null);
     }
 
     public RegexOptions withBooleanMatch() {
@@ -252,6 +282,7 @@ public final class RegexOptions {
         int hash = options;
         hash = prime * hash + Objects.hashCode(flavor);
         hash = prime * hash + encoding.hashCode();
+        hash = prime * hash + Objects.hashCode(pythonMethod);
         return hash;
     }
 
@@ -264,7 +295,7 @@ public final class RegexOptions {
             return false;
         }
         RegexOptions other = (RegexOptions) obj;
-        return this.options == other.options && this.flavor == other.flavor && this.encoding == other.encoding;
+        return this.options == other.options && this.flavor == other.flavor && this.encoding == other.encoding && this.pythonMethod == other.pythonMethod;
     }
 
     @Override
@@ -310,6 +341,14 @@ public final class RegexOptions {
         } else if (flavor == RubyFlavor.INSTANCE) {
             sb.append(FLAVOR_NAME + "=" + FLAVOR_RUBY + ",");
         }
+        sb.append(ENCODING_NAME + "=" + encoding.getName() + ",");
+        if (pythonMethod == PythonMethod.search) {
+            sb.append(PYTHON_METHOD_NAME + "=" + PYTHON_METHOD_SEARCH + ",");
+        } else if (pythonMethod == PythonMethod.match) {
+            sb.append(PYTHON_METHOD_NAME + "=" + PYTHON_METHOD_MATCH + ",");
+        } else if (pythonMethod == PythonMethod.fullmatch) {
+            sb.append(PYTHON_METHOD_NAME + "=" + PYTHON_METHOD_FULLMATCH + ",");
+        }
         return sb.toString();
     }
 
@@ -320,6 +359,7 @@ public final class RegexOptions {
         private int options;
         private RegexFlavor flavor;
         private Encodings.Encoding encoding = Encodings.UTF_16_RAW;
+        private PythonMethod pythonMethod;
 
         private Builder(Source source, String sourceString) {
             this.source = source;
@@ -356,6 +396,9 @@ public final class RegexOptions {
                         break;
                     case 'M':
                         i = parseBooleanOption(i, MUST_ADVANCE_NAME, MUST_ADVANCE);
+                        break;
+                    case 'P':
+                        i = parsePythonMethod(i);
                         break;
                     case 'R':
                         i = parseBooleanOption(i, REGRESSION_TEST_MODE_NAME, REGRESSION_TEST_MODE);
@@ -487,6 +530,26 @@ public final class RegexOptions {
             }
         }
 
+        private int parsePythonMethod(int i) throws RegexSyntaxException {
+            int iVal = expectOptionName(i, PYTHON_METHOD_NAME);
+            if (iVal >= src.length()) {
+                throw optionsSyntaxErrorUnexpectedValue(iVal, PYTHON_METHOD_OPTIONS);
+            }
+            switch (src.charAt(iVal)) {
+                case 's':
+                    pythonMethod = PythonMethod.search;
+                    return expectValue(iVal, PYTHON_METHOD_SEARCH, PYTHON_METHOD_OPTIONS);
+                case 'm':
+                    pythonMethod = PythonMethod.match;
+                    return expectValue(iVal, PYTHON_METHOD_MATCH, PYTHON_METHOD_OPTIONS);
+                case 'f':
+                    pythonMethod = PythonMethod.fullmatch;
+                    return expectValue(iVal, PYTHON_METHOD_FULLMATCH, PYTHON_METHOD_OPTIONS);
+                default:
+                    throw optionsSyntaxErrorUnexpectedValue(iVal, PYTHON_METHOD_OPTIONS);
+            }
+        }
+
         @TruffleBoundary
         private RegexSyntaxException optionsSyntaxErrorUnexpectedKey(int i) {
             int eqlPos = src.indexOf('=', i);
@@ -586,8 +649,17 @@ public final class RegexOptions {
             return encoding;
         }
 
+        public Builder pythonMethod(@SuppressWarnings("hiding") PythonMethod pythonMethod) {
+            this.pythonMethod = pythonMethod;
+            return this;
+        }
+
+        public PythonMethod getPythonMethod() {
+            return pythonMethod;
+        }
+
         public RegexOptions build() {
-            return new RegexOptions(this.options, this.flavor, this.encoding);
+            return new RegexOptions(this.options, this.flavor, this.encoding, this.pythonMethod);
         }
 
         private void updateOption(boolean enabled, int bitMask) {

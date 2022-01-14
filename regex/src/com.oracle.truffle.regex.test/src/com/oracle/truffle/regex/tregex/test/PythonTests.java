@@ -274,4 +274,9 @@ public class PythonTests extends RegexTestBase {
         test("$", "m", "MustAdvance=true", "a\nb\n", 3, true, 4, 4, -1);
         test("$", "m", "MustAdvance=true", "a\nb\n", 4, false);
     }
+
+    @Test
+    public void testFullMatch() {
+        test("a|ab", "", "PythonMethod=fullmatch", "ab", 0, true, 0, 2, -1);
+    }
 }

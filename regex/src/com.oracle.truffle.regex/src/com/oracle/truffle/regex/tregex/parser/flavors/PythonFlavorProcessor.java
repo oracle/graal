@@ -54,6 +54,7 @@ import java.util.regex.Pattern;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.AbstractRegexObject;
+import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.UnsupportedRegexException;
@@ -389,8 +390,16 @@ public final class PythonFlavorProcessor implements RegexFlavorProcessor {
         // actually want to match on the individual code points of the Unicode string. In 'bytes'
         // patterns, all characters are in the range 0-255 and so the Unicode flag does not
         // interfere with the matching (no surrogates).
-        return new RegexSource(outPattern.toString(), getGlobalFlags().isSticky() ? "suy" : "su",
-                        inSource.getOptions().withEncoding(mode == PythonREMode.Bytes ? Encodings.LATIN_1 : Encodings.UTF_16), inSource.getSource());
+        // TODO: Passing in the sticky flag should be deprecated in favor of using the PythonMethod
+        // option. After the sticky flag is no longer used, support for it should be removed.
+        if (inSource.getOptions().getPythonMethod() == PythonMethod.fullmatch) {
+            outPattern.insert(0, "(?:");
+            outPattern.append(")$");
+        }
+        boolean sticky = inSource.getOptions().getPythonMethod() == PythonMethod.match || inSource.getOptions().getPythonMethod() == PythonMethod.fullmatch || getGlobalFlags().isSticky();
+        String outFlags = sticky ? "suy" : "su";
+        RegexOptions outOptions = inSource.getOptions().withEncoding(mode == PythonREMode.Bytes ? Encodings.LATIN_1 : Encodings.UTF_16).withoutPythonMethod();
+        return new RegexSource(outPattern.toString(), outFlags, outOptions, inSource.getSource());
     }
 
     private PythonFlags getLocalFlags() {
