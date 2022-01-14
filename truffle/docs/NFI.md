@@ -12,7 +12,7 @@ NFI is intended to be used, for example, to implement a language's FFI, or to ca
 
 NFI uses `libffi`.
 On a standard JVM it calls it using JNI, and on GraalVM Native Image it uses system Java.
-In the future it may be optimised by the GraalVM compiler in native executables so that native calls are made directly from the compiled code.
+In the future it may be optimised by the Graal Compiler in native executables so that native calls are made directly from the compiled code.
 
 ## Stability
 
