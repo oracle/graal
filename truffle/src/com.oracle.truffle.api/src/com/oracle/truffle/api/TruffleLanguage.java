@@ -3099,17 +3099,19 @@ public abstract class TruffleLanguage<C> {
          *             this runtime at all, which is currently the case for native images.
          * @throws NullPointerException if {@code types} is null
          *
-         * @see #createHostAdapterClassWithStaticOverrides(Class[], Object)
+         * @see #createHostAdapterWithClassOverrides(Object[], Object)
          * @since 20.3.0
+         * @deprecated since 22.1; replaced by {@link #createHostAdapter(Object[])}.
          */
+        @Deprecated
         @TruffleBoundary
         public Object createHostAdapterClass(Class<?>[] types) {
             Objects.requireNonNull(types, "types");
-            return createHostAdapterClassImpl(types, null);
+            return createHostAdapterClassLegacyImpl(types, null);
         }
 
         /**
-         * Like {@link #createHostAdapterClass(Class[])} but creates a Java host adapter class with
+         * Like {@link #createHostAdapter(Object[])} but creates a Java host adapter class with
          * class-level overrides, i.e., the guest object provided as {@code classOverrides} is
          * statically bound to the class rather than instances of the class. Returns a host class
          * that can be {@linkplain com.oracle.truffle.api.interop.InteropLibrary#instantiate
@@ -3120,7 +3122,7 @@ public abstract class TruffleLanguage<C> {
          * superclass of other host adapter classes. Note that classes created with method cannot be
          * cached. Therefore, this feature should be used sparingly.
          * <p>
-         * See {@link #createHostAdapterClass(Class[])} for more details.
+         * See {@link #createHostAdapter(Object[])} for more details.
          *
          * @param types the types to extend. Must be non-null and contain at least one extensible
          *            superclass or interface, and at most one superclass. All types must be public,
@@ -3141,11 +3143,161 @@ public abstract class TruffleLanguage<C> {
          *             this runtime at all, which is currently the case for native images.
          * @throws NullPointerException if either {@code types} or {@code classOverrides} is null.
          *
-         * @see #createHostAdapterClass(Class[])
+         * @see #createHostAdapter(Object[])
+         * @see #createHostAdapterWithClassOverrides(Object[], Object)
          * @since 20.3.0
+         * @deprecated since 22.1; replaced by
+         *             {@link #createHostAdapterWithClassOverrides(Object[], Object)}.
          */
+        @Deprecated
         @TruffleBoundary
         public Object createHostAdapterClassWithStaticOverrides(Class<?>[] types, Object classOverrides) {
+            Objects.requireNonNull(types, "types");
+            Objects.requireNonNull(classOverrides, "classOverrides");
+            return createHostAdapterClassLegacyImpl(types, classOverrides);
+        }
+
+        /**
+         * Creates a Java host adapter class that can be
+         * {@linkplain com.oracle.truffle.api.interop.InteropLibrary#instantiate instantiated} with
+         * a guest object (as the last argument) in order to create adapter instances of the
+         * provided host types, (non-final) methods of which delegate to the guest object's
+         * {@linkplain com.oracle.truffle.api.interop.InteropLibrary#isMemberInvocable invocable}
+         * members. Implementations must be
+         * {@linkplain org.graalvm.polyglot.HostAccess.Builder#allowImplementations(Class) allowed}
+         * for these types. The returned adapter class is also a
+         * {@linkplain com.oracle.truffle.api.interop.InteropLibrary#isMetaObject meta object}, so
+         * {@link com.oracle.truffle.api.interop.InteropLibrary#isMetaInstance isMetaInstance} can
+         * be used to check if an object is an instance of this adapter class. See usage example
+         * below.
+         * <p>
+         * A host class is generated as follows:
+         * <p>
+         * For every protected or public constructor in the extended class, the adapter class will
+         * have one public constructor (visibility of protected constructors in the extended class
+         * is promoted to public).
+         * <p>
+         * For every super constructor, a constructor taking a trailing {@link Value} argument
+         * preceded by original constructor's arguments is generated. When such a constructor is
+         * invoked, the passed {@link Value}'s member functions are used to implement and/or
+         * override methods on the original class, dispatched by name. A single invocable member
+         * will act as the implementation for all overloaded methods of the same name. When methods
+         * on an adapter instance are invoked, the functions are invoked having the {@link Value}
+         * passed in the instance constructor as their receiver. Subsequent changes to the members
+         * of that {@link Value} (reassignment or removal of its functions) are reflected in the
+         * adapter instance; the method implementations are not bound to functions at constructor
+         * invocation time.
+         * <p>
+         * The generated host class extends all non-final public or protected methods, and forwards
+         * their invocations to the guest object provided to the constructor. If the guest object
+         * does not contain an invocable member with that name, the super/default method is invoked
+         * instead. If the super method is abstract, an {@link AbstractMethodError} is thrown.
+         * <p>
+         * If the original types collectively have only one abstract method, or have several of
+         * them, but all share the same name, the constructor(s) will check if the {@link Value} is
+         * executable, and if so, will use the passed function as the implementation for all
+         * abstract methods. For consistency, any concrete methods sharing the single abstract
+         * method name will also be overridden by the function.
+         * <p>
+         * For non-void methods, all the conversions supported by {@link Value#as} will be in effect
+         * to coerce the guest methods' return value to the expected Java return type.
+         * <p>
+         * Instances of the host class have the following additional special members:
+         * <ul>
+         * <li>{@code super}: provides access to the super methods of the host class via a wrapper
+         * object. Can be used to call super methods from guest method overrides.
+         * <li>{@code this}: returns the original guest object.
+         * </ul>
+         * <p>
+         * Example:<br>
+         *
+         * <pre>
+         * <code>
+         * Object hostClass = env.createHostAdapter(new Object[]{
+         *      env.asHostSymbol(Superclass.class),
+         *      env.asHostSymbol(Interface.class)});
+         * // generates a class along the lines of:
+         *
+         * public class Adapter extends Superclass implements Interface {
+         *   private Value delegate;
+         *
+         *   public Adapter(Value delegate) { this.delegate = delegate; }
+         *
+         *   public method(Object... args) {
+         *      if (delegate.canInvokeMember("method") {
+         *        return delegate.invokeMember("method", args);
+         *      } else {
+         *        return super.method(args);
+         *      }
+         *   }
+         * }
+         *
+         * // and can be instantiated as follows:
+         * Object instance = InteropLibrary.getUncached().instantiate(hostClass, guestObject);
+         * assert InteropLibrary.getUncached().isMetaInstance(hostClass, instance);
+         * </code>
+         * </pre>
+         *
+         * @param types the types to extend. Must be non-null and contain at least one extensible
+         *            superclass or interface, and at most one superclass. All types must be public,
+         *            accessible, and allow implementation.
+         * @return a host class that can be instantiated to create instances of a host class that
+         *         extends all the provided host types. The host class may be cached.
+         * @throws IllegalArgumentException if the types are not extensible or more than one
+         *             superclass is given.
+         * @throws SecurityException if host access does not allow creating adapter classes for
+         *             these types.
+         * @throws UnsupportedOperationException if creating adapter classes is not supported on
+         *             this runtime at all, which is currently the case for native images.
+         * @throws NullPointerException if {@code types} is null
+         *
+         * @see #createHostAdapterWithClassOverrides(Object[], Object)
+         * @since 22.1
+         */
+        @TruffleBoundary
+        public Object createHostAdapter(Object[] types) {
+            Objects.requireNonNull(types, "types");
+            return createHostAdapterClassImpl(types, null);
+        }
+
+        /**
+         * Like {@link #createHostAdapter(Object[])} but creates a Java host adapter class with
+         * class-level overrides, i.e., the guest object provided as {@code classOverrides} is
+         * statically bound to the class rather than instances of the class. Returns a host class
+         * that can be {@linkplain com.oracle.truffle.api.interop.InteropLibrary#instantiate
+         * instantiated} to create instances of the provided host {@code types}, (non-final) methods
+         * of which delegate to the guest object provided as {@code classOverrides}.
+         * <p>
+         * Allows creating host adapter class hierarchies, i.e., the returned class can be used as a
+         * superclass of other host adapter classes. Note that classes created with method cannot be
+         * cached. Therefore, this feature should be used sparingly.
+         * <p>
+         * See {@link #createHostAdapter(Object[])} for more details.
+         *
+         * @param types the types to extend. Must be non-null and contain at least one extensible
+         *            superclass or interface, and at most one superclass. All types must be public,
+         *            accessible, and allow implementation.
+         * @param classOverrides a guest object with class-level overrides. If not null, the object
+         *            is bound to the class, not to any instance. Consequently, the generated
+         *            constructors are changed to not take an object; all instances will share the
+         *            same overrides object. Note that since a new class has to be generated for
+         *            every overrides object instance and cannot be shared, use of this feature is
+         *            discouraged; it is provided only for compatibility reasons.
+         * @return a host class symbol that can be instantiated to create instances of a host class
+         *         that extends all the provided host types.
+         * @throws IllegalArgumentException if the types are not extensible or more than one
+         *             superclass is given.
+         * @throws SecurityException if host access does not allow creating adapter classes for
+         *             these types.
+         * @throws UnsupportedOperationException if creating adapter classes is not supported on
+         *             this runtime at all, which is currently the case for native images.
+         * @throws NullPointerException if either {@code types} or {@code classOverrides} is null.
+         *
+         * @see #createHostAdapter(Object[])
+         * @since 22.1
+         */
+        @TruffleBoundary
+        public Object createHostAdapterWithClassOverrides(Object[] types, Object classOverrides) {
             Objects.requireNonNull(types, "types");
             Objects.requireNonNull(classOverrides, "classOverrides");
             return createHostAdapterClassImpl(types, classOverrides);
@@ -3305,7 +3457,17 @@ public abstract class TruffleLanguage<C> {
             }
         }
 
-        private Object createHostAdapterClassImpl(Class<?>[] types, Object classOverrides) {
+        private Object createHostAdapterClassLegacyImpl(Class<?>[] types, Object classOverrides) {
+            checkDisposed();
+            Object[] hostTypes = new Object[types.length];
+            for (int i = 0; i < types.length; i++) {
+                Class<?> type = types[i];
+                hostTypes[i] = asHostSymbol(type);
+            }
+            return createHostAdapterClassImpl(hostTypes, classOverrides);
+        }
+
+        private Object createHostAdapterClassImpl(Object[] types, Object classOverrides) {
             checkDisposed();
             try {
                 if (types.length == 0) {

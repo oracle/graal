@@ -1395,7 +1395,7 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public Object createHostAdapterClass(Object languageContext, Class<?>[] types, Object classOverrides) {
+        public Object createHostAdapterClass(Object languageContext, Object[] types, Object classOverrides) {
             CompilerAsserts.neverPartOfCompilation();
             PolyglotContextImpl context = ((PolyglotLanguageContext) languageContext).context;
             return context.engine.host.createHostAdapter(context.getHostContextImpl(), types, classOverrides);
