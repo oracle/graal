@@ -59,6 +59,11 @@ final class JCodingsDisabled implements JCodings {
     }
 
     @Override
+    public String name(Encoding jCoding) {
+        throw CompilerDirectives.shouldNotReachHere(MESSAGE);
+    }
+
+    @Override
     public int minLength(Encoding enc) {
         throw CompilerDirectives.shouldNotReachHere(MESSAGE);
     }

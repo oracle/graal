@@ -69,6 +69,8 @@ interface JCodings {
 
     Encoding get(int encodingId);
 
+    String name(Encoding jCoding);
+
     /**
      * No TruffleBoundary because this method is a final getter in the Encoding base class.
      */

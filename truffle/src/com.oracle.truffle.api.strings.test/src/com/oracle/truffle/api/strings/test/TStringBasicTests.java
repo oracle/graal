@@ -73,6 +73,13 @@ public class TStringBasicTests extends TStringTestBase {
         });
     }
 
+    @Test
+    public void testEncodingFromJCodingName() throws Exception {
+        forAllEncodings(e -> {
+            Assert.assertSame(e, TruffleString.Encoding.fromJCodingName(Encodings.getJCoding(e).toString()));
+        });
+    }
+
     private static void testTransCode(int codepoint, TruffleString.Encoding encodingA) throws Exception {
         TruffleString stringA = TruffleString.fromCodePointUncached(codepoint, encodingA);
         Assert.assertEquals(codepoint, stringA.codePointAtIndexUncached(0, encodingA));

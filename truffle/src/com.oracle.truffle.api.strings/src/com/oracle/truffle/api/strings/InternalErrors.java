@@ -86,6 +86,11 @@ final class InternalErrors {
         return new IllegalArgumentException("the given string is not compatible to the expected encoding \"" + expectedEncoding + "\", did you forget to convert it?");
     }
 
+    static RuntimeException unknownEncoding(String name) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        return illegalArgument("unknown encoding: \"" + name + "\"");
+    }
+
     /**
      * Thrown when an operation requires native access but
      * {@link TruffleLanguage.Env#isNativeAccessAllowed()} is {@code false}.
