@@ -77,7 +77,13 @@ public interface LoweringProvider {
     boolean supportsImplicitNullChecks();
 
     /**
+     * Indicates whether all writes are ordered on this target platform.
+     */
+    boolean writesStronglyOrdered();
+
+    /**
      * Returns the target being lowered.
      */
     TargetDescription getTarget();
+
 }

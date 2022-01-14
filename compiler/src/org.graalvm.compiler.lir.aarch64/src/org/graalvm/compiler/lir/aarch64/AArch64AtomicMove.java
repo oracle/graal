@@ -121,8 +121,8 @@ public class AArch64AtomicMove {
             /*
              * Determining whether acquire and/or release semantics are needed.
              */
-            boolean acquire = ((memoryOrder.postWriteBarriers & (STORE_LOAD | STORE_STORE)) != 0) || ((memoryOrder.postReadBarriers & (LOAD_LOAD | LOAD_STORE)) != 0);
-            boolean release = ((memoryOrder.preWriteBarriers & (LOAD_STORE | STORE_STORE)) != 0) || ((memoryOrder.preReadBarriers & (LOAD_LOAD | STORE_LOAD)) != 0);
+            boolean acquire = ((memoryOrder.postWriteFences & (STORE_LOAD | STORE_STORE)) != 0) || ((memoryOrder.postReadFences & (LOAD_LOAD | LOAD_STORE)) != 0);
+            boolean release = ((memoryOrder.preWriteFences & (LOAD_STORE | STORE_STORE)) != 0) || ((memoryOrder.preReadFences & (LOAD_LOAD | STORE_LOAD)) != 0);
 
             if (AArch64LIRFlags.useLSE(masm.target.arch)) {
                 masm.mov(Math.max(memAccessSize, 32), result, expected);

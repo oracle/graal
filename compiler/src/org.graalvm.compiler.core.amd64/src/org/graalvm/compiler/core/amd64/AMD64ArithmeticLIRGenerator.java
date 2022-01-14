@@ -25,10 +25,6 @@
 
 package org.graalvm.compiler.core.amd64;
 
-import static jdk.vm.ci.code.MemoryBarriers.JMM_POST_VOLATILE_READ;
-import static jdk.vm.ci.code.MemoryBarriers.JMM_POST_VOLATILE_WRITE;
-import static jdk.vm.ci.code.MemoryBarriers.JMM_PRE_VOLATILE_READ;
-import static jdk.vm.ci.code.MemoryBarriers.JMM_PRE_VOLATILE_WRITE;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.ADD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.AND;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.CMP;
@@ -108,6 +104,7 @@ import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.FloatConvert;
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.ConstantValue;
 import org.graalvm.compiler.lir.LIRFrameState;
@@ -1215,18 +1212,20 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     }
 
     @Override
-    public Variable emitVolatileLoad(LIRKind kind, Value address, LIRFrameState state) {
-        getLIRGen().emitMembar(JMM_PRE_VOLATILE_READ);
+    public Variable emitOrderedLoad(LIRKind kind, Value address, LIRFrameState state, MemoryOrderMode memoryOrder) {
+        assert memoryOrder == MemoryOrderMode.OPAQUE || memoryOrder == MemoryOrderMode.ACQUIRE || memoryOrder == MemoryOrderMode.VOLATILE;
+        getLIRGen().emitMembar(memoryOrder.preReadFences);
         Variable var = emitLoad(kind, address, state);
-        getLIRGen().emitMembar(JMM_POST_VOLATILE_READ);
+        getLIRGen().emitMembar(memoryOrder.postReadFences);
         return var;
     }
 
     @Override
-    public void emitVolatileStore(ValueKind<?> kind, Value address, Value input, LIRFrameState state) {
-        getLIRGen().emitMembar(JMM_PRE_VOLATILE_WRITE);
+    public void emitOrderedStore(ValueKind<?> kind, Value address, Value input, LIRFrameState state, MemoryOrderMode memoryOrder) {
+        assert memoryOrder == MemoryOrderMode.OPAQUE || memoryOrder == MemoryOrderMode.RELEASE || memoryOrder == MemoryOrderMode.VOLATILE;
+        getLIRGen().emitMembar(memoryOrder.preWriteFences);
         emitStore(kind, address, input, state);
-        getLIRGen().emitMembar(JMM_POST_VOLATILE_WRITE);
+        getLIRGen().emitMembar(memoryOrder.postWriteFences);
     }
 
     protected void emitStoreConst(AMD64Kind kind, AMD64AddressValue address, ConstantValue value, LIRFrameState state) {

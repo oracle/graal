@@ -31,27 +31,31 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
-import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.word.LocationIdentity;
 
-@NodeInfo(nameTemplate = "VolatileRead#{p#location/s}", allowedUsageTypes = Memory, cycles = CYCLES_2, size = SIZE_1)
-public class VolatileReadNode extends ReadNode implements SingleMemoryKill, Lowerable {
-    public static final NodeClass<VolatileReadNode> TYPE = NodeClass.create(VolatileReadNode.class);
+@NodeInfo(nameTemplate = "OrderedRead#{p#location/s}", allowedUsageTypes = Memory, cycles = CYCLES_2, size = SIZE_1)
+public class OrderedReadNode extends ReadNode implements SingleMemoryKill {
+    public static final NodeClass<OrderedReadNode> TYPE = NodeClass.create(OrderedReadNode.class);
+    private final MemoryOrderMode memoryOrder;
 
-    public VolatileReadNode(AddressNode address, Stamp stamp, BarrierType barrierType) {
+    public OrderedReadNode(AddressNode address, Stamp stamp, BarrierType barrierType, MemoryOrderMode memoryOrder) {
         super(TYPE, address, LocationIdentity.any(), stamp, null, barrierType, false, null);
+        // Node is expected to have ordering requirements
+        assert MemoryOrderMode.ordersMemoryAccesses(memoryOrder);
+        this.memoryOrder = memoryOrder;
     }
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         LIRKind readKind = gen.getLIRGeneratorTool().getLIRKind(getAccessStamp(NodeView.DEFAULT));
-        gen.setResult(this, gen.getLIRGeneratorTool().getArithmetic().emitVolatileLoad(readKind, gen.operand(address), gen.state(this)));
+        gen.setResult(this, gen.getLIRGeneratorTool().getArithmetic().emitOrderedLoad(readKind, gen.operand(address), gen.state(this), memoryOrder));
     }
 
     @SuppressWarnings("try")
@@ -70,4 +74,8 @@ public class VolatileReadNode extends ReadNode implements SingleMemoryKill, Lowe
         return LocationIdentity.any();
     }
 
+    @Override
+    public MemoryOrderMode getMemoryOrder() {
+        return memoryOrder;
+    }
 }
