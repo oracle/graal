@@ -392,7 +392,7 @@ native-image --language:js --initialize-at-build-time -cp . HelloPolyglot
 It should be mentioned that you can also include a guest language into the native image, but exclude the JIT compiler by passing the `-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime` option to the builder.
 Be aware, the flag `-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime` has to placed *after* all the Truffle language/tool options, so that it will override the default settings.
 
-You can build the above example again but this time the created image will only contain the Truffle language interpreter (the GraalVM compiler will not be included in the image) by running:
+You can build the above example again but this time the created image will only contain the Truffle language interpreter (the Graal compiler will not be included in the image) by running:
 ```shell
 native-image --language:js -Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime --initialize-at-build-time -cp . HelloPolyglotInterpreter
 ```

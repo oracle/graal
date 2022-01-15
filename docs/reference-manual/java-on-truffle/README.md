@@ -24,7 +24,6 @@ Besides complete language interoperability, with Java on Truffle you can:
 - run in the context of a native image while still allowing dynamically-loaded bytecodes.
 
 Java on Trufle is an experimental technology in GraalVM, but already passes the Java Compatibility Kit (JCK or TCK for Java SE).
-It is available as of version 21.0.0.
 
 ## Install Java on Truffle
 
@@ -90,13 +89,9 @@ This might be important for options such as `MaxDirectMemorySize` which can be s
 
 #### From Command Line
 
-For the purpose of this guide, GraalVM Enterprise 21.3.0 distribution, based on Java 11 for macOS, is used.
 To ensure you have successfully installed Java on Truffle, verify its version:
 ```shell
 java -truffle -version
-java version "11.0.13" 2021-10-19 LTS
-Java(TM) SE Runtime Environment GraalVM EE 21.3.0 (build 11.0.13+9-LTS-jvmci-21.3-b03)
-Espresso 64-Bit VM GraalVM EE 21.3.0 (build 11-espresso-21.3.0, mixed mode)
 ```
 
 Taking this `HelloWorld.java` example, compile it and run from the command line:
@@ -139,7 +134,7 @@ java -truffle -jar target/spring-petclinic-<version>-SNAPSHOT.jar
 To run a Java project on Truffle from an IDE requires setting the Java on Truffle enabled GraalVM as a project's default JDK.
 For exampe, to run the Spring PetClinic project using Intellij IDEA, you need to:
 
-1&#46; Navigate to File -> Project Structure -> Project -> Project SDK. Expand the drop down, press Add SDK -> JDK and open the folder where you installed GraalVM. For macOS users, JDK home path will be `/Library/Java/JavaVirtualMachines/{graalvm}/Contents/Home`. Give it a name, and press Apply.
+1&#46; Navigate to **File**, then to **Project Structure**. Click **Project**, and then click **Project SDK**. Expand the drop down, press Add **JDK** and open the folder where you installed GraalVM. For macOS users, JDK home path will be `/Library/Java/JavaVirtualMachines/{graalvm}/Contents/Home`. Give it a name, and press Apply.
 
 ![](/resources/img/java-on-truffle/add-project-default-sdk.png)
 
@@ -147,7 +142,7 @@ For exampe, to run the Spring PetClinic project using Intellij IDEA, you need to
 
 ![](/resources/img/java-on-truffle/generate-project-sources.png)
 
-3&#46; Enable the Java on Truffle execution mode. From the main menu select Run -> Run… -> Edit Configurations > Environment. Put the `-truffle -XX:+IgnoreUnrecognizedVMOptions` command in the VM options field and press Apply.
+3&#46; Enable the Java on Truffle execution mode. From the main menu select **Run**, then **Run…**. Click **Edit Configurations** and choose **Environment**. Put the `-truffle -XX:+IgnoreUnrecognizedVMOptions` command in **VM options** and press Apply.
 
 ![](/resources/img/java-on-truffle/pass-vmoption.png)
 

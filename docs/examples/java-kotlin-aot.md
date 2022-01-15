@@ -57,15 +57,18 @@ It should have produced the executable file, `helloworld`.
 ## Running the Application
 
 To run the application, you need to execute the JAR file in the `target` directory.
-You can run it as a normal Java application using `java`.
-Or, since we have a native executable prepared, you can run that directly.
-The `run.sh` file executes both, and times them with the `time` utility:
+You can run it as a normal Java application using `java`:
 ```shell
 java -cp ./target/mixed-code-hello-world-1.0-SNAPSHOT-jar-with-dependencies.jar hello.JavaHello
+```
+
+Or, since we have a native executable prepared, you can run that directly.
+```shell
 ./helloworld
 
 ```
 
+The `run.sh` file executes both, and times them with the `time` utility.
 An output close to the following should be produced:
 ```shell
 → ./run.sh
@@ -73,16 +76,16 @@ An output close to the following should be produced:
 Hello from Kotlin!
 Hello from Java!
 
-real	0m0.129s
-user	0m0.094s
-sys	0m0.034s
+real	0m0.589s
+user	0m0.155s
+sys	0m0.072s
 + ./helloworld
 Hello from Kotlin!
 Hello from Java!
 
-real	0m0.010s
-user	0m0.003s
-sys	0m0.004s
+real	0m0.053s
+user	0m0.006s
+sys	0m0.006s
 ```
 
 The performance gain of the native version is largely due to the faster startup.

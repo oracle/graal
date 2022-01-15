@@ -39,7 +39,7 @@ With Truffle, Java and other supported languages can directly interoperate with 
 GraalVM Enterprise is unique as a runtime environment offering several modes of operation: JVM runtime mode, Native Image, Java on Truffle (the same Java applications can be run on either).
 
 #### JVM Runtime Mode
-When running programs on the HotSpot JVM, GraalVM defaults to the [GraalVM compiler](../reference-manual/java/compiler.md) as the top-tier JIT compiler.
+When running programs on the HotSpot JVM, GraalVM defaults to the [Graal compiler](../reference-manual/java/compiler.md) as the top-tier JIT compiler.
 At runtime, an application is loaded and executed normally on the JVM.
 The JVM passes bytecodes for Java or any other JVM-native language to the compiler, which compiles that to the machine code and returns it to the JVM.
 Interpreters for supported languages, written on top of the [Truffle framework](../../truffle/docs/README.md), are themselves Java programs that run on the JVM.
@@ -52,11 +52,10 @@ A generated self-contained native executable is specific to each individual oper
 #### Java on Truffle
 [Java on Truffle](../reference-manual/java-on-truffle/README.md) is an implementation of the Java Virtual Machine Specification, built with the [Truffle framework](../../truffle/docs/README.md).
 It is a complete Java VM that includes all core components, implements the same API as the Java Runtime Environment library, and reuses all JARs and native libraries from GraalVM.
-Java on Trufle is an experimental technology in GraalVM, available as of version 21.0.0.
 
 ## Available Distributions
 
-GraalVM Enterprise distributions are based on Oracle JDK 8, 11, and 17.
+GraalVM Enterprise distributions are based on Oracle JDK 11 and 17.
 GraalVM Enterprise releases include all Oracle Java critical patch updates (CPUs), which are released on a regular schedule to remedy defects and known vulnerabilities.
 
 GraalVM Enterprise is available for Linux, macOS, and Windows platforms on x86 64-bit systems, and for Linux on ARM 64-bit system.
@@ -64,7 +63,7 @@ Depending on the platform, the distributions are shipped as *.tar.gz* or *.zip* 
 
 ## Certified Platforms
 
-The following are the certified platforms for GraalVM Enterprise 21:
+The following are the certified platforms for GraalVM Enterprise 22:
 
 | Operating System 	| Version 	| Architecture 	| Installation Guide 	|
 |------------------------------------	|--------------	|--------------	|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------	|
@@ -103,9 +102,9 @@ Tools/Utilities:
 Runtimes:
 
 * [Java on Truffle](../reference-manual/java-on-truffle/README.md) -- a JVM implementation built upon the [Truffle framework](../../truffle/docs/README.md) to run Java via a Java bytecode interpreter.
-* [Node.js](../reference-manual/js/README.md) -- the Node.js 14.17.6 runtime for JavaScript
+* [Node.js](../reference-manual/js/README.md) -- the Node.js 14.18.1 runtime for JavaScript
 * [Python](../reference-manual/python/README.md) -- Python 3.8.5 compatible
-* [Ruby](../reference-manual/ruby/README.md) -- Ruby 2.7.3 compatible
+* [Ruby](../reference-manual/ruby/README.md) -- Ruby 3.0.2 compatible
 * [R](../reference-manual/r/README.md) -- GNU R 4.0.3 compatible
 * [GraalWasm](../reference-manual/wasm/README.md) -- WebAssembly (Wasm)
 
@@ -116,10 +115,9 @@ Oracle GraalVM Enterprise Edition is licensed under the [Oracle Technology Netwo
 For production use, GraalVM Enterprise is available as part of the [Oracle Java SE Subscription](https://www.oracle.com/uk/java/java-se-subscription/) which includes 24x7x365 [Oracle premier support](https://www.oracle.com/support/premier/) and the access to [My Oracle Support (MOS)](https://www.oracle.com/support/).
 
 GraalVM Enterprise focuses on support for Java LTS releases for production deployments.
-GraalVM Enterprise Edition 21.3 is announced a Long-Term-Support (LTS) release.
 See [Versions Roadmap of Oracle GraalVM Enterprise Edition](../../release-notes/enterprise/graalvm-enterprise-version-roadmap.md) for more information.
 
-Please note, that while Oracle JDK 17 is available under the new [Oracle No-Fee Terms and Conditions (NFTC) license](https://www.oracle.com/downloads/licenses/no-fee-license.html) which allows commercial and production use for 2 years, GraalVM Enterprise Edition license remains unchanged. 
+Please note, that while Oracle JDK 17 is available under the new [Oracle No-Fee Terms and Conditions (NFTC) license](https://www.oracle.com/downloads/licenses/no-fee-license.html) which allows commercial and production use for 2 years, GraalVM Enterprise Edition license remains unchanged.
 
 ## Experimental and Early Adopter Features
 
@@ -131,7 +129,7 @@ The development team welcomes feedback on experimental features, but users shoul
 
 For more information, check the [Oracle Technology Network License Agreement for GraalVM Enterprise Edition](https://www.oracle.com/downloads/licenses/graalvm-otn-license.html).
 
-The following table lists supported and experimental features in GraalVM Enterprise Edition 21 by platform.
+The following table lists supported and experimental features in GraalVM Enterprise Edition 22 by platform.
 
 | Feature | Linux AMD64 | Linux ARM64 | macOS | Windows |
 |--------------------|---------------|---------------|---------------|

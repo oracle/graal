@@ -7,7 +7,7 @@ permalink: /examples/java-performance-examples/
 
 # Java Performance Examples
 
-The GraalVM compiler achieves excellent performance, especially for highly abstracted programs, due to its versatile optimization techniques.
+The [Graal compiler](../reference-manual/java/compiler.md) achieves excellent performance, especially for highly abstracted programs, due to its versatile optimization techniques.
 Code using more abstraction and modern Java features like Streams or Lambdas will see greater speedups.
 The examples below demonstrate this.
 
@@ -15,7 +15,7 @@ The examples below demonstrate this.
 
 ### Streams API Example
 
-A simple example based on the [Streams API](https://docs.oracle.com/javase/8/docs/api/java/util/stream/package-summary.html) is used here to demonstrate performance gains when using the GraalVM compiler.
+A simple example based on the [Streams API](https://docs.oracle.com/javase/8/docs/api/java/util/stream/package-summary.html) is used here to demonstrate performance gains when using the Graal compiler.
 This example counts the number of uppercase characters in a body of text.
 To simulate a large load, the same sentence is processed 10 million times:
 
@@ -46,7 +46,7 @@ public class CountUppercase {
 2&#46; Compile it and run as follows:
 ```shell
 javac CountUppercase.java
-java CountUppercase In 2021 I would like to run ALL languages in one VM.
+java CountUppercase This year I would like to run ALL languages in one VM.
 1 (319 ms)
 2 (275 ms)
 3 (164 ms)
@@ -64,14 +64,14 @@ If the performance profile of `CountUppercase` on your machine does not match th
 
 3&#46; Add the `-Dgraal.PrintCompilation=true` option to see statistics for the compilations:
 ```shell
-java -Dgraal.PrintCompilation=true CountUppercase In 2021 I would like to run ALL languages in one VM.
+java -Dgraal.PrintCompilation=true CountUppercase This year I would like to run ALL languages in one VM.
 ```
 
 This option prints a line after each compilation that shows the method compiled, time taken, bytecodes processed (including inlined methods), size of machine code produced, and amount of memory allocated during compilation.
 
 4&#46; Use the `-XX:-UseJVMCICompiler` option to disable the GraalVM compiler and use the native top tier compiler in the VM to compare performance:
 ```shell
-java -XX:-UseJVMCICompiler CountUppercase In 2021 I would like to run ALL languages in one VM.
+java -XX:-UseJVMCICompiler CountUppercase This year I would like to run ALL languages in one VM.
 1 (492 ms)
 2 (441 ms)
 3 (443 ms)
@@ -187,7 +187,7 @@ If you would like to check how it would behave when using GraalVM Community, use
 java -Dgraal.CompilerConfiguration=community Blender
 ```
 
-3&#46; Use the `-XX:-UseJVMCICompiler` option to disable the GraalVM compiler and run with the default HotSpot JIT compiler:
+3&#46; Use the `-XX:-UseJVMCICompiler` option to disable the Graal compiler and run with the default HotSpot JIT compiler:
 ```shell
 java -XX:-UseJVMCICompiler Blender
 2546 ms
