@@ -1,12 +1,11 @@
 local composable = (import '../../common-utils.libsonnet').composable;
 local vm = import '../ci_includes/vm.jsonnet';
 local graal_common = import '../../common.jsonnet';
-local ci_resources = import "../../ci-resources.libsonnet";
 local common_json = composable(import '../../common.json');
 local devkits = common_json.devkits;
 
 {
-  common_vm: vm.vm_setup + {
+  common_vm: graal_common.build_base + vm.vm_setup + {
     python_version: 3,
     logs+: [
       '*/mxbuild/dists/stripped/*.map',
@@ -438,7 +437,7 @@ local devkits = common_json.devkits;
       $.mx_vm_common + vm.vm_profiles + $.record_file_sizes,
       $.upload_file_sizes,
       $.mx_vm_common + vm.vm_profiles + $.maven_deploy_sdk_base,
-      ci_resources.infra.notify_nexus_deploy,
+      self.ci_resources.infra.notify_nexus_deploy,
       ['set-export', 'GRAALVM_HOME', $.mx_vm_common + ['--quiet', '--no-warning',' graalvm-home']],
     ] + $.create_releaser_notifier_artifact,
     notify_emails: ['gilles.m.duboscq@oracle.com'],
@@ -459,7 +458,7 @@ local devkits = common_json.devkits;
       $.mx_vm_common + vm.vm_profiles + $.record_file_sizes,
       $.upload_file_sizes,
       $.mx_vm_common + vm.vm_profiles + $.maven_deploy_sdk_base,
-      ci_resources.infra.notify_nexus_deploy,
+      self.ci_resources.infra.notify_nexus_deploy,
     ] + $.create_releaser_notifier_artifact,
     notify_emails: ['gilles.m.duboscq@oracle.com'],
     timelimit: '1:30:00',
@@ -472,7 +471,7 @@ local devkits = common_json.devkits;
       $.mx_vm_common + vm.vm_profiles + $.record_file_sizes,
       $.upload_file_sizes,
       $.mx_vm_common + vm.vm_profiles + $.maven_deploy_sdk_base,
-      ci_resources.infra.notify_nexus_deploy,
+      self.ci_resources.infra.notify_nexus_deploy,
     ] + $.create_releaser_notifier_artifact,
     notify_emails: ['gilles.m.duboscq@oracle.com'],
     timelimit: '1:45:00',
@@ -484,7 +483,7 @@ local devkits = common_json.devkits;
       $.mx_vm_installables + ['graalvm-show'],
       $.mx_vm_installables + ['build'],
       $.mx_vm_installables + $.maven_deploy_sdk_components,
-      ci_resources.infra.notify_nexus_deploy,
+      self.ci_resources.infra.notify_nexus_deploy,
       $.mx_vm_installables + $.record_file_sizes,
       $.upload_file_sizes,
     ] + $.create_releaser_notifier_artifact,
@@ -500,7 +499,7 @@ local devkits = common_json.devkits;
       $.mx_vm_common + $.record_file_sizes,
       $.upload_file_sizes,
       $.mx_vm_common + $.maven_deploy_sdk_base,
-      ci_resources.infra.notify_nexus_deploy,
+      self.ci_resources.infra.notify_nexus_deploy,
     ] + $.create_releaser_notifier_artifact,
     notify_emails: ['gilles.m.duboscq@oracle.com'],
     timelimit: '1:30:00',
@@ -512,7 +511,7 @@ local devkits = common_json.devkits;
       $.mx_vm_installables + ['graalvm-show'],
       $.mx_vm_installables + ['build'],
       $.mx_vm_installables + $.maven_deploy_sdk_components,
-      ci_resources.infra.notify_nexus_deploy,
+      self.ci_resources.infra.notify_nexus_deploy,
       $.mx_vm_installables + $.record_file_sizes,
       $.upload_file_sizes,
     ] + $.create_releaser_notifier_artifact,
@@ -526,7 +525,7 @@ local devkits = common_json.devkits;
       $.mx_vm_common + vm.vm_profiles + ['graalvm-show'],
       $.mx_vm_common + vm.vm_profiles + ['build'],
       $.mx_vm_common + vm.vm_profiles + $.maven_deploy_sdk_base,
-      ci_resources.infra.notify_nexus_deploy,
+      self.ci_resources.infra.notify_nexus_deploy,
       ['set-export', 'GRAALVM_HOME', $.mx_vm_common + ['--quiet', '--no-warning', 'graalvm-home']],
     ] + $.create_releaser_notifier_artifact,
     notify_emails: ['benoit.daloze@oracle.com', 'gilles.m.duboscq@oracle.com'],
@@ -574,7 +573,7 @@ local devkits = common_json.devkits;
       $.mx_vm_installables + ['graalvm-show'],
       $.mx_vm_installables + ['build'],
       $.mx_vm_installables + $.maven_deploy_sdk_base,
-      ci_resources.infra.notify_nexus_deploy,
+      self.ci_resources.infra.notify_nexus_deploy,
     ],
     timelimit: '1:30:00',
     name: 'deploy-vm-complete-java11-linux-amd64',
@@ -586,7 +585,7 @@ local devkits = common_json.devkits;
       $.mx_vm_installables + ['graalvm-show'],
       $.mx_vm_installables + ['build'],
       $.mx_vm_installables + $.maven_deploy_sdk_base,
-      ci_resources.infra.notify_nexus_deploy,
+      self.ci_resources.infra.notify_nexus_deploy,
     ],
     timelimit: '2:30:00',
     name: 'deploy-vm-complete-java11-darwin-amd64',

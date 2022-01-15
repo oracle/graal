@@ -4,7 +4,6 @@ local vm_common_bench = import '../ci_common/common-bench.jsonnet';
 local vm_bench = import 'vm-bench.jsonnet';
 local vm_native = import 'vm-native.jsonnet';
 local graal_common = import '../../common.jsonnet';
-local ci_resources = import "../../ci-resources.libsonnet";
 local common_json = composable(import '../../common.json');
 local jdks = common_json.jdks;
 
@@ -99,18 +98,15 @@ local jdks = common_json.jdks;
     },
   },
 
-  notify_releaser_build: graal_common.linux_amd64 + {
+  notify_releaser_build: vm_common.common_vm_linux + graal_common.linux_amd64 + {
     name: 'notify-releaser-build',
     packages+: {
       curl: '>=7.50.1',
       git: '>=1.8.3',
     },
-    setup+: [
-      ['cd', 'vm'],
-    ],
     run+: [
       [
-        ['test', ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], '!=', 'master', '||'] + ci_resources.infra.notify_releaser_service,
+        ['test', ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], '!=', 'master', '||'] + self.ci_resources.infra.notify_releaser_service,
       ]
     ],
     requireArtifacts: [
