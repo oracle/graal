@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.initialization;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.llvm.initialization.AllocExternalSymbolNodeFactory.AllocExistingLocalSymbolsNodeGen;
 import com.oracle.truffle.llvm.initialization.AllocExternalSymbolNodeFactory.AllocExistingLocalSymbolsNodeGen.AllocExistingGlobalSymbolsNodeGen.AllocExternalGlobalNodeGen;
 import com.oracle.truffle.llvm.parser.LLVMParserResult;
@@ -101,6 +102,7 @@ public final class InitializeOverwriteNode extends LLVMNode {
         this.allocExternalSymbols = allocExternaSymbolsList.toArray(AllocExternalSymbolNode.EMPTY);
     }
 
+    @ExplodeLoop
     public void execute(LLVMContext context, LLVMScopeChain localScope, RTLDFlags rtldFlags) {
         LLVMScopeChain globalScope = context.getGlobalScopeChain();
         for (int i = 0; i < allocExternalSymbols.length; i++) {

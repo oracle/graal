@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -78,8 +78,6 @@ public final class LoadDependencyNode extends LLVMNode {
                 return calls;
             } else {
                 Object sourceOrCallTarget = createDependencySource(libraryName, libraryName, file);
-                // A source is null if it's a native library, which will be added to the NFI
-                // context extension instead.
                 if (sourceOrCallTarget instanceof Source) {
                     return getContext().getEnv().parseInternal((Source) sourceOrCallTarget);
                 } else if (sourceOrCallTarget instanceof CallTarget) {
