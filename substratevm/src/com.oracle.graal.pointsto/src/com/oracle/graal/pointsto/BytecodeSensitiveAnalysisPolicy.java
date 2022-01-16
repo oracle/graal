@@ -30,13 +30,14 @@ import java.util.Collection;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import org.graalvm.compiler.options.OptionValues;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.AbstractSpecialInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;
+import com.oracle.graal.pointsto.flow.ContextInsensitiveFieldTypeFlow;
+import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
@@ -49,6 +50,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.typestate.TypeState.TypesObjectsIterator;
 import com.oracle.graal.pointsto.typestore.ArrayElementsTypeStore;
@@ -143,7 +145,25 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
     public FieldTypeStore createFieldTypeStore(AnalysisObject object, AnalysisField field, AnalysisUniverse universe) {
         assert PointstoOptions.AllocationSiteSensitiveHeap.getValue(options);
         if (object.isContextInsensitiveObject()) {
-            return new SplitFieldTypeStore(field, object);
+            /*
+             * Write flow is context-sensitive and read flow is context-insensitive. This split is
+             * used to model context sensitivity and context merging for fields of this
+             * context-insensitive object, and the interaction with the fields of context-sensitive
+             * objects of the same type.
+             * 
+             * All values written to fields of context-sensitive receivers are also reflected to the
+             * context-insensitive receiver *read* flow, but without any context information, such
+             * that all the reads from the fields of the context insensitive object reflect all the
+             * types written to the context-sensitive ones, but without triggering merging.
+             * 
+             * Once the context-sensitive receiver object is marked as merged, i.e., it looses its
+             * context sensitivity, the field flows are routed to the context-insensitive receiver
+             * *write* flow, thus triggering their merging. See ContextSensitiveAnalysisObject.
+             * mergeInstanceFieldFlow().
+             */
+            FieldTypeFlow writeFlow = new FieldTypeFlow(field, field.getType(), object);
+            ContextInsensitiveFieldTypeFlow readFlow = new ContextInsensitiveFieldTypeFlow(field, field.getType(), object);
+            return new SplitFieldTypeStore(field, object, writeFlow, readFlow);
         } else {
             return new UnifiedFieldTypeStore(field, object);
         }
