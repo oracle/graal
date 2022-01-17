@@ -34,13 +34,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFileInfo;
-import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFileInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
 import com.oracle.objectfile.elf.dwarf.DwarfDebugInfo;
+
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * An abstract class which indexes the information presented by the DebugInfoProvider in an
@@ -234,6 +235,9 @@ public abstract class DebugInfoBase {
         }));
 
         debugInfoProvider.codeInfoProvider().forEach(debugCodeInfo -> debugCodeInfo.debugContext((debugContext) -> {
+
+            debugCodeInfo.buildFrameTree();
+
             /*
              * Primary file name and full method name need to be written to the debug_str section.
              */

@@ -37,7 +37,6 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
-import jdk.vm.ci.meta.JavaType;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.SourceMapping;
 import org.graalvm.compiler.core.common.CompressEncoding;
@@ -50,6 +49,7 @@ import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.code.CompilationResultFrameTree;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
@@ -75,6 +75,7 @@ import com.oracle.svm.hosted.substitute.SubstitutionMethod;
 import com.oracle.svm.hosted.substitute.SubstitutionType;
 
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.LineNumberTable;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -851,6 +852,12 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
             } catch (Throwable e) {
                 throw debugContext.handle(e);
             }
+        }
+
+        @Override
+        public void buildFrameTree() {
+            CompilationResultFrameTree.CallNode root = new CompilationResultFrameTree.Builder(debugContext, compilation.getTargetCodeSize(), true).build(compilation);
+            CompilationResultFrameTree.dump(root, System.out::print, false, false, 0);
         }
 
         @Override

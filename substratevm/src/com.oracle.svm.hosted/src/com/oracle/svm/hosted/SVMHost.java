@@ -310,7 +310,7 @@ public class SVMHost implements HostVM {
 
     @Override
     public GraphBuilderConfiguration updateGraphBuilderConfiguration(GraphBuilderConfiguration config, AnalysisMethod method) {
-        return config.withRetainLocalVariables(retainLocalVariables());
+        return config.withRetainLocalVariables(retainLocalVariables()).withFullInfopoints(SubstrateOptions.GenerateDebugInfo.getValue() > 0);
     }
 
     private boolean retainLocalVariables() {

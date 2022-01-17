@@ -31,8 +31,9 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
-import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.debug.DebugContext;
+
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Interfaces used to allow a native image to communicate details of types, code and data to the
@@ -268,6 +269,8 @@ public interface DebugInfoProvider {
          *         to an empty frame
          */
         List<DebugFrameSizeChange> getFrameSizeChanges();
+
+        void buildFrameTree();
     }
 
     /**
