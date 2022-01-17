@@ -77,8 +77,7 @@ public class ProgressReporter {
     private static final int CHARACTERS_PER_LINE;
     private static final int PROGRESS_BAR_START = 30;
     private static final boolean IS_CI = System.console() == null || System.getenv("CI") != null;
-    boolean IS_DUMB_TERM = "dumb".equals(System.getenv("TERM"));
-
+    private static final boolean IS_DUMB_TERM = isDumbTerm();
     private static final int MAX_NUM_FEATURES = 50;
     private static final int MAX_NUM_BREAKDOWN = 10;
     private static final String CODE_BREAKDOWN_TITLE = String.format("Top %d packages in code area:", MAX_NUM_BREAKDOWN);
@@ -136,6 +135,11 @@ public class ProgressReporter {
 
     static {
         CHARACTERS_PER_LINE = IS_CI ? ProgressReporterCHelper.MAX_CHARACTERS_PER_LINE : ProgressReporterCHelper.getTerminalWindowColumnsClamped();
+    }
+
+    private static boolean isDumbTerm() {
+        String term = System.getenv("TERM");
+        return (term == null || term.equals("") || term.equals("dumb") || term.equals("unknown"));
     }
 
     public static ProgressReporter singleton() {
