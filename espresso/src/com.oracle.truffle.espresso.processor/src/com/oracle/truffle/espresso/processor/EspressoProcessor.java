@@ -22,14 +22,6 @@
  */
 package com.oracle.truffle.espresso.processor;
 
-import com.oracle.truffle.espresso.processor.builders.ClassBuilder;
-import com.oracle.truffle.espresso.processor.builders.ClassFileBuilder;
-import com.oracle.truffle.espresso.processor.builders.FieldBuilder;
-import com.oracle.truffle.espresso.processor.builders.JavadocBuilder;
-import com.oracle.truffle.espresso.processor.builders.MethodBuilder;
-import com.oracle.truffle.espresso.processor.builders.ModifierBuilder;
-import com.oracle.truffle.espresso.processor.builders.SignatureBuilder;
-
 import java.io.IOException;
 import java.io.Writer;
 import java.util.List;
@@ -53,6 +45,14 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic;
 import javax.tools.JavaFileObject;
+
+import com.oracle.truffle.espresso.processor.builders.ClassBuilder;
+import com.oracle.truffle.espresso.processor.builders.ClassFileBuilder;
+import com.oracle.truffle.espresso.processor.builders.FieldBuilder;
+import com.oracle.truffle.espresso.processor.builders.JavadocBuilder;
+import com.oracle.truffle.espresso.processor.builders.MethodBuilder;
+import com.oracle.truffle.espresso.processor.builders.ModifierBuilder;
+import com.oracle.truffle.espresso.processor.builders.SignatureBuilder;
 
 /**
  * Helper class for creating all kinds of Substitution processor in Espresso. A processor need only
@@ -203,6 +203,9 @@ public abstract class EspressoProcessor extends BaseProcessor {
     TypeElement inject;
     private static final String INJECT = "com.oracle.truffle.espresso.substitutions.Inject";
 
+    TypeElement noSafepoint;
+    private static final String NO_SAFEPOINT = "com.oracle.truffle.espresso.jni.NoSafepoint";
+
     TypeElement substitutionProfiler;
     private static final String SUBSTITUTION_PROFILER = "com.oracle.truffle.espresso.substitutions.SubstitutionProfiler";
 
@@ -258,6 +261,8 @@ public abstract class EspressoProcessor extends BaseProcessor {
     static final String ARGS_NAME = "args";
     static final String ARG_NAME = "arg";
 
+    static final String SAFEPOINT_POLL = "com.oracle.truffle.api.TruffleSafepoint.poll(this);";
+
     public static NativeType classToType(TypeKind typeKind) {
         // @formatter:off
         switch (typeKind) {
@@ -312,6 +317,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
             return false;
         }
         inject = getTypeElement(INJECT);
+        noSafepoint = getTypeElement(NO_SAFEPOINT);
         staticObject = getTypeElement(STATIC_OBJECT);
         javaType = getTypeElement(JAVA_TYPE);
         meta = getTypeElement(META);
@@ -401,6 +407,10 @@ public abstract class EspressoProcessor extends BaseProcessor {
 
     boolean hasContextInjection(ExecutableElement method) {
         return hasInjectedParameter(method, espressoContext.asType());
+    }
+
+    boolean skipsSafepoint(Element target) {
+        return getAnnotation(target, noSafepoint) != null;
     }
 
     boolean isActualParameter(VariableElement param) {

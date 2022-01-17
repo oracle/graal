@@ -2375,6 +2375,7 @@ public final class JniEnv extends NativeEnv {
      *         returns JNI_FALSE.
      */
     @JniImpl
+    @NoSafepoint
     public static boolean IsSameObject(@JavaType(Object.class) StaticObject ref1, @JavaType(Object.class) StaticObject ref2) {
         return ref1 == ref2;
     }
@@ -2447,6 +2448,7 @@ public final class JniEnv extends NativeEnv {
      * beyond the ensured capacity.
      */
     @JniImpl
+    @NoSafepoint
     public static int EnsureLocalCapacity(int capacity) {
         if (capacity >= 0 &&
                         ((MAX_JNI_LOCAL_CAPACITY <= 0) || (capacity <= MAX_JNI_LOCAL_CAPACITY))) {
@@ -2474,6 +2476,7 @@ public final class JniEnv extends NativeEnv {
      *         </ul>
      */
     @JniImpl
+    @NoSafepoint
     public int GetVersion() {
         if (getJavaVersion().java8OrEarlier()) {
             return JniVersion.JNI_VERSION_ESPRESSO_8.version();
