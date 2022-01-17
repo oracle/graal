@@ -125,6 +125,7 @@ public final class AMD64ArrayEqualsStub extends SnippetStub {
     public static ForeignCallDescriptor getRegionEqualsStub(ArrayRegionEqualsNode regionEqualsNode, int maxVectorSize) {
         JavaKind strideA = regionEqualsNode.getStrideA();
         JavaKind strideB = regionEqualsNode.getStrideB();
+        assert ArrayRegionEqualsNode.assertStrideGreaterOrEqual(strideA, strideB);
         ValueNode length = regionEqualsNode.getLength();
         if (StubUtil.isConstantLengthLessThanTwoVectors(length, strideA, strideB, maxVectorSize)) {
             // Yield constant-length arrays comparison assembly

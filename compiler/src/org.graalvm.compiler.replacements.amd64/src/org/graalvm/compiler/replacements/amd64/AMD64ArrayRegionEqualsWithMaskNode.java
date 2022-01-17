@@ -56,7 +56,6 @@ import org.graalvm.word.LocationIdentity;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Value;
 
 // JaCoCo Exclude
@@ -247,24 +246,13 @@ public final class AMD64ArrayRegionEqualsWithMaskNode extends FixedWithNextNode 
             if (len * Math.max(strideA.getByteCount(), strideB.getByteCount()) < GraalOptions.ArrayRegionEqualsConstantLimit.getValue(tool.getOptions()) &&
                             ConstantReflectionUtil.canFoldReads(tool, arrayA, offsetA, strideA, len, this) &&
                             ConstantReflectionUtil.canFoldReads(tool, arrayB, offsetB, strideB, len, this) &&
-                            canFoldReads(tool, arrayMask, len)) {
+                            ConstantReflectionUtil.canFoldReads(tool, arrayMask, null, strideMask, len, this)) {
                 Integer startIndex1 = ConstantReflectionUtil.startIndex(tool, arrayA, offsetA.asJavaConstant(), strideA, this);
                 Integer startIndex2 = ConstantReflectionUtil.startIndex(tool, arrayB, offsetB.asJavaConstant(), strideB, this);
                 return ConstantNode.forBoolean(constantFold(tool, arrayA, startIndex1, arrayB, startIndex2, arrayMask, len));
             }
         }
         return this;
-    }
-
-    private static boolean canFoldReads(CanonicalizerTool tool, ValueNode array, int len) {
-        if (array.isJavaConstant() && ((ConstantNode) array).getStableDimension() >= 1) {
-            ResolvedJavaType arrayType = array.stamp(NodeView.DEFAULT).javaType(tool.getMetaAccess());
-            if (arrayType.isArray()) {
-                Integer arrayLength = tool.getConstantReflection().readArrayLength(array.asJavaConstant());
-                return arrayLength != null && len <= arrayLength;
-            }
-        }
-        return false;
     }
 
     private boolean constantFold(CanonicalizerTool tool, ValueNode a, int startIndexA, ValueNode b, int startIndexB, ValueNode mask, int len) {

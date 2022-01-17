@@ -148,35 +148,37 @@ public final class AMD64CalcStringAttributesOp extends AMD64LIRInstruction {
     private static final Register REG_OFFSET = rcx;
     private static final Register REG_LENGTH = rdx;
 
-    // TODO: read from com.oracle.truffle.api.strings.TSCodeRange via reflection
+    // NOTE:
+    // The following fields must be kept in sync with com.oracle.truffle.api.strings.TSCodeRange,
+    // TStringOpsCalcStringAttributesReturnValuesInSyncTest verifies this.
     /**
      * All codepoints are ASCII (0x00 - 0x7f).
      */
-    static final int CR_7BIT = 0;
+    public static final int CR_7BIT = 0;
     /**
      * All codepoints are LATIN-1 (0x00 - 0xff).
      */
-    static final int CR_8BIT = 1;
+    public static final int CR_8BIT = 1;
     /**
      * All codepoints are BMP (0x0000 - 0xffff, no UTF-16 surrogates).
      */
-    static final int CR_16BIT = 2;
+    public static final int CR_16BIT = 2;
     /**
      * The string is encoded correctly in the given fixed-width encoding.
      */
-    static final int CR_VALID_FIXED_WIDTH = 3;
+    public static final int CR_VALID_FIXED_WIDTH = 3;
     /**
      * The string is not encoded correctly in the given fixed-width encoding.
      */
-    static final int CR_BROKEN_FIXED_WIDTH = 4;
+    public static final int CR_BROKEN_FIXED_WIDTH = 4;
     /**
      * The string is encoded correctly in the given multi-byte/variable-width encoding.
      */
-    static final int CR_VALID_MULTIBYTE = 5;
+    public static final int CR_VALID_MULTIBYTE = 5;
     /**
      * The string is not encoded correctly in the given multi-byte/variable-width encoding.
      */
-    static final int CR_BROKEN_MULTIBYTE = 6;
+    public static final int CR_BROKEN_MULTIBYTE = 6;
 
     private final Op op;
 
@@ -347,7 +349,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64LIRInstruction {
             emitPTestTail(asm, XMM, arr, lengthTail, vecArray, vecMask, null, returnLatin1, returnAscii);
         }
 
-        emitReturn(asm, ret, returnLatin1, end, CR_8BIT);
+        emitExit(asm, ret, returnLatin1, end, CR_8BIT);
 
         asm.bind(tailLessThan16);
         // move mask into general purpose register for regular TEST instructions
@@ -366,7 +368,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64LIRInstruction {
         asm.testAndJcc(AMD64BaseAssembler.OperandSize.QWORD, len, 0x80, NotZero, returnLatin1, true);
         asm.jmpb(returnAscii);
 
-        emitReturnAtEnd(asm, ret, returnAscii, end, CR_7BIT);
+        emitExitAtEnd(asm, ret, returnAscii, end, CR_7BIT);
     }
 
     private void latin1Tail(AMD64MacroAssembler asm, AMD64BaseAssembler.OperandSize size,
@@ -492,9 +494,9 @@ public final class AMD64CalcStringAttributesOp extends AMD64LIRInstruction {
             bmpTail(asm, arr, lengthTail, vecArray, vecMaskAscii, vecMaskBMP, tailLessThan32, tailLessThan16, returnBMP, returnLatin1, returnAscii);
         }
 
-        emitReturn(asm, ret, returnAscii, end, CR_7BIT);
-        emitReturn(asm, ret, returnLatin1, end, CR_8BIT);
-        emitReturn(asm, ret, returnBMP, end, CR_16BIT);
+        emitExit(asm, ret, returnAscii, end, CR_7BIT);
+        emitExit(asm, ret, returnLatin1, end, CR_8BIT);
+        emitExit(asm, ret, returnBMP, end, CR_16BIT);
 
         asm.bind(tailLessThan16);
         // move masks into general purpose registers for regular TEST instructions
@@ -571,8 +573,8 @@ public final class AMD64CalcStringAttributesOp extends AMD64LIRInstruction {
     private static final byte OVERLONG_2 = 1 << 5;
     private static final byte TWO_CONTS = (byte) (1 << 7);
     private static final byte TOO_LARGE = 1 << 3;
-    private static final byte TOO_LARGE_1000 = 1 << 6;
-    private static final byte OVERLONG_4 = 1 << 6;
+    private static final byte TOO_LARGE_1000 = 1 << 6; // intentionally equal to OVERLONG_4
+    private static final byte OVERLONG_4 = 1 << 6; // intentionally equal to TOO_LARGE_1000
     private static final byte CARRY = TOO_SHORT | TOO_LONG | TWO_CONTS;
 
     private static final byte[] UTF8_BYTE_1_HIGH_TABLE = {
@@ -688,7 +690,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64LIRInstruction {
         Label labelScalarMultiByteLoopEntry = new Label();
         Label labelScalarMultiByteLoopSkipDec = new Label();
 
-        Label returnValid = new Label();
+        Label returnValidOrBroken = new Label();
         Label returnAscii = new Label();
         Label end = new Label();
 
@@ -733,7 +735,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64LIRInstruction {
 
             // multibyte loop tail: do an overlapping tail load, and zero out all bytes that would
             // overlap with the last loop iteration
-            asm.testlAndJcc(lengthTail, lengthTail, Zero, returnValid, false);
+            asm.testlAndJcc(lengthTail, lengthTail, Zero, returnValidOrBroken, false);
             // load tail vector
             movdqu(asm, avxSize, vecArray, new AMD64Address(arr, lengthTail, scale, -avxSize.getBytes()));
             asm.bind(labelMultiByteTail);
@@ -743,7 +745,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64LIRInstruction {
             pandU(asm, avxSize, vecArray, new AMD64Address(tmp, lengthTail, scale), vecTmp1);
             // identify continuation bytes
             utf8SubtractContinuationBytes(asm, ret, vecArray, tmp, vecMask, vecMaskCB);
-            asm.jmp(returnValid);
+            asm.jmp(returnValidOrBroken);
 
             if (useYMM()) {
                 // special case: array is too short for YMM, try XMM
@@ -768,7 +770,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64LIRInstruction {
             // not ascii, go to scalar loop
             asm.jccb(Zero, returnAscii);
             utf8SubtractContinuationBytes(asm, ret, vecArray, tmp, vecMask, vecMaskCB);
-            asm.jmp(returnValid);
+            asm.jmp(returnValidOrBroken);
         } else {
             Label labelMultiByteEnd = new Label();
             Label labelMultiByteTailLoopEntry = new Label();
@@ -877,7 +879,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64LIRInstruction {
             asm.bind(labelMultiByteEnd);
             por(asm, avxSize, vecError, vecPrevIsIncomplete);
             ptest(asm, avxSize, vecError, vecError);
-            asm.jcc(Zero, returnValid);
+            asm.jcc(Zero, returnValidOrBroken);
             asm.shlq(ret, 32);
             asm.orq(ret, CR_BROKEN_MULTIBYTE);
             asm.jmp(end);
@@ -951,14 +953,14 @@ public final class AMD64CalcStringAttributesOp extends AMD64LIRInstruction {
             asm.bind(labelScalarMultiByteLoopSkipDec);
             asm.incqAndJcc(lengthTail, NotZero, labelScalarMultiByteLoop, true);
 
-            asm.testqAndJcc(state, state, Zero, returnValid, true);
+            asm.testqAndJcc(state, state, Zero, returnValidOrBroken, true);
             asm.shlq(ret, 32);
             asm.orq(ret, CR_BROKEN_MULTIBYTE);
             asm.jmpb(end);
         }
 
-        emitReturnMultiByte(asm, ret, returnValid, end, CR_VALID_MULTIBYTE);
-        emitReturnMultiByteAtEnd(asm, ret, returnAscii, end, CR_7BIT);
+        emitExitMultiByte(asm, ret, returnValidOrBroken, end, CR_VALID_MULTIBYTE);
+        emitExitMultiByteAtEnd(asm, ret, returnAscii, end, CR_7BIT);
     }
 
     /**
@@ -1419,9 +1421,9 @@ public final class AMD64CalcStringAttributesOp extends AMD64LIRInstruction {
             utf16ValidateSurrogates(asm, ret, vecArrayTail, vecArray, vecMaskSurrogate, vecMaskAscii, tmp, retBroken);
             asm.jmpb(returnValid);
         }
-        emitReturnMultiByte(asm, ret, returnAscii, end, CR_7BIT);
-        emitReturnMultiByte(asm, ret, returnLatin1, end, CR_8BIT);
-        emitReturnMultiByte(asm, ret, returnBMP, end, CR_16BIT);
+        emitExitMultiByte(asm, ret, returnAscii, end, CR_7BIT);
+        emitExitMultiByte(asm, ret, returnLatin1, end, CR_8BIT);
+        emitExitMultiByte(asm, ret, returnBMP, end, CR_16BIT);
 
         asm.bind(returnValid);
         asm.shlq(ret, 32);
@@ -1554,8 +1556,8 @@ public final class AMD64CalcStringAttributesOp extends AMD64LIRInstruction {
         utf32CheckInvalid(asm, vecArrayTail, vecArrayTail, vecArrayTmp, vecMaskSurrogate, vecMaskOutOfRange, returnBroken, true);
         asm.jmpb(returnBMP);
 
-        emitReturn(asm, ret, returnBroken, end, CR_BROKEN_FIXED_WIDTH, false);
-        emitReturn(asm, ret, returnBMP, end, CR_16BIT, false);
+        emitExit(asm, ret, returnBroken, end, CR_BROKEN_FIXED_WIDTH, false);
+        emitExit(asm, ret, returnBMP, end, CR_16BIT, false);
 
         // astral loop: check if any codepoints are in the forbidden UTF-16 surrogate range;
         // if so, break immediately and return BROKEN
@@ -1604,10 +1606,10 @@ public final class AMD64CalcStringAttributesOp extends AMD64LIRInstruction {
         ptest(asm, avxSize, vecArray, vecMaskBMP);
         asm.jcc(Zero, returnBMP);
 
-        emitReturn(asm, ret, returnAstral, end, CR_VALID_FIXED_WIDTH);
+        emitExit(asm, ret, returnAstral, end, CR_VALID_FIXED_WIDTH);
 
-        emitReturn(asm, ret, returnLatin1, end, CR_8BIT);
-        emitReturnAtEnd(asm, ret, returnAscii, end, CR_7BIT);
+        emitExit(asm, ret, returnLatin1, end, CR_8BIT);
+        emitExitAtEnd(asm, ret, returnAscii, end, CR_7BIT);
     }
 
     private void utf32CheckInvalid(AMD64MacroAssembler asm, Register vecArrayDst, Register vecArraySrc, Register vecArrayTmp, Register vecMaskBroken, Register vecMaskOutOfRange, Label returnBroken,
@@ -1722,11 +1724,11 @@ public final class AMD64CalcStringAttributesOp extends AMD64LIRInstruction {
         return crb.dataBuilder.createSerializableData(arrayConstant, align);
     }
 
-    private static void emitReturn(AMD64MacroAssembler asm, Register ret, Label entry, Label labelDone, int returnValue) {
-        emitReturn(asm, ret, entry, labelDone, returnValue, true);
+    private static void emitExit(AMD64MacroAssembler asm, Register ret, Label entry, Label labelDone, int returnValue) {
+        emitExit(asm, ret, entry, labelDone, returnValue, true);
     }
 
-    private static void emitReturn(AMD64MacroAssembler asm, Register ret, Label entry, Label labelDone, int returnValue, boolean isShortJmp) {
+    private static void emitExit(AMD64MacroAssembler asm, Register ret, Label entry, Label labelDone, int returnValue, boolean isShortJmp) {
         asm.bind(entry);
         if (returnValue == 0) {
             asm.xorq(ret, ret);
@@ -1736,7 +1738,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64LIRInstruction {
         asm.jmp(labelDone, isShortJmp);
     }
 
-    private static void emitReturnAtEnd(AMD64MacroAssembler asm, Register ret, Label entry, Label end, int returnValue) {
+    private static void emitExitAtEnd(AMD64MacroAssembler asm, Register ret, Label entry, Label end, int returnValue) {
         asm.bind(entry);
         if (returnValue == 0) {
             asm.xorq(ret, ret);
@@ -1746,14 +1748,14 @@ public final class AMD64CalcStringAttributesOp extends AMD64LIRInstruction {
         asm.bind(end);
     }
 
-    private static void emitReturnMultiByte(AMD64MacroAssembler asm, Register ret, Label entry, Label end, int returnValue) {
+    private static void emitExitMultiByte(AMD64MacroAssembler asm, Register ret, Label entry, Label end, int returnValue) {
         asm.bind(entry);
         asm.shlq(ret, 32);
         asm.orq(ret, returnValue);
         asm.jmpb(end);
     }
 
-    private static void emitReturnMultiByteAtEnd(AMD64MacroAssembler asm, Register ret, Label entry, Label end, int returnValue) {
+    private static void emitExitMultiByteAtEnd(AMD64MacroAssembler asm, Register ret, Label entry, Label end, int returnValue) {
         asm.bind(entry);
         asm.shlq(ret, 32);
         asm.orq(ret, returnValue);

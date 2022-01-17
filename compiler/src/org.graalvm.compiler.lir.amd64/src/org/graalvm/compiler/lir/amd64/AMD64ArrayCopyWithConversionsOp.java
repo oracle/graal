@@ -585,6 +585,15 @@ public final class AMD64ArrayCopyWithConversionsOp extends AMD64LIRInstruction {
             masm.jmpb(labelDone);
         }
 
+        /*
+         * Tails for less than XMM size
+         *
+         * Since the initial vector length check (len & -vectorSize) sets len to zero, and tmp was
+         * set to the tail length (tmp & (vectorSize - 1), equal to array length if this code path
+         * is hit), from this point on, tmp holds the array length, and len is used as the temporary
+         * register for copying data.
+         */
+
         masm.bind(labelTailQWORD);
         masm.cmplAndJcc(tmp, 8 / strideDst.getByteCount(), ConditionFlag.Less, labelTailDWORD, true);
         masm.movq(len, new AMD64Address(src));

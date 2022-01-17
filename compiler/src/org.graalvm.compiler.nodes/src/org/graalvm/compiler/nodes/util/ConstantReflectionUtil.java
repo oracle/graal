@@ -144,12 +144,16 @@ public final class ConstantReflectionUtil {
      * {@code false} if not everything constant or if we would try to read out of bounds.
      */
     public static boolean canFoldReads(CanonicalizerTool tool, ValueNode array, ValueNode offset, JavaKind stride, int len, ArrayBaseOffsetProvider arrayBaseOffsetProvider) {
-        if (array.isJavaConstant() && ((ConstantNode) array).getStableDimension() >= 1 && offset.isJavaConstant()) {
+        if (array.isJavaConstant() && ((ConstantNode) array).getStableDimension() >= 1 && (offset == null || offset.isJavaConstant())) {
             ResolvedJavaType arrayType = array.stamp(NodeView.DEFAULT).javaType(tool.getMetaAccess());
             if (arrayType.isArray()) {
                 Integer arrayLength = tool.getConstantReflection().readArrayLength(array.asJavaConstant());
-                Integer index = startIndex(tool, array, offset.asJavaConstant(), stride, arrayBaseOffsetProvider);
-                return arrayLength != null && index != null && index >= 0 && index + len <= arrayLength;
+                if (offset == null) {
+                    return arrayLength != null && len <= arrayLength;
+                } else {
+                    Integer index = startIndex(tool, array, offset.asJavaConstant(), stride, arrayBaseOffsetProvider);
+                    return arrayLength != null && index != null && index >= 0 && index + len <= arrayLength;
+                }
             }
         }
         return false;

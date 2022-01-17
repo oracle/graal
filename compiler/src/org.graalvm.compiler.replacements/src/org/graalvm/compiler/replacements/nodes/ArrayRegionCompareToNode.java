@@ -27,7 +27,8 @@ package org.graalvm.compiler.replacements.nodes;
 import static org.graalvm.compiler.core.common.GraalOptions.UseGraalStubs;
 import static org.graalvm.compiler.nodeinfo.InputType.Memory;
 
-import jdk.vm.ci.meta.ConstantReflectionProvider;
+import java.util.EnumSet;
+
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -51,11 +52,10 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.util.ConstantReflectionUtil;
 import org.graalvm.word.LocationIdentity;
 
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.Value;
-
-import java.util.EnumSet;
 
 // JaCoCo Exclude
 
@@ -71,8 +71,13 @@ import java.util.EnumSet;
  * <ul>
  * <li>Support for arbitrary byte offsets into the given arrays</li>
  * <li>Support for 32-bit strides</li>
- * <li>Fixed region length parameter</li>
+ * <li>The {@code length} parameter denotes the length of the region to be compared instead of the
+ * full array length. The region given by the respective array offset and the region length must be
+ * inside the array's bounds.</li>
  * </ul>
+ *
+ * Returns the result of {@code arrayA[i] - arrayB[i]} at the first index {@code i} where
+ * {@code arrayA[i] != arrayB[i]}. If no such index exists, returns 0.
  */
 @NodeInfo(cycles = NodeCycles.CYCLES_UNKNOWN, size = NodeSize.SIZE_128)
 public class ArrayRegionCompareToNode extends FixedWithNextNode implements Canonicalizable, LIRLowerable, MemoryAccess, ConstantReflectionUtil.ArrayBaseOffsetProvider {
@@ -105,7 +110,8 @@ public class ArrayRegionCompareToNode extends FixedWithNextNode implements Canon
     @Input protected ValueNode offsetB;
 
     /**
-     * Length of the array region.
+     * Length of the array region (as number of array elements). The caller is responsible for
+     * ensuring that the region, starting at the respective offset, is within array bounds.
      */
     @Input protected ValueNode length;
 

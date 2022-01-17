@@ -27,7 +27,6 @@ package org.graalvm.compiler.replacements.nodes;
 import static org.graalvm.compiler.core.common.GraalOptions.UseGraalStubs;
 import static org.graalvm.compiler.nodeinfo.InputType.Memory;
 
-import jdk.vm.ci.meta.ConstantReflectionProvider;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -50,6 +49,7 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.util.ConstantReflectionUtil;
 import org.graalvm.word.LocationIdentity;
 
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.Value;
@@ -124,10 +124,15 @@ public class ArrayRegionEqualsNode extends FixedWithNextNode implements Canonica
         this.arrayB = arrayB;
         this.offsetB = offsetB;
         this.length = length;
-
         assert strideA.isPrimitive() && strideB.isPrimitive() : "expected primitive kinds, got: " + strideA + ", " + strideB;
-        assert strideA == strideB || (strideA == JavaKind.Char && strideB == JavaKind.Byte) || (strideA == JavaKind.Int && strideB == JavaKind.Byte) ||
-                        (strideA == JavaKind.Int && strideB == JavaKind.Char) : "expected equal kinds or char+byte, got: " + strideA + ", " + strideB;
+        assert assertStrideGreaterOrEqual(strideA, strideB) : "expected equal kinds or char+byte or int+byte or int+char, got: " + strideA + ", " + strideB;
+    }
+
+    public static boolean assertStrideGreaterOrEqual(JavaKind strideA, JavaKind strideB) {
+        return strideA == strideB ||
+                        (strideA == JavaKind.Char && strideB == JavaKind.Byte) ||
+                        (strideA == JavaKind.Int && strideB == JavaKind.Byte) ||
+                        (strideA == JavaKind.Int && strideB == JavaKind.Char);
     }
 
     public static boolean regionEquals(Object arrayA, long offsetA, Object arrayB, long offsetB, int length, @ConstantNodeParameter JavaKind kind) {

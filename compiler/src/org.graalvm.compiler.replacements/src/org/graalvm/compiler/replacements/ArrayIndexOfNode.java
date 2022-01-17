@@ -31,8 +31,6 @@ import static org.graalvm.compiler.replacements.ArrayIndexOf.S1;
 import static org.graalvm.compiler.replacements.ArrayIndexOf.S2;
 import static org.graalvm.compiler.replacements.ArrayIndexOf.S4;
 
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.Value;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -62,7 +60,41 @@ import org.graalvm.word.LocationIdentity;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.Value;
 
+/**
+ * Stub-call node for various indexOf-operations.
+ *
+ * Parameters:
+ * <ul>
+ * <li>{@code arrayPointer}: pointer to a java array or native memory location.</li>
+ * <li>{@code arrayOffset}: byte offset to be added to the array pointer. If {@code arrayKind} is
+ * {@link JavaKind#Void}, this offset must include the array base offset!</li>
+ * <li>{@code arrayLength}: array length respective to the element size given by
+ * {@code stride}.</li>
+ * <li>{@code fromIndex}: start index of the indexOf search, respective to the element size given by
+ * {@code stride}.</li>
+ * <li>{@code searchValues}: between 1-4 int values to be searched.</li>
+ * </ul>
+ *
+ * The boolean parameters {@code findTwoConsecutive} and {@code withMask} determine the search
+ * algorithm:
+ * <ul>
+ * <li>If both are {@code false}, the operation finds the index of the first occurrence of
+ * <i>any</i> of the 1-4 {@code searchValues}.</li>
+ * <li>If {@code findTwoConsecutive} is {@code true} and {@code withMask} is {@code false}, the
+ * number of search values must be two. The operation will then search for the first occurrence of
+ * both values in succession.</li>
+ * <li>If {@code withMask} is {@code true} and {@code findTwoConsecutive} is {@code false}, the
+ * number of search values must be two. The operation will then search for the first index {@code i}
+ * where {@code (array[i] | searchValues[1]) == searchValues[0]}.</li>
+ * <li>If {@code findTwoConsecutive} is {@code true} and {@code withMask} is {@code true}, the
+ * number of search values must be four. The operation will then search for the first index
+ * {@code i} where
+ * {@code (array[i] | searchValues[2]) == searchValues[0] && (array[i + 1] | searchValues[3]) == searchValues[1]}.</li>
+ * </ul>
+ */
 @NodeInfo(size = SIZE_512, cycles = NodeCycles.CYCLES_UNKNOWN)
 public class ArrayIndexOfNode extends FixedWithNextNode implements Canonicalizable, LIRLowerable, MemoryAccess {
 
@@ -114,7 +146,7 @@ public class ArrayIndexOfNode extends FixedWithNextNode implements Canonicalizab
         super(c, StampFactory.forKind(JavaKind.Int));
         GraalError.guarantee(arrayKind == S1 || arrayKind == S2 || arrayKind == S4 || arrayKind == NONE, "unsupported arrayKind");
         GraalError.guarantee(!(!withMask && findTwoConsecutive) || searchValues.length == 2, "findTwoConsecutive without mask requires exactly two search values");
-        GraalError.guarantee(!(withMask && findTwoConsecutive) || searchValues.length == 4, "findTwoConsecutive without mask requires exactly four search values");
+        GraalError.guarantee(!(withMask && findTwoConsecutive) || searchValues.length == 4, "findTwoConsecutive with mask requires exactly four search values");
         GraalError.guarantee(!(withMask && !findTwoConsecutive) || searchValues.length == 2, "indexOf with mask requires exactly two search values");
         this.arrayKind = arrayKind;
         this.stride = stride;

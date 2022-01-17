@@ -30,11 +30,11 @@ import static jdk.vm.ci.amd64.AMD64.rdi;
 import static jdk.vm.ci.amd64.AMD64.rdx;
 import static jdk.vm.ci.amd64.AMD64.rsi;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.movdqu;
 import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.movSZx;
+import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.movdqu;
 import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.pcmpeq;
-import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.pmovmsk;
 import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.pmovSZx;
+import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.pmovmsk;
 import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.XMM;
 import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.YMM;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
@@ -67,6 +67,18 @@ import jdk.vm.ci.meta.Value;
 /**
  * Emits code to compare two array regions lexicographically, using SIMD instructions where
  * possible.
+ *
+ * Supported element kinds:
+ * <ul>
+ * <li>byte+byte</li>
+ * <li>char+char</li>
+ * <li>int+int</li>
+ * <li>char+byte</li>
+ * <li>int+byte</li>
+ * <li >int+char</li>
+ * </ul>
+ * If the second element kind is smaller than the first, elements are either sign or zero-extended
+ * to fit the first element kind, depending on the {@code extendMode} parameter.
  */
 @Opcode("ARRAY_REGION_COMPARE")
 public final class AMD64ArrayRegionCompareToOp extends AMD64LIRInstruction {
@@ -86,7 +98,7 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64LIRInstruction {
     private final Scale scaleA;
     private final Scale scaleB;
     private final AVXKind.AVXSize avxSize;
-    private final AMD64MacroAssembler.ExtendMode signExtend;
+    private final AMD64MacroAssembler.ExtendMode extendMode;
 
     @Def({REG}) private Value resultValue;
     @Use({REG}) private Value arrayAValue;
@@ -105,12 +117,12 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64LIRInstruction {
     @Temp({REG, ILLEGAL}) private Value vectorTemp2;
 
     private AMD64ArrayRegionCompareToOp(LIRGeneratorTool tool, JavaKind strideA, JavaKind strideB,
-                    Value result, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length, int maxVectorSize, AMD64MacroAssembler.ExtendMode signExtend) {
+                    Value result, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length, int maxVectorSize, AMD64MacroAssembler.ExtendMode extendMode) {
         super(TYPE);
 
         this.strideA = strideA;
         this.strideB = strideB;
-        this.signExtend = signExtend;
+        this.extendMode = extendMode;
 
         GraalError.guarantee(strideA == JavaKind.Byte || strideA == JavaKind.Char || strideA == JavaKind.Int, "unsupported strideA");
         GraalError.guarantee(strideB == JavaKind.Byte || strideB == JavaKind.Char || strideB == JavaKind.Int, "unsupported strideB");
@@ -228,8 +240,8 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64LIRInstruction {
 
         // fast path: check first element as scalar
         masm.testlAndJcc(result, result, ConditionFlag.Zero, returnLabel, false);
-        movSZx(masm, scaleA, signExtend, result, new AMD64Address(arrayA));
-        movSZx(masm, scaleB, signExtend, tmp, new AMD64Address(arrayB));
+        movSZx(masm, scaleA, extendMode, result, new AMD64Address(arrayA));
+        movSZx(masm, scaleB, extendMode, tmp, new AMD64Address(arrayB));
         masm.subqAndJcc(result, tmp, ConditionFlag.NotZero, returnLabel, false);
         masm.movl(result, length);
 
@@ -245,7 +257,7 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64LIRInstruction {
         masm.align(crb.target.wordSize * 2);
         masm.bind(loop);
         // load and extend elements of arrayB to match the stride of arrayA
-        pmovSZx(masm, avxSize, vector1, signExtend, scaleA, arrayB, scaleB, length, 0);
+        pmovSZx(masm, avxSize, vector1, extendMode, scaleA, arrayB, scaleB, length, 0);
         movdqu(masm, avxSize, vector2, new AMD64Address(arrayA, length, scaleA));
         // compare elements of arrayA and arrayB
         pcmpeq(masm, avxSize, strideA, vector1, vector2);
@@ -260,7 +272,7 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64LIRInstruction {
         masm.testlAndJcc(result, result, ConditionFlag.Zero, returnLabel, avxSize == XMM);
 
         // tail: compare the remaining bytes with a vector load aligned to the end of the array.
-        pmovSZx(masm, avxSize, vector1, signExtend, scaleA, arrayB, scaleB, result, -avxSize.getBytes());
+        pmovSZx(masm, avxSize, vector1, extendMode, scaleA, arrayB, scaleB, result, -avxSize.getBytes());
         movdqu(masm, avxSize, vector2, new AMD64Address(arrayA, result, scaleA, -avxSize.getBytes()));
         masm.addq(length, result); // adjust "length" for diffFound
         pcmpeq(masm, avxSize, strideA, vector1, vector2);
@@ -286,8 +298,8 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64LIRInstruction {
         // add to current vector loop index
         masm.addq(length, tmp);
         // load differing elements and return difference
-        movSZx(masm, scaleA, signExtend, result, new AMD64Address(arrayA, length, scaleA));
-        movSZx(masm, scaleB, signExtend, tmp, new AMD64Address(arrayB, length, scaleB));
+        movSZx(masm, scaleA, extendMode, result, new AMD64Address(arrayA, length, scaleA));
+        movSZx(masm, scaleB, extendMode, tmp, new AMD64Address(arrayB, length, scaleB));
         masm.subq(result, tmp);
         masm.jmpb(returnLabel);
 
@@ -295,12 +307,12 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64LIRInstruction {
             // region is too small for YMM vectors, try XMM
             masm.bind(xmmTail);
             masm.cmplAndJcc(result, getElementsPerVector(XMM), ConditionFlag.Less, scalarTail, true);
-            pmovSZx(masm, XMM, signExtend, vector1, scaleA, arrayB, scaleB, 0);
+            pmovSZx(masm, XMM, extendMode, vector1, scaleA, arrayB, scaleB, 0);
             pcmpeq(masm, XMM, strideA, vector1, new AMD64Address(arrayA));
             pmovmsk(masm, XMM, tmp, vector1);
             masm.xorlAndJcc(tmp, ONES_16, ConditionFlag.NotZero, diffFound, true);
 
-            pmovSZx(masm, XMM, vector1, signExtend, scaleA, arrayB, scaleB, result, -XMM.getBytes());
+            pmovSZx(masm, XMM, vector1, extendMode, scaleA, arrayB, scaleB, result, -XMM.getBytes());
             masm.movq(length, result);
             pcmpeq(masm, XMM, strideA, vector1, new AMD64Address(arrayA, result, scaleA, -XMM.getBytes()));
             masm.subq(length, getElementsPerVector(XMM));
@@ -329,8 +341,8 @@ public final class AMD64ArrayRegionCompareToOp extends AMD64LIRInstruction {
 
         masm.align(crb.target.wordSize * 2);
         masm.bind(loop);
-        movSZx(masm, scaleA, signExtend, result, new AMD64Address(arrayA, length, scaleA));
-        movSZx(masm, scaleB, signExtend, tmp, new AMD64Address(arrayB, length, scaleB));
+        movSZx(masm, scaleA, extendMode, result, new AMD64Address(arrayA, length, scaleA));
+        movSZx(masm, scaleB, extendMode, tmp, new AMD64Address(arrayB, length, scaleB));
         masm.subqAndJcc(result, tmp, ConditionFlag.NotZero, returnLabel, true);
         masm.incqAndJcc(length, ConditionFlag.NotZero, loop, true);
     }
