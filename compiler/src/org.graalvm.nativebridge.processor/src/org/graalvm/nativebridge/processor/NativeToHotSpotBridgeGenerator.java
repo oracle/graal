@@ -232,7 +232,7 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
 
     private void generateNativeToHSStartMethod(CodeBuilder builder, CacheSnippets cacheSnippets, DefinitionData data, MethodData methodData) {
         builder.line("");
-        overrideMethod(builder, methodData);
+        overrideMethod(builder, data, methodData);
         builder.indent();
         CharSequence receiver;
         int nonReceiverParameterStart;

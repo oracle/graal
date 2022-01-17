@@ -141,7 +141,7 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
     private void generateHSToNativeStartMethod(CodeBuilder builder, CacheSnippets cacheSnippets,
                     DefinitionData data, MethodData methodData) {
         builder.line("");
-        overrideMethod(builder, methodData);
+        overrideMethod(builder, data, methodData);
         builder.indent();
         CodeBuilder receiverCastStatement;
         CharSequence receiver;

@@ -24,11 +24,35 @@
  */
 package org.graalvm.nativebridge;
 
+import org.graalvm.jniutils.HSObject;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+/**
+ * Annotation marking a bridge class field as a handle holder.
+ *
+ * When the bridged type is a class, the handle to foreign object has to be stored in a non-private
+ * field annotated by the {@link EndPointHandle}. Annotation processor uses this field to obtain the
+ * foreign object reference. For HotSpot to native calls the field type must be assignable into
+ * {@link NativeObject}. For native to HotSpot calls the field type must be assignable into
+ * {@link HSObject}.
+ *
+ * Example:
+ *
+ * <pre>
+ * &#64;GenerateHotSpotToNativeBridge(jniConfig = ExampleJNIConfig.class)
+ * abstract class NativeCalculator extends Calculator {
+ *
+ *     &#64;EndPointHandle final NativeObject delegate;
+ *
+ *     NativeCalculator(NativeObject delegate) {
+ *         this.delegate = delegate;
+ *     }
+ * }
+ * </pre>
+ */
 @Retention(RetentionPolicy.CLASS)
 @Target(ElementType.FIELD)
 public @interface EndPointHandle {

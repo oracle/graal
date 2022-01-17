@@ -31,6 +31,11 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+/**
+ * Configures how a method annotation is handled by the native bridge processor. By default, the
+ * method annotation is used for marshaller lookup. The {@link AnnotationAction} can be used to
+ * change this behaviour to ignore the annotation or to copy it into generated stub class.
+ */
 @Repeatable(AnnotationActionRepeated.class)
 @Retention(RetentionPolicy.CLASS)
 @Target(ElementType.TYPE)
@@ -40,9 +45,21 @@ public @interface AnnotationAction {
 
     Action action() default Action.LOOKUP_MARSHALLER;
 
+    /**
+     * Action determining how the annotation should be handled.
+     */
     enum Action {
+        /**
+         * Annotation is ignored.
+         */
         IGNORE,
+        /**
+         * Annotation is copied into generated stub class.
+         */
         COPY,
+        /**
+         * Annotation is used for marshaller lookup.
+         */
         LOOKUP_MARSHALLER
     }
 }

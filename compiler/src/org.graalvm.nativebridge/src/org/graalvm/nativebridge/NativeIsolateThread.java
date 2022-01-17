@@ -29,6 +29,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.graalvm.nativebridge.NativeIsolate.CLOSED;
 
+/**
+ * Represents an entered isolate thread.
+ *
+ * @see NativeIsolate#enter()
+ */
 public final class NativeIsolateThread {
 
     private static final int CLOSING_MASK = 0b1;
@@ -48,6 +53,9 @@ public final class NativeIsolateThread {
         this.enteredCount = new AtomicInteger();
     }
 
+    /**
+     * Returns an isolate thread address.
+     */
     public long getIsolateThreadId() {
         assert verifyThread();
         if (!isActive()) {
@@ -56,6 +64,9 @@ public final class NativeIsolateThread {
         return isolateThread;
     }
 
+    /**
+     * Leaves the {@link NativeIsolate} on the current thread.
+     */
     public void leave() {
         assert verifyThread();
         decrementAttached();

@@ -36,7 +36,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.LongPredicate;
 
 /**
- * We will need to turn {@link NativeIsolate} into an interface to support libgraal.
+ * Represents a single native image isolate. All {@link NativeObject}s have a {@link NativeIsolate}
+ * context.
  */
 public final class NativeIsolate {
 
@@ -68,6 +69,12 @@ public final class NativeIsolate {
         this.state = State.ACTIVE;
     }
 
+    /**
+     * Binds a native image thread to this isolate. When a thread created in the native image enters
+     * for the first time to host it must be registered to {@link NativeIsolate} as a native thread.
+     *
+     * @param isolateThreadId to bind.
+     */
     public void registerNativeThread(long isolateThreadId) {
         NativeIsolateThread nativeIsolateThread = attachedIsolateThread.get();
         if (nativeIsolateThread != null) {
@@ -83,17 +90,31 @@ public final class NativeIsolate {
         }
     }
 
+    /**
+     * Enters this {@link NativeIsolate} on the current thread.
+     *
+     * @throws IllegalStateException when this {@link NativeObject} is already closed or being
+     *             closed.
+     */
     public NativeIsolateThread enter() {
         NativeIsolateThread nativeIsolateThread = getOrCreateNativeIsolateThread();
         nativeIsolateThread.enter();
         return nativeIsolateThread;
     }
 
+    /**
+     * Returns true if the current thread is entered to this {@link NativeIsolate}.
+     */
     public boolean isActive() {
         NativeIsolateThread nativeIsolateThread = attachedIsolateThread.get();
         return nativeIsolateThread != null && (nativeIsolateThread.isNativeThread() || nativeIsolateThread.isActive());
     }
 
+    /**
+     * Request for isolate shutdown. If there is no host thread entered into this
+     * {@link NativeIsolate} the isolate is closed and the isolate heap is freed. If this
+     * {@link NativeIsolate} has active threads the isolate is freed by the last leaving thread.
+     */
     public boolean shutdown() {
         boolean deferredClose = false;
         synchronized (this) {
@@ -112,10 +133,16 @@ public final class NativeIsolate {
         }
     }
 
+    /**
+     * Returns the isolate address.
+     */
     public long getIsolateId() {
         return isolateId;
     }
 
+    /**
+     * Rerurns the {@link JNIConfig} used by this {@link NativeObject}.
+     */
     public JNIConfig getConfig() {
         return config;
     }
@@ -131,6 +158,8 @@ public final class NativeIsolate {
      *
      * @param isolateId id of an entered isolate
      * @return NativeIsolate object for the entered isolate with the specified isolateId
+     * @throws IllegalStateException when {@link NativeIsolate} does not exist for given
+     *             {@code isolateId}
      */
     public static NativeIsolate get(long isolateId) {
         NativeIsolate res = isolates.get(isolateId);
@@ -140,6 +169,15 @@ public final class NativeIsolate {
         return res;
     }
 
+    /**
+     * Creates a {@link NativeIsolate} for given {@code isolateId} using given {@link JNIConfig}.
+     * This method can be called at most once, preferably right after creating the isolate. Use the
+     * {@link #get(long)} method to get an existing {@link NativeIsolate} instance.
+     *
+     * @return the newly created {@link NativeIsolate} for given {@code isolateId}.
+     * @throws IllegalStateException when {@link NativeIsolate} for given {@code isolateId} already
+     *             exists.
+     */
     public static NativeIsolate forIsolateId(long isolateId, JNIConfig config) {
         NativeIsolate res = new NativeIsolate(isolateId, config);
         NativeIsolate previous = isolates.put(isolateId, res);
@@ -149,6 +187,15 @@ public final class NativeIsolate {
         return res;
     }
 
+    /**
+     * Registers an object for cleanup. At some point after a {@code cleanableObject} is garbage
+     * collected the {@link NativeIsolate} is entered and the {@code cleanupAction} is executed with
+     * {@code isolateThreadId} parameter. The {@code cleanupAction} should perform cleanup in the
+     * isolate heap. The {@code cleanupAction} returns {@code true} on success and {@code false} on
+     * failure.
+     *
+     * @param cleanupAction
+     */
     public void registerForCleanup(Object cleanableObject, LongPredicate cleanupAction) {
         if (state != State.DISPOSED) {
             cleanHandles();

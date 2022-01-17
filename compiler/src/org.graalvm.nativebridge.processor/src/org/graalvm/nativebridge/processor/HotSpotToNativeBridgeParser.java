@@ -34,6 +34,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 
 final class HotSpotToNativeBridgeParser extends AbstractBridgeParser {
 
@@ -69,13 +70,13 @@ final class HotSpotToNativeBridgeParser extends AbstractBridgeParser {
     }
 
     @Override
-    DefinitionData createDefinitionData(DeclaredType annotatedType, AnnotationMirror annotation, DeclaredType serviceType, Collection<MethodData> toGenerate,
-                    List<? extends VariableElement> annotatedTypeConstructorParams,
-                    ExecutableElement delegateAccessor, ExecutableElement receiverAccessor, ExecutableElement exceptionHandler, VariableElement endPointHandle) {
+    DefinitionData createDefinitionData(DeclaredType annotatedType, AnnotationMirror annotation, DeclaredType serviceType,
+                    Collection<MethodData> toGenerate, List<? extends VariableElement> annotatedTypeConstructorParams,
+                    ExecutableElement delegateAccessor, ExecutableElement receiverAccessor, ExecutableElement exceptionHandler,
+                    VariableElement endPointHandle, DeclaredType jniConfig, Set<DeclaredType> annotationsToCopy) {
         DeclaredType centryPointPredicate = (DeclaredType) getAnnotationValue(annotation, "include");
-        DeclaredType jniConfig = (DeclaredType) getAnnotationValue(annotation, "jniConfig");
         return new HotSpotToNativeDefinitionData(annotatedType, serviceType, toGenerate, annotatedTypeConstructorParams, delegateAccessor, receiverAccessor, exceptionHandler, endPointHandle,
-                        centryPointPredicate, jniConfig);
+                        centryPointPredicate, jniConfig, annotationsToCopy);
     }
 
     static HotSpotToNativeBridgeParser create(NativeBridgeProcessor processor) {
@@ -87,9 +88,11 @@ final class HotSpotToNativeBridgeParser extends AbstractBridgeParser {
         final DeclaredType centryPointPredicate;
 
         HotSpotToNativeDefinitionData(DeclaredType annotatedType, DeclaredType serviceType, Collection<MethodData> toGenerate,
-                        List<? extends VariableElement> annotatedTypeConstructorParams, ExecutableElement delegateAccessor, ExecutableElement receiverAccessor,
-                        ExecutableElement exceptionHandler, VariableElement endPointHandle, DeclaredType centryPointPredicate, DeclaredType jniConfig) {
-            super(annotatedType, serviceType, toGenerate, annotatedTypeConstructorParams, delegateAccessor, receiverAccessor, exceptionHandler, endPointHandle, jniConfig);
+                        List<? extends VariableElement> annotatedTypeConstructorParams, ExecutableElement delegateAccessor,
+                        ExecutableElement receiverAccessor, ExecutableElement exceptionHandler, VariableElement endPointHandle,
+                        DeclaredType centryPointPredicate, DeclaredType jniConfig, Set<DeclaredType> copyAnnotations) {
+            super(annotatedType, serviceType, toGenerate, annotatedTypeConstructorParams, delegateAccessor, receiverAccessor,
+                            exceptionHandler, endPointHandle, jniConfig, copyAnnotations);
             this.centryPointPredicate = centryPointPredicate;
         }
     }

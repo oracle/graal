@@ -26,8 +26,20 @@ package org.graalvm.nativebridge;
 
 import org.graalvm.jniutils.JNI;
 
+/**
+ * Marshaller used by the native bridge processor on the isolate side to serialize custom type.
+ * Marshallers are used to support custom types unknown to native bridge processor.
+ *
+ * @see JNIConfig.Builder
+ */
 public interface JNINativeMarshaller<T> {
+    /**
+     * Converts the given object into form which can be transferred to host using JNI API.
+     */
     JNI.JObject marshall(JNI.JNIEnv env, T object);
 
+    /**
+     * Converts the internal form back into object.
+     */
     T unmarshall(JNI.JNIEnv env, JNI.JObject jObject);
 }

@@ -27,12 +27,24 @@ package org.graalvm.nativebridge;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.LongPredicate;
 
+/**
+ * Encapsulates a handle to an object in a native isolate where the object's lifetime is bound to
+ * the lifetime of the {@link NativeObject} instance. At some point after a {@link NativeObject} is
+ * garbage collected, a call is made to release the handle, allowing the corresponding object in the
+ * native isolate to be collected.
+ */
 public class NativeObject {
 
     private final NativeIsolate isolate;
     private final long objectHandle;
     private final CleanupAction cleanupAction;
 
+    /**
+     * Creates a new {@link NativeObject}.
+     *
+     * @param isolate an isolate in which an object referenced by the handle exists.
+     * @param objectHandle handle to an object
+     */
     public NativeObject(NativeIsolate isolate, long objectHandle) {
         this.isolate = isolate;
         this.objectHandle = objectHandle;
@@ -40,14 +52,25 @@ public class NativeObject {
         isolate.registerForCleanup(this, cleanupAction);
     }
 
+    /**
+     * Returns an isolate in which an object referenced by this handle exists.
+     */
     public final NativeIsolate getIsolate() {
         return isolate;
     }
 
+    /**
+     * Returns a handle to object in the isolate.
+     */
     public final long getHandle() {
         return objectHandle;
     }
 
+    /**
+     * Explicitly releases object in the isolate referenced by this handle. The use of this method
+     * should be exceptional, the lifetime of the object in the isolate is bound to the lifetime of
+     * the {@link NativeObject} instance.
+     */
     public final void release() {
         if (!cleanupAction.released.get()) {
             NativeIsolateThread nativeIsolateThread = isolate.enter();

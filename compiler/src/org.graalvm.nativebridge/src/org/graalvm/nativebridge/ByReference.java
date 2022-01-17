@@ -24,15 +24,35 @@
  */
 package org.graalvm.nativebridge;
 
+import org.graalvm.jniutils.HSObject;
+
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+/**
+ * Instruments the native bridge processor to marshall annotated method return type or method
+ * parameter as a reference to foreign object. The {@link ByReference} support is optional and can
+ * be always replaced by a custom marshaller.
+ */
 @Retention(RetentionPolicy.CLASS)
 @Target({ElementType.METHOD, ElementType.PARAMETER})
 public @interface ByReference {
+
+    /**
+     * The class to instantiate for a foreign handle. For the HotSpot to native calls it must be
+     * assignable into {@link NativeObject}. For the native to HotSpot calls it must be assignable
+     * into {@link HSObject}.
+     */
     Class<?> value();
 
+    /**
+     * For classes with explicit receiver, when set to {@code true} the foreign object is translated
+     * by receiver resolver before it's passed to target method.
+     *
+     * @see ReceiverResolver
+     * @see DispatchResolver
+     */
     boolean useReceiverResolver() default false;
 }

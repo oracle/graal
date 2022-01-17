@@ -30,12 +30,27 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.function.BooleanSupplier;
 
+/**
+ * Generate HotSpot to native bridge for an annotated class.
+ */
 @Retention(RetentionPolicy.CLASS)
 @Target(ElementType.TYPE)
 public @interface GenerateHotSpotToNativeBridge {
 
+    /**
+     * If the supplier returns {@code true}, this entry point is added automatically when building a
+     * shared library. This means the method is a root method for compilation, and everything
+     * reachable from it is compiled too. * The provided class must have a nullary constructor,
+     * which is used to instantiate the class. The supplier function is called on the newly
+     * instantiated instance.
+     */
     Class<? extends BooleanSupplier> include() default AlwaysIncluded.class;
 
+    /**
+     * The native bridge configuration. The returned class must have an accessible static
+     * {@code getInstance()} method returning a {@link JNIConfig} instance. The returned
+     * {@link JNIConfig} instance is used for marshallers lookup.
+     */
     Class<?> jniConfig();
 
     class AlwaysIncluded implements BooleanSupplier {
