@@ -149,7 +149,7 @@ local vm_common = import '../ci_common/common.jsonnet';
     vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_nfi_linux_amd64 + vm.vm_java_11 + {name: 'bench-vm-' + vm.vm_setup.short_name + '-polybench-nfi-linux-amd64-java11'},
     vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_polybench_nfi_linux_amd64 + vm.vm_java_17 + {name: 'bench-vm-' + vm.vm_setup.short_name + '-polybench-nfi-linux-amd64-java17'},
 
-    vm_common.daily_vm_linux_amd64 + self.vm_bench_js_linux_amd64 + {
+    vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_js_linux_amd64 + {
       # Override `self.vm_bench_js_linux_amd64.run`
       run: [
         vm_common.mx_vm_common + ['benchmark', '--results-file', $.vm_bench_js_linux_amd64.result_file, 'agentscript-graal-js:*', '--', '--jvm=graalvm-${VM_ENV}', '--jvm-config=jvm', '--js=graal-js', '--js-config=default'],
