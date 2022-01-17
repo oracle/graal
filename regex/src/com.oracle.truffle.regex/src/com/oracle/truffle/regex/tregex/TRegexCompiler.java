@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -95,7 +95,7 @@ public final class TRegexCompiler {
         TRegexCompilationRequest compReq = new TRegexCompilationRequest(language, ecmascriptSource);
         RegexExecNode execNode = compReq.compile();
         if (flavorProcessor == null) {
-            return new RegexObject(execNode, source, compReq.getAst().getFlags(), compReq.getAst().getNumberOfCaptureGroups(), compReq.getAst().getNamedCaputureGroups());
+            return new RegexObject(execNode, source, compReq.getAst().getFlags(), compReq.getAst().getRealGroupCount(), compReq.getAst().getNamedCaptureGroups());
         } else {
             return new RegexObject(execNode, source, flavorProcessor.getFlags(), flavorProcessor.getNumberOfCaptureGroups(), flavorProcessor.getNamedCaptureGroups());
         }

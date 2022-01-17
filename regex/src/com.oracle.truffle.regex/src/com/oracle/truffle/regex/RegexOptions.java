@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -112,6 +112,8 @@ public final class RegexOptions {
     public static final String IGNORE_ATOMIC_GROUPS_NAME = "IgnoreAtomicGroups";
     private static final int GENERATE_DFA_IMMEDIATELY = 1 << 8;
     private static final String GENERATE_DFA_IMMEDIATELY_NAME = "GenerateDFAImmediately";
+    private static final int BOOLEAN_MATCH = 1 << 9;
+    private static final String BOOLEAN_MATCH_NAME = "BooleanMatch";
 
     public static final String FLAVOR_NAME = "Flavor";
     public static final String FLAVOR_PYTHON = "Python";
@@ -173,6 +175,13 @@ public final class RegexOptions {
     }
 
     /**
+     * Don't track capture groups, just return a boolean match result instead.
+     */
+    public boolean isBooleanMatch() {
+        return isBitSet(BOOLEAN_MATCH);
+    }
+
+    /**
      * Always match capture groups eagerly.
      */
     public boolean isAlwaysEager() {
@@ -212,6 +221,14 @@ public final class RegexOptions {
 
     public RegexOptions withEncoding(Encodings.Encoding newEnc) {
         return newEnc == encoding ? this : new RegexOptions(options, flavor, newEnc);
+    }
+
+    public RegexOptions withBooleanMatch() {
+        return new RegexOptions(options | BOOLEAN_MATCH, flavor, encoding);
+    }
+
+    public RegexOptions withoutBooleanMatch() {
+        return new RegexOptions(options & ~BOOLEAN_MATCH, flavor, encoding);
     }
 
     @Override
@@ -265,6 +282,9 @@ public final class RegexOptions {
         if (isGenerateDFAImmediately()) {
             sb.append(GENERATE_DFA_IMMEDIATELY_NAME + "=true,");
         }
+        if (isBooleanMatch()) {
+            sb.append(BOOLEAN_MATCH_NAME + "=true,");
+        }
         if (flavor == PythonFlavor.STR_INSTANCE) {
             sb.append(FLAVOR_NAME + "=" + FLAVOR_PYTHON_STR + ",");
         } else if (flavor == PythonFlavor.BYTES_INSTANCE) {
@@ -297,6 +317,9 @@ public final class RegexOptions {
                 switch (src.charAt(i)) {
                     case 'A':
                         i = parseBooleanOption(i, ALWAYS_EAGER_NAME, ALWAYS_EAGER);
+                        break;
+                    case 'B':
+                        i = parseBooleanOption(i, BOOLEAN_MATCH_NAME, BOOLEAN_MATCH);
                         break;
                     case 'D':
                         i = parseBooleanOption(i, DUMP_AUTOMATA_NAME, DUMP_AUTOMATA);
@@ -506,6 +529,16 @@ public final class RegexOptions {
 
         public Builder ignoreAtomicGroups(boolean enabled) {
             updateOption(enabled, IGNORE_ATOMIC_GROUPS);
+            return this;
+        }
+
+        public Builder generateDFAImmediately(boolean enabled) {
+            updateOption(enabled, GENERATE_DFA_IMMEDIATELY);
+            return this;
+        }
+
+        public Builder booleanMatch(boolean enabled) {
+            updateOption(enabled, BOOLEAN_MATCH);
             return this;
         }
 

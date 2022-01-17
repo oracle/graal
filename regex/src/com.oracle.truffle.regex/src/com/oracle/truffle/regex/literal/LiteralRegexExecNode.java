@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -117,10 +117,10 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
 
     abstract static class LiteralRegexExecImplNode extends Node {
 
-        final PreCalculatedResultFactory resultFactory;
+        private final PreCalculatedResultFactory resultFactory;
 
         protected LiteralRegexExecImplNode(PreCalcResultVisitor preCalcResultVisitor) {
-            this.resultFactory = preCalcResultVisitor.getResultFactory();
+            this.resultFactory = preCalcResultVisitor.isBooleanMatch() ? null : preCalcResultVisitor.getResultFactory();
         }
 
         abstract String getImplName();
@@ -129,8 +129,16 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
             return "";
         }
 
-        int inputLength(Object input) {
+        final int inputLength(Object input) {
             return ((RegexExecNode) getParent()).inputLength(input);
+        }
+
+        final RegexResult createFromStart(int start) {
+            return resultFactory == null ? RegexResult.getBooleanMatchInstance() : resultFactory.createFromStart(start);
+        }
+
+        final RegexResult createFromEnd(int end) {
+            return resultFactory == null ? RegexResult.getBooleanMatchInstance() : resultFactory.createFromEnd(end);
         }
 
         abstract RegexResult execute(Object input, int fromIndex, Encodings.Encoding encoding);
@@ -149,7 +157,7 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
 
         @Override
         protected RegexResult execute(Object input, int fromIndex, Encodings.Encoding encoding) {
-            return resultFactory.createFromStart(fromIndex);
+            return createFromStart(fromIndex);
         }
     }
 
@@ -166,7 +174,7 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
 
         @Override
         protected RegexResult execute(Object input, int fromIndex, Encodings.Encoding encoding) {
-            return fromIndex == 0 ? resultFactory.createFromStart(0) : RegexResult.getNoMatchInstance();
+            return fromIndex == 0 ? createFromStart(0) : RegexResult.getNoMatchInstance();
         }
     }
 
@@ -188,7 +196,7 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
         protected RegexResult execute(Object input, int fromIndex, Encodings.Encoding encoding) {
             assert fromIndex <= inputLength(input);
             if (!sticky || fromIndex == inputLength(input)) {
-                return resultFactory.createFromEnd(inputLength(input));
+                return createFromEnd(inputLength(input));
             } else {
                 return RegexResult.getNoMatchInstance();
             }
@@ -209,7 +217,7 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
         @Override
         protected RegexResult execute(Object input, int fromIndex, Encodings.Encoding encoding) {
             assert fromIndex <= inputLength(input);
-            return inputLength(input) == 0 ? resultFactory.createFromStart(0) : RegexResult.getNoMatchInstance();
+            return inputLength(input) == 0 ? createFromStart(0) : RegexResult.getNoMatchInstance();
         }
     }
 
@@ -249,7 +257,7 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
             if (start < 0) {
                 return RegexResult.getNoMatchInstance();
             }
-            return resultFactory.createFromStart(start);
+            return createFromStart(start);
         }
     }
 
@@ -269,7 +277,7 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
         @Override
         protected RegexResult execute(Object input, int fromIndex, Encodings.Encoding encoding) {
             if (fromIndex == 0 && startsWithNode.execute(input, literal.getLiteralContent(input), literal.getMaskContent(input), encoding)) {
-                return resultFactory.createFromStart(0);
+                return createFromStart(0);
             } else {
                 return RegexResult.getNoMatchInstance();
             }
@@ -295,7 +303,7 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
         protected RegexResult execute(Object input, int fromIndex, Encodings.Encoding encoding) {
             int matchStart = inputLength(input) - literalLength;
             if ((sticky ? fromIndex == matchStart : fromIndex <= matchStart) && endsWithNode.execute(input, literal.getLiteralContent(input), literal.getMaskContent(input), encoding)) {
-                return resultFactory.createFromEnd(inputLength(input));
+                return createFromEnd(inputLength(input));
             } else {
                 return RegexResult.getNoMatchInstance();
             }
@@ -318,7 +326,7 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
         @Override
         protected RegexResult execute(Object input, int fromIndex, Encodings.Encoding encoding) {
             if (fromIndex == 0 && equalsNode.execute(input, literal.getLiteralContent(input), literal.getMaskContent(input), encoding)) {
-                return resultFactory.createFromStart(0);
+                return createFromStart(0);
             } else {
                 return RegexResult.getNoMatchInstance();
             }
@@ -341,7 +349,7 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
         @Override
         protected RegexResult execute(Object input, int fromIndex, Encodings.Encoding encoding) {
             if (regionMatchesNode.execute(input, fromIndex, literal.getLiteralContent(input), 0, literalLength, literal.getMaskContent(input), encoding)) {
-                return resultFactory.createFromStart(fromIndex);
+                return createFromStart(fromIndex);
             } else {
                 return RegexResult.getNoMatchInstance();
             }

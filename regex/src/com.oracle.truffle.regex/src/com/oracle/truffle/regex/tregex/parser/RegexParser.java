@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -93,6 +93,7 @@ public final class RegexParser {
     private final CopyVisitor copyVisitor;
     private final NodeCountVisitor countVisitor;
     private final SetSourceSectionVisitor setSourceSectionVisitor;
+    private final boolean ignoreCaptureGroups;
 
     private Sequence curSequence;
     private Group curGroup;
@@ -113,6 +114,7 @@ public final class RegexParser {
         this.countVisitor = new NodeCountVisitor();
         this.setSourceSectionVisitor = source.getOptions().isDumpAutomata() ? new SetSourceSectionVisitor(ast) : null;
         this.compilationBuffer = compilationBuffer;
+        this.ignoreCaptureGroups = source.getOptions().isBooleanMatch() && !lexer.hasBackReferences();
     }
 
     public static Group parseRootLess(RegexLanguage language, String pattern) throws RegexSyntaxException {
@@ -122,7 +124,8 @@ public final class RegexParser {
     @TruffleBoundary
     public RegexAST parse() throws RegexSyntaxException {
         ast.setRoot(parse(true));
-        ast.setNamedCaputureGroups(lexer.getNamedCaptureGroups());
+        ast.setRealGroupCount(lexer.numberOfCaptureGroups());
+        ast.setNamedCaptureGroups(lexer.getNamedCaptureGroups());
         return ast;
     }
 
@@ -180,7 +183,7 @@ public final class RegexParser {
     }
 
     private void createCaptureGroup(Token token) {
-        createGroup(token, true, true, true, null);
+        createGroup(token, true, !ignoreCaptureGroups, true, null);
     }
 
     private Group createGroup(Token token, boolean addToSeq, boolean capture, RegexASTSubtreeRootNode parent) {
