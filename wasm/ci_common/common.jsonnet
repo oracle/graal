@@ -17,7 +17,7 @@ local graal_suite_root = root_ci.graal_suite_root;
       JAVA_HOME: labsjdk17,
     },
     environment+: {
-      JDK_JVMCI_ARGS: '--jdk=jvmci',
+      JDK_JVMCI_ARGS: '--jdk=',
     },
   },
 
