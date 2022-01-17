@@ -1076,7 +1076,7 @@ public abstract class GraalCompilerTest extends GraalTest {
      */
     protected StructuredGraph makeAllArraysStable(StructuredGraph graph) {
         for (ConstantNode constantNode : graph.getNodes().filter(ConstantNode.class).snapshot()) {
-            if (getConstantReflection().readArrayLength(constantNode.asJavaConstant()) != null && constantNode.getStableDimension() != 1) {
+            if (getConstantReflection().readArrayLength(constantNode.asJavaConstant()) != null && constantNode.getStableDimension() < 1) {
                 ConstantNode newConstantNode = graph.unique(ConstantNode.forConstant(constantNode.asJavaConstant(), 1, true, getMetaAccess()));
                 constantNode.replaceAndDelete(newConstantNode);
             }

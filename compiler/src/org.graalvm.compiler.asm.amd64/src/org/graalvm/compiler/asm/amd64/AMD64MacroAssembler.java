@@ -41,7 +41,6 @@ import static org.graalvm.compiler.core.common.NumUtil.isByte;
 import java.util.function.IntConsumer;
 import java.util.function.Supplier;
 
-import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
 import org.graalvm.compiler.core.common.NumUtil;
@@ -51,6 +50,7 @@ import org.graalvm.compiler.options.OptionValues;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.JavaKind;
 
 /**
  * This class implements commonly used X86 code patterns.
@@ -749,7 +749,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
      * @param scaleSrc source stride. Must be smaller or equal to {@code scaleDst}.
      * @param index address index offset, scaled by {@code scaleSrc}.
      * @param displacement address displacement in bytes. If {@code scaleDst} is greater than
-     *            {@code scaleSrc}, this displacement is scaled by the difference of the former and
+     *            {@code scaleSrc}, this displacement is scaled by the ratio of the former and
      *            latter scales, e.g. if {@code scaleDst} is {@link AMD64Address.Scale#Times4} and
      *            {@code scaleSrc} is {@link AMD64Address.Scale#Times2}, the displacement is halved.
      */
@@ -824,8 +824,8 @@ public class AMD64MacroAssembler extends AMD64Assembler {
      * Compares all packed bytes/words/dwords in {@code dst} to {@code src}. Matching values are set
      * to all ones (0xff, 0xffff, ...), non-matching values are set to zero.
      */
-    public static void pcmpeq(AMD64MacroAssembler asm, AVXSize vectorSize, JavaKind stride, Register dst, Register src) {
-        switch (stride) {
+    public static void pcmpeq(AMD64MacroAssembler asm, AVXSize vectorSize, JavaKind elementKind, Register dst, Register src) {
+        switch (elementKind) {
             case Byte:
                 pcmpeqb(asm, vectorSize, dst, src);
                 break;
@@ -869,32 +869,44 @@ public class AMD64MacroAssembler extends AMD64Assembler {
      * Compares all packed bytes/words/dwords in {@code dst} to {@code src}. Matching values are set
      * to all ones (0xff, 0xffff, ...), non-matching values are set to zero.
      */
-    public static void pcmpeq(AMD64MacroAssembler asm, AVXSize size, JavaKind stride, Register dst, AMD64Address src) {
-        switch (stride) {
+    public static void pcmpeq(AMD64MacroAssembler asm, AVXSize size, JavaKind elementKind, Register dst, AMD64Address src) {
+        switch (elementKind) {
             case Byte:
-                if (isAVX(asm)) {
-                    VexRVMOp.VPCMPEQB.emit(asm, size, dst, dst, src);
-                } else { // SSE
-                    asm.pcmpeqb(dst, src);
-                }
+                pcmpeqb(asm, size, dst, src);
                 break;
             case Short:
             case Char:
-                if (isAVX(asm)) {
-                    VexRVMOp.VPCMPEQW.emit(asm, size, dst, dst, src);
-                } else { // SSE
-                    asm.pcmpeqw(dst, src);
-                }
+                pcmpeqw(asm, size, dst, src);
                 break;
             case Int:
-                if (isAVX(asm)) {
-                    VexRVMOp.VPCMPEQD.emit(asm, size, dst, dst, src);
-                } else { // SSE
-                    asm.pcmpeqd(dst, src);
-                }
+                pcmpeqd(asm, size, dst, src);
                 break;
             default:
                 throw new UnsupportedOperationException();
+        }
+    }
+
+    public static void pcmpeqb(AMD64MacroAssembler asm, AVXSize size, Register dst, AMD64Address src) {
+        if (isAVX(asm)) {
+            VexRVMOp.VPCMPEQB.emit(asm, size, dst, dst, src);
+        } else { // SSE
+            asm.pcmpeqb(dst, src);
+        }
+    }
+
+    public static void pcmpeqw(AMD64MacroAssembler asm, AVXSize size, Register dst, AMD64Address src) {
+        if (isAVX(asm)) {
+            VexRVMOp.VPCMPEQW.emit(asm, size, dst, dst, src);
+        } else { // SSE
+            asm.pcmpeqw(dst, src);
+        }
+    }
+
+    public static void pcmpeqd(AMD64MacroAssembler asm, AVXSize size, Register dst, AMD64Address src) {
+        if (isAVX(asm)) {
+            VexRVMOp.VPCMPEQD.emit(asm, size, dst, dst, src);
+        } else { // SSE
+            asm.pcmpeqd(dst, src);
         }
     }
 
@@ -916,6 +928,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
 
     private static int scaleDisplacement(AMD64Address.Scale scaleDst, AMD64Address.Scale scaleSrc, int displacement) {
         if (scaleSrc.value < scaleDst.value) {
+            assert (displacement & ((1 << (scaleDst.log2 - scaleSrc.log2)) - 1)) == 0;
             return displacement >> (scaleDst.log2 - scaleSrc.log2);
         }
         assert scaleSrc.value == scaleDst.value;
@@ -1158,39 +1171,6 @@ public class AMD64MacroAssembler extends AMD64Assembler {
             VexRVMOp.VPXOR.emit(asm, size, dst, dst, src);
         } else {
             asm.pxor(dst, src);
-        }
-    }
-
-    public static void psubusb(AMD64MacroAssembler asm, AVXSize size, Register dst, Register src) {
-        psubusb(asm, size, dst, dst, src);
-    }
-
-    public static void psubusb(AMD64MacroAssembler asm, AVXSize size, Register dst, Register src1, Register src2) {
-        if (isAVX(asm)) {
-            VexRVMOp.VPSUBUSB.emit(asm, size, dst, src1, src2);
-        } else {
-            // SSE
-            if (!dst.equals(src1)) {
-                asm.movdqu(dst, src1);
-            }
-            asm.psubusb(dst, src2);
-        }
-    }
-
-    public static void psubusb(AMD64MacroAssembler asm, AVXSize size, Register dst, AMD64Address src) {
-        psubusb(asm, size, dst, dst, src);
-    }
-
-    public static void psubusb(AMD64MacroAssembler asm, AVXSize size, Register dst, Register src1, AMD64Address src2) {
-        if (isAVX(asm)) {
-            VexRVMOp.VPSUBUSB.emit(asm, size, dst, src1, src2);
-        } else {
-            // SSE
-            if (!dst.equals(src1)) {
-                assert src2.instructionStartPosition < 0 : "don't use this with a placeholder address";
-                asm.movdqu(dst, src1);
-            }
-            asm.psubusb(dst, src2);
         }
     }
 

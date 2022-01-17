@@ -621,7 +621,7 @@ public abstract class AMD64BaseAssembler extends Assembler {
             // [00 reg 101] disp32
             assert index.equals(Register.None) : "cannot use RIP relative addressing with index register";
             emitByte(0x05 | regenc);
-            if (codePatchingAnnotationConsumer != null && addr.instructionStartPosition >= 0) {
+            if (codePatchingAnnotationConsumer != null && addr.isPlaceholder()) {
                 codePatchingAnnotationConsumer.accept(new OperandDataAnnotation(addr.instructionStartPosition, position(), 4, position() + 4 + additionalInstructionSize));
             }
             emitDisplacementInt(disp, dispAnnotation);

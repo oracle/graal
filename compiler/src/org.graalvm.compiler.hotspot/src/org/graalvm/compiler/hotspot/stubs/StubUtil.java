@@ -295,9 +295,9 @@ public class StubUtil {
      * @param vectorSize SIMD vector register size in bytes.
      */
     public static boolean isConstantLengthLessThanTwoVectors(ValueNode length, JavaKind strideA, JavaKind strideB, int vectorSize) {
-        if (length.isConstant()) {
-            int constantLength = length.asJavaConstant().asInt();
-            return constantLength >= 0 && constantLength * (Math.max(strideA.getByteCount(), strideB.getByteCount())) < 2 * vectorSize;
+        if (length.isJavaConstant()) {
+            long constantLength = length.asJavaConstant().asLong();
+            return constantLength >= 0 && constantLength * (Math.max(strideA.getByteCount(), strideB.getByteCount())) < 2L * vectorSize;
         }
         return false;
     }
