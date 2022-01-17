@@ -41,7 +41,18 @@
 package com.oracle.truffle.regex.tregex.parser.flavors;
 
 public enum PythonMethod {
+    /**
+     * The {@code search} method scans for the first location matching the regular expression.
+     */
     search,
+    /**
+     * The {@code match} method returns a match if the beginning of the string matches the regular
+     * expression.
+     */
     match,
+    /**
+     * The {@code fullmatch} method returns a match if the whole string matches the regular
+     * expression.
+     */
     fullmatch;
 }

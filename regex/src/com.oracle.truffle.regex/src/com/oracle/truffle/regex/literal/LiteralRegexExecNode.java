@@ -144,13 +144,20 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
         abstract RegexResult execute(Object input, int fromIndex, Encodings.Encoding encoding);
     }
 
-    public static final class EmptyIndexOf extends LiteralRegexExecImplNode {
+    abstract static class EmptyLiteralRegexExecNode extends LiteralRegexExecImplNode {
 
-        private final boolean mustAdvance;
+        protected final boolean mustAdvance;
 
-        public EmptyIndexOf(PreCalcResultVisitor preCalcResultVisitor, boolean mustAdvance) {
+        EmptyLiteralRegexExecNode(PreCalcResultVisitor preCalcResultVisitor, boolean mustAdvance) {
             super(preCalcResultVisitor);
             this.mustAdvance = mustAdvance;
+        }
+    }
+
+    public static final class EmptyIndexOf extends EmptyLiteralRegexExecNode {
+
+        public EmptyIndexOf(PreCalcResultVisitor preCalcResultVisitor, boolean mustAdvance) {
+            super(preCalcResultVisitor, mustAdvance);
         }
 
         @Override
@@ -172,13 +179,10 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
         }
     }
 
-    public static final class EmptyStartsWith extends LiteralRegexExecImplNode {
-
-        private final boolean mustAdvance;
+    public static final class EmptyStartsWith extends EmptyLiteralRegexExecNode {
 
         public EmptyStartsWith(PreCalcResultVisitor preCalcResultVisitor, boolean mustAdvance) {
-            super(preCalcResultVisitor);
-            this.mustAdvance = mustAdvance;
+            super(preCalcResultVisitor, mustAdvance);
         }
 
         @Override
@@ -192,15 +196,13 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
         }
     }
 
-    public static final class EmptyEndsWith extends LiteralRegexExecImplNode {
+    public static final class EmptyEndsWith extends EmptyLiteralRegexExecNode {
 
         private final boolean sticky;
-        private final boolean mustAdvance;
 
         public EmptyEndsWith(PreCalcResultVisitor preCalcResultVisitor, boolean sticky, boolean mustAdvance) {
-            super(preCalcResultVisitor);
+            super(preCalcResultVisitor, mustAdvance);
             this.sticky = sticky;
-            this.mustAdvance = mustAdvance;
         }
 
         @Override
@@ -219,13 +221,10 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
         }
     }
 
-    public static final class EmptyEquals extends LiteralRegexExecImplNode {
-
-        public final boolean mustAdvance;
+    public static final class EmptyEquals extends EmptyLiteralRegexExecNode {
 
         public EmptyEquals(PreCalcResultVisitor preCalcResultVisitor, boolean mustAdvance) {
-            super(preCalcResultVisitor);
-            this.mustAdvance = mustAdvance;
+            super(preCalcResultVisitor, mustAdvance);
         }
 
         @Override

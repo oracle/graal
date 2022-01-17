@@ -105,7 +105,7 @@ public final class NFAGenerator {
         this.astTransitionCanonicalizer = new ASTTransitionCanonicalizer(ast, true, false);
         this.compilationBuffer = compilationBuffer;
         dummyInitialState = new NFAState((short) stateID.inc(), StateSet.create(ast, ast.getWrappedRoot()), CodePointSet.getEmpty(), Collections.emptySet(), false, ast.getOptions().isMustAdvance());
-        nfaStates.put(NFAStateID.of(dummyInitialState), dummyInitialState);
+        nfaStates.put(NFAStateID.create(dummyInitialState), dummyInitialState);
         anchoredFinalState = createFinalState(StateSet.create(ast, ast.getReachableDollars()), false);
         anchoredFinalState.setAnchoredFinalState();
         finalState = createFinalState(StateSet.create(ast, ast.getRoot().getSubTreeParent().getMatchFound()), false);
@@ -216,7 +216,7 @@ public final class NFAGenerator {
                     }
                 }
                 dummyInitialState.removeSuccessor(state);
-                nfaStates.remove(NFAStateID.of(state));
+                nfaStates.remove(NFAStateID.create(state));
             }
             deadStates.clear();
             findDeadStates(deadStates);
@@ -306,8 +306,8 @@ public final class NFAGenerator {
 
     private NFAState createFinalState(StateSet<RegexAST, ? extends RegexASTNode> stateSet, boolean mustAdvance) {
         NFAState state = new NFAState((short) stateID.inc(), stateSet, ast.getEncoding().getFullSet(), Collections.emptySet(), false, mustAdvance);
-        assert !nfaStates.containsKey(NFAStateID.of(state));
-        nfaStates.put(NFAStateID.of(state), state);
+        assert !nfaStates.containsKey(NFAStateID.create(state));
+        nfaStates.put(NFAStateID.create(state), state);
         return state;
     }
 
@@ -348,7 +348,7 @@ public final class NFAGenerator {
             this.mustAdvance = mustAdvance;
         }
 
-        public static NFAStateID of(NFAState state) {
+        public static NFAStateID create(NFAState state) {
             return new NFAStateID(state.getStateSet(), state.isMustAdvance());
         }
 
