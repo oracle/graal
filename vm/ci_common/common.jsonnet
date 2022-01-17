@@ -438,7 +438,7 @@ local devkits = common_json.devkits;
       $.upload_file_sizes,
       $.mx_vm_common + vm.vm_profiles + $.maven_deploy_sdk_base,
       self.ci_resources.infra.notify_nexus_deploy,
-      ['set-export', 'GRAALVM_HOME', $.mx_vm_common + ['--quiet', '--no-warning',' graalvm-home']],
+      ['set-export', 'GRAALVM_HOME', $.mx_vm_common + ['--quiet', '--no-warning', 'graalvm-home']],
     ] + $.create_releaser_notifier_artifact,
     notify_emails: ['gilles.m.duboscq@oracle.com'],
     timelimit: "1:30:00"
