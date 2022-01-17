@@ -125,6 +125,7 @@ local vm_common = import '../ci_common/common.jsonnet';
       $.vm_bench_common.upload,
     ],
     notify_groups:: ['sulong'],
+    timelimit: '55:00',
   },
 
   vm_bench_polybench_nfi_linux_amd64: self.vm_bench_common + vm_common.svm_common_linux_amd64 + self.vm_bench_polybench_nfi,
