@@ -119,7 +119,7 @@ public final class StoreFieldNode extends AccessFieldNode implements StateSplit,
 
     @Override
     public NodeCycles estimatedNodeCycles() {
-        if (hasMemoryFences()) {
+        if (ordersMemoryAccesses()) {
             return CYCLES_8;
         }
         return super.estimatedNodeCycles();

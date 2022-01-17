@@ -277,7 +277,7 @@ public abstract class AllocationSnippets implements Snippets {
             fillWithGarbage(memory, headerSize, size, constantSize, false, false, snippetCounters);
         }
         if (emitMemoryBarrier) {
-            MembarNode.memoryBarrier(MembarNode.FenceKind.STORE_STORE, LocationIdentity.init());
+            MembarNode.memoryBarrier(MembarNode.FenceKind.ALLOCATION_INIT, LocationIdentity.init());
         }
         return memory.toObjectNonNull();
     }
@@ -307,7 +307,7 @@ public abstract class AllocationSnippets implements Snippets {
             fillWithGarbage(memory, fillStartOffset, allocationSize, false, maybeUnroll, supportsOptimizedFilling, snippetCounters);
         }
         if (emitMemoryBarrier) {
-            MembarNode.memoryBarrier(MembarNode.FenceKind.STORE_STORE, LocationIdentity.init());
+            MembarNode.memoryBarrier(MembarNode.FenceKind.ALLOCATION_INIT, LocationIdentity.init());
         }
         return memory.toObjectNonNull();
     }
