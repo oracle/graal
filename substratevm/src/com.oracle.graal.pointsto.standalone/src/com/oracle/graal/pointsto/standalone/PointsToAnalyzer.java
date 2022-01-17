@@ -83,6 +83,8 @@ import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
+import static org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.registerInvocationPlugins;
+
 public final class PointsToAnalyzer {
 
     static {
@@ -109,7 +111,7 @@ public final class PointsToAnalyzer {
     private boolean entrypointsAreSet;
     private boolean mainEntryIsSet;
 
-    @SuppressWarnings("try")
+    @SuppressWarnings({"try", "unchecked"})
     private PointsToAnalyzer(String mainEntryClass, OptionValues options) {
         standaloneAnalysisFeatureManager = new StandaloneAnalysisFeatureManager(options);
         String appCP = StandaloneOptions.AnalysisTargetAppCP.getValue(options);
@@ -197,6 +199,8 @@ public final class PointsToAnalyzer {
             NoClassInitializationPlugin classInitializationPlugin = new NoClassInitializationPlugin();
             plugins.setClassInitializationPlugin(classInitializationPlugin);
             aProviders.setGraphBuilderPlugins(plugins);
+            registerInvocationPlugins(originalProviders.getSnippetReflection(), plugins.getInvocationPlugins(), originalProviders.getReplacements(),
+                            false, true, false, originalProviders.getLowerer());
         }
     }
 
