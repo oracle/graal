@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -481,10 +481,7 @@ public final class LLVMContext {
         return REFERENCE.get(node);
     }
 
-    void finalizeContext(LLVMFunction sulongDisposeContext) {
-        // join all created pthread - threads
-        pThreadContext.joinAllThreads();
-
+    void exitContext(LLVMFunction sulongDisposeContext) {
         // the following cases exist for cleanup:
         // - exit() or interop: execute all atexit functions, shutdown stdlib, flush IO, and execute
         // destructors
@@ -512,7 +509,11 @@ public final class LLVMContext {
             // free the space allocated for non-pointer globals
             language.getFreeGlobalBlocks().call();
         }
+    }
 
+    void finalizeContext() {
+        // join all created pthread - threads
+        pThreadContext.joinAllThreads();
     }
 
     public Object getFreeReadOnlyGlobalsBlockFunction() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -392,8 +392,13 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     }
 
     @Override
+    protected void exitContext(LLVMContext context, ExitMode exitMode, int exitCode) {
+        context.exitContext(sulongDisposeContext);
+    }
+
+    @Override
     protected void finalizeContext(LLVMContext context) {
-        context.finalizeContext(sulongDisposeContext);
+        context.finalizeContext();
     }
 
     @Override
