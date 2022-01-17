@@ -141,8 +141,8 @@
   },
   "svm": {
     "deps": {
+      "COMMENT.common": "graal/vm/ci_common/common.jsonnet hardcodes the properties of this object",
       "common": {
-        "COMMENT": "graal/vm/ci_common/common.jsonnet hardcodes the properties of this object",
         "environment": {
           "DEFAULT_VM": "server",
           "LANG": "en_US.UTF-8"
