@@ -26,12 +26,20 @@ package com.oracle.svm.reflect.target;
 
 import java.lang.reflect.AccessibleObject;
 
+import org.graalvm.nativeimage.ImageSingletons;
+
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrLater;
+import com.oracle.svm.hosted.image.NativeImageCodeCache;
+
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 @TargetClass(value = AccessibleObject.class)
 public final class Target_java_lang_reflect_AccessibleObject {
@@ -46,6 +54,22 @@ public final class Target_java_lang_reflect_AccessibleObject {
     @TargetElement(onlyWith = JDK17OrLater.class) //
     volatile Object accessCheckCache;
 
-    @Alias //
-    native Target_java_lang_reflect_AccessibleObject getRoot();
+    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = TypeAnnotationsComputer.class) //
+    @UnknownObjectField(types = {byte[].class}) byte[] typeAnnotations;
+
+    @Alias
+    native AccessibleObject getRoot();
+
+    static class TypeAnnotationsComputer implements RecomputeFieldValue.CustomFieldValueComputer {
+
+        @Override
+        public RecomputeFieldValue.ValueAvailability valueAvailability() {
+            return RecomputeFieldValue.ValueAvailability.AfterCompilation;
+        }
+
+        @Override
+        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+            return ImageSingletons.lookup(NativeImageCodeCache.MethodMetadataEncoder.class).getTypeAnnotationsEncoding((AccessibleObject) receiver);
+        }
+    }
 }

@@ -24,11 +24,14 @@
  */
 package com.oracle.svm.reflect.target;
 
+import static com.oracle.svm.core.annotate.TargetElement.CONSTRUCTOR_NAME;
+
 import java.lang.annotation.Annotation;
-import java.lang.reflect.AnnotatedType;
+import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Field;
 import java.util.Map;
 
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.util.GuardedAnnotationAccess;
 
 import com.oracle.svm.core.SubstrateUtil;
@@ -40,54 +43,61 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.annotate.UnknownObjectField;
+import com.oracle.svm.core.jdk.JDK11OrEarlier;
+import com.oracle.svm.core.jdk.JDK17OrLater;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.image.NativeImageCodeCache;
 import com.oracle.svm.reflect.hosted.FieldOffsetComputer;
-import com.oracle.svm.reflect.hosted.ReflectionObjectReplacer;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
-import sun.reflect.generics.repository.FieldRepository;
 
 @TargetClass(value = Field.class)
 public final class Target_java_lang_reflect_Field {
 
-    @Alias FieldRepository genericInfo;
-
-    /** Field accessor objects are created on demand at image runtime. */
+    /** Field accessor and annotation objects are created on demand at image runtime. */
     @Alias @RecomputeFieldValue(kind = Kind.Reset) //
     Target_jdk_internal_reflect_FieldAccessor fieldAccessor;
 
     @Alias @RecomputeFieldValue(kind = Kind.Reset) //
     Target_jdk_internal_reflect_FieldAccessor overrideFieldAccessor;
 
-    @Alias //
-    boolean override;
-
-    /**
-     * The declaredAnnotations field doesn't need a value recomputation. Its value is pre-loaded in
-     * the {@link ReflectionObjectReplacer}.
-     */
-    @Alias //
+    @Alias @RecomputeFieldValue(kind = Kind.Reset)//
     Map<Class<? extends Annotation>, Annotation> declaredAnnotations;
 
-    @Alias //
-    Target_java_lang_reflect_Field root;
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = AnnotationsComputer.class) //
+    @UnknownObjectField(types = {byte[].class}) byte[] annotations;
 
     @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = FieldOffsetComputer.class) //
     public int offset;
 
-    @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = AnnotatedTypeComputer.class) //
-    AnnotatedType annotatedType;
-
     /** If non-null, the field was deleted via substitution and this string provides the reason. */
     @Inject @RecomputeFieldValue(kind = Kind.Custom, declClass = FieldDeletionReasonComputer.class) //
     String deletedReason;
+
+    @Alias //
+    boolean override;
+
+    @Alias //
+    Target_java_lang_reflect_Field root;
 
     @Alias
     native Target_java_lang_reflect_Field copy();
 
     @Alias
     native Target_jdk_internal_reflect_FieldAccessor acquireFieldAccessor(boolean overrideFinalCheck);
+
+    @Alias
+    @TargetElement(name = CONSTRUCTOR_NAME, onlyWith = JDK17OrLater.class)
+    @SuppressWarnings("hiding")
+    native void constructorJDK17OrLater(Class<?> declaringClass, String name, Class<?> type, int modifiers, boolean trustedFinal, int slot, String signature, byte[] annotations);
+
+    @Alias
+    @TargetElement(name = CONSTRUCTOR_NAME, onlyWith = JDK11OrEarlier.class)
+    @SuppressWarnings("hiding")
+    native void constructorJDK11OrEarlier(Class<?> declaringClass, String name, Class<?> type, int modifiers, int slot, String signature, byte[] annotations);
 
     /** @see com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor#deleteErrorMessage */
     @Substitute
@@ -106,28 +116,8 @@ public final class Target_java_lang_reflect_Field {
     }
 
     @Substitute
-    Map<Class<? extends Annotation>, Annotation> declaredAnnotations() {
-        Target_java_lang_reflect_Field holder = ReflectionHelper.getHolder(this);
-        return ReflectionHelper.requireNonNull(holder.declaredAnnotations, "Declared annotations must be computed during native image generation.");
-    }
-
-    @Substitute
-    public AnnotatedType getAnnotatedType() {
-        Target_java_lang_reflect_Field holder = ReflectionHelper.getHolder(this);
-        return ReflectionHelper.requireNonNull(holder.annotatedType, "Annotated type must be computed during native image generation.");
-    }
-
-    public static final class AnnotatedTypeComputer implements CustomFieldValueComputer {
-        @Override
-        public RecomputeFieldValue.ValueAvailability valueAvailability() {
-            return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
-        }
-
-        @Override
-        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
-            Field field = (Field) receiver;
-            return field.getAnnotatedType();
-        }
+    private byte[] getTypeAnnotationBytes0() {
+        return SubstrateUtil.cast(this, Target_java_lang_reflect_AccessibleObject.class).typeAnnotations;
     }
 
     public static final class FieldDeletionReasonComputer implements CustomFieldValueComputer {
@@ -141,6 +131,19 @@ public final class Target_java_lang_reflect_Field {
             ResolvedJavaField field = metaAccess.lookupJavaField((Field) receiver);
             Delete annotation = GuardedAnnotationAccess.getAnnotation(field, Delete.class);
             return (annotation != null) ? annotation.value() : null;
+        }
+    }
+
+    static class AnnotationsComputer implements RecomputeFieldValue.CustomFieldValueComputer {
+
+        @Override
+        public RecomputeFieldValue.ValueAvailability valueAvailability() {
+            return RecomputeFieldValue.ValueAvailability.AfterCompilation;
+        }
+
+        @Override
+        public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+            return ImageSingletons.lookup(NativeImageCodeCache.MethodMetadataEncoder.class).getAnnotationsEncoding((AccessibleObject) receiver);
         }
     }
 }

@@ -26,19 +26,19 @@ package com.oracle.svm.reflect.target;
 
 import java.lang.annotation.Annotation;
 import java.lang.annotation.AnnotationFormatError;
-import java.lang.annotation.RetentionPolicy;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.c.NonmovableArrays;
+import com.oracle.svm.core.code.CodeInfoAccess;
+import com.oracle.svm.core.code.CodeInfoTable;
+import com.oracle.svm.core.reflect.Target_jdk_internal_reflect_ConstantPool;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.reflect.hosted.MethodMetadataEncoderImpl;
 
@@ -53,82 +53,7 @@ import sun.reflect.annotation.ExceptionProxy;
  * a description of the changes and the rationale behind them.
  */
 @TargetClass(AnnotationParser.class)
-@SuppressWarnings("unused")
 public final class Target_sun_reflect_annotation_AnnotationParser {
-    @Alias
-    public static native Map<Class<? extends Annotation>, Annotation> parseAnnotations(
-                    byte[] rawAnnotations,
-                    Target_jdk_internal_reflect_ConstantPool constPool,
-                    Class<?> container);
-
-    @Substitute
-    private static Map<Class<? extends Annotation>, Annotation> parseAnnotations2(
-                    byte[] rawAnnotations,
-                    Target_jdk_internal_reflect_ConstantPool constPool,
-                    Class<?> container,
-                    Class<? extends Annotation>[] selectAnnotationClasses) {
-        Map<Class<? extends Annotation>, Annotation> result = new LinkedHashMap<Class<? extends Annotation>, Annotation>();
-        ByteBuffer buf = ByteBuffer.wrap(rawAnnotations);
-        buf.order(ConfigurationValues.getTarget().arch.getByteOrder());
-        int numAnnotations = buf.getShort() & 0xFFFF;
-        for (int i = 0; i < numAnnotations; i++) {
-            Annotation a = parseAnnotation2(buf, constPool, container, false, selectAnnotationClasses);
-            if (a != null) {
-                Class<? extends Annotation> klass = a.annotationType();
-                if (AnnotationType.getInstance(klass).retention() == RetentionPolicy.RUNTIME &&
-                                result.put(klass, a) != null) {
-                    throw new AnnotationFormatError(
-                                    "Duplicate annotation for class: " + klass + ": " + a);
-                }
-            }
-        }
-        return result;
-    }
-
-    @Alias
-    public static native Annotation[][] parseParameterAnnotations(
-                    byte[] rawAnnotations,
-                    Target_jdk_internal_reflect_ConstantPool constPool,
-                    Class<?> container);
-
-    @Substitute
-    private static Annotation[][] parseParameterAnnotations2(
-                    byte[] rawAnnotations,
-                    Target_jdk_internal_reflect_ConstantPool constPool,
-                    Class<?> container) {
-        ByteBuffer buf = ByteBuffer.wrap(rawAnnotations);
-        buf.order(ConfigurationValues.getTarget().arch.getByteOrder());
-        int numParameters = buf.get() & 0xFF;
-        Annotation[][] result = new Annotation[numParameters][];
-
-        for (int i = 0; i < numParameters; i++) {
-            int numAnnotations = buf.getShort() & 0xFFFF;
-            List<Annotation> annotations = new ArrayList<Annotation>(numAnnotations);
-            for (int j = 0; j < numAnnotations; j++) {
-                Annotation a = parseAnnotation(buf, constPool, container, false);
-                if (a != null) {
-                    AnnotationType type = AnnotationType.getInstance(
-                                    a.annotationType());
-                    if (type.retention() == RetentionPolicy.RUNTIME) {
-                        annotations.add(a);
-                    }
-                }
-            }
-            result[i] = annotations.toArray(EMPTY_ANNOTATIONS_ARRAY);
-        }
-        return result;
-    }
-
-    // Checkstyle: stop
-    @Alias//
-    private static Annotation[] EMPTY_ANNOTATIONS_ARRAY;
-    // Checkstyle: resume
-
-    @Alias
-    static native Annotation parseAnnotation(ByteBuffer buf,
-                    Target_jdk_internal_reflect_ConstantPool constPool,
-                    Class<?> container,
-                    boolean exceptionOnMissingAnnotationClass);
 
     @Substitute
     @SuppressWarnings("unchecked")
@@ -193,7 +118,7 @@ public final class Target_sun_reflect_annotation_AnnotationParser {
     @Substitute
     private static Object parseClassValue(ByteBuffer buf,
                     Target_jdk_internal_reflect_ConstantPool constPool,
-                    Class<?> container) {
+                    @SuppressWarnings("unused") Class<?> container) {
         int classIndex = buf.getInt();
         try {
             return constPool.getClassAt(classIndex);
@@ -206,12 +131,12 @@ public final class Target_sun_reflect_annotation_AnnotationParser {
     @SuppressWarnings({"unchecked", "rawtypes"})
     private static Object parseEnumValue(Class<? extends Enum> enumType, ByteBuffer buf,
                     Target_jdk_internal_reflect_ConstantPool constPool,
-                    Class<?> container) {
+                    @SuppressWarnings("unused") Class<?> container) {
         int typeIndex = buf.getInt();
         int constNameIndex = buf.getInt();
         String constName = constPool.getUTF8At(constNameIndex);
 
-        if (enumType != constPool.getClassAt(typeIndex)) {
+        if (!enumType.isEnum() || enumType != constPool.getClassAt(typeIndex)) {
             Target_sun_reflect_annotation_AnnotationTypeMismatchExceptionProxy e = new Target_sun_reflect_annotation_AnnotationTypeMismatchExceptionProxy();
             e.constructor(enumType.getTypeName() + "." + constName);
             return e;
@@ -248,6 +173,8 @@ public final class Target_sun_reflect_annotation_AnnotationParser {
                 return value == 1;
             case 's':
                 return constPool.getUTF8At(buf.getInt());
+            case 'E':
+                return NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoObjectConstants(CodeInfoTable.getImageCodeInfo()), buf.getInt());
             default:
                 throw new AnnotationFormatError(
                                 "Invalid member-value tag in annotation: " + tag);
@@ -256,7 +183,7 @@ public final class Target_sun_reflect_annotation_AnnotationParser {
 
     @Substitute
     private static Object parseByteArray(int length,
-                    ByteBuffer buf, Target_jdk_internal_reflect_ConstantPool constPool) {
+                    ByteBuffer buf, @SuppressWarnings("unused") Target_jdk_internal_reflect_ConstantPool constPool) {
         byte[] result = new byte[length];
         boolean typeMismatch = false;
         int tag = 0;
@@ -275,7 +202,7 @@ public final class Target_sun_reflect_annotation_AnnotationParser {
 
     @Substitute
     private static Object parseCharArray(int length,
-                    ByteBuffer buf, Target_jdk_internal_reflect_ConstantPool constPool) {
+                    ByteBuffer buf, @SuppressWarnings("unused") Target_jdk_internal_reflect_ConstantPool constPool) {
         char[] result = new char[length];
         boolean typeMismatch = false;
         byte tag = 0;
@@ -294,7 +221,7 @@ public final class Target_sun_reflect_annotation_AnnotationParser {
 
     @Substitute
     private static Object parseDoubleArray(int length,
-                    ByteBuffer buf, Target_jdk_internal_reflect_ConstantPool constPool) {
+                    ByteBuffer buf, @SuppressWarnings("unused") Target_jdk_internal_reflect_ConstantPool constPool) {
         double[] result = new double[length];
         boolean typeMismatch = false;
         int tag = 0;
@@ -313,7 +240,7 @@ public final class Target_sun_reflect_annotation_AnnotationParser {
 
     @Substitute
     private static Object parseFloatArray(int length,
-                    ByteBuffer buf, Target_jdk_internal_reflect_ConstantPool constPool) {
+                    ByteBuffer buf, @SuppressWarnings("unused") Target_jdk_internal_reflect_ConstantPool constPool) {
         float[] result = new float[length];
         boolean typeMismatch = false;
         int tag = 0;
@@ -332,7 +259,7 @@ public final class Target_sun_reflect_annotation_AnnotationParser {
 
     @Substitute
     private static Object parseIntArray(int length,
-                    ByteBuffer buf, Target_jdk_internal_reflect_ConstantPool constPool) {
+                    ByteBuffer buf, @SuppressWarnings("unused") Target_jdk_internal_reflect_ConstantPool constPool) {
         int[] result = new int[length];
         boolean typeMismatch = false;
         int tag = 0;
@@ -351,7 +278,7 @@ public final class Target_sun_reflect_annotation_AnnotationParser {
 
     @Substitute
     private static Object parseLongArray(int length,
-                    ByteBuffer buf, Target_jdk_internal_reflect_ConstantPool constPool) {
+                    ByteBuffer buf, @SuppressWarnings("unused") Target_jdk_internal_reflect_ConstantPool constPool) {
         long[] result = new long[length];
         boolean typeMismatch = false;
         int tag = 0;
@@ -370,7 +297,7 @@ public final class Target_sun_reflect_annotation_AnnotationParser {
 
     @Substitute
     private static Object parseShortArray(int length,
-                    ByteBuffer buf, Target_jdk_internal_reflect_ConstantPool constPool) {
+                    ByteBuffer buf, @SuppressWarnings("unused") Target_jdk_internal_reflect_ConstantPool constPool) {
         short[] result = new short[length];
         boolean typeMismatch = false;
         int tag = 0;
@@ -389,7 +316,7 @@ public final class Target_sun_reflect_annotation_AnnotationParser {
 
     @Substitute
     private static Object parseBooleanArray(int length,
-                    ByteBuffer buf, Target_jdk_internal_reflect_ConstantPool constPool) {
+                    ByteBuffer buf, @SuppressWarnings("unused") Target_jdk_internal_reflect_ConstantPool constPool) {
         boolean[] result = new boolean[length];
         boolean typeMismatch = false;
         int tag = 0;
@@ -413,7 +340,7 @@ public final class Target_sun_reflect_annotation_AnnotationParser {
 
     @Substitute
     private static Object parseStringArray(int length,
-                    ByteBuffer buf, Target_jdk_internal_reflect_ConstantPool constPool) {
+                    ByteBuffer buf, @SuppressWarnings("unused") Target_jdk_internal_reflect_ConstantPool constPool) {
         String[] result = new String[length];
         boolean typeMismatch = false;
         int tag = 0;

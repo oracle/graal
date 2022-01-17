@@ -25,19 +25,18 @@
 package com.oracle.svm.reflect.target;
 
 import java.lang.reflect.Array;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
-import java.util.ArrayList;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.lang.reflect.Parameter;
 import java.util.Arrays;
-import java.util.List;
-import java.util.function.Supplier;
+import java.util.function.Function;
 
-import org.graalvm.collections.Pair;
-import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.util.UnsafeArrayTypeReader;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.CodeInfo;
@@ -45,6 +44,7 @@ import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.reflect.MethodMetadataDecoder;
+import com.oracle.svm.core.reflect.Target_java_lang_reflect_RecordComponent;
 import com.oracle.svm.core.util.ByteArrayReader;
 
 /**
@@ -108,120 +108,221 @@ import com.oracle.svm.core.util.ByteArrayReader;
  */
 public class MethodMetadataDecoderImpl implements MethodMetadataDecoder {
     public static final int NO_METHOD_METADATA = -1;
-
-    @Fold
-    static boolean hasQueriedMethods() {
-        return !ImageSingletons.lookup(RuntimeReflectionSupport.class).getQueriedOnlyMethods().isEmpty();
-    }
-
-    /**
-     * This method returns two arrays. The first one contains the desired method data, the second
-     * one contains the names and parameter types of methods hiding methods declared in superclasses
-     * which therefore should not be returned by a call to getMethods().
-     */
-    @Override
-    public Pair<Executable[], MethodDescriptor[]> getQueriedAndHidingMethods(DynamicHub declaringType) {
-        int dataOffset = getOffset(declaringType.getTypeID());
-        if (SubstrateOptions.ConfigureReflectionMetadata.getValue() && getOffset(declaringType.getTypeID()) != NO_METHOD_METADATA) {
-            CodeInfo codeInfo = CodeInfoTable.getImageCodeInfo();
-            byte[] data = ImageSingletons.lookup(MethodMetadataEncoding.class).getMethodsEncoding();
-            UnsafeArrayTypeReader dataReader = UnsafeArrayTypeReader.create(data, dataOffset, ByteArrayReader.supportsUnalignedMemoryAccess());
-
-            Executable[] queriedMethods = decodeArray(dataReader, Executable.class, () -> decodeReflectionMethod(dataReader, codeInfo, DynamicHub.toClass(declaringType)));
-            MethodDescriptor[] hiddenMethods = decodeArray(dataReader, MethodDescriptor.class, () -> decodeSimpleMethod(dataReader, codeInfo, DynamicHub.toClass(declaringType)));
-            return Pair.create(queriedMethods, hiddenMethods);
-        } else {
-            return Pair.create(new Executable[0], new MethodDescriptor[0]);
-        }
-    }
+    public static final int NULL_OBJECT = -1;
+    public static final int COMPLETE_FLAG_INDEX = 31;
+    public static final int COMPLETE_FLAG_MASK = 1 << COMPLETE_FLAG_INDEX;
+    public static final int IN_HEAP_FLAG_INDEX = 30;
+    public static final int IN_HEAP_FLAG_MASK = 1 << IN_HEAP_FLAG_INDEX;
+    public static final int HIDING_FLAG_INDEX = 29;
+    public static final int HIDING_FLAG_MASK = 1 << HIDING_FLAG_INDEX;
 
     @Override
-    public MethodDescriptor[] getAllReachableMethods() {
-        if (!SubstrateOptions.IncludeMethodData.getValue()) {
-            return new MethodDescriptor[0];
-        }
-
+    public Field[] parseFields(DynamicHub declaringType, byte[] encoding, boolean publicOnly, boolean reflectOnly) {
+        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(encoding, 0, ByteArrayReader.supportsUnalignedMemoryAccess());
         CodeInfo codeInfo = CodeInfoTable.getImageCodeInfo();
-        byte[] data = ImageSingletons.lookup(MethodMetadataEncoding.class).getMethodsEncoding();
-        UnsafeArrayTypeReader dataReader = UnsafeArrayTypeReader.create(data, 0, ByteArrayReader.supportsUnalignedMemoryAccess());
-        List<MethodDescriptor> allMethods = new ArrayList<>();
-        for (int i = 0; i < ImageSingletons.lookup(MethodMetadataEncoding.class).getIndexEncoding().length / Integer.BYTES; ++i) {
-            int dataOffset = getOffset(i);
-            if (dataOffset != NO_METHOD_METADATA) {
-                dataReader.setByteIndex(dataOffset);
-                if (SubstrateOptions.ConfigureReflectionMetadata.getValue()) {
-                    /* Skip the queried methods data */
-                    decodeArray(dataReader, Executable.class, () -> decodeReflectionMethod(dataReader, codeInfo, null));
-                    decodeArray(dataReader, MethodDescriptor.class, () -> decodeSimpleMethod(dataReader, codeInfo, null));
-                }
-                Class<?> declaringClass = decodeType(dataReader, codeInfo);
-                if (declaringClass != null) {
-                    allMethods.addAll(Arrays.asList(decodeArray(dataReader, MethodDescriptor.class, () -> decodeSimpleMethod(dataReader, codeInfo, declaringClass))));
-                }
+        return decodeArray(reader, Field.class, (i) -> decodeField(reader, codeInfo, DynamicHub.toClass(declaringType), publicOnly, reflectOnly));
+    }
+
+    @Override
+    public Method[] parseMethods(DynamicHub declaringType, byte[] encoding, boolean publicOnly, boolean reflectOnly) {
+        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(encoding, 0, ByteArrayReader.supportsUnalignedMemoryAccess());
+        CodeInfo codeInfo = CodeInfoTable.getImageCodeInfo();
+        return decodeArray(reader, Method.class, (i) -> decodeMethod(reader, codeInfo, DynamicHub.toClass(declaringType), publicOnly, reflectOnly));
+    }
+
+    @Override
+    public Constructor<?>[] parseConstructors(DynamicHub declaringType, byte[] encoding, boolean publicOnly, boolean reflectOnly) {
+        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(encoding, 0, ByteArrayReader.supportsUnalignedMemoryAccess());
+        CodeInfo codeInfo = CodeInfoTable.getImageCodeInfo();
+        return decodeArray(reader, Constructor.class, (i) -> decodeConstructor(reader, codeInfo, DynamicHub.toClass(declaringType), publicOnly, reflectOnly));
+    }
+
+    @Override
+    public Class<?>[] parseClasses(byte[] encoding) {
+        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(encoding, 0, ByteArrayReader.supportsUnalignedMemoryAccess());
+        CodeInfo codeInfo = CodeInfoTable.getImageCodeInfo();
+        return decodeArray(reader, Class.class, (i) -> decodeType(reader, codeInfo));
+    }
+
+    @Override
+    public Target_java_lang_reflect_RecordComponent[] parseRecordComponents(DynamicHub declaringType, byte[] encoding) {
+        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(encoding, 0, ByteArrayReader.supportsUnalignedMemoryAccess());
+        CodeInfo codeInfo = CodeInfoTable.getImageCodeInfo();
+        return decodeArray(reader, Target_java_lang_reflect_RecordComponent.class, (i) -> decodeRecordComponent(reader, codeInfo, DynamicHub.toClass(declaringType)));
+    }
+
+    @Override
+    public Parameter[] parseReflectParameters(Executable executable, byte[] encoding) {
+        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(encoding, 0, ByteArrayReader.supportsUnalignedMemoryAccess());
+        CodeInfo codeInfo = CodeInfoTable.getImageCodeInfo();
+        return decodeArray(reader, Parameter.class, (i) -> decodeReflectParameter(reader, codeInfo, executable, i));
+    }
+
+    @Override
+    public Object[] parseEnclosingMethod(byte[] encoding) {
+        UnsafeArrayTypeReader reader = UnsafeArrayTypeReader.create(encoding, 0, ByteArrayReader.supportsUnalignedMemoryAccess());
+        CodeInfo codeInfo = CodeInfoTable.getImageCodeInfo();
+        Class<?> declaringClass = decodeType(reader, codeInfo);
+        String name = decodeName(reader, codeInfo);
+        String descriptor = decodeName(reader, codeInfo);
+        return new Object[]{declaringClass, name, descriptor};
+    }
+
+    @Override
+    public boolean isHidingMethod(int modifiers) {
+        return (modifiers & HIDING_FLAG_MASK) != 0;
+    }
+
+    private static Field decodeField(UnsafeArrayTypeReader buf, CodeInfo info, Class<?> declaringClass, boolean publicOnly, boolean reflectOnly) {
+        int modifiers = buf.getUVInt();
+        boolean inHeap = (modifiers & IN_HEAP_FLAG_MASK) != 0;
+        if (inHeap) {
+            Field field = (Field) decodeObject(buf, info);
+            if (publicOnly && !Modifier.isPublic(field.getModifiers())) {
+                return null;
+            }
+            return field;
+        }
+        boolean complete = (modifiers & COMPLETE_FLAG_MASK) != 0;
+        modifiers &= ~COMPLETE_FLAG_MASK;
+
+        String name = decodeName(buf, info);
+        if (!complete) {
+            if (reflectOnly) {
+                return null;
+            }
+            Target_java_lang_reflect_Field field = new Target_java_lang_reflect_Field();
+            if (JavaVersionUtil.JAVA_SPEC >= 17) {
+                field.constructorJDK17OrLater(declaringClass, name, null, modifiers, false, -1, null, null);
+            } else {
+                field.constructorJDK11OrEarlier(declaringClass, name, null, modifiers, -1, null, null);
+            }
+            return SubstrateUtil.cast(field, Field.class);
+        }
+        Class<?> type = decodeType(buf, info);
+        boolean trustedFinal = (JavaVersionUtil.JAVA_SPEC >= 17) ? buf.getU1() == 1 : false;
+        String signature = decodeName(buf, info);
+        byte[] annotations = decodeByteArray(buf);
+        byte[] typeAnnotations = decodeByteArray(buf);
+        int offset = buf.getSVInt();
+        String deletedReason = decodeName(buf, info);
+        if (publicOnly && !Modifier.isPublic(modifiers)) {
+            return null;
+        }
+
+        Target_java_lang_reflect_Field field = new Target_java_lang_reflect_Field();
+        if (JavaVersionUtil.JAVA_SPEC >= 17) {
+            field.constructorJDK17OrLater(declaringClass, name, type, modifiers, trustedFinal, -1, signature, annotations);
+        } else {
+            field.constructorJDK11OrEarlier(declaringClass, name, type, modifiers, -1, signature, annotations);
+        }
+        field.offset = offset;
+        field.deletedReason = deletedReason;
+        SubstrateUtil.cast(field, Target_java_lang_reflect_AccessibleObject.class).typeAnnotations = typeAnnotations;
+        return SubstrateUtil.cast(field, Field.class);
+    }
+
+    private static Method decodeMethod(UnsafeArrayTypeReader buf, CodeInfo info, Class<?> declaringClass, boolean publicOnly, boolean reflectOnly) {
+        return (Method) decodeExecutable(buf, info, declaringClass, publicOnly, reflectOnly, true);
+    }
+
+    private static Constructor<?> decodeConstructor(UnsafeArrayTypeReader buf, CodeInfo info, Class<?> declaringClass, boolean publicOnly, boolean reflectOnly) {
+        return (Constructor<?>) decodeExecutable(buf, info, declaringClass, publicOnly, reflectOnly, false);
+    }
+
+    private static Executable decodeExecutable(UnsafeArrayTypeReader buf, CodeInfo info, Class<?> declaringClass, boolean publicOnly, boolean reflectOnly, boolean isMethod) {
+        int modifiers = buf.getUVInt();
+        boolean inHeap = (modifiers & IN_HEAP_FLAG_MASK) != 0;
+        if (inHeap) {
+            Executable executable = (Executable) decodeObject(buf, info);
+            if (publicOnly && !Modifier.isPublic(executable.getModifiers())) {
+                return null;
+            }
+            return executable;
+        }
+        boolean complete = (modifiers & COMPLETE_FLAG_MASK) != 0;
+        boolean hiding = (modifiers & HIDING_FLAG_MASK) != 0;
+        modifiers &= ~COMPLETE_FLAG_MASK;
+
+        String name = isMethod ? decodeName(buf, info) : null;
+        Class<?>[] parameterTypes = decodeArray(buf, Class.class, (i) -> decodeType(buf, info));
+        Class<?> returnType = isMethod && hiding ? decodeType(buf, info) : null;
+        if (!complete) {
+            if (reflectOnly != hiding) {
+                /*
+                 * When querying for reflection methods, we want the hiding methods but not the
+                 * reachable methods. When querying for reachable methods, we want the reachable
+                 * methods but not the hiding methods.
+                 */
+                return null;
+            }
+            if (isMethod) {
+                Target_java_lang_reflect_Method method = new Target_java_lang_reflect_Method();
+                method.constructor(declaringClass, name, parameterTypes, returnType, null, modifiers, -1, null, null, null, null);
+                return SubstrateUtil.cast(method, Executable.class);
+            } else {
+                Target_java_lang_reflect_Constructor constructor = new Target_java_lang_reflect_Constructor();
+                constructor.constructor(declaringClass, parameterTypes, null, modifiers, -1, null, null, null);
+                return SubstrateUtil.cast(constructor, Executable.class);
             }
         }
-        return allMethods.toArray(new MethodDescriptor[0]);
-    }
-
-    @Override
-    public long getMetadataByteLength() {
-        MethodMetadataEncoding encoding = ImageSingletons.lookup(MethodMetadataEncoding.class);
-        return encoding.getMethodsEncoding().length + encoding.getIndexEncoding().length;
-    }
-
-    private static int getOffset(int typeID) {
-        MethodMetadataEncoding encoding = ImageSingletons.lookup(MethodMetadataEncoding.class);
-        byte[] index = encoding.getIndexEncoding();
-        UnsafeArrayTypeReader indexReader = UnsafeArrayTypeReader.create(index, Integer.BYTES * typeID, ByteArrayReader.supportsUnalignedMemoryAccess());
-        return indexReader.getS4();
-    }
-
-    private static Executable decodeReflectionMethod(UnsafeArrayTypeReader buf, CodeInfo info, Class<?> declaringClass) {
-        String name = decodeName(buf, info);
-        Class<?>[] parameterTypes = decodeArray(buf, Class.class, () -> decodeType(buf, info));
-        int modifiers = buf.getUVInt();
-        Class<?> returnType = decodeType(buf, info);
-        Class<?>[] exceptionTypes = decodeArray(buf, Class.class, () -> decodeType(buf, info));
+        assert !hiding;
+        returnType = isMethod ? decodeType(buf, info) : null;
+        Class<?>[] exceptionTypes = decodeArray(buf, Class.class, (i) -> decodeType(buf, info));
         String signature = decodeName(buf, info);
         byte[] annotations = decodeByteArray(buf);
         byte[] parameterAnnotations = decodeByteArray(buf);
+        byte[] annotationDefault = isMethod && declaringClass.isAnnotation() ? decodeByteArray(buf) : null;
         byte[] typeAnnotations = decodeByteArray(buf);
-        boolean hasRealParameterData = buf.getU1() == 1;
-        ReflectParameterDescriptor[] reflectParameters = hasRealParameterData ? decodeArray(buf, ReflectParameterDescriptor.class, () -> decodeReflectParameter(buf, info)) : null;
+        byte[] reflectParameters = decodeByteArray(buf);
+        Object accessor = decodeObject(buf, info);
+        if (publicOnly && !Modifier.isPublic(modifiers)) {
+            return null;
+        }
 
         Target_java_lang_reflect_Executable executable;
-        if (name.equals("<init>")) {
-            assert returnType == void.class;
+        if (isMethod) {
+            Target_java_lang_reflect_Method method = new Target_java_lang_reflect_Method();
+            method.constructor(declaringClass, name, parameterTypes, returnType, exceptionTypes, modifiers, -1, signature, annotations, parameterAnnotations, annotationDefault);
+            method.methodAccessor = (Target_jdk_internal_reflect_MethodAccessor) accessor;
+            executable = SubstrateUtil.cast(method, Target_java_lang_reflect_Executable.class);
+        } else {
             Target_java_lang_reflect_Constructor constructor = new Target_java_lang_reflect_Constructor();
             constructor.constructor(declaringClass, parameterTypes, exceptionTypes, modifiers, -1, signature, annotations, parameterAnnotations);
+            constructor.constructorAccessor = (Target_jdk_internal_reflect_ConstructorAccessor) accessor;
             executable = SubstrateUtil.cast(constructor, Target_java_lang_reflect_Executable.class);
-        } else {
-            Target_java_lang_reflect_Method method = new Target_java_lang_reflect_Method();
-            method.constructor(declaringClass, name, parameterTypes, returnType, exceptionTypes, modifiers, -1, signature, annotations, parameterAnnotations, null);
-            executable = SubstrateUtil.cast(method, Target_java_lang_reflect_Executable.class);
         }
-        if (hasQueriedMethods()) {
-            executable.hasRealParameterData = hasRealParameterData;
-            if (hasRealParameterData) {
-                fillReflectParameters(executable, reflectParameters);
-            }
-            executable.typeAnnotations = typeAnnotations;
-        }
+        executable.rawParameters = reflectParameters;
+        SubstrateUtil.cast(executable, Target_java_lang_reflect_AccessibleObject.class).typeAnnotations = typeAnnotations;
         return SubstrateUtil.cast(executable, Executable.class);
     }
 
-    private static void fillReflectParameters(Target_java_lang_reflect_Executable executable, ReflectParameterDescriptor[] reflectParameters) {
-        executable.parameters = new Target_java_lang_reflect_Parameter[reflectParameters.length];
-        for (int i = 0; i < reflectParameters.length; ++i) {
-            executable.parameters[i] = new Target_java_lang_reflect_Parameter();
-            executable.parameters[i].constructor(reflectParameters[i].getName(), reflectParameters[i].getModifiers(), executable, i);
-        }
+    private static Target_java_lang_reflect_RecordComponent decodeRecordComponent(UnsafeArrayTypeReader buf, CodeInfo info, Class<?> declaringClass) {
+        String name = decodeName(buf, info);
+        Class<?> type = decodeType(buf, info);
+        String signature = decodeName(buf, info);
+        Method accessor = (Method) decodeObject(buf, info);
+        byte[] annotations = decodeByteArray(buf);
+        byte[] typeAnnotations = decodeByteArray(buf);
+
+        Target_java_lang_reflect_RecordComponent recordComponent = new Target_java_lang_reflect_RecordComponent();
+        recordComponent.clazz = declaringClass;
+        recordComponent.name = name;
+        recordComponent.type = type;
+        recordComponent.signature = signature;
+        recordComponent.accessor = accessor;
+        recordComponent.annotations = annotations;
+        recordComponent.typeAnnotations = typeAnnotations;
+        return recordComponent;
     }
 
-    private static MethodDescriptor decodeSimpleMethod(UnsafeArrayTypeReader buf, CodeInfo info, Class<?> declaringClass) {
+    private static Parameter decodeReflectParameter(UnsafeArrayTypeReader buf, CodeInfo info, Executable executable, int i) {
         String name = decodeName(buf, info);
-        Class<?>[] paramTypes = decodeArray(buf, Class.class, () -> decodeType(buf, info));
-        return new MethodDescriptor(declaringClass, name, paramTypes);
+        int modifiers = buf.getUVInt();
+
+        Target_java_lang_reflect_Parameter parameter = new Target_java_lang_reflect_Parameter();
+        parameter.constructor(name, modifiers, executable, i);
+        return SubstrateUtil.cast(parameter, Parameter.class);
     }
 
     private static Class<?> decodeType(UnsafeArrayTypeReader buf, CodeInfo info) {
@@ -239,46 +340,37 @@ public class MethodMetadataDecoderImpl implements MethodMetadataDecoder {
         return name == null ? null : name.intern();
     }
 
+    private static Object decodeObject(UnsafeArrayTypeReader buf, CodeInfo info) {
+        int objectIndex = buf.getSVInt();
+        if (objectIndex == NULL_OBJECT) {
+            return null;
+        }
+        return NonmovableArrays.getObject(CodeInfoAccess.getFrameInfoObjectConstants(info), objectIndex);
+    }
+
     @SuppressWarnings("unchecked")
-    private static <T> T[] decodeArray(UnsafeArrayTypeReader buf, Class<T> elementType, Supplier<T> elementDecoder) {
+    private static <T> T[] decodeArray(UnsafeArrayTypeReader buf, Class<T> elementType, Function<Integer, T> elementDecoder) {
         int length = buf.getUVInt();
         T[] result = (T[]) Array.newInstance(elementType, length);
+        int valueCount = 0;
         for (int i = 0; i < length; ++i) {
-            result[i] = elementDecoder.get();
+            T element = elementDecoder.apply(i);
+            if (element != null) {
+                result[valueCount++] = element;
+            }
         }
-        return result;
+        return Arrays.copyOf(result, valueCount);
     }
 
     private static byte[] decodeByteArray(UnsafeArrayTypeReader buf) {
         int length = buf.getUVInt();
+        if (length == 0) {
+            return null;
+        }
         byte[] result = new byte[length];
         for (int i = 0; i < length; ++i) {
             result[i] = (byte) buf.getS1();
         }
         return result;
-    }
-
-    private static ReflectParameterDescriptor decodeReflectParameter(UnsafeArrayTypeReader buf, CodeInfo info) {
-        String name = decodeName(buf, info);
-        int modifiers = buf.getS4();
-        return new ReflectParameterDescriptor(name, modifiers);
-    }
-
-    public static class ReflectParameterDescriptor {
-        private final String name;
-        private final int modifiers;
-
-        public ReflectParameterDescriptor(String name, int modifiers) {
-            this.name = name;
-            this.modifiers = modifiers;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public int getModifiers() {
-            return modifiers;
-        }
     }
 }

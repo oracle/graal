@@ -27,7 +27,6 @@ package com.oracle.svm.hosted;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 
 @AutomaticFeature
@@ -36,14 +35,7 @@ public class ClassNewInstanceFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
-
         access.registerAsCompiled(Object.class.getDeclaredConstructors()[0], true);
-        try {
-            access.registerAsCompiled(DynamicHub.class.getDeclaredMethod("newInstanceInstantiationError", Object.class), true);
-            access.registerAsCompiled(DynamicHub.class.getDeclaredMethod("newInstanceReachableError", Object.class), true);
-        } catch (NoSuchMethodException e) {
-            throw new RuntimeException(e);
-        }
     }
 
 }

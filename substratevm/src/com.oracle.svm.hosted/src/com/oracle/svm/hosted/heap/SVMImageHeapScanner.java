@@ -24,12 +24,14 @@
  */
 package com.oracle.svm.hosted.heap;
 
+import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Field;
 import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.ObjectScanningObserver;
@@ -134,5 +136,15 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
             rescanField(map, economicMapImplHashArrayField);
         }
 
+    }
+
+    @Override
+    protected void onObjectReachable(ImageHeapObject imageHeapObject) {
+        super.onObjectReachable(imageHeapObject);
+
+        Object object = SubstrateObjectConstant.asObject(imageHeapObject.getObject());
+        if (object instanceof AccessibleObject) {
+            ImageSingletons.lookup(RuntimeReflectionSupport.class).registerHeapReflectionObject((AccessibleObject) object);
+        }
     }
 }

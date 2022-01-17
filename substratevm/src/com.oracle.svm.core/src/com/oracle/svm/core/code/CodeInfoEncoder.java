@@ -106,7 +106,7 @@ public class CodeInfoEncoder {
     }
 
     public static final class Encoders {
-        final FrequencyEncoder<JavaConstant> objectConstants;
+        public final FrequencyEncoder<JavaConstant> objectConstants;
         public final FrequencyEncoder<Class<?>> sourceClasses;
         public final FrequencyEncoder<String> sourceMethodNames;
         final FrequencyEncoder<String> names;

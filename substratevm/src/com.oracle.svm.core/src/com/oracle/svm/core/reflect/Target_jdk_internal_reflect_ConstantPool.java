@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.reflect.target;
+package com.oracle.svm.core.reflect;
 
 import static com.oracle.svm.core.util.VMError.unimplemented;
 

@@ -24,41 +24,28 @@
  */
 package com.oracle.svm.core.reflect;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
-
-import org.graalvm.collections.Pair;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
 
 import com.oracle.svm.core.hub.DynamicHub;
 
 public interface MethodMetadataDecoder {
-    Pair<Executable[], MethodDescriptor[]> getQueriedAndHidingMethods(DynamicHub declaringType);
+    Field[] parseFields(DynamicHub declaringType, byte[] encoding, boolean publicOnly, boolean reflectOnly);
 
-    MethodDescriptor[] getAllReachableMethods();
+    Method[] parseMethods(DynamicHub declaringType, byte[] encoding, boolean publicOnly, boolean reflectOnly);
 
-    long getMetadataByteLength();
+    Constructor<?>[] parseConstructors(DynamicHub declaringType, byte[] encoding, boolean publicOnly, boolean reflectOnly);
 
-    class MethodDescriptor {
-        private final Class<?> declaringClass;
-        private final String name;
-        private final Class<?>[] parameterTypes;
+    Class<?>[] parseClasses(byte[] encoding);
 
-        public MethodDescriptor(Class<?> declaringClass, String name, Class<?>[] parameterTypes) {
-            this.declaringClass = declaringClass;
-            this.name = name;
-            this.parameterTypes = parameterTypes;
-        }
+    Target_java_lang_reflect_RecordComponent[] parseRecordComponents(DynamicHub declaringType, byte[] encoding);
 
-        public Class<?> getDeclaringClass() {
-            return declaringClass;
-        }
+    Parameter[] parseReflectParameters(Executable executable, byte[] encoding);
 
-        public String getName() {
-            return name;
-        }
+    Object[] parseEnclosingMethod(byte[] encoding);
 
-        public Class<?>[] getParameterTypes() {
-            return parameterTypes;
-        }
-    }
-
+    boolean isHidingMethod(int modifiers);
 }
