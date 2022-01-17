@@ -88,7 +88,7 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
         this.cgLoopToSelf = copy.cgLoopToSelf;
     }
 
-    private DFACaptureGroupPartialTransition getCGTransitionToSelf2() {
+    private DFACaptureGroupPartialTransition getCGTransitionToSelf() {
         return cgLoopToSelf;
     }
 
@@ -118,7 +118,7 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
             executor.inputSkip(locals);
         }
         int secondIndex = locals.getIndex();
-        DFACaptureGroupPartialTransition transition = getCGTransitionToSelf2();
+        DFACaptureGroupPartialTransition transition = getCGTransitionToSelf();
         if (transition.doesReorderResults()) {
             while (locals.getIndex() < postLoopIndex) {
                 transition.apply(executor, locals.getCGData(), locals.getLastIndex());

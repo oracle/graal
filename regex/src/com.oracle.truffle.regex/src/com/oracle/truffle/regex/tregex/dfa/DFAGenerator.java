@@ -321,7 +321,7 @@ public final class DFAGenerator implements JsonConvertible {
                 entryStateIDs[i] = (short) entryStates[i].getId();
                 if (isGenericCG()) {
                     DFACaptureGroupLazyTransitionBuilder lt = getLazyTransition(initialCGTransitions[i]);
-                    cgLastTransition[i] = lt.getLastTransitionIndex() == -2 ? lt.getId() : lt.getLastTransitionIndex();
+                    cgLastTransition[i] = lt.getLastTransitionIndex();
                 }
             }
         }
@@ -1271,8 +1271,8 @@ public final class DFAGenerator implements JsonConvertible {
             lastGroupUpdates = new LastGroupUpdate[]{new LastGroupUpdate(0, groupBoundaries.getLastGroup())};
         }
         DFACaptureGroupPartialTransition partialTransitionNode = DFACaptureGroupPartialTransition.create(this,
-                DFACaptureGroupPartialTransition.EMPTY,
-                DFACaptureGroupPartialTransition.EMPTY,
+                        DFACaptureGroupPartialTransition.EMPTY,
+                        DFACaptureGroupPartialTransition.EMPTY,
                         indexUpdates,
                         indexClears,
                         lastGroupUpdates,

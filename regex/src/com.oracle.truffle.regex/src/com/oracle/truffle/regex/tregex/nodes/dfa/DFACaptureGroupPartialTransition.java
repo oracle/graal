@@ -273,23 +273,23 @@ public final class DFACaptureGroupPartialTransition implements JsonConvertible {
         return createInternal(id,
                         other.reorderSwaps != EMPTY ? EMPTY : reorderSwaps,
                         other.arrayCopies != EMPTY ? EMPTY : arrayCopies,
-                        subtract(indexUpdates, other.indexUpdates),
-                        subtract(indexClears, other.indexClears),
-                        lastGroupUpdates,
+                        subtract(indexUpdates, other.indexUpdates, IndexOperation[]::new, EMPTY_INDEX_OPS),
+                        subtract(indexClears, other.indexClears, IndexOperation[]::new, EMPTY_INDEX_OPS),
+                        subtract(lastGroupUpdates, other.lastGroupUpdates, LastGroupUpdate[]::new, EMPTY_LAST_GROUP_UPDATES),
                         preReorderFinalStateResultIndex);
     }
 
-    private static IndexOperation[] subtract(IndexOperation[] a, IndexOperation[] b) {
-        if (b == EMPTY_INDEX_OPS) {
+    private static <T> T[] subtract(T[] a, T[] b, IntFunction<T[]> arraySupplier, T[] emptyInstance) {
+        if (b == emptyInstance) {
             return a;
         }
         if (b.length == a.length) {
-            return EMPTY_INDEX_OPS;
+            return emptyInstance;
         }
         assert a.length > b.length;
-        IndexOperation[] subtracted = new IndexOperation[a.length - b.length];
+        T[] subtracted = arraySupplier.apply(a.length - b.length);
         int i = 0;
-        for (IndexOperation op : a) {
+        for (T op : a) {
             if (!contains(b, op)) {
                 subtracted[i++] = op;
             }
@@ -488,9 +488,9 @@ public final class DFACaptureGroupPartialTransition implements JsonConvertible {
         DFACaptureGroupPartialTransition o = (DFACaptureGroupPartialTransition) obj;
         return Arrays.equals(reorderSwaps, o.reorderSwaps) &&
                         Arrays.equals(arrayCopies, o.arrayCopies) &&
-                        Arrays.deepEquals(indexUpdates, o.indexUpdates) &&
-                        Arrays.deepEquals(indexClears, o.indexClears) &&
-                        Arrays.deepEquals(lastGroupUpdates, o.lastGroupUpdates) &&
+                        Arrays.equals(indexUpdates, o.indexUpdates) &&
+                        Arrays.equals(indexClears, o.indexClears) &&
+                        Arrays.equals(lastGroupUpdates, o.lastGroupUpdates) &&
                         preReorderFinalStateResultIndex == o.preReorderFinalStateResultIndex;
     }
 
@@ -499,9 +499,9 @@ public final class DFACaptureGroupPartialTransition implements JsonConvertible {
         final int prime = 31;
         int result = Arrays.hashCode(reorderSwaps);
         result = prime * result + Arrays.hashCode(arrayCopies);
-        result = prime * result + Arrays.deepHashCode(indexUpdates);
-        result = prime * result + Arrays.deepHashCode(indexClears);
-        result = prime * result + Arrays.deepHashCode(lastGroupUpdates);
+        result = prime * result + Arrays.hashCode(indexUpdates);
+        result = prime * result + Arrays.hashCode(indexClears);
+        result = prime * result + Arrays.hashCode(lastGroupUpdates);
         result = prime * result + preReorderFinalStateResultIndex;
         return result;
     }
@@ -669,6 +669,19 @@ public final class DFACaptureGroupPartialTransition implements JsonConvertible {
 
         public int getLastGroup() {
             return lastGroup;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            return o instanceof LastGroupUpdate && targetArray == ((LastGroupUpdate) o).targetArray && lastGroup == ((LastGroupUpdate) o).lastGroup;
+        }
+
+        @Override
+        public int hashCode() {
+            return (Byte.toUnsignedInt(targetArray) << 8) | Byte.toUnsignedInt(lastGroup);
         }
 
         @TruffleBoundary
