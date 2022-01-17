@@ -136,7 +136,7 @@ public class GraalUtil {
         StructuredGraph graph = new StructuredGraph.Builder(graal.options, graal.debug, AllowAssumptions.YES).useProfilingInfo(
                         useProfilingInfo).method(javaMethod).build();
         PhaseSuite<HighTierContext> graphBuilderSuite = new PhaseSuite<>();
-        graphBuilderSuite.appendPhase(new GraphBuilderPhase(GraphBuilderConfiguration.getDefault(new Plugins(new InvocationPlugins()))));
+        graphBuilderSuite.appendPhase(new GraphBuilderPhase(GraphBuilderConfiguration.getDefault(new Plugins(new InvocationPlugins(graal.options)))));
         graphBuilderSuite.apply(graph, new HighTierContext(graal.providers, graphBuilderSuite, OptimisticOptimizations.ALL));
         return graph;
     }

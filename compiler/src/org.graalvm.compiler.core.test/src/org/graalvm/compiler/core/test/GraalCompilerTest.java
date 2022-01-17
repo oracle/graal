@@ -1453,7 +1453,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         if (invocationPluginExtensions == null) {
             synchronized (this) {
                 if (invocationPluginExtensions == null) {
-                    InvocationPlugins invocationPlugins = new InvocationPlugins();
+                    InvocationPlugins invocationPlugins = new InvocationPlugins(getInitialOptions());
                     registerInvocationPlugins(invocationPlugins);
                     extendedInvocationPlugins = getReplacements().getGraphBuilderPlugins().getInvocationPlugins();
                     extendedInvocationPlugins.addTestPlugins(invocationPlugins, null);

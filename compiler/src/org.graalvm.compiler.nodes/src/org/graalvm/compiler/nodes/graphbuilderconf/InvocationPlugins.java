@@ -51,11 +51,16 @@ import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.debug.MethodFilter;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.spi.Replacements;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.meta.MetaUtil;
@@ -78,6 +83,13 @@ import jdk.vm.ci.meta.Signature;
  * {@link LateRegistration}.
  */
 public class InvocationPlugins {
+
+    public static class Options {
+        // @formatter:off
+        @Option(help = "Method filter for disabling intrinsics.", type = OptionType.Debug)
+        public static final OptionKey<String> DisableIntrinsics = new OptionKey<>(null);
+        // @formatter:on
+    }
 
     public static class InvocationPluginReceiver implements InvocationPlugin.Receiver {
         private final GraphBuilderContext parser;
@@ -284,7 +296,7 @@ public class InvocationPlugins {
 
         /**
          * Registers a plugin for a method.
-         * 
+         *
          * @param name the name of the method
          * @param plugin the plugin to be registered
          */
@@ -303,8 +315,8 @@ public class InvocationPlugins {
         }
 
         /**
-         * Registers a plugin for an optional method. The platform may or may not support the method
-         * if {@code optional} is true.
+         * Registers a plugin for an optional method. The platform may not support the method if
+         * {@code optional} is true.
          *
          * @param name the name of the method
          * @param plugin the plugin to be registered
@@ -543,7 +555,7 @@ public class InvocationPlugins {
      * Deferred registrations as well as the guard for delimiting the initial registration phase.
      * The guard uses double-checked locking which is why this field is {@code volatile}.
      */
-    private volatile List<Runnable> deferredRegistrations = new ArrayList<>();
+    private volatile List<Runnable> deferredRegistrations;
 
     /**
      * Adds a {@link Runnable} for doing registration deferred until the first time
@@ -930,38 +942,62 @@ public class InvocationPlugins {
     protected final InvocationPlugins parent;
 
     /**
+     * Method filter for disabled invocation plugins. See {@link Options#DisableIntrinsics}.
+     */
+    protected final MethodFilter disabledIntrinsicsFilter;
+
+    /**
+     * Verbose mode for logging disabled invocation plugins. See {@link Options#DisableIntrinsics}.
+     */
+    protected final boolean logDisabledIntrinsics;
+
+    protected final OptionValues options;
+
+    /**
      * Creates a set of invocation plugins with no parent.
      */
-    public InvocationPlugins() {
-        this(null);
+    public InvocationPlugins(OptionValues options) {
+        this(null, null, options);
     }
 
     /**
      * Creates a set of invocation plugins.
-     *
+     *  @param resolvedPlugins if non-null, this object will contain the closed set of invocation
+     *            plugins for a set of resolved methods, and no further plugin registration is
+     *            permitted.
      * @param parent if non-null, this object will be searched first when looking up plugins
      */
-    public InvocationPlugins(InvocationPlugins parent) {
-        InvocationPlugins p = parent;
-        this.parent = p;
-        this.registrations = EconomicMap.create();
-        this.resolvedRegistrations = null;
-    }
-
-    /**
-     * Creates a closed set of invocation plugins for a set of resolved methods. Such an object
-     * cannot have further plugins registered.
-     */
-    public InvocationPlugins(Map<ResolvedJavaMethod, InvocationPlugin> plugins, InvocationPlugins parent) {
+    public InvocationPlugins(Map<ResolvedJavaMethod, InvocationPlugin> resolvedPlugins, InvocationPlugins parent, OptionValues options) {
         this.parent = parent;
-        this.registrations = null;
-        this.deferredRegistrations = null;
-        EconomicMap<ResolvedJavaMethod, InvocationPlugin> map = EconomicMap.create(plugins.size());
 
-        for (Map.Entry<ResolvedJavaMethod, InvocationPlugin> entry : plugins.entrySet()) {
-            map.put(entry.getKey(), entry.getValue());
+        if (resolvedPlugins == null) {
+            this.resolvedRegistrations = null;
+            this.deferredRegistrations = new ArrayList<>();
+            this.registrations = EconomicMap.create();
+        } else {
+            EconomicMap<ResolvedJavaMethod, InvocationPlugin> map = EconomicMap.create(resolvedPlugins.size());
+            for (Map.Entry<ResolvedJavaMethod, InvocationPlugin> entry : resolvedPlugins.entrySet()) {
+                map.put(entry.getKey(), entry.getValue());
+            }
+            this.resolvedRegistrations = map;
+            this.deferredRegistrations = null;
+            this.registrations = null;
         }
-        this.resolvedRegistrations = map;
+
+        this.options = options;
+        String filterValue = Options.DisableIntrinsics.getValue(options);
+        if (filterValue != null) {
+            String[] values = filterValue.split(":");
+            if (values.length > 1 && "verbose".equals(values[1])) {
+                logDisabledIntrinsics = true;
+            } else {
+                logDisabledIntrinsics = false;
+            }
+            disabledIntrinsicsFilter = MethodFilter.parse(values[0]);
+        } else {
+            logDisabledIntrinsics = false;
+            disabledIntrinsicsFilter = null;
+        }
     }
 
     protected void register(InvocationPlugin plugin, boolean isOptional, boolean allowOverwrite, boolean disableable,
@@ -970,6 +1006,20 @@ public class InvocationPlugins {
         if (!isStatic) {
             argumentTypes[0] = declaringClass;
         }
+        if (disabledIntrinsicsFilter != null &&
+                        disabledIntrinsicsFilter.matches(declaringClass.getTypeName(), name, isStatic ? argumentTypes : Arrays.copyOfRange(argumentTypes, 1, argumentTypes.length))) {
+            if (disableable) {
+                if (logDisabledIntrinsics) {
+                    TTY.println("[Warning] Intrinsic %s.%s%s is disabled.", declaringClass.getTypeName(), name, toArgumentDescriptor(isStatic, argumentTypes));
+                }
+                return;
+            } else {
+                if (logDisabledIntrinsics) {
+                    TTY.println("[Warning] Intrinsic %s.%s%s cannot be disabled.", declaringClass.getTypeName(), name, toArgumentDescriptor(isStatic, argumentTypes));
+                }
+            }
+        }
+
         Binding binding = put(plugin, isStatic, allowOverwrite, declaringClass, name, argumentTypes);
         assert IS_IN_NATIVE_IMAGE || Checks.check(this, declaringClass, binding);
         assert IS_IN_NATIVE_IMAGE || Checks.checkResolvable(isOptional, declaringClass, binding);
@@ -1455,5 +1505,9 @@ public class InvocationPlugins {
      */
     @SuppressWarnings("unused")
     public void notifyNoPlugin(ResolvedJavaMethod targetMethod, OptionValues options) {
+    }
+
+    public OptionValues getOptions() {
+        return options;
     }
 }

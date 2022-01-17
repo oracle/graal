@@ -154,7 +154,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         this.suppressWarnings = new ArrayList<>();
     }
 
-    public void init(ImageClassLoader loader, MetaAccessProvider originalMetaAccess) {
+    public void init(ImageClassLoader loader, MetaAccessProvider originalMetaAccess, OptionValues options) {
         ResolvedJavaMethod atomicIntegerFieldUpdaterNewUpdaterMethod;
         ResolvedJavaMethod atomicLongFieldUpdaterNewUpdaterMethod;
         ResolvedJavaMethod atomicReferenceFieldUpdaterNewUpdaterMethod;
@@ -261,7 +261,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
          */
         StaticInitializerInlineInvokePlugin inlineInvokePlugin = new StaticInitializerInlineInvokePlugin(neverInlineSet);
 
-        plugins = new Plugins(new InvocationPlugins());
+        plugins = new Plugins(new InvocationPlugins(options));
         plugins.appendInlineInvokePlugin(inlineInvokePlugin);
         NoClassInitializationPlugin classInitializationPlugin = new NoClassInitializationPlugin();
         plugins.setClassInitializationPlugin(classInitializationPlugin);

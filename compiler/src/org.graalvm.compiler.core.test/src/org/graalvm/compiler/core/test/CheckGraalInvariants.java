@@ -268,9 +268,10 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         RuntimeProvider rt = Graal.getRequiredCapability(RuntimeProvider.class);
         Providers providers = rt.getHostBackend().getProviders();
         MetaAccessProvider metaAccess = providers.getMetaAccess();
+        OptionValues options = getInitialOptions();
 
         PhaseSuite<HighTierContext> graphBuilderSuite = new PhaseSuite<>();
-        Plugins plugins = new Plugins(new InvocationPlugins());
+        Plugins plugins = new Plugins(new InvocationPlugins(options));
         GraphBuilderConfiguration config = GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true).withUnresolvedIsError(true);
         graphBuilderSuite.appendPhase(new GraphBuilderPhase(config));
         HighTierContext context = new HighTierContext(providers, graphBuilderSuite, OptimisticOptimizations.NONE);
@@ -333,7 +334,6 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         String property = System.getProperty(CheckGraalInvariants.class.getName() + ".filters");
         String[] filters = property == null ? null : property.split(",");
 
-        OptionValues options = getInitialOptions();
         CompilerThreadFactory factory = new CompilerThreadFactory("CheckInvariantsThread");
         int availableProcessors = Runtime.getRuntime().availableProcessors();
         ThreadPoolExecutor executor = new ThreadPoolExecutor(availableProcessors, availableProcessors, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(), factory);

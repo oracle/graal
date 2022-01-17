@@ -216,7 +216,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
     public void installTruffleCallBoundaryMethod(ResolvedJavaMethod method) {
         compileAndInstallStub(method, (debug, javaMethod, compilationId) -> {
             final Backend backend = config.lastTier().backend();
-            return compileTruffleStub(debug, javaMethod, compilationId, getTruffleCallBoundaryInstrumentationFactory(backend.getTarget().arch.getName()), new InvocationPlugins());
+            return compileTruffleStub(debug, javaMethod, compilationId, getTruffleCallBoundaryInstrumentationFactory(backend.getTarget().arch.getName()), new InvocationPlugins(debug.getOptions()));
         });
     }
 
@@ -241,7 +241,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
             throw GraalError.shouldNotReachHere("Trying to install reserved oop method when field is not available.");
         }
         compileAndInstallStub(method, (debug, javaMethod, compilationId) -> {
-            InvocationPlugins p = new InvocationPlugins();
+            InvocationPlugins p = new InvocationPlugins(debug.getOptions());
             HotSpotTruffleGraphBuilderPlugins.registerHotspotThreadLocalStubPlugins(p, config.lastTier().providers().getWordTypes(), hotspotGraalRuntime.getVMConfig().jvmciReservedReference0Offset);
             return compileTruffleStub(debug, javaMethod, compilationId, CompilationResultBuilderFactory.Default, p);
         });

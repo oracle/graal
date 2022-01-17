@@ -40,6 +40,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
+import com.oracle.svm.core.option.HostedOptionValues;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
@@ -308,7 +309,7 @@ public class SubstrateReplacements extends ReplacementsImpl {
             assert plugin != null : "expected invocation plugin for " + replacedMethod;
             result.put(replacedMethod, plugin);
         }
-        return new InvocationPlugins(result, null);
+        return new InvocationPlugins(result, null, HostedOptionValues.singleton());
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

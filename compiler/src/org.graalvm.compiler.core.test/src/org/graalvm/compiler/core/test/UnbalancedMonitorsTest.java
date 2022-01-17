@@ -90,7 +90,7 @@ public class UnbalancedMonitorsTest extends GraalCompilerTest {
         try {
             OptionValues options = getInitialOptions();
             StructuredGraph graph = new StructuredGraph.Builder(options, getDebugContext(options, null, method)).method(method).build();
-            Plugins plugins = new Plugins(new InvocationPlugins());
+            Plugins plugins = new Plugins(new InvocationPlugins(options));
             GraphBuilderConfiguration graphBuilderConfig = GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true).withUnresolvedIsError(true);
             OptimisticOptimizations optimisticOpts = OptimisticOptimizations.NONE;
 

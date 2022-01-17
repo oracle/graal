@@ -204,16 +204,16 @@ public class HotSpotGraphBuilderPlugins {
                 registerCRC32CPlugins(invocationPlugins, config, replacements);
                 registerBigIntegerPlugins(invocationPlugins, config, replacements);
                 registerSHAPlugins(invocationPlugins, config, replacements);
-                registerGHASHPlugins(invocationPlugins, config, metaAccess);
+                registerGHASHPlugins(invocationPlugins, config, metaAccess, replacements);
                 registerCounterModePlugins(invocationPlugins, config, replacements);
-                registerBase64Plugins(invocationPlugins, config, metaAccess);
+                registerBase64Plugins(invocationPlugins, config, metaAccess, replacements);
                 registerUnsafePlugins(invocationPlugins, config, replacements);
                 StandardGraphBuilderPlugins.registerInvocationPlugins(metaAccess, snippetReflection, invocationPlugins, replacements, true, false, true, graalRuntime.getHostProviders().getLowerer());
                 registerArrayPlugins(invocationPlugins, replacements, config);
                 registerStringPlugins(invocationPlugins, replacements, wordTypes, foreignCalls, config);
                 registerArraysSupportPlugins(invocationPlugins, config, replacements);
                 registerReferencePlugins(invocationPlugins, replacements);
-                registerTrufflePlugins(invocationPlugins, wordTypes, config);
+                registerTrufflePlugins(invocationPlugins, wordTypes, config, replacements);
             }
 
         });
@@ -230,8 +230,8 @@ public class HotSpotGraphBuilderPlugins {
         return plugins;
     }
 
-    private static void registerTrufflePlugins(InvocationPlugins plugins, WordTypes wordTypes, GraalHotSpotVMConfig config) {
-        InvocationPlugins.Registration tl = new InvocationPlugins.Registration(plugins, "org.graalvm.compiler.truffle.runtime.hotspot.HotSpotFastThreadLocal");
+    private static void registerTrufflePlugins(InvocationPlugins plugins, WordTypes wordTypes, GraalHotSpotVMConfig config, Replacements replacements) {
+        InvocationPlugins.Registration tl = new InvocationPlugins.Registration(plugins, "org.graalvm.compiler.truffle.runtime.hotspot.HotSpotFastThreadLocal", replacements);
         tl.registerConditional(config.jvmciReservedReference0Offset != -1, "get", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
@@ -913,8 +913,8 @@ public class HotSpotGraphBuilderPlugins {
                         Receiver.class, byte[].class, int.class);
     }
 
-    private static void registerGHASHPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, MetaAccessProvider metaAccess) {
-        Registration r = new Registration(plugins, "com.sun.crypto.provider.GHASH");
+    private static void registerGHASHPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, MetaAccessProvider metaAccess, Replacements replacements) {
+        Registration r = new Registration(plugins, "com.sun.crypto.provider.GHASH", replacements);
         r.registerConditional(config.useGHASHIntrinsics(), "processBlocks", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
@@ -998,8 +998,8 @@ public class HotSpotGraphBuilderPlugins {
                         Receiver.class, byte[].class, int.class, int.class, byte[].class, int.class);
     }
 
-    private static void registerBase64Plugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, MetaAccessProvider metaAccess) {
-        Registration r = new Registration(plugins, "java.util.Base64$Encoder");
+    private static void registerBase64Plugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, MetaAccessProvider metaAccess, Replacements replacements) {
+        Registration r = new Registration(plugins, "java.util.Base64$Encoder", replacements);
         r.registerConditional(config.useBase64Intrinsics(), "encodeBlock", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode src,

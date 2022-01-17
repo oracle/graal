@@ -37,6 +37,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.ParameterPlugin;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.PEGraphDecoder;
 import org.graalvm.compiler.replacements.PEGraphDecoder.SpecialCallTargetCacheKey;
@@ -97,8 +98,8 @@ public class SubstratePartialEvaluator extends PartialEvaluator {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     @Override
-    protected InvocationPlugins createDecodingInvocationPlugins(PartialEvaluatorConfiguration peConfig, Plugins parent, Providers tierProviders) {
-        InvocationPlugins decodingInvocationPlugins = new InvocationPlugins();
+    protected InvocationPlugins createDecodingInvocationPlugins(PartialEvaluatorConfiguration peConfig, Plugins parent, Providers tierProviders, OptionValues options) {
+        InvocationPlugins decodingInvocationPlugins = new InvocationPlugins(options);
         registerGraphBuilderInvocationPlugins(decodingInvocationPlugins, false);
         peConfig.registerDecodingInvocationPlugins(decodingInvocationPlugins, false, providers, config.architecture());
         decodingInvocationPlugins.closeRegistration();

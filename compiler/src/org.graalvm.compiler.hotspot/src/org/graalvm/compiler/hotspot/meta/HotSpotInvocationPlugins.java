@@ -66,15 +66,10 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
     private final UnimplementedGraalIntrinsics unimplementedIntrinsics;
     private Map<String, Integer> missingIntrinsicMetrics;
 
-    private final MethodFilter disabledIntrinsicsFilter;
-    private final boolean logDisabledIntrinsics;
-
     public static class Options {
         // @formatter:off
         @Option(help = "Print a warning when a missing intrinsic is seen.", type = OptionType.Debug)
         public static final OptionKey<Boolean> WarnMissingIntrinsic = new OptionKey<>(false);
-        @Option(help = "Method filter for disabling intrinsics.", type = OptionType.Debug)
-        public static final OptionKey<String> DisableIntrinsics = new OptionKey<>(null);
         // @formatter:on
     }
 
@@ -85,6 +80,7 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
 
     HotSpotInvocationPlugins(HotSpotGraalRuntimeProvider graalRuntime, GraalHotSpotVMConfig config, CompilerConfiguration compilerConfiguration,
                     TargetDescription target, OptionValues options) {
+        super(options);
         this.graalRuntime = graalRuntime;
         this.config = config;
         if (Options.WarnMissingIntrinsic.getValue(options)) {
@@ -93,20 +89,6 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
             this.unimplementedIntrinsics = null;
         }
         this.missingIntrinsicMetrics = null;
-
-        String filterValue = Options.DisableIntrinsics.getValue(options);
-        if (filterValue != null) {
-            String[] values = filterValue.split(":");
-            if (values.length > 1 && "verbose".equals(values[1])) {
-                logDisabledIntrinsics = true;
-            } else {
-                logDisabledIntrinsics = false;
-            }
-            disabledIntrinsicsFilter = MethodFilter.parse(values[0]);
-        } else {
-            logDisabledIntrinsics = false;
-            disabledIntrinsicsFilter = null;
-        }
 
         registerIntrinsificationPredicate(runtime().getIntrinsificationTrustPredicate(compilerConfiguration.getClass()));
     }
@@ -122,21 +104,6 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
         if (!config.useUnalignedAccesses) {
             if (name.endsWith("Unaligned") && declaringClass.getTypeName().equals("jdk.internal.misc.Unsafe")) {
                 return;
-            }
-        }
-
-        boolean isStatic = argumentTypes.length == 0 || argumentTypes[0] != InvocationPlugin.Receiver.class;
-        if (disabledIntrinsicsFilter != null &&
-                        disabledIntrinsicsFilter.matches(declaringClass.getTypeName(), name, isStatic ? argumentTypes : Arrays.copyOfRange(argumentTypes, 1, argumentTypes.length))) {
-            if (disableable) {
-                if (logDisabledIntrinsics) {
-                    TTY.println("[Warning] Intrinsic %s.%s%s is disabled.", declaringClass.getTypeName(), name, toArgumentDescriptor(isStatic, argumentTypes));
-                }
-                return;
-            } else {
-                if (logDisabledIntrinsics) {
-                    TTY.println("[Warning] Intrinsic %s.%s%s cannot be disabled.", declaringClass.getTypeName(), name, toArgumentDescriptor(isStatic, argumentTypes));
-                }
             }
         }
         super.register(plugin, isOptional, allowOverwrite, disableable, declaringClass, name, argumentTypes);

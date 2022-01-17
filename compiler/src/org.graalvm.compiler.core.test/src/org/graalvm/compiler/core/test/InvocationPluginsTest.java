@@ -37,7 +37,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class InvocationPluginsTest extends GraalCompilerTest {
 
     private static void assertNotIsEmpty(InvocationPlugins invocationPlugins) {
-        InvocationPlugins childInvocationPlugins = new InvocationPlugins(invocationPlugins);
+        InvocationPlugins childInvocationPlugins = new InvocationPlugins(null, invocationPlugins, getInitialOptions());
         assertFalse(invocationPlugins.isEmpty());
         assertFalse(childInvocationPlugins.isEmpty());
 
@@ -48,7 +48,7 @@ public class InvocationPluginsTest extends GraalCompilerTest {
 
     @Test
     public void testIsEmptyWithNormalRegistration() {
-        InvocationPlugins invocationPlugins = new InvocationPlugins();
+        InvocationPlugins invocationPlugins = new InvocationPlugins(getInitialOptions());
         assertTrue(invocationPlugins.isEmpty());
 
         Registration r = new Registration(invocationPlugins, Class.class);
@@ -64,7 +64,7 @@ public class InvocationPluginsTest extends GraalCompilerTest {
 
     @Test
     public void testIsEmptyWithDeferredRegistration() {
-        InvocationPlugins invocationPlugins = new InvocationPlugins();
+        InvocationPlugins invocationPlugins = new InvocationPlugins(getInitialOptions());
         assertTrue(invocationPlugins.isEmpty());
         invocationPlugins.defer(new Runnable() {
 
@@ -85,7 +85,7 @@ public class InvocationPluginsTest extends GraalCompilerTest {
 
     @Test
     public void testIsEmptyWithLateRegistration() {
-        InvocationPlugins invocationPlugins = new InvocationPlugins();
+        InvocationPlugins invocationPlugins = new InvocationPlugins(getInitialOptions());
         assertTrue(invocationPlugins.isEmpty());
 
         try (LateRegistration lr = new LateRegistration(invocationPlugins, Class.class)) {

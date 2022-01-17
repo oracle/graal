@@ -182,8 +182,10 @@ public abstract class PartialEvaluator {
         this.callBoundary = findRequiredMethod(type, methods, "callBoundary", "([Ljava/lang/Object;)Ljava/lang/Object;");
 
         this.configPrototype = createGraphBuilderConfig(configForRoot, true);
-        this.firstTierDecodingPlugins = createDecodingInvocationPlugins(config.firstTier().partialEvaluator(), configForRoot.getPlugins(), config.firstTier().providers());
-        this.lastTierDecodingPlugins = createDecodingInvocationPlugins(config.lastTier().partialEvaluator(), configForRoot.getPlugins(), config.lastTier().providers());
+        this.firstTierDecodingPlugins = createDecodingInvocationPlugins(config.firstTier().partialEvaluator(), configForRoot.getPlugins(),
+                        config.firstTier().providers(), runtime.getGraalOptions(org.graalvm.compiler.options.OptionValues.class));
+        this.lastTierDecodingPlugins = createDecodingInvocationPlugins(config.lastTier().partialEvaluator(), configForRoot.getPlugins(),
+                        config.lastTier().providers(), runtime.getGraalOptions(org.graalvm.compiler.options.OptionValues.class));
         this.nodePlugins = createNodePlugins(configForRoot.getPlugins());
         this.compilationLocalConstantProvider = new TruffleConstantFieldProvider(providers.getConstantFieldProvider(), providers.getMetaAccess());
     }
@@ -628,9 +630,10 @@ public abstract class PartialEvaluator {
      * Graph-decoding plugins are not shared between the first- and the second-tier compilations,
      * because the different tiers intrinsify the respective methods differently.
      */
-    protected InvocationPlugins createDecodingInvocationPlugins(PartialEvaluatorConfiguration peConfig, Plugins parent, Providers tierProviders) {
+    protected InvocationPlugins createDecodingInvocationPlugins(PartialEvaluatorConfiguration peConfig, Plugins parent, Providers tierProviders,
+                    org.graalvm.compiler.options.OptionValues options) {
         @SuppressWarnings("hiding")
-        InvocationPlugins decodingInvocationPlugins = new InvocationPlugins(parent.getInvocationPlugins());
+        InvocationPlugins decodingInvocationPlugins = new InvocationPlugins(null, parent.getInvocationPlugins(), options);
         registerGraphBuilderInvocationPlugins(decodingInvocationPlugins, false);
         peConfig.registerDecodingInvocationPlugins(decodingInvocationPlugins, false, tierProviders, config.architecture());
         decodingInvocationPlugins.closeRegistration();
