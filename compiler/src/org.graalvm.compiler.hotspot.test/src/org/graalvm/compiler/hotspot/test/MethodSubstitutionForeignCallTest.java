@@ -130,7 +130,7 @@ public class MethodSubstitutionForeignCallTest extends GraalCompilerTest {
     @Override
     protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
 
-        invocationPlugins.register(new InvocationPlugin() {
+        invocationPlugins.register(MethodSubstitutionForeignCallTest.class, new InvocationPlugin() {
 
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
@@ -140,8 +140,8 @@ public class MethodSubstitutionForeignCallTest extends GraalCompilerTest {
                 b.addPush(JavaKind.Int, node);
                 return true;
             }
-        }, MethodSubstitutionForeignCallTest.class, "testDeopt", int.class);
-        invocationPlugins.register(new InvocationPlugin() {
+        }, "testDeopt", int.class);
+        invocationPlugins.register(MethodSubstitutionForeignCallTest.class, new InvocationPlugin() {
 
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
@@ -150,8 +150,8 @@ public class MethodSubstitutionForeignCallTest extends GraalCompilerTest {
                 b.addPush(JavaKind.Int, node);
                 return true;
             }
-        }, MethodSubstitutionForeignCallTest.class, "testNonDeopting", int.class);
-        invocationPlugins.register(new InvocationPlugin() {
+        }, "testNonDeopting", int.class);
+        invocationPlugins.register(MethodSubstitutionForeignCallTest.class, new InvocationPlugin() {
 
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
@@ -160,7 +160,7 @@ public class MethodSubstitutionForeignCallTest extends GraalCompilerTest {
                 b.addPush(JavaKind.Int, node);
                 return true;
             }
-        }, MethodSubstitutionForeignCallTest.class, "testPureReexectuable", int.class);
+        }, "testPureReexectuable", int.class);
         ClassfileBytecodeProvider bytecodeProvider = getSystemClassLoaderBytecodeProvider();
         Registration r = new Registration(invocationPlugins, A.class, getReplacements(), bytecodeProvider);
         r.registerMethodSubstitution(ASubstitutions.class, "invalidConsecutiveForeignCall1", int.class);

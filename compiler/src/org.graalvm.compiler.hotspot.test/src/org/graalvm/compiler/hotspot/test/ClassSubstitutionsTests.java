@@ -182,7 +182,7 @@ public class ClassSubstitutionsTests extends GraalCompilerTest {
             try {
                 Field f = Class.class.getDeclaredField("componentType");
                 Registration r = new Registration(plugins, ClassSubstitutionsTests.class);
-                r.register("readComponentType", new InvocationPlugin() {
+                r.register(new InvocationPlugin("readComponentType", Class.class) {
                     @Override
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode clazz) {
                         ResolvedJavaField field = b.getMetaAccess().lookupJavaField(f);
@@ -191,7 +191,7 @@ public class ClassSubstitutionsTests extends GraalCompilerTest {
                                                         b.getAssumptions(), clazz, field, false, false));
                         return true;
                     }
-                }, Class.class);
+                });
             } catch (NoSuchFieldException e) {
                 throw new InternalError(e);
             }

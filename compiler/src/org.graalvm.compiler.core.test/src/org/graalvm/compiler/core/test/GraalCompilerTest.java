@@ -1408,27 +1408,27 @@ public abstract class GraalCompilerTest extends GraalTest {
      * @param invocationPlugins
      */
     protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
-        invocationPlugins.register(new InvocationPlugin() {
+        invocationPlugins.register(GraalCompilerTest.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.add(new BreakpointNode());
                 return true;
             }
-        }, GraalCompilerTest.class, "breakpoint");
-        invocationPlugins.register(new InvocationPlugin() {
+        }, "breakpoint");
+        invocationPlugins.register(GraalCompilerTest.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg0) {
                 b.add(new BreakpointNode(arg0));
                 return true;
             }
-        }, GraalCompilerTest.class, "breakpoint", int.class);
-        invocationPlugins.register(new InvocationPlugin() {
+        }, "breakpoint", int.class);
+        invocationPlugins.register(GraalCompilerTest.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.add(new NotOptimizedNode());
                 return true;
             }
-        }, GraalCompilerTest.class, "shouldBeOptimizedAway");
+        }, "shouldBeOptimizedAway");
     }
 
     /**

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,8 +31,8 @@ import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.phases.util.Providers;
@@ -108,40 +108,40 @@ public class VMThreadMTFeature implements GraalFeature {
             registerAccessors(r, valueClass, true);
 
             /* compareAndSet() method without the VMThread parameter. */
-            r.registerRequired("compareAndSet", new InvocationPlugin() {
+            r.register(new RequiredInvocationPlugin("compareAndSet", Receiver.class, valueClass, valueClass) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode expect, ValueNode update) {
                     ValueNode threadNode = currentThread(b);
                     return handleCompareAndSet(b, targetMethod, receiver, threadNode, expect, update);
                 }
-            }, Receiver.class, valueClass, valueClass);
+            });
             /* get() method with the VMThread parameter. */
-            r.registerRequired("compareAndSet", new InvocationPlugin() {
+            r.register(new RequiredInvocationPlugin("compareAndSet", Receiver.class, IsolateThread.class, valueClass, valueClass) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode threadNode, ValueNode expect, ValueNode update) {
                     return handleCompareAndSet(b, targetMethod, receiver, threadNode, expect, update);
                 }
-            }, Receiver.class, IsolateThread.class, valueClass, valueClass);
+            });
         }
 
         Class<?>[] typesWithGetAddress = new Class<?>[]{FastThreadLocalBytes.class, FastThreadLocalWord.class};
         for (Class<?> type : typesWithGetAddress) {
             Registration r = new Registration(plugins.getInvocationPlugins(), type);
             /* getAddress() method without the VMThread parameter. */
-            r.registerRequired("getAddress", new InvocationPlugin() {
+            r.register(new RequiredInvocationPlugin("getAddress", Receiver.class) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                     ValueNode threadNode = currentThread(b);
                     return handleGetAddress(b, targetMethod, receiver, threadNode);
                 }
-            }, Receiver.class);
+            });
             /* getAddress() method with the VMThread parameter. */
-            r.registerRequired("getAddress", new InvocationPlugin() {
+            r.register(new RequiredInvocationPlugin("getAddress", Receiver.class, IsolateThread.class) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode threadNode) {
                     return handleGetAddress(b, targetMethod, receiver, threadNode);
                 }
-            }, Receiver.class, IsolateThread.class);
+            });
         }
     }
 
@@ -149,35 +149,35 @@ public class VMThreadMTFeature implements GraalFeature {
         String suffix = isVolatile ? "Volatile" : "";
 
         /* get() method without the VMThread parameter. */
-        r.registerRequired("get" + suffix, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("get" + suffix, Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 ValueNode threadNode = currentThread(b);
                 return handleGet(b, targetMethod, receiver, threadNode, isVolatile);
             }
-        }, Receiver.class);
+        });
         /* get() method with the VMThread parameter. */
-        r.registerRequired("get" + suffix, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("get" + suffix, Receiver.class, IsolateThread.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode threadNode) {
                 return handleGet(b, targetMethod, receiver, threadNode, isVolatile);
             }
-        }, Receiver.class, IsolateThread.class);
+        });
         /* set() method without the VMThread parameter. */
-        r.registerRequired("set" + suffix, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("set" + suffix, Receiver.class, valueClass) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode valueNode) {
                 ValueNode threadNode = currentThread(b);
                 return handleSet(b, receiver, threadNode, valueNode, isVolatile);
             }
-        }, Receiver.class, valueClass);
+        });
         /* set() method with the VMThread parameter. */
-        r.registerRequired("set" + suffix, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("set" + suffix, Receiver.class, IsolateThread.class, valueClass) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode threadNode, ValueNode valueNode) {
                 return handleSet(b, receiver, threadNode, valueNode, isVolatile);
             }
-        }, Receiver.class, IsolateThread.class, valueClass);
+        });
     }
 
     private static ValueNode currentThread(GraphBuilderContext b) {

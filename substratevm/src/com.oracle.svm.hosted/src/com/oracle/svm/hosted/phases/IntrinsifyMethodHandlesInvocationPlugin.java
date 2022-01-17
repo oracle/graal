@@ -78,8 +78,9 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plu
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderTool;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.OptionalInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
@@ -462,7 +463,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
     private static void registerInvocationPlugins(InvocationPlugins plugins, Replacements replacements) {
         Registration r = new Registration(plugins, "java.lang.invoke.DirectMethodHandle", replacements);
-        r.registerRequired("ensureInitialized", new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("ensureInitialized", Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 /*
@@ -473,10 +474,10 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                  */
                 return true;
             }
-        }, Receiver.class);
+        });
 
         r = new Registration(plugins, "java.lang.invoke.Invokers", replacements);
-        r.registerOptional("maybeCustomize", true, new InvocationPlugin() {
+        r.register(new OptionalInvocationPlugin("maybeCustomize", MethodHandle.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode mh) {
                 /*
@@ -486,10 +487,10 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                  */
                 return true;
             }
-        }, MethodHandle.class);
+        });
 
         r = new Registration(plugins, Objects.class, replacements);
-        r.registerRequired("requireNonNull", new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("requireNonNull", Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused, ValueNode object) {
                 /*
@@ -499,7 +500,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                 b.push(JavaKind.Object, b.addNonNullCast(object));
                 return true;
             }
-        }, Object.class);
+        });
     }
 
     @SuppressWarnings("try")

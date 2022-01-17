@@ -41,62 +41,62 @@ public class HotSpotInvokeJavaMethodTest extends HotSpotGraalCompilerTest {
 
     @Override
     protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
-        invocationPlugins.register(new InvocationPlugin() {
+        invocationPlugins.register(HotSpotInvokeJavaMethodTest.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg) {
                 ForeignCallNode node = new ForeignCallNode(HotSpotHostForeignCallsProvider.TestForeignCalls.BOOLEAN_RETURNS_BOOLEAN, arg);
                 b.addPush(JavaKind.Boolean, node);
                 return true;
             }
-        }, HotSpotInvokeJavaMethodTest.class, "booleanReturnsBoolean", boolean.class);
-        invocationPlugins.register(new InvocationPlugin() {
+        }, "booleanReturnsBoolean", boolean.class);
+        invocationPlugins.register(HotSpotInvokeJavaMethodTest.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg) {
                 ForeignCallNode node = new ForeignCallNode(HotSpotHostForeignCallsProvider.TestForeignCalls.BYTE_RETURNS_BYTE, arg);
                 b.addPush(JavaKind.Byte, node);
                 return true;
             }
-        }, HotSpotInvokeJavaMethodTest.class, "byteReturnsByte", byte.class);
-        invocationPlugins.register(new InvocationPlugin() {
+        }, "byteReturnsByte", byte.class);
+        invocationPlugins.register(HotSpotInvokeJavaMethodTest.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg) {
                 ForeignCallNode node = new ForeignCallNode(HotSpotHostForeignCallsProvider.TestForeignCalls.SHORT_RETURNS_SHORT, arg);
                 b.addPush(JavaKind.Short, node);
                 return true;
             }
-        }, HotSpotInvokeJavaMethodTest.class, "shortReturnsShort", short.class);
-        invocationPlugins.register(new InvocationPlugin() {
+        }, "shortReturnsShort", short.class);
+        invocationPlugins.register(HotSpotInvokeJavaMethodTest.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg) {
                 ForeignCallNode node = new ForeignCallNode(HotSpotHostForeignCallsProvider.TestForeignCalls.CHAR_RETURNS_CHAR, arg);
                 b.addPush(JavaKind.Char, node);
                 return true;
             }
-        }, HotSpotInvokeJavaMethodTest.class, "charReturnsChar", char.class);
-        invocationPlugins.register(new InvocationPlugin() {
+        }, "charReturnsChar", char.class);
+        invocationPlugins.register(HotSpotInvokeJavaMethodTest.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg) {
                 ForeignCallNode node = new ForeignCallNode(HotSpotHostForeignCallsProvider.TestForeignCalls.INT_RETURNS_INT, arg);
                 b.addPush(JavaKind.Int, node);
                 return true;
             }
-        }, HotSpotInvokeJavaMethodTest.class, "intReturnsInt", int.class);
-        invocationPlugins.register(new InvocationPlugin() {
+        }, "intReturnsInt", int.class);
+        invocationPlugins.register(HotSpotInvokeJavaMethodTest.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg) {
                 ForeignCallNode node = new ForeignCallNode(HotSpotHostForeignCallsProvider.TestForeignCalls.LONG_RETURNS_LONG, arg);
                 b.addPush(JavaKind.Long, node);
                 return true;
             }
-        }, HotSpotInvokeJavaMethodTest.class, "longReturnsLong", long.class);
-        invocationPlugins.register(new InvocationPlugin() {
+        }, "longReturnsLong", long.class);
+        invocationPlugins.register(HotSpotInvokeJavaMethodTest.class, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg) {
                 ForeignCallNode node = new ForeignCallNode(HotSpotHostForeignCallsProvider.TestForeignCalls.OBJECT_RETURNS_OBJECT, arg);
                 b.addPush(JavaKind.Object, node);
                 return true;
             }
-        }, HotSpotInvokeJavaMethodTest.class, "objectReturnsObject", Object.class);
+        }, "objectReturnsObject", Object.class);
 
         super.registerInvocationPlugins(invocationPlugins);
     }

@@ -70,13 +70,13 @@ public class LLVMGraphBuilderPlugins implements TargetGraphBuilderPlugins {
         Registration r = new Registration(plugins, declaringClass, replacements);
         registerUnaryLLVMIntrinsic(r, "numberOfLeadingZeros", LLVMIntrinsicOperation.CTLZ, JavaKind.Int, kind.toJavaClass());
         registerUnaryLLVMIntrinsic(r, "numberOfTrailingZeros", LLVMIntrinsicOperation.CTTZ, JavaKind.Int, kind.toJavaClass());
-        r.register("bitCount", new InvocationPlugin() {
+        r.register(new InvocationPlugin("bitCount", kind.toJavaClass()) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 b.push(JavaKind.Int, b.append(new BitCountNode(value).canonical(null)));
                 return true;
             }
-        }, kind.toJavaClass());
+        });
     }
 
     private static void registerMathPlugins(InvocationPlugins plugins, Replacements replacements) {
@@ -100,27 +100,27 @@ public class LLVMGraphBuilderPlugins implements TargetGraphBuilderPlugins {
     }
 
     private static void registerUnaryMath(Registration r, String name, UnaryOperation operation) {
-        r.register(name, new InvocationPlugin() {
+        r.register(new InvocationPlugin(name, double.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 b.push(JavaKind.Double, b.append(UnaryMathIntrinsicNode.create(value, operation)));
                 return true;
             }
-        }, double.class);
+        });
     }
 
     private static void registerBinaryMath(Registration r, String name, BinaryOperation operation) {
-        r.register(name, new InvocationPlugin() {
+        r.register(new InvocationPlugin(name, double.class, double.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
                 b.push(JavaKind.Double, b.append(BinaryMathIntrinsicNode.create(x, y, operation)));
                 return true;
             }
-        }, double.class, double.class);
+        });
     }
 
     private static void registerFMA(Registration r) {
-        r.register("fma", new InvocationPlugin() {
+        r.register(new InvocationPlugin("fma", double.class, double.class, double.class) {
             @Override
             public boolean apply(GraphBuilderContext b,
                             ResolvedJavaMethod targetMethod,
@@ -131,8 +131,8 @@ public class LLVMGraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 b.push(JavaKind.Double, b.append(new FusedMultiplyAddNode(na, nb, nc)));
                 return true;
             }
-        }, double.class, double.class, double.class);
-        r.register("fma", new InvocationPlugin() {
+        });
+        r.register(new InvocationPlugin("fma", float.class, float.class, float.class) {
             @Override
             public boolean apply(GraphBuilderContext b,
                             ResolvedJavaMethod targetMethod,
@@ -143,30 +143,30 @@ public class LLVMGraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 b.push(JavaKind.Float, b.append(new FusedMultiplyAddNode(na, nb, nc)));
                 return true;
             }
-        }, float.class, float.class, float.class);
+        });
     }
 
     @SuppressWarnings("unused")
     private static void registerUnaryLLVMIntrinsic(Registration r, String name, LLVMIntrinsicOperation op, JavaKind returnKind, Type argType) {
-        r.register(name, new InvocationPlugin() {
+        r.register(new InvocationPlugin(name, argType) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
                 ConstantNode folded = LLVMUnaryIntrinsicNode.tryFold(op, arg);
                 b.addPush(returnKind, (folded != null) ? folded : LLVMUnaryIntrinsicNode.factory(op, returnKind, arg));
                 return true;
             }
-        }, argType);
+        });
     }
 
     @SuppressWarnings("unused")
     private static void registerBinaryLLVMIntrinsic(Registration r, String name, LLVMIntrinsicOperation op, JavaKind returnKind, Type argType1, Type argType2) {
-        r.register(name, new InvocationPlugin() {
+        r.register(new InvocationPlugin(name, argType1, argType2) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg1, ValueNode arg2) {
                 ConstantNode folded = LLVMBinaryIntrinsicNode.tryFold(op, arg1, arg2);
                 b.addPush(returnKind, (folded != null) ? folded : LLVMBinaryIntrinsicNode.factory(op, returnKind, arg1, arg2));
                 return true;
             }
-        }, argType1, argType2);
+        });
     }
 }

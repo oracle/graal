@@ -28,7 +28,6 @@ import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -37,7 +36,6 @@ import java.util.Map.Entry;
 import java.util.function.Predicate;
 
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.debug.MethodFilter;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
@@ -94,19 +92,19 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
     }
 
     @Override
-    protected void register(InvocationPlugin plugin, boolean isOptional, boolean allowOverwrite, boolean disableable, Type declaringClass, String name, Type... argumentTypes) {
+    protected void register(Type declaringClass, InvocationPlugin plugin, boolean allowOverwrite) {
         if (!config.usePopCountInstruction) {
-            if (name.equals("bitCount")) {
+            if (plugin.getName().equals("bitCount")) {
                 GraalError.guarantee(declaringClass.equals(Integer.class) || declaringClass.equals(Long.class), declaringClass.getTypeName());
                 return;
             }
         }
         if (!config.useUnalignedAccesses) {
-            if (name.endsWith("Unaligned") && declaringClass.getTypeName().equals("jdk.internal.misc.Unsafe")) {
+            if (plugin.getName().endsWith("Unaligned") && declaringClass.getTypeName().equals("jdk.internal.misc.Unsafe")) {
                 return;
             }
         }
-        super.register(plugin, isOptional, allowOverwrite, disableable, declaringClass, name, argumentTypes);
+        super.register(declaringClass, plugin, allowOverwrite);
     }
 
     @Override

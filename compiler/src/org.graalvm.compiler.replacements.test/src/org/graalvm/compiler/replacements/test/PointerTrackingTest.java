@@ -114,21 +114,21 @@ public class PointerTrackingTest extends ReplacementsTest implements Snippets {
     @Override
     protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
         Registration r = new Registration(invocationPlugins, PointerTrackingTest.class);
-        r.register("getTrackedPointer", new InvocationPlugin() {
+        r.register(new InvocationPlugin("getTrackedPointer", Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
                 WordCastNode objectToTracked = b.add(WordCastNode.objectToTrackedPointer(arg, getReplacements().getWordKind()));
                 b.addPush(JavaKind.Long, objectToTracked);
                 return true;
             }
-        }, Object.class);
-        r.register("getUntrackedPointer", new InvocationPlugin() {
+        });
+        r.register(new InvocationPlugin("getUntrackedPointer", Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
                 WordCastNode objectToTracked = b.add(WordCastNode.objectToUntrackedPointer(arg, getReplacements().getWordKind()));
                 b.addPush(JavaKind.Long, objectToTracked);
                 return true;
             }
-        }, Object.class);
+        });
     }
 }

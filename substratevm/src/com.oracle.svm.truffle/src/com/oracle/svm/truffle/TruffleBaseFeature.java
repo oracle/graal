@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,6 +50,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.phases.util.Providers;
@@ -252,7 +253,7 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
          * that we get exact types for fields that store profiles.
          */
         Registration r = new Registration(plugins.getInvocationPlugins(), Profile.class);
-        r.registerRequired("isProfilingEnabled", new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("isProfilingEnabled") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(profilingEnabled));
@@ -490,7 +491,7 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
             if (reason == ParsingReason.PointsToAnalysis) {
                 InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins.getInvocationPlugins(),
                                 StaticShape.Builder.class);
-                r.registerRequired("build", new InvocationPlugin() {
+                r.register(new RequiredInvocationPlugin("build", InvocationPlugin.Receiver.class, Class.class, Class.class) {
                     @Override
                     public boolean inlineOnly() {
                         // Use the plugin only during parsing.
@@ -505,7 +506,7 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
                         generate(superClass, factoryInterface, beforeAnalysisAccess);
                         return false;
                     }
-                }, InvocationPlugin.Receiver.class, Class.class, Class.class);
+                });
             }
         }
 
@@ -632,7 +633,8 @@ final class Target_com_oracle_truffle_api_staticobject_StaticShape_Builder {
 @TargetClass(className = "com.oracle.truffle.api.staticobject.StaticProperty", onlyWith = TruffleBaseFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_api_staticobject_StaticProperty {
 
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_com_oracle_truffle_api_staticobject_StaticProperty.OffsetTransformer.class) //
+    @Alias
+    @RecomputeFieldValue(kind = Kind.Custom, declClass = Target_com_oracle_truffle_api_staticobject_StaticProperty.OffsetTransformer.class) //
     int offset;
 
     public static final class OffsetTransformer implements RecomputeFieldValue.CustomFieldValueTransformer {
@@ -750,11 +752,14 @@ final class Target_com_oracle_truffle_api_staticobject_ArrayBasedShapeGenerator 
         }
     }
 
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = OffsetTransformer.class) //
+    @Alias
+    @RecomputeFieldValue(kind = Kind.Custom, declClass = OffsetTransformer.class) //
     int byteArrayOffset;
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = OffsetTransformer.class) //
+    @Alias
+    @RecomputeFieldValue(kind = Kind.Custom, declClass = OffsetTransformer.class) //
     int objectArrayOffset;
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = OffsetTransformer.class) //
+    @Alias
+    @RecomputeFieldValue(kind = Kind.Custom, declClass = OffsetTransformer.class) //
     int shapeOffset;
 }
 
@@ -794,19 +799,22 @@ final class Target_com_oracle_truffle_polyglot_LanguageCache {
      * verification in DisallowedImageHeapObjectFeature, so we also do the implicit reset using a
      * substitution.
      */
-    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
+    @Alias
+    @RecomputeFieldValue(kind = Kind.Reset) //
     private String languageHome;
 }
 
 @TargetClass(className = "com.oracle.truffle.object.CoreLocations$DynamicObjectFieldLocation", onlyWith = TruffleBaseFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_object_CoreLocations_DynamicObjectFieldLocation {
-    @Alias @RecomputeFieldValue(kind = Kind.AtomicFieldUpdaterOffset) //
+    @Alias
+    @RecomputeFieldValue(kind = Kind.AtomicFieldUpdaterOffset) //
     private long offset;
 }
 
 @TargetClass(className = "com.oracle.truffle.object.CoreLocations$DynamicLongFieldLocation", onlyWith = TruffleBaseFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_object_CoreLocations_DynamicLongFieldLocation {
-    @Alias @RecomputeFieldValue(kind = Kind.AtomicFieldUpdaterOffset) //
+    @Alias
+    @RecomputeFieldValue(kind = Kind.AtomicFieldUpdaterOffset) //
     private long offset;
 }
 

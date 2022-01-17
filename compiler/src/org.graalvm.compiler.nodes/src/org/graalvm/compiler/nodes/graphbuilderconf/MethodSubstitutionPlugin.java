@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -56,7 +56,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * recommended practice is to use {@link MethodSubstitutionPlugin} only for complex
  * intrinsifications which is typically those using non-straight-line control flow.
  */
-public final class MethodSubstitutionPlugin implements InvocationPlugin {
+public final class MethodSubstitutionPlugin extends InvocationPlugin {
 
     private InvocationPlugins.Registration registration;
 
@@ -99,6 +99,8 @@ public final class MethodSubstitutionPlugin implements InvocationPlugin {
      */
     public MethodSubstitutionPlugin(InvocationPlugins.Registration registration, BytecodeProvider bytecodeProvider, String originalName, Class<?> declaringClass, String substituteName,
                     Type... parameters) {
+        // TODO refactor
+        super(originalName, parameters);
         assert bytecodeProvider != null : "Requires a non-null methodSubstitutionBytecodeProvider";
         this.registration = registration;
         this.bytecodeProvider = bytecodeProvider;
@@ -261,7 +263,6 @@ public final class MethodSubstitutionPlugin implements InvocationPlugin {
             throw new GraalError("Can't find original class for " + this + " with class " + registration.getDeclaringType());
         }
         ResolvedJavaType type = metaAccess.lookupJavaType(clazz);
-        String argumentsDescriptor = InvocationPlugins.toArgumentDescriptor(originalIsStatic, this.parameters);
         for (ResolvedJavaMethod declared : type.getDeclaredMethods()) {
             if (declared.getName().equals(originalName) && declared.isStatic() == originalIsStatic &&
                             declared.getSignature().toMethodDescriptor().startsWith(argumentsDescriptor)) {

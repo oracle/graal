@@ -215,7 +215,7 @@ public abstract class LIRTest extends JTTTest {
                 assert p.length > 0;
                 assert LIRTestSpecification.class.isAssignableFrom(p[0]);
 
-                invocationPlugins.register(lirTestPlugin, c, m.getName(), p);
+                invocationPlugins.register(c, lirTestPlugin, m.getName(), p);
             }
         }
         InvocationPlugin outputPlugin = new InvocationPlugin() {
@@ -226,8 +226,8 @@ public abstract class LIRTest extends JTTTest {
                 return true;
             }
         };
-        invocationPlugins.register(outputPlugin, LIRTest.class, "getOutput", new Class<?>[]{LIRTestSpecification.class, String.class, Object.class});
-        invocationPlugins.register(outputPlugin, LIRTest.class, "getOutput", new Class<?>[]{LIRTestSpecification.class, String.class, int.class});
+        invocationPlugins.register(LIRTest.class, outputPlugin, "getOutput", new Class<?>[]{LIRTestSpecification.class, String.class, Object.class});
+        invocationPlugins.register(LIRTest.class, outputPlugin, "getOutput", new Class<?>[]{LIRTestSpecification.class, String.class, int.class});
         super.registerInvocationPlugins(invocationPlugins);
     }
 

@@ -92,7 +92,7 @@ public class ExceedMaxOopMapStackOffset extends LIRTest {
                 return true;
             }
         };
-        conf.getPlugins().getInvocationPlugins().register(safepointPlugin, getClass(), "safepoint");
+        conf.getPlugins().getInvocationPlugins().register(getClass(), safepointPlugin, "safepoint");
         return super.editGraphBuilderConfiguration(conf);
     }
 

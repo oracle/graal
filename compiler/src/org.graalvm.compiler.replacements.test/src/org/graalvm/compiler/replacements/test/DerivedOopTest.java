@@ -253,14 +253,14 @@ public class DerivedOopTest extends ReplacementsTest implements Snippets {
     @Override
     protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
         Registration r = new Registration(invocationPlugins, DerivedOopTest.class);
-        r.register("getRawPointer", new InvocationPlugin() {
+        r.register(new InvocationPlugin("getRawPointer", Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
                 WordCastNode objectToTracked = b.add(WordCastNode.objectToTrackedPointer(arg, getReplacements().getWordKind()));
                 b.addPush(JavaKind.Long, objectToTracked);
                 return true;
             }
-        }, Object.class);
+        });
         super.registerInvocationPlugins(invocationPlugins);
     }
 

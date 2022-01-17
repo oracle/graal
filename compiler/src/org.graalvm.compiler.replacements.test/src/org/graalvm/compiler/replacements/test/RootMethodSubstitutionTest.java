@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -115,9 +115,9 @@ public class RootMethodSubstitutionTest extends GraalCompilerTest {
     private static ResolvedJavaMethod findMethod(InvocationPlugins.Binding binding, ResolvedJavaMethod[] methods) {
         ResolvedJavaMethod original = null;
         for (ResolvedJavaMethod declared : methods) {
-            if (declared.getName().equals(binding.name)) {
-                if (declared.isStatic() == binding.isStatic) {
-                    if (declared.getSignature().toMethodDescriptor().startsWith(binding.argumentsDescriptor)) {
+            if (declared.getName().equals(binding.plugin.name)) {
+                if (declared.isStatic() == binding.plugin.isStatic) {
+                    if (declared.getSignature().toMethodDescriptor().startsWith(binding.plugin.argumentsDescriptor)) {
                         original = declared;
                         break;
                     }

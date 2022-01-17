@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,6 +29,7 @@ import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
+import java.lang.reflect.Type;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.debug.GraalError;
@@ -44,9 +45,13 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * Abstract class for a plugin generated for a method annotated by {@link NodeIntrinsic} or
  * {@link Fold}.
  */
-public abstract class GeneratedInvocationPlugin implements InvocationPlugin {
+public abstract class GeneratedInvocationPlugin extends InvocationPlugin {
 
     private ResolvedJavaMethod executeMethod;
+
+    public GeneratedInvocationPlugin(String name, Type... argumentTypes) {
+        super(name, argumentTypes);
+    }
 
     /**
      * Gets the class of the annotation for which this plugin was generated.

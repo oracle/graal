@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -123,7 +123,7 @@ public abstract class ArrayCopySnippets implements Snippets {
     }
 
     public static void registerSystemArraycopyPlugin(InvocationPlugins.Registration r, boolean forceAnyLocation) {
-        r.register("arraycopy", new InvocationPlugin() {
+        r.register(new InvocationPlugin("arraycopy", Object.class, int.class, Object.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode src, ValueNode srcPos, ValueNode dst, ValueNode dstPos, ValueNode length) {
                 ValueNode nonNullSrc = b.nullCheckedValue(src);
@@ -131,7 +131,7 @@ public abstract class ArrayCopySnippets implements Snippets {
                 b.add(new ArrayCopyNode(b.bci(), nonNullSrc, srcPos, nonNullDst, dstPos, length, forceAnyLocation));
                 return true;
             }
-        }, Object.class, int.class, Object.class, int.class, int.class);
+        });
     }
 
     protected enum ArrayCopyTypeCheck {
