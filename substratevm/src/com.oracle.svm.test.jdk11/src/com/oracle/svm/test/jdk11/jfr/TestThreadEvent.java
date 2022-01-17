@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,35 +23,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.jfr;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+package com.oracle.svm.test.jdk11.jfr;
 
-import com.oracle.svm.core.annotate.Uninterruptible;
+import static org.junit.Assert.assertNotNull;
+
+import org.junit.Test;
+
+import jdk.jfr.Recording;
+import jdk.jfr.consumer.RecordingFile;
 
 /**
- * List the different types of stack frames that can be part of a stack trace.
+ * Test if event ({@link TestThreadEvent}) with {@link Thread} payload is working.
  */
-public enum JfrFrameType {
-    FRAME_AOT_COMPILED("AOT compiled"),
-    FRAME_JIT_COMPILED("JIT compiled"),
-    FRAME_NATIVE("Native");
+public class TestThreadEvent extends JFRTest {
 
-    private final String text;
+    @Test
+    public void test() throws Exception {
+        JFR jfr = new LocalJFR();
+        Recording recording = jfr.startRecording("TestThreadEvent");
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    JfrFrameType(String text) {
-        this.text = text;
-    }
+        ThreadEvent event = new ThreadEvent();
+        event.thread = Thread.currentThread();
+        event.commit();
 
-    public String getText() {
-        return text;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public long getId() {
-        // First entry needs to have id 0.
-        return ordinal();
+        jfr.endRecording(recording);
+        try (RecordingFile recordingFile = new RecordingFile(recording.getDestination())) {
+            assertNotNull(recordingFile);
+        } finally {
+            jfr.cleanupRecording(recording);
+        }
     }
 }
