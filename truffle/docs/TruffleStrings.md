@@ -281,7 +281,8 @@ TruffleString is fully optimized for the following encodings:
 
 Many other encodings are supported, but not fully optimized. To use them, they must be enabled by
 setting `needsAllEncodings = true` in
-the [Truffle language registration](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Registration.html).
+the [Truffle language registration](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Registration.html)
+.
 
 A TruffleString's internal encoding is not exposed. Instead of querying a string's encoding, languages should pass
 an `expectedEncoding` parameter to all methods where the string's encoding matters (which is almost all operations).
@@ -330,11 +331,11 @@ encodings, and makes encoding checks more strict: all operations working on a si
 whereas operations working on two strings will still allow byte-equivalent re-interpretations.
 
 All TruffleString operations with more than one string parameter require the strings to be in an encoding compatible
-with the result encoding.
-So either the strings need to be in the same encoding, or the caller must ensure that both strings are
+with the result encoding. So either the strings need to be in the same encoding, or the caller must ensure that both
+strings are
 [compatible](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/strings/AbstractTruffleString.html#isCompatibleTo-com.oracle.truffle.api.strings.TruffleString.Encoding-)
-with the resulting encoding.
-This enable callers which already know the SwitchEncodingNodes would be noops to just skip them for footprint reasons.
+with the resulting encoding. This enable callers which already know the SwitchEncodingNodes would be noops to just skip
+them for footprint reasons.
 
 ```java
 import com.oracle.truffle.api.dsl.Cached;
@@ -497,10 +498,40 @@ abstract static class SomeNode extends Node {
 TruffleString also exposes `#toStringDebug()` for debugging purposes. Do not use this method for anything other than
 debugging, as its return value is unspecified and may change at any time.
 
+### Differences to `java.lang.String`
+
+The following items should be considered when switching from java.lang.String to TruffleString:
+
+* The static overhead of TruffleString instances is larger than that of java.lang.String objects: A TruffleString object
+  contains 2 pointers fields, 4 `int` fields and 4 `byte` fields, which will usually result in a total object size of 40
+  bytes (object header of 12 bytes, 4 bytes per pointer with compressed oops, 8-byte memory alignment). A
+  java.lang.String object contains one pointer field, one `int` field and one `byte` field, which in the same conditions
+  results in a total object size of 24 bytes. This difference in memory footprint may negatively impact some cases where
+  lots of small strings are generated.
+* TruffleString does string compaction just like java.lang.String.
+* If your language needs to convert strings to other encodings, e.g. UTF-8, which is very common in web applications,
+  TruffleString can turn this operation into a no-op if the string doesn't contain special characters. For example,
+  ASCII-only strings can be re-interpreted as almost any encoding, and converting an ASCII-only UTF-16 string to UTF-8
+  is a no-op!
+  In cases where transcoding a string is unavoidable, TruffleStrings will cache the transcoded string in the original
+  string, so transcoding is only done once per string and encoding.
+* In order to use 3rd party libraries, TruffleString object will have to be converted to java.lang.String and back. In
+  order to make this as cheap as possible, TruffleString re-uses Java string's internal byte arrays when converting from
+  java.lang.String to TruffleString, and caches Java strings created from TruffleString objects in the object itself.
+* TruffleString offers additional features not present in java.lang.String:
+    * Lazy concatenation and string views, which can significantly decrease the amount of array-copy operations your
+      language may have to do.
+    * String views into native memory, completely avoiding the need to copy native memory into java arrays before using
+      it.
+    * String content classification via the `codeRange` property, which allows specializations on strings that are
+      ASCII-only et cetera. This can reduce the complexity of some string operations significantly.
+* The performance of all TruffleString operations should be on par with or better than their
+  java.lang.String-counterparts.
+
 ### Codepoint Iterators
 
-TruffleString provides `TruffleStringIterator` as a means of iterating over a string's codepoints. This method should
-be preferred over using `CodePointAtIndexNode` in a loop, especially on variable-width encodings such as UTF-8,
+TruffleString provides `TruffleStringIterator` as a means of iterating over a string's codepoints. This method should be
+preferred over using `CodePointAtIndexNode` in a loop, especially on variable-width encodings such as UTF-8,
 since `CodePointAtIndexNode` may have to re-calculate the byte index equivalent of the given codepoint index on every
 call.
 
