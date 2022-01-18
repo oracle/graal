@@ -896,8 +896,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
 
     /**
      * Use to leave a context if its guaranteed to be called rarely and configuration flexibility is
-     * needed. Otherwise use
-     * {@link PolyglotEngineImpl#leave(PolyglotContextImpl, PolyglotContextImpl)}.
+     * needed. Otherwise use {@link PolyglotEngineImpl#leave(Object[], PolyglotContextImpl)}.
      */
     @TruffleBoundary
     PolyglotThreadInfo leaveThreadChanged(Object[] prev, boolean notifyLeft, boolean entered) {
@@ -1468,10 +1467,6 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         PolyglotContextImpl[] childContextsToInterrupt = null;
         List<Future<Void>> futures;
         synchronized (this) {
-            PolyglotThreadInfo info = getCurrentThreadInfo();
-            if (info != PolyglotThreadInfo.NULL && info.isActive()) {
-                throw PolyglotEngineException.illegalState("Cannot interrupt context from a thread where its child context is active.");
-            }
             futures = new ArrayList<>(setInterrupting());
             if (!futures.isEmpty()) {
                 childContextsToInterrupt = childContexts.toArray(new PolyglotContextImpl[childContexts.size()]);
@@ -1483,6 +1478,20 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             }
         }
         return futures;
+    }
+
+    private void validateInterruptPrecondition(PolyglotContextImpl operationSource) {
+        PolyglotContextImpl[] childContextsToInterrupt;
+        synchronized (this) {
+            PolyglotThreadInfo info = getCurrentThreadInfo();
+            if (info != PolyglotThreadInfo.NULL && info.isActive()) {
+                throw PolyglotEngineException.illegalState(String.format("Cannot interrupt context from a thread where %s context is active.", this == operationSource ? "the" : "its child"));
+            }
+            childContextsToInterrupt = childContexts.toArray(new PolyglotContextImpl[childContexts.size()]);
+        }
+        for (PolyglotContextImpl childCtx : childContextsToInterrupt) {
+            childCtx.validateInterruptPrecondition(operationSource);
+        }
     }
 
     public boolean interrupt(Duration timeout) {
@@ -1499,15 +1508,12 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
              */
             interruptingLock.lock();
             try {
+                validateInterruptPrecondition(this);
                 List<Future<Void>> futures;
                 synchronized (this) {
                     if (state.isClosed()) {
                         // already closed
                         return true;
-                    }
-                    PolyglotThreadInfo info = getCurrentThreadInfo();
-                    if (info != PolyglotThreadInfo.NULL && info.isActive()) {
-                        throw PolyglotEngineException.illegalState("Cannot interrupt context from a thread where the context is active.");
                     }
                     futures = new ArrayList<>(setInterrupting());
                     if (!futures.isEmpty()) {
