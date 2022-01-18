@@ -1,7 +1,7 @@
 {
   "README": "This file contains definitions that are useful for the hocon and jsonnet CI files of the graal and graal-enterprise repositories.",
   "ci": {
-    "overlay": "019447219c1cfc082aca7e2ae9cdd7042403c037"
+    "overlay": "248c5450a7a6636f310cfb370d88957234b593a6"
   },
 
   "COMMENT.mx": [
