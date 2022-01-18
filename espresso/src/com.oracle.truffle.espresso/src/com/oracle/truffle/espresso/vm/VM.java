@@ -67,6 +67,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
@@ -1471,7 +1472,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         assert context.getCurrentThread() != null;
         try {
             context.destroyVM(!context.ExitHost);
-        } catch (EspressoExitException exit) {
+        } catch (AbstractTruffleException exit) {
             // expected
         }
         return JNI_OK;

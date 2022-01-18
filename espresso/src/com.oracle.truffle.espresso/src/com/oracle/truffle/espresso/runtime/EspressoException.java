@@ -22,14 +22,24 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
+import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.nodes.helper.TypeCheckNode;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.VM;
 
+@ExportLibrary(InteropLibrary.class)
 public final class EspressoException extends AbstractTruffleException {
     private static final long serialVersionUID = -7667957575377419520L;
     private final StaticObject exception;
@@ -80,6 +90,23 @@ public final class EspressoException extends AbstractTruffleException {
     @Override
     public String toString() {
         return "EspressoException<" + getGuestException() + ": " + getMessage() + ">";
+    }
+
+    @ExportMessage
+    static class GetExceptionType extends Node {
+        @Specialization
+        public ExceptionType execute(EspressoException self,
+                        @Cached TypeCheckNode checkInterruptException,
+                        @Bind("getContext()") EspressoContext context) {
+            if (checkInterruptException.executeTypeCheck(context.getMeta().java_lang_InterruptedException, self.getGuestException().getKlass())) {
+                return ExceptionType.INTERRUPT;
+            }
+            return ExceptionType.RUNTIME_ERROR;
+        }
+
+        public final EspressoContext getContext() {
+            return EspressoContext.get(this);
+        }
     }
 
     // Debug methods

@@ -1386,7 +1386,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                         throw EspressoError.shouldNotReachHere(Bytecodes.nameOf(curOpcode));
                 }
                 // @formatter:on
-            } catch (EspressoException | AbstractTruffleException | StackOverflowError | OutOfMemoryError e) {
+            } catch (AbstractTruffleException | StackOverflowError | OutOfMemoryError e) {
                 if (instrument != null && e instanceof EspressoException) {
                     instrument.notifyExceptionAt(frame, e, statementIndex);
                 }
@@ -1434,7 +1434,14 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     EspressoException wrappedException;
                     if (e instanceof EspressoException) {
                         wrappedException = (EspressoException) e;
-                    } else if (getContext().Polyglot && e instanceof AbstractTruffleException) {
+                    } else if (e instanceof AbstractTruffleException) {
+                        if (e instanceof EspressoExitException) {
+                            CompilerDirectives.transferToInterpreter();
+                            getRoot().abortMonitor(frame);
+                            // Tearing down the VM, no need to report loop count.
+                            throw e;
+                        }
+                        assert getContext().Polyglot;
                         wrappedException = EspressoException.wrap(
                                         StaticObject.createForeignException(getMeta(), e, InteropLibrary.getUncached(e)), getMeta());
                     } else {
@@ -1484,11 +1491,6 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     LoopNode.reportLoopCount(this, loopCount[0]);
                 }
                 return e.getResult();
-            } catch (EspressoExitException e) {
-                CompilerDirectives.transferToInterpreter();
-                getRoot().abortMonitor(frame);
-                // Tearing down the VM, no need to report loop count.
-                throw e;
             }
             assert curOpcode != WIDE && curOpcode != LOOKUPSWITCH && curOpcode != TABLESWITCH;
 
