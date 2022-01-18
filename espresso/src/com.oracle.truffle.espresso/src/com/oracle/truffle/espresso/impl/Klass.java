@@ -29,6 +29,8 @@ import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
 import java.util.Comparator;
 import java.util.function.IntFunction;
 
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.utilities.AlwaysValidAssumption;
 import org.graalvm.collections.EconomicSet;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -1531,6 +1533,10 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     @Override
     public final ModuleRef getModule() {
         return module();
+    }
+
+    protected Assumption getRedefineAssumption() {
+        return AlwaysValidAssumption.INSTANCE;
     }
 
     // endregion jdwp-specific

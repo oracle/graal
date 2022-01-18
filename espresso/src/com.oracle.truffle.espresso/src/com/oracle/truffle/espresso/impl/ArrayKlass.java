@@ -30,6 +30,7 @@ import static com.oracle.truffle.espresso.classfile.Constants.ACC_PROTECTED;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_PUBLIC;
 import static com.oracle.truffle.espresso.meta.EspressoError.cat;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -52,20 +53,20 @@ public final class ArrayKlass extends Klass {
     private final Klass elementalType;
     private final int dimension;
 
-    @CompilationFinal(dimensions = 1) protected Klass[] supertypesWithSelfCache;
-    @CompilationFinal private int hierarchyDepth = -1;
-    @CompilationFinal(dimensions = 1) private ObjectKlass.KlassVersion[] transitiveInterfaceCache;
+    @CompilationFinal private Assumption redefineAssumption;
+    @CompilationFinal private HierarchyInfo hierarchyInfo;
 
     ArrayKlass(Klass componentType) {
         super(componentType.getContext(),
-                        null, // TODO(peterssen): Internal, , or / name?
-                        componentType.getTypes().arrayOf(componentType.getType()),
-                        // Arrays (of static inner class) may have protected access.
-                        (componentType.getElementalType().getModifiers() & (ACC_PUBLIC | ACC_PRIVATE | ACC_PROTECTED)) | ACC_FINAL | ACC_ABSTRACT);
+                null, // TODO(peterssen): Internal, , or / name?
+                componentType.getTypes().arrayOf(componentType.getType()),
+                // Arrays (of static inner class) may have protected access.
+                (componentType.getElementalType().getModifiers() & (ACC_PUBLIC | ACC_PRIVATE | ACC_PROTECTED)) | ACC_FINAL | ACC_ABSTRACT);
         EspressoError.guarantee(componentType.getJavaKind() != JavaKind.Void, "Invalid void[] class.");
         this.componentType = componentType;
         this.elementalType = componentType.getElementalType();
         this.dimension = Types.getArrayDimensions(getType());
+        this.redefineAssumption = componentType.getRedefineAssumption();
     }
 
     @Override
@@ -217,43 +218,46 @@ public final class ArrayKlass extends Klass {
     // index 0 is Object, index hierarchyDepth is this
     @Override
     protected Klass[] getSuperTypes() {
-        Klass[] supertypes = supertypesWithSelfCache;
-        if (supertypes == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            Klass[] superKlassTypes = getArraySuperType().getSuperTypes();
-            supertypes = new Klass[superKlassTypes.length + 1];
-            int depth = getHierarchyDepth();
-            assert supertypes.length == depth + 1;
-            supertypes[depth] = this;
-            System.arraycopy(superKlassTypes, 0, supertypes, 0, depth);
-            supertypesWithSelfCache = supertypes;
-        }
-        return supertypes;
+        return getHierarchyInfo().supertypesWithSelfCache;
     }
 
     @Override
     protected int getHierarchyDepth() {
-        int result = hierarchyDepth;
-        if (result == -1) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            result = hierarchyDepth = getArraySuperType().getHierarchyDepth() + 1;
-        }
-        return result;
+        return getHierarchyInfo().hierarchyDepth;
     }
 
     @Override
     protected ObjectKlass.KlassVersion[] getTransitiveInterfacesList() {
-        ObjectKlass.KlassVersion[] transitiveInterfaces = transitiveInterfaceCache;
-        if (transitiveInterfaces == null) {
+        return getHierarchyInfo().transitiveInterfaceCache;
+    }
+
+    private HierarchyInfo getHierarchyInfo() {
+        HierarchyInfo info = hierarchyInfo;
+        if (info == null || !redefineAssumption.isValid()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            ObjectKlass[] superItfs = getSuperInterfaces();
-            transitiveInterfaces = new ObjectKlass.KlassVersion[superItfs.length];
-            for (int i = 0; i < superItfs.length; i++) {
-                transitiveInterfaces[i] = superItfs[i].getKlassVersion();
-            }
-            transitiveInterfaceCache = transitiveInterfaces;
+            info = hierarchyInfo = updateHierarchyInfo();
+            redefineAssumption = getRedefineAssumption();
         }
-        return transitiveInterfaces;
+        return info;
+    }
+
+    private HierarchyInfo updateHierarchyInfo() {
+        int depth = getArraySuperType().getHierarchyDepth() + 1;
+        Klass[] supertypes;
+        Klass[] superKlassTypes = getArraySuperType().getSuperTypes();
+        supertypes = new Klass[superKlassTypes.length + 1];
+        assert supertypes.length == depth + 1;
+        supertypes[depth] = this;
+        System.arraycopy(superKlassTypes, 0, supertypes, 0, depth);
+
+        ObjectKlass.KlassVersion[] transitiveInterfaces;
+        ObjectKlass[] superItfs = getSuperInterfaces();
+        transitiveInterfaces = new ObjectKlass.KlassVersion[superItfs.length];
+        for (int i = 0; i < superItfs.length; i++) {
+            transitiveInterfaces[i] = superItfs[i].getKlassVersion();
+        }
+
+        return new HierarchyInfo(supertypes, depth, transitiveInterfaces);
     }
 
     private Klass getArraySuperType() {
@@ -261,5 +265,22 @@ public final class ArrayKlass extends Klass {
             return getMeta().java_lang_Object;
         }
         return componentType.getSupertype().array();
+    }
+
+    @Override
+    protected Assumption getRedefineAssumption() {
+        return componentType.getRedefineAssumption();
+    }
+
+    private static class HierarchyInfo {
+        private final Klass[] supertypesWithSelfCache;
+        private final int hierarchyDepth;
+        private final ObjectKlass.KlassVersion[] transitiveInterfaceCache;
+
+        HierarchyInfo(Klass[] supertypesWithSelfCache, int hierarchyDepth, ObjectKlass.KlassVersion[] transitiveInterfaceCache) {
+            this.supertypesWithSelfCache = supertypesWithSelfCache;
+            this.hierarchyDepth = hierarchyDepth;
+            this.transitiveInterfaceCache = transitiveInterfaceCache;
+        }
     }
 }
