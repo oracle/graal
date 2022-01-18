@@ -153,9 +153,9 @@ local vm_common = import '../ci_common/common.jsonnet';
     vm_common.bench_daily_vm_linux_amd64 + self.vm_bench_js_linux_amd64 + {
       # Override `self.vm_bench_js_linux_amd64.run`
       run: [
-        vm_common.mx_vm_common + ['benchmark', '--results-file', $.vm_bench_js_linux_amd64.result_file, 'agentscript-graal-js:*', '--', '--jvm=graalvm-${VM_ENV}', '--jvm-config=jvm', '--js=graal-js', '--js-config=default'],
+        vm_common.mx_vm_common + ['benchmark', '--results-file', $.vm_bench_js_linux_amd64.result_file, 'agentscript-graal-js:*', '--', '--jvm=graalvm-${VM_ENV}-java17', '--jvm-config=jvm', '--js=graal-js', '--js-config=default'],
         $.vm_bench_common.upload,
-        vm_common.mx_vm_common + ['benchmark', '--results-file', $.vm_bench_js_linux_amd64.result_file, 'agentscript-graal-js:*', '--', '--jvm=graalvm-${VM_ENV}', '--jvm-config=native', '--js=graal-js', '--js-config=default'],
+        vm_common.mx_vm_common + ['benchmark', '--results-file', $.vm_bench_js_linux_amd64.result_file, 'agentscript-graal-js:*', '--', '--jvm=graalvm-${VM_ENV}-java17', '--jvm-config=native', '--js=graal-js', '--js-config=default'],
         $.vm_bench_common.upload,
       ],
       timelimit: '45:00',
