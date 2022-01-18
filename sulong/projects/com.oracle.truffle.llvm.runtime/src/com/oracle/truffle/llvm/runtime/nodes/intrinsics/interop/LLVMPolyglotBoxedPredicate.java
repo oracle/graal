@@ -58,9 +58,11 @@ public abstract class LLVMPolyglotBoxedPredicate extends LLVMIntrinsic {
     }
 
     @Specialization(guards = "!foreigns.isForeign(pointer)")
+    @GenerateAOT.Exclude
     boolean matchNonForeignManaged(@SuppressWarnings("unused") LLVMManagedPointer pointer,
-                    @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns) {
-        return false;
+                    @SuppressWarnings("unused") @CachedLibrary(limit = "3") LLVMAsForeignLibrary foreigns,
+                    @CachedLibrary(limit = "3") InteropLibrary interop) {
+        return predicate.match(interop, pointer);
     }
 
     @Specialization(guards = "foreigns.isForeign(pointer)")
