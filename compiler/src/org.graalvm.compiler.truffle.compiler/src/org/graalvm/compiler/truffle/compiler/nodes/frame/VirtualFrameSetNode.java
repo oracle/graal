@@ -93,7 +93,9 @@ public final class VirtualFrameSetNode extends VirtualFrameAccessorNode implemen
                         if (valueKind == JavaKind.Object) {
                             // clear out native entry
                             ValueNode primitiveAlias = tool.getAlias(frame.getPrimitiveArray(type));
-                            tool.setVirtualEntry((VirtualObjectNode) primitiveAlias, frameSlotIndex, ConstantNode.defaultForKind(JavaKind.Long, graph()), JavaKind.Long, -1);
+                            if (primitiveAlias instanceof VirtualObjectNode) {
+                                tool.setVirtualEntry((VirtualObjectNode) primitiveAlias, frameSlotIndex, ConstantNode.defaultForKind(JavaKind.Long, graph()), JavaKind.Long, -1);
+                            }
                         }
                         tool.delete();
                         return;
