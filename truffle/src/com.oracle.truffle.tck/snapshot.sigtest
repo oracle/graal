@@ -57,6 +57,7 @@ CLSS public abstract interface static !annotation com.oracle.truffle.api.Truffle
 intf java.lang.annotation.Annotation
 meth public abstract !hasdefault boolean interactive()
 meth public abstract !hasdefault boolean internal()
+meth public abstract !hasdefault boolean needsAllEncodings()
 meth public abstract !hasdefault com.oracle.truffle.api.TruffleLanguage$ContextPolicy contextPolicy()
 meth public abstract !hasdefault java.lang.Class<? extends com.oracle.truffle.api.TruffleFile$FileTypeDetector>[] fileTypeDetectors()
 meth public abstract !hasdefault java.lang.Class<?>[] services()

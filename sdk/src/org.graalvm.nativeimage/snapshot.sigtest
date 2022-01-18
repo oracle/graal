@@ -945,6 +945,7 @@ supr java.lang.Object
 
 CLSS public final org.graalvm.nativeimage.hosted.RuntimeSerialization
 meth public !varargs static void register(java.lang.Class<?>[])
+meth public static void registerIncludingAssociatedClasses(java.lang.Class<?>)
 meth public static void registerWithTargetConstructorClass(java.lang.Class<?>,java.lang.Class<?>)
 supr java.lang.Object
 
