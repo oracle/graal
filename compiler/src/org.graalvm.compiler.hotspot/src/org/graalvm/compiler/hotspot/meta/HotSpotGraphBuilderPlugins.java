@@ -420,10 +420,9 @@ public class HotSpotGraphBuilderPlugins {
                 return true;
             }
         };
-        // TODO
-        plugins.register(ConstantCallSite.class, plugin, "getTarget", Receiver.class);
-        plugins.register(MutableCallSite.class, plugin, "getTarget", Receiver.class);
-        plugins.register(VolatileCallSite.class, plugin, "getTarget", Receiver.class);
+        plugins.register(ConstantCallSite.class, plugin);
+        plugins.register(MutableCallSite.class, plugin);
+        plugins.register(VolatileCallSite.class, plugin);
     }
 
     private static void registerReflectionPlugins(InvocationPlugins plugins, Replacements replacements, GraalHotSpotVMConfig config) {

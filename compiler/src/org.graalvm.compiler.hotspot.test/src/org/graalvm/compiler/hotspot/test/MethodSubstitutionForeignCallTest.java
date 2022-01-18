@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -130,7 +130,7 @@ public class MethodSubstitutionForeignCallTest extends GraalCompilerTest {
     @Override
     protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
 
-        invocationPlugins.register(MethodSubstitutionForeignCallTest.class, new InvocationPlugin() {
+        invocationPlugins.register(MethodSubstitutionForeignCallTest.class, new InvocationPlugin("testDeopt", int.class) {
 
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
@@ -140,8 +140,8 @@ public class MethodSubstitutionForeignCallTest extends GraalCompilerTest {
                 b.addPush(JavaKind.Int, node);
                 return true;
             }
-        }, "testDeopt", int.class);
-        invocationPlugins.register(MethodSubstitutionForeignCallTest.class, new InvocationPlugin() {
+        });
+        invocationPlugins.register(MethodSubstitutionForeignCallTest.class, new InvocationPlugin("testNonDeopting", int.class) {
 
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
@@ -150,8 +150,8 @@ public class MethodSubstitutionForeignCallTest extends GraalCompilerTest {
                 b.addPush(JavaKind.Int, node);
                 return true;
             }
-        }, "testNonDeopting", int.class);
-        invocationPlugins.register(MethodSubstitutionForeignCallTest.class, new InvocationPlugin() {
+        });
+        invocationPlugins.register(MethodSubstitutionForeignCallTest.class, new InvocationPlugin("testPureReexectuable", int.class) {
 
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
@@ -160,7 +160,7 @@ public class MethodSubstitutionForeignCallTest extends GraalCompilerTest {
                 b.addPush(JavaKind.Int, node);
                 return true;
             }
-        }, "testPureReexectuable", int.class);
+        });
         ClassfileBytecodeProvider bytecodeProvider = getSystemClassLoaderBytecodeProvider();
         Registration r = new Registration(invocationPlugins, A.class, getReplacements(), bytecodeProvider);
         r.registerMethodSubstitution(ASubstitutions.class, "invalidConsecutiveForeignCall1", int.class);

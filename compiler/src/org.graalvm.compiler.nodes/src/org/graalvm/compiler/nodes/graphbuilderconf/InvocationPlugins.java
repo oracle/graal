@@ -72,9 +72,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  *
  * Most plugins are registered during initialization (i.e., before
  * {@link #lookupInvocation(ResolvedJavaMethod)} or {@link #getBindings} is called). These
- * registrations can be made with {@link Registration},
- * {@link #register(Type, InvocationPlugin, String, Type...)} . Initialization is not thread-safe
- * and so must only be performed by a single thread.
+ * registrations can be made with {@link Registration}, {@link #register(Type, InvocationPlugin)} .
+ * Initialization is not thread-safe and so must only be performed by a single thread.
  *
  * Plugins that are not guaranteed to be made during initialization must use
  * {@link LateRegistration}.
@@ -458,7 +457,7 @@ public class InvocationPlugins {
             assert plugin.isStatic == resolved.isStatic();
             assert plugin.name.equals(resolved.getName());
             String methodDescriptor = resolved.getSignature().toMethodDescriptor();
-            assert methodDescriptor.indexOf(')') != -1 : methodDescriptor; 
+            assert methodDescriptor.indexOf(')') != -1 : methodDescriptor;
             assert plugin.argumentsDescriptor.equals(methodDescriptor.substring(0, methodDescriptor.indexOf(')') + 1));
         }
 
@@ -953,17 +952,8 @@ public class InvocationPlugins {
     /**
      * Registers an invocation plugin for a given method. There must be no plugin currently
      * registered for {@code method}.
-     *
-     * @param argumentTypes the argument types of the method. Element 0 of this array must be the
-     *            {@link Class} value for {@link Receiver} iff the method is non-static. Upon
-     *            returning, element 0 will have been rewritten to {@code declaringClass}
      */
-    public final void register(Type declaringClass, InvocationPlugin plugin, String name, Type... argumentTypes) {
-        // TODO
-        register(declaringClass, plugin, false);
-    }
-
-    public final void register(InvocationPlugin plugin, Type declaringClass) {
+    public final void register(Type declaringClass, InvocationPlugin plugin) {
         register(declaringClass, plugin, false);
     }
 

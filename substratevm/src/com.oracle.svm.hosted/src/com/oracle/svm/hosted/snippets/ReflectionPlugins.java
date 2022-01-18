@@ -343,12 +343,12 @@ public final class ReflectionPlugins {
         }
         parameterTypes.addAll(Arrays.asList(reflectionMethod.getParameterTypes()));
 
-        plugins.register(new RequiredInvocationPlugin(reflectionMethod.getName(), parameterTypes.toArray(new Class<?>[0])) {
+        plugins.register(reflectionMethod.getDeclaringClass(), new RequiredInvocationPlugin(reflectionMethod.getName(), parameterTypes.toArray(new Class<?>[0])) {
             @Override
             public boolean defaultHandler(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode... args) {
                 return foldInvocationUsingReflection(b, targetMethod, reflectionMethod, receiver, args);
             }
-        }, reflectionMethod.getDeclaringClass());
+        });
     }
 
     private boolean foldInvocationUsingReflection(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Method reflectionMethod, Receiver receiver, ValueNode[] args) {

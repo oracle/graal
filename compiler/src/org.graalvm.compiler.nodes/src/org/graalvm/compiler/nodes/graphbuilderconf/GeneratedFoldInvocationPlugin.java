@@ -29,7 +29,6 @@ import java.lang.reflect.Type;
 public abstract class GeneratedFoldInvocationPlugin extends GeneratedInvocationPlugin {
 
     public GeneratedFoldInvocationPlugin(String name, Type... argumentTypes) {
-        // TODO update processor
         super(name, argumentTypes);
     }
 }

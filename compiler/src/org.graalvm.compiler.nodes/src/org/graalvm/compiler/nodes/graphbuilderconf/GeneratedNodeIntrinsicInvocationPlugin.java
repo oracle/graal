@@ -24,21 +24,20 @@
  */
 package org.graalvm.compiler.nodes.graphbuilderconf;
 
+import java.lang.reflect.Type;
+
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-import java.lang.reflect.Type;
-
 public abstract class GeneratedNodeIntrinsicInvocationPlugin extends GeneratedInvocationPlugin {
 
     public GeneratedNodeIntrinsicInvocationPlugin(String name, Type... argumentTypes) {
-        // TODO update processor
         super(name, argumentTypes);
     }
- 
+
     protected boolean verifyForeignCallDescriptor(GraphBuilderTool b, ResolvedJavaMethod targetMethod, ForeignCallDescriptor descriptor) {
         MetaAccessProvider metaAccess = b.getMetaAccess();
         int parameters = 1;

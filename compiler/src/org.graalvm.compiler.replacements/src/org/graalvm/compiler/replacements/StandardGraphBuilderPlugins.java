@@ -961,8 +961,8 @@ public class StandardGraphBuilderPlugins {
     protected static void registerBoxingPlugins(InvocationPlugins plugins) {
         for (JavaKind kind : JavaKind.values()) {
             if (kind.isPrimitive() && kind != JavaKind.Void) {
-                plugins.register(new BoxPlugin(kind), kind.toBoxedJavaClass());
-                plugins.register(new UnboxPlugin(kind), kind.toBoxedJavaClass());
+                plugins.register(kind.toBoxedJavaClass(), new BoxPlugin(kind));
+                plugins.register(kind.toBoxedJavaClass(), new UnboxPlugin(kind));
             }
         }
     }
