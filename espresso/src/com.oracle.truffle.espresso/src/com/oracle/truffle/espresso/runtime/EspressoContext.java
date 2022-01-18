@@ -951,6 +951,10 @@ public final class EspressoContext {
         return shutdownManager.isClosing();
     }
 
+    public boolean isClosed() {
+        return getEnv().getContext().isClosed();
+    }
+
     public int getExitStatus() {
         return shutdownManager.getExitStatus();
     }

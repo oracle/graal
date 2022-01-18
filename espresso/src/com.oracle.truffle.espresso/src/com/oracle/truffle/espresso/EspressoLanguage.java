@@ -175,6 +175,16 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     }
 
     @Override
+    protected void exitContext(EspressoContext context, ExitMode exitMode, int exitCode) {
+        context.prepareDispose();
+        try {
+            context.doExit(0);
+        } catch (EspressoExitException e) {
+            // Expected. Suppress. We do not want to throw during context closing.
+        }
+    }
+
+    @Override
     protected void finalizeContext(EspressoContext context) {
         long elapsedTimeNanos = System.nanoTime() - context.getStartupClockNanos();
         long seconds = TimeUnit.NANOSECONDS.toSeconds(elapsedTimeNanos);
@@ -183,14 +193,6 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         } else {
             context.getLogger().log(Level.FINE, "Time spent in Espresso: {0} ms", TimeUnit.NANOSECONDS.toMillis(elapsedTimeNanos));
         }
-
-        context.prepareDispose();
-        try {
-            context.doExit(0);
-        } catch (AbstractTruffleException e) {
-            // Expected. Suppress. We do not want to throw during context closing.
-        }
-
         context.setFinalized();
     }
 

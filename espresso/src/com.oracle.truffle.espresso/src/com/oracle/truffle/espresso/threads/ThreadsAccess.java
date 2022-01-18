@@ -350,14 +350,16 @@ public final class ThreadsAccess extends GuestInterrupter<StaticObject> implemen
     void terminate(StaticObject thread, DirectCallNode exit) {
         DeprecationSupport support = getDeprecationSupport(thread, true);
         support.exit();
-        try {
-            if (exit == null) {
-                meta.java_lang_Thread_exit.invokeDirect(thread);
-            } else {
-                exit.call(thread);
+        if (!context.isClosed()) {
+            try {
+                if (exit == null) {
+                    meta.java_lang_Thread_exit.invokeDirect(thread);
+                } else {
+                    exit.call(thread);
+                }
+            } catch (AbstractTruffleException e) {
+                // just drop it
             }
-        } catch (AbstractTruffleException e) {
-            // just drop it
         }
         setTerminateStatusAndNotify(thread);
         context.unregisterThread(thread);
@@ -389,7 +391,7 @@ public final class ThreadsAccess extends GuestInterrupter<StaticObject> implemen
     }
 
     private boolean isStillborn(StaticObject guest) {
-        if (context.isClosing()) {
+        if (context.isClosing() || context.isClosed()) {
             return true;
         }
         /*
