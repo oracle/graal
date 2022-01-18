@@ -447,33 +447,31 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
 
         protected final Class<? extends VirtualFrame> clazz;
 
-        /**
-         * Not adopted by the OSRRootNode; belongs to another RootNode. OptimizedCallTarget treats
-         * OSRRootNodes specially, skipping adoption of child nodes.
-         */
-        @Child protected OptimizedOSRLoopNode loopNode;
-
         AbstractLoopOSRRootNode(OptimizedOSRLoopNode loop, FrameDescriptor frameDescriptor, Class<? extends VirtualFrame> clazz) {
-            super(null, frameDescriptor);
-            this.loopNode = loop;
+            super(null, frameDescriptor, loop);
             this.clazz = clazz;
         }
 
         @Override
         public SourceSection getSourceSection() {
-            return loopNode.getSourceSection();
+            return getLoopNode().getSourceSection();
+        }
+
+        OptimizedOSRLoopNode getLoopNode() {
+            return (OptimizedOSRLoopNode) loopNode;
         }
 
         @Override
         protected Object executeOSR(VirtualFrame frame) {
             VirtualFrame parentFrame = clazz.cast(frame.getArguments()[0]);
-            RepeatingNode loopBody = loopNode.repeatingNode;
+            OptimizedOSRLoopNode loop = getLoopNode();
+            RepeatingNode loopBody = loop.repeatingNode;
             Object status;
             while (loopBody.shouldContinue(status = loopBody.executeRepeatingWithValue(parentFrame))) {
                 if (CompilerDirectives.inInterpreter()) {
                     return loopBody.initialLoopStatus();
                 }
-                TruffleSafepoint.poll(this);
+                TruffleSafepoint.poll(loop);
             }
             return status;
         }
@@ -485,7 +483,7 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
 
         @Override
         public final String toString() {
-            return loopNode.getRepeatingNode().toString() + "<OSR>";
+            return getLoopNode().getRepeatingNode().toString() + "<OSR>";
         }
     }
 
@@ -551,13 +549,14 @@ public abstract class OptimizedOSRLoopNode extends AbstractOptimizedLoopNode imp
             FrameWithoutBoxing parentFrame = (FrameWithoutBoxing) (loopFrame.getArguments()[0]);
             executeTransfer(parentFrame, loopFrame, readFrameSlots, readFrameSlotsTags);
             try {
-                RepeatingNode loopBody = loopNode.repeatingNode;
+                OptimizedOSRLoopNode loop = getLoopNode();
+                RepeatingNode loopBody = loop.repeatingNode;
                 Object status;
                 while (loopBody.shouldContinue(status = loopBody.executeRepeatingWithValue(loopFrame))) {
                     if (CompilerDirectives.inInterpreter()) {
                         return loopBody.initialLoopStatus();
                     }
-                    TruffleSafepoint.poll(this);
+                    TruffleSafepoint.poll(loop);
                 }
                 return status;
             } finally {
