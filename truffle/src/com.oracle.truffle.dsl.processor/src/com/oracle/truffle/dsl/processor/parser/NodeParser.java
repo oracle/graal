@@ -2803,19 +2803,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
         String initializer = getAnnotationValue(String.class, cachedAnnotation, "value");
         String uncached = getAnnotationValue(String.class, cachedAnnotation, "uncached");
 
-        String parameters = "";
-        if (!expressionParameters.isEmpty()) {
-            StringBuilder b = new StringBuilder();
-            for (int i = 0; i < expressionParameters.size(); i++) {
-                String param = expressionParameters.get(i);
-                b.append(param);
-                if (i != 0) {
-                    b.append(", ");
-                }
-            }
-            parameters = b.toString();
-        }
-
+        String parameters = String.join(", ", expressionParameters);
         initializer = initializer.replace("$parameters", parameters);
         uncached = uncached.replace("$parameters", parameters);
 
