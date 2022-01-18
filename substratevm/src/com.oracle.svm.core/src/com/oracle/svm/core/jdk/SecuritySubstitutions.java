@@ -387,7 +387,7 @@ final class Target_javax_crypto_JceSecurity {
         /* End code block copied from original method. */
         /*
          * If the verification result is not found in the verificationResults map JDK proceeds to
-         * verify it. That requires accesing the code base which we don't support. The substitution
+         * verify it. That requires accessing the code base which we don't support. The substitution
          * for getCodeBase() would be enough to take care of this too, but substituting
          * getVerificationResult() allows for a better error message.
          */
