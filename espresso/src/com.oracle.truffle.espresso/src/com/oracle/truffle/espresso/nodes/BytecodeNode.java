@@ -1413,7 +1413,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                             if (curBCI >= stackOverflowErrorInfo[i] && curBCI < stackOverflowErrorInfo[i + 1]) {
                                 clearOperandStack(frame, top);
                                 top = EspressoFrame.VALUES_START + getMethodVersion().getCodeAttribute().getMaxLocals();
-                                putObject(frame, top, wrappedStackOverflowError.getExceptionObject());
+                                putObject(frame, top, wrappedStackOverflowError.getGuestException());
                                 top++;
                                 int targetBCI = stackOverflowErrorInfo[i + 2];
                                 nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount);
@@ -1453,7 +1453,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                                 // pass instanceof
                                 catchType = resolveType(Bytecodes.INSTANCEOF, (char) toCheck.catchTypeCPI());
                             }
-                            if (catchType == null || InterpreterToVM.instanceOf(wrappedException.getExceptionObject(), catchType)) {
+                            if (catchType == null || InterpreterToVM.instanceOf(wrappedException.getGuestException(), catchType)) {
                                 // the first found exception handler is our exception handler
                                 handler = toCheck;
                                 break;
@@ -1463,7 +1463,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     if (handler != null) {
                         clearOperandStack(frame, top);
                         top = EspressoFrame.VALUES_START + getMethodVersion().getCodeAttribute().getMaxLocals();
-                        putObject(frame, top, wrappedException.getExceptionObject());
+                        putObject(frame, top, wrappedException.getGuestException());
                         top++;
                         int targetBCI = handler.getHandlerBCI();
                         nextStatementIndex = beforeJumpChecks(frame, curBCI, targetBCI, top, statementIndex, instrument, loopCount);
