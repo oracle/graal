@@ -36,6 +36,7 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.nodes.PluginReplacementNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.InlineOnlyInvocationPlugin;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -45,7 +46,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * Abstract class for a plugin generated for a method annotated by {@link NodeIntrinsic} or
  * {@link Fold}.
  */
-public abstract class GeneratedInvocationPlugin extends InvocationPlugin {
+public abstract class GeneratedInvocationPlugin extends InlineOnlyInvocationPlugin {
 
     private ResolvedJavaMethod executeMethod;
 
@@ -57,11 +58,6 @@ public abstract class GeneratedInvocationPlugin extends InvocationPlugin {
      * Gets the class of the annotation for which this plugin was generated.
      */
     public abstract Class<? extends Annotation> getSource();
-
-    @Override
-    public boolean inlineOnly() {
-        return true;
-    }
 
     @Override
     public abstract boolean execute(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode[] args);

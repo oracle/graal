@@ -49,6 +49,7 @@ import org.graalvm.compiler.nodes.extended.JavaReadNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.InlineOnlyInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
@@ -133,12 +134,7 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             registerUnaryMath(r, "exp", EXP);
             registerUnaryMath(r, "log", LOG);
             registerUnaryMath(r, "log10", LOG10);
-            r.register(new InvocationPlugin("pow", double.class, double.class) {
-                @Override
-                public boolean inlineOnly() {
-                    return true;
-                }
-
+            r.register(new InlineOnlyInvocationPlugin("pow", double.class, double.class) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
                     b.push(JavaKind.Double, b.append(BinaryMathIntrinsicNode.create(x, y, BinaryMathIntrinsicNode.BinaryOperation.POW)));
@@ -242,12 +238,7 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
     }
 
     private static void registerUnaryMath(Registration r, String name, UnaryOperation operation) {
-        r.register(new InvocationPlugin(name, double.class) {
-            @Override
-            public boolean inlineOnly() {
-                return true;
-            }
-
+        r.register(new InlineOnlyInvocationPlugin(name, double.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 b.push(JavaKind.Double, b.append(UnaryMathIntrinsicNode.create(value, operation)));

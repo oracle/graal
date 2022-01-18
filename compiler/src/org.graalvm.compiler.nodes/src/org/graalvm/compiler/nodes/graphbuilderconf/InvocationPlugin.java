@@ -303,6 +303,18 @@ public abstract class InvocationPlugin implements GraphBuilderPlugin {
         return this.isStatic == isStatic && this.name.equals(name) && methodDescriptor.startsWith(this.argumentsDescriptor);
     }
 
+    public abstract static class InlineOnlyInvocationPlugin extends InvocationPlugin {
+
+        public InlineOnlyInvocationPlugin(String name, Type... argumentTypes) {
+            super(name, argumentTypes);
+        }
+
+        @Override
+        public boolean inlineOnly() {
+            return true;
+        }
+    }
+
     public abstract static class OptionalInvocationPlugin extends InvocationPlugin {
 
         public OptionalInvocationPlugin(String name, Type... argumentTypes) {
@@ -324,6 +336,18 @@ public abstract class InvocationPlugin implements GraphBuilderPlugin {
         @Override
         public boolean canBeDisabled() {
             return false;
+        }
+    }
+
+    public abstract static class RequiredInlineOnlyInvocationPlugin extends RequiredInvocationPlugin {
+
+        public RequiredInlineOnlyInvocationPlugin(String name, Type... argumentTypes) {
+            super(name, argumentTypes);
+        }
+
+        @Override
+        public boolean inlineOnly() {
+            return true;
         }
     }
 }

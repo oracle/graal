@@ -106,6 +106,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedPluginFactory;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.InlineOnlyInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
@@ -254,55 +255,35 @@ public class HotSpotGraphBuilderPlugins {
 
     private static void registerObjectPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
         Registration r = new Registration(plugins, Object.class, replacements);
-        r.register(new InvocationPlugin("clone", Receiver.class) {
+        r.register(new InlineOnlyInvocationPlugin("clone", Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 ValueNode object = receiver.get();
                 b.addPush(JavaKind.Object, new ObjectCloneNode(MacroParams.of(b, targetMethod, object)));
                 return true;
             }
-
-            @Override
-            public boolean inlineOnly() {
-                return true;
-            }
         });
-        r.register(new InvocationPlugin("hashCode", Receiver.class) {
+        r.register(new InlineOnlyInvocationPlugin("hashCode", Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 ValueNode object = receiver.get();
                 b.addPush(JavaKind.Int, new HotSpotIdentityHashCodeNode(object, b.bci()));
                 return true;
             }
-
-            @Override
-            public boolean inlineOnly() {
-                return true;
-            }
         });
-        r.registerConditional(config.inlineNotify(), new InvocationPlugin("notify", Receiver.class) {
+        r.registerConditional(config.inlineNotify(), new InlineOnlyInvocationPlugin("notify", Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 ValueNode object = receiver.get();
                 b.add(new FastNotifyNode(object, false, b.bci()));
                 return true;
             }
-
-            @Override
-            public boolean inlineOnly() {
-                return true;
-            }
         });
-        r.registerConditional(config.inlineNotifyAll(), new InvocationPlugin("notifyAll", Receiver.class) {
+        r.registerConditional(config.inlineNotifyAll(), new InlineOnlyInvocationPlugin("notifyAll", Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 ValueNode object = receiver.get();
                 b.add(new FastNotifyNode(object, true, b.bci()));
-                return true;
-            }
-
-            @Override
-            public boolean inlineOnly() {
                 return true;
             }
         });
@@ -402,7 +383,7 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     private static void registerCallSitePlugins(InvocationPlugins plugins) {
-        InvocationPlugin plugin = new InvocationPlugin("getTarget", Receiver.class) {
+        InvocationPlugin plugin = new InlineOnlyInvocationPlugin("getTarget", Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 ValueNode callSite = receiver.get();
@@ -414,11 +395,6 @@ public class HotSpotGraphBuilderPlugins {
                 }
                 return true;
             }
-
-            @Override
-            public boolean inlineOnly() {
-                return true;
-            }
         };
         plugins.register(ConstantCallSite.class, plugin);
         plugins.register(MutableCallSite.class, plugin);
@@ -427,15 +403,10 @@ public class HotSpotGraphBuilderPlugins {
 
     private static void registerReflectionPlugins(InvocationPlugins plugins, Replacements replacements, GraalHotSpotVMConfig config) {
         Registration r = new Registration(plugins, reflectionClass, replacements);
-        r.register(new InvocationPlugin("getCallerClass") {
+        r.register(new InlineOnlyInvocationPlugin("getCallerClass") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.addPush(JavaKind.Object, new HotSpotReflectionGetCallerClassNode(MacroParams.of(b, targetMethod)));
-                return true;
-            }
-
-            @Override
-            public boolean inlineOnly() {
                 return true;
             }
         });
@@ -487,15 +458,10 @@ public class HotSpotGraphBuilderPlugins {
         Registration r = new Registration(plugins, System.class);
         r.register(new ForeignCallPlugin(HotSpotHostForeignCallsProvider.JAVA_TIME_MILLIS, "currentTimeMillis"));
         r.register(new ForeignCallPlugin(HotSpotHostForeignCallsProvider.JAVA_TIME_NANOS, "nanoTime"));
-        r.register(new InvocationPlugin("identityHashCode", Object.class) {
+        r.register(new InlineOnlyInvocationPlugin("identityHashCode", Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
                 b.addPush(JavaKind.Int, new HotSpotIdentityHashCodeNode(object, b.bci()));
-                return true;
-            }
-
-            @Override
-            public boolean inlineOnly() {
                 return true;
             }
         });
@@ -1087,7 +1053,7 @@ public class HotSpotGraphBuilderPlugins {
 
     private static void registerReferencePlugins(InvocationPlugins plugins, Replacements replacements) {
         Registration r = new Registration(plugins, Reference.class, replacements);
-        r.register(new InvocationPlugin("refersTo0", Receiver.class, Object.class) {
+        r.register(new InlineOnlyInvocationPlugin("refersTo0", Receiver.class, Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode o) {
                 ValueNode offset = b.add(ConstantNode.forLong(HotSpotReplacementsUtil.referentOffset(b.getMetaAccess())));
@@ -1100,17 +1066,12 @@ public class HotSpotGraphBuilderPlugins {
             }
 
             @Override
-            public boolean inlineOnly() {
-                return true;
-            }
-
-            @Override
             public boolean isOptional() {
                 return JavaVersionUtil.JAVA_SPEC < 16;
             }
         });
         r = new Registration(plugins, PhantomReference.class, replacements);
-        r.register(new InvocationPlugin("refersTo0", Receiver.class, Object.class) {
+        r.register(new InlineOnlyInvocationPlugin("refersTo0", Receiver.class, Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode o) {
                 ValueNode offset = b.add(ConstantNode.forLong(HotSpotReplacementsUtil.referentOffset(b.getMetaAccess())));
@@ -1119,11 +1080,6 @@ public class HotSpotGraphBuilderPlugins {
                 JavaReadNode read = b.add(new JavaReadNode(StampFactory.object(), JavaKind.Object, address, locationIdentity, BarrierType.PHANTOM_FIELD, true));
                 LogicNode objectEquals = b.add(ObjectEqualsNode.create(b.getConstantReflection(), b.getMetaAccess(), b.getOptions(), read, o, NodeView.DEFAULT));
                 b.addPush(JavaKind.Boolean, ConditionalNode.create(objectEquals, b.add(forBoolean(true)), b.add(forBoolean(false)), NodeView.DEFAULT));
-                return true;
-            }
-
-            @Override
-            public boolean inlineOnly() {
                 return true;
             }
 

@@ -124,8 +124,10 @@ import org.graalvm.compiler.nodes.extended.UnsafeMemoryLoadNode;
 import org.graalvm.compiler.nodes.extended.UnsafeMemoryStoreNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.InlineOnlyInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.OptionalInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInlineOnlyInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
@@ -291,12 +293,7 @@ public class StandardGraphBuilderPlugins {
         });
 
         Registration sr = new Registration(plugins, JDK9StringSubstitutions.class);
-        sr.register(new InvocationPlugin("getValue", String.class) {
-            @Override
-            public boolean inlineOnly() {
-                return true;
-            }
-
+        sr.register(new InlineOnlyInvocationPlugin("getValue", String.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 ResolvedJavaField field = b.getMetaAccess().lookupJavaField(STRING_VALUE_FIELD);
@@ -306,12 +303,7 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
-        sr.register(new InvocationPlugin("getCoder", String.class) {
-            @Override
-            public boolean inlineOnly() {
-                return true;
-            }
-
+        sr.register(new InlineOnlyInvocationPlugin("getCoder", String.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 ResolvedJavaField field = b.getMetaAccess().lookupJavaField(STRING_CODER_FIELD);
@@ -320,12 +312,7 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
-        sr.register(new InvocationPlugin("getByte", byte[].class, int.class) {
-            @Override
-            public boolean inlineOnly() {
-                return true;
-            }
-
+        sr.register(new InlineOnlyInvocationPlugin("getByte", byte[].class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg1, ValueNode arg2) {
                 b.addPush(JavaKind.Byte, new JavaReadNode(JavaKind.Byte, new IndexAddressNode(arg1, arg2, JavaKind.Byte),
@@ -969,12 +956,7 @@ public class StandardGraphBuilderPlugins {
 
     private static void registerObjectPlugins(InvocationPlugins plugins) {
         Registration r = new Registration(plugins, Object.class);
-        r.register(new InvocationPlugin("<init>", Receiver.class) {
-            @Override
-            public boolean inlineOnly() {
-                return true;
-            }
-
+        r.register(new InlineOnlyInvocationPlugin("<init>", Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 /*
@@ -1036,15 +1018,10 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
-        r.register(new InvocationPlugin("cast", Receiver.class, Object.class) {
+        r.register(new InlineOnlyInvocationPlugin("cast", Receiver.class, Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
                 b.genCheckcastDynamic(object, receiver.get());
-                return true;
-            }
-
-            @Override
-            public boolean inlineOnly() {
                 return true;
             }
         });
@@ -1381,7 +1358,7 @@ public class StandardGraphBuilderPlugins {
 
     private static final SpeculationReasonGroup DIRECTIVE_SPECULATIONS = new SpeculationReasonGroup("GraalDirective", BytecodePosition.class);
 
-    static class DeoptimizePlugin extends RequiredInvocationPlugin {
+    static class DeoptimizePlugin extends RequiredInlineOnlyInvocationPlugin {
         private final SnippetReflectionProvider snippetReflection;
         private final DeoptimizationAction action;
         private final DeoptimizationReason reason;
@@ -1394,11 +1371,6 @@ public class StandardGraphBuilderPlugins {
             this.action = action;
             this.reason = reason;
             this.withSpeculation = withSpeculation;
-        }
-
-        @Override
-        public boolean inlineOnly() {
-            return true;
         }
 
         @Override
@@ -1456,12 +1428,7 @@ public class StandardGraphBuilderPlugins {
         r.register(new DeoptimizePlugin(snippetReflection, null, null, null,
                         "deoptimize", DeoptimizationAction.class, DeoptimizationReason.class, SpeculationReason.class));
 
-        r.register(new RequiredInvocationPlugin("inCompiledCode") {
-            @Override
-            public boolean inlineOnly() {
-                return true;
-            }
-
+        r.register(new RequiredInlineOnlyInvocationPlugin("inCompiledCode") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(true));
@@ -1469,12 +1436,7 @@ public class StandardGraphBuilderPlugins {
             }
         });
 
-        r.register(new RequiredInvocationPlugin("inIntrinsic") {
-            @Override
-            public boolean inlineOnly() {
-                return true;
-            }
-
+        r.register(new RequiredInlineOnlyInvocationPlugin("inIntrinsic") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(b.parsingIntrinsic()));
@@ -1482,72 +1444,42 @@ public class StandardGraphBuilderPlugins {
             }
         });
 
-        r.register(new RequiredInvocationPlugin("controlFlowAnchor") {
-            @Override
-            public boolean inlineOnly() {
-                return true;
-            }
-
+        r.register(new RequiredInlineOnlyInvocationPlugin("controlFlowAnchor") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.add(new ControlFlowAnchorNode());
                 return true;
             }
         });
-        r.register(new RequiredInvocationPlugin("neverStripMine") {
-            @Override
-            public boolean inlineOnly() {
-                return true;
-            }
-
+        r.register(new RequiredInlineOnlyInvocationPlugin("neverStripMine") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.add(new NeverStripMineNode());
                 return true;
             }
         });
-        r.register(new RequiredInvocationPlugin("sideEffect") {
-            @Override
-            public boolean inlineOnly() {
-                return true;
-            }
-
+        r.register(new RequiredInlineOnlyInvocationPlugin("sideEffect") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.add(new SideEffectNode());
                 return true;
             }
         });
-        r.register(new RequiredInvocationPlugin("sideEffect", int.class) {
-            @Override
-            public boolean inlineOnly() {
-                return true;
-            }
-
+        r.register(new RequiredInlineOnlyInvocationPlugin("sideEffect", int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode a) {
                 b.addPush(JavaKind.Int, new SideEffectNode(a));
                 return true;
             }
         });
-        r.register(new RequiredInvocationPlugin("trustedBox", Object.class) {
-            @Override
-            public boolean inlineOnly() {
-                return true;
-            }
-
+        r.register(new RequiredInlineOnlyInvocationPlugin("trustedBox", Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode a) {
                 b.addPush(JavaKind.Object, new TrustedBoxedValue(a));
                 return true;
             }
         });
-        r.register(new RequiredInvocationPlugin("assumeStableDimension", Object.class, int.class) {
-            @Override
-            public boolean inlineOnly() {
-                return true;
-            }
-
+        r.register(new RequiredInlineOnlyInvocationPlugin("assumeStableDimension", Object.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode array, ValueNode dimension) {
                 if (array instanceof ConstantNode && b.getMetaAccess().lookupJavaType(array.asJavaConstant()).isArray()) {
@@ -1564,24 +1496,14 @@ public class StandardGraphBuilderPlugins {
                                 "dimensions to the int parameter supplied.");
             }
         });
-        r.register(new RequiredInvocationPlugin("injectBranchProbability", double.class, boolean.class) {
-            @Override
-            public boolean inlineOnly() {
-                return true;
-            }
-
+        r.register(new RequiredInlineOnlyInvocationPlugin("injectBranchProbability", double.class, boolean.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode probability, ValueNode condition) {
                 b.addPush(JavaKind.Boolean, new BranchProbabilityNode(probability, condition));
                 return true;
             }
         });
-        r.register(new RequiredInvocationPlugin("injectIterationCount", double.class, boolean.class) {
-            @Override
-            public boolean inlineOnly() {
-                return true;
-            }
-
+        r.register(new RequiredInlineOnlyInvocationPlugin("injectIterationCount", double.class, boolean.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode iterations, ValueNode condition) {
                 // This directive has an actual definition that only works well if the bytecode
@@ -1608,31 +1530,20 @@ public class StandardGraphBuilderPlugins {
         for (JavaKind kind : JavaKind.values()) {
             if ((kind.isPrimitive() && kind != JavaKind.Void) || kind == JavaKind.Object) {
                 Class<?> javaClass = getJavaClass(kind);
-                r.register(new RequiredInvocationPlugin("blackhole", javaClass) {
-                    @Override
-                    public boolean inlineOnly() {
-                        return true;
-                    }
-
+                r.register(new RequiredInlineOnlyInvocationPlugin("blackhole", javaClass) {
                     @Override
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                         b.add(new BlackholeNode(value));
                         return true;
                     }
                 });
-                r.register(new RequiredInvocationPlugin("bindToRegister", javaClass) {
-                    @Override
-                    public boolean inlineOnly() {
-                        return true;
-                    }
-
+                r.register(new RequiredInlineOnlyInvocationPlugin("bindToRegister", javaClass) {
                     @Override
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                         b.add(new BindToRegisterNode(value));
                         return true;
                     }
                 });
-
                 r.register(new RequiredInvocationPlugin("opaque", javaClass) {
                     @Override
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
@@ -1643,12 +1554,7 @@ public class StandardGraphBuilderPlugins {
             }
         }
 
-        r.register(new RequiredInvocationPlugin("spillRegisters") {
-            @Override
-            public boolean inlineOnly() {
-                return true;
-            }
-
+        r.register(new RequiredInlineOnlyInvocationPlugin("spillRegisters") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.add(new SpillRegistersNode());
@@ -1656,12 +1562,7 @@ public class StandardGraphBuilderPlugins {
             }
         });
 
-        r.register(new RequiredInvocationPlugin("guardingNonNull", Object.class) {
-            @Override
-            public boolean inlineOnly() {
-                return true;
-            }
-
+        r.register(new RequiredInlineOnlyInvocationPlugin("guardingNonNull", Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 b.addPush(value.getStackKind(), b.nullCheckedValue(value));
@@ -1669,24 +1570,14 @@ public class StandardGraphBuilderPlugins {
             }
         });
 
-        r.register(new RequiredInvocationPlugin("ensureVirtualized", Object.class) {
-            @Override
-            public boolean inlineOnly() {
-                return true;
-            }
-
+        r.register(new RequiredInlineOnlyInvocationPlugin("ensureVirtualized", Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
                 b.add(new EnsureVirtualizedNode(object, false));
                 return true;
             }
         });
-        r.register(new RequiredInvocationPlugin("ensureVirtualizedHere", Object.class) {
-            @Override
-            public boolean inlineOnly() {
-                return true;
-            }
-
+        r.register(new RequiredInlineOnlyInvocationPlugin("ensureVirtualizedHere", Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode object) {
                 b.add(new EnsureVirtualizedNode(object, true));
@@ -1700,12 +1591,7 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
-        r.register(new RequiredInvocationPlugin("isCompilationConstant", Object.class) {
-            @Override
-            public boolean inlineOnly() {
-                return true;
-            }
-
+        r.register(new RequiredInlineOnlyInvocationPlugin("isCompilationConstant", Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(value.isJavaConstant()));
@@ -1756,15 +1642,10 @@ public class StandardGraphBuilderPlugins {
 
     private static void registerJFRThrowablePlugins(InvocationPlugins plugins, Replacements replacements) {
         Registration r = new Registration(plugins, "oracle.jrockit.jfr.jdkevents.ThrowableTracer", replacements);
-        r.register(new InvocationPlugin("traceThrowable", Throwable.class, String.class) {
+        r.register(new InlineOnlyInvocationPlugin("traceThrowable", Throwable.class, String.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode throwable, ValueNode message) {
                 b.add(new VirtualizableInvokeMacroNode(MacroParams.of(b, targetMethod, throwable, message)));
-                return true;
-            }
-
-            @Override
-            public boolean inlineOnly() {
                 return true;
             }
         });
@@ -1786,12 +1667,7 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
-        r.register(new InvocationPlugin("profileBoolean", boolean.class, int[].class) {
-            @Override
-            public boolean inlineOnly() {
-                return true;
-            }
-
+        r.register(new InlineOnlyInvocationPlugin("profileBoolean", boolean.class, int[].class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode result, ValueNode counters) {
                 if (b.needsExplicitException()) {
@@ -1832,12 +1708,7 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
-        r.register(new RequiredInvocationPlugin("isCompileConstant", Object.class) {
-            @Override
-            public boolean inlineOnly() {
-                return true;
-            }
-
+        r.register(new RequiredInlineOnlyInvocationPlugin("isCompileConstant", Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode obj) {
                 b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(obj.isConstant()));
@@ -1848,12 +1719,7 @@ public class StandardGraphBuilderPlugins {
 
     private static void registerPreconditionsPlugins(InvocationPlugins plugins, Replacements replacements) {
         final Registration preconditions = new Registration(plugins, "jdk.internal.util.Preconditions", replacements);
-        preconditions.register(new InvocationPlugin("checkIndex", int.class, int.class, BiFunction.class) {
-            @Override
-            public boolean inlineOnly() {
-                return true;
-            }
-
+        preconditions.register(new InlineOnlyInvocationPlugin("checkIndex", int.class, int.class, BiFunction.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode index, ValueNode length, ValueNode oobef) {
                 if (b.needsExplicitException()) {
