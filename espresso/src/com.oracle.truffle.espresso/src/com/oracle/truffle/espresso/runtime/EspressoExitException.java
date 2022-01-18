@@ -40,6 +40,7 @@ public final class EspressoExitException extends AbstractTruffleException {
     }
 
     @ExportMessage
+    @SuppressWarnings("static-method")
     public ExceptionType getExceptionType() {
         return ExceptionType.EXIT;
     }

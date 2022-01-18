@@ -22,7 +22,6 @@
  */
 package com.oracle.truffle.espresso.runtime;
 
-import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
@@ -30,7 +29,6 @@ import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -93,19 +91,30 @@ public final class EspressoException extends AbstractTruffleException {
     }
 
     @ExportMessage
-    static class GetExceptionType extends Node {
-        @Specialization
-        public ExceptionType execute(EspressoException self,
+    static class GetExceptionType {
+        @Specialization(guards = "getContext(self) == cachedContext", limit = "1")
+        public static ExceptionType doCached(EspressoException self,
                         @Cached TypeCheckNode checkInterruptException,
-                        @Bind("getContext()") EspressoContext context) {
-            if (checkInterruptException.executeTypeCheck(context.getMeta().java_lang_InterruptedException, self.getGuestException().getKlass())) {
+                        @Cached("getContext(self)") EspressoContext cachedContext) {
+            // Must be checked from the receiver's context viewpoint
+            assert checkInterruptException.getContext() == cachedContext;
+            if (checkInterruptException.executeTypeCheck(cachedContext.getMeta().java_lang_InterruptedException, self.getGuestException().getKlass())) {
                 return ExceptionType.INTERRUPT;
             }
             return ExceptionType.RUNTIME_ERROR;
         }
 
-        public final EspressoContext getContext() {
-            return EspressoContext.get(this);
+        @Specialization(replaces = "doCached")
+        public static ExceptionType doUncached(EspressoException self) {
+            if (getContext(self).getMeta().java_lang_InterruptedException.isAssignableFrom(self.getGuestException().getKlass())) {
+                return ExceptionType.INTERRUPT;
+            }
+            return ExceptionType.RUNTIME_ERROR;
+        }
+
+        public static EspressoContext getContext(EspressoException obj) {
+            assert StaticObject.notNull(obj.getGuestException());
+            return obj.getGuestException().getKlass().getContext();
         }
     }
 
