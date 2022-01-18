@@ -23,6 +23,7 @@
 
 package com.oracle.truffle.espresso.nodes.helper;
 
+import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -75,34 +76,11 @@ public abstract class TypeCheckNode extends Node implements ContextAccess {
         return typeToCheck == k;
     }
 
-    @Specialization(guards = {"typeToCheck == cachedTTC", "k == cachedKlass.getKlass()"}, limit = "LIMIT", assumptions = "cachedKlass.getAssumption()")
-    protected boolean typeCheckObjectKlassCached(ObjectKlass typeToCheck, ObjectKlass k,
-                    @Cached("typeToCheck") ObjectKlass cachedTTC,
-                    @Cached("k.getKlassVersion()") ObjectKlass.KlassVersion cachedKlass,
-                    @Cached("doTypeCheck(typeToCheck, k)") boolean result) {
-        return result;
-    }
-
-    @Specialization(replaces = "typeCheckObjectKlassCached", guards = {
-                    "typeToCheck != k", // Re-specialize to add typeCheckEquals
-                    "isInterface(typeToCheck)"})
-    protected boolean typeCheckInterfaceObjectKlass(ObjectKlass typeToCheck, ObjectKlass k) {
-        return typeToCheck.checkInterfaceSubclassing(k);
-    }
-
-    @Specialization(replaces = "typeCheckObjectKlassCached", guards = {
-                    "typeToCheck != k", // Re-specialize to add typeCheckEquals
-                    "!isInterface(typeToCheck)",
-                    "!typeToCheck.isArray()"
-    })
-    protected boolean typeCheckRegularObjectKlass(ObjectKlass typeToCheck, ObjectKlass k) {
-        return typeToCheck.checkOrdinaryClassSubclassing(k);
-    }
-
-    @Specialization(guards = {"typeToCheck == cachedTTC", "k == cachedKlass"}, limit = "LIMIT")
+    @Specialization(guards = {"typeToCheck == cachedTTC", "k == cachedKlass"}, assumptions = {"redefineAssumption"}, limit = "LIMIT")
     protected boolean typeCheckCached(Klass typeToCheck, Klass k,
                     @Cached("typeToCheck") Klass cachedTTC,
                     @Cached("k") Klass cachedKlass,
+                    @Cached("k.getRedefineAssumption()") Assumption redefineAssumption,
                     @Cached("doTypeCheck(typeToCheck, k)") boolean result) {
         return result;
     }

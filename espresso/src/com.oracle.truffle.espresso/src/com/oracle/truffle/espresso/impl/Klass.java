@@ -1535,7 +1535,8 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return module();
     }
 
-    protected Assumption getRedefineAssumption() {
+    // visible to TypeCheckNode
+    public Assumption getRedefineAssumption() {
         return AlwaysValidAssumption.INSTANCE;
     }
 

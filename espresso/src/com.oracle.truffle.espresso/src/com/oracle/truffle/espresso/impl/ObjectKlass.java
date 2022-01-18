@@ -1252,6 +1252,11 @@ public final class ObjectKlass extends Klass {
         return getKlassVersion().superInterfaces;
     }
 
+    @Override
+    public Assumption getRedefineAssumption() {
+        return getKlassVersion().getAssumption();
+    }
+
     public KlassVersion getKlassVersion() {
         KlassVersion cache = klassVersion;
         if (!cache.assumption.isValid()) {

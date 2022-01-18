@@ -268,7 +268,7 @@ public final class ArrayKlass extends Klass {
     }
 
     @Override
-    protected Assumption getRedefineAssumption() {
+    public Assumption getRedefineAssumption() {
         return componentType.getRedefineAssumption();
     }
 
