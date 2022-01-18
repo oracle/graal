@@ -25,12 +25,17 @@
  */
 package com.oracle.svm.graal;
 
+import static org.graalvm.compiler.replacements.ArrayIndexOf.NONE;
+import static org.graalvm.compiler.replacements.ArrayIndexOf.S1;
+import static org.graalvm.compiler.replacements.ArrayIndexOf.S2;
+import static org.graalvm.compiler.replacements.ArrayIndexOf.S4;
+
 import java.util.Arrays;
 
-import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.replacements.ArrayIndexOf;
 import org.graalvm.compiler.replacements.ArrayIndexOfNode;
 import org.graalvm.nativeimage.Platform.AARCH64;
+import org.graalvm.nativeimage.Platform.AMD64;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -45,14 +50,9 @@ import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescripto
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 
-import static org.graalvm.compiler.replacements.ArrayIndexOf.NONE;
-import static org.graalvm.compiler.replacements.ArrayIndexOf.S1;
-import static org.graalvm.compiler.replacements.ArrayIndexOf.S2;
-import static org.graalvm.compiler.replacements.ArrayIndexOf.S4;
-
 @AutomaticFeature
-@Platforms(AARCH64.class)
-class AArch64ArrayIndexOfForeignCallsFeature implements GraalFeature {
+@Platforms({AMD64.class, AARCH64.class})
+class ArrayIndexOfForeignCallsFeature implements GraalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return !SubstrateOptions.useLLVMBackend();
@@ -62,7 +62,7 @@ class AArch64ArrayIndexOfForeignCallsFeature implements GraalFeature {
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         BeforeAnalysisAccessImpl impl = (BeforeAnalysisAccessImpl) access;
         AnalysisMetaAccess metaAccess = impl.getMetaAccess();
-        for (SubstrateForeignCallDescriptor descriptor : AArch64ArrayIndexOfForeignCalls.FOREIGN_CALLS) {
+        for (SubstrateForeignCallDescriptor descriptor : ArrayIndexOfForeignCalls.FOREIGN_CALLS) {
             AnalysisMethod method = (AnalysisMethod) descriptor.findMethod(metaAccess);
             impl.registerAsCompiled(method);
         }
@@ -70,30 +70,15 @@ class AArch64ArrayIndexOfForeignCallsFeature implements GraalFeature {
 
     @Override
     public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {
-        foreignCalls.register(AArch64ArrayIndexOfForeignCalls.FOREIGN_CALLS);
+        foreignCalls.register(ArrayIndexOfForeignCalls.FOREIGN_CALLS);
     }
 }
 
-@Platforms(AARCH64.class)
-class AArch64ArrayIndexOfForeignCalls {
-    private static final ForeignCallDescriptor[] ORIGINAL_FOREIGN_CALLS = {
-                    ArrayIndexOf.STUB_INDEX_OF_TWO_CONSECUTIVE_B_S1,
-                    ArrayIndexOf.STUB_INDEX_OF_TWO_CONSECUTIVE_B_S2,
-                    ArrayIndexOf.STUB_INDEX_OF_TWO_CONSECUTIVE_C_S2,
-                    ArrayIndexOf.STUB_INDEX_OF_B_1_S1,
-                    ArrayIndexOf.STUB_INDEX_OF_B_1_S2,
-                    ArrayIndexOf.STUB_INDEX_OF_C_1_S2,
+@Platforms({AMD64.class, AARCH64.class})
+class ArrayIndexOfForeignCalls {
 
-                    ArrayIndexOf.STUB_INDEX_OF_TWO_CONSECUTIVE_S1,
-                    ArrayIndexOf.STUB_INDEX_OF_TWO_CONSECUTIVE_S2,
-                    ArrayIndexOf.STUB_INDEX_OF_TWO_CONSECUTIVE_S4,
-                    ArrayIndexOf.STUB_INDEX_OF_1_S1,
-                    ArrayIndexOf.STUB_INDEX_OF_1_S2,
-                    ArrayIndexOf.STUB_INDEX_OF_1_S4,
-    };
-
-    static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = Arrays.stream(ORIGINAL_FOREIGN_CALLS)
-                    .map(call -> SnippetRuntime.findForeignCall(AArch64ArrayIndexOfForeignCalls.class, call.getName(), true))
+    static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = Arrays.stream(ArrayIndexOf.STUBS_AARCH64)
+                    .map(call -> SnippetRuntime.findForeignCall(ArrayIndexOfForeignCalls.class, call.getName(), true))
                     .toArray(SubstrateForeignCallDescriptor[]::new);
 
     @Uninterruptible(reason = "Must not do a safepoint check.")
