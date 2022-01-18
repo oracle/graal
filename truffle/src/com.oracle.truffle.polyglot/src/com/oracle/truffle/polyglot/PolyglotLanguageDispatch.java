@@ -91,4 +91,8 @@ final class PolyglotLanguageDispatch extends AbstractLanguageDispatch {
         return ((PolyglotLanguage) receiver).getDefaultMimeType();
     }
 
+    @Override
+    public String getWebsite(Object receiver) {
+        return ((PolyglotLanguage) receiver).getWebsite();
+    }
 }

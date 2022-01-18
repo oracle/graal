@@ -952,7 +952,7 @@ public abstract class Launcher {
         return new String(new char[length]).replace('\0', ' ');
     }
 
-    private static String wrap(String s) {
+    private static String wrap(String s, String indent) {
         final int width = 120;
         StringBuilder sb = new StringBuilder(s);
         int cursor = 0;
@@ -962,8 +962,8 @@ public abstract class Launcher {
                 i = sb.indexOf(" ", cursor + width);
             }
             if (i != -1) {
-                sb.replace(i, i + 1, System.lineSeparator());
-                cursor = i;
+                sb.replace(i, i + 1, System.lineSeparator() + indent);
+                cursor = i + indent.length();
             } else {
                 break;
             }
@@ -977,7 +977,7 @@ public abstract class Launcher {
         String nl = System.lineSeparator();
         String[] descLines = desc.split(nl);
         for (int i = 0; i < descLines.length; i++) {
-            descLines[i] = wrap(descLines[i]);
+            descLines[i] = wrap(descLines[i], indent + spaces(optionWidth));
         }
         if (option.length() >= optionWidth && description != null) {
             out.println(indent + option + nl + indent + spaces(optionWidth) + descLines[0]);
@@ -989,26 +989,24 @@ public abstract class Launcher {
         }
     }
 
-    void printOption(PrintableOption option) {
-        printOption(option, 2);
-    }
-
     void printOption(PrintableOption option, int indentation) {
         printOption(option.option, option.description, indentation, optionIndent);
     }
 
     static final class PrintableOption implements Comparable<PrintableOption> {
+        final String name;
         final String option;
         final String description;
 
-        protected PrintableOption(String option, String description) {
+        protected PrintableOption(String name, String option, String description) {
+            this.name = name;
             this.option = option;
             this.description = description;
         }
 
         @Override
         public int compareTo(PrintableOption o) {
-            return this.option.compareTo(o.option);
+            return this.name.compareTo(o.name);
         }
     }
 

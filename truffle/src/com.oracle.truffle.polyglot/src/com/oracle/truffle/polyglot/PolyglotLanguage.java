@@ -266,4 +266,7 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
         return true;
     }
 
+    String getWebsite() {
+        return cache.getWebsite();
+    }
 }

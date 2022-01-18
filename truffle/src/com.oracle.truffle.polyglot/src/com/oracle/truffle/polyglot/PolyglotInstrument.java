@@ -249,4 +249,7 @@ class PolyglotInstrument implements com.oracle.truffle.polyglot.PolyglotImpl.VMO
         }
     }
 
+    public String getWebsite() {
+        return cache.getWebsite();
+    }
 }

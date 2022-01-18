@@ -59,13 +59,14 @@ meth public int hashCode()
 meth public java.lang.String getDeprecationMessage()
 meth public java.lang.String getHelp()
 meth public java.lang.String getName()
+meth public java.lang.String getUsageSyntax()
 meth public java.lang.String toString()
 meth public org.graalvm.options.OptionCategory getCategory()
 meth public org.graalvm.options.OptionKey<?> getKey()
 meth public org.graalvm.options.OptionStability getStability()
 meth public static <%0 extends java.lang.Object> org.graalvm.options.OptionDescriptor$Builder newBuilder(org.graalvm.options.OptionKey<{%%0}>,java.lang.String)
 supr java.lang.Object
-hfds EMPTY,category,deprecated,deprecationMessage,help,key,name,stability
+hfds EMPTY,category,deprecated,deprecationMessage,help,key,name,stability,usageSyntax
 
 CLSS public final org.graalvm.options.OptionDescriptor$Builder
  outer org.graalvm.options.OptionDescriptor
@@ -75,8 +76,9 @@ meth public org.graalvm.options.OptionDescriptor$Builder deprecated(boolean)
 meth public org.graalvm.options.OptionDescriptor$Builder deprecationMessage(java.lang.String)
 meth public org.graalvm.options.OptionDescriptor$Builder help(java.lang.String)
 meth public org.graalvm.options.OptionDescriptor$Builder stability(org.graalvm.options.OptionStability)
+meth public org.graalvm.options.OptionDescriptor$Builder usageSyntax(java.lang.String)
 supr java.lang.Object
-hfds category,deprecated,deprecationMessage,help,key,name,stability
+hfds category,deprecated,deprecationMessage,help,key,name,stability,usageSyntax
 
 CLSS public abstract interface org.graalvm.options.OptionDescriptors
 fld public final static org.graalvm.options.OptionDescriptors EMPTY

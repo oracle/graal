@@ -476,6 +476,15 @@ public abstract class TruffleLanguage<C> {
          * @since 22.1
          */
         boolean needsAllEncodings() default false;
+
+        /**
+         * A link to a website with more information about the instrument. Will be shown in the help
+         * text of GraalVM launchers.
+         *
+         * @since 22.1.0
+         * @return URL for language website.
+         */
+        String website() default "";
     }
 
     /**
