@@ -117,7 +117,6 @@
         darwin_amd64 + jdk + truffle_weekly + gate_lite,
       ] for jdk in [common.oraclejdk11, common.oraclejdk17]
     ]) + [
-    linux_amd64 + common.oraclejdk8  + truffle_gate + {timelimit: "45:00"},
     linux_amd64 + common.oraclejdk11 + truffle_gate + {environment+: {DISABLE_DSL_STATE_BITS_TESTS: "true"}},
     linux_amd64 + common.oraclejdk17 + truffle_gate + {environment+: {DISABLE_DSL_STATE_BITS_TESTS: "true"}},
 
