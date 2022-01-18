@@ -77,11 +77,22 @@ public abstract class RegexTestBase {
     abstract String getEngineOptions();
 
     Value compileRegex(String pattern, String flags) {
-        return context.eval("regexDummyLang", "RegressionTestMode=true" + (getEngineOptions().isEmpty() ? "" : "," + getEngineOptions()) + '/' + pattern + '/' + flags);
+        return compileRegex(pattern, flags, "");
     }
 
-    Value compileRegex(Object pattern, Object flags, Encodings.Encoding encoding) {
-        return context.eval("regexDummyLang", "RegressionTestMode=true,Encoding=" + encoding.getName() + (getEngineOptions().isEmpty() ? "" : "," + getEngineOptions()) + '/' + pattern + '/' + flags);
+    Value compileRegex(String pattern, String flags, Encodings.Encoding encoding) {
+        return compileRegex(pattern, flags, "Encoding=" + encoding.getName());
+    }
+
+    Value compileRegex(String pattern, String flags, String options) {
+        StringBuilder combinedOptions = new StringBuilder("RegressionTestMode=true");
+        if (!getEngineOptions().isEmpty()) {
+            combinedOptions.append("," + getEngineOptions());
+        }
+        if (!options.isEmpty()) {
+            combinedOptions.append("," + options);
+        }
+        return context.eval("regexDummyLang", combinedOptions.toString() + '/' + pattern + '/' + flags);
     }
 
     Value execRegex(Value compiledRegex, Object input, int fromIndex) {
@@ -89,7 +100,11 @@ public abstract class RegexTestBase {
     }
 
     void test(String pattern, String flags, Object input, int fromIndex, boolean isMatch, int... captureGroupBoundsAndLastGroup) {
-        Value compiledRegex = compileRegex(pattern, flags);
+        test(pattern, flags, "", input, fromIndex, isMatch, captureGroupBoundsAndLastGroup);
+    }
+
+    void test(String pattern, String flags, String options, Object input, int fromIndex, boolean isMatch, int... captureGroupBoundsAndLastGroup) {
+        Value compiledRegex = compileRegex(pattern, flags, options);
         Value result = execRegex(compiledRegex, input, fromIndex);
         validateResult(result, compiledRegex.getMember("groupCount").asInt(), isMatch, captureGroupBoundsAndLastGroup);
     }

@@ -76,6 +76,7 @@ public final class PythonFlags extends AbstractConstantKeysObject {
     private static final int FLAG_ASCII = 1 << 5;
     private static final int FLAG_TEMPLATE = 1 << 6;
     private static final int FLAG_UNICODE = 1 << 7;
+    // TODO: This flag should be deprecated and removed in flavor of the PythonMethod option.
     private static final int FLAG_STICKY = 1 << 8;
 
     private static final int[] FLAG_LOOKUP = {

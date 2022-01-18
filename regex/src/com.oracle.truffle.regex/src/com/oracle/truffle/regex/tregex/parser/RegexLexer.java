@@ -115,7 +115,7 @@ public final class RegexLexer {
      *            {@link RegexSource#getPattern()}.
      */
     private void setSourceSection(Token t, int startIndex, int endIndex) {
-        if (source.getOptions().isDumpAutomata()) {
+        if (source.getOptions().isDumpAutomataWithSourceSections()) {
             // RegexSource#getSource() prepends a slash ('/') to the pattern, so we have to add an
             // offset of 1 here.
             t.setSourceSection(source.getSource().createSection(startIndex + 1, endIndex - startIndex));

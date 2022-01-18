@@ -93,14 +93,14 @@ public final class LiteralRegexEngine {
         if (ast.getRoot().getMinPath() == 0) {
             if (caret) {
                 if (dollar) {
-                    return LiteralRegexExecNode.create(language, ast, new EmptyEquals(preCalcResultVisitor));
+                    return LiteralRegexExecNode.create(language, ast, new EmptyEquals(preCalcResultVisitor, ast.getOptions().isMustAdvance()));
                 }
-                return LiteralRegexExecNode.create(language, ast, new EmptyStartsWith(preCalcResultVisitor));
+                return LiteralRegexExecNode.create(language, ast, new EmptyStartsWith(preCalcResultVisitor, ast.getOptions().isMustAdvance()));
             }
             if (dollar) {
-                return LiteralRegexExecNode.create(language, ast, new EmptyEndsWith(preCalcResultVisitor, ast.getFlags().isSticky()));
+                return LiteralRegexExecNode.create(language, ast, new EmptyEndsWith(preCalcResultVisitor, ast.getFlags().isSticky(), ast.getOptions().isMustAdvance()));
             }
-            return LiteralRegexExecNode.create(language, ast, new EmptyIndexOf(preCalcResultVisitor));
+            return LiteralRegexExecNode.create(language, ast, new EmptyIndexOf(preCalcResultVisitor, ast.getOptions().isMustAdvance()));
         }
         if (caret) {
             if (dollar) {

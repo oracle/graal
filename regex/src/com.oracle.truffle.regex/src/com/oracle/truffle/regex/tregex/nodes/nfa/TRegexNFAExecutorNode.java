@@ -162,7 +162,7 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
         // The loopback priority has to be lower than the priority of any path completed so far.
         // Therefore, we only follow the loopback if no path has been completed so far
         // (i.e. !locals.hasResult()).
-        if (searching && !locals.hasResult() && locals.getIndex() >= locals.getFromIndex()) {
+        if (searching && !locals.hasResult() && locals.getIndex() > locals.getFromIndex()) {
             expandState(locals, nfa.getInitialLoopBackTransition().getTarget().getId(), c, true);
         }
     }
@@ -200,7 +200,10 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
                 return;
             }
         }
-        if (searching && !locals.hasResult()) {
+        // We only expand the loopBack state if index > fromIndex. Expanding the loopBack state
+        // when index == fromIndex is: a) redundant and b) breaks MustAdvance where the actual
+        // loopBack state is only accessible after consuming at least one character.
+        if (searching && !locals.hasResult() && locals.getIndex() > locals.getFromIndex()) {
             expandStateAtEnd(locals, nfa.getInitialLoopBackTransition().getTarget(), true);
         }
     }

@@ -287,7 +287,7 @@ public final class NFATraceFinderGenerator {
         for (NFAState s : states) {
             s.linkPredecessors();
         }
-        return new NFA(originalNFA.getAst(), dummyInitialState, null, null, newAnchoredEntry, newUnAnchoredEntry, states, stateID, transitionID, preCalculatedResults);
+        return new NFA(originalNFA.getAst(), dummyInitialState, null, null, newAnchoredEntry, newUnAnchoredEntry, states, stateID, transitionID, null, preCalculatedResults);
     }
 
     private NFAStateTransition createTransition(NFAState source, NFAState target, NFAStateTransition originalTransition,

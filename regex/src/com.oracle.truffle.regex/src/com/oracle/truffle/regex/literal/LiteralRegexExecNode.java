@@ -144,10 +144,20 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
         abstract RegexResult execute(Object input, int fromIndex, Encodings.Encoding encoding);
     }
 
-    public static final class EmptyIndexOf extends LiteralRegexExecImplNode {
+    abstract static class EmptyLiteralRegexExecNode extends LiteralRegexExecImplNode {
 
-        public EmptyIndexOf(PreCalcResultVisitor preCalcResultVisitor) {
+        protected final boolean mustAdvance;
+
+        EmptyLiteralRegexExecNode(PreCalcResultVisitor preCalcResultVisitor, boolean mustAdvance) {
             super(preCalcResultVisitor);
+            this.mustAdvance = mustAdvance;
+        }
+    }
+
+    public static final class EmptyIndexOf extends EmptyLiteralRegexExecNode {
+
+        public EmptyIndexOf(PreCalcResultVisitor preCalcResultVisitor, boolean mustAdvance) {
+            super(preCalcResultVisitor, mustAdvance);
         }
 
         @Override
@@ -157,14 +167,22 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
 
         @Override
         protected RegexResult execute(Object input, int fromIndex, Encodings.Encoding encoding) {
-            return createFromStart(fromIndex);
+            if (mustAdvance) {
+                if (fromIndex < inputLength(input)) {
+                    return createFromStart(fromIndex + 1);
+                } else {
+                    return RegexResult.getNoMatchInstance();
+                }
+            } else {
+                return createFromStart(fromIndex);
+            }
         }
     }
 
-    public static final class EmptyStartsWith extends LiteralRegexExecImplNode {
+    public static final class EmptyStartsWith extends EmptyLiteralRegexExecNode {
 
-        public EmptyStartsWith(PreCalcResultVisitor preCalcResultVisitor) {
-            super(preCalcResultVisitor);
+        public EmptyStartsWith(PreCalcResultVisitor preCalcResultVisitor, boolean mustAdvance) {
+            super(preCalcResultVisitor, mustAdvance);
         }
 
         @Override
@@ -174,16 +192,16 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
 
         @Override
         protected RegexResult execute(Object input, int fromIndex, Encodings.Encoding encoding) {
-            return fromIndex == 0 ? createFromStart(0) : RegexResult.getNoMatchInstance();
+            return fromIndex == 0 && !mustAdvance ? createFromStart(0) : RegexResult.getNoMatchInstance();
         }
     }
 
-    public static final class EmptyEndsWith extends LiteralRegexExecImplNode {
+    public static final class EmptyEndsWith extends EmptyLiteralRegexExecNode {
 
         private final boolean sticky;
 
-        public EmptyEndsWith(PreCalcResultVisitor preCalcResultVisitor, boolean sticky) {
-            super(preCalcResultVisitor);
+        public EmptyEndsWith(PreCalcResultVisitor preCalcResultVisitor, boolean sticky, boolean mustAdvance) {
+            super(preCalcResultVisitor, mustAdvance);
             this.sticky = sticky;
         }
 
@@ -195,18 +213,18 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
         @Override
         protected RegexResult execute(Object input, int fromIndex, Encodings.Encoding encoding) {
             assert fromIndex <= inputLength(input);
-            if (!sticky || fromIndex == inputLength(input)) {
-                return createFromEnd(inputLength(input));
-            } else {
+            if ((sticky && fromIndex < inputLength(input)) || (mustAdvance && fromIndex == inputLength(input))) {
                 return RegexResult.getNoMatchInstance();
+            } else {
+                return createFromEnd(inputLength(input));
             }
         }
     }
 
-    public static final class EmptyEquals extends LiteralRegexExecImplNode {
+    public static final class EmptyEquals extends EmptyLiteralRegexExecNode {
 
-        public EmptyEquals(PreCalcResultVisitor preCalcResultVisitor) {
-            super(preCalcResultVisitor);
+        public EmptyEquals(PreCalcResultVisitor preCalcResultVisitor, boolean mustAdvance) {
+            super(preCalcResultVisitor, mustAdvance);
         }
 
         @Override
@@ -217,7 +235,7 @@ public abstract class LiteralRegexExecNode extends RegexExecNode implements Json
         @Override
         protected RegexResult execute(Object input, int fromIndex, Encodings.Encoding encoding) {
             assert fromIndex <= inputLength(input);
-            return inputLength(input) == 0 ? createFromStart(0) : RegexResult.getNoMatchInstance();
+            return inputLength(input) == 0 && !mustAdvance ? createFromStart(0) : RegexResult.getNoMatchInstance();
         }
     }
 
