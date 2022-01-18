@@ -44,7 +44,7 @@ public class TStringOpsCalcStringAttributesReturnValuesInSyncTest {
         checkField(c, AMD64CalcStringAttributesOp.CR_BROKEN_MULTIBYTE, "CR_BROKEN_MULTIBYTE");
     }
 
-    private void checkField(Class<?> tsCodeRangeClass, int value, String fieldName) throws NoSuchFieldException, IllegalAccessException {
+    private static void checkField(Class<?> tsCodeRangeClass, int value, String fieldName) throws NoSuchFieldException, IllegalAccessException {
         Field field = tsCodeRangeClass.getDeclaredField(fieldName);
         field.setAccessible(true);
         Assert.assertEquals(value, field.getInt(null));

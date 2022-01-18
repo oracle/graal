@@ -75,7 +75,8 @@ import jdk.vm.ci.meta.Value;
  * {@code stride}.</li>
  * <li>{@code fromIndex}: start index of the indexOf search, respective to the element size given by
  * {@code stride}.</li>
- * <li>{@code searchValues}: between 1-4 int values to be searched.</li>
+ * <li>{@code searchValues}: between 1-4 int values to be searched. These values are ALWAYS expected
+ * to be INT (4 bytes), if the {@code stride} is smaller, they should be zero-extended!</li>
  * </ul>
  *
  * The boolean parameters {@code findTwoConsecutive} and {@code withMask} determine the search

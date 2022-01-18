@@ -215,21 +215,36 @@ public class TruffleAMD64InvocationPlugins implements GraphBuilderInvocationPlug
         return graph.add(AddNode.create(shifted, ConstantNode.forLong(metaAccess.getArrayBaseOffset(stride), graph.getGraph()), NodeView.DEFAULT));
     }
 
-    private static final class TStringReadPlugin implements InvocationPlugin {
+    private abstract static class TStringAccessPlugin implements InvocationPlugin {
+
+        final boolean isNative;
+
+        protected TStringAccessPlugin(boolean isNative) {
+            this.isNative = isNative;
+        }
+
+        ValueNode asChecked(GraphBuilderContext b, ValueNode array) {
+            return isNative ? array : b.nullCheckedValue(array);
+        }
+
+        LocationIdentity getLocationIdentity() {
+            return isNative ? NamedLocationIdentity.OFF_HEAP_LOCATION : getArrayLocation(JavaKind.Byte);
+        }
+    }
+
+    private static final class TStringReadPlugin extends TStringAccessPlugin {
 
         private final JavaKind stride;
-        private final boolean isNative;
 
         private TStringReadPlugin(JavaKind stride, boolean isNative) {
+            super(isNative);
             this.stride = stride;
-            this.isNative = isNative;
         }
 
         @Override
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode array, ValueNode offset) {
-            LocationIdentity location = isNative ? NamedLocationIdentity.OFF_HEAP_LOCATION : getArrayLocation(JavaKind.Byte);
-            ValueNode arrayChecked = isNative ? array : b.nullCheckedValue(array);
-            ReadNode read = b.add(new ReadNode(new OffsetAddressNode(arrayChecked, offset), location, StampFactory.forInteger(stride.getBitCount()), OnHeapMemoryAccess.BarrierType.NONE));
+            ReadNode read = b.add(new ReadNode(new OffsetAddressNode(asChecked(b, array), offset), getLocationIdentity(), StampFactory.forInteger(stride.getBitCount()),
+                            OnHeapMemoryAccess.BarrierType.NONE));
             if (S4.equals(stride)) {
                 b.push(stride, read);
             } else {
@@ -239,19 +254,15 @@ public class TruffleAMD64InvocationPlugins implements GraphBuilderInvocationPlug
         }
     }
 
-    private static final class TStringWritePlugin implements InvocationPlugin {
-
-        private final boolean isNative;
+    private static final class TStringWritePlugin extends TStringAccessPlugin {
 
         private TStringWritePlugin(boolean isNative) {
-            this.isNative = isNative;
+            super(isNative);
         }
 
         @Override
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode array, ValueNode offset, ValueNode value) {
-            LocationIdentity location = isNative ? NamedLocationIdentity.OFF_HEAP_LOCATION : getArrayLocation(JavaKind.Byte);
-            ValueNode arrayChecked = isNative ? array : b.nullCheckedValue(array);
-            b.add(new WriteNode(new OffsetAddressNode(arrayChecked, offset), location, value, OnHeapMemoryAccess.BarrierType.NONE));
+            b.add(new WriteNode(new OffsetAddressNode(asChecked(b, array), offset), getLocationIdentity(), value, OnHeapMemoryAccess.BarrierType.NONE));
             return true;
         }
     }
@@ -292,6 +303,20 @@ public class TruffleAMD64InvocationPlugins implements GraphBuilderInvocationPlug
         return LocationIdentity.any();
     }
 
+    /**
+     * Infer the location identity of two TruffleString data pointers from boolean parameters
+     * {@code isNativeA} and {@code isNativeB}.
+     *
+     * If both parameters are constant and {@code true}, the resulting locationIdentity is
+     * {@link NamedLocationIdentity#OFF_HEAP_LOCATION}, except when {@code nativeToAny} is
+     * {@code true}: in that case, the result is {@link NamedLocationIdentity#any()}. This is used
+     * for methods with an additional java array parameter that is never native.
+     *
+     * If both {@code isNativeA} and {@code isNativeB} are constant and {@code false}, the result is
+     * {@code getArrayLocation(JavaKind.Byte)}.
+     *
+     * Otherwise, the result is {@link LocationIdentity#any()}.
+     */
     public static LocationIdentity inferLocationIdentity(ValueNode isNativeA, ValueNode isNativeB, boolean nativeToAny) {
         if (isNativeA.isJavaConstant() && isNativeB.isJavaConstant()) {
             boolean isNativeAConst = asBoolean(isNativeA);
