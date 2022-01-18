@@ -22,19 +22,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.hosted.jfr;
 
-import static org.junit.Assume.assumeTrue;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.TargetClass;
 
-import org.graalvm.nativeimage.ImageInfo;
-import org.junit.BeforeClass;
+import jdk.jfr.FlightRecorder;
 
-import com.oracle.svm.core.jfr.JfrEnabled;
-
-/** Base class for JFR unit tests. */
-public class JFRTest {
-    @BeforeClass
-    public static void checkForJFR() {
-        assumeTrue("skipping JFR tests", !ImageInfo.inImageCode() || JfrEnabled.get());
-    }
+@TargetClass(value = jdk.jfr.FlightRecorder.class, onlyWith = JfrFeature.JfrHostedEnabled.class)
+final class Target_jdk_jfr_FlightRecorder {
+    /*
+     * Ignore all state of the FlightRecorder maintained when profiling the image generator itself.
+     */
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    private static FlightRecorder platformRecorder;
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    private static boolean initialized;
 }

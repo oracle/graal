@@ -22,19 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.core.jfr;
 
-import static org.junit.Assume.assumeTrue;
+import java.io.IOException;
+import java.io.Reader;
+import java.text.ParseException;
 
-import org.graalvm.nativeimage.ImageInfo;
-import org.junit.BeforeClass;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.TargetClass;
 
-import com.oracle.svm.core.jfr.JfrEnabled;
+import jdk.jfr.Configuration;
 
-/** Base class for JFR unit tests. */
-public class JFRTest {
-    @BeforeClass
-    public static void checkForJFR() {
-        assumeTrue("skipping JFR tests", !ImageInfo.inImageCode() || JfrEnabled.get());
-    }
+@TargetClass(className = "jdk.jfr.internal.jfc.JFCParser", onlyWith = JfrEnabled.class)
+public final class Target_jdk_jfr_internal_jfc_JFCParser {
+    @Alias
+    public static native Configuration createConfiguration(String name, Reader reader) throws IOException, ParseException;
 }

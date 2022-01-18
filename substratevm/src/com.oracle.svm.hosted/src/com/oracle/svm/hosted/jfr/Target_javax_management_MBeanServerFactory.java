@@ -22,19 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.hosted.jfr;
 
-import static org.junit.Assume.assumeTrue;
+import java.util.ArrayList;
 
-import org.graalvm.nativeimage.ImageInfo;
-import org.junit.BeforeClass;
+import javax.management.MBeanServerBuilder;
 
-import com.oracle.svm.core.jfr.JfrEnabled;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.TargetClass;
 
-/** Base class for JFR unit tests. */
-public class JFRTest {
-    @BeforeClass
-    public static void checkForJFR() {
-        assumeTrue("skipping JFR tests", !ImageInfo.inImageCode() || JfrEnabled.get());
-    }
+@TargetClass(className = "javax.management.MBeanServerFactory", onlyWith = JfrFeature.JfrHostedEnabled.class)
+final class Target_javax_management_MBeanServerFactory {
+
+    /* Reset caches that are used at image build time when FlightRecorder is enabled. */
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias) //
+    private static ArrayList<?> mBeanServerList = new ArrayList<>();
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias) //
+    private static MBeanServerBuilder builder = null;
 }

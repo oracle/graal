@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,19 +22,29 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.core.jfr;
 
-import static org.junit.Assume.assumeTrue;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-import org.graalvm.nativeimage.ImageInfo;
-import org.junit.BeforeClass;
+/**
+ * Used to serialize all predefined frame types into the chunk.
+ */
+public class JfrFrameTypeSerializer implements JfrConstantPool {
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public JfrFrameTypeSerializer() {
+    }
 
-import com.oracle.svm.core.jfr.JfrEnabled;
+    @Override
+    public int write(JfrChunkWriter writer) {
+        writer.writeCompressedLong(JfrTypes.FrameType.getId());
 
-/** Base class for JFR unit tests. */
-public class JFRTest {
-    @BeforeClass
-    public static void checkForJFR() {
-        assumeTrue("skipping JFR tests", !ImageInfo.inImageCode() || JfrEnabled.get());
+        JfrFrameType[] values = JfrFrameType.values();
+        writer.writeCompressedLong(values.length);
+        for (int i = 0; i < values.length; i++) {
+            writer.writeCompressedInt(i);
+            writer.writeString(values[i].getText());
+        }
+        return NON_EMPTY;
     }
 }

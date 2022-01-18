@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,19 +22,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.core.jfr;
 
-import static org.junit.Assume.assumeTrue;
+import com.oracle.svm.core.annotate.Uninterruptible;
 
-import org.graalvm.nativeimage.ImageInfo;
-import org.junit.BeforeClass;
+import java.util.concurrent.TimeUnit;
 
-import com.oracle.svm.core.jfr.JfrEnabled;
+/**
+ * Utility class to manage ticks for event timestamps based on an initial start point when the
+ * system initializes.
+ */
+public final class JfrTicks {
+    private static long initialTicks;
 
-/** Base class for JFR unit tests. */
-public class JFRTest {
-    @BeforeClass
-    public static void checkForJFR() {
-        assumeTrue("skipping JFR tests", !ImageInfo.inImageCode() || JfrEnabled.get());
+    private JfrTicks() {
+    }
+
+    public static void initialize() {
+        initialTicks = System.nanoTime();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static long elapsedTicks() {
+        assert initialTicks > 0;
+        return System.nanoTime() - initialTicks;
+    }
+
+    public static long getTicksFrequency() {
+        return TimeUnit.SECONDS.toNanos(1);
+    }
+
+    public static long currentTimeNanos() {
+        return TimeUnit.MILLISECONDS.toNanos(System.currentTimeMillis());
     }
 }

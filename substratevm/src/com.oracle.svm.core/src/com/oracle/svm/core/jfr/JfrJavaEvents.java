@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,19 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.core.jfr;
 
-import static org.junit.Assume.assumeTrue;
+import java.util.ArrayList;
+import java.util.List;
+import jdk.jfr.Event;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-import org.graalvm.nativeimage.ImageInfo;
-import org.junit.BeforeClass;
+/**
+ * Holds all JFR Java-level event classes.
+ */
+public class JfrJavaEvents {
+    private static final List<Class<? extends Event>> EVENT_CLASSES = new ArrayList<>();
 
-import com.oracle.svm.core.jfr.JfrEnabled;
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void registerEventClass(Class<? extends Event> eventClass) {
+        EVENT_CLASSES.add(eventClass);
+    }
 
-/** Base class for JFR unit tests. */
-public class JFRTest {
-    @BeforeClass
-    public static void checkForJFR() {
-        assumeTrue("skipping JFR tests", !ImageInfo.inImageCode() || JfrEnabled.get());
+    public static List<Class<? extends Event>> getAllEventClasses() {
+        return EVENT_CLASSES;
     }
 }

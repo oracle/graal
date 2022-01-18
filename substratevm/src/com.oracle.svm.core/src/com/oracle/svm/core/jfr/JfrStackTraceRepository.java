@@ -22,19 +22,43 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.core.jfr;
 
-import static org.junit.Assume.assumeTrue;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-import org.graalvm.nativeimage.ImageInfo;
-import org.junit.BeforeClass;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.annotate.Uninterruptible;
 
-import com.oracle.svm.core.jfr.JfrEnabled;
+/**
+ * Repository that collects all metadata about stacktraces.
+ */
+public class JfrStackTraceRepository implements JfrConstantPool {
 
-/** Base class for JFR unit tests. */
-public class JFRTest {
-    @BeforeClass
-    public static void checkForJFR() {
-        assumeTrue("skipping JFR tests", !ImageInfo.inImageCode() || JfrEnabled.get());
+    private int depth = SubstrateOptions.MaxJavaStackTraceDepth.getValue();
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    JfrStackTraceRepository() {
+    }
+
+    public void teardown() {
+    }
+
+    @Uninterruptible(reason = "Epoch must not change while in this method.")
+    public long getStackTraceId(@SuppressWarnings("unused") int skipCount, @SuppressWarnings("unused") boolean previousEpoch) {
+        assert depth >= 0;
+        return 0;
+    }
+
+    public void setStackTraceDepth(int depth) {
+        if (depth < 0 || depth > SubstrateOptions.MaxJavaStackTraceDepth.getValue()) {
+            throw new IllegalArgumentException("StackTrace depth (" + depth + ") is not in a valid range!");
+        }
+        this.depth = depth;
+    }
+
+    @Override
+    public int write(@SuppressWarnings("unused") JfrChunkWriter writer) {
+        return EMPTY;
     }
 }

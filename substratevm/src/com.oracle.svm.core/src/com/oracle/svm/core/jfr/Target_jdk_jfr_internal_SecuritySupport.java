@@ -22,19 +22,34 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.core.jfr;
 
-import static org.junit.Assume.assumeTrue;
+import java.util.List;
 
-import org.graalvm.nativeimage.ImageInfo;
-import org.junit.BeforeClass;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.util.VMError;
 
-import com.oracle.svm.core.jfr.JfrEnabled;
+import jdk.jfr.internal.SecuritySupport.SafePath;
 
-/** Base class for JFR unit tests. */
-public class JFRTest {
-    @BeforeClass
-    public static void checkForJFR() {
-        assumeTrue("skipping JFR tests", !ImageInfo.inImageCode() || JfrEnabled.get());
+@TargetClass(value = jdk.jfr.internal.SecuritySupport.class, onlyWith = JfrEnabled.class)
+public final class Target_jdk_jfr_internal_SecuritySupport {
+    // Checkstyle: stop
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    static SafePath JFC_DIRECTORY;
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    static SafePath USER_HOME;
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    static SafePath JAVA_IO_TMPDIR;
+    // Checkstyle: resume
+
+    @Substitute
+    public static List<SafePath> getPredefinedJFCFiles() {
+        throw VMError.shouldNotReachHere("Paths from the image build must not be embedded into the Native Image.");
     }
+
+    @Alias
+    static native SafePath getPathInProperty(String prop, String subPath);
 }

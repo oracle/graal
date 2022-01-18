@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,19 +23,35 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+
 package com.oracle.svm.test.jfr;
 
-import static org.junit.Assume.assumeTrue;
+import static org.junit.Assert.assertNotNull;
 
-import org.graalvm.nativeimage.ImageInfo;
-import org.junit.BeforeClass;
+import org.junit.Test;
 
-import com.oracle.svm.core.jfr.JfrEnabled;
+import jdk.jfr.Recording;
+import jdk.jfr.consumer.RecordingFile;
 
-/** Base class for JFR unit tests. */
-public class JFRTest {
-    @BeforeClass
-    public static void checkForJFR() {
-        assumeTrue("skipping JFR tests", !ImageInfo.inImageCode() || JfrEnabled.get());
+/**
+ * Test if event ({@link TestThreadEvent}) with {@link Thread} payload is working.
+ */
+public class TestThreadEvent extends JFRTest {
+
+    @Test
+    public void test() throws Exception {
+        JFR jfr = new LocalJFR();
+        Recording recording = jfr.startRecording("TestThreadEvent");
+
+        ThreadEvent event = new ThreadEvent();
+        event.thread = Thread.currentThread();
+        event.commit();
+
+        jfr.endRecording(recording);
+        try (RecordingFile recordingFile = new RecordingFile(recording.getDestination())) {
+            assertNotNull(recordingFile);
+        } finally {
+            jfr.cleanupRecording(recording);
+        }
     }
 }

@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,19 +23,37 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.core.jfr.logging;
 
-import static org.junit.Assume.assumeTrue;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-import org.graalvm.nativeimage.ImageInfo;
-import org.junit.BeforeClass;
-
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jfr.JfrEnabled;
 
-/** Base class for JFR unit tests. */
-public class JFRTest {
-    @BeforeClass
-    public static void checkForJFR() {
-        assumeTrue("skipping JFR tests", !ImageInfo.inImageCode() || JfrEnabled.get());
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
+
+@TargetClass(value = jdk.jfr.internal.LogTag.class, onlyWith = JfrEnabled.class)
+final class Target_jdk_jfr_internal_LogTag {
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ComputeTagSetLevel.class) //
+    volatile int tagSetLevel;
+
+    @Alias int id;
+}
+
+@Platforms(Platform.HOSTED_ONLY.class)
+class ComputeTagSetLevel implements RecomputeFieldValue.CustomFieldValueComputer {
+    @Override
+    public RecomputeFieldValue.ValueAvailability valueAvailability() {
+        return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+    }
+
+    @Override
+    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+        // Reset the value as it gets set during the image build.
+        return JfrLogConfiguration.JfrLogLevel.OFF.level;
     }
 }

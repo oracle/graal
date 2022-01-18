@@ -22,19 +22,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.core.jfr;
 
-import static org.junit.Assume.assumeTrue;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
-import org.graalvm.nativeimage.ImageInfo;
-import org.junit.BeforeClass;
+/**
+ * Used to serialize all possible thread states into the chunk.
+ */
+public class JfrThreadStateSerializer implements JfrConstantPool {
 
-import com.oracle.svm.core.jfr.JfrEnabled;
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public JfrThreadStateSerializer() {
+    }
 
-/** Base class for JFR unit tests. */
-public class JFRTest {
-    @BeforeClass
-    public static void checkForJFR() {
-        assumeTrue("skipping JFR tests", !ImageInfo.inImageCode() || JfrEnabled.get());
+    @Override
+    public int write(JfrChunkWriter writer) {
+        writer.writeCompressedLong(JfrTypes.ThreadState.getId());
+
+        JfrThreadState[] threadStates = JfrThreadState.values();
+        writer.writeCompressedLong(threadStates.length);
+        for (int i = 0; i < threadStates.length; i++) {
+            writer.writeCompressedInt(i);
+            writer.writeString(threadStates[i].getText());
+        }
+
+        return NON_EMPTY;
     }
 }
