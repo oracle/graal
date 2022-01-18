@@ -61,7 +61,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
-import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -73,25 +72,20 @@ abstract class AbstractBridgeParser {
     final Types types;
     final Elements elements;
     final AbstractTypeCache typeCache;
-    private final DeclaredType handledAnnotationType;
-    private final DeclaredType proxyBaseType;
+    private final Configuration myConfiguration;
+    private final Configuration otherConfiguration;
     private Set<DeclaredType> ignoreAnnotations;
     private Set<DeclaredType> copyAnnotations;
     private boolean hasErrors;
 
-    AbstractBridgeParser(NativeBridgeProcessor processor, AbstractTypeCache typeCache,
-                    DeclaredType handledAnnotationType, DeclaredType proxyBaseType) {
+    AbstractBridgeParser(NativeBridgeProcessor processor, AbstractTypeCache typeCache, Configuration myConfiguration, Configuration otherConfiguration) {
         this.processor = processor;
         this.types = processor.env().getTypeUtils();
         this.elements = processor.env().getElementUtils();
         this.typeCache = typeCache;
-        this.handledAnnotationType = handledAnnotationType;
-        this.proxyBaseType = proxyBaseType;
+        this.myConfiguration = myConfiguration;
+        this.otherConfiguration = otherConfiguration;
     }
-
-    abstract Iterable<List<? extends TypeMirror>> getSubClassReferenceConstructorTypes();
-
-    abstract Iterable<List<? extends TypeMirror>> getHandleReferenceConstructorTypes();
 
     abstract List<TypeMirror> getExceptionHandlerTypes();
 
@@ -110,7 +104,7 @@ abstract class AbstractBridgeParser {
         ignoreAnnotations = new HashSet<>();
         copyAnnotations = new HashSet<>();
         Collections.addAll(ignoreAnnotations, typeCache.override, typeCache.suppressWarnings, typeCache.idempotent);
-        AnnotationMirror handledAnnotation = processor.getAnnotation(element, handledAnnotationType);
+        AnnotationMirror handledAnnotation = processor.getAnnotation(element, myConfiguration.getHandledAnnotationType());
         checkAnnotatedType(element, handledAnnotation);
         if (hasErrors) {
             // Fatal error, parsing cannot continue.
@@ -119,7 +113,7 @@ abstract class AbstractBridgeParser {
         TypeElement annotatedElement = (TypeElement) element;
         DeclaredType annotatedType = (DeclaredType) annotatedElement.asType();
 
-        DeclaredType serviceType = findServiceType(annotatedElement, handledAnnotation, proxyBaseType);
+        DeclaredType serviceType = findServiceType(annotatedElement, handledAnnotation, myConfiguration.getProxyBaseType());
         if (serviceType == null) {
             // Fatal error, parsing cannot continue.
             return null;
@@ -131,17 +125,17 @@ abstract class AbstractBridgeParser {
         ExecutableElement delegateAccessor = delegateAccessorIn(methods, serviceType);
         ExecutableElement receiverAccessor = receiverAccessorIn(methods, delegateAccessor, serviceType);
         ExecutableElement exceptionHandler = exceptionHandlerIn(methods);
-        VariableElement endPointHandle = endPointHandleIn(ElementFilter.fieldsIn(elements.getAllMembers(annotatedElement)), proxyBaseType);
+        VariableElement endPointHandle = endPointHandleIn(ElementFilter.fieldsIn(elements.getAllMembers(annotatedElement)), myConfiguration.getProxyBaseType());
         boolean explicitReceiver = delegateAccessor != null || receiverAccessor != null;
-        if (!explicitReceiver && endPointHandle == null && !types.isSubtype(annotatedElement.getSuperclass(), proxyBaseType)) {
+        if (!explicitReceiver && endPointHandle == null && !types.isSubtype(annotatedElement.getSuperclass(), myConfiguration.getProxyBaseType())) {
             Set<Modifier> staticMods = Collections.singleton(Modifier.STATIC);
             List<Map.Entry<? extends TypeMirror, ? extends CharSequence>> objectParam = Collections.singletonList(new SimpleImmutableEntry<>(typeCache.object, "receiver"));
             emitError(element, handledAnnotation, "The annotated type must extend `%s`, have a field annotated by `EndPointHandle` or an explicit receiver.%n" +
                             "To bridge an interface extend `%s` and implement the interface.%n" +
                             "To bridge a class extend the class, add `@%s %s` field and initialize it in the constructor.%n" +
                             "To bridge a class with an explicit receiver add `@%s %s` and `@%s %s` methods.",
-                            Utilities.getTypeName(proxyBaseType), Utilities.getTypeName(proxyBaseType),
-                            Utilities.getTypeName(typeCache.endPointHandle), Utilities.printField(Collections.singleton(Modifier.FINAL), "delegate", proxyBaseType),
+                            Utilities.getTypeName(myConfiguration.getProxyBaseType()), Utilities.getTypeName(myConfiguration.getProxyBaseType()),
+                            Utilities.getTypeName(typeCache.endPointHandle), Utilities.printField(Collections.singleton(Modifier.FINAL), "delegate", myConfiguration.getProxyBaseType()),
                             Utilities.getTypeName(typeCache.dispatchResolver), Utilities.printMethod(staticMods, "resolveDispatch", serviceType, objectParam),
                             Utilities.getTypeName(typeCache.receiverResolver), Utilities.printMethod(staticMods, "resolveReceiver", typeCache.object, objectParam));
         }
@@ -149,9 +143,9 @@ abstract class AbstractBridgeParser {
         if (explicitReceiver) {
             constructorSelector = ConstructorSelector.singleConstructor(this, annotatedElement, handledAnnotation);
         } else if (endPointHandle != null) {
-            constructorSelector = ConstructorSelector.withParameters(this, annotatedElement, handledAnnotation, annotatedElement, types, getHandleReferenceConstructorTypes(), false);
+            constructorSelector = ConstructorSelector.withParameters(this, annotatedElement, handledAnnotation, annotatedElement, types, myConfiguration.getHandleReferenceConstructorTypes(), false);
         } else {
-            constructorSelector = ConstructorSelector.withParameters(this, annotatedElement, handledAnnotation, annotatedElement, types, getSubClassReferenceConstructorTypes(), false);
+            constructorSelector = ConstructorSelector.withParameters(this, annotatedElement, handledAnnotation, annotatedElement, types, myConfiguration.getSubClassReferenceConstructorTypes(), false);
         }
         List<? extends VariableElement> constructorParams = findConstructorParams(annotatedType, constructorSelector);
         Collection<MethodData> toGenerate = createMethodData(annotatedType, serviceType, methods, explicitReceiver,
@@ -499,9 +493,7 @@ abstract class AbstractBridgeParser {
         Set<String> usedCacheFields = new HashSet<>();
         for (ExecutableElement methodToGenerate : methodsToGenerate) {
             ExecutableType methodToGenerateType = (ExecutableType) types.asMemberOf(annotatedType, methodToGenerate);
-            MarshallerVerifier verifier = new MarshallerVerifier(methodToGenerate, proxyBaseType, getSubClassReferenceConstructorTypes(), getHandleReferenceConstructorTypes(), explicitReceiver);
-            MarshallerData retMarshaller = lookupMarshaller(methodToGenerateType.getReturnType(), methodToGenerate.getAnnotationMirrors(),
-                            handledAnnotationType, verifier);
+            MarshallerData retMarshaller = lookupMarshaller(methodToGenerate, methodToGenerateType.getReturnType(), methodToGenerate.getAnnotationMirrors(), explicitReceiver);
             List<? extends VariableElement> parameters = methodToGenerate.getParameters();
             List<? extends TypeMirror> parameterTypes = methodToGenerateType.getParameterTypes();
             List<MarshallerData> paramsMarshallers = new ArrayList<>();
@@ -517,7 +509,7 @@ abstract class AbstractBridgeParser {
                     parameterTypes = parameterTypes.subList(1, parameterTypes.size());
                 }
             }
-            paramsMarshallers.addAll(lookupMarshallers(parameters, parameterTypes, handledAnnotationType, verifier));
+            paramsMarshallers.addAll(lookupMarshallers(methodToGenerate, parameters, parameterTypes, explicitReceiver));
             CacheData cacheData;
             AnnotationMirror idempotentMirror = processor.getAnnotation(methodToGenerate, typeCache.idempotent);
             boolean noReturnType = methodToGenerateType.getReturnType().getKind() == TypeKind.VOID;
@@ -563,7 +555,7 @@ abstract class AbstractBridgeParser {
             if (!visible && !getPackage(annotatedType.asElement()).equals(getPackage(owner))) {
                 continue;
             }
-            if (types.isSameType(typeCache.object, owner.asType()) || types.isSameType(proxyBaseType, owner.asType())) {
+            if (types.isSameType(typeCache.object, owner.asType()) || types.isSameType(myConfiguration.getProxyBaseType(), owner.asType())) {
                 continue;
             }
             res.add(method);
@@ -579,42 +571,71 @@ abstract class AbstractBridgeParser {
         return (PackageElement) enclosing;
     }
 
-    private List<MarshallerData> lookupMarshallers(List<? extends VariableElement> parameters, List<? extends TypeMirror> parameterTypes,
-                    DeclaredType generateAnnotation, BiFunction<MarshallerData, AnnotationMirror, VariableElement> verifier) {
+    private List<MarshallerData> lookupMarshallers(ExecutableElement method, List<? extends VariableElement> parameters, List<? extends TypeMirror> parameterTypes,
+                    boolean explicitReceiver) {
         List<MarshallerData> res = new ArrayList<>(parameterTypes.size());
         for (int i = 0; i < parameters.size(); i++) {
-            res.add(lookupMarshaller(parameterTypes.get(i), parameters.get(i).getAnnotationMirrors(),
-                            generateAnnotation, verifier));
+            res.add(lookupMarshaller(method, parameterTypes.get(i), parameters.get(i).getAnnotationMirrors(), explicitReceiver));
         }
         return res;
     }
 
-    private MarshallerData lookupMarshaller(TypeMirror type, List<? extends AnnotationMirror> annotationMirrors,
-                    DeclaredType generateAnnotation, BiFunction<MarshallerData, AnnotationMirror, VariableElement> verifier) {
+    private MarshallerData lookupMarshaller(ExecutableElement method, TypeMirror type, List<? extends AnnotationMirror> annotationMirrors, boolean explicitReceiver) {
         MarshallerData res;
         if (type.getKind().isPrimitive() || type.getKind() == TypeKind.VOID) {
             res = MarshallerData.NO_MARSHALLER;
-            verifier.apply(res, null);
         } else if (types.isSameType(typeCache.string, type)) {
             res = MarshallerData.NO_MARSHALLER;
-            verifier.apply(res, null);
         } else if (isPrimitiveArray(type)) {
             res = MarshallerData.annotatedArray(findDirectionModifiers(annotationMirrors));
-            verifier.apply(res, null);
         } else {
             AnnotationMirror annotationMirror = findByReference(annotationMirrors);
             if (annotationMirror != null) {
                 DeclaredType referenceType = (DeclaredType) getAnnotationValue(annotationMirror, "value");
                 TypeElement referenceElement = (TypeElement) referenceType.asElement();
-                AnnotationMirror annotation = processor.getAnnotation(referenceElement, generateAnnotation);
                 boolean useReceiverResolver = (boolean) getAnnotationValueWithDefaults(annotationMirror, "useReceiverResolver");
-                res = MarshallerData.reference(referenceType, annotation, useReceiverResolver);
-                res.nonDefaultReceiver = verifier.apply(res, annotationMirror);
+                if (useReceiverResolver && !explicitReceiver) {
+                    emitError(method, annotationMirror, "UseReceiverResolver can be used only for types with explicit receiver.");
+                }
+                boolean sameDirection = true;
+                VariableElement nonDefaultReceiver = null;
+                ConstructorSelector selector;
+                if (types.isSubtype(referenceType, myConfiguration.getProxyBaseType())) {
+                    selector = ConstructorSelector.withParameters(AbstractBridgeParser.this, method, annotationMirror, referenceElement, types, myConfiguration.getSubClassReferenceConstructorTypes(),
+                                    true);
+                } else if (types.isSubtype(referenceType, otherConfiguration.getProxyBaseType())) {
+                    selector = ConstructorSelector.withParameters(AbstractBridgeParser.this, method, annotationMirror, referenceElement, types,
+                                    otherConfiguration.getSubClassReferenceConstructorTypes(), true);
+                    sameDirection = false;
+                } else {
+                    selector = null;
+                    nonDefaultReceiver = ElementFilter.fieldsIn(referenceElement.getEnclosedElements()).stream().filter(
+                                    (f) -> processor.getAnnotation(f, typeCache.endPointHandle) != null).findAny().orElse(null);
+                    if (nonDefaultReceiver != null) {
+                        if (types.isSubtype(nonDefaultReceiver.asType(), myConfiguration.getProxyBaseType())) {
+                            selector = ConstructorSelector.withParameters(AbstractBridgeParser.this, method, annotationMirror, referenceElement, types,
+                                            myConfiguration.getHandleReferenceConstructorTypes(), true);
+                        } else if (types.isSubtype(nonDefaultReceiver.asType(), otherConfiguration.getProxyBaseType())) {
+                            selector = ConstructorSelector.withParameters(AbstractBridgeParser.this, method, annotationMirror, referenceElement, types,
+                                            otherConfiguration.getHandleReferenceConstructorTypes(), true);
+                            sameDirection = false;
+                        }
+                    }
+                    if (selector == null) {
+                        emitError(method, annotationMirror, "Cannot lookup `%s` annotated field in `%s`", Utilities.getTypeName(typeCache.endPointHandle), Utilities.getTypeName(referenceType));
+                    }
+                }
+                if (selector != null) {
+                    ElementFilter.constructorsIn(referenceElement.getEnclosedElements()).forEach(selector);
+                    selector.get();
+                }
+                AnnotationMirror annotation = processor.getAnnotation(referenceElement,
+                                sameDirection ? myConfiguration.getHandledAnnotationType() : otherConfiguration.getHandledAnnotationType());
+                res = MarshallerData.reference(referenceType, annotation, useReceiverResolver, sameDirection, nonDefaultReceiver);
             } else {
                 List<? extends AnnotationMirror> annotations = filterMarshallerAnnotations(annotationMirrors, ignoreAnnotations);
                 String marshallerFieldName = marshallerName(type, annotations);
                 res = MarshallerData.marshalled(type, marshallerFieldName, annotations);
-                verifier.apply(res, null);
             }
         }
         return res;
@@ -962,51 +983,6 @@ abstract class AbstractBridgeParser {
         }
     }
 
-    private final class MarshallerVerifier implements BiFunction<MarshallerData, AnnotationMirror, VariableElement> {
-
-        private final ExecutableElement method;
-        private final DeclaredType baseType;
-        private final Iterable<List<? extends TypeMirror>> subClassParameterTypes;
-        private final Iterable<List<? extends TypeMirror>> handleParameterTypes;
-        private final boolean explicitReceiver;
-
-        MarshallerVerifier(ExecutableElement method, DeclaredType proxyType,
-                        Iterable<List<? extends TypeMirror>> subClassRequiredParameterTypes,
-                        Iterable<List<? extends TypeMirror>> handleRequiredParameterTypes,
-                        boolean explicitReceiver) {
-            this.method = method;
-            this.baseType = proxyType;
-            this.subClassParameterTypes = subClassRequiredParameterTypes;
-            this.handleParameterTypes = handleRequiredParameterTypes;
-            this.explicitReceiver = explicitReceiver;
-        }
-
-        @Override
-        public VariableElement apply(MarshallerData marshallerData, AnnotationMirror mirror) {
-            VariableElement res = null;
-            if (marshallerData.kind == MarshallerData.Kind.REFERENCE) {
-                if (marshallerData.useReceiverResolver && !explicitReceiver) {
-                    emitError(method, mirror, "UseReceiverResolver can be used only for types with explicit receiver.");
-                }
-                TypeElement referenceElement = (TypeElement) ((DeclaredType) marshallerData.forType).asElement();
-                ConstructorSelector selector;
-                if (types.isSubtype(marshallerData.forType, baseType)) {
-                    selector = ConstructorSelector.withParameters(AbstractBridgeParser.this, method, mirror, referenceElement, types, subClassParameterTypes, true);
-                } else {
-                    selector = ConstructorSelector.withParameters(AbstractBridgeParser.this, method, mirror, referenceElement, types, handleParameterTypes, true);
-                    res = ElementFilter.fieldsIn(((DeclaredType) marshallerData.forType).asElement().getEnclosedElements()).stream().filter(
-                                    (f) -> processor.getAnnotation(f, typeCache.endPointHandle) != null).findAny().orElse(null);
-                    if (res == null) {
-                        emitError(method, mirror, "Cannot lookup `%s` annotated field in `%s`", Utilities.getTypeName(typeCache.endPointHandle), Utilities.getTypeName(marshallerData.forType));
-                    }
-                }
-                ElementFilter.constructorsIn(referenceElement.getEnclosedElements()).forEach(selector);
-                selector.get();
-            }
-            return res;
-        }
-    }
-
     static final class MarshallerData {
 
         enum Kind {
@@ -1015,21 +991,25 @@ abstract class AbstractBridgeParser {
             CUSTOM
         }
 
-        static final MarshallerData NO_MARSHALLER = new MarshallerData(Kind.VALUE, null, null, false, null);
+        static final MarshallerData NO_MARSHALLER = new MarshallerData(Kind.VALUE, null, null, false, true, null, null);
 
         final Kind kind;
         final TypeMirror forType;
         final List<? extends AnnotationMirror> annotations;
-        final String name;                  // only for CUSTOM
-        final boolean useReceiverResolver;  // only for REFERENCE
-        VariableElement nonDefaultReceiver; // only for REFERENCE
+        final String name;                          // only for CUSTOM
+        final boolean useReceiverResolver;          // only for REFERENCE
+        final boolean sameDirection;                // only for REFERENCE
+        final VariableElement nonDefaultReceiver;   // only for REFERENCE
 
-        private MarshallerData(Kind kind, TypeMirror forType, String name, boolean useReceiverResolver, List<? extends AnnotationMirror> annotations) {
+        private MarshallerData(Kind kind, TypeMirror forType, String name, boolean useReceiverResolver, boolean sameDirection,
+                        List<? extends AnnotationMirror> annotations, VariableElement nonDefaultReceiver) {
             this.kind = kind;
             this.forType = forType;
             this.name = name;
             this.useReceiverResolver = useReceiverResolver;
+            this.sameDirection = sameDirection;
             this.annotations = annotations;
+            this.nonDefaultReceiver = nonDefaultReceiver;
         }
 
         @Override
@@ -1050,16 +1030,17 @@ abstract class AbstractBridgeParser {
         }
 
         static MarshallerData annotatedArray(List<? extends AnnotationMirror> annotations) {
-            return annotations == null ? NO_MARSHALLER : new MarshallerData(Kind.VALUE, null, null, false, annotations);
+            return annotations == null ? NO_MARSHALLER : new MarshallerData(Kind.VALUE, null, null, false, true, annotations, null);
         }
 
         static MarshallerData marshalled(TypeMirror forType, String name, List<? extends AnnotationMirror> annotations) {
-            return new MarshallerData(Kind.CUSTOM, forType, name, false, annotations);
+            return new MarshallerData(Kind.CUSTOM, forType, name, false, true, annotations, null);
         }
 
-        static MarshallerData reference(DeclaredType startPointType, AnnotationMirror annotation, boolean useReceiverResolver) {
+        static MarshallerData reference(DeclaredType startPointType, AnnotationMirror annotation, boolean useReceiverResolver,
+                        boolean sameDirection, VariableElement nonDefaultReceiver) {
             List<AnnotationMirror> annotations = annotation == null ? Collections.emptyList() : Collections.singletonList(annotation);
-            return new MarshallerData(Kind.REFERENCE, startPointType, null, useReceiverResolver, annotations);
+            return new MarshallerData(Kind.REFERENCE, startPointType, null, useReceiverResolver, sameDirection, annotations, nonDefaultReceiver);
         }
     }
 
@@ -1179,6 +1160,9 @@ abstract class AbstractBridgeParser {
         final DeclaredType endPointHandle;
         final DeclaredType exceptionHandler;
         final DeclaredType expectError;
+        final DeclaredType generateHSToNativeBridge;
+        final DeclaredType generateNativeToHSBridge;
+        final DeclaredType hSObject;
         final DeclaredType idempotent;
         final DeclaredType in;
         final DeclaredType jBooleanArray;
@@ -1200,6 +1184,9 @@ abstract class AbstractBridgeParser {
         final DeclaredType jniNativeMarshaller;
         final DeclaredType jniUtil;
         final DeclaredType map;
+        final DeclaredType nativeIsolate;
+        final DeclaredType nativeObject;
+        final DeclaredType nativeObjectHandles;
         final DeclaredType object;
         final DeclaredType out;
         final DeclaredType override;
@@ -1210,6 +1197,7 @@ abstract class AbstractBridgeParser {
         final DeclaredType throwable;
         final DeclaredType typeLiteral;
         final DeclaredType weakHashMap;
+        final DeclaredType wordFactory;
 
         AbstractTypeCache(NativeBridgeProcessor processor) {
             this.annotationAction = (DeclaredType) processor.getType("org.graalvm.nativebridge.AnnotationAction");
@@ -1221,6 +1209,9 @@ abstract class AbstractBridgeParser {
             this.endPointHandle = (DeclaredType) processor.getType("org.graalvm.nativebridge.EndPointHandle");
             this.exceptionHandler = (DeclaredType) processor.getType("org.graalvm.nativebridge.ExceptionHandler");
             this.expectError = (DeclaredType) processor.getTypeOrNull("org.graalvm.nativebridge.processor.test.ExpectError");
+            this.generateHSToNativeBridge = (DeclaredType) processor.getType(HotSpotToNativeBridgeParser.GENERATE_HOTSPOT_TO_NATIVE_ANNOTATION);
+            this.generateNativeToHSBridge = (DeclaredType) processor.getType(NativeToHotSpotBridgeParser.GENERATE_NATIVE_TO_HOTSPOT_ANNOTATION);
+            this.hSObject = (DeclaredType) processor.getType("org.graalvm.jniutils.HSObject");
             this.idempotent = (DeclaredType) processor.getType("org.graalvm.nativebridge.Idempotent");
             this.in = (DeclaredType) processor.getType("org.graalvm.nativebridge.In");
             this.jBooleanArray = (DeclaredType) processor.getType("org.graalvm.jniutils.JNI.JBooleanArray");
@@ -1242,6 +1233,9 @@ abstract class AbstractBridgeParser {
             this.jniNativeMarshaller = (DeclaredType) processor.getType("org.graalvm.nativebridge.JNINativeMarshaller");
             this.jniUtil = (DeclaredType) processor.getType("org.graalvm.jniutils.JNIUtil");
             this.map = (DeclaredType) processor.getType("java.util.Map");
+            this.nativeIsolate = (DeclaredType) processor.getType("org.graalvm.nativebridge.NativeIsolate");
+            this.nativeObject = (DeclaredType) processor.getType("org.graalvm.nativebridge.NativeObject");
+            this.nativeObjectHandles = (DeclaredType) processor.getType("org.graalvm.nativebridge.NativeObjectHandles");
             this.object = (DeclaredType) processor.getType("java.lang.Object");
             this.out = (DeclaredType) processor.getType("org.graalvm.nativebridge.Out");
             this.override = (DeclaredType) processor.getType("java.lang.Override");
@@ -1252,6 +1246,40 @@ abstract class AbstractBridgeParser {
             this.throwable = (DeclaredType) processor.getType("java.lang.Throwable");
             this.typeLiteral = (DeclaredType) processor.getType("org.graalvm.polyglot.TypeLiteral");
             this.weakHashMap = (DeclaredType) processor.getType("java.util.WeakHashMap");
+            this.wordFactory = (DeclaredType) processor.getType("org.graalvm.word.WordFactory");
+        }
+    }
+
+    static final class Configuration {
+
+        private final DeclaredType handledAnnotationType;
+        private final DeclaredType proxyBaseType;
+        private final Iterable<List<? extends TypeMirror>> subClassReferenceConstructorTypes;
+        private final Iterable<List<? extends TypeMirror>> handleReferenceConstructorTypes;
+
+        Configuration(DeclaredType handledAnnotationType, DeclaredType proxyBaseType,
+                        Iterable<List<? extends TypeMirror>> subClassReferenceConstructorTypes,
+                        Iterable<List<? extends TypeMirror>> handleReferenceConstructorTypes) {
+            this.handledAnnotationType = Objects.requireNonNull(handledAnnotationType, "HandledAnnotationType must be non null.");
+            this.proxyBaseType = Objects.requireNonNull(proxyBaseType, "ProxyBaseType must be non null.");
+            this.subClassReferenceConstructorTypes = Objects.requireNonNull(subClassReferenceConstructorTypes, "SubClassReferenceConstructorTypes must be non null.");
+            this.handleReferenceConstructorTypes = Objects.requireNonNull(handleReferenceConstructorTypes, "HandleReferenceConstructorTypes must be non null.");
+        }
+
+        DeclaredType getHandledAnnotationType() {
+            return handledAnnotationType;
+        }
+
+        DeclaredType getProxyBaseType() {
+            return proxyBaseType;
+        }
+
+        Iterable<List<? extends TypeMirror>> getSubClassReferenceConstructorTypes() {
+            return subClassReferenceConstructorTypes;
+        }
+
+        Iterable<List<? extends TypeMirror>> getHandleReferenceConstructorTypes() {
+            return handleReferenceConstructorTypes;
         }
     }
 
