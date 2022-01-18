@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,6 +65,7 @@ import java.util.BitSet;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Formatter;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -1190,8 +1191,8 @@ public abstract class Launcher {
             }
             assert !isStandalone();
             if (thinLauncher) {
-                List<String> env = new ArrayList<>();
-                env.add("GRAALVM_LAUNCHER_FORCE_JVM=true");
+                Map<String, String> env = new HashMap<>();
+                env.put("GRAALVM_LAUNCHER_FORCE_JVM", "true");
                 nativeAccess.reExec(originalArgs, env);
             } else {
                 executeJVM(nativeAccess == null ? System.getProperty("java.class.path") : nativeAccess.getClasspath(jvmArgs), jvmArgs, applicationArgs, Collections.emptyMap());
@@ -1569,17 +1570,17 @@ public abstract class Launcher {
          * @param args launcher arguments
          * @param env additional environment - the entries will be added to the existing environment
          */
-        public void reExec(List<String> args, List<String> env) {
+        private void reExec(List<String> args, Map<String, String> env) {
+            assert isAOT();
             String path = ProcessProperties.getExecutableName();
             Path executable = Paths.get(path);
-            String[] newEnv = new String[System.getenv().size() + env.size()];
-            int i = 0;
-            for (Entry<String, String> e : System.getenv().entrySet()) {
-                newEnv[i++] = e.getKey() + "=" + e.getValue();
+            if (isVerbose()) {
+                StringBuilder sb = formatExec(executable, args);
+                err.print(sb.toString());
             }
-            for (String e : env) {
-                newEnv[i++] = e;
-            }
+            Map<String, String> newEnv = new HashMap<>();
+            newEnv.putAll(System.getenv());
+            newEnv.putAll(env);
             // for exec, arg 0 needs to be the name of the executable
             List<String> execArgs = new ArrayList<>();
             execArgs.add(path);

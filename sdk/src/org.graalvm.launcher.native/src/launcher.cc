@@ -84,9 +84,9 @@
 #define VM_ARG_OFFSET (sizeof(VM_ARG_PREFIX)-1)
 #define VM_CP_ARG_OFFSET (sizeof(VM_CP_ARG_PREFIX)-1)
 #define VM_CLASSPATH_ARG_OFFSET (sizeof(VM_CLASSPATH_ARG_PREFIX)-1)
-#define IS_VM_ARG(ARG) (ARG.find(VM_ARG_PREFIX, 0, VM_ARG_OFFSET) != std::string::npos)
-#define IS_VM_CP_ARG(ARG) (ARG.find(VM_CP_ARG_PREFIX, 0, VM_CP_ARG_OFFSET) != std::string::npos)
-#define IS_VM_CLASSPATH_ARG(ARG) (ARG.find(VM_CLASSPATH_ARG_PREFIX, 0, VM_CLASSPATH_ARG_OFFSET) != std::string::npos)
+#define IS_VM_ARG(ARG) (ARG.rfind(VM_ARG_PREFIX, 0) != std::string::npos)
+#define IS_VM_CP_ARG(ARG) (ARG.rfind(VM_CP_ARG_PREFIX, 0) != std::string::npos)
+#define IS_VM_CLASSPATH_ARG(ARG) (ARG.rfind(VM_CLASSPATH_ARG_PREFIX, 0) != std::string::npos)
 
 #if defined (__linux__)
     #include <dlfcn.h>
@@ -171,7 +171,7 @@ std::string exe_directory() {
 }
 
 // load the language library (either native library or libjvm) and return a pointer to the JNI_CreateJavaVM function
-CreateJVM loadvmlib(std::string liblangPath) {
+CreateJVM load_vm_lib(std::string liblangPath) {
     if (debug) {
         std::cout << "Loading library " << liblangPath << std::endl;
     }
@@ -191,10 +191,10 @@ CreateJVM loadvmlib(std::string liblangPath) {
 
 std::string vm_path(std::string exeDir, bool jvmMode) {
     std::stringstream liblangPath;
-    if (!jvmMode) {
-        liblangPath << exeDir << DIR_SEP_STR << LIBLANG_RELPATH_STR;
-    } else {
+    if (jvmMode) {
         liblangPath << exeDir << DIR_SEP_STR << LIBJVM_RELPATH_STR;
+    } else {
+        liblangPath << exeDir << DIR_SEP_STR << LIBLANG_RELPATH_STR;
     }
     return liblangPath.str();
 }
@@ -325,7 +325,7 @@ int main(int argc, char *argv[]) {
     CreateJVM createVM = NULL;
     if (!jvmMode) {
         std::string libPath = vm_path(exeDir, false);
-        createVM = loadvmlib(libPath);
+        createVM = load_vm_lib(libPath);
         if (!createVM) {
             // fall back to loading jvm
             jvmMode = true;
@@ -333,7 +333,7 @@ int main(int argc, char *argv[]) {
     }
     if (jvmMode) {
         std::string libPath = vm_path(exeDir, true);
-        createVM = loadvmlib(libPath);
+        createVM = load_vm_lib(libPath);
         if (!createVM) {
             std::cerr << "Could not load JVM." << std::endl;
             return -1;

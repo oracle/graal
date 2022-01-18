@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,6 +30,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.StackValue;
@@ -61,11 +62,11 @@ public class WindowsProcessPropertiesSupport extends BaseProcessPropertiesSuppor
 
     @Override
     public void exec(Path executable, String[] args) {
-        exec(executable, args, new String[0]);
+        exec(executable, args, null);
     }
 
     @Override
-    public void exec(Path executable, String[] args, String[] envp) {
+    public void exec(Path executable, String[] args, Map<String, String> env) {
         if (!Files.isExecutable(executable)) {
             throw new RuntimeException("Path " + executable + " does not point to executable file");
         }
@@ -75,21 +76,10 @@ public class WindowsProcessPropertiesSupport extends BaseProcessPropertiesSuppor
         java.lang.Process process = null;
         try {
             ProcessBuilder pb = new ProcessBuilder(cmd).redirectInput(ProcessBuilder.Redirect.INHERIT).redirectOutput(ProcessBuilder.Redirect.INHERIT).redirectError(ProcessBuilder.Redirect.INHERIT);
-            // clear environment
-            pb.environment().clear();
-            // copied from ProcessBuilder.environment(String[] envp)
-            for (String envstring : envp) {
-                String e = envstring;
-                // Silently discard any trailing junk.
-                if (e.indexOf('\u0000') != -1) {
-                    e = e.replaceFirst("\u0000.*", "");
-                }
-                int eqlsign = e.indexOf('=');
-                // Silently ignore envstrings lacking the required `='.
-                if (eqlsign != -1) {
-                    pb.environment().put(e.substring(0, eqlsign),
-                                    e.substring(eqlsign + 1));
-                }
+            if (env != null) {
+                // set a new environment
+                pb.environment().clear();
+                pb.environment().putAll(env);
             }
             process = pb.start();
         } catch (IOException e) {

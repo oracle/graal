@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package org.graalvm.nativeimage;
 
 import java.nio.file.Path;
+import java.util.Map;
 
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.impl.ProcessPropertiesSupport;
@@ -161,11 +162,13 @@ public final class ProcessProperties {
 
     /**
      * Replaces the current process image with the process image specified by the given path invoked
-     * with the given args and environment. This method does not return if the call is successful.
+     * with the given arguments and environment. If the process should inherit members of the
+     * calling environment, those members need to be added by the caller. This method does not
+     * return if the call is successful.
      *
      * @since 22.1
      */
-    public static void exec(Path executable, String[] args, String[] env) {
+    public static void exec(Path executable, String[] args, Map<String, String> env) {
         ImageSingletons.lookup(ProcessPropertiesSupport.class).exec(executable, args, env);
     }
 

@@ -2694,10 +2694,7 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
             _libjvm_path = relpath(_libjvm_path, start=_exe_dir).replace('\\', '\\\\')
             _cp = [x.replace('\\', '\\\\') for x in _cp]
         else:
-            if _src_jdk_version < 9 and mx.is_linux():
-                _libjvm_path = join(_dist.path_substitutions.substitute('<jre_base>'), 'lib', mx.get_arch(), 'server', mx.add_lib_suffix("libjvm"))
-            else:
-                _libjvm_path = join(_dist.path_substitutions.substitute('<jre_base>'), 'lib', 'server', mx.add_lib_suffix("libjvm"))
+            _libjvm_path = join(_dist.path_substitutions.substitute('<jre_base>'), 'lib', 'server', mx.add_lib_suffix("libjvm"))
             _libjvm_path = relpath(_libjvm_path, start=_exe_dir)
         _dynamic_cflags += [
             '-DLIBJVM_RELPATH=' + _libjvm_path,
