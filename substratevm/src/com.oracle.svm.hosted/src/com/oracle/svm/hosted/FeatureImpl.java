@@ -381,15 +381,7 @@ public class FeatureImpl {
         }
 
         public boolean registerAsUnsafeAccessed(AnalysisField aField) {
-            if (!aField.isUnsafeAccessed()) {
-                /* Register the field as unsafe accessed. */
-                aField.registerAsAccessed();
-                aField.registerAsUnsafeAccessed();
-                /* Force the update of registered unsafe loads and stores. */
-                bb.forceUnsafeUpdate(aField);
-                return true;
-            }
-            return false;
+            return bb.markFieldUnsafeAccessed(aField);
 // if (!field.isUnsafeAccessed()) {
 // /* Register the field as unsafe accessed. */
 // field.registerAsAccessed();
@@ -398,7 +390,7 @@ public class FeatureImpl {
 // bb.forceUnsafeUpdate(field);
 // return true;
 // }
-            return bb.markFieldUnsafeAccessed(aField);
+
         }
 
         public void registerAsFrozenUnsafeAccessed(Field field) {

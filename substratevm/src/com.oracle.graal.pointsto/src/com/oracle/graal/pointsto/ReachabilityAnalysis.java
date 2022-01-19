@@ -83,7 +83,7 @@ public interface ReachabilityAnalysis {
         if (!field.isUnsafeAccessed()) {
             /* Register the field as unsafe accessed. */
             field.registerAsAccessed();
-            field.registerAsUnsafeAccessed(getUniverse());
+            field.registerAsUnsafeAccessed();
             /* Force the update of registered unsafe loads and stores. */
             forceUnsafeUpdate(field);
             return true;
@@ -99,7 +99,7 @@ public interface ReachabilityAnalysis {
         if (!field.isUnsafeAccessed()) {
             /* Register the field as unsafe accessed. */
             field.registerAsAccessed();
-            field.registerAsUnsafeAccessed(getUniverse(), partitionKind);
+            field.registerAsUnsafeAccessed(partitionKind);
             /* Force the update of registered unsafe loads and stores. */
             forceUnsafeUpdate(field);
         }

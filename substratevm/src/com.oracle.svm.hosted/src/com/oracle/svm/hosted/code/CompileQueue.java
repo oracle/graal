@@ -172,9 +172,6 @@ import com.oracle.svm.hosted.phases.DevirtualizeCallsPhase;
 import com.oracle.svm.hosted.phases.HostedGraphBuilderPhase;
 import com.oracle.svm.hosted.phases.ImageBuildStatisticsCounterPhase;
 import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
-import com.oracle.svm.hosted.phases.StrengthenStampsPhase;
-import com.oracle.svm.hosted.reporting.ProgressReporter;
-import com.oracle.svm.hosted.reporting.ProgressReporter.ReporterClosable;
 import com.oracle.svm.hosted.substitute.DeletedMethod;
 import com.oracle.svm.util.ImageBuildStatistics;
 

@@ -33,6 +33,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
+// todo resolve return values
 public class ReachabilityObjectScanner implements ObjectScanningObserver {
 
     private final ReachabilityAnalysis bb;
@@ -44,41 +45,52 @@ public class ReachabilityObjectScanner implements ObjectScanningObserver {
     }
 
     @Override
-    public void forRelocatedPointerFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue) {
+    public boolean forRelocatedPointerFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue, ObjectScanner.ScanReason reason) {
         field.registerAsAccessed();
         if (fieldValue.isNonNull() && fieldValue.getJavaKind() == JavaKind.Object) {
             // todo mark as instantiated
 // bb.markTypeInstantiated(constantType(bb, fieldValue));
         }
+        return true;
     }
 
     @Override
-    public void forNullFieldValue(JavaConstant receiver, AnalysisField field) {
+    public boolean forNullFieldValue(JavaConstant receiver, AnalysisField field, ObjectScanner.ScanReason reason) {
         if (receiver != null) {
             bb.markTypeReachable(constantType(receiver));
         }
         bb.markTypeReachable(field.getType());
 // System.out.println("Scanning field " + field);
+        return true;
     }
 
     @Override
-    public void forNonNullFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue) {
+    public boolean forNonNullFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue, ObjectScanner.ScanReason reason) {
         if (receiver != null) {
             bb.markTypeReachable(constantType(receiver));
         }
         bb.markTypeReachable(field.getType());
 // System.out.println("Scanning field " + field);
+        return true;
     }
 
     @Override
-    public void forNullArrayElement(JavaConstant array, AnalysisType arrayType, int elementIndex) {
+    public boolean forNullArrayElement(JavaConstant array, AnalysisType arrayType, int elementIndex, ObjectScanner.ScanReason reason) {
         bb.markTypeReachable(arrayType);
+        return true;
     }
 
     @Override
-    public void forNonNullArrayElement(JavaConstant array, AnalysisType arrayType, JavaConstant elementConstant, AnalysisType elementType, int elementIndex) {
+    public boolean forNonNullArrayElement(JavaConstant array, AnalysisType arrayType, JavaConstant elementConstant, AnalysisType elementType, int elementIndex, ObjectScanner.ScanReason reason) {
         bb.markTypeReachable(arrayType);
         bb.markTypeInstantiated(elementType);
+        return true;
+    }
+
+    @Override
+    public void forEmbeddedRoot(JavaConstant root, ObjectScanner.ScanReason reason) {
+        bb.markTypeReachable(constantType(root));
+        bb.markTypeInstantiated(constantType(root));
     }
 
     @Override

@@ -444,10 +444,6 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
 
     /** Register the type as instantiated with all its super types. */
     private void registerAsInstantiated(UsageKind usageKind) {
-        assert isAllocated.get() || isInHeap.get();
-        assert isArray() || (isInstanceClass() && !Modifier.isAbstract(getModifiers())) : this;
-        universe.hostVM.checkForbidden(this, usageKind);
-
         forAllSuperTypes(t -> t.instantiatedSubtypes.add(this));
     }
 

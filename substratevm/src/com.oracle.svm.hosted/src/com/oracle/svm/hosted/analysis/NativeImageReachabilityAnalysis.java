@@ -66,7 +66,7 @@ public class NativeImageReachabilityAnalysis extends ReachabilityAnalysis implem
         super(options, universe, providers, universe.hostVM(), executor, heartbeatCallback, new SubstrateUnsupportedFeatures(), methodSummaryProvider);
         this.annotationSubstitutionProcessor = annotationSubstitutionProcessor;
         this.strengthenGraalGraphs = SubstrateOptions.parseOnce();
-        this.dynamicHubInitializer = new DynamicHubInitializer(universe, metaAccess, unsupportedFeatures, providers.getConstantReflection());
+        this.dynamicHubInitializer = new DynamicHubInitializer(metaAccess, unsupportedFeatures, providers.getConstantReflection());
     }
 
     @Override
@@ -112,7 +112,7 @@ public class NativeImageReachabilityAnalysis extends ReachabilityAnalysis implem
     private void scanHub(ObjectScanner objectScanner, AnalysisType type) {
         SVMHost svmHost = (SVMHost) hostVM;
         JavaConstant hubConstant = SubstrateObjectConstant.forObject(svmHost.dynamicHub(type));
-        objectScanner.scanConstant(hubConstant, ObjectScanner.ScanReason.HUB);
+        objectScanner.scanConstant(hubConstant, ObjectScanner.OtherReason.HUB);
     }
 
     private void handleUnknownValueField(AnalysisField field) {
