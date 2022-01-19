@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,7 @@ import java.util.List;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Binding;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -47,12 +47,12 @@ public class GraalDirectiveIntrinsificationTest extends GraalCompilerTest {
     @Test
     public void ensureAllGraalDirectivesIntrinsified() {
         String className = MetaUtil.toInternalName(GraalDirectives.class.getName());
-        List<Binding> bindingList = getReplacements().getGraphBuilderPlugins().getInvocationPlugins().getBindings(false).get(className);
+        List<InvocationPlugin> invocationPlugins = getReplacements().getGraphBuilderPlugins().getInvocationPlugins().getInvocationPlugins(false).get(className);
 
         EconomicSet<String> registeredBindings = EconomicSet.create();
-        for (Binding b : bindingList) {
+        for (InvocationPlugin plugin : invocationPlugins) {
             // A binding's string representation includes the name and arguments but no return type.
-            registeredBindings.add(b.toString());
+            registeredBindings.add(plugin.toString());
         }
 
         ResolvedJavaType directives = getMetaAccess().lookupJavaType(GraalDirectives.class);

@@ -32,6 +32,7 @@ import java.lang.reflect.Type;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.ClassPlugins;
 import org.graalvm.compiler.nodes.type.StampTool;
 
 import jdk.vm.ci.meta.MetaUtil;
@@ -92,6 +93,12 @@ public abstract class InvocationPlugin implements GraphBuilderPlugin {
      * Argument descriptor of the method.
      */
     public final String argumentsDescriptor;
+
+    /**
+     * Used for chaining a bucket of InvocationPlugin of the same method name in
+     * {@link ClassPlugins}.
+     */
+    protected InvocationPlugin next;
 
     public InvocationPlugin(String name, Type... argumentTypes) {
         this.name = name;
@@ -295,12 +302,20 @@ public abstract class InvocationPlugin implements GraphBuilderPlugin {
         return name;
     }
 
+    public String getMethodNameWithArgumentsDescriptor() {
+        return name + argumentsDescriptor;
+    }
+
     public boolean match(InvocationPlugin other) {
         return isStatic == other.isStatic && name.equals(other.name) && argumentsDescriptor.equals(other.argumentsDescriptor);
     }
 
     public boolean match(boolean isStatic, String name, String methodDescriptor) {
         return this.isStatic == isStatic && this.name.equals(name) && methodDescriptor.startsWith(this.argumentsDescriptor);
+    }
+
+    public boolean match(ResolvedJavaMethod method) {
+        return this.isStatic == method.isStatic() && this.name.equals(method.getName()) && method.getSignature().toMethodDescriptor().startsWith(this.argumentsDescriptor);
     }
 
     public abstract static class InlineOnlyInvocationPlugin extends InvocationPlugin {

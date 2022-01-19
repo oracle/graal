@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -73,6 +73,7 @@ import org.graalvm.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.stubs.Stub;
 import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedPluginFactory;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
 import org.graalvm.compiler.nodes.spi.SnippetParameterInfo;
@@ -422,21 +423,21 @@ public final class LibGraalFeature implements com.oracle.svm.core.graal.GraalFea
     }
 
     private void registerMethodSubstitutions(DebugContext debug, InvocationPlugins invocationPlugins, MetaAccessProvider metaAccess) {
-        MapCursor<String, List<InvocationPlugins.Binding>> cursor = invocationPlugins.getBindings(true).getEntries();
+        MapCursor<String, List<InvocationPlugin>> cursor = invocationPlugins.getInvocationPlugins(true).getEntries();
         while (cursor.advance()) {
             String className = cursor.getKey();
-            for (InvocationPlugins.Binding binding : cursor.getValue()) {
-                if (binding.plugin instanceof MethodSubstitutionPlugin) {
-                    MethodSubstitutionPlugin plugin = (MethodSubstitutionPlugin) binding.plugin;
+            for (InvocationPlugin plugin : cursor.getValue()) {
+                if (plugin instanceof MethodSubstitutionPlugin) {
+                    MethodSubstitutionPlugin methodSubstitutionPlugin = (MethodSubstitutionPlugin) plugin;
 
-                    ResolvedJavaMethod original = plugin.getOriginalMethod(metaAccess);
+                    ResolvedJavaMethod original = methodSubstitutionPlugin.getOriginalMethod(metaAccess);
                     if (original != null) {
-                        ResolvedJavaMethod method = plugin.getSubstitute(metaAccess);
+                        ResolvedJavaMethod method = methodSubstitutionPlugin.getSubstitute(metaAccess);
                         debug.log("Method substitution %s %s", method, original);
 
-                        hotSpotSubstrateReplacements.checkRegistered(plugin);
+                        hotSpotSubstrateReplacements.checkRegistered(methodSubstitutionPlugin);
                     } else {
-                        throw new GraalError("Can't find original method for " + plugin + " with class " + className);
+                        throw new GraalError("Can't find original method for " + methodSubstitutionPlugin.getMethodNameWithArgumentsDescriptor() + " with class " + className);
                     }
                 }
             }
@@ -665,7 +666,8 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalCompiler {
 final class Target_org_graalvm_compiler_hotspot_HotSpotGraalRuntime {
 
     // Checkstyle: stop
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = InjectedManagementComputer.class, isFinal = true)//
+    @Alias
+    @RecomputeFieldValue(kind = Kind.Custom, declClass = InjectedManagementComputer.class, isFinal = true)//
     private static Supplier<HotSpotGraalManagementRegistration> AOT_INJECTED_MANAGEMENT;
     // Checkstyle: resume
 
@@ -811,9 +813,11 @@ final class HotSpotGraalOptionValuesUtil {
 @TargetClass(className = "org.graalvm.compiler.truffle.common.TruffleCompilerRuntimeInstance", onlyWith = LibGraalFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_truffle_common_TruffleCompilerRuntimeInstance {
     // Checkstyle: stop
-    @Alias @RecomputeFieldValue(kind = Kind.Reset, isFinal = true) static Object TRUFFLE_RUNTIME;
+    @Alias
+    @RecomputeFieldValue(kind = Kind.Reset, isFinal = true) static Object TRUFFLE_RUNTIME;
     // Checkstyle: resume
-    @Alias @RecomputeFieldValue(kind = Kind.Reset) static TruffleCompilerRuntime truffleCompilerRuntime;
+    @Alias
+    @RecomputeFieldValue(kind = Kind.Reset) static TruffleCompilerRuntime truffleCompilerRuntime;
 }
 
 @TargetClass(className = "org.graalvm.compiler.core.GraalServiceThread", onlyWith = LibGraalFeature.IsEnabled.class)

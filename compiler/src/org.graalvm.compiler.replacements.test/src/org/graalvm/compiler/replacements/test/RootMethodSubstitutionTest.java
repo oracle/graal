@@ -39,7 +39,6 @@ import org.graalvm.compiler.nodes.Cancellable;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
@@ -75,7 +74,7 @@ public class RootMethodSubstitutionTest extends GraalCompilerTest {
         Backend backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();
         Providers providers = backend.getProviders();
 
-        MapCursor<String, List<InvocationPlugins.Binding>> cursor = providers.getReplacements().getGraphBuilderPlugins().getInvocationPlugins().getBindings(true).getEntries();
+        MapCursor<String, List<InvocationPlugin>> cursor = providers.getReplacements().getGraphBuilderPlugins().getInvocationPlugins().getInvocationPlugins(true).getEntries();
         MetaAccessProvider metaAccess = providers.getMetaAccess();
         while (cursor.advance()) {
             String className = cursor.getKey();
@@ -89,20 +88,20 @@ public class RootMethodSubstitutionTest extends GraalCompilerTest {
                 continue;
             }
 
-            for (InvocationPlugins.Binding binding : cursor.getValue()) {
-                if (!binding.plugin.inlineOnly()) {
+            for (InvocationPlugin plugin : cursor.getValue()) {
+                if (!plugin.inlineOnly()) {
                     ResolvedJavaMethod original = null;
-                    original = findMethod(binding, type.getDeclaredMethods());
+                    original = findMethod(plugin, type.getDeclaredMethods());
                     if (original == null) {
-                        original = findMethod(binding, type.getDeclaredConstructors());
+                        original = findMethod(plugin, type.getDeclaredConstructors());
                     }
                     if (original == null) {
                         continue;
                     }
                     if (!original.isNative()) {
                         // Make sure the plugin we found hasn't been overridden.
-                        InvocationPlugin plugin = providers.getReplacements().getGraphBuilderPlugins().getInvocationPlugins().lookupInvocation(original);
-                        if (plugin == binding.plugin) {
+                        InvocationPlugin originalPlugin = providers.getReplacements().getGraphBuilderPlugins().getInvocationPlugins().lookupInvocation(original);
+                        if (plugin == originalPlugin) {
                             ret.add(new Object[]{original, plugin});
                         }
                     }
@@ -112,12 +111,12 @@ public class RootMethodSubstitutionTest extends GraalCompilerTest {
         return ret;
     }
 
-    private static ResolvedJavaMethod findMethod(InvocationPlugins.Binding binding, ResolvedJavaMethod[] methods) {
+    private static ResolvedJavaMethod findMethod(InvocationPlugin plugin, ResolvedJavaMethod[] methods) {
         ResolvedJavaMethod original = null;
         for (ResolvedJavaMethod declared : methods) {
-            if (declared.getName().equals(binding.plugin.name)) {
-                if (declared.isStatic() == binding.plugin.isStatic) {
-                    if (declared.getSignature().toMethodDescriptor().startsWith(binding.plugin.argumentsDescriptor)) {
+            if (declared.getName().equals(plugin.name)) {
+                if (declared.isStatic() == plugin.isStatic) {
+                    if (declared.getSignature().toMethodDescriptor().startsWith(plugin.argumentsDescriptor)) {
                         original = declared;
                         break;
                     }
