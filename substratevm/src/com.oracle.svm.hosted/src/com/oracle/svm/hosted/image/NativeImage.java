@@ -80,6 +80,7 @@ import com.oracle.svm.core.BuildArtifacts.ArtifactType;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.Isolates;
+import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -180,8 +181,9 @@ public abstract class NativeImage extends AbstractImage {
         }
         resultingImageSize = (int) outputFile.toFile().length();
         debugInfoSize = 0;
+        String debugIdentifier = OS.getCurrent() == OS.DARWIN ? "__debug" : ".debug";
         for (Element e : objectFile.getElements()) {
-            if (e.getName().contains(".debug")) {
+            if (e.getName().contains(debugIdentifier)) {
                 debugInfoSize += e.getMemSize(objectFile.getDecisionsByElement());
             }
         }
