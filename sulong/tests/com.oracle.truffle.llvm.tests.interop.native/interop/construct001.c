@@ -29,11 +29,9 @@
  */
 #include <graalvm/llvm/polyglot.h>
 
-typedef void (*callback_fn)(const char *);
-
 #define CALLBACK(str)                                                                                                                                \
     {                                                                                                                                                \
-        void (*callback)(const char *) = (callback_fn) polyglot_import("callback");                                                                  \
+        void (*callback)(const polyglot_value) = (void *) polyglot_import("callback");                                                               \
         callback(polyglot_from_string(str, "ascii"));                                                                                                \
     }
 
