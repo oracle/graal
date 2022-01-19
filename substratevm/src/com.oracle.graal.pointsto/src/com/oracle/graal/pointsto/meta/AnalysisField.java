@@ -39,7 +39,7 @@ import org.graalvm.util.GuardedAnnotationAccess;
 import com.oracle.graal.pointsto.api.DefaultUnsafePartition;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
-import com.oracle.graal.pointsto.flow.FieldSinkTypeFlow;
+import com.oracle.graal.pointsto.flow.ContextInsensitiveFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
@@ -70,9 +70,9 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
 
     /**
      * Field type flow that reflects all the types flowing in this field on its declaring type and
-     * all the sub-types.
+     * all the sub-types. It doesn't track any context-sensitive information.
      */
-    private FieldSinkTypeFlow instanceFieldFlow;
+    private ContextInsensitiveFieldTypeFlow instanceFieldFlow;
 
     private AtomicBoolean isAccessed = new AtomicBoolean();
     private AtomicBoolean isRead = new AtomicBoolean();
@@ -127,7 +127,7 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
             this.initialInstanceFieldFlow = null;
         } else {
             this.canBeNull = true;
-            this.instanceFieldFlow = new FieldSinkTypeFlow(this, getType());
+            this.instanceFieldFlow = new ContextInsensitiveFieldTypeFlow(this, getType());
             this.initialInstanceFieldFlow = new FieldTypeFlow(this, getType());
         }
     }
@@ -222,7 +222,8 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
         return staticFieldFlow;
     }
 
-    public FieldSinkTypeFlow getInstanceFieldFlow() {
+    /** Get the field type flow, stripped of any context. */
+    public ContextInsensitiveFieldTypeFlow getInstanceFieldFlow() {
         assert !Modifier.isStatic(this.getModifiers());
 
         return instanceFieldFlow;
