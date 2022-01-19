@@ -22,22 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.jfr;
-
-import java.util.ArrayList;
-
-import javax.management.MBeanServerBuilder;
+package com.oracle.svm.core.jfr;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
 
-@TargetClass(className = "javax.management.MBeanServerFactory", onlyWith = JfrFeature.JfrHostedEnabled.class)
-final class Target_javax_management_MBeanServerFactory {
+@TargetClass(className = "com.sun.jmx.mbeanserver.MXBeanIntrospector", onlyWith = JfrHostedEnabled.class)
+final class Target_com_sun_jmx_mbeanserver_MXBeanIntrospector {
 
     /* Reset caches that are used at image build time when FlightRecorder is enabled. */
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias) //
-    private static ArrayList<?> mBeanServerList = new ArrayList<>();
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias) //
-    private static MBeanServerBuilder builder = null;
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "com.sun.jmx.mbeanserver.MXBeanIntrospector") //
+    private static Target_com_sun_jmx_mbeanserver_MXBeanIntrospector instance;
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "com.sun.jmx.mbeanserver.MBeanIntrospector$MBeanInfoMap") //
+    private static Target_com_sun_jmx_mbeanserver_MBeanIntrospector_MBeanInfoMap mbeanInfoMap;
+}
+
+@TargetClass(className = "com.sun.jmx.mbeanserver.MBeanIntrospector", innerClass = "MBeanInfoMap", onlyWith = JfrHostedEnabled.class)
+final class Target_com_sun_jmx_mbeanserver_MBeanIntrospector_MBeanInfoMap {
 }

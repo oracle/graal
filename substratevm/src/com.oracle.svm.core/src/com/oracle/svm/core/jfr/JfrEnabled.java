@@ -43,3 +43,10 @@ public class JfrEnabled implements BooleanSupplier {
         return ImageSingletons.contains(JfrManager.class);
     }
 }
+
+class JfrHostedEnabled implements BooleanSupplier {
+    @Override
+    public boolean getAsBoolean() {
+        return ImageSingletons.contains(JfrManager.class) && ImageSingletons.lookup(JfrManager.class).hostedEnabled;
+    }
+}

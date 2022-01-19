@@ -29,19 +29,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
-import java.util.function.BooleanSupplier;
 
-import com.oracle.svm.core.jfr.JfrChunkWriter;
-import com.oracle.svm.core.jfr.JfrFrameTypeSerializer;
-import com.oracle.svm.core.jfr.JfrGlobalMemory;
-import com.oracle.svm.core.jfr.JfrManager;
-import com.oracle.svm.core.jfr.JfrNativeEventWriter;
-import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
-import com.oracle.svm.core.jfr.JfrRecorderThread;
-import com.oracle.svm.core.jfr.JfrSerializerSupport;
-import com.oracle.svm.core.jfr.JfrThreadLocal;
-import com.oracle.svm.core.jfr.JfrThreadStateSerializer;
-import com.oracle.svm.core.jfr.SubstrateJVM;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
@@ -55,6 +43,20 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.jfr.JfrChunkWriter;
+import com.oracle.svm.core.jfr.JfrFrameTypeSerializer;
+import com.oracle.svm.core.jfr.JfrGlobalMemory;
+import com.oracle.svm.core.jfr.JfrManager;
+import com.oracle.svm.core.jfr.JfrNativeEventWriter;
+import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
+import com.oracle.svm.core.jfr.JfrRecorderThread;
+import com.oracle.svm.core.jfr.JfrSerializerSupport;
+import com.oracle.svm.core.jfr.JfrThreadLocal;
+import com.oracle.svm.core.jfr.JfrThreadStateSerializer;
+import com.oracle.svm.core.jfr.SubstrateJVM;
+import com.oracle.svm.core.jfr.traceid.JfrTraceId;
+import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
+import com.oracle.svm.core.jfr.traceid.JfrTraceIdMap;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.thread.ThreadListenerFeature;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
@@ -62,9 +64,6 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
-import com.oracle.svm.core.jfr.traceid.JfrTraceId;
-import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
-import com.oracle.svm.core.jfr.traceid.JfrTraceIdMap;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 import com.sun.management.HotSpotDiagnosticMXBean;
@@ -119,17 +118,10 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 @AutomaticFeature
 public class JfrFeature implements Feature {
 
-    public static final class JfrHostedEnabled implements BooleanSupplier {
-        @Override
-        public boolean getAsBoolean() {
-            return ImageSingletons.contains(JfrFeature.class) && ImageSingletons.lookup(JfrFeature.class).hostedEnabled;
-        }
-    }
-
     private final boolean hostedEnabled;
 
     public JfrFeature() {
-        hostedEnabled = Boolean.valueOf(getDiagnosticBean().getVMOption("FlightRecorder").getValue());
+        hostedEnabled = Boolean.parseBoolean(getDiagnosticBean().getVMOption("FlightRecorder").getValue());
     }
 
     @Override
@@ -181,8 +173,8 @@ public class JfrFeature implements Feature {
         List<Configuration> knownConfigurations = JFC.getConfigurations();
         JVM.getJVM().createNativeJFR();
 
+        ImageSingletons.add(JfrManager.class, new JfrManager(hostedEnabled));
         ImageSingletons.add(SubstrateJVM.class, new SubstrateJVM(knownConfigurations));
-        ImageSingletons.add(JfrManager.class, new JfrManager());
         ImageSingletons.add(JfrSerializerSupport.class, new JfrSerializerSupport());
         ImageSingletons.add(JfrTraceIdMap.class, new JfrTraceIdMap());
         ImageSingletons.add(JfrTraceIdEpoch.class, new JfrTraceIdEpoch());

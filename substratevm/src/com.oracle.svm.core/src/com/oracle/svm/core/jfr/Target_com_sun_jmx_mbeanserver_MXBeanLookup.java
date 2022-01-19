@@ -22,21 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.jfr;
+package com.oracle.svm.core.jfr;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
 
-import jdk.jfr.FlightRecorder;
+@TargetClass(className = "com.sun.jmx.mbeanserver.MXBeanLookup", onlyWith = JfrHostedEnabled.class)
+final class Target_com_sun_jmx_mbeanserver_MXBeanLookup {
 
-@TargetClass(value = jdk.jfr.FlightRecorder.class, onlyWith = JfrFeature.JfrHostedEnabled.class)
-final class Target_jdk_jfr_FlightRecorder {
-    /*
-     * Ignore all state of the FlightRecorder maintained when profiling the image generator itself.
-     */
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    private static FlightRecorder platformRecorder;
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    private static boolean initialized;
+    /* Reset caches that are used at image build time when FlightRecorder is enabled. */
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "com.sun.jmx.mbeanserver.WeakIdentityHashMap") //
+    private static Target_com_sun_jmx_mbeanserver_WeakIdentityHashMap mbscToLookup;
+}
+
+@TargetClass(className = "com.sun.jmx.mbeanserver.WeakIdentityHashMap", onlyWith = JfrHostedEnabled.class)
+final class Target_com_sun_jmx_mbeanserver_WeakIdentityHashMap {
 }
