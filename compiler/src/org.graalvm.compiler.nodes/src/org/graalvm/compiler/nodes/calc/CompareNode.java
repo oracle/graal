@@ -32,6 +32,7 @@ import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
 import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
+import org.graalvm.compiler.core.common.type.FloatStamp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -218,6 +219,36 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
                     NarrowNode narrowNode = (NarrowNode) convert;
                     if (narrowNode.getInputBits() > 32 && !constant.isDefaultForKind()) {
                         // Avoid large integer constants.
+                        return null;
+                    }
+                    Stamp convertInputStamp = narrowNode.getValue().stamp(NodeView.DEFAULT);
+
+                    // if we don't know the range the narrowing cannot be safely folded away
+                    if (convertInputStamp.isUnrestricted()) {
+                        return null;
+                    }
+
+                    // don't proceed if we will be changing the range of values
+                    if (convertInputStamp instanceof IntegerStamp) {
+                        IntegerStamp intConvertInputStamp = (IntegerStamp) convertInputStamp;
+                        IntegerStamp intConvertStamp = (IntegerStamp) narrowNode.stamp(NodeView.DEFAULT);
+                        if (condition.isUnsigned()) {
+                            if (intConvertInputStamp.unsignedLowerBound() < intConvertStamp.unsignedLowerBound() || intConvertInputStamp.unsignedUpperBound() > intConvertStamp.unsignedUpperBound()) {
+                                return null;
+                            }
+                        } else {
+                            if (intConvertInputStamp.lowerBound() < intConvertStamp.lowerBound() || intConvertInputStamp.upperBound() > intConvertStamp.upperBound()) {
+                                return null;
+                            }
+                        }
+                    } else if (convertInputStamp instanceof FloatStamp) {
+                        FloatStamp floatConvertInputStamp = (FloatStamp) convertInputStamp;
+                        FloatStamp floatConvertStamp = (FloatStamp) narrowNode.stamp(NodeView.DEFAULT);
+                        GraalError.guarantee(!condition.isUnsigned(), "An unsigned floating point comparison makes no sense");
+                        if (floatConvertInputStamp.lowerBound() < floatConvertStamp.lowerBound() || floatConvertInputStamp.upperBound() > floatConvertStamp.upperBound()) {
+                            return null;
+                        }
+                    } else {
                         return null;
                     }
                 }
