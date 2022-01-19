@@ -94,6 +94,9 @@ _RENAISSANCE_EXTRA_IMAGE_BUILD_ARGS = {
                             '--allow-incomplete-classpath',
                             '--report-unsupported-elements-at-runtime'
                           ],
+    'dotty'             : [
+                            '-H:+AllowJRTFileSystem'
+                          ]
 }
 
 _renaissance_config = {
