@@ -114,7 +114,7 @@
     arch:: error "self.arch not set" + where,
     capabilities +: [],
     catch_files +: common_json.catch_files,
-    logs : [
+    logs +: [
       "*.bgv",
       "./" + repo_config.compiler.compiler_suite + "/graal_dumps/*/*",
       "*/es-*.json"
@@ -124,12 +124,14 @@
   linux::   deps.linux   + self.common + {os::"linux",   capabilities+: [self.os]},
   darwin::  deps.darwin  + self.common + {os::"darwin",  capabilities+: [self.os]},
   windows:: deps.windows + self.common + {os::"windows", capabilities+: [self.os]},
+  windows_server_2016:: self.windows + {capabilities+: ["windows_server_2016"]},
 
   amd64::   { arch::"amd64",   capabilities+: [self.arch]},
   aarch64:: { arch::"aarch64", capabilities+: [self.arch]},
 
-  linux_amd64::     self.linux + self.amd64,
-  darwin_amd64::    self.darwin + self.amd64,
-  windows_amd64::   self.windows + self.amd64,
-  linux_aarch64::   self.linux + self.aarch64,
+  linux_amd64::               self.linux               + self.amd64,
+  darwin_amd64::              self.darwin              + self.amd64,
+  windows_amd64::             self.windows             + self.amd64,
+  windows_server_2016_amd64:: self.windows_server_2016 + self.amd64,
+  linux_aarch64::             self.linux               + self.aarch64,
 }
