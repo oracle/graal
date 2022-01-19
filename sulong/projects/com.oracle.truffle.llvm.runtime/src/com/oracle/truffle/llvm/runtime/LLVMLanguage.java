@@ -398,7 +398,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     @Override
     protected void finalizeContext(LLVMContext context) {
-        context.finalizeContext();
+        context.finalizeContext(sulongDisposeContext);
     }
 
     @Override

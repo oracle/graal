@@ -175,6 +175,7 @@ public final class LLVMContext {
 
     protected boolean initialized;
     protected boolean cleanupNecessary;
+    protected boolean cleanupDone;
     private State contextState;
     private final LLVMLanguage language;
 
@@ -481,7 +482,22 @@ public final class LLVMContext {
         return REFERENCE.get(node);
     }
 
-    void exitContext(LLVMFunction sulongDisposeContext) {
+    private void cleanUp(LLVMFunction sulongDisposeContext) {
+        if (cleanupDone) {
+            return;
+        }
+
+        if (env.getContext().isCancelling()) {
+            // TODO: remove this branch when the problem with cleaning up the context when being
+            // cancelled is solved
+            // The problem is that the following cleanup code consists of invocations of various
+            // CallTargets,
+            // which have already been invalidated by the cancel request and an invocation would
+            // throw
+            // a ThreadDeath exception.
+            return;
+        }
+
         // the following cases exist for cleanup:
         // - exit() or interop: execute all atexit functions, shutdown stdlib, flush IO, and execute
         // destructors
@@ -509,11 +525,19 @@ public final class LLVMContext {
             // free the space allocated for non-pointer globals
             language.getFreeGlobalBlocks().call();
         }
+
+        cleanupDone = true;
     }
 
-    void finalizeContext() {
+    void exitContext(LLVMFunction sulongDisposeContext) {
+        cleanUp(sulongDisposeContext);
+    }
+
+    void finalizeContext(LLVMFunction sulongDisposeContext) {
         // join all created pthread - threads
         pThreadContext.joinAllThreads();
+
+        cleanUp(sulongDisposeContext);
     }
 
     public Object getFreeReadOnlyGlobalsBlockFunction() {
