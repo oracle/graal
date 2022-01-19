@@ -26,7 +26,8 @@ package org.graalvm.compiler.hotspot;
 
 import static jdk.vm.ci.hotspot.HotSpotJVMCICompilerFactory.CompilationLevelAdjustment.None;
 
-import java.lang.reflect.Method;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
 
 import org.graalvm.compiler.debug.GraalError;
 
@@ -60,15 +61,17 @@ class IsGraalPredicate extends IsGraalPredicateBase {
         graalModule = HotSpotGraalCompilerFactory.class.getModule();
     }
 
-    // NOTE: The use of reflection to access JVMCI API is to support compiling with
-    // OpenJDK 11 which has not backported JVMCI changes for libgraal (JDK-8220623).
+    // NOTE: The use of MethodHandles to access JVMCI API is to support
+    // compiling on JDKs with varying versions of JVMCI.
 
-    static final Method runtimeExcludeFromJVMCICompilation;
+    static final MethodHandle runtimeExcludeFromJVMCICompilation;
 
     static {
-        Method excludeFromJVMCICompilation = null;
+        MethodHandle excludeFromJVMCICompilation = null;
         try {
-            excludeFromJVMCICompilation = HotSpotJVMCIRuntime.class.getDeclaredMethod("excludeFromJVMCICompilation", Module[].class);
+            excludeFromJVMCICompilation = MethodHandles.lookup().unreflect(HotSpotJVMCIRuntime.class.getDeclaredMethod("excludeFromJVMCICompilation", Module[].class));
+        } catch (IllegalAccessException e) {
+            throw new InternalError(e);
         } catch (Exception e) {
             // excludeFromJVMCICompilation not available
         }
@@ -80,7 +83,8 @@ class IsGraalPredicate extends IsGraalPredicateBase {
         compilerConfigurationModule = factory.getClass().getModule();
         if (runtimeExcludeFromJVMCICompilation != null) {
             try {
-                runtimeExcludeFromJVMCICompilation.invoke(HotSpotJVMCIRuntime.runtime(), (Object) new Module[]{jvmciModule, graalModule, compilerConfigurationModule});
+                Module[] modules = {jvmciModule, graalModule, compilerConfigurationModule};
+                runtimeExcludeFromJVMCICompilation.invoke(runtime, modules);
             } catch (Throwable throwable) {
                 throw new InternalError(throwable);
             }

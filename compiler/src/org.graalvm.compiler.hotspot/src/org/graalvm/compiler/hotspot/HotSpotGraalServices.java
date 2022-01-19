@@ -43,8 +43,8 @@ import jdk.vm.ci.services.Services;
  */
 public class HotSpotGraalServices {
 
-    // NOTE: The use of reflection to access JVMCI API is to support compiling with
-    // OpenJDK 11 which has not backported JVMCI changes for libgraal (JDK-8220623).
+    // NOTE: The use of MethodHandles to access JVMCI API is to support
+    // compiling on JDKs with varying versions of JVMCI.
 
     private static final MethodHandle runtimeExitHotSpot;
     private static final MethodHandle scopeOpenLocalScope;
@@ -94,7 +94,7 @@ public class HotSpotGraalServices {
     public static CompilationContext enterGlobalCompilationContext() {
         if (scopeEnterGlobalScope != null) {
             try {
-                AutoCloseable impl = (AutoCloseable) scopeEnterGlobalScope.invoke(null);
+                AutoCloseable impl = (AutoCloseable) scopeEnterGlobalScope.invoke();
                 return impl == null ? null : new CompilationContext(impl);
             } catch (Throwable throwable) {
                 throw new InternalError(throwable);
@@ -115,7 +115,7 @@ public class HotSpotGraalServices {
     public static CompilationContext openLocalCompilationContext(Object description) {
         if (scopeOpenLocalScope != null) {
             try {
-                AutoCloseable impl = (AutoCloseable) scopeOpenLocalScope.invoke(null, Objects.requireNonNull(description));
+                AutoCloseable impl = (AutoCloseable) scopeOpenLocalScope.invoke(Objects.requireNonNull(description));
                 return impl == null ? null : new CompilationContext(impl);
             } catch (Throwable throwable) {
                 throw new InternalError(throwable);

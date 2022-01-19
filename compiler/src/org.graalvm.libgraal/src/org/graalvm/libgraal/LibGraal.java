@@ -25,12 +25,11 @@
 package org.graalvm.libgraal;
 
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
-import static org.graalvm.libgraal.LibGraalScope.methodIf;
-import static org.graalvm.libgraal.LibGraalScope.methodOrNull;
-import static org.graalvm.libgraal.LibGraalScope.sig;
 
-import java.lang.reflect.InvocationTargetException;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -65,21 +64,21 @@ import jdk.vm.ci.services.Services;
  */
 public class LibGraal {
 
-    // NOTE: The use of reflection to access JVMCI API is to support compiling with
-    // OpenJDK 11 which has not backported JVMCI changes for libgraal (JDK-8220623).
+    // NOTE: The use of MethodHandles to access JVMCI API is to support
+    // compiling on JDKs with varying versions of JVMCI.
 
     static {
         // Initialize JVMCI to ensure JVMCI opens its packages to Graal.
         Services.initializeJVMCI();
     }
 
-    private static final Method unhand = methodOrNull(HotSpotJVMCIRuntime.class, "unhand", sig(Class.class, Long.TYPE));
-    private static final Method translate = methodIf(unhand, HotSpotJVMCIRuntime.class, "translate", sig(Object.class));
-    private static final Method registerNativeMethods = methodIf(unhand, HotSpotJVMCIRuntime.class, "registerNativeMethods", sig(Class.class));
-    private static final Method isCurrentThreadAttached = methodIf(unhand, HotSpotJVMCIRuntime.class, "isCurrentThreadAttached");
-    private static final Method attachCurrentThread = methodIf(unhand, HotSpotJVMCIRuntime.class, "attachCurrentThread", sig(Boolean.TYPE, long[].class), sig(Boolean.TYPE));
-    private static final Method detachCurrentThread = methodIf(unhand, HotSpotJVMCIRuntime.class, "detachCurrentThread", sig(Boolean.TYPE), sig());
-    private static final Method getFailedSpeculationsAddress = methodIf(unhand, HotSpotSpeculationLog.class, "getFailedSpeculationsAddress");
+    private static final MethodHandle unhand = methodOrNull(HotSpotJVMCIRuntime.class, "unhand", sig(Class.class, Long.TYPE));
+    private static final MethodHandle translate = methodIf(unhand, HotSpotJVMCIRuntime.class, "translate", sig(Object.class));
+    private static final MethodHandle registerNativeMethods = methodIf(unhand, HotSpotJVMCIRuntime.class, "registerNativeMethods", sig(Class.class));
+    private static final MethodHandle isCurrentThreadAttached = methodIf(unhand, HotSpotJVMCIRuntime.class, "isCurrentThreadAttached");
+    private static final MethodHandle attachCurrentThread = methodIf(unhand, HotSpotJVMCIRuntime.class, "attachCurrentThread", sig(Boolean.TYPE, long[].class), sig(Boolean.TYPE));
+    private static final MethodHandle detachCurrentThread = methodIf(unhand, HotSpotJVMCIRuntime.class, "detachCurrentThread", sig(Boolean.TYPE), sig());
+    private static final MethodHandle getFailedSpeculationsAddress = methodIf(unhand, HotSpotSpeculationLog.class, "getFailedSpeculationsAddress");
 
     /**
      * Determines if libgraal is available for use.
@@ -184,11 +183,8 @@ public class LibGraal {
             long[] javaVMInfo = (long[]) registerNativeMethods.invoke(runtime(), LibGraalScope.class);
             long isolate = javaVMInfo[1];
             return isolate;
-        } catch (InvocationTargetException e) {
-            if (e.getTargetException() instanceof UnsupportedOperationException) {
-                return 0L;
-            }
-            throw new InternalError(e);
+        } catch (UnsupportedOperationException e) {
+            return 0L;
         } catch (Throwable throwable) {
             throw new InternalError(throwable);
         }
@@ -219,7 +215,7 @@ public class LibGraal {
      */
     public static boolean attachCurrentThread(boolean isDaemon, long[] isolate) {
         try {
-            if (attachCurrentThread.getParameterCount() == 2) {
+            if (attachCurrentThread.type().parameterCount() == 3) {
                 long[] javaVMInfo = isolate != null ? new long[4] : null;
                 boolean res = (boolean) attachCurrentThread.invoke(runtime(), isDaemon, javaVMInfo);
                 if (isolate != null) {
@@ -249,7 +245,7 @@ public class LibGraal {
      */
     public static boolean detachCurrentThread(boolean release) {
         try {
-            if (detachCurrentThread.getParameterCount() == 1) {
+            if (detachCurrentThread.type().parameterCount() == 2) {
                 return (Boolean) detachCurrentThread.invoke(runtime(), release);
             } else {
                 detachCurrentThread.invoke(runtime());
@@ -271,10 +267,89 @@ public class LibGraal {
         if (getFailedSpeculationsAddress != null) {
             try {
                 return (long) getFailedSpeculationsAddress.invoke(log);
-            } catch (IllegalAccessException | InvocationTargetException e) {
-                e.printStackTrace();
+            } catch (Throwable e) {
+                throw new InternalError(e);
             }
         }
         throw new UnsupportedOperationException();
+    }
+
+    // Shared support for the LibGraal overlays
+
+    /**
+     * Convenience function for wrapping varargs into an array for use in calls to
+     * {@link #method(Class, String, Class[][])}.
+     */
+    private static Class<?>[] sig(Class<?>... types) {
+        return types;
+    }
+
+    /**
+     * Gets the method in {@code declaringClass} with the unique name {@code name}.
+     *
+     * @param sigs the signatures the method may have
+     */
+    private static MethodHandle method(Class<?> declaringClass, String name, Class<?>[]... sigs) {
+        if (sigs.length == 1 || sigs.length == 0) {
+            try {
+                Class<?>[] sig = sigs.length == 1 ? sigs[0] : new Class<?>[0];
+                return MethodHandles.lookup().unreflect(declaringClass.getDeclaredMethod(name, sig));
+            } catch (IllegalAccessException e) {
+                throw (IllegalAccessError) new IllegalAccessError().initCause(e);
+            } catch (NoSuchMethodException | SecurityException e) {
+                throw (NoSuchMethodError) new NoSuchMethodError(name).initCause(e);
+            }
+        }
+        Method match = null;
+        for (Method m : declaringClass.getDeclaredMethods()) {
+            if (m.getName().equals(name)) {
+                if (match != null) {
+                    throw new InternalError(String.format("Expected single method named %s, found %s and %s",
+                                    name, match, m));
+                }
+                match = m;
+            }
+        }
+        if (match == null) {
+            throw new NoSuchMethodError("Cannot find method " + name + " in " + declaringClass.getName());
+        }
+        Class<?>[] parameterTypes = match.getParameterTypes();
+        for (Class<?>[] sig : sigs) {
+            if (Arrays.equals(parameterTypes, sig)) {
+                try {
+                    return MethodHandles.lookup().unreflect(match);
+                } catch (IllegalAccessException | SecurityException e) {
+                    throw (NoSuchMethodError) new NoSuchMethodError(name).initCause(e);
+                }
+            }
+        }
+        throw new NoSuchMethodError(String.format("Unexpected signature for %s: %s", name, Arrays.toString(parameterTypes)));
+    }
+
+    /**
+     * Gets the method in {@code declaringClass} with the unique name {@code name} or {@code null}
+     * if not found.
+     *
+     * @param sigs the signatures the method may have
+     */
+    private static MethodHandle methodOrNull(Class<?> declaringClass, String name, Class<?>[]... sigs) {
+        try {
+            return method(declaringClass, name, sigs);
+        } catch (NoSuchMethodError e) {
+            return null;
+        }
+    }
+
+    /**
+     * Gets the method in {@code declaringClass} with the unique name {@code name} or {@code null}
+     * if {@code guard == null}.
+     *
+     * @param sigs the signatures the method may have
+     */
+    private static MethodHandle methodIf(Object guard, Class<?> declaringClass, String name, Class<?>[]... sigs) {
+        if (guard == null) {
+            return null;
+        }
+        return method(declaringClass, name, sigs);
     }
 }
