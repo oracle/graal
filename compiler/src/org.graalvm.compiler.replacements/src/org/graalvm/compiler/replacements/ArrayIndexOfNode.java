@@ -43,7 +43,6 @@ import org.graalvm.compiler.nodeinfo.NodeCycles;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -114,7 +113,6 @@ public class ArrayIndexOfNode extends FixedWithNextNode implements Canonicalizab
     @Input private NodeInputList<ValueNode> searchValues;
 
     @OptionalInput(InputType.Memory) private MemoryKill lastLocationAccess;
-    @OptionalInput(InputType.State) protected FrameState stateBefore;
 
     public ArrayIndexOfNode(
                     @ConstantNodeParameter JavaKind arrayKind,

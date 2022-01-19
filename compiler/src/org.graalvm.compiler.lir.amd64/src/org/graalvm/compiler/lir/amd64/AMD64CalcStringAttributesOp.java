@@ -704,7 +704,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64LIRInstruction {
         Label labelScalarMultiByteLoopEntry = new Label();
         Label labelScalarMultiByteLoopSkipDec = new Label();
 
-        Label returnValidOrBroken = new Label();
+        Label returnValid = new Label();
         Label returnAscii = new Label();
         Label end = new Label();
 
@@ -749,7 +749,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64LIRInstruction {
 
             // multibyte loop tail: do an overlapping tail load, and zero out all bytes that would
             // overlap with the last loop iteration
-            asm.testlAndJcc(lengthTail, lengthTail, Zero, returnValidOrBroken, false);
+            asm.testlAndJcc(lengthTail, lengthTail, Zero, returnValid, false);
             // load tail vector
             movdqu(asm, avxSize, vecArray, new AMD64Address(arr, lengthTail, scale, -avxSize.getBytes()));
             asm.bind(labelMultiByteTail);
@@ -759,7 +759,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64LIRInstruction {
             pandU(asm, avxSize, vecArray, new AMD64Address(tmp, lengthTail, scale), vecTmp1);
             // identify continuation bytes
             utf8SubtractContinuationBytes(asm, ret, vecArray, tmp, vecMask, vecMaskCB);
-            asm.jmp(returnValidOrBroken);
+            asm.jmp(returnValid);
 
             if (useYMM()) {
                 // special case: array is too short for YMM, try XMM
@@ -784,7 +784,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64LIRInstruction {
             // not ascii, go to scalar loop
             asm.jccb(Zero, returnAscii);
             utf8SubtractContinuationBytes(asm, ret, vecArray, tmp, vecMask, vecMaskCB);
-            asm.jmp(returnValidOrBroken);
+            asm.jmp(returnValid);
         } else {
             Label labelMultiByteEnd = new Label();
             Label labelMultiByteTailLoopEntry = new Label();
@@ -893,7 +893,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64LIRInstruction {
             asm.bind(labelMultiByteEnd);
             por(asm, avxSize, vecError, vecPrevIsIncomplete);
             ptest(asm, avxSize, vecError, vecError);
-            asm.jcc(Zero, returnValidOrBroken);
+            asm.jcc(Zero, returnValid);
             asm.shlq(ret, 32);
             asm.orq(ret, CR_BROKEN_MULTIBYTE);
             asm.jmp(end);
@@ -967,13 +967,13 @@ public final class AMD64CalcStringAttributesOp extends AMD64LIRInstruction {
             asm.bind(labelScalarMultiByteLoopSkipDec);
             asm.incqAndJcc(lengthTail, NotZero, labelScalarMultiByteLoop, true);
 
-            asm.testqAndJcc(state, state, Zero, returnValidOrBroken, true);
+            asm.testqAndJcc(state, state, Zero, returnValid, true);
             asm.shlq(ret, 32);
             asm.orq(ret, CR_BROKEN_MULTIBYTE);
             asm.jmpb(end);
         }
 
-        emitExitMultiByte(asm, ret, returnValidOrBroken, end, CR_VALID_MULTIBYTE);
+        emitExitMultiByte(asm, ret, returnValid, end, CR_VALID_MULTIBYTE);
         emitExitMultiByteAtEnd(asm, ret, returnAscii, end, CR_7BIT);
     }
 
@@ -1231,7 +1231,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64LIRInstruction {
         Label tailSingleVectorSurrogate = new Label();
         Label surrogateExactlyVectorSize = new Label();
 
-        Label returnValid = new Label();
+        Label returnValidOrBroken = new Label();
         Label returnBMP = new Label();
         Label returnLatin1 = new Label();
         Label returnAscii = new Label();
@@ -1276,7 +1276,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64LIRInstruction {
         if (assumeValid) {
             // surrogate tail
             utf16SubtractMatchedChars(asm, ret, vecArrayTail, tmp);
-            asm.jmp(returnValid);
+            asm.jmp(returnValidOrBroken);
 
             // surrogate loop: surrogates have been found, calculate the codepoint length
             // (assuming the string is encoded correctly)
@@ -1287,13 +1287,13 @@ public final class AMD64CalcStringAttributesOp extends AMD64LIRInstruction {
             utf16SubtractMatchedChars(asm, ret, vecArray, tmp);
             asm.addqAndJcc(len, vectorSize, NotZero, labelSurrogateLoop, true);
 
-            asm.testlAndJcc(lengthTail, lengthTail, Zero, returnValid, false);
+            asm.testlAndJcc(lengthTail, lengthTail, Zero, returnValidOrBroken, false);
             // surrogate tail
             asm.leaq(tmp, (AMD64Address) crb.recordDataSectionReference(maskTail));
             pandU(asm, avxSize, vecArrayTail, new AMD64Address(tmp, lengthTail, scale), vecTmp);
             utf16MatchSurrogates(asm, vecArrayTail, vecMaskSurrogate);
             utf16SubtractMatchedChars(asm, ret, vecArrayTail, tmp);
-            asm.jmp(returnValid);
+            asm.jmp(returnValidOrBroken);
         } else {
             // surrogate prologue: surrogates have been found, calculate the codepoint length
             // (no assumptions about the string made)
@@ -1350,10 +1350,10 @@ public final class AMD64CalcStringAttributesOp extends AMD64LIRInstruction {
             // corner case: check if last char is a high surrogate
             asm.movzwl(tmp, new AMD64Address(arr, lengthTail, scale, -2));
             asm.shrl(tmp, 10);
-            asm.cmplAndJcc(tmp, 0x36, NotEqual, returnValid, false);
+            asm.cmplAndJcc(tmp, 0x36, NotEqual, returnValidOrBroken, false);
             // last char is a high surrogate, return BROKEN
             asm.movl(retBroken, CR_BROKEN_MULTIBYTE);
-            asm.jmp(returnValid);
+            asm.jmp(returnValidOrBroken);
         }
 
         if (useYMM()) {
@@ -1404,7 +1404,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64LIRInstruction {
             // surrogate head: surrogates have been found, calculate the codepoint length
             // (assuming the string is encoded correctly)
             utf16SubtractMatchedChars(asm, ret, vecTmp, tmp);
-            asm.jmp(returnValid);
+            asm.jmp(returnValidOrBroken);
         } else {
             asm.jmpb(tailSingleVectorSurrogate);
             // surrogate prologue: surrogates have been found, calculate the codepoint length
@@ -1433,13 +1433,13 @@ public final class AMD64CalcStringAttributesOp extends AMD64LIRInstruction {
             prev(asm, avxSize, vecArrayTail, vecArray, vecTmp, 2);
 
             utf16ValidateSurrogates(asm, ret, vecArrayTail, vecArray, vecMaskSurrogate, vecMaskAscii, tmp, retBroken);
-            asm.jmpb(returnValid);
+            asm.jmpb(returnValidOrBroken);
         }
         emitExitMultiByte(asm, ret, returnAscii, end, CR_7BIT);
         emitExitMultiByte(asm, ret, returnLatin1, end, CR_8BIT);
         emitExitMultiByte(asm, ret, returnBMP, end, CR_16BIT);
 
-        asm.bind(returnValid);
+        asm.bind(returnValidOrBroken);
         asm.shlq(ret, 32);
         if (!assumeValid) {
             asm.orq(ret, retBroken);

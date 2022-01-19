@@ -139,7 +139,8 @@ public final class AArch64ArrayIndexOfOp extends AArch64LIRInstruction {
 
         /*
          * AArch64 comparisons are at minimum 32 bits; since we are comparing against a
-         * zero-extended value, the searchValue must also be zero-extended.
+         * zero-extended value, the searchValue must also be zero-extended. This is already done by
+         * the caller.
          */
         final int memAccessSize = (findTwoConsecutive ? 2 : 1) * elementByteSize * Byte.SIZE;
         Register searchValueReg;
