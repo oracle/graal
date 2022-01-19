@@ -309,10 +309,10 @@ suite = {
             "sha1" : "a8f5b9e7387e00a57d31be320a8246a7c8128aa4",
         },
         "TruffleJWS" : {
-          "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejws-1.5.1.jar"],
-          "sha1" : "5576fc4a93fe0fc01d236e92803543906d690c5f",
-          "sourceUrls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejws-1.5.1-src.jar"],
-          "sourceSha1" : "298db2b3c573f9e76a5a7a60a49c7ceb5ddd35f7",
+          "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejws-1.5.2.jar"],
+          "sha1" : "9a0b23fb70ec828405ade9252c2e1e946a2eb455",
+          "sourceUrls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejws-1.5.2-src.jar"],
+          "sourceSha1" : "4b6f04d25ae52ace16f8ff9e7561f965e04f5848",
         },
         "VISUALVM_COMMON" : {
             "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-1072.tar.gz"],
