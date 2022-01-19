@@ -158,6 +158,26 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
         registerUnaryMath(r, "cos", COS);
         registerUnaryMath(r, "tan", TAN);
 
+        registerFMA(r, arch);
+        registerMinMax(r, arch);
+
+        r.registerConditional(arch.getFeatures().contains(CPUFeature.AVX512VL), new InvocationPlugin("copySign", float.class, float.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode magnitude, ValueNode sign) {
+                b.addPush(JavaKind.Float, new CopySignNode(magnitude, sign));
+                return true;
+            }
+        });
+        r.registerConditional(arch.getFeatures().contains(CPUFeature.AVX512VL), new InvocationPlugin("copySign", double.class, double.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode magnitude, ValueNode sign) {
+                b.addPush(JavaKind.Double, new CopySignNode(magnitude, sign));
+                return true;
+            }
+        });
+    }
+
+    private static void registerFMA(Registration r, AMD64 arch) {
         r.registerConditional(arch.getFeatures().contains(CPUFeature.FMA), new InvocationPlugin("fma", double.class, double.class, double.class) {
             @Override
             public boolean apply(GraphBuilderContext b,
@@ -182,39 +202,6 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 return true;
             }
         });
-
-        JavaKind[] supportedMinMaxKinds = {JavaKind.Float, JavaKind.Double};
-        for (JavaKind kind : supportedMinMaxKinds) {
-            r.registerConditional(arch.getFeatures().contains(CPUFeature.AVX),  new InvocationPlugin("max", kind.toJavaClass(), kind.toJavaClass()) {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
-                    b.push(kind, b.append(MaxNode.create(x, y, NodeView.DEFAULT)));
-                    return true;
-                }
-            });
-            r.registerConditional(arch.getFeatures().contains(CPUFeature.AVX), new InvocationPlugin("min", kind.toJavaClass(), kind.toJavaClass()) {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
-                    b.push(kind, b.append(MinNode.create(x, y, NodeView.DEFAULT)));
-                    return true;
-                }
-            });
-        }
-
-        r.registerConditional(arch.getFeatures().contains(CPUFeature.AVX512VL), new InvocationPlugin("copySign", float.class, float.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode magnitude, ValueNode sign) {
-                b.addPush(JavaKind.Float, new CopySignNode(magnitude, sign));
-                return true;
-            }
-        });
-        r.registerConditional(arch.getFeatures().contains(CPUFeature.AVX512VL), new InvocationPlugin("copySign", double.class, double.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode magnitude, ValueNode sign) {
-                b.addPush(JavaKind.Double, new CopySignNode(magnitude, sign));
-                return true;
-            }
-        });
     }
 
     private static void registerUnaryMath(Registration r, String name, UnaryOperation operation) {
@@ -235,6 +222,26 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 return true;
             }
         });
+    }
+
+    private static void registerMinMax(Registration r, AMD64 arch) {
+        JavaKind[] supportedMinMaxKinds = {JavaKind.Float, JavaKind.Double};
+        for (JavaKind kind : supportedMinMaxKinds) {
+            r.registerConditional(arch.getFeatures().contains(CPUFeature.AVX), new InvocationPlugin("max", kind.toJavaClass(), kind.toJavaClass()) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
+                    b.push(kind, b.append(MaxNode.create(x, y, NodeView.DEFAULT)));
+                    return true;
+                }
+            });
+            r.registerConditional(arch.getFeatures().contains(CPUFeature.AVX), new InvocationPlugin("min", kind.toJavaClass(), kind.toJavaClass()) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
+                    b.push(kind, b.append(MinNode.create(x, y, NodeView.DEFAULT)));
+                    return true;
+                }
+            });
+        }
     }
 
     private static final class ArrayCompareToPlugin extends InvocationPlugin {

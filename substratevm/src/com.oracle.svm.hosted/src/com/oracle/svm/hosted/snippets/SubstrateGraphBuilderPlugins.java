@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.snippets;
 
-import java.awt.*;
+import java.awt.GraphicsEnvironment;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;

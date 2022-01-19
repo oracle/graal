@@ -877,7 +877,7 @@ public class NativeImageGenerator {
 
         SVMHost hostVM = HostedConfiguration.instance().createHostVM(options, loader.getClassLoader(), classInitializationSupport, automaticSubstitutions, loader.platform, originalSnippetReflection);
 
-        automaticSubstitutions.init(loader, originalMetaAccess, options);
+        automaticSubstitutions.init(loader, originalMetaAccess);
         AnalysisPolicy analysisPolicy = PointstoOptions.AllocationSiteSensitiveHeap.getValue(options) ? new BytecodeSensitiveAnalysisPolicy(options)
                         : new DefaultAnalysisPolicy(options);
         return new AnalysisUniverse(hostVM, target.wordJavaKind, analysisPolicy, aSubstitutions, originalMetaAccess, originalSnippetReflection,
@@ -1078,8 +1078,7 @@ public class NativeImageGenerator {
 
         private AnnotationSubstitutionProcessor annotationSubstitutionProcessor;
 
-        SubstitutionInvocationPlugins(AnnotationSubstitutionProcessor annotationSubstitutionProcessor, OptionValues options) {
-            super(options);
+        SubstitutionInvocationPlugins(AnnotationSubstitutionProcessor annotationSubstitutionProcessor) {
             this.annotationSubstitutionProcessor = annotationSubstitutionProcessor;
         }
 
@@ -1099,8 +1098,7 @@ public class NativeImageGenerator {
                     AnalysisUniverse aUniverse, HostedMetaAccess hMetaAccess, HostedUniverse hUniverse, NativeLibraries nativeLibs, ImageClassLoader loader, ParsingReason reason,
                     AnnotationSubstitutionProcessor annotationSubstitutionProcessor, ClassInitializationPlugin classInitializationPlugin, ClassInitializationSupport classInitializationSupport,
                     TargetDescription target) {
-        OptionValues options = aUniverse.hostVM().options();
-        GraphBuilderConfiguration.Plugins plugins = new GraphBuilderConfiguration.Plugins(new SubstitutionInvocationPlugins(annotationSubstitutionProcessor, options));
+        GraphBuilderConfiguration.Plugins plugins = new GraphBuilderConfiguration.Plugins(new SubstitutionInvocationPlugins(annotationSubstitutionProcessor));
 
         WordOperationPlugin wordOperationPlugin = new SubstrateWordOperationPlugins(providers.getSnippetReflection(), providers.getWordTypes());
 
@@ -1170,6 +1168,7 @@ public class NativeImageGenerator {
                         reason == ParsingReason.JITCompilation, true, arrayEqualsSubstitution, providers.getLowerer());
 
         Architecture architecture = ConfigurationValues.getTarget().arch;
+        OptionValues options = aUniverse.hostVM().options();
         ImageSingletons.lookup(TargetGraphBuilderPlugins.class).register(plugins, replacements, architecture,
                         /* registerForeignCallMath */ false, options);
 

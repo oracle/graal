@@ -666,8 +666,7 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalCompiler {
 final class Target_org_graalvm_compiler_hotspot_HotSpotGraalRuntime {
 
     // Checkstyle: stop
-    @Alias
-    @RecomputeFieldValue(kind = Kind.Custom, declClass = InjectedManagementComputer.class, isFinal = true)//
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = InjectedManagementComputer.class, isFinal = true)//
     private static Supplier<HotSpotGraalManagementRegistration> AOT_INJECTED_MANAGEMENT;
     // Checkstyle: resume
 
@@ -813,11 +812,9 @@ final class HotSpotGraalOptionValuesUtil {
 @TargetClass(className = "org.graalvm.compiler.truffle.common.TruffleCompilerRuntimeInstance", onlyWith = LibGraalFeature.IsEnabled.class)
 final class Target_org_graalvm_compiler_truffle_common_TruffleCompilerRuntimeInstance {
     // Checkstyle: stop
-    @Alias
-    @RecomputeFieldValue(kind = Kind.Reset, isFinal = true) static Object TRUFFLE_RUNTIME;
+    @Alias @RecomputeFieldValue(kind = Kind.Reset, isFinal = true) static Object TRUFFLE_RUNTIME;
     // Checkstyle: resume
-    @Alias
-    @RecomputeFieldValue(kind = Kind.Reset) static TruffleCompilerRuntime truffleCompilerRuntime;
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) static TruffleCompilerRuntime truffleCompilerRuntime;
 }
 
 @TargetClass(className = "org.graalvm.compiler.core.GraalServiceThread", onlyWith = LibGraalFeature.IsEnabled.class)

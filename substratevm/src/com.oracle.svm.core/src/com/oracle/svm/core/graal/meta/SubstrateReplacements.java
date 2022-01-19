@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -305,11 +305,11 @@ public class SubstrateReplacements extends ReplacementsImpl {
         Map<ResolvedJavaMethod, InvocationPlugin> result = new HashMap<>(builder.delayedInvocationPluginMethods.size());
         for (ResolvedJavaMethod method : builder.delayedInvocationPluginMethods) {
             ResolvedJavaMethod replacedMethod = (ResolvedJavaMethod) objectReplacer.apply(method);
-            InvocationPlugin plugin = plugins.getInvocationPlugins().lookupInvocation(replacedMethod);
+            InvocationPlugin plugin = plugins.getInvocationPlugins().lookupInvocation(replacedMethod, HostedOptionValues.singleton());
             assert plugin != null : "expected invocation plugin for " + replacedMethod;
             result.put(replacedMethod, plugin);
         }
-        return new InvocationPlugins(result, null, HostedOptionValues.singleton());
+        return new InvocationPlugins(result, null);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -329,13 +329,13 @@ public class SubstrateReplacements extends ReplacementsImpl {
     }
 
     @Override
-    protected MethodSubstitutionPlugin getMethodSubstitution(ResolvedJavaMethod method) {
+    protected MethodSubstitutionPlugin getMethodSubstitution(ResolvedJavaMethod method, OptionValues options) {
         // This override keeps graphBuilderPlugins from being reached during image generation.
         return null;
     }
 
     @Override
-    public boolean hasSubstitution(ResolvedJavaMethod method) {
+    public boolean hasSubstitution(ResolvedJavaMethod method, OptionValues options) {
         // This override keeps graphBuilderPlugins from being reached during image generation.
         return false;
     }

@@ -49,10 +49,11 @@ public class GraalDirectiveIntrinsificationTest extends GraalCompilerTest {
         String className = MetaUtil.toInternalName(GraalDirectives.class.getName());
         List<InvocationPlugin> invocationPlugins = getReplacements().getGraphBuilderPlugins().getInvocationPlugins().getInvocationPlugins(false).get(className);
 
-        EconomicSet<String> registeredBindings = EconomicSet.create();
+        EconomicSet<String> registeredPlugins = EconomicSet.create();
         for (InvocationPlugin plugin : invocationPlugins) {
-            // A binding's string representation includes the name and arguments but no return type.
-            registeredBindings.add(plugin.toString());
+            // An invocation plugin's string representation includes the name and arguments but no
+            // return type.
+            registeredPlugins.add(plugin.getMethodNameWithArgumentsDescriptor());
         }
 
         ResolvedJavaType directives = getMetaAccess().lookupJavaType(GraalDirectives.class);
@@ -61,9 +62,9 @@ public class GraalDirectiveIntrinsificationTest extends GraalCompilerTest {
                 // A method's descriptor includes the return type, which we must drop so we can
                 // compare to the binding strings.
                 String fullName = method.getName() + method.getSignature().toMethodDescriptor();
-                String bindingName = fullName.substring(0, fullName.lastIndexOf(method.getSignature().getReturnType(null).getName()));
+                String pluginName = fullName.substring(0, fullName.lastIndexOf(method.getSignature().getReturnType(null).getName()));
 
-                Assert.assertTrue("Graal directive " + method.format("%h.%n(%p)") + " must be intrinsified with a standard graph builder plugin", registeredBindings.contains(bindingName));
+                Assert.assertTrue("Graal directive " + method.format("%h.%n(%p)") + " must be intrinsified with a standard graph builder plugin", registeredPlugins.contains(pluginName));
             }
         }
     }

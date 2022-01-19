@@ -100,7 +100,7 @@ public class RootMethodSubstitutionTest extends GraalCompilerTest {
                     }
                     if (!original.isNative()) {
                         // Make sure the plugin we found hasn't been overridden.
-                        InvocationPlugin originalPlugin = providers.getReplacements().getGraphBuilderPlugins().getInvocationPlugins().lookupInvocation(original);
+                        InvocationPlugin originalPlugin = providers.getReplacements().getGraphBuilderPlugins().getInvocationPlugins().lookupInvocation(original, getInitialOptions());
                         if (plugin == originalPlugin) {
                             ret.add(new Object[]{original, plugin});
                         }
@@ -114,13 +114,9 @@ public class RootMethodSubstitutionTest extends GraalCompilerTest {
     private static ResolvedJavaMethod findMethod(InvocationPlugin plugin, ResolvedJavaMethod[] methods) {
         ResolvedJavaMethod original = null;
         for (ResolvedJavaMethod declared : methods) {
-            if (declared.getName().equals(plugin.name)) {
-                if (declared.isStatic() == plugin.isStatic) {
-                    if (declared.getSignature().toMethodDescriptor().startsWith(plugin.argumentsDescriptor)) {
-                        original = declared;
-                        break;
-                    }
-                }
+            if (plugin.match(declared)) {
+                original = declared;
+                break;
             }
         }
         return original;

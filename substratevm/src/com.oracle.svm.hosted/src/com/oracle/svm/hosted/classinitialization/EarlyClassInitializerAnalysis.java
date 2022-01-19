@@ -148,7 +148,7 @@ final class EarlyClassInitializerAnalysis {
 
     @SuppressWarnings("try")
     private boolean canInitializeWithoutSideEffects(ResolvedJavaMethod clinit, Set<Class<?>> analyzedClasses, OptionValues options, DebugContext debug) {
-        InvocationPlugins invocationPlugins = new InvocationPlugins(options);
+        InvocationPlugins invocationPlugins = new InvocationPlugins();
         Plugins plugins = new Plugins(invocationPlugins);
         plugins.appendInlineInvokePlugin(new AbortOnRecursiveInliningPlugin());
         AbortOnUnitializedClassPlugin classInitializationPlugin = new AbortOnUnitializedClassPlugin(analyzedClasses);

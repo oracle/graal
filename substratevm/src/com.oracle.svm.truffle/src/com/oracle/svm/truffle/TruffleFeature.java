@@ -384,7 +384,7 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
         public InlineInfo shouldInlineInvoke(GraphBuilderContext builder, ResolvedJavaMethod original, ValueNode[] arguments) {
             if (original.hasNeverInlineDirective()) {
                 return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
-            } else if (invocationPlugins.lookupInvocation(original) != null) {
+            } else if (invocationPlugins.lookupInvocation(original, builder.getOptions()) != null) {
                 return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
             } else if (original.getAnnotation(ExplodeLoop.class) != null) {
                 /*
@@ -398,7 +398,7 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
                  * loops of the inlined callee are exploded too.
                  */
                 return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
-            } else if (replacements.hasSubstitution(original)) {
+            } else if (replacements.hasSubstitution(original, builder.getOptions())) {
                 return InlineInfo.DO_NOT_INLINE_WITH_EXCEPTION;
             }
 

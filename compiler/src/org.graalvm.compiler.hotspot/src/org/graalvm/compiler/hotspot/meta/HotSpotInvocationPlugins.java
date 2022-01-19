@@ -78,7 +78,6 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
 
     HotSpotInvocationPlugins(HotSpotGraalRuntimeProvider graalRuntime, GraalHotSpotVMConfig config, CompilerConfiguration compilerConfiguration,
                     TargetDescription target, OptionValues options) {
-        super(options);
         this.graalRuntime = graalRuntime;
         this.config = config;
         if (Options.WarnMissingIntrinsic.getValue(options)) {
@@ -94,13 +93,13 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
     @Override
     protected void register(Type declaringClass, InvocationPlugin plugin, boolean allowOverwrite) {
         if (!config.usePopCountInstruction) {
-            if (plugin.getName().equals("bitCount")) {
+            if ("bitCount".equals(plugin.name)) {
                 GraalError.guarantee(declaringClass.equals(Integer.class) || declaringClass.equals(Long.class), declaringClass.getTypeName());
                 return;
             }
         }
         if (!config.useUnalignedAccesses) {
-            if (plugin.getName().endsWith("Unaligned") && declaringClass.getTypeName().equals("jdk.internal.misc.Unsafe")) {
+            if (plugin.name.endsWith("Unaligned") && declaringClass.getTypeName().equals("jdk.internal.misc.Unsafe")) {
                 return;
             }
         }

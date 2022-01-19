@@ -52,8 +52,8 @@ public final class LambdaUtils {
     private static final Pattern LAMBDA_PATTERN = Pattern.compile("\\$\\$Lambda\\$\\d+[/\\.][^/]+;");
     private static final char[] HEX = "0123456789abcdef".toCharArray();
 
-    private static GraphBuilderConfiguration buildLambdaParserConfig(ClassInitializationPlugin cip, OptionValues options) {
-        GraphBuilderConfiguration.Plugins plugins = new GraphBuilderConfiguration.Plugins(new InvocationPlugins(options));
+    private static GraphBuilderConfiguration buildLambdaParserConfig(ClassInitializationPlugin cip) {
+        GraphBuilderConfiguration.Plugins plugins = new GraphBuilderConfiguration.Plugins(new InvocationPlugins());
         plugins.setClassInitializationPlugin(cip);
         return GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true);
     }
@@ -86,7 +86,7 @@ public final class LambdaUtils {
         assert lambdaProxyMethods.length == 1 : "There must be only one method calling the target.";
         StructuredGraph graph = new StructuredGraph.Builder(options, debug).method(lambdaProxyMethods[0]).build();
         try (DebugContext.Scope ignored = debug.scope("Lambda target method analysis", graph, lambdaType, ctx)) {
-            GraphBuilderPhase lambdaParserPhase = new GraphBuilderPhase(buildLambdaParserConfig(cip, debug.getOptions()));
+            GraphBuilderPhase lambdaParserPhase = new GraphBuilderPhase(buildLambdaParserConfig(cip));
             HighTierContext context = new HighTierContext(providers, null, OptimisticOptimizations.NONE);
             lambdaParserPhase.apply(graph, context);
         } catch (Throwable e) {

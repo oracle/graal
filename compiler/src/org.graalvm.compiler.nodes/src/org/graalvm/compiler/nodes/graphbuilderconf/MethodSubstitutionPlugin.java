@@ -72,18 +72,6 @@ public final class MethodSubstitutionPlugin extends InvocationPlugin {
      */
     private final String substituteName;
 
-    /**
-     * The name of the original method.
-     */
-    private final String originalName;
-
-    /**
-     * The parameter types of the substitute method.
-     */
-    private final Type[] parameters;
-
-    private final boolean originalIsStatic;
-
     private final BytecodeProvider bytecodeProvider;
 
     /**
@@ -99,16 +87,12 @@ public final class MethodSubstitutionPlugin extends InvocationPlugin {
      */
     public MethodSubstitutionPlugin(InvocationPlugins.Registration registration, BytecodeProvider bytecodeProvider, String originalName, Class<?> declaringClass, String substituteName,
                     Type... parameters) {
-        // TODO refactor
         super(originalName, parameters);
         assert bytecodeProvider != null : "Requires a non-null methodSubstitutionBytecodeProvider";
         this.registration = registration;
         this.bytecodeProvider = bytecodeProvider;
-        this.originalName = originalName;
         this.declaringClass = declaringClass;
         this.substituteName = substituteName;
-        this.parameters = parameters;
-        this.originalIsStatic = parameters.length == 0 || parameters[0] != InvocationPlugin.Receiver.class;
     }
 
     /**
@@ -119,6 +103,14 @@ public final class MethodSubstitutionPlugin extends InvocationPlugin {
             cachedSubstitute = metaAccess.lookupJavaMethod(getJavaSubstitute());
         }
         return cachedSubstitute;
+    }
+
+    private String originalName() {
+        return name;
+    }
+
+    private boolean originalIsStatic() {
+        return isStatic;
     }
 
     /**
@@ -155,17 +147,17 @@ public final class MethodSubstitutionPlugin extends InvocationPlugin {
      */
     private boolean isSubstitute(Method m) {
         if (Modifier.isStatic(m.getModifiers()) && m.getName().equals(substituteName)) {
-            if (parameters.length == m.getParameterCount()) {
+            if (argumentTypes.length == m.getParameterCount()) {
                 Class<?>[] mparams = m.getParameterTypes();
                 int start = 0;
-                if (!originalIsStatic) {
+                if (!originalIsStatic()) {
                     start = 1;
-                    if (!mparams[0].isAssignableFrom(resolveType(parameters[0], false))) {
+                    if (!mparams[0].isAssignableFrom(resolveType(argumentTypes[0], false))) {
                         return false;
                     }
                 }
                 for (int i = start; i < mparams.length; i++) {
-                    if (mparams[i] != resolveType(parameters[i], false)) {
+                    if (mparams[i] != resolveType(argumentTypes[i], false)) {
                         return false;
                     }
                 }
@@ -228,7 +220,7 @@ public final class MethodSubstitutionPlugin extends InvocationPlugin {
     @Override
     public String toString() {
         return String.format("%s[%s.%s(%s)]", getClass().getSimpleName(), declaringClass.getName(), substituteName,
-                        Arrays.asList(parameters).stream().map(c -> c.getTypeName()).collect(Collectors.joining(", ")));
+                        Arrays.asList(argumentTypes).stream().map(c -> c.getTypeName()).collect(Collectors.joining(", ")));
     }
 
     @Override
@@ -240,21 +232,21 @@ public final class MethodSubstitutionPlugin extends InvocationPlugin {
             return false;
         }
         MethodSubstitutionPlugin that = (MethodSubstitutionPlugin) o;
-        return originalIsStatic == that.originalIsStatic &&
+        return originalIsStatic() == that.originalIsStatic() &&
                         Objects.equals(declaringClass, that.declaringClass) &&
                         Objects.equals(substituteName, that.substituteName) &&
-                        Objects.equals(originalName, that.originalName) &&
-                        Arrays.equals(parameters, that.parameters);
+                        Objects.equals(originalName(), that.originalName()) &&
+                        Arrays.equals(argumentTypes, that.argumentTypes);
     }
 
     @Override
     public int hashCode() {
-        int result = Objects.hash(declaringClass, substituteName, originalName, originalIsStatic);
+        int result = Objects.hash(declaringClass, substituteName, originalName(), originalIsStatic());
         return result;
     }
 
     public String originalMethodAsString() {
-        return String.format("%s.%s(%s)", declaringClass.getName(), substituteName, Arrays.asList(parameters).stream().map(c -> c.getTypeName()).collect(Collectors.joining(", ")));
+        return String.format("%s.%s(%s)", declaringClass.getName(), substituteName, Arrays.asList(argumentTypes).stream().map(c -> c.getTypeName()).collect(Collectors.joining(", ")));
     }
 
     public ResolvedJavaMethod getOriginalMethod(MetaAccessProvider metaAccess) {
@@ -264,7 +256,7 @@ public final class MethodSubstitutionPlugin extends InvocationPlugin {
         }
         ResolvedJavaType type = metaAccess.lookupJavaType(clazz);
         for (ResolvedJavaMethod declared : type.getDeclaredMethods()) {
-            if (declared.getName().equals(originalName) && declared.isStatic() == originalIsStatic &&
+            if (declared.getName().equals(originalName()) && declared.isStatic() == originalIsStatic() &&
                             declared.getSignature().toMethodDescriptor().startsWith(argumentsDescriptor)) {
                 return declared;
             }

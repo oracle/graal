@@ -522,15 +522,13 @@ public class StandardGraphBuilderPlugins {
     private static void registerUnsafeUnalignedPlugins(Registration r, boolean explicitUnsafeNullChecks) {
         for (JavaKind kind : new JavaKind[]{JavaKind.Char, JavaKind.Short, JavaKind.Int, JavaKind.Long}) {
             Class<?> javaClass = kind.toJavaClass();
-            r.register(new UnsafeGetPlugin(kind, explicitUnsafeNullChecks, "get" + kind.name() + "Unaligned",
-                            Receiver.class, Object.class, long.class) {
+            r.register(new UnsafeGetPlugin(kind, explicitUnsafeNullChecks, "get" + kind.name() + "Unaligned", Receiver.class, Object.class, long.class) {
                 @Override
                 public boolean isOptional() {
                     return true;
                 }
             });
-            r.register(new UnsafePutPlugin(kind, explicitUnsafeNullChecks, "put" + kind.name() + "Unaligned",
-                            Receiver.class, Object.class, long.class, javaClass) {
+            r.register(new UnsafePutPlugin(kind, explicitUnsafeNullChecks, "put" + kind.name() + "Unaligned", Receiver.class, Object.class, long.class, javaClass) {
                 @Override
                 public boolean isOptional() {
                     return true;
@@ -578,10 +576,8 @@ public class StandardGraphBuilderPlugins {
                 r.register(new UnsafeGetPlugin(kind, explicitUnsafeNullChecks, getName, Receiver.class, Object.class, long.class));
                 r.register(new UnsafePutPlugin(kind, explicitUnsafeNullChecks, putName, Receiver.class, Object.class, long.class, javaClass));
                 // Volatile object-based accesses
-                r.register(new UnsafeGetPlugin(kind, MemoryOrderMode.VOLATILE, explicitUnsafeNullChecks,
-                                getName + "Volatile", Receiver.class, Object.class, long.class));
-                r.register(new UnsafePutPlugin(kind, MemoryOrderMode.VOLATILE, explicitUnsafeNullChecks,
-                                putName + "Volatile", Receiver.class, Object.class, long.class, javaClass));
+                r.register(new UnsafeGetPlugin(kind, MemoryOrderMode.VOLATILE, explicitUnsafeNullChecks, getName + "Volatile", Receiver.class, Object.class, long.class));
+                r.register(new UnsafePutPlugin(kind, MemoryOrderMode.VOLATILE, explicitUnsafeNullChecks, putName + "Volatile", Receiver.class, Object.class, long.class, javaClass));
                 // Ordered object-based accesses
                 if (sunMiscUnsafe) {
                     if (kind == JavaKind.Int || kind == JavaKind.Long || kind == JavaKind.Object) {

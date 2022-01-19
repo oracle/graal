@@ -98,8 +98,8 @@ public class SubstratePartialEvaluator extends PartialEvaluator {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     @Override
-    protected InvocationPlugins createDecodingInvocationPlugins(PartialEvaluatorConfiguration peConfig, Plugins parent, Providers tierProviders, OptionValues options) {
-        InvocationPlugins decodingInvocationPlugins = new InvocationPlugins(options);
+    protected InvocationPlugins createDecodingInvocationPlugins(PartialEvaluatorConfiguration peConfig, Plugins parent, Providers tierProviders) {
+        InvocationPlugins decodingInvocationPlugins = new InvocationPlugins();
         registerGraphBuilderInvocationPlugins(decodingInvocationPlugins, false);
         peConfig.registerDecodingInvocationPlugins(decodingInvocationPlugins, false, providers, config.architecture());
         decodingInvocationPlugins.closeRegistration();

@@ -26,7 +26,10 @@ package org.graalvm.compiler.nodes.graphbuilderconf;
 
 import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 
+import java.lang.ref.Reference;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 
 import org.graalvm.compiler.debug.GraalError;
@@ -78,11 +81,11 @@ public abstract class InvocationPlugin implements GraphBuilderPlugin {
     public final String name;
 
     /**
-     * Argument types of the method. Element 0 of this array must be
-     * {@link InvocationPlugin.Receiver} upon initialization and rewritten to declaring class iff
-     * the method is non-static after registration.
+     * Argument types of the method. If the method is non-static, element 0 of this array must be
+     * {@link InvocationPlugin.Receiver} upon initialization and rewritten to declaring class after
+     * registration.
      */
-    protected final Type[] argumentTypes;
+    final Type[] argumentTypes;
 
     /**
      * Determines if the method is static.
@@ -95,10 +98,10 @@ public abstract class InvocationPlugin implements GraphBuilderPlugin {
     public final String argumentsDescriptor;
 
     /**
-     * Used for chaining a bucket of InvocationPlugin of the same method name in
+     * Used for chaining a bucket of InvocationPlugins of the same method name in
      * {@link ClassPlugins}.
      */
-    protected InvocationPlugin next;
+    InvocationPlugin next;
 
     public InvocationPlugin(String name, Type... argumentTypes) {
         this.name = name;
@@ -132,14 +135,18 @@ public abstract class InvocationPlugin implements GraphBuilderPlugin {
     }
 
     /**
-     * Determines if this plugin requires the original method to be resolvable. TODO example
+     * Determines if this plugin requires the original method to be resolvable. For instance,
+     * {@link Reference#refersTo0} is introduced in Java 16 and is optional in earlier versions in
+     * case it may be backported.
      */
     public boolean isOptional() {
         return false;
     }
 
     /**
-     * Determines if this plugin can be disabled. TODO example
+     * Determines if this plugin can be disabled. For instance, HotSpot intrinsics featuring better
+     * performance with specific CPU features can be disabled; utility methods in GraalDirectives
+     * can not be disabled. See {@link InvocationPlugins.Options#DisableIntrinsics}.
      */
     public boolean canBeDisabled() {
         return true;
@@ -298,8 +305,8 @@ public abstract class InvocationPlugin implements GraphBuilderPlugin {
         throw new GraalError("could not find method named \"apply\" or \"defaultHandler\" in " + c.getName());
     }
 
-    public String getName() {
-        return name;
+    public int getArgumentsSize() {
+        return argumentTypes.length - (isStatic ? 0 : 1);
     }
 
     public String getMethodNameWithArgumentsDescriptor() {
@@ -310,12 +317,39 @@ public abstract class InvocationPlugin implements GraphBuilderPlugin {
         return isStatic == other.isStatic && name.equals(other.name) && argumentsDescriptor.equals(other.argumentsDescriptor);
     }
 
-    public boolean match(boolean isStatic, String name, String methodDescriptor) {
-        return this.isStatic == isStatic && this.name.equals(name) && methodDescriptor.startsWith(this.argumentsDescriptor);
+    public boolean match(ResolvedJavaMethod method) {
+        return isStatic == method.isStatic() && name.equals(method.getName()) && method.getSignature().toMethodDescriptor().startsWith(argumentsDescriptor);
     }
 
-    public boolean match(ResolvedJavaMethod method) {
-        return this.isStatic == method.isStatic() && this.name.equals(method.getName()) && method.getSignature().toMethodDescriptor().startsWith(this.argumentsDescriptor);
+    public boolean match(Method method) {
+        if (isStatic == Modifier.isStatic(method.getModifiers()) && name.equals(method.getName())) {
+            Class<?>[] parameterTypes = method.getParameterTypes();
+            int offset = isStatic ? 0 : 1;
+            if (parameterTypes.length == argumentTypes.length - offset) {
+                for (int i = 0; i < parameterTypes.length; i++) {
+                    if (parameterTypes[i] != argumentTypes[i + offset]) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean match(Constructor c) {
+        if (!isStatic && "<init>".equals(name)) {
+            Class<?>[] parameterTypes = c.getParameterTypes();
+            if (parameterTypes.length == argumentTypes.length) {
+                for (int i = 0; i < parameterTypes.length; i++) {
+                    if (parameterTypes[i] != argumentTypes[i]) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+        }
+        return false;
     }
 
     public abstract static class InlineOnlyInvocationPlugin extends InvocationPlugin {

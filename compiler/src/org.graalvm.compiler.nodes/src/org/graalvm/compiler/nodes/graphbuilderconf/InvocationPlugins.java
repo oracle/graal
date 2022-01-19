@@ -70,10 +70,10 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 /**
  * Manages a set of {@link InvocationPlugin}s.
  *
- * Most plugins are registered during initialization (i.e., before
- * {@link #lookupInvocation(ResolvedJavaMethod)} or {@link #getInvocationPlugins} is called). These
- * registrations can be made with {@link Registration}, {@link #register(Type, InvocationPlugin)} .
- * Initialization is not thread-safe and so must only be performed by a single thread.
+ * Most plugins are registered during initialization (i.e., before {@link #lookupInvocation} or
+ * {@link #getInvocationPlugins} is called). These registrations can be made with
+ * {@link Registration}, {@link #register(Type, InvocationPlugin)} . Initialization is not
+ * thread-safe and so must only be performed by a single thread.
  *
  * Plugins that are not guaranteed to be made during initialization must use
  * {@link LateRegistration}.
@@ -82,7 +82,13 @@ public class InvocationPlugins {
 
     public static class Options {
         // @formatter:off
-        @Option(help = "Method filter for disabling intrinsics.", type = OptionType.Debug)
+        @Option(help = "Disable intrinsics from compilation with a method filter. The format is " +
+                "identical to the one used in DebugOptions.MethodFilter, e.g.: " +
+                "java.lang.String.equals(java.lang.Object) disables the intrinsic for this " +
+                "exact method; String.equals disables all intrinsics with the class name suffixed " +
+                "by String and with arbitrary parameter types. By appending ':verbose' at the end " +
+                "of this option, the verbose mode is enabled and will print out intrinsics being " +
+                "disabled during compilation.", type = OptionType.Debug)
         public static final OptionKey<String> DisableIntrinsics = new OptionKey<>(null);
         // @formatter:on
     }
@@ -298,8 +304,11 @@ public class InvocationPlugins {
         }
 
         /**
-         * Registers a plugin for a method that is conditionally enabled. This ensures that
-         * {@code Replacements} is aware of this plugin.
+         * Registers a plugin for a method that is conditionally enabled. {@link Replacements} keeps
+         * records of such plugins and avoids encoding method substitution graphs using these
+         * plugins.
+         *
+         * @param isEnabled controls whether the plugin is actually registered.
          */
         public void registerConditional(boolean isEnabled, InvocationPlugin plugin) {
             replacements.registerConditionalPlugin(plugin);
@@ -335,23 +344,6 @@ public class InvocationPlugins {
          */
         public void registerMethodSubstitution(Class<?> substituteDeclaringClass, String name, String substituteName, Type... argumentTypes) {
             doMethodSubstitutionRegistration(false, true, substituteDeclaringClass, name, substituteName, argumentTypes);
-        }
-
-        /**
-         * Registers a plugin that implements a method based on the bytecode of a substitute method
-         * that is conditinally enabled. This ensures that {@code Replacements} is aware of this
-         * plugin.
-         *
-         * @param isEnabled whether the plugin is enabled in the current compiler
-         * @param substituteDeclaringClass the class declaring the substitute method
-         * @param name the name of both the original and substitute method
-         * @param argumentTypes the argument types of the method. Element 0 of this array must be
-         *            the {@link Class} value for {@link InvocationPlugin.Receiver} iff the method
-         *            is non-static. Upon returning, element 0 will have been rewritten to
-         *            {@code declaringClass}
-         */
-        public void registerConditionalMethodSubstitution(boolean isEnabled, Class<?> substituteDeclaringClass, String name, Type... argumentTypes) {
-            registerConditionalMethodSubstitution(isEnabled, substituteDeclaringClass, name, name, argumentTypes);
         }
 
         /**
@@ -483,8 +475,7 @@ public class InvocationPlugins {
             assert !method.isBridge();
             InvocationPlugin plugin = invocationPlugins.get(method.getName());
             while (plugin != null) {
-                if (method.isStatic() == plugin.isStatic &&
-                                method.getSignature().toMethodDescriptor().startsWith(plugin.argumentsDescriptor)) {
+                if (plugin.match(method)) {
                     return plugin;
                 }
                 plugin = plugin.next;
@@ -499,7 +490,7 @@ public class InvocationPlugins {
                     return;
                 }
             } else {
-                assert lookup(plugin) == null : "a value is already registered for " + plugin.name + "." + plugin.argumentsDescriptor;
+                assert lookup(plugin) == null : "a value is already registered for " + plugin.getMethodNameWithArgumentsDescriptor();
             }
             register(plugin);
         }
@@ -507,8 +498,7 @@ public class InvocationPlugins {
         InvocationPlugin lookup(InvocationPlugin plugin) {
             InvocationPlugin registeredPlugin = invocationPlugins.get(plugin.name);
             while (registeredPlugin != null) {
-                if (registeredPlugin.isStatic == plugin.isStatic &&
-                                registeredPlugin.argumentsDescriptor.equals(plugin.argumentsDescriptor)) {
+                if (registeredPlugin.match(plugin)) {
                     return registeredPlugin;
                 }
                 registeredPlugin = registeredPlugin.next;
@@ -603,8 +593,6 @@ public class InvocationPlugins {
                         if (testExtensions != null) {
                             List<InvocationPlugin> testInvocationPlugins = testExtensions.get(internalName);
                             if (testInvocationPlugins != null) {
-                                String name = method.getName();
-                                String descriptor = method.getSignature().toMethodDescriptor();
                                 for (InvocationPlugin testInvocationPlugin : testInvocationPlugins) {
                                     if (testInvocationPlugin.match(method)) {
                                         return testInvocationPlugin;
@@ -701,6 +689,15 @@ public class InvocationPlugins {
             }
         }
         return -1;
+    }
+
+    private static List<InvocationPlugin> getOrCreate(EconomicMap<String, List<InvocationPlugin>> res, String key) {
+        List<InvocationPlugin> invocationPlugins = res.get(key);
+        if (invocationPlugins == null) {
+            invocationPlugins = new ArrayList<>();
+            res.put(key, invocationPlugins);
+        }
+        return invocationPlugins;
     }
 
     /**
@@ -825,28 +822,30 @@ public class InvocationPlugins {
     }
 
     /**
-     * The plugins {@linkplain #lookupInvocation(ResolvedJavaMethod) searched} before searching in
-     * this object.
+     * The plugins {@linkplain #lookupInvocation searched} before searching in this object.
      */
     protected final InvocationPlugins parent;
 
     /**
      * Method filter for disabled invocation plugins. See {@link Options#DisableIntrinsics}.
      */
-    protected final MethodFilter disabledIntrinsicsFilter;
+    private MethodFilter disabledIntrinsicsFilter;
+
+    /**
+     * Allows lazy initialization of {@link #disabledIntrinsicsFilter}.
+     */
+    private volatile boolean isDisabledIntrinsicsFilterInitialized;
 
     /**
      * Verbose mode for logging disabled invocation plugins. See {@link Options#DisableIntrinsics}.
      */
-    protected final boolean logDisabledIntrinsics;
-
-    protected final OptionValues options;
+    private boolean logDisabledIntrinsics;
 
     /**
      * Creates a set of invocation plugins with no parent.
      */
-    public InvocationPlugins(OptionValues options) {
-        this(null, null, options);
+    public InvocationPlugins() {
+        this(null, null);
     }
 
     /**
@@ -857,7 +856,7 @@ public class InvocationPlugins {
      *            permitted.
      * @param parent if non-null, this object will be searched first when looking up plugins
      */
-    public InvocationPlugins(Map<ResolvedJavaMethod, InvocationPlugin> resolvedPlugins, InvocationPlugins parent, OptionValues options) {
+    public InvocationPlugins(Map<ResolvedJavaMethod, InvocationPlugin> resolvedPlugins, InvocationPlugins parent) {
         this.parent = parent;
 
         if (resolvedPlugins == null) {
@@ -873,41 +872,12 @@ public class InvocationPlugins {
             this.deferredRegistrations = null;
             this.registrations = null;
         }
-
-        this.options = options;
-        String filterValue = Options.DisableIntrinsics.getValue(options);
-        if (filterValue != null) {
-            String[] values = filterValue.split(":");
-            if (values.length > 1 && "verbose".equals(values[1])) {
-                logDisabledIntrinsics = true;
-            } else {
-                logDisabledIntrinsics = false;
-            }
-            disabledIntrinsicsFilter = MethodFilter.parse(values[0]);
-        } else {
-            logDisabledIntrinsics = false;
-            disabledIntrinsicsFilter = null;
-        }
     }
 
     protected void register(Type declaringClass, InvocationPlugin plugin, boolean allowOverwrite) {
         if (!plugin.isStatic) {
             plugin.rewriteReceiverType(declaringClass);
         }
-        if (disabledIntrinsicsFilter != null && disabledIntrinsicsFilter.matches(declaringClass.getTypeName(), plugin.name,
-                        plugin.isStatic ? plugin.argumentTypes : Arrays.copyOfRange(plugin.argumentTypes, 1, plugin.argumentTypes.length))) {
-            if (plugin.canBeDisabled()) {
-                if (logDisabledIntrinsics) {
-                    TTY.println("[Warning] Intrinsic %s.%s%s is disabled.", declaringClass.getTypeName(), plugin.name, plugin.argumentsDescriptor);
-                }
-                return;
-            } else {
-                if (logDisabledIntrinsics) {
-                    TTY.println("[Warning] Intrinsic %s.%s%s cannot be disabled.", declaringClass.getTypeName(), plugin.name, plugin.argumentsDescriptor);
-                }
-            }
-        }
-
         put(declaringClass, plugin, allowOverwrite);
         assert IS_IN_NATIVE_IMAGE || Checks.check(this, declaringClass, plugin);
         assert IS_IN_NATIVE_IMAGE || Checks.checkResolvable(declaringClass, plugin);
@@ -928,15 +898,48 @@ public class InvocationPlugins {
      * @param allowDecorators return {@link InvocationPlugin#isDecorator()} plugins only if true
      * @return the plugin associated with {@code method} or {@code null} if none exists
      */
-    public InvocationPlugin lookupInvocation(ResolvedJavaMethod method, boolean allowDecorators) {
+    public InvocationPlugin lookupInvocation(ResolvedJavaMethod method, boolean allowDecorators, OptionValues options) {
+        if (!isDisabledIntrinsicsFilterInitialized) {
+            synchronized (this) {
+                if (!isDisabledIntrinsicsFilterInitialized) {
+                    String filterValue = Options.DisableIntrinsics.getValue(options);
+                    if (filterValue != null) {
+                        String[] values = filterValue.split(":");
+                        if (values.length > 1 && "verbose".equals(values[1])) {
+                            logDisabledIntrinsics = true;
+                        } else {
+                            logDisabledIntrinsics = false;
+                        }
+                        disabledIntrinsicsFilter = MethodFilter.parse(values[0]);
+                    } else {
+                        logDisabledIntrinsics = false;
+                        disabledIntrinsicsFilter = null;
+                    }
+                }
+                isDisabledIntrinsicsFilterInitialized = true;
+            }
+        }
+
         if (parent != null) {
-            InvocationPlugin plugin = parent.lookupInvocation(method, allowDecorators);
+            InvocationPlugin plugin = parent.lookupInvocation(method, allowDecorators, options);
             if (plugin != null) {
                 return plugin;
             }
         }
         InvocationPlugin invocationPlugin = get(method);
         if (invocationPlugin == null || allowDecorators || !invocationPlugin.isDecorator()) {
+            if (disabledIntrinsicsFilter != null && disabledIntrinsicsFilter.matches(method)) {
+                if (invocationPlugin.canBeDisabled()) {
+                    if (logDisabledIntrinsics) {
+                        TTY.println("[Warning] Intrinsic for %s is disabled.", method.format("%H.%n(%p)"));
+                    }
+                    return null;
+                } else {
+                    if (logDisabledIntrinsics) {
+                        TTY.println("[Warning] Intrinsic for %s cannot be disabled.", method.format("%H.%n(%p)"));
+                    }
+                }
+            }
             return invocationPlugin;
         }
         return null;
@@ -950,8 +953,8 @@ public class InvocationPlugins {
      * @param method the method to lookup
      * @return the plugin associated with {@code method} or {@code null} if none exists
      */
-    public InvocationPlugin lookupInvocation(ResolvedJavaMethod method) {
-        return lookupInvocation(method, false);
+    public InvocationPlugin lookupInvocation(ResolvedJavaMethod method, OptionValues options) {
+        return lookupInvocation(method, false, options);
     }
 
     /**
@@ -962,15 +965,6 @@ public class InvocationPlugins {
      */
     public EconomicMap<String, List<InvocationPlugin>> getInvocationPlugins(boolean includeParents) {
         return getInvocationPlugins(includeParents, true);
-    }
-
-    private static List<InvocationPlugin> getOrCreate(EconomicMap<String, List<InvocationPlugin>> res, String key) {
-        List<InvocationPlugin> invocationPlugins = res.get(key);
-        if (invocationPlugins == null) {
-            invocationPlugins = new ArrayList<>();
-            res.put(key, invocationPlugins);
-        }
-        return invocationPlugins;
     }
 
     /**
@@ -1028,8 +1022,8 @@ public class InvocationPlugins {
     }
 
     /**
-     * Gets the invocation plugins {@linkplain #lookupInvocation(ResolvedJavaMethod) searched}
-     * before searching in this object.
+     * Gets the invocation plugins {@linkplain #lookupInvocation searched} before searching in this
+     * object.
      */
     public InvocationPlugins getParent() {
         return parent;
@@ -1119,7 +1113,7 @@ public class InvocationPlugins {
                 assert substitute.getAnnotation(MethodSubstitution.class) != null : format("Substitute method must be annotated with @%s: %s", MethodSubstitution.class.getSimpleName(), substitute);
                 return true;
             }
-            int arguments = parseParameters(plugin.argumentsDescriptor).size();
+            int arguments = plugin.getArgumentsSize();
             assert arguments < SIGS.length
                             : format("need to extend %s to support method with %d arguments: %s", InvocationPlugin.class.getSimpleName(), arguments, plugin.getMethodNameWithArgumentsDescriptor());
             for (Method m : plugin.getClass().getDeclaredMethods()) {
@@ -1220,14 +1214,6 @@ public class InvocationPlugins {
         return resolveClass(type.getTypeName(), optional);
     }
 
-    private static List<String> toInternalTypeNames(Class<?>[] types) {
-        String[] res = new String[types.length];
-        for (int i = 0; i < types.length; i++) {
-            res[i] = MetaUtil.toInternalName(types[i].getTypeName());
-        }
-        return Arrays.asList(res);
-    }
-
     /**
      * Resolves a given invocation plugin to a method in a given class. If more than one method with
      * the parameter types matching {@code plugin} is found and the return types of all the matching
@@ -1242,13 +1228,9 @@ public class InvocationPlugins {
             return null;
         }
         Method[] methods = declaringClass.getDeclaredMethods();
-        List<String> parameterTypeNames = parseParameters(plugin.argumentsDescriptor);
         Method match = null;
-        for (int i = 0; i < methods.length; ++i) {
-            Method m = methods[i];
-            if (plugin.isStatic == Modifier.isStatic(m.getModifiers()) &&
-                            plugin.name.equals(m.getName()) &&
-                            parameterTypeNames.equals(toInternalTypeNames(m.getParameterTypes()))) {
+        for (Method m : methods) {
+            if (plugin.match(m)) {
                 if (match == null) {
                     match = m;
                 } else if (match.getReturnType().isAssignableFrom(m.getReturnType())) {
@@ -1314,56 +1296,16 @@ public class InvocationPlugins {
      * @return the constructor (if any) in {@code declaringClass} matching {@code plugin}
      */
     public static Constructor<?> resolveConstructor(Class<?> declaringClass, InvocationPlugin plugin) {
-        if (!plugin.name.equals("<init>")) {
+        if (!"<init>".equals(plugin.name)) {
             return null;
         }
         Constructor<?>[] constructors = declaringClass.getDeclaredConstructors();
-        List<String> parameterTypeNames = parseParameters(plugin.argumentsDescriptor);
-        for (int i = 0; i < constructors.length; ++i) {
-            Constructor<?> c = constructors[i];
-            if (parameterTypeNames.equals(toInternalTypeNames(c.getParameterTypes()))) {
+        for (Constructor<?> c : constructors) {
+            if (plugin.match(c)) {
                 return c;
             }
         }
         return null;
-    }
-
-    private static List<String> parseParameters(String argumentsDescriptor) {
-        assert argumentsDescriptor.startsWith("(") && argumentsDescriptor.endsWith(")") : argumentsDescriptor;
-        List<String> res = new ArrayList<>();
-        int cur = 1;
-        int end = argumentsDescriptor.length() - 1;
-        while (cur != end) {
-            char first;
-            int start = cur;
-            do {
-                first = argumentsDescriptor.charAt(cur++);
-            } while (first == '[');
-
-            switch (first) {
-                case 'L':
-                    int endObject = argumentsDescriptor.indexOf(';', cur);
-                    if (endObject == -1) {
-                        throw new GraalError("Invalid object type at index %d in signature: %s", cur, argumentsDescriptor);
-                    }
-                    cur = endObject + 1;
-                    break;
-                case 'V':
-                case 'I':
-                case 'B':
-                case 'C':
-                case 'D':
-                case 'F':
-                case 'J':
-                case 'S':
-                case 'Z':
-                    break;
-                default:
-                    throw new GraalError("Invalid character at index %d in signature: %s", cur, argumentsDescriptor);
-            }
-            res.add(argumentsDescriptor.substring(start, cur));
-        }
-        return res;
     }
 
     /**
@@ -1371,9 +1313,5 @@ public class InvocationPlugins {
      */
     @SuppressWarnings("unused")
     public void notifyNoPlugin(ResolvedJavaMethod targetMethod, OptionValues options) {
-    }
-
-    public OptionValues getOptions() {
-        return options;
     }
 }
