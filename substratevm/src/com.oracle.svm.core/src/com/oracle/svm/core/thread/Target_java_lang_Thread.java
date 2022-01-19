@@ -341,19 +341,24 @@ public final class Target_java_lang_Thread {
             throw VMError.unsupportedFeature("Single-threaded VM cannot create new threads");
         }
 
-        /*
-         * The threadStatus must be set to RUNNABLE by the parent thread and before the child thread
-         * starts because we are creating child threads asynchronously (there is no coordination
-         * between parent and child threads).
-         *
-         * Otherwise, a call to Thread.join() in the parent thread could succeed even before the
-         * child thread starts, or it could hang in case that the child thread is already dead.
-         */
-        JavaContinuations.LoomCompatibilityUtil.setThreadStatus(this, ThreadStatus.RUNNABLE);
         wasStartedByCurrentIsolate = true;
         parentThreadId = Thread.currentThread().getId();
         long stackSize = JavaThreads.getRequestedThreadSize(JavaThreads.fromTarget(this));
-        JavaThreads.singleton().startThread(JavaThreads.fromTarget(this), stackSize);
+        try {
+            JavaThreads.singleton().startThread(JavaThreads.fromTarget(this), stackSize);
+        } catch (Throwable t) {
+            // These should not be accessed if the thread could not start, but reset them anyway
+            wasStartedByCurrentIsolate = false;
+            parentThreadId = 0;
+
+            throw t;
+        }
+        /*
+         * The threadStatus must be RUNNABLE before returning so the caller can safely use
+         * Thread.join() on the launched thread, but the thread could also already have changed its
+         * state itself. Atomically switch from NEW to RUNNABLE if it has not.
+         */
+        JavaContinuations.LoomCompatibilityUtil.compareAndSetThreadStatus(this, ThreadStatus.NEW, ThreadStatus.RUNNABLE);
     }
 
     @Substitute
@@ -589,7 +594,7 @@ final class Target_java_lang_Thread_FieldHolder {
     @Alias //
     boolean daemon;
     @Alias //
-    int threadStatus;
+    volatile int threadStatus;
 
     Target_java_lang_Thread_FieldHolder(
                     ThreadGroup group,

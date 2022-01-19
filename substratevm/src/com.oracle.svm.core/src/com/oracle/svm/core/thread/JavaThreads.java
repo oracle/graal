@@ -48,6 +48,7 @@ import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.ObjectHandles;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
@@ -181,7 +182,7 @@ public abstract class JavaThreads {
         }
 
         // If the value of another thread is accessed, then we need to do a slow lookup.
-        VMThreads.lockVMMutexInNativeCode();
+        VMThreads.lockThreadMutexInNativeCode();
         try {
             IsolateThread isolateThread = VMThreads.firstThread();
             while (isolateThread.isNonNull()) {
@@ -199,7 +200,7 @@ public abstract class JavaThreads {
 
     @Uninterruptible(reason = "Thread locks/holds the THREAD_MUTEX.")
     public static void getThreadAllocatedBytes(long[] javaThreadIds, long[] result) {
-        VMThreads.lockVMMutexInNativeCode();
+        VMThreads.lockThreadMutexInNativeCode();
         try {
             IsolateThread isolateThread = VMThreads.firstThread();
             while (isolateThread.isNonNull()) {
@@ -414,17 +415,21 @@ public abstract class JavaThreads {
     /**
      * Assign a {@link Thread} object to the current thread, which must have already been attached
      * {@link VMThreads} as an {@link IsolateThread}.
-     *
-     * The manuallyStarted parameter is true if this thread was started directly by calling
-     * assignJavaThread(Thread). It is false when the thread is started using
-     * PosixJavaThreads.pthreadStartRoutine, e.g., called from PosixJavaThreads.start0.
+     * <p>
+     * The manuallyStarted parameter is {@code false} if started through {@link #threadStartRoutine}
+     * or {@code true} if it was launched and attached another way.
      */
     public static void assignJavaThread(Thread thread, boolean manuallyStarted) {
+        /*
+         * First of all, ensure we are in RUNNABLE state. If !manuallyStarted, we race with the
+         * thread that launched us to set the status and we could still be in status NEW.
+         */
+        setThreadStatus(thread, ThreadStatus.RUNNABLE);
+
         assignJavaThread0(thread);
 
         /* If the thread was manually started, finish initializing it. */
         if (manuallyStarted) {
-            setThreadStatus(thread, ThreadStatus.RUNNABLE);
             final ThreadGroup group = thread.getThreadGroup();
             toTarget(group).addUnstarted();
             toTarget(group).add(thread);
@@ -593,6 +598,17 @@ public abstract class JavaThreads {
         void setIsolate(Isolate vm);
     }
 
+    protected <T extends ThreadStartData> T prepareStart(Thread thread, int startDataSize) {
+        T startData = UnmanagedMemory.malloc(startDataSize);
+        startData.setIsolate(CurrentIsolate.getIsolate());
+        startData.setThreadHandle(ObjectHandles.getGlobal().create(thread));
+        if (!thread.isDaemon()) {
+            nonDaemonThreads.incrementAndGet();
+        }
+        return startData;
+    }
+
+    /** GR-36413: for compatibility with legacy code, to be removed. Call prepareStart instead. */
     protected void prepareStartData(Thread thread, ThreadStartData startData) {
         startData.setIsolate(CurrentIsolate.getIsolate());
         startData.setThreadHandle(ObjectHandles.getGlobal().create(thread));
@@ -602,17 +618,52 @@ public abstract class JavaThreads {
         }
     }
 
+    protected void undoPrepareStartOnError(Thread thread, ThreadStartData startData) {
+        if (!thread.isDaemon()) {
+            undoPrepareNonDaemonStartOnError();
+        }
+        freeStartData(startData);
+    }
+
+    @Uninterruptible(reason = "Holding threads lock.")
+    private static void undoPrepareNonDaemonStartOnError() {
+        VMThreads.lockThreadMutexInNativeCode();
+        try {
+            nonDaemonThreads.decrementAndGet();
+            VMThreads.THREAD_LIST_CONDITION.broadcast();
+        } finally {
+            VMThreads.THREAD_MUTEX.unlock();
+        }
+    }
+
+    protected static void freeStartData(ThreadStartData startData) {
+        UnmanagedMemory.free(startData);
+    }
+
     void startThread(Thread thread, long stackSize) {
         unattachedStartedThreads.incrementAndGet();
-        doStartThread(thread, stackSize);
+        boolean started = startOSThread(thread, stackSize);
+        if (!started) {
+            unattachedStartedThreads.decrementAndGet();
+            throw new OutOfMemoryError("unable to create native thread: possibly out of memory or process/resource limits reached");
+        }
     }
 
     /**
-     * Start a new OS thread. The implementation must call {@link #prepareStartData} after
-     * preparations and before starting the thread. The new OS thread must call
-     * {@link #threadStartRoutine}.
+     * Start a new OS thread. The implementation must call {@link #prepareStart} after preparations
+     * and before starting the thread. The new OS thread must call {@link #threadStartRoutine}.
+     *
+     * @return {@code false} if the thread could not be started, {@code true} on success.
      */
-    protected abstract void doStartThread(Thread thread, long stackSize);
+    protected boolean startOSThread(Thread thread, long stackSize) {
+        doStartThread(thread, stackSize);
+        return true;
+    }
+
+    @SuppressWarnings("unused")
+    protected void doStartThread(Thread thread, long stackSize) {
+        throw VMError.shouldNotReachHere("GR-36413: for compatibility with legacy code, to be removed. Override startOSThread instead.");
+    }
 
     @SuppressFBWarnings(value = "Ru", justification = "We really want to call Thread.run and not Thread.start because we are in the low-level thread start routine")
     protected static void threadStartRoutine(ObjectHandle threadHandle) {
