@@ -8,13 +8,6 @@ local common_json = composable(import '../../common.json');
 local jdks = common_json.jdks;
 
 {
-  vm_java_8:: graal_common.openjdk8 + {
-    environment+: {
-      BASE_JDK_NAME: jdks.openjdk8.name,
-      BASE_JDK_VERSION: jdks.openjdk8.version,
-      BASE_JDK_SHORT_VERSION: '8',
-    },
-  },
   vm_java_11:: graal_common.labsjdk11 + {
     environment+: {
       BASE_JDK_NAME: jdks['labsjdk-ce-11'].name,
