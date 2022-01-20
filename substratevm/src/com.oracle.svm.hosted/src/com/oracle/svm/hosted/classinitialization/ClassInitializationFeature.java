@@ -172,7 +172,7 @@ public class ClassInitializationFeature implements GraalFeature {
     @Override
     @SuppressWarnings("try")
     public void afterAnalysis(AfterAnalysisAccess access) {
-        try (Timer.StopTimer ignored = TimerCollection.singleton().get(TimerCollection.Registry.CLINIT).start()) {
+        try (Timer.StopTimer ignored = TimerCollection.createTimerAndStart(TimerCollection.Registry.CLINIT)) {
             classInitializationSupport.setUnsupportedFeatures(null);
 
             String path = SubstrateOptions.reportsPath();

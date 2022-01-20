@@ -92,6 +92,10 @@ public class TimerCollection implements ImageBuildStatistics.TimerCollectionPrin
         return singleton().createTimer(prefix, name).start();
     }
 
+    public static Timer.StopTimer createTimerAndStart(TimerCollection.Registry type) {
+        return singleton().get(type).start();
+    }
+
     public Timer createTimer(String name) {
         return createTimer(null, name, true);
     }
