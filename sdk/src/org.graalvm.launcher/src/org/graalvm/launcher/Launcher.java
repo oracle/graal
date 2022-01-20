@@ -111,6 +111,7 @@ public abstract class Launcher {
 
     protected String helpArg = null;
     protected boolean helpInternal;
+    protected boolean printed;
     private boolean help;
     private boolean helpExpert;
     private boolean helpVM;
@@ -611,18 +612,23 @@ public abstract class Launcher {
         if (helpArg == null) {
             return false;
         }
-        boolean printDefaultHelp = "".equals(helpArg);
         OptionCategory hc = getHelpCategory();
-        if (printDefaultHelp) {
+        if ("".equals(helpArg)) {
+            printed = true;
             printDefaultHelp(hc);
         }
         maybePrintAdditionalHelp(hc);
         if (helpArgIs("all") || helpArgIs("vm")) {
+            printed = true;
+            out.println("");
             if (nativeAccess == null) {
                 printJvmHelp();
             } else {
                 nativeAccess.printNativeHelp();
             }
+        }
+        if (!printed) {
+            printDefaultHelp(OptionCategory.USER);
         }
         out.println("");
         out.println("See http://www.graalvm.org for more information.");

@@ -286,7 +286,6 @@ public abstract class LanguageLauncherBase extends Launcher {
             return;
         }
         final boolean all = helpArgIs("all");
-        boolean printed = false;
         if (all || helpArgIs("languages")) {
             printed = printLanguageOptions(getTempEngine(), helpInternal, null);
         }
@@ -301,9 +300,6 @@ public abstract class LanguageLauncherBase extends Launcher {
         }
         printed = printLanguageOptions(getTempEngine(), helpInternal, helpArg);
         printed |= printInstrumentOptions(getTempEngine(), helpInternal, helpArg);
-        if (!printed) {
-            printDefaultHelp(OptionCategory.USER);
-        }
     }
 
     /**
