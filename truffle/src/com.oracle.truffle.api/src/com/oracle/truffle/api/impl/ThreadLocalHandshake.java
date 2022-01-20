@@ -309,6 +309,7 @@ public abstract class ThreadLocalHandshake {
         private final ThreadLocalHandshake impl;
         private volatile boolean fastPendingSet;
         private boolean sideEffectsEnabled = true;
+        private boolean enabled = true;
         private Interrupter blockedAction;
         private boolean interrupted;
 
@@ -336,6 +337,10 @@ public abstract class ThreadLocalHandshake {
                 }
                 // correct usage always needs to reset the side-effects enabled state
                 if (!this.sideEffectsEnabled) {
+                    throw new AssertionError("Invalid side-effects disabled state");
+                }
+
+                if (!this.enabled) {
                     throw new AssertionError("Invalid side-effects disabled state");
                 }
             } finally {
@@ -514,6 +519,9 @@ public abstract class ThreadLocalHandshake {
         }
 
         private List<HandshakeEntry> takeHandshakeImpl() {
+            if (!enabled) {
+                return Collections.emptyList();
+            }
             List<HandshakeEntry> toProcess = new ArrayList<>(this.handshakes.size());
             for (HandshakeEntry entry : this.handshakes) {
                 if (isPending(entry)) {
@@ -649,13 +657,30 @@ public abstract class ThreadLocalHandshake {
          */
         private boolean isPending() {
             assert lock.isHeldByCurrentThread();
-
+            if (!enabled) {
+                return false;
+            }
             for (HandshakeEntry entry : this.handshakes) {
                 if (isPending(entry)) {
                     return true;
                 }
             }
             return false;
+        }
+
+        @Override
+        @TruffleBoundary
+        public boolean setAllowActions(boolean enabled) {
+            assert impl.getCurrent() == this : "Cannot be used from a different thread.";
+            lock.lock();
+            try {
+                boolean prev = this.enabled;
+                this.enabled = enabled;
+                updateFastPending();
+                return prev;
+            } finally {
+                lock.unlock();
+            }
         }
 
         @Override

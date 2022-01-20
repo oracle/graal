@@ -254,7 +254,42 @@ public abstract class TruffleSafepoint {
     }
 
     /**
-     * Allows to temporarily delay side-effecting thread local actions on this thread. It is
+     * Allows to temporarily delay all thread local actions on the current thread. It is recommended
+     * to delay actions only for a a constant period of time and while trusted and internal guest
+     * code is running. Please consider using {@link #setAllowSideEffects(boolean)} before using
+     * this method. While actions are disabled the value of {@link #setAllowSideEffects(boolean)}
+     * has no effect. When {@link #setAllowActions(boolean) actions} are enabled again the value of
+     * {@link #setAllowSideEffects(boolean)} will be interpreted again.
+     * <p>
+     * Any usage of this method should be subject to a detailed security review to ensure arbitrary
+     * non-internal guest code is guaranteed to not be executed while safepoints are disabled.
+     * Disabling thread local actions may delay thread local actions like exit, cancellation and
+     * interruption.
+     * <p>
+     * One use-case is to run trusted constant time guest code during
+     * {@link TruffleLanguage#finalizeContext(Object) finalization} without interruption, even if a
+     * context is currently being cancelled or exited. This could be necessary to free up native
+     * resources through guest code when a context is cancelled to avoid resource leakage.
+     * <p>
+     * Example usage:
+     *
+     * <pre>
+     * TruffleSafepoint sp = TruffleSafepoint.getCurrent();
+     * boolean prev = sp.setAllowActions(false);
+     * try {
+     *     // critical section
+     * } finally {
+     *     sp.setAllowActions(prev);
+     * }
+     * </pre>
+     *
+     * @see TruffleLanguage#finalizeContext(Object)
+     * @since 22.1
+     */
+    public abstract boolean setAllowActions(boolean enabled);
+
+    /**
+     * Allows to temporarily delay side-effecting thread local actions on the current thread. It is
      * recommended to delay side-effecting actions only for a short and constant period of time.
      * <p>
      * While side-effecting thread local actions are delayed on this thread, only non-side-effecting

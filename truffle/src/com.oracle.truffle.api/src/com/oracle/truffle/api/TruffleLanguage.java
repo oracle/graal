@@ -623,6 +623,13 @@ public abstract class TruffleLanguage<C> {
      * mode at the end of exitContext, so that running guest code is not required to dispose the
      * streams after that point.
      * <p>
+     * Context finalization is invoked even if a context was cancelled. In such a case, if guest
+     * code would run as part of the finalization, it would be cancelled at the next polled
+     * {@link TruffleSafepoint safepoint}. If there is guest code that always needs to run even if
+     * cancelled, e.g. to prevent resource leakage, use
+     * {@link TruffleSafepoint#setAllowActions(boolean)} to temporarily disable safepoints while
+     * executing that code.
+     * <p>
      * All installed languages must remain usable after finalization. The finalization order can be
      * influenced by specifying {@link Registration#dependentLanguages() language dependencies}. By
      * default internal languages are finalized last, otherwise, the default order is unspecified

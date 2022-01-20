@@ -437,10 +437,42 @@ public class TruffleSafepointTest {
     }
 
     @Test
+    public void testAllowActions() {
+        forEachConfig((threads, events) -> {
+            AtomicBoolean stopped = new AtomicBoolean(false);
+
+            try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
+                TruffleSafepoint config = TruffleSafepoint.getCurrent();
+                boolean prev = config.setAllowActions(false);
+                try {
+                    while (true) {
+                        TruffleSafepoint.poll(node);
+                        if (isStopped(stopped)) {
+                            return true;
+                        }
+                    }
+                } finally {
+                    config.setAllowActions(prev);
+                }
+            })) {
+                AtomicInteger eventCounter = new AtomicInteger();
+                ActionCollector runnable = new ActionCollector(setup, eventCounter, false, false);
+                for (int i = 0; i < events; i++) {
+                    setup.env.submitThreadLocal(null, runnable);
+                }
+                assertEquals(0, eventCounter.get());
+
+                stopped.set(true);
+                setup.stopAndAwait();
+                assertActionsAnyOrder(threads, events, runnable);
+            }
+        });
+    }
+
+    @Test
     public void testSideEffecting() {
         forEachConfig((threads, events) -> {
             AtomicBoolean stopped = new AtomicBoolean(false);
-            AtomicBoolean allowSideEffects = new AtomicBoolean(true);
 
             try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
                 TruffleSafepoint config = TruffleSafepoint.getCurrent();
@@ -463,7 +495,6 @@ public class TruffleSafepointTest {
                 }
                 assertEquals(0, eventCounter.get());
 
-                allowSideEffects.set(false);
                 stopped.set(true);
                 setup.stopAndAwait();
                 assertActionsAnyOrder(threads, events, runnable);
