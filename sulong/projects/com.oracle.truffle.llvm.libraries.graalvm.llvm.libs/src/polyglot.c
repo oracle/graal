@@ -35,7 +35,7 @@ polyglot_value polyglot_import(const char *name) {
     should_not_reach();
     return NULL;
 }
-void polyglot_export(const char *name, polyglot_value value) {
+void polyglot_export(const char *name, ...) {
     should_not_reach();
 }
 polyglot_value polyglot_eval(const char *id, const char *code) {

@@ -79,9 +79,9 @@ polyglot_value polyglot_import(const char *name);
  * {@link org::graalvm::polyglot::Context::getPolyglotBindings bindings}.
  *
  * @param name the name of the exported value
- * @param value the exported value
+ * @param ... the exported value
  */
-void polyglot_export(const char *name, polyglot_value value);
+void polyglot_export(const char *name, ...);
 
 /**
  * Evaluate a source of another language.
