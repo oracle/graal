@@ -630,7 +630,7 @@ public abstract class Launcher {
     }
 
     protected boolean helpArgIs(String keyword) {
-        return keyword.equals(helpArg) || (keyword + ":internal").equals(helpArg);
+        return keyword.equals(helpArg);
     }
 
 

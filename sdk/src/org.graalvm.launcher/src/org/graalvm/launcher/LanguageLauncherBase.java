@@ -244,11 +244,45 @@ public abstract class LanguageLauncherBase extends Launcher {
         launcherOption("--help:engine", "Print engine options.");
         launcherOption("--version:graalvm", "Print GraalVM version information and exit.");
         launcherOption("--show-version:graalvm", "Print GraalVM version information and continue execution.");
+        println("");
+        printInstalledLanguages();
+        println("");
+        printInstalledTools();
+    }
+
+    private void printInstalledLanguages() {
+        List<Language> languages = sortedLanguages(getTempEngine());
+        if (languages.isEmpty()) {
+            return;
+        }
+        println("Languages:");
+        for (Language language : languages) {
+            printInstalled(language.getId(), language.getName(), language.getWebsite());
+        }
+    }
+
+    private void printInstalledTools() {
+        List<Instrument> instruments = sortedInstruments(getTempEngine());
+        if (instruments.isEmpty()) {
+            return;
+        }
+        println("Tools:");
+        for (Instrument instrument : instruments) {
+            printInstalled(instrument.getId(), instrument.getName(), instrument.getWebsite());
+        }
+    }
+
+    private void printInstalled(String id, String name, String website) {
+        if (website.equals("")) {
+            println(String.format("  %-15s %s. Use --help:%s for all options.", "[" + id + "]", name, id));
+        } else {
+            println(String.format("  %-15s %s (%10s). Use --help:%s for all options.", "[" + id + "]", name, website, id));
+        }
     }
 
     @Override
     protected void maybePrintAdditionalHelp(OptionCategory helpCategory) {
-        if (helpArg == null) {
+        if (helpArg == null || "".equals(helpArg)) {
             return;
         }
         final boolean all = helpArgIs("all");
