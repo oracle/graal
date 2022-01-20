@@ -8,18 +8,18 @@
 
     "openjdk11":          {"name": "openjdk",   "version": "11.0.11+9", "platformspecific": true },
     "oraclejdk11":        {"name": "oraclejdk", "version": "11.0.11+9", "platformspecific": true },
-    "labsjdk-ce-11":      {"name": "labsjdk",   "version": "ce-11.0.14+9-jvmci-22.0-b04", "platformspecific": true },
-    "labsjdk-ce-11-llvm": {"name": "labsjdk",   "version": "ce-11.0.14+9-jvmci-22.0-b04-sulong", "platformspecific": true },
-    "labsjdk-ee-11":      {"name": "labsjdk",   "version": "ee-11.0.14+8-jvmci-22.0-b03", "platformspecific": true },
-    "labsjdk-ee-11-llvm": {"name": "labsjdk",   "version": "ee-11.0.14+8-jvmci-22.0-b03-sulong", "platformspecific": true },
+    "labsjdk-ce-11":      {"name": "labsjdk",   "version": "ce-11.0.14+9-jvmci-22.0-b05-20220120013223-me_GR_34639-master-bed3a8040f", "platformspecific": true },
+    "labsjdk-ce-11-llvm": {"name": "labsjdk",   "version": "ce-11.0.14+9-jvmci-22.0-b05-20220120013223-me_GR_34639-master-bed3a8040f-sulong", "platformspecific": true },
+    "labsjdk-ee-11":      {"name": "labsjdk",   "version": "ee-11.0.14+8-jvmci-22.0-b05-20211231125901-me_GR_34639-master-aa7ca925c8+1ad8a8e006", "platformspecific": true },
+    "labsjdk-ee-11-llvm": {"name": "labsjdk",   "version": "ee-11.0.14+8-jvmci-22.0-b05-20211231125901-me_GR_34639-master-aa7ca925c8+1ad8a8e006-sulong", "platformspecific": true },
 
     "oraclejdk17":        {"name": "oraclejdk", "version": "17.0.1+12", "platformspecific": true },
-    "labsjdk-ce-17":      {"name": "labsjdk",   "version": "ce-17.0.2+8-jvmci-22.0-b03", "platformspecific": true },
-    "labsjdk-ce-17Debug": {"name": "labsjdk",   "version": "ce-17.0.2+8-jvmci-22.0-b03-debug", "platformspecific": true },
-    "labsjdk-ce-17-llvm": {"name": "labsjdk",   "version": "ce-17.0.2+8-jvmci-22.0-b03-sulong", "platformspecific": true },
-    "labsjdk-ee-17":      {"name": "labsjdk",   "version": "ee-17.0.2+8-jvmci-22.0-b03", "platformspecific": true },
-    "labsjdk-ee-17Debug": {"name": "labsjdk",   "version": "ee-17.0.2+8-jvmci-22.0-b03-debug", "platformspecific": true },
-    "labsjdk-ee-17-llvm": {"name": "labsjdk",   "version": "ee-17.0.2+8-jvmci-22.0-b03-sulong", "platformspecific": true }
+    "labsjdk-ce-17":      {"name": "labsjdk",   "version": "ce-17.0.2+8-jvmci-22.0-b05-20220101130045-me_GR_34639-master-7300f7c0c9", "platformspecific": true },
+    "labsjdk-ce-17Debug": {"name": "labsjdk",   "version": "ce-17.0.2+8-jvmci-22.0-b05-20220101130045-me_GR_34639-master-7300f7c0c9-debug", "platformspecific": true },
+    "labsjdk-ce-17-llvm": {"name": "labsjdk",   "version": "ce-17.0.2+8-jvmci-22.0-b05-20220101130045-me_GR_34639-master-7300f7c0c9-sulong", "platformspecific": true },
+    "labsjdk-ee-17":      {"name": "labsjdk",   "version": "ee-17.0.2+8-jvmci-22.0-b05-20220101130618-me_GR_34639-master-890f3d9c07+6327832011", "platformspecific": true },
+    "labsjdk-ee-17Debug": {"name": "labsjdk",   "version": "ee-17.0.2+8-jvmci-22.0-b05-20220101130618-me_GR_34639-master-890f3d9c07+6327832011-debug", "platformspecific": true },
+    "labsjdk-ee-17-llvm": {"name": "labsjdk",   "version": "ee-17.0.2+8-jvmci-22.0-b05-20220101130618-me_GR_34639-master-890f3d9c07+6327832011-sulong", "platformspecific": true }
   },
 
   "COMMENT.devkits" : "The devkits versions reflect those used to build the JVMCI JDKs (e.g., see devkit_platform_revisions in <jdk>/make/conf/jib-profiles.js)",
