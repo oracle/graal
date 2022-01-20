@@ -120,14 +120,14 @@ local jdks = common_json.jdks;
   },
 
   local builds = [
-    self.vm_java_8 + vm_common.gate_vm_linux_amd64 + self.vm_unittest + {
+    self.vm_java_11 + vm_common.gate_vm_linux_amd64 + self.vm_unittest + {
      run: [
        ['mx', 'build'],
        ['mx', 'unittest', '--suite', 'vm'],
      ],
      name: 'gate-vm-unittest-linux-amd64',
     },
-    graal_common.oraclejdk8 + common_json.devkits['windows-oraclejdk8'] + vm_common.gate_vm_windows + self.vm_unittest + {
+    self.vm_java_11 + common_json.devkits['windows-jdk11'] + vm_common.gate_vm_windows + self.vm_unittest + {
      run: [
          ['mx', 'build'],
          ['mx', 'unittest', '--suite', 'vm'],
