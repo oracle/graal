@@ -418,9 +418,11 @@ public class DirectoryStorageTest extends CommandTestBase {
         assertTrue(Files.exists(p));
         List<String> lines = Files.readAllLines(p).stream()
                         .filter((l) -> !l.startsWith("#"))
+                        .sorted()
                         .collect(Collectors.toList());
         List<String> golden = Files.readAllLines(dataFile("golden-save-component.properties")).stream()
                         .filter((l) -> !l.startsWith("#"))
+                        .sorted()
                         .collect(Collectors.toList());
 
         assertEquals(golden, lines);
@@ -438,9 +440,11 @@ public class DirectoryStorageTest extends CommandTestBase {
         assertTrue(Files.exists(p));
         List<String> lines = Files.readAllLines(p).stream()
                         .filter((l) -> !l.startsWith("#"))
+                        .sorted()
                         .collect(Collectors.toList());
         List<String> golden = Files.readAllLines(dataFile("golden-save-component2.properties")).stream()
                         .filter((l) -> !l.startsWith("#"))
+                        .sorted()
                         .collect(Collectors.toList());
 
         assertEquals(golden, lines);
@@ -462,9 +466,11 @@ public class DirectoryStorageTest extends CommandTestBase {
 
         List<String> lines = Files.readAllLines(p).stream()
                         .filter((l) -> !l.startsWith("#"))
+                        .sorted()
                         .collect(Collectors.toList());
         List<String> golden = Files.readAllLines(dataFile("golden-save-optional.properties")).stream()
                         .filter((l) -> !l.startsWith("#"))
+                        .sorted()
                         .collect(Collectors.toList());
 
         assertEquals(golden, lines);
@@ -483,9 +489,11 @@ public class DirectoryStorageTest extends CommandTestBase {
 
         List<String> lines = Files.readAllLines(p).stream()
                         .filter((l) -> !l.startsWith("#"))
+                        .sorted()
                         .collect(Collectors.toList());
         List<String> golden = Files.readAllLines(dataFile("golden-save-filelist.properties")).stream()
                         .filter((l) -> !l.startsWith("#"))
+                        .sorted()
                         .collect(Collectors.toList());
 
         assertEquals(golden, lines);
