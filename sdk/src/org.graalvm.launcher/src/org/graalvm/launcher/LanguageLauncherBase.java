@@ -254,23 +254,22 @@ public abstract class LanguageLauncherBase extends Launcher {
         final boolean all = helpArgIs("all");
         boolean printed = false;
         if (all || helpArgIs("languages")) {
-            printed = true;
-            printLanguageOptions(getTempEngine(), helpInternal, null);
+            printed = printLanguageOptions(getTempEngine(), helpInternal, null);
         }
         if (all || helpArgIs("tools")) {
-            printed = true;
-            printInstrumentOptions(getTempEngine(), helpInternal, null);
+            printed = printInstrumentOptions(getTempEngine(), helpInternal, null);
         }
         if (all || helpArgIs("engine")) {
-            printed = true;
-            printEngineOptions(getTempEngine(), helpInternal);
+            printed = printEngineOptions(getTempEngine(), helpInternal);
         }
         if (printed) {
             return;
         }
-        // TODO Print whatever the helpArgIs
-        printLanguageOptions(getTempEngine(), helpInternal, helpArg);
-        printInstrumentOptions(getTempEngine(), helpInternal, helpArg);
+        printed = printLanguageOptions(getTempEngine(), helpInternal, helpArg);
+        printed |= printInstrumentOptions(getTempEngine(), helpInternal, helpArg);
+        if (!printed) {
+            printDefaultHelp(OptionCategory.USER);
+        }
     }
 
     /**
@@ -314,16 +313,18 @@ public abstract class LanguageLauncherBase extends Launcher {
 
     }
 
-    private void printEngineOptions(Engine engine, boolean includeInternal) {
+    private boolean printEngineOptions(Engine engine, boolean includeInternal) {
         List<PrintableOption> engineOptions = filterOptions(engine.getOptions(), includeInternal);
         if (!engineOptions.isEmpty()) {
             println();
             // TODO not always user
             printOptions(engineOptions, optionsTitle("engine", OptionCategory.USER), 2);
+            return true;
         }
+        return false;
     }
 
-    private void printInstrumentOptions(Engine engine, boolean includeInternal, String id) {
+    private boolean printInstrumentOptions(Engine engine, boolean includeInternal, String id) {
         Map<Instrument, List<PrintableOption>> instrumentsOptions = new HashMap<>();
         List<Instrument> instruments = sortedInstruments(engine);
         for (Instrument instrument : instruments) {
@@ -344,10 +345,12 @@ public abstract class LanguageLauncherBase extends Launcher {
                     printOptions(options, "  " + instrument.getName() + website(instrument) + ":", 4);
                 }
             }
+            return true;
         }
+        return false;
     }
 
-    private void printLanguageOptions(Engine engine, boolean includeInternal, String id) {
+    private boolean printLanguageOptions(Engine engine, boolean includeInternal, String id) {
         Map<Language, List<PrintableOption>> languagesOptions = new HashMap<>();
         List<Language> languages = sortedLanguages(engine);
         for (Language language : languages) {
@@ -369,7 +372,9 @@ public abstract class LanguageLauncherBase extends Launcher {
                     printOptions(options, title(language), 4);
                 }
             }
+            return true;
         }
+        return false;
     }
 
     private List<PrintableOption> filterOptions(OptionDescriptors descriptors, boolean includeInternal) {
