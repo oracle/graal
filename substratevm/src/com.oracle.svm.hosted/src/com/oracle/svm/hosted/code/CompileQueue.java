@@ -1307,9 +1307,6 @@ public class CompileQueue {
         try {
             SubstrateBackend backend = config.lookupBackend(method);
 
-            if (method.format("%H.%n").contains("CEntryPointSnippets.createIsolate")) {
-                System.out.println("Found");
-            }
             StructuredGraph graph = method.compilationInfo.graph;
             VMError.guarantee(graph != null, "The following method is reachable during compilation, but was not seen during Bytecode parsing: " + method);
             /* Operate on a copy, to keep the original graph intact for later inlining. */
