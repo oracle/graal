@@ -82,13 +82,11 @@ public class InvocationPlugins {
 
     public static class Options {
         // @formatter:off
-        @Option(help = "Disable intrinsics from compilation with a method filter. The format is " +
-                "identical to the one used in DebugOptions.MethodFilter, e.g.: " +
-                "java.lang.String.equals(java.lang.Object) disables the intrinsic for this " +
-                "exact method; String.equals disables all intrinsics with the class name suffixed " +
-                "by String and with arbitrary parameter types. By appending ':verbose' at the end " +
-                "of this option, the verbose mode is enabled and will print out intrinsics being " +
-                "disabled during compilation.", type = OptionType.Debug)
+        @Option(help = "Disable intrinsics matching the given method filter (see MethodFilter " +
+                "option for details). For example, 'DisableIntrinsics=String.equals' disables " +
+                "intrinsics for any method named 'equals' in a class whose simple name is 'String'. " +
+                "You can append ':verbose' at the end of the filter value to print out disabled " +
+                "intrinsics as they are encountered during compilation (e.g., 'String.equals:verbose').", type = OptionType.Debug)
         public static final OptionKey<String> DisableIntrinsics = new OptionKey<>(null);
         // @formatter:on
     }

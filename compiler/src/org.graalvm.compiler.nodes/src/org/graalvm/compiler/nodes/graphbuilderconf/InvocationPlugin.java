@@ -337,7 +337,7 @@ public abstract class InvocationPlugin implements GraphBuilderPlugin {
         return false;
     }
 
-    public boolean match(Constructor c) {
+    public boolean match(Constructor<?> c) {
         if (!isStatic && "<init>".equals(name)) {
             Class<?>[] parameterTypes = c.getParameterTypes();
             if (parameterTypes.length == argumentTypes.length) {
