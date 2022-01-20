@@ -144,8 +144,7 @@ public abstract class SubstrateSegfaultHandler {
              * overflow.
              */
             isolate = VMThreads.IsolateTL.get();
-            return Isolates.checkSanity(isolate) == CEntryPointErrors.NO_ERROR &&
-                            (!SubstrateOptions.SpawnIsolates.getValue() || isolate.equal(KnownIntrinsics.heapBase()));
+            return Isolates.checkSanity(isolate) == CEntryPointErrors.NO_ERROR && (!SubstrateOptions.SpawnIsolates.getValue() || isolate.equal(KnownIntrinsics.heapBase()));
         }
         return false;
     }
