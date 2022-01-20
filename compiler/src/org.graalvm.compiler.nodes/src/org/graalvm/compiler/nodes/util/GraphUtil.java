@@ -1285,16 +1285,16 @@ public class GraphUtil {
         return null;
     }
 
+    /**
+     * Find the last, i.e. dominating, {@link StateSplit} node that returns {@code true} for
+     * {@link StateSplit#hasSideEffect()} and return its {@link StateSplit#stateAfter()}. That is
+     * the {@link FrameState} node describing the current frame since no {@linkplain StateSplit side
+     * effect} happened in between.
+     *
+     * This method will check Graal's invariant relations regarding side-effects and framestates.
+     */
     public static FrameState findLastFrameState(FixedNode start) {
-        FrameState state = findLastFrameState(start, false);
-        if (state == null) {
-            // keep in branch to avoid eager evaluation of findLastFrameState(start, true)
-            throw GraalError.shouldNotReachHere("Must find a prev state (this can be transitively broken) for node " + start + " " + findLastFrameState(start, true));
-        }
-        return state;
-    }
-
-    public static FrameState findLastFrameState(FixedNode start, boolean log) {
+        GraalError.guarantee(start.graph().getGuardsStage().areFrameStatesAtSideEffects(), "Framestates must be at side effects when looking for state split nodes");
         assert start != null;
         FixedNode lastFixedNode = null;
         FixedNode currentStart = start;
@@ -1302,7 +1302,7 @@ public class GraphUtil {
             for (FixedNode fixed : GraphUtil.predecessorIterable(currentStart)) {
                 if (fixed instanceof StateSplit) {
                     StateSplit stateSplit = (StateSplit) fixed;
-                    assert !stateSplit.hasSideEffect() || stateSplit.stateAfter() != null : "Found state split with side-effect without framestate=" + stateSplit;
+                    GraalError.guarantee(!stateSplit.hasSideEffect() || stateSplit.stateAfter() != null, "Found state split with side-effect without framestate=%s", stateSplit);
                     if (stateSplit.stateAfter() != null) {
                         return stateSplit.stateAfter();
                     }
@@ -1312,22 +1312,6 @@ public class GraphUtil {
             if (lastFixedNode instanceof LoopBeginNode) {
                 currentStart = ((LoopBeginNode) lastFixedNode).forwardEnd();
                 continue;
-            }
-            if (log) {
-                NodeSourcePosition p = lastFixedNode.getNodeSourcePosition();
-                DebugContext debug = start.getDebug();
-                debug.log(DebugContext.VERY_DETAILED_LEVEL, "Last fixed node %s\n with source position -> %s", lastFixedNode,
-                                p == null ? "null" : p.toString());
-                if (lastFixedNode instanceof MergeNode) {
-                    MergeNode merge = (MergeNode) lastFixedNode;
-                    debug.log(DebugContext.VERY_DETAILED_LEVEL, "Last fixed node is a merge with predecessors:");
-                    for (EndNode end : merge.forwardEnds()) {
-                        for (FixedNode fixed : GraphUtil.predecessorIterable(end)) {
-                            NodeSourcePosition sp = fixed.getNodeSourcePosition();
-                            debug.log(DebugContext.VERY_DETAILED_LEVEL, "%s:source position%s", fixed, sp != null ? sp.toString() : "null");
-                        }
-                    }
-                }
             }
             break;
         }

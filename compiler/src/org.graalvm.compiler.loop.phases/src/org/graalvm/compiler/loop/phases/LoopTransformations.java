@@ -545,13 +545,6 @@ public abstract class LoopTransformations {
         merge.graph().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, merge.graph(), "After deleting unused phis");
     }
 
-    /**
-     *
-     * @param begin
-     * @param lex
-     * @param inverted
-     * @param loop
-     */
     private static void createExitState(LoopBeginNode begin, LoopExitNode lex, boolean inverted, LoopFragment loop) {
         FrameState stateToUse;
         if (inverted) {
