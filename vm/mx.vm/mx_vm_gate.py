@@ -65,6 +65,21 @@ class VmGateTasks:
     svm_sl_tck = 'svm_sl_tck'
     svm_truffle_tck_js = 'svm-truffle-tck-js'
 
+def _unittest_config_participant(config):
+    vmArgs, mainClass, mainClassArgs = config
+    # Disable DefaultRuntime warning
+    jdk = mx.get_jdk(tag='default')
+    if jdk.javaCompliance > '1.8':
+        # This is required by org.graalvm.component.installer.CatalogIterableTest
+        vmArgs += [
+            '--add-exports=java.base/jdk.internal.loader=ALL-UNNAMED',
+            '--add-opens=java.base/jdk.internal.loader=ALL-UNNAMED',
+        ]
+    config = (vmArgs, mainClass, mainClassArgs)
+    return config
+
+mx_unittest.add_config_participant(_unittest_config_participant)
+
 def _check_compiler_log(compiler_log_file, expectations):
     """
     Checks that `compiler_log_file` exists and that its contents match each regular expression in `expectations`.
