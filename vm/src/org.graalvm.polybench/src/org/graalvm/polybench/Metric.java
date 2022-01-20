@@ -31,8 +31,23 @@ import java.util.logging.Handler;
 
 import org.graalvm.polyglot.Value;
 
+/**
+ * Includes all the logic required to measure a particular value during an execution of a program.
+ */
 @SuppressWarnings("unused")
 interface Metric {
+
+    /**
+     * Name of the metric, should be unique among implementations.
+     */
+    String name();
+
+    /**
+     * Unit associated with the measurement values.
+     */
+    default String unit() {
+        return "n/a";
+    }
 
     /**
      * Validates the mode and polyglot options parsed from the command line.
@@ -77,10 +92,4 @@ interface Metric {
 
     default void reset() {
     }
-
-    default String unit() {
-        return "n/a";
-    }
-
-    String name();
 }
