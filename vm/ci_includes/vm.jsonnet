@@ -30,9 +30,6 @@ local jdks = common_json.jdks;
     },
   },
 
-  vm_common_windows_jdk8:: vm_common.svm_common_windows_openjdk8,
-  vm_common_windows_jdk11:: vm_common.svm_common_windows_jdk11,
-
   vm_linux_amd64_java_11:: self.vm_java_11 + {
     downloads+: {
       LLVM_JAVA_HOME: jdks['labsjdk-ce-11-llvm'],
@@ -77,12 +74,6 @@ local jdks = common_json.jdks;
     mx_cmd_base:: ['mx', '--dynamicimports', '/substratevm', '--disable-installables=true', '--force-bash-launcher=true', '--skip-libraries=true'],
     build:: self.mx_cmd_base + ['build', '--dependencies', self.native_distributions],
     deploy:: self.mx_cmd_base + ['maven-deploy', '--only', self.native_distributions, '--tags=default', '--all-suites', '--all-distribution-types', '--validate', 'full', '--licenses', 'GPLv2-CPE,UPL,MIT'],
-  },
-
-  maven_base_8_native:: self.maven_base_native + {
-    downloads+: {
-      JAVA_HOME: jdks.openjdk8,
-    },
   },
 
   maven_base_11_native:: self.maven_base_native + {
@@ -212,14 +203,14 @@ local jdks = common_json.jdks;
      ],
      name: 'daily-deploy-vm-maven-darwin-amd64',
     },
-    self.vm_common_windows_jdk11 + vm_common.gate_vm_windows + self.maven_base_11_native + {
+    vm_common.svm_common_windows_jdk11 + vm_common.gate_vm_windows + self.maven_base_11_native + {
      run: [
        $.maven_base_11_native.build,
        $.maven_base_11_native.deploy + ['--dry-run', 'lafo-maven'],
      ],
      name: 'gate-vm-maven-dry-run-windows-amd64',
     },
-    self.vm_common_windows_jdk11 + vm_common.deploy_daily_vm_windows + self.maven_base_11_native + {
+    vm_common.svm_common_windows_jdk11 + vm_common.deploy_daily_vm_windows + self.maven_base_11_native + {
      run: [
        $.maven_base_11_native.build,
        $.maven_base_11_native.deploy + ['lafo-maven'],
