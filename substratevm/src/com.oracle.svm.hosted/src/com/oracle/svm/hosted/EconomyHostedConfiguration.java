@@ -28,5 +28,4 @@ public class EconomyHostedConfiguration extends HostedConfiguration {
 
     public EconomyHostedConfiguration() {
     }
-
 }
