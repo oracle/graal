@@ -1114,16 +1114,21 @@ public class InvocationPlugins {
             int arguments = plugin.getArgumentsSize();
             assert arguments < SIGS.length
                             : format("need to extend %s to support method with %d arguments: %s", InvocationPlugin.class.getSimpleName(), arguments, plugin.getMethodNameWithArgumentsDescriptor());
-            for (Method m : plugin.getClass().getDeclaredMethods()) {
-                if (m.getName().equals("defaultHandler")) {
-                    return true;
-                }
-                if (m.getName().equals("apply")) {
-                    Class<?>[] parameterTypes = m.getParameterTypes();
-                    if (Arrays.equals(SIGS[arguments], parameterTypes)) {
+
+            Class<?> klass = plugin.getClass();
+            while (klass != InvocationPlugin.class) {
+                for (Method m : klass.getDeclaredMethods()) {
+                    if (m.getName().equals("defaultHandler")) {
                         return true;
                     }
+                    if (m.getName().equals("apply")) {
+                        Class<?>[] parameterTypes = m.getParameterTypes();
+                        if (Arrays.equals(SIGS[arguments], parameterTypes)) {
+                            return true;
+                        }
+                    }
                 }
+                klass = klass.getSuperclass();
             }
             throw new AssertionError(format("graph builder plugin for %s not found", plugin.getMethodNameWithArgumentsDescriptor()));
         }
