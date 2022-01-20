@@ -62,6 +62,7 @@ import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
 import com.oracle.svm.hosted.ConfigurationTypeResolver;
 import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
@@ -105,6 +106,8 @@ public class SerializationFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         serializationBuilder.flushConditionalConfiguration(access);
+        /* Ensure SharedSecrets.javaObjectInputStreamAccess is initialized before scanning. */
+        ((BeforeAnalysisAccessImpl) access).ensureInitialized("java.io.ObjectInputStream");
     }
 
     @Override
