@@ -109,8 +109,9 @@ public abstract class Launcher {
     private PrintStream out = System.out;
     private PrintStream err = System.err;
 
+    protected String helpArg = null;
+    protected boolean helpInternal;
     private boolean help;
-    private boolean helpInternal;
     private boolean helpExpert;
     private boolean helpVM;
 
@@ -607,23 +608,31 @@ public abstract class Launcher {
      * @since 20.0
      */
     protected boolean runLauncherAction() {
-        boolean printDefaultHelp = help || ((helpExpert || helpInternal) && kindAndCategory.isEmpty() && !helpVM);
+        if (helpArg == null) {
+            return false;
+        }
+        boolean printDefaultHelp = "".equals(helpArg);
         OptionCategory hc = getHelpCategory();
         if (printDefaultHelp) {
             printDefaultHelp(hc);
         }
         maybePrintAdditionalHelp(hc);
-
-        if (helpVM) {
+        if (helpArgIs("all") || helpArgIs("vm")) {
             if (nativeAccess == null) {
                 printJvmHelp();
             } else {
                 nativeAccess.printNativeHelp();
             }
         }
-
-        return printAllOtherHelpCategories(printDefaultHelp);
+        out.println("");
+        out.println("See http://www.graalvm.org for more information.");
+        return true;
     }
+
+    protected boolean helpArgIs(String keyword) {
+        return keyword.equals(helpArg) || (keyword + ":internal").equals(helpArg);
+    }
+
 
     /**
      * Prints default help text. Prints options, starting with tool specific options. Launcher
@@ -671,16 +680,7 @@ public abstract class Launcher {
     }
 
     private boolean printAllOtherHelpCategories(boolean printHelp) {
-        boolean print = printHelp || helpVM || !kindAndCategory.isEmpty();
-        if (!print) {
-            return false;
-        }
-        out.println();
-        for (Iterator<String> it = kindAndCategory.iterator(); it.hasNext();) {
-            String kind = it.next();
-            String opt = it.next();
-            printOtherHelpCategories0(kind, opt);
-        }
+        out.println("");
         out.println("See http://www.graalvm.org for more information.");
         return true;
     }
@@ -763,31 +763,21 @@ public abstract class Launcher {
      * @since 20.0
      */
     protected boolean parseCommonOption(String defaultOptionPrefix, Map<String, String> polyglotOptions, boolean experimentalOptions, String arg) {
-        switch (arg) {
-            case "--help":
-                help = true;
-                break;
-            case "--help:debug":
-                warn("--help:debug is deprecated, use --help:internal instead.");
-                helpInternal = true;
-                break;
-            case "--help:internal":
-                helpInternal = true;
-                break;
-            case "--help:expert":
-                helpExpert = true;
-                break;
-            case "--help:vm":
-                helpVM = true;
-                break;
-            case "--experimental-options":
-            case "--experimental-options=true":
-            case "--experimental-options=false":
-                // Ignore, these were already parsed before
-                break;
-            default:
-                return false;
+        if (!arg.startsWith("--help")) {
+            return false;
         }
+        final int index = arg.indexOf(':');
+        if (index < 0) {
+            helpArg = "";
+            return true;
+        }
+        String helpArgCandidate = arg.substring(index + 1);
+        if (helpArgCandidate.endsWith(":internal")) {
+            helpInternal = true;
+            helpArg = helpArgCandidate.substring(0, helpArgCandidate.indexOf(":internal"));
+            return true;
+        }
+        helpArg = helpArgCandidate;
         return true;
     }
 
