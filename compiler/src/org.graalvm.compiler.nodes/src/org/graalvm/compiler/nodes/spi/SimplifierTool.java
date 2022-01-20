@@ -41,4 +41,10 @@ public interface SimplifierTool extends CanonicalizerTool {
     void addToWorkList(Iterable<? extends Node> nodes);
 
     void removeIfUnused(Node node);
+
+    /*
+     * Returns whether fences associated with OrderedWrites can be removed if the fence can be sunk
+     * to a subsequent operation.
+     */
+    boolean trySinkWriteFences();
 }

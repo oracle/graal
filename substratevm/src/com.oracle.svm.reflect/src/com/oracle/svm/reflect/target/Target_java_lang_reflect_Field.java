@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.reflect.target;
 
-// Checkstyle: allow reflection
-
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.Field;
@@ -121,6 +119,11 @@ public final class Target_java_lang_reflect_Field {
 
     public static final class AnnotatedTypeComputer implements CustomFieldValueComputer {
         @Override
+        public RecomputeFieldValue.ValueAvailability valueAvailability() {
+            return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+        }
+
+        @Override
         public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
             Field field = (Field) receiver;
             return field.getAnnotatedType();
@@ -128,6 +131,11 @@ public final class Target_java_lang_reflect_Field {
     }
 
     public static final class FieldDeletionReasonComputer implements CustomFieldValueComputer {
+        @Override
+        public RecomputeFieldValue.ValueAvailability valueAvailability() {
+            return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+        }
+
         @Override
         public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
             ResolvedJavaField field = metaAccess.lookupJavaField((Field) receiver);

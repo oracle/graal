@@ -1497,6 +1497,7 @@ public class Breakpoint {
         }
     }
 
+    @SuppressWarnings("serial")
     static final class BreakpointConditionFailure extends SlowPathException {
 
         private static final long serialVersionUID = 1L;

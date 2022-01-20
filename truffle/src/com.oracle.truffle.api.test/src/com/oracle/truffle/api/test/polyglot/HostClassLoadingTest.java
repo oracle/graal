@@ -87,7 +87,7 @@ import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class HostClassLoadingTest extends AbstractPolyglotTest {
 
-    private static final String TEST_REPLACE_CLASS_NAME = "HostClassLoadingTestClazz1";
+    static final String TEST_REPLACE_CLASS_NAME = "HostClassLoadingTestClazz1";
     private static final String TEST_REPLACE_CLASS_NAME_2 = "HostClassLoadingTestClazz2";
     private static final String TEST_REPLACE_QUALIFIED_CLASS_NAME = HostClassLoadingTestClass1.class.getPackage().getName() + ".HostClassLoadingTestClazz1";
 
@@ -463,7 +463,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
         });
     }
 
-    private static Path createJar(Path directory) throws IOException {
+    static Path createJar(Path directory) throws IOException {
         Manifest manifest = new Manifest();
         manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0");
         Path tempJar = Files.createTempFile("tempjar", ".jar");
@@ -496,7 +496,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
         }
     }
 
-    private static void deleteDir(Path p) throws IOException {
+    static void deleteDir(Path p) throws IOException {
         Files.walk(p).sorted(Comparator.reverseOrder()).map(Path::toFile).forEach(File::delete);
     }
 
@@ -542,7 +542,7 @@ public class HostClassLoadingTest extends AbstractPolyglotTest {
         }
     }
 
-    private static Path renameHostClass(final Class<?> hostClass, String newName) throws IOException {
+    static Path renameHostClass(final Class<?> hostClass, String newName) throws IOException {
         // create a temporary folder with the package directory structure
         String oldName = hostClass.getSimpleName();
         Path packagePath = Paths.get(hostClass.getPackage().getName().replace('.', '/'));

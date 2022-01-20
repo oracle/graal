@@ -26,6 +26,7 @@ package org.graalvm.compiler.truffle.test;
 
 import static org.junit.Assert.assertEquals;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.reflect.Field;
@@ -75,7 +76,10 @@ public final class GraalTruffleRuntimeListenerTest extends TestWithPolyglotOptio
 
     @Test
     public void testCompilationFailure() {
-        setupContext("engine.CompileImmediately", "true", "engine.BackgroundCompilation", "false");
+        Context.Builder builder = newContextBuilder().logHandler(new ByteArrayOutputStream());
+        builder.option("engine.CompileImmediately", "true");
+        builder.option("engine.BackgroundCompilation", "false");
+        setupContext(builder);
         GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
         OptimizedCallTarget compilable = (OptimizedCallTarget) createFailureNode().getCallTarget();
         TestListener listener = new TestListener(compilable);

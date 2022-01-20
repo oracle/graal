@@ -25,7 +25,6 @@
 package org.graalvm.compiler.truffle.test;
 
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.polyglot.Context;
 import org.junit.Test;
@@ -54,7 +53,7 @@ public class HashCodeIntrinsicTest extends PartialEvaluationTest {
          * We disable truffle AST inlining to not inline the callee
          */
         setupContext(Context.create());
-        final OptimizedCallTarget callTarget = GraalTruffleRuntime.getRuntime().newCallTarget(new RootNode(null) {
+        final OptimizedCallTarget callTarget = (OptimizedCallTarget) new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
                 Object o = createObject();
@@ -62,7 +61,7 @@ public class HashCodeIntrinsicTest extends PartialEvaluationTest {
                 check(o, o.hashCode());
                 return null;
             }
-        }, null);
+        }.getCallTarget();
         StructuredGraph graph = partialEval(callTarget, new Object[0]);
         compile(callTarget, graph);
         callTarget.call();

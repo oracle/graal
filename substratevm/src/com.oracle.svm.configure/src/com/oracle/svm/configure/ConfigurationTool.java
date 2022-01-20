@@ -30,7 +30,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
-import java.lang.reflect.Method;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -48,13 +47,13 @@ import org.graalvm.nativeimage.ImageInfo;
 
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.filters.FilterConfigurationParser;
+import com.oracle.svm.configure.filters.ModuleFilterTools;
 import com.oracle.svm.configure.filters.RuleNode;
 import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.configure.trace.TraceProcessor;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.util.ReflectionUtil;
 
 public class ConfigurationTool {
 
@@ -368,17 +367,7 @@ public class ConfigurationTool {
                             exportedInclusion = RuleNode.Inclusion.Include;
                             unexportedInclusion = RuleNode.Inclusion.Exclude;
                         }
-
-                        try {
-                            Class<?> moduleFilterToolsClass = Class.forName("com.oracle.svm.configure.jdk11.filters.ModuleFilterTools");
-                            Method generateFromModulesMethod = ReflectionUtil.lookupMethod(moduleFilterToolsClass, "generateFromModules",
-                                            String[].class, RuleNode.Inclusion.class, RuleNode.Inclusion.class, RuleNode.Inclusion.class, boolean.class);
-                            rootNode = (RuleNode) generateFromModulesMethod.invoke(null, moduleNames, rootInclusion, exportedInclusion, unexportedInclusion, reduce);
-                        } catch (ClassNotFoundException e) {
-                            throw new RuntimeException("Module-based filter generation is not available in JDK 8 and below.");
-                        } catch (ReflectiveOperationException e) {
-                            throw new RuntimeException(e);
-                        }
+                        rootNode = ModuleFilterTools.generateFromModules(moduleNames, rootInclusion, exportedInclusion, unexportedInclusion, reduce);
                     } else {
                         throw new UsageException(current + " is currently not supported in the native-image build of this tool.");
                     }

@@ -24,12 +24,9 @@
  */
 package com.oracle.svm.jfr;
 
-//Checkstyle: allow reflection
-
 import java.lang.reflect.Field;
 import java.util.List;
 
-import com.oracle.svm.core.thread.ThreadListener;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -41,7 +38,9 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.thread.JavaVMOperation;
+import com.oracle.svm.core.thread.ThreadListener;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.jfr.events.ExecutionSampleEvent;
 import com.oracle.svm.jfr.logging.JfrLogging;
 
 import jdk.jfr.Configuration;
@@ -239,6 +238,15 @@ public class SubstrateJVM {
         return true;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public long getStackTraceId(long eventTypeId, int skipCount) {
+        if (isStackTraceEnabled(eventTypeId)) {
+            return getStackTraceId(skipCount);
+        } else {
+            return 0L;
+        }
+    }
+
     /** See {@link JVM#getStackTraceId}. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getStackTraceId(int skipCount) {
@@ -350,8 +358,20 @@ public class SubstrateJVM {
     }
 
     /** See {@link JVM#setMethodSamplingInterval}. */
-    public void setMethodSamplingInterval(@SuppressWarnings("unused") long type, @SuppressWarnings("unused") long intervalMillis) {
-        // Not supported but this method is called during JFR startup, so we can't throw an error.
+    public void setMethodSamplingInterval(long type, long intervalMillis) {
+        long millis = intervalMillis;
+        if (type != JfrEvents.ExecutionSample.getId()) {
+            // JFR is currently only supporting ExecutionSample event, but this method is called
+            // during JFR startup, so we can't throw an error.
+            return;
+        }
+
+        if (millis > 0) {
+            SubstrateJVM.get().setEnabled(type, true);
+        } else {
+            millis = 0;
+        }
+        ExecutionSampleEvent.setSamplingInterval(millis);
     }
 
     /** See {@link JVM#setSampleThreads}. */

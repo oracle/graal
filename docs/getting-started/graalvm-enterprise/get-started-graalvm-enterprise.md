@@ -33,7 +33,7 @@ Choose your operating system and proceed to the installation steps for your spec
 
 ## Start Running Applications
 
-For demonstration purposes here, we will use GraalVM Enterprise based on Java 11.
+For demonstration purposes here, we will use GraalVM Enterprise based on Java 17.
 
 The core distribution of GraalVM Enterprise includes the JVM, the GraalVM compiler, the LLVM runtime, and JavaScript runtime.
 Having downloaded and installed GraalVM Enterprise, you can already run Java, JavaScript, and LLVM-based applications.
@@ -45,15 +45,15 @@ GraalVM Enterprise's `/bin` directory is similar to that of a standard JDK, but 
 
 Check the versions of the runtimes provided by default:
 ```shell
-java version "11.0.13" 2021-10-19 LTS
-Java(TM) SE Runtime Environment GraalVM EE 21.3.0 (build 11.0.13+9-LTS-jvmci-21.3-b03)
-Java HotSpot(TM) 64-Bit Server VM GraalVM EE 21.3.0 (build 11.0.13+9-LTS-jvmci-21.3-b03, mixed mode, sharing)
+java version "17.0.2" 2022-01-18 LTS
+Java(TM) SE Runtime Environment GraalVM EE 22.0.0 (build 17.0.2+5-LTS-jvmci-22.0-b02)
+Java HotSpot(TM) 64-Bit Server VM GraalVM EE 22.0.0 (build 17.0.2+5-LTS-jvmci-22.0-b02, mixed mode, sharing)
 
 js -version
-GraalVM JavaScript (GraalVM EE Native 21.3.0)
+GraalVM JavaScript (GraalVM EE Native 22.0.0)
 
 lli --version
-LLVM 12.0.1 (GraalVM EE Native 21.3.0)
+LLVM 12.0.1 (GraalVM EE Native 22.0.0)
 ```
 
 Further below you will find information on how to add other optionally available GraalVM Enterprise runtimes including Node.js, Ruby, R, Python, and WebAssembly.
@@ -79,25 +79,26 @@ Hello World!
 ```
 
 You can find a collection of larger Java examples on the [Examples Applications](../../examples/examples.md) page.
-For more information on the GraalVM compiler, go to [Compiler](../../reference-manual/compiler.md).
+For more information on the GraalVM compiler, go to the [Graal compiler](../../reference-manual/java/compiler.md).
 For more extensive documentation on running Java, proceed to [JVM Languages](../../reference-manual/java/README.md).
 
 ### JavaScript and Node.js
+
 GraalVM Enterprise can execute plain JavaScript code, both in REPL mode and by executing script files directly:
 ```shell
-js
+$JAVA_HOME/bin/js
 > 1 + 2
 3
 ```
 
-GraalVM Enterprise also supports running Node.js applications.
+GraalVM also supports running Node.js applications.
 Node.js support is not installed by default, but can be easily added with GraalVM Updater:
 ```shell
 gu install nodejs
 ```
 ```shell
 $JAVA_HOME/bin/node -v
-v14.17.6
+v14.18.1
 ```
 
 More than 100,000 npm packages are regularly tested and are compatible with GraalVM Enterprise, including modules like express, react, async, request, browserify, grunt, mocha, and underscore.
@@ -173,13 +174,17 @@ The support is not available by default, but you can quickly add it to GraalVM u
 gu install python
 ```
 
-Once it is installed, you can run Python programs:
+It installs the `graalpython` launcher. Check the version, and you can already run Python programs:
 ```shell
-graalpython
+$JAVA_HOME/bin/graalpython --version
+```
+
+```shell
+$JAVA_HOME/bin/graalpython
 ...
 >>> 1 + 2
 3
->>> exit()
+>>> quit()
 ```
 
 More examples and additional information on Python support in GraalVM can be found in the [Python reference manual](../../reference-manual/python/README.md).
@@ -194,15 +199,14 @@ gu install ruby
 
 Once it is installed, Ruby launchers like `ruby`, `gem`, `irb`, `rake`, `rdoc`, and `ri` become available to run Ruby programs:
 ```shell
-ruby [options] program.rb
+$JAVA_HOME/bin/ruby [options] program.rb
 ```
 
-GraalVM Ruby runtime environment uses the
-[same options as the standard implementation of Ruby](../../reference-manual/ruby/options.md),
-with some additions. For example:
+GraalVM runtime for Ruby uses the [same options as the standard implementation of Ruby](../../reference-manual/ruby/options.md), with some additions.
+For example:
 ```shell
 gem install chunky_png
-ruby -r chunky_png -e "puts ChunkyPNG::Color.to_hex(ChunkyPNG::Color('mintcream @ 0.5'))"
+$JAVA_HOME/bin/ruby -r chunky_png -e "puts ChunkyPNG::Color.to_hex(ChunkyPNG::Color('mintcream @ 0.5'))"
 #f5fffa80
 ```
 
@@ -264,14 +268,14 @@ emcc -o floyd.wasm floyd.c
 
 Then you can run the compiled WebAssembly binary on GraalVM as follows:
 ```shell
-wasm --Builtins=wasi_snapshot_preview1 floyd.wasm
+$JAVA_HOME/bin/wasm --Builtins=wasi_snapshot_preview1 floyd.wasm
 ```
 
 More details can be found in the [WebAssembly reference manual](../../reference-manual/wasm/README.md).
 
 ## Native Images
 
-With GraalVM Enterprise you can compile Java bytecode into a platform-specific, self-contained, native executable - a native image - to achieve faster startup and a smaller footprint for your application.
+With GraalVM Enterprise you can compile Java bytecode into a platform-specific, self-contained binary - a native image - to achieve faster startup and a smaller footprint for your application.
 The [Native Image](../../reference-manual/native-image/README.md) functionality is not available by default, but can be easily installed with the [GraalVM Updater](../../reference-manual/graalvm-updater.md) tool:
 ```shell
 gu install native-image
@@ -373,15 +377,15 @@ Here is the JSON output from the native executable:
 
 The native image runs much faster than running the same code on the JVM directly:
 ```shell
-time bin/java PrettyPrintJSON < test.json > /dev/null
-real	0m1.101s
-user	0m2.471s
-sys	0m0.237s
+time java PrettyPrintJSON < test.json > /dev/null
+real	0m1.806s
+user	0m3.651s
+sys	0m0.341s
 
 time ./prettyprintjson < test.json > /dev/null
-real	0m0.037s
-user	0m0.015s
-sys	0m0.016s
+real	0m0.041s
+user	0m0.011s
+sys	0m0.013s
 ```
 
 ## Combine Languages
@@ -411,4 +415,4 @@ If you are looking for the tooling support GraalVM Enterprise offers, proceed to
 
 If you are considering GraalVM Enterprise as a platform for your future language or tool implementation, go to [GraalVM Enterprise as a Platform](../../../truffle/docs/README.md).
 
-You can find information on GraalVM Enterprise's security model in the [Security Guide](/security-guide/), and rich API documentation in [GraalVM SDK Javadoc](https://docs.oracle.com/en/graalvm/enterprise/21/sdk/index.html).
+You can find information on GraalVM Enterprise's security model in the [Security Guide](../../security/security-guide.md), and rich API documentation in [GraalVM SDK Javadoc](https://docs.oracle.com/en/graalvm/enterprise/22/sdk/index.html).

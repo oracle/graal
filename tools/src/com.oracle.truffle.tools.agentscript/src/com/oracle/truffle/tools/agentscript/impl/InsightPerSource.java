@@ -24,6 +24,15 @@
  */
 package com.oracle.truffle.tools.agentscript.impl;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.WeakHashMap;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleContext;
@@ -43,14 +52,6 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.source.Source;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.WeakHashMap;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.Supplier;
 
 final class InsightPerSource implements ContextsListener, AutoCloseable, LoadSourceListener {
     private final InsightInstrument instrument;
@@ -66,12 +67,14 @@ final class InsightPerSource implements ContextsListener, AutoCloseable, LoadSou
     private Map<Object, InsightInstrument.Key> bindings = new HashMap<>();
     /* @GuardedBy("this") */
     private Map<TruffleContext, Source> registeredSource = new WeakHashMap<>();
+    private final EventBinding<InsightPerSource> onInit;
 
-    InsightPerSource(InsightInstrument instrument, Supplier<Source> src, IgnoreSources ignoredSources) {
+    InsightPerSource(Instrumenter instrumenter, InsightInstrument instrument, Supplier<Source> src, IgnoreSources ignoredSources) {
         this.instrument = instrument;
         this.ignoredSources = ignoredSources;
         this.src = src;
         this.insight = instrument.createInsightObject(this);
+        this.onInit = instrumenter.attachContextsListener(this, true);
     }
 
     void collectSymbols(List<String> argNames, List<Object> args) {
@@ -150,9 +153,13 @@ final class InsightPerSource implements ContextsListener, AutoCloseable, LoadSou
     public void close() {
         InsightInstrument.Key[] keys;
         synchronized (this) {
+            if (bindings == null) {
+                return;
+            }
             keys = bindings.values().toArray(new InsightInstrument.Key[0]);
             bindings = null;
         }
+        onInit.dispose();
         instrument.closeKeys(keys);
     }
 

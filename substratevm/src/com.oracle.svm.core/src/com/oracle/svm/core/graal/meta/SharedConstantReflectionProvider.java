@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.graal.meta;
 
-//Checkstyle: allow reflection
-
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.lang.reflect.Array;

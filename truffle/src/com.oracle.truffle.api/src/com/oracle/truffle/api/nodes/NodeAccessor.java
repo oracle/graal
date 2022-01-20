@@ -80,8 +80,8 @@ final class NodeAccessor extends Accessor {
         }
 
         @Override
-        public RootNode cloneUninitialized(RootNode rootNode) {
-            return rootNode.cloneUninitialized();
+        public RootNode cloneUninitialized(CallTarget sourceCallTarget, RootNode rootNode, RootNode uninitializedRootNode) {
+            return rootNode.cloneUninitializedImpl(sourceCallTarget, uninitializedRootNode);
         }
 
         @Override
@@ -164,6 +164,11 @@ final class NodeAccessor extends Accessor {
         @Override
         public boolean countsTowardsStackTraceLimit(RootNode rootNode) {
             return rootNode.countsTowardsStackTraceLimit();
+        }
+
+        @Override
+        public CallTarget getCallTargetWithoutInitialization(RootNode root) {
+            return root.getCallTargetWithoutInitialization();
         }
 
     }

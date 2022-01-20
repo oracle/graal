@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.reflect.hosted;
 
-//Checkstyle: allow reflection
-
 import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
@@ -41,7 +39,6 @@ import org.graalvm.util.GuardedAnnotationAccess;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.svm.core.annotate.Delete;
 
 import sun.reflect.generics.repository.AbstractRepository;
@@ -115,7 +112,7 @@ public class ReflectionObjectReplacer implements Function<Object, Object> {
 
                     if (!analysisField.isUnsafeAccessed()) {
                         analysisField.registerAsAccessed();
-                        analysisField.registerAsUnsafeAccessed((AnalysisUniverse) metaAccess.getUniverse());
+                        analysisField.registerAsUnsafeAccessed();
                     }
                 }
             }

@@ -786,7 +786,7 @@ public class InliningUtil extends ValueMergeUtil {
             // exception object (top of stack)
             FrameState stateAfterException = stateAtExceptionEdge;
             if (frameState.stackSize() > 0 && stateAtExceptionEdge.stackAt(0) != frameState.stackAt(0)) {
-                stateAfterException = stateAtExceptionEdge.duplicateModified(JavaKind.Object, JavaKind.Object, frameState.stackAt(0));
+                stateAfterException = stateAtExceptionEdge.duplicateModified(JavaKind.Object, JavaKind.Object, frameState.stackAt(0), frameState.virtualObjectMappings());
             }
             frameState.replaceAndDelete(stateAfterException);
             return stateAfterException;
@@ -807,7 +807,7 @@ public class InliningUtil extends ValueMergeUtil {
             assert frameState.outerFrameState() == null;
             ValueNode[] invokeArgs = invokeArgsList.isEmpty() ? NO_ARGS : invokeArgsList.toArray(new ValueNode[invokeArgsList.size()]);
             FrameState stateBeforeCall = stateAtReturn.duplicateModifiedBeforeCall(invoke.bci(), invokeReturnKind, invokeTargetMethod.getSignature().toParameterKinds(!invokeTargetMethod.isStatic()),
-                            invokeArgs);
+                            invokeArgs, frameState.virtualObjectMappings());
             frameState.replaceAndDelete(stateBeforeCall);
             return stateBeforeCall;
         } else {
@@ -852,7 +852,7 @@ public class InliningUtil extends ValueMergeUtil {
             assert !frameState.rethrowException() : frameState;
             if (frameState.stackSize() > 0 && (alwaysDuplicateStateAfter || stateAfterReturn.stackAt(0) != frameState.stackAt(0))) {
                 // A non-void return value.
-                stateAfterReturn = stateAtReturn.duplicateModified(invokeReturnKind, invokeReturnKind, frameState.stackAt(0));
+                stateAfterReturn = stateAtReturn.duplicateModified(invokeReturnKind, invokeReturnKind, frameState.stackAt(0), frameState.virtualObjectMappings());
             } else {
                 // A void return value.
                 stateAfterReturn = stateAtReturn.duplicate();

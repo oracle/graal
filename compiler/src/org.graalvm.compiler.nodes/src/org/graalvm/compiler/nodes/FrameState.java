@@ -58,6 +58,7 @@ import org.graalvm.compiler.nodeinfo.Verbosity;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
 import org.graalvm.compiler.nodes.virtual.EscapeObjectState;
+import org.graalvm.compiler.nodes.virtual.MaterializedObjectState;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 
 import jdk.vm.ci.code.BytecodeFrame;
@@ -365,24 +366,25 @@ public final class FrameState extends VirtualState implements IterableNodeType {
      * the stack.
      */
     public FrameState duplicateModifiedDuringCall(int newBci, JavaKind popKind) {
-        return duplicateModified(graph(), newBci, rethrowException, true, popKind, null, null);
+        return duplicateModified(graph(), newBci, rethrowException, true, popKind, null, null, null);
     }
 
-    public FrameState duplicateModifiedBeforeCall(int newBci, JavaKind popKind, JavaKind[] pushedSlotKinds, ValueNode[] pushedValues) {
-        return duplicateModified(graph(), newBci, rethrowException, false, popKind, pushedSlotKinds, pushedValues);
+    public FrameState duplicateModifiedBeforeCall(int newBci, JavaKind popKind, JavaKind[] pushedSlotKinds, ValueNode[] pushedValues, List<EscapeObjectState> pushedVirtualObjectMappings) {
+        return duplicateModified(graph(), newBci, rethrowException, false, popKind, pushedSlotKinds, pushedValues, pushedVirtualObjectMappings);
     }
 
     /**
      * Creates a copy of this frame state with the top of stack replaced with with
      * {@code pushedValue} which must be of type {@code popKind}.
      */
-    public FrameState duplicateModified(JavaKind popKind, JavaKind pushedSlotKind, ValueNode pushedValue) {
+    public FrameState duplicateModified(JavaKind popKind, JavaKind pushedSlotKind, ValueNode pushedValue, List<EscapeObjectState> pushedVirtualObjectMappings) {
         assert pushedValue != null && pushedValue.getStackKind() == popKind;
-        return duplicateModified(graph(), bci, rethrowException, duringCall, popKind, new JavaKind[]{pushedSlotKind}, new ValueNode[]{pushedValue});
+        return duplicateModified(graph(), bci, rethrowException, duringCall, popKind, new JavaKind[]{pushedSlotKind}, new ValueNode[]{pushedValue}, pushedVirtualObjectMappings);
     }
 
-    public FrameState duplicateRethrow(ValueNode exceptionObject) {
-        return duplicateModified(graph(), bci, true, duringCall, JavaKind.Void, new JavaKind[]{JavaKind.Object}, new ValueNode[]{exceptionObject});
+    public FrameState duplicateModified(StructuredGraph graph, int newBci, boolean newRethrowException, boolean newDuringCall, JavaKind popKind, JavaKind[] pushedSlotKinds, ValueNode[] pushedValues,
+                    List<EscapeObjectState> pushedVirtualObjectMappings) {
+        return duplicateModified(graph, newBci, newRethrowException, newDuringCall, popKind, pushedSlotKinds, pushedValues, pushedVirtualObjectMappings, true);
     }
 
     /**
@@ -391,7 +393,9 @@ public final class FrameState extends VirtualState implements IterableNodeType {
      * correctly in slot encoding: a long or double will be followed by a null slot. The bci will be
      * changed to newBci.
      */
-    public FrameState duplicateModified(StructuredGraph graph, int newBci, boolean newRethrowException, boolean newDuringCall, JavaKind popKind, JavaKind[] pushedSlotKinds, ValueNode[] pushedValues) {
+    public FrameState duplicateModified(StructuredGraph graph, int newBci, boolean newRethrowException, boolean newDuringCall, JavaKind popKind, JavaKind[] pushedSlotKinds, ValueNode[] pushedValues,
+                    List<EscapeObjectState> pushedVirtualObjectMappings, boolean checkStackDepth) {
+        List<EscapeObjectState> copiedVirtualObjectMappings = null;
         ArrayList<ValueNode> copy;
         if (newRethrowException && !rethrowException && popKind == JavaKind.Void) {
             assert popKind == JavaKind.Void;
@@ -410,7 +414,11 @@ public final class FrameState extends VirtualState implements IterableNodeType {
         if (pushedValues != null) {
             assert pushedSlotKinds.length == pushedValues.length;
             for (int i = 0; i < pushedValues.length; i++) {
-                copy.add(pushedValues[i]);
+                ValueNode pushedValue = pushedValues[i];
+                if (pushedValue instanceof VirtualObjectNode) {
+                    copiedVirtualObjectMappings = ensureHasVirtualObjectMapping((VirtualObjectNode) pushedValue, pushedVirtualObjectMappings, copiedVirtualObjectMappings);
+                }
+                copy.add(pushedValue);
                 if (pushedSlotKinds[i].needsTwoSlots()) {
                     copy.add(null);
                 }
@@ -419,8 +427,57 @@ public final class FrameState extends VirtualState implements IterableNodeType {
         int newStackSize = copy.size() - localsSize;
         copy.addAll(values.subList(localsSize + stackSize, values.size()));
 
-        assert checkStackDepth(bci, stackSize, duringCall, rethrowException, newBci, newStackSize, newDuringCall, newRethrowException);
-        return graph.add(new FrameState(outerFrameState(), code, newBci, copy, localsSize, newStackSize, newRethrowException, newDuringCall, monitorIds, virtualObjectMappings));
+        assert !checkStackDepth || checkStackDepth(bci, stackSize, duringCall, rethrowException, newBci, newStackSize, newDuringCall, newRethrowException);
+        return graph.add(new FrameState(outerFrameState(), code, newBci, copy, localsSize, newStackSize, newRethrowException, newDuringCall, monitorIds,
+                        copiedVirtualObjectMappings != null ? copiedVirtualObjectMappings : virtualObjectMappings));
+    }
+
+    /**
+     * A {@link VirtualObjectNode} in a frame state requires a corresponding
+     * {@link EscapeObjectState} entry in {@link FrameState#virtualObjectMappings}. So when a
+     * {@link VirtualObjectNode} is pushed as part of a frame state modification, the
+     * {@link EscapeObjectState} must either be already there, or it must be passed in explicitly
+     * from another frame state where the pushed value is coming from.
+     */
+    private List<EscapeObjectState> ensureHasVirtualObjectMapping(VirtualObjectNode pushedValue, List<EscapeObjectState> pushedVirtualObjectMappings,
+                    List<EscapeObjectState> copiedVirtualObjectMappings) {
+        if (virtualObjectMappings != null) {
+            for (EscapeObjectState existingEscapeObjectState : virtualObjectMappings) {
+                if (existingEscapeObjectState.object() == pushedValue) {
+                    /* Found a matching EscapeObjectState, nothing needs to be added. */
+                    return copiedVirtualObjectMappings;
+                }
+            }
+        }
+
+        if (pushedVirtualObjectMappings == null) {
+            throw GraalError.shouldNotReachHere("Pushing a virtual object, but no virtual object mapping provided: " + pushedValue);
+        }
+        for (EscapeObjectState pushedEscapeObjectState : pushedVirtualObjectMappings) {
+            if (pushedEscapeObjectState.object() == pushedValue) {
+                /*
+                 * A VirtualObjectState could have transitive dependencies on other object states
+                 * that are would also need to be added. For now, we do not have a case where a
+                 * FrameState with a VirtualObjectState is duplicated, therefore this case is not
+                 * implemented yet.
+                 */
+                GraalError.guarantee(pushedEscapeObjectState instanceof MaterializedObjectState, "A VirtualObjectState could have transitive dependencies");
+                /*
+                 * Found a new EscapeObjectState that needs to be added to the
+                 * virtualObjectMappings.
+                 */
+                List<EscapeObjectState> result = copiedVirtualObjectMappings;
+                if (result == null) {
+                    result = new ArrayList<>();
+                    if (virtualObjectMappings != null) {
+                        result.addAll(virtualObjectMappings);
+                    }
+                }
+                result.add(pushedEscapeObjectState);
+                return result;
+            }
+        }
+        throw GraalError.shouldNotReachHere("Did not find a virtual object mapping: " + pushedValue);
     }
 
     /**

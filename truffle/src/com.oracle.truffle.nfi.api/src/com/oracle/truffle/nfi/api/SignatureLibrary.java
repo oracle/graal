@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.nfi.api;
 
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -51,6 +52,7 @@ import com.oracle.truffle.api.library.LibraryFactory;
 /**
  */
 @GenerateLibrary
+@GenerateAOT
 public abstract class SignatureLibrary extends Library {
 
     /**

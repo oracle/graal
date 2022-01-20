@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.graal.meta;
 
+import static org.graalvm.word.LocationIdentity.any;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -48,8 +50,10 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AndNode;
 import org.graalvm.compiler.nodes.calc.UnsignedRightShiftNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
+import org.graalvm.compiler.nodes.extended.LoadMethodNode;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
 import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
+import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
@@ -78,6 +82,8 @@ import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.identityhashcode.IdentityHashCodeSupport;
 import com.oracle.svm.core.meta.SharedField;
+import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.core.meta.SubstrateMethodPointerStamp;
 import com.oracle.svm.core.snippets.SubstrateIsArraySnippets;
 
 import jdk.vm.ci.code.CodeUtil;
@@ -134,9 +140,31 @@ public abstract class SubstrateBasicLoweringProvider extends DefaultJavaLowering
             lowerAssertionNode((AssertionNode) n);
         } else if (n instanceof DeadEndNode) {
             lowerDeadEnd((DeadEndNode) n);
+        } else if (n instanceof LoadMethodNode) {
+            lowerLoadMethodNode((LoadMethodNode) n);
         } else {
             super.lower(n, tool);
         }
+    }
+
+    private void lowerLoadMethodNode(LoadMethodNode loadMethodNode) {
+        StructuredGraph graph = loadMethodNode.graph();
+        SharedMethod method = (SharedMethod) loadMethodNode.getMethod();
+        ReadNode methodPointer = createReadVirtualMethod(graph, loadMethodNode.getHub(), method);
+        graph.replaceFixed(loadMethodNode, methodPointer);
+    }
+
+    private ReadNode createReadVirtualMethod(StructuredGraph graph, ValueNode hub, SharedMethod method) {
+        int vtableEntryOffset = runtimeConfig.getVTableOffset(method.getVTableIndex());
+        assert vtableEntryOffset > 0;
+        /*
+         * Method pointer will always exist in the vtable due to the fact that all reachable methods
+         * through method pointer constant references will be compiled.
+         */
+        Stamp methodStamp = SubstrateMethodPointerStamp.methodNonNull();
+        AddressNode address = createOffsetAddress(graph, hub, vtableEntryOffset);
+        ReadNode methodPointer = graph.add(new ReadNode(address, any(), methodStamp, BarrierType.NONE));
+        return methodPointer;
     }
 
     @Override

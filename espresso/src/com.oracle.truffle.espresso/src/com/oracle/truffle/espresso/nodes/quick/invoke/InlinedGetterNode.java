@@ -40,7 +40,7 @@ public class InlinedGetterNode extends QuickNode {
     private static final int INSTANCE_GETTER_BCI = 1;
     private static final int STATIC_GETTER_BCI = 0;
 
-    final Field.FieldVersion fieldVersion;
+    final Field field;
     final Method inlinedMethod;
     protected final int statementIndex;
 
@@ -49,10 +49,10 @@ public class InlinedGetterNode extends QuickNode {
     InlinedGetterNode(Method inlinedMethod, int top, int callerBCI, int statementIndex) {
         super(top, callerBCI);
         this.inlinedMethod = inlinedMethod;
-        this.fieldVersion = getInlinedField(inlinedMethod);
+        this.field = getInlinedField(inlinedMethod);
         this.statementIndex = statementIndex;
-        getFieldNode = AbstractGetFieldNode.create(this.fieldVersion);
-        assert fieldVersion.getField().isStatic() == inlinedMethod.isStatic();
+        getFieldNode = AbstractGetFieldNode.create(this.field);
+        assert field.isStatic() == inlinedMethod.isStatic();
     }
 
     public static InlinedGetterNode create(Method inlinedMethod, int top, int opCode, int curBCI, int statementIndex) {
@@ -68,8 +68,8 @@ public class InlinedGetterNode extends QuickNode {
     @Override
     public int execute(VirtualFrame frame) {
         BytecodeNode root = getBytecodeNode();
-        StaticObject receiver = fieldVersion.getField().isStatic()
-                        ? fieldVersion.getField().getDeclaringKlass().tryInitializeAndGetStatics()
+        StaticObject receiver = field.isStatic()
+                        ? field.getDeclaringKlass().tryInitializeAndGetStatics()
                         : nullCheck(BytecodeNode.popObject(frame, top - 1));
         return (getResultAt() - top) + getFieldNode.getField(frame, root, receiver, getResultAt(), statementIndex);
     }
@@ -78,7 +78,7 @@ public class InlinedGetterNode extends QuickNode {
         return inlinedMethod.isStatic() ? top : (top - 1);
     }
 
-    private static Field.FieldVersion getInlinedField(Method inlinedMethod) {
+    private static Field getInlinedField(Method inlinedMethod) {
         BytecodeStream code = new BytecodeStream(inlinedMethod.getOriginalCode());
         if (inlinedMethod.isStatic()) {
             return inlinedMethod.getRuntimeConstantPool().resolvedFieldAt(inlinedMethod.getDeclaringKlass(), code.readCPI(STATIC_GETTER_BCI));

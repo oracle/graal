@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.nodes.java;
 
-import static jdk.vm.ci.code.MemoryBarriers.LOAD_STORE;
-import static jdk.vm.ci.code.MemoryBarriers.STORE_STORE;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
 
@@ -65,6 +63,10 @@ public class FinalFieldBarrierNode extends FixedWithNextNode implements Virtuali
 
     @Override
     public void lower(LoweringTool tool) {
-        graph().replaceFixedWithFixed(this, graph().add(new MembarNode(LOAD_STORE | STORE_STORE)));
+        /*
+         * Must ensure all stores are complete before a field value can "escape" (i.e., be read) by
+         * another thread.
+         */
+        graph().replaceFixedWithFixed(this, graph().add(new MembarNode(MembarNode.FenceKind.CONSTRUCTOR_FREEZE)));
     }
 }

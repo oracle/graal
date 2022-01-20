@@ -48,7 +48,6 @@ import com.oracle.truffle.nfi.backend.libffi.ClosureArgumentNode.InjectedClosure
 import com.oracle.truffle.nfi.backend.libffi.ClosureArgumentNodeFactory.BufferClosureArgumentNodeGen;
 import com.oracle.truffle.nfi.backend.libffi.ClosureArgumentNodeFactory.ObjectClosureArgumentNodeGen;
 import com.oracle.truffle.nfi.backend.libffi.ClosureArgumentNodeFactory.StringClosureArgumentNodeGen;
-import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNode.SerializeArrayNode;
 import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNode.SerializeDoubleNode;
 import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNode.SerializeEnvNode;
 import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNode.SerializeFloatNode;
@@ -57,6 +56,7 @@ import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNode.SerializeInt3
 import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNode.SerializeInt64Node;
 import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNode.SerializeInt8Node;
 import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNode.SerializeObjectNode;
+import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNodeFactory.SerializeArrayNodeGen;
 import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNodeFactory.SerializeNullableNodeGen;
 import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNodeFactory.SerializePointerNodeGen;
 import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNodeFactory.SerializeStringNodeGen;
@@ -473,7 +473,7 @@ final class LibFFIType {
 
         @Override
         public SerializeArgumentNode createSerializeArgumentNode() {
-            return SerializeArrayNode.create(this);
+            return SerializeArrayNodeGen.create(this);
         }
 
         @Override

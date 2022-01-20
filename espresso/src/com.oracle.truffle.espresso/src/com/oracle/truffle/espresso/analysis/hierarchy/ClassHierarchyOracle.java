@@ -49,25 +49,26 @@ public interface ClassHierarchyOracle {
      * @param newKlass -- newly created class
      * @return the assumption, indicating whether the class has subclasses
      */
-    ClassHierarchyAssumption createAssumptionForNewKlass(ObjectKlass newKlass);
+    ClassHierarchyAssumption createAssumptionForNewKlass(ObjectKlass.KlassVersion newKlass);
 
     /**
      * @return the assumption, valid only if {@code klass} is a concrete class and has no concrete
      *         subclasses. Automatically invalidated in
-     *         {@link #createAssumptionForNewKlass(ObjectKlass)} when a concrete child of
-     *         {@code klass} is created.
+     *         {@link #createAssumptionForNewKlass(ObjectKlass.KlassVersion)} when a concrete child
+     *         of {@code klass} is created.
      */
+
     ClassHierarchyAssumption isLeaf(ObjectKlass klass);
 
     /**
      * @return the assumption, valid only if {@code klass} has no implementors, including itself
      *         (i.e. it must be abstract or an interface). Automatically invalidated in
-     *         {@link #createAssumptionForNewKlass(ObjectKlass)} when a concrete child of
-     *         {@code klass} is created.
+     *         {@link #createAssumptionForNewKlass(ObjectKlass.KlassVersion)} when a concrete child
+     *         of {@code klass} is created.
      */
     ClassHierarchyAssumption hasNoImplementors(ObjectKlass klass);
 
-    SingleImplementor initializeImplementorForNewKlass(ObjectKlass klass);
+    SingleImplementor initializeImplementorForNewKlass(ObjectKlass.KlassVersion klass);
 
     AssumptionGuardedValue<ObjectKlass> readSingleImplementor(ObjectKlass klass);
 }

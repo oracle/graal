@@ -51,6 +51,7 @@ import java.util.Objects;
  *
  * @since 0.8 or earlier
  */
+@SuppressWarnings("serial")
 public final class UnsupportedSpecializationException extends RuntimeException {
 
     private static final long serialVersionUID = -2122892028296836269L;

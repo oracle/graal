@@ -182,11 +182,14 @@ public class Range {
         builder.append(getMethodName());
         if (includeParams) {
             builder.append("(");
-            String prefix = "";
-            for (TypeEntry t : methodEntry.paramTypes) {
-                builder.append(prefix);
-                builder.append(t.getTypeName());
-                prefix = ", ";
+            TypeEntry[] paramTypes = methodEntry.getParamTypes();
+            if (paramTypes != null) {
+                String prefix = "";
+                for (TypeEntry t : paramTypes) {
+                    builder.append(prefix);
+                    builder.append(t.getTypeName());
+                    prefix = ", ";
+                }
             }
             builder.append(')');
         }

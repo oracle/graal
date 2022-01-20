@@ -27,8 +27,8 @@ package com.oracle.svm.core.util;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.util.Counter.Group;
@@ -42,10 +42,11 @@ public class CounterFeature implements Feature {
     }
 
     @Override
-    public void duringSetup(DuringSetupAccess access) {
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
         CounterGroupList counterGroupList = ImageSingletons.lookup(CounterGroupList.class);
-        List<Group> enabledGroups = new ArrayList<>(counterGroupList.value.size());
-        for (Group group : counterGroupList.value) {
+        List<Group> candidateGroups = counterGroupList.getGroups();
+        List<Group> enabledGroups = new ArrayList<>(candidateGroups.size());
+        for (Group group : candidateGroups) {
             /*
              * Set the actual enabled value, the value is constant folded during image generation.
              */

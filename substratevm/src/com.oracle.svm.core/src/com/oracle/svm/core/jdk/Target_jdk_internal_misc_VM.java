@@ -25,7 +25,6 @@
 package com.oracle.svm.core.jdk;
 
 import java.util.Map;
-import java.util.Properties;
 
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -39,35 +38,17 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
-@TargetClass(classNameProvider = Package_jdk_internal_misc.class, className = "VM")
+@TargetClass(className = "jdk.internal.misc.VM")
 public final class Target_jdk_internal_misc_VM {
-    /* Ensure that we do not leak the full set of properties from the image generator. */
-    @TargetElement(onlyWith = JDK8OrEarlier.class)//
+    /** Ensure that we do not leak the full set of properties from the image generator. */
     @Delete //
-    private static Properties savedProps;
-
-    @TargetElement(name = "savedProps", onlyWith = JDK11OrLater.class)//
-    @Delete //
-    private static Map<String, String> savedProps9;
+    private static Map<String, String> savedProps;
 
     @Substitute
     public static String getSavedProperty(String name) {
         return ImageSingletons.lookup(SystemPropertiesSupport.class).getSavedProperties().get(name);
-    }
-
-    @TargetElement(onlyWith = JDK8OrEarlier.class)//
-    @Substitute
-    public static ClassLoader latestUserDefinedLoader() {
-        ClassLoader loader = latestUserDefinedLoader0();
-        if (loader != null) {
-            return loader;
-        }
-        // See the JDK8-specific implementation of
-        // JDKSpecificStackTraceUtils.isExtensionOrPlatformLoader().
-        return Target_jdk_internal_misc_VM.class.getClassLoader();
     }
 
     @Substitute

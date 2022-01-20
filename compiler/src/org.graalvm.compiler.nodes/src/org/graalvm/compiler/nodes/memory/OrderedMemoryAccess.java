@@ -36,4 +36,13 @@ public interface OrderedMemoryAccess {
      * Retrieves the node's required memory ordering.
      */
     MemoryOrderMode getMemoryOrder();
+
+    default boolean ordersMemoryAccesses() {
+        return MemoryOrderMode.ordersMemoryAccesses(getMemoryOrder());
+    }
+
+    default boolean hasMemoryFences() {
+        return getMemoryOrder().hasFences();
+    }
+
 }

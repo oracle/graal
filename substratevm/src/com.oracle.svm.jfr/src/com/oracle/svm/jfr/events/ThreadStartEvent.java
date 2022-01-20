@@ -48,11 +48,7 @@ public class ThreadStartEvent {
             JfrNativeEventWriter.putLong(data, JfrEvents.ThreadStart.getId());
             JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
             JfrNativeEventWriter.putEventThread(data);
-            if (svm.isStackTraceEnabled(JfrEvents.ThreadStart.getId())) {
-                JfrNativeEventWriter.putLong(data, svm.getStackTraceId(0));
-            } else {
-                JfrNativeEventWriter.putLong(data, 0L);
-            }
+            JfrNativeEventWriter.putLong(data, svm.getStackTraceId(JfrEvents.ThreadStart.getId(), 0));
             JfrNativeEventWriter.putThread(data, isolateThread);
             JfrNativeEventWriter.putLong(data, SubstrateJVM.getParentThreadId(isolateThread));
             JfrNativeEventWriter.endEventWrite(data, false);

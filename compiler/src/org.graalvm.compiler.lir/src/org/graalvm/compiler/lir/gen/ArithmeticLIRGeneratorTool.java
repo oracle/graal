@@ -26,6 +26,7 @@ package org.graalvm.compiler.lir.gen;
 
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.calc.FloatConvert;
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.Variable;
@@ -106,11 +107,11 @@ public interface ArithmeticLIRGeneratorTool {
 
     Variable emitLoad(LIRKind kind, Value address, LIRFrameState state);
 
-    Variable emitVolatileLoad(LIRKind kind, Value address, LIRFrameState state);
+    Variable emitOrderedLoad(LIRKind kind, Value address, LIRFrameState state, MemoryOrderMode memoryOrder);
 
     void emitStore(ValueKind<?> kind, Value address, Value input, LIRFrameState state);
 
-    void emitVolatileStore(ValueKind<?> kind, Value address, Value input, LIRFrameState state);
+    void emitOrderedStore(ValueKind<?> kind, Value address, Value input, LIRFrameState state, MemoryOrderMode memoryOrder);
 
     @SuppressWarnings("unused")
     default Value emitFusedMultiplyAdd(Value a, Value b, Value c) {
@@ -173,6 +174,16 @@ public interface ArithmeticLIRGeneratorTool {
         RoundingMode(int encoding) {
             this.encoding = encoding;
         }
+    }
+
+    @SuppressWarnings("unused")
+    default Value emitCountLeadingZeros(Value value) {
+        throw GraalError.unimplemented("No specialized implementation available");
+    }
+
+    @SuppressWarnings("unused")
+    default Value emitCountTrailingZeros(Value value) {
+        throw GraalError.unimplemented("No specialized implementation available");
     }
 
 }

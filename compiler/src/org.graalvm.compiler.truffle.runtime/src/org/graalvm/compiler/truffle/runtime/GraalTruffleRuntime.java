@@ -701,26 +701,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
         return rootNode.getCallTarget();
     }
 
-    public final OptimizedCallTarget newCallTarget(RootNode rootNode, OptimizedCallTarget source) {
-        CompilerAsserts.neverPartOfCompilation();
-        OptimizedCallTarget target = createOptimizedCallTarget(source, rootNode);
-        GraalRuntimeAccessor.INSTRUMENT.onLoad(target.getRootNode());
-        if (target.engine.compileAOTOnCreate) {
-            if (target.prepareForAOT()) {
-                target.compile(true);
-            }
-        }
-        return target;
-    }
-
-    public final OptimizedCallTarget createOSRCallTarget(RootNode rootNode) {
-        CompilerAsserts.neverPartOfCompilation();
-        OptimizedCallTarget target = createOptimizedCallTarget(null, rootNode);
-        GraalRuntimeAccessor.INSTRUMENT.onLoad(rootNode);
-        return target;
-    }
-
-    public abstract OptimizedCallTarget createOptimizedCallTarget(OptimizedCallTarget source, RootNode rootNode);
+    protected abstract OptimizedCallTarget createOptimizedCallTarget(OptimizedCallTarget source, RootNode rootNode);
 
     public void addListener(GraalTruffleRuntimeListener listener) {
         listeners.add(listener);
@@ -831,7 +812,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
             }
         } finally {
             Supplier<String> serializedException = () -> CompilableTruffleAST.serializeException(t);
-            callTarget.onCompilationFailed(serializedException, isSuppressedFailure(callTarget, serializedException), false, false, false);
+            callTarget.onCompilationFailed(serializedException, isSuppressedTruffleRuntimeException(t) || isSuppressedFailure(callTarget, serializedException), false, false, false);
         }
     }
 
@@ -1120,6 +1101,17 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     @Override
     public boolean isSuppressedFailure(CompilableTruffleAST compilable, Supplier<String> serializedException) {
         return floodControlHandler != null && floodControlHandler.isSuppressedFailure(compilable, serializedException);
+    }
+
+    /**
+     * Allows {@link GraalTruffleRuntime} subclasses to suppress exceptions such as an exception
+     * thrown during VM exit. Unlike {@link #isSuppressedFailure(CompilableTruffleAST, Supplier)}
+     * this method is called only for exceptions thrown on the Truffle runtime side, so it does not
+     * need to stringify the passed exception.
+     */
+    @SuppressWarnings("unused")
+    protected boolean isSuppressedTruffleRuntimeException(Throwable throwable) {
+        return false;
     }
 
     // https://bugs.openjdk.java.net/browse/JDK-8209535

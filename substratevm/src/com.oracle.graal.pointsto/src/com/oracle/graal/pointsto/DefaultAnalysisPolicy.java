@@ -32,9 +32,11 @@ import java.util.List;
 
 import org.graalvm.compiler.options.OptionValues;
 
+import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.AbstractSpecialInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;
+import com.oracle.graal.pointsto.flow.ContextInsensitiveFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
@@ -46,6 +48,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.typestore.ArrayElementsTypeStore;
 import com.oracle.graal.pointsto.typestore.FieldTypeStore;
@@ -123,7 +126,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
 
     @Override
     public FieldTypeStore createFieldTypeStore(AnalysisObject object, AnalysisField field, AnalysisUniverse universe) {
-        return new UnifiedFieldTypeStore(field, object);
+        return new UnifiedFieldTypeStore(field, object, new ContextInsensitiveFieldTypeFlow(field, field.getType(), object));
     }
 
     @Override
@@ -143,13 +146,13 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
     }
 
     @Override
-    public AbstractVirtualInvokeTypeFlow createVirtualInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, AnalysisMethod targetMethod,
+    public AbstractVirtualInvokeTypeFlow createVirtualInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
                     TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
         return new DefaultVirtualInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
     }
 
     @Override
-    public AbstractSpecialInvokeTypeFlow createSpecialInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, AnalysisMethod targetMethod,
+    public AbstractSpecialInvokeTypeFlow createSpecialInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
                     TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
         return new DefaultSpecialInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
     }
@@ -159,7 +162,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
 
         private TypeState seenReceiverTypes = TypeState.forEmpty();
 
-        protected DefaultVirtualInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, AnalysisMethod targetMethod,
+        protected DefaultVirtualInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
                         TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
             super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
         }
@@ -207,7 +210,14 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
                     continue;
                 }
 
-                AnalysisMethod method = type.resolveConcreteMethod(getTargetMethod());
+                AnalysisMethod method = null;
+                try {
+                    method = type.resolveConcreteMethod(targetMethod);
+                } catch (UnsupportedFeatureException ex) {
+                    /* Register the ex with UnsupportedFeatures and allow analysis to continue. */
+                    bb.getUnsupportedFeatures().addMessage("resolve_" + targetMethod.format("%H.%n(%p)"), targetMethod, ex.getMessage(), null, ex);
+                }
+
                 if (method == null || Modifier.isAbstract(method.getModifiers())) {
                     /*
                      * Type states can be conservative, i.e., we can have receiver types that do not
@@ -218,7 +228,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
 
                 assert !Modifier.isAbstract(method.getModifiers());
 
-                MethodTypeFlow callee = method.getTypeFlow();
+                MethodTypeFlow callee = PointsToAnalysis.assertPointsToAnalysisMethod(method).getTypeFlow();
                 MethodFlowsGraph calleeFlows = callee.addContext(bb, bb.contextPolicy().emptyContext(), this);
 
                 assert callee.getContexts()[0] == bb.contextPolicy().emptyContext();
@@ -259,7 +269,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
 
             /* Unlink all callees. */
             for (AnalysisMethod callee : super.getCallees()) {
-                MethodFlowsGraph calleeFlows = callee.getTypeFlow().getFlows(bb.contextPolicy().emptyContext());
+                MethodFlowsGraph calleeFlows = PointsToAnalysis.assertPointsToAnalysisMethod(callee).getTypeFlow().getFlows(bb.contextPolicy().emptyContext());
                 /* Iterate over the actual parameters in caller context. */
                 for (int i = 0; i < actualParameters.length; i++) {
                     /* Get the formal parameter from the callee. */
@@ -323,7 +333,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
             Collection<AnalysisMethod> calleesList = getCallees();
             List<MethodFlowsGraph> methodFlowsGraphs = new ArrayList<>(calleesList.size());
             for (AnalysisMethod method : calleesList) {
-                methodFlowsGraphs.add(method.getTypeFlow().getFlows(bb.contextPolicy().emptyContext()));
+                methodFlowsGraphs.add(PointsToAnalysis.assertPointsToAnalysisMethod(method).getTypeFlow().getFlows(bb.contextPolicy().emptyContext()));
             }
             return methodFlowsGraphs;
         }
@@ -334,7 +344,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
 
         MethodFlowsGraph calleeFlows = null;
 
-        DefaultSpecialInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, AnalysisMethod targetMethod,
+        DefaultSpecialInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
                         TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
             super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
         }

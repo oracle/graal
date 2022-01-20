@@ -24,6 +24,8 @@ package com.oracle.truffle.espresso.jdwp.api;
 
 public interface MethodHook {
 
+    public static final MethodHook[] EMPTY = new MethodHook[0];
+
     enum Kind {
         ONE_TIME,
         INDEFINITE

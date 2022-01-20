@@ -64,6 +64,7 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.logging.Handler;
 
+import com.oracle.truffle.api.strings.TruffleString;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -530,6 +531,8 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             EngineAccessor.SOURCE.setFileSystemContext(builder, getDefaultFileSystemContext());
         }
 
+        EngineAccessor.SOURCE.setEmbedderSource(builder, true);
+
         if (content instanceof CharSequence) {
             builder.content((CharSequence) content);
         } else if (content instanceof ByteSequence) {
@@ -682,7 +685,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
                         || receiver instanceof Long || receiver instanceof Float //
                         || receiver instanceof Boolean || receiver instanceof Character //
                         || receiver instanceof Byte || receiver instanceof Short //
-                        || receiver instanceof String;
+                        || receiver instanceof String || receiver instanceof TruffleString;
     }
 
     interface VMObject {

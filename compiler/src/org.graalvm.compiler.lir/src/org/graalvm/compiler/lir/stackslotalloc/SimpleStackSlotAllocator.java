@@ -39,12 +39,14 @@ import org.graalvm.compiler.lir.ValueProcedure;
 import org.graalvm.compiler.lir.VirtualStackSlot;
 import org.graalvm.compiler.lir.framemap.FrameMapBuilderTool;
 import org.graalvm.compiler.lir.framemap.SimpleVirtualStackSlot;
+import org.graalvm.compiler.lir.framemap.SimpleVirtualStackSlotAlias;
 import org.graalvm.compiler.lir.framemap.VirtualStackSlotRange;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.phases.AllocationPhase;
 
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.ValueKind;
 
 public class SimpleStackSlotAllocator extends AllocationPhase {
 
@@ -62,8 +64,13 @@ public class SimpleStackSlotAllocator extends AllocationPhase {
         for (VirtualStackSlot virtualSlot : builder.getStackSlots()) {
             final StackSlot slot;
             if (virtualSlot instanceof SimpleVirtualStackSlot) {
-                slot = builder.getFrameMap().allocateSpillSlot(virtualSlot.getValueKind());
-                virtualFramesize.add(debug, builder.getFrameMap().spillSlotSize(virtualSlot.getValueKind()));
+                ValueKind<?> slotKind = virtualSlot.getValueKind();
+                slot = builder.getFrameMap().allocateSpillSlot(slotKind);
+                virtualFramesize.add(debug, builder.getFrameMap().spillSlotSize(slotKind));
+            } else if (virtualSlot instanceof SimpleVirtualStackSlotAlias) {
+                ValueKind<?> slotKind = ((SimpleVirtualStackSlotAlias) virtualSlot).getAliasedSlot().getValueKind();
+                slot = builder.getFrameMap().allocateSpillSlot(slotKind);
+                virtualFramesize.add(debug, builder.getFrameMap().spillSlotSize(slotKind));
             } else if (virtualSlot instanceof VirtualStackSlotRange) {
                 VirtualStackSlotRange slotRange = (VirtualStackSlotRange) virtualSlot;
                 slot = builder.getFrameMap().allocateStackMemory(slotRange.getSizeInBytes(), slotRange.getAlignmentInBytes());
@@ -87,6 +94,11 @@ public class SimpleStackSlotAllocator extends AllocationPhase {
             ValueProcedure updateProc = (value, mode, flags) -> {
                 if (isVirtualStackSlot(value)) {
                     StackSlot stackSlot = mapping[asVirtualStackSlot(value).getId()];
+                    if (value instanceof SimpleVirtualStackSlotAlias) {
+                        GraalError.guarantee(mode == LIRInstruction.OperandMode.USE || mode == LIRInstruction.OperandMode.ALIVE, "Invalid application of SimpleVirtualStackSlotAlias");
+                        // return the same slot, but with the alias's kind.
+                        stackSlot = StackSlot.get(value.getValueKind(), stackSlot.getRawOffset(), stackSlot.getRawAddFrameSize());
+                    }
                     debug.log("map %s -> %s", value, stackSlot);
                     return stackSlot;
                 }

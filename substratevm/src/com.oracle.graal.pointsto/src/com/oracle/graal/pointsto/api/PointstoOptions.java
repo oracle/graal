@@ -93,7 +93,7 @@ public class PointstoOptions {
     public static final OptionKey<Integer> TypeFlowSaturationCutoff = new OptionKey<>(20);
 
     @Option(help = "Enable the type flow saturation analysis performance optimization.")//
-    public static final OptionKey<Boolean> RemoveSaturatedTypeFlows = new OptionKey<Boolean>(true) {
+    public static final OptionKey<Boolean> RemoveSaturatedTypeFlows = new OptionKey<>(true) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
             /* Removing saturated type flows needs array type flows aliasing. */
@@ -102,7 +102,7 @@ public class PointstoOptions {
     };
 
     @Option(help = "Model all array type flows using a unique elements type flow abstraction.")//
-    public static final OptionKey<Boolean> AliasArrayTypeFlows = new OptionKey<Boolean>(true) {
+    public static final OptionKey<Boolean> AliasArrayTypeFlows = new OptionKey<>(true) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
             /* Aliasing array type flows implies relaxation of type flow constraints. */
@@ -143,7 +143,7 @@ public class PointstoOptions {
      */
     @Option(help = "Controls the static analysis context sensitivity. Available values: insens (context insensitive analysis), allocsens (context insensitive analysis, context insensitive heap, allocation site sensitive heap), " +
                     "_1obj (1 object sensitive analysis with a context insensitive heap), _2obj1h (2 object sensitive with a 1 context sensitive heap)")//
-    public static final OptionKey<String> AnalysisContextSensitivity = new OptionKey<String>("insens") {
+    public static final OptionKey<String> AnalysisContextSensitivity = new OptionKey<>("insens") {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
             switch (newValue.toLowerCase()) {

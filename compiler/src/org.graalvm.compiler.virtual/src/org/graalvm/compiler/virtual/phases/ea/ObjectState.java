@@ -34,9 +34,9 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.java.MonitorIdNode;
 import org.graalvm.compiler.nodes.virtual.EscapeObjectState;
 import org.graalvm.compiler.nodes.virtual.LockState;
+import org.graalvm.compiler.nodes.virtual.MaterializedObjectState;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
-import org.graalvm.compiler.virtual.nodes.MaterializedObjectState;
-import org.graalvm.compiler.virtual.nodes.VirtualObjectState;
+import org.graalvm.compiler.nodes.virtual.VirtualObjectState;
 
 import jdk.vm.ci.meta.JavaConstant;
 

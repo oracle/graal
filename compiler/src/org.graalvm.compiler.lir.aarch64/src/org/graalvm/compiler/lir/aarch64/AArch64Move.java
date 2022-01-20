@@ -364,10 +364,10 @@ public class AArch64Move {
         }
     }
 
-    public static final class VolatileLoadOp extends ExtendableLoadOp {
-        public static final LIRInstructionClass<VolatileLoadOp> TYPE = LIRInstructionClass.create(VolatileLoadOp.class);
+    public static final class LoadAcquireOp extends ExtendableLoadOp {
+        public static final LIRInstructionClass<LoadAcquireOp> TYPE = LIRInstructionClass.create(LoadAcquireOp.class);
 
-        public VolatileLoadOp(AArch64Kind accessKind, AllocatableValue result, AArch64AddressValue address, LIRFrameState state) {
+        public LoadAcquireOp(AArch64Kind accessKind, AllocatableValue result, AArch64AddressValue address, LIRFrameState state) {
             super(TYPE, accessKind, accessKind.getSizeInBytes() * Byte.SIZE, ExtendKind.NONE, result, address, state);
         }
 
@@ -452,11 +452,11 @@ public class AArch64Move {
         }
     }
 
-    public static final class VolatileStoreOp extends MemOp {
-        public static final LIRInstructionClass<VolatileStoreOp> TYPE = LIRInstructionClass.create(VolatileStoreOp.class);
+    public static final class StoreReleaseOp extends MemOp {
+        public static final LIRInstructionClass<StoreReleaseOp> TYPE = LIRInstructionClass.create(StoreReleaseOp.class);
         @Use protected AllocatableValue input;
 
-        public VolatileStoreOp(AArch64Kind accessKind, AArch64AddressValue address, AllocatableValue input, LIRFrameState state) {
+        public StoreReleaseOp(AArch64Kind accessKind, AArch64AddressValue address, AllocatableValue input, LIRFrameState state) {
             super(TYPE, accessKind, address, state);
             this.input = input;
         }

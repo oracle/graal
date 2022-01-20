@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.jni.functions;
 
-// Checkstyle: allow reflection
-
 import static com.oracle.svm.core.annotate.RestrictHeapAccess.Access.NO_ALLOCATION;
 
 import java.lang.reflect.Array;
@@ -1062,21 +1060,21 @@ public final class JNIFunctions {
             }
         }
 
-        static class ReturnEDetached implements CEntryPointOptions.Prologue {
+        static class ReturnEDetached implements CEntryPointOptions.PrologueBailout {
             @Uninterruptible(reason = "prologue")
             public static int bailout(int prologueResult) {
                 return JNIErrors.JNI_EDETACHED();
             }
         }
 
-        static class ReturnMinusOne implements CEntryPointOptions.Prologue {
+        static class ReturnMinusOne implements CEntryPointOptions.PrologueBailout {
             @Uninterruptible(reason = "prologue")
             public static int bailout(int prologueResult) {
                 return -1;
             }
         }
 
-        static class ReturnMinusOneLong implements CEntryPointOptions.Prologue {
+        static class ReturnMinusOneLong implements CEntryPointOptions.PrologueBailout {
             @Uninterruptible(reason = "Thread state not set up yet.")
             public static long bailout(int prologueResult) {
                 return -1L;

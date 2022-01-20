@@ -24,10 +24,11 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import org.graalvm.compiler.nodes.java.StoreFieldNode;
+import org.graalvm.compiler.nodes.ValueNode;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
 /**
@@ -35,8 +36,8 @@ import com.oracle.graal.pointsto.typestate.TypeState;
  */
 public abstract class StoreFieldTypeFlow extends AccessFieldTypeFlow {
 
-    protected StoreFieldTypeFlow(StoreFieldNode node) {
-        super(node);
+    protected StoreFieldTypeFlow(ValueNode node, AnalysisField field) {
+        super(node, field);
     }
 
     protected StoreFieldTypeFlow(StoreFieldTypeFlow original, MethodFlowsGraph methodFlows) {
@@ -60,8 +61,8 @@ public abstract class StoreFieldTypeFlow extends AccessFieldTypeFlow {
         /** The flow of the input value. */
         private final TypeFlow<?> valueFlow;
 
-        StoreStaticFieldTypeFlow(StoreFieldNode node, TypeFlow<?> valueFlow, FieldTypeFlow fieldFlow) {
-            super(node);
+        StoreStaticFieldTypeFlow(ValueNode node, AnalysisField field, TypeFlow<?> valueFlow, FieldTypeFlow fieldFlow) {
+            super(node, field);
             this.valueFlow = valueFlow;
             this.fieldFlow = fieldFlow;
         }
@@ -107,8 +108,8 @@ public abstract class StoreFieldTypeFlow extends AccessFieldTypeFlow {
         /** The flow of the store operation receiver object. */
         private TypeFlow<?> objectFlow;
 
-        StoreInstanceFieldTypeFlow(StoreFieldNode node, TypeFlow<?> valueFlow, TypeFlow<?> objectFlow) {
-            super(node);
+        StoreInstanceFieldTypeFlow(ValueNode node, AnalysisField field, TypeFlow<?> valueFlow, TypeFlow<?> objectFlow) {
+            super(node, field);
             this.valueFlow = valueFlow;
             this.objectFlow = objectFlow;
         }

@@ -52,6 +52,7 @@ import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.infrastructure.WrappedConstantPool;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.infrastructure.WrappedSignature;
+import com.oracle.graal.pointsto.meta.AnalysisType.UsageKind;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
 import jdk.vm.ci.code.BytecodePosition;
@@ -109,8 +110,10 @@ public class AnalysisUniverse implements Universe {
     private final MetaAccessProvider originalMetaAccess;
     private final SnippetReflectionProvider originalSnippetReflection;
     private final SnippetReflectionProvider snippetReflection;
+    private final AnalysisFactory analysisFactory;
 
     private AnalysisType objectClass;
+    private AnalysisType cloneableClass;
     private final JavaKind wordKind;
     private AnalysisPolicy analysisPolicy;
     private BigBang bb;
@@ -122,7 +125,7 @@ public class AnalysisUniverse implements Universe {
     @SuppressWarnings("unchecked")
     public AnalysisUniverse(HostVM hostVM, JavaKind wordKind, AnalysisPolicy analysisPolicy, SubstitutionProcessor substitutions, MetaAccessProvider originalMetaAccess,
                     SnippetReflectionProvider originalSnippetReflection,
-                    SnippetReflectionProvider snippetReflection) {
+                    SnippetReflectionProvider snippetReflection, AnalysisFactory analysisFactory) {
         this.hostVM = hostVM;
         this.wordKind = wordKind;
         this.analysisPolicy = analysisPolicy;
@@ -130,6 +133,7 @@ public class AnalysisUniverse implements Universe {
         this.originalMetaAccess = originalMetaAccess;
         this.originalSnippetReflection = originalSnippetReflection;
         this.snippetReflection = snippetReflection;
+        this.analysisFactory = analysisFactory;
 
         sealed = false;
         objectReplacers = (Function<Object, Object>[]) new Function<?, ?>[0];
@@ -207,7 +211,7 @@ public class AnalysisUniverse implements Universe {
 
     @SuppressFBWarnings(value = {"ES_COMPARING_STRINGS_WITH_EQ"}, justification = "Bug in findbugs")
     private AnalysisType createType(ResolvedJavaType type) {
-        if (!hostVM.platformSupported(this, type)) {
+        if (!hostVM.platformSupported(type)) {
             throw new UnsupportedFeatureException("type is not available in this platform: " + type.toJavaName(true));
         }
         if (sealed && !type.isArray()) {
@@ -260,7 +264,7 @@ public class AnalysisUniverse implements Universe {
 
         try {
             JavaKind storageKind = getStorageKind(type, originalMetaAccess);
-            AnalysisType newValue = new AnalysisType(this, type, storageKind, objectClass);
+            AnalysisType newValue = new AnalysisType(this, type, storageKind, objectClass, cloneableClass);
 
             synchronized (this) {
                 /*
@@ -277,9 +281,10 @@ public class AnalysisUniverse implements Universe {
                 assert typesById[newValue.getId()] == null;
                 typesById[newValue.getId()] = newValue;
 
-                if (newValue.isJavaLangObject()) {
-                    assert objectClass == null;
+                if (objectClass == null && newValue.isJavaLangObject()) {
                     objectClass = newValue;
+                } else if (cloneableClass == null && newValue.toJavaName(true).equals(Cloneable.class.getName())) {
+                    cloneableClass = newValue;
                 }
             }
 
@@ -378,7 +383,7 @@ public class AnalysisUniverse implements Universe {
     }
 
     private AnalysisField createField(ResolvedJavaField field) {
-        if (!hostVM.platformSupported(this, field)) {
+        if (!hostVM.platformSupported(field)) {
             throw new UnsupportedFeatureException("field is not available in this platform: " + field.format("%H.%n"));
         }
         if (sealed) {
@@ -421,13 +426,13 @@ public class AnalysisUniverse implements Universe {
     }
 
     private AnalysisMethod createMethod(ResolvedJavaMethod method) {
-        if (!hostVM.platformSupported(this, method)) {
+        if (!hostVM.platformSupported(method)) {
             throw new UnsupportedFeatureException("Method " + method.format("%H.%n(%p)" + " is not available in this platform."));
         }
         if (sealed) {
             return null;
         }
-        AnalysisMethod newValue = new AnalysisMethod(this, method);
+        AnalysisMethod newValue = analysisFactory.createMethod(this, method);
         AnalysisMethod oldValue = methods.putIfAbsent(method, newValue);
         return oldValue != null ? oldValue : newValue;
     }
@@ -435,7 +440,7 @@ public class AnalysisUniverse implements Universe {
     public AnalysisMethod[] lookup(JavaMethod[] inputs) {
         List<AnalysisMethod> result = new ArrayList<>(inputs.length);
         for (JavaMethod method : inputs) {
-            if (hostVM.platformSupported(this, (ResolvedJavaMethod) method)) {
+            if (hostVM.platformSupported((ResolvedJavaMethod) method)) {
                 AnalysisMethod aMethod = lookup(method);
                 if (aMethod != null) {
                     result.add(aMethod);
@@ -484,7 +489,7 @@ public class AnalysisUniverse implements Universe {
         if (constant == null) {
             return null;
         } else if (constant.getJavaKind().isObject() && !constant.isNull()) {
-            return originalSnippetReflection.forObject(getSnippetReflection().asObject(Object.class, constant));
+            return originalSnippetReflection.forObject(snippetReflection.asObject(Object.class, constant));
         } else {
             return constant;
         }
@@ -583,7 +588,7 @@ public class AnalysisUniverse implements Universe {
     public static Set<AnalysisMethod> getMethodImplementations(BigBang bb, AnalysisMethod method, boolean includeInlinedMethods) {
         Set<AnalysisMethod> implementations = new LinkedHashSet<>();
         if (method.wrapped.canBeStaticallyBound() || method.isConstructor()) {
-            if (method.isImplementationInvoked()) {
+            if (includeInlinedMethods ? method.isReachable() : method.isImplementationInvoked()) {
                 implementations.add(method);
             }
         } else {
@@ -670,6 +675,14 @@ public class AnalysisUniverse implements Universe {
         return objectClass;
     }
 
+    public void onFieldAccessed(AnalysisField field) {
+        bb.onFieldAccessed(field);
+    }
+
+    public void onTypeInstantiated(AnalysisType type, UsageKind usage) {
+        bb.onTypeInstantiated(type, usage);
+    }
+
     public SubstitutionProcessor getSubstitutions() {
         return substitutions;
     }
@@ -686,7 +699,4 @@ public class AnalysisUniverse implements Universe {
         this.bb = bb;
     }
 
-    public BigBang getBigbang() {
-        return bb;
-    }
 }

@@ -270,9 +270,15 @@ public final class InspectorProfiler extends ProfilerDomain {
             if (id < 0) { // not computed yet
                 id = -id;
                 SourceSection sourceSection = childProfilerNode.getSourceSection();
-                Script script = slh.assureLoaded(sourceSection.getSource());
-                ProfileNode childNode = new ProfileNode(id, new RuntimeCallFrame(childProfilerNode.getRootName(), script.getId(), script.getUrl(),
-                                sourceSection.getStartLine(), sourceSection.getStartColumn()), childProfilerNode.getPayload().getSelfHitCount());
+                RuntimeCallFrame callFrame;
+                if (sourceSection != null) {
+                    Script script = slh.assureLoaded(sourceSection.getSource());
+                    callFrame = new RuntimeCallFrame(childProfilerNode.getRootName(), script.getId(), script.getUrl(),
+                                    sourceSection.getStartLine(), sourceSection.getStartColumn());
+                } else {
+                    callFrame = new RuntimeCallFrame(childProfilerNode.getRootName(), -1, "", 0, 0);
+                }
+                ProfileNode childNode = new ProfileNode(id, callFrame, childProfilerNode.getPayload().getSelfHitCount());
                 nodes.add(childNode);
                 for (Long timestamp : childProfilerNode.getPayload().getSelfHitTimes()) {
                     timeLine.add(new Profile.TimeLineItem(timestamp, id));

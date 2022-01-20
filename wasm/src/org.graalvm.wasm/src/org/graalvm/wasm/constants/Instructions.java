@@ -246,6 +246,12 @@ public final class Instructions {
     public static final int I64_TRUNC_SAT_F64_S = 0x06;
     public static final int I64_TRUNC_SAT_F64_U = 0x07;
 
+    public static final int I32_EXTEND8_S = 0xC0;
+    public static final int I32_EXTEND16_S = 0xC1;
+    public static final int I64_EXTEND8_S = 0xC2;
+    public static final int I64_EXTEND16_S = 0xC3;
+    public static final int I64_EXTEND32_S = 0xC4;
+
     private static String[] decodingTable = new String[256];
 
     private Instructions() {

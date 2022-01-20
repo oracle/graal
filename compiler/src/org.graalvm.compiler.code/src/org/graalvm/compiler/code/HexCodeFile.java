@@ -24,8 +24,8 @@
  */
 package org.graalvm.compiler.code;
 
-import static org.graalvm.compiler.code.CompilationResult.JumpTable.EntryFormat.KEY2_OFFSET;
-import static org.graalvm.compiler.code.CompilationResult.JumpTable.EntryFormat.OFFSET;
+import static org.graalvm.compiler.code.CompilationResult.JumpTable.EntryFormat.VALUE_AND_OFFSET;
+import static org.graalvm.compiler.code.CompilationResult.JumpTable.EntryFormat.OFFSET_ONLY;
 
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
@@ -179,7 +179,7 @@ public class HexCodeFile {
         for (JumpTable table : jumpTables) {
             EntryFormat ef = table.entryFormat;
             // Backwards compatibility support for old versions of C1Visualizer
-            String efString = ef == OFFSET || ef == KEY2_OFFSET ? String.valueOf(ef.size) : ef.name();
+            String efString = ef == OFFSET_ONLY || ef == VALUE_AND_OFFSET ? String.valueOf(ef.size) : ef.name();
             ps.printf("JumpTable %d %s %d %d %s%n", table.getPosition(), efString, table.low, table.high, SECTION_DELIM);
         }
 
@@ -453,9 +453,9 @@ public class HexCodeFile {
             String entryFormatName = m.group(2);
             JumpTable.EntryFormat entryFormat;
             if ("4".equals(entryFormatName)) {
-                entryFormat = EntryFormat.OFFSET;
+                entryFormat = EntryFormat.OFFSET_ONLY;
             } else if ("8".equals(entryFormatName)) {
-                entryFormat = EntryFormat.KEY2_OFFSET;
+                entryFormat = EntryFormat.VALUE_AND_OFFSET;
             } else {
                 try {
                     entryFormat = EntryFormat.valueOf(entryFormatName);

@@ -53,6 +53,7 @@ import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveDetachThreadEpilogue;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.ParkEvent;
 import com.oracle.svm.core.thread.ParkEvent.ParkEventFactory;
@@ -168,40 +169,62 @@ class WindowsParkEvent extends ParkEvent {
 
     @Override
     protected void reset() {
-        SynchAPI.ResetEvent(eventHandle);
+        StackOverflowCheck.singleton().makeYellowZoneAvailable();
+        try {
+            int status = SynchAPI.ResetEvent(eventHandle);
+            VMError.guarantee(status != 0, "ResetEvent failed");
+        } finally {
+            StackOverflowCheck.singleton().protectYellowZone();
+        }
     }
 
     @Override
     protected void condWait() {
-        int status = SynchAPI.WaitForSingleObject(eventHandle, SynchAPI.INFINITE());
-        if (status != SynchAPI.WAIT_OBJECT_0()) {
-            Log.log().newline().string("WindowsParkEvent.condWait failed, status returned:  ").hex(status);
-            Log.log().newline().string("GetLastError returned:  ").hex(WinBase.GetLastError()).newline();
-            throw VMError.shouldNotReachHere("WaitForSingleObject failed");
+        StackOverflowCheck.singleton().makeYellowZoneAvailable();
+        try {
+            int status = SynchAPI.WaitForSingleObject(eventHandle, SynchAPI.INFINITE());
+            if (status != SynchAPI.WAIT_OBJECT_0()) {
+                Log.log().newline().string("WindowsParkEvent.condWait failed, status returned:  ").hex(status);
+                Log.log().newline().string("GetLastError returned:  ").hex(WinBase.GetLastError()).newline();
+                throw VMError.shouldNotReachHere("WaitForSingleObject failed");
+            }
+        } finally {
+            StackOverflowCheck.singleton().protectYellowZone();
         }
     }
 
     @Override
     protected void condTimedWait(long delayNanos) {
-        final int maxTimeout = 0x10_000_000;
-        long delayMillis = Math.max(0, TimeUtils.roundUpNanosToMillis(delayNanos));
-        do { // at least once to consume potential unpark
-            int timeout = (delayMillis < maxTimeout) ? (int) delayMillis : maxTimeout;
-            int status = SynchAPI.WaitForSingleObject(eventHandle, timeout);
-            if (status == SynchAPI.WAIT_OBJECT_0()) {
-                break; // unparked
-            } else if (status != SynchAPI.WAIT_TIMEOUT()) {
-                Log.log().newline().string("WindowsParkEvent.condTimedWait failed, status returned:  ").hex(status);
-                Log.log().newline().string("GetLastError returned:  ").hex(WinBase.GetLastError()).newline();
-                throw VMError.shouldNotReachHere("WaitForSingleObject failed");
-            }
-            delayMillis -= timeout;
-        } while (delayMillis > 0);
+        StackOverflowCheck.singleton().makeYellowZoneAvailable();
+        try {
+            final int maxTimeout = 0x10_000_000;
+            long delayMillis = Math.max(0, TimeUtils.roundUpNanosToMillis(delayNanos));
+            do { // at least once to consume potential unpark
+                int timeout = (delayMillis < maxTimeout) ? (int) delayMillis : maxTimeout;
+                int status = SynchAPI.WaitForSingleObject(eventHandle, timeout);
+                if (status == SynchAPI.WAIT_OBJECT_0()) {
+                    break; // unparked
+                } else if (status != SynchAPI.WAIT_TIMEOUT()) {
+                    Log.log().newline().string("WindowsParkEvent.condTimedWait failed, status returned:  ").hex(status);
+                    Log.log().newline().string("GetLastError returned:  ").hex(WinBase.GetLastError()).newline();
+                    throw VMError.shouldNotReachHere("WaitForSingleObject failed");
+                }
+                delayMillis -= timeout;
+            } while (delayMillis > 0);
+        } finally {
+            StackOverflowCheck.singleton().protectYellowZone();
+        }
     }
 
     @Override
     protected void unpark() {
-        SynchAPI.SetEvent(eventHandle);
+        StackOverflowCheck.singleton().makeYellowZoneAvailable();
+        try {
+            int status = SynchAPI.SetEvent(eventHandle);
+            VMError.guarantee(status != 0, "SetEvent failed");
+        } finally {
+            StackOverflowCheck.singleton().protectYellowZone();
+        }
     }
 }
 

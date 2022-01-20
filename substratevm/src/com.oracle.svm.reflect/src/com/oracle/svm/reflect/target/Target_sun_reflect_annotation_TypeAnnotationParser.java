@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.reflect.target;
 
-// Checkstyle: allow reflection
-
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.Type;

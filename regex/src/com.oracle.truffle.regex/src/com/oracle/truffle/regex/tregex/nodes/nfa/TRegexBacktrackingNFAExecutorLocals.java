@@ -86,25 +86,28 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
     private int sp;
     private final int[] result;
     private final long[] transitionBitSet;
+    private final boolean trackLastGroup;
+    private final boolean dontOverwriteLastGroup;
     private int lastResultSp = -1;
     private int lastInnerLiteralIndex;
     private int lastInitialStateIndex;
 
     public TRegexBacktrackingNFAExecutorLocals(Object input, int fromIndex, int index, int maxIndex, int nCaptureGroups, int nQuantifiers, int nZeroWidthQuantifiers, int[] zeroWidthTermEnclosedCGLow,
-                    int[] zeroWidthQuantifierCGOffsets, boolean allocateStackFrameBuffer, int maxNTransitions) {
+                    int[] zeroWidthQuantifierCGOffsets, boolean allocateStackFrameBuffer, int maxNTransitions, boolean trackLastGroup, boolean dontOverwriteLastGroup) {
         this(input, fromIndex, index, maxIndex, nCaptureGroups, nQuantifiers, nZeroWidthQuantifiers, zeroWidthTermEnclosedCGLow,
-                        zeroWidthQuantifierCGOffsets, allocateStackFrameBuffer ? new int[getStackFrameSize(nCaptureGroups, nQuantifiers, nZeroWidthQuantifiers, zeroWidthQuantifierCGOffsets)] : null,
-                        new Stack(new int[getStackFrameSize(nCaptureGroups, nQuantifiers, nZeroWidthQuantifiers, zeroWidthQuantifierCGOffsets) * 4]), 0,
-                        BitSets.createBitSetArray(maxNTransitions));
+                        zeroWidthQuantifierCGOffsets,
+                        allocateStackFrameBuffer ? new int[getStackFrameSize(nCaptureGroups, nQuantifiers, nZeroWidthQuantifiers, zeroWidthQuantifierCGOffsets, trackLastGroup)] : null,
+                        new Stack(new int[getStackFrameSize(nCaptureGroups, nQuantifiers, nZeroWidthQuantifiers, zeroWidthQuantifierCGOffsets, trackLastGroup) * 4]), 0,
+                        BitSets.createBitSetArray(maxNTransitions), trackLastGroup, dontOverwriteLastGroup);
         setIndex(fromIndex);
         clearCaptureGroups();
     }
 
     private TRegexBacktrackingNFAExecutorLocals(Object input, int fromIndex, int index, int maxIndex, int nCaptureGroups, int nQuantifiers, int nZeroWidthQuantifiers, int[] zeroWidthTermEnclosedCGLow,
                     int[] zeroWidthQuantifierCGOffsets, int[] stackFrameBuffer, Stack stack, int stackBase,
-                    long[] transitionBitSet) {
+                    long[] transitionBitSet, boolean trackLastGroup, boolean dontOverwriteLastGroup) {
         super(input, fromIndex, maxIndex, index);
-        this.stackFrameSize = getStackFrameSize(nCaptureGroups, nQuantifiers, nZeroWidthQuantifiers, zeroWidthQuantifierCGOffsets);
+        this.stackFrameSize = getStackFrameSize(nCaptureGroups, nQuantifiers, nZeroWidthQuantifiers, zeroWidthQuantifierCGOffsets, trackLastGroup);
         this.nQuantifierCounts = nQuantifiers;
         this.nZeroWidthQuantifiers = nZeroWidthQuantifiers;
         this.zeroWidthTermEnclosedCGLow = zeroWidthTermEnclosedCGLow;
@@ -113,33 +116,43 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
         this.stack = stack;
         this.stackBase = stackBase;
         this.sp = stackBase;
-        this.result = new int[nCaptureGroups * 2];
+        this.result = new int[nCaptureGroups * 2 + (trackLastGroup ? 1 : 0)];
         this.transitionBitSet = transitionBitSet;
+        this.trackLastGroup = trackLastGroup;
+        this.dontOverwriteLastGroup = dontOverwriteLastGroup;
     }
 
     private int[] stack() {
         return stack.stack;
     }
 
-    private static int getStackFrameSize(int nCaptureGroups, int nQuantifiers, int nZeroWidthQuantifiers, int[] zeroWidthQuantifierCGOffsets) {
-        return 2 + nCaptureGroups * 2 + nQuantifiers + nZeroWidthQuantifiers + zeroWidthQuantifierCGOffsets[zeroWidthQuantifierCGOffsets.length - 1];
+    private static int getStackFrameSize(int nCaptureGroups, int nQuantifiers, int nZeroWidthQuantifiers, int[] zeroWidthQuantifierCGOffsets, boolean trackLastGroup) {
+        return 2 + nCaptureGroups * 2 + (trackLastGroup ? 1 : 0) + nQuantifiers + nZeroWidthQuantifiers + zeroWidthQuantifierCGOffsets[zeroWidthQuantifierCGOffsets.length - 1];
     }
 
-    public TRegexBacktrackingNFAExecutorLocals createSubNFALocals() {
+    public TRegexBacktrackingNFAExecutorLocals createSubNFALocals(boolean newDontOverwriteLastGroup) {
         dupFrame();
-        return newSubLocals();
+        // The state of lastGroup must be reset to -1 for the submatcher so that we can detect when
+        // the submatcher is writing the lastGroup for the first time.
+        if (trackLastGroup && newDontOverwriteLastGroup) {
+            stack()[offsetLastGroup() + stackFrameSize] = -1;
+        }
+        return newSubLocals(newDontOverwriteLastGroup);
     }
 
-    public TRegexBacktrackingNFAExecutorLocals createSubNFALocals(PureNFATransition t) {
+    public TRegexBacktrackingNFAExecutorLocals createSubNFALocals(PureNFATransition t, boolean newDontOverwriteLastGroup) {
         dupFrame();
-        t.getGroupBoundaries().applyExploded(stack(), sp + stackFrameSize + 2, getIndex());
-        return newSubLocals();
+        if (trackLastGroup && newDontOverwriteLastGroup) {
+            stack()[offsetLastGroup() + stackFrameSize] = -1;
+        }
+        t.getGroupBoundaries().applyExploded(stack(), offsetCaptureGroups() + stackFrameSize, offsetLastGroup() + stackFrameSize, getIndex(), trackLastGroup, dontOverwriteLastGroup);
+        return newSubLocals(newDontOverwriteLastGroup);
     }
 
-    private TRegexBacktrackingNFAExecutorLocals newSubLocals() {
+    private TRegexBacktrackingNFAExecutorLocals newSubLocals(boolean newDontOverwriteLastGroup) {
         return new TRegexBacktrackingNFAExecutorLocals(getInput(), getFromIndex(), getIndex(), getMaxIndex(), result.length / 2, nQuantifierCounts, nZeroWidthQuantifiers, zeroWidthTermEnclosedCGLow,
                         zeroWidthQuantifierCGOffsets, stackFrameBuffer, stack, sp + stackFrameSize,
-                        transitionBitSet);
+                        transitionBitSet, trackLastGroup, newDontOverwriteLastGroup);
     }
 
     private int offsetIP() {
@@ -148,6 +161,10 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
 
     private int offsetCaptureGroups() {
         return sp + 2;
+    }
+
+    private int offsetLastGroup() {
+        return trackLastGroup ? sp + 2 + result.length - 1 : -1;
     }
 
     private int offsetQuantifierCounts() {
@@ -182,7 +199,7 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
     }
 
     public void apply(PureNFATransition t, int index) {
-        t.getGroupBoundaries().applyExploded(stack(), offsetCaptureGroups(), index);
+        t.getGroupBoundaries().applyExploded(stack(), offsetCaptureGroups(), offsetLastGroup(), index, trackLastGroup, dontOverwriteLastGroup);
     }
 
     public void resetToInitialState() {
@@ -244,7 +261,7 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
     }
 
     public void pushResult(PureNFATransition t, int index) {
-        t.getGroupBoundaries().applyExploded(result, 0, index);
+        t.getGroupBoundaries().applyExploded(result, 0, result.length - 1, index, trackLastGroup, dontOverwriteLastGroup);
         pushResult();
     }
 
@@ -315,7 +332,18 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
 
     public void overwriteCaptureGroups(int[] captureGroups) {
         assert captureGroups.length == result.length;
-        System.arraycopy(captureGroups, 0, stack(), offsetCaptureGroups(), captureGroups.length);
+        if (trackLastGroup) {
+            System.arraycopy(captureGroups, 0, stack(), offsetCaptureGroups(), captureGroups.length - 1);
+            setLastGroup(captureGroups[captureGroups.length - 1]);
+        } else {
+            System.arraycopy(captureGroups, 0, stack(), offsetCaptureGroups(), captureGroups.length);
+        }
+    }
+
+    public void setLastGroup(int newLastGroup) {
+        if (trackLastGroup && newLastGroup != -1 && (!dontOverwriteLastGroup || stack()[offsetLastGroup()] == -1)) {
+            stack()[offsetLastGroup()] = newLastGroup;
+        }
     }
 
     public int getQuantifierCount(Quantifier q) {
@@ -390,21 +418,21 @@ public final class TRegexBacktrackingNFAExecutorLocals extends TRegexExecutorLoc
         for (int i = sp; i >= 0; i -= stackFrameSize) {
             System.out.print(String.format("pc: %d, i: %d,\n  cg: [", (i == sp ? curPc : stack()[i + 1]), stack()[i]));
             for (int j = offsetCaptureGroups(); j < offsetQuantifierCounts(); j++) {
-                System.out.print(String.format("%d, ", stack()[j]));
+                System.out.print(String.format("%d, ", stack()[i + j - sp]));
             }
-            System.out.print(String.format("],\n  quant: ["));
+            System.out.print(String.format(",\n  quant: ["));
             for (int j = offsetQuantifierCounts(); j < offsetZeroWidthQuantifierIndices(); j++) {
-                System.out.print(String.format("%d, ", stack()[j]));
+                System.out.print(String.format("%d, ", stack()[i + j - sp]));
             }
             System.out.print(String.format("],\n  zwq-indices: ["));
             for (int j = offsetZeroWidthQuantifierIndices(); j < offsetZeroWidthQuantifierCG(); j++) {
-                System.out.print(String.format("%d, ", stack()[j]));
+                System.out.print(String.format("%d, ", stack()[i + j - sp]));
             }
             System.out.print(String.format("],\n  zwq-cg: {\n"));
             for (int zwq = 0; zwq < nZeroWidthQuantifiers; zwq++) {
                 System.out.print(String.format("    %d: [", zwq));
                 for (int j = offsetZeroWidthQuantifierCG(zwq); j < offsetZeroWidthQuantifierCG(zwq + 1); j++) {
-                    System.out.print(String.format("%d, ", stack()[j]));
+                    System.out.print(String.format("%d, ", stack()[i + j - sp]));
                 }
                 System.out.print("],\n");
             }

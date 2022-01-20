@@ -69,6 +69,7 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
     private VersionAction versionAction = VersionAction.None;
     private ToolchainAPIFunction toolchainAPI = null;
     private String toolchainAPIArg = null;
+    private boolean evalSourceOnly;
 
     @Override
     protected void launch(Context.Builder contextBuilder) {
@@ -123,6 +124,9 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
                     break;
                 case "--print-toolchain-api-identifier":
                     toolchainAPI = ToolchainAPIFunction.IDENTIFIER;
+                    break;
+                case "--eval-source-only":
+                    evalSourceOnly = true;
                     break;
                 default:
                     // options with argument
@@ -213,6 +217,7 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
         printOption("--print-toolchain-api-tool <name>", "print the location of a toolchain API tool and exit");
         printOption("--print-toolchain-api-paths <name>", "print toolchain API paths and exit");
         printOption("--print-toolchain-api-identifier", "print the toolchain API identifier and exit");
+        printOption("--eval-source-only", "evaluate the source bitcode file only without executing it. Used mostly when storing aux AOT image.");
     }
 
     @Override
@@ -250,6 +255,9 @@ public class LLVMLauncher extends AbstractLanguageLauncher {
                 Value library = context.eval(Source.newBuilder(getLanguageId(), file).build());
                 if (!library.canExecute()) {
                     throw abort("no main function found");
+                }
+                if (evalSourceOnly) {
+                    return 0;
                 }
                 return library.execute().asInt();
             } catch (PolyglotException e) {

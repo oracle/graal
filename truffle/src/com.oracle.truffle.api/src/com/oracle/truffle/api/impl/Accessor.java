@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -155,7 +155,7 @@ public abstract class Accessor {
 
         public abstract boolean isCloneUninitializedSupported(RootNode rootNode);
 
-        public abstract RootNode cloneUninitialized(RootNode rootNode);
+        public abstract RootNode cloneUninitialized(CallTarget sourceCallTarget, RootNode rootNode, RootNode uninitializedRootNode);
 
         public abstract int adoptChildrenAndCount(RootNode rootNode);
 
@@ -189,6 +189,8 @@ public abstract class Accessor {
         public abstract void setSharingLayer(RootNode rootNode, Object engine);
 
         public abstract boolean countsTowardsStackTraceLimit(RootNode rootNode);
+
+        public abstract CallTarget getCallTargetWithoutInitialization(RootNode root);
     }
 
     public abstract static class SourceSupport extends Support {
@@ -215,6 +217,8 @@ public abstract class Accessor {
         public abstract void invalidateAfterPreinitialiation(Source source);
 
         public abstract void mergeLoadedSources(Source[] sources);
+
+        public abstract void setEmbedderSource(SourceBuilder builder, boolean b);
     }
 
     public abstract static class InteropSupport extends Support {
@@ -237,6 +241,11 @@ public abstract class Accessor {
 
         public abstract Object createDefaultIterator(Object receiver);
 
+        public abstract Node createDispatchedInteropLibrary(int limit);
+
+        public abstract Node getUncachedInteropLibrary();
+
+        public abstract long unboxPointer(Node library, Object value);
     }
 
     public abstract static class HostSupport extends Support {
@@ -364,6 +373,8 @@ public abstract class Accessor {
         public abstract boolean isHostAccessAllowed(Object polyglotLanguageContext, Env env);
 
         public abstract boolean isNativeAccessAllowed(Object polyglotLanguageContext, Env env);
+
+        public abstract boolean isCurrentNativeAccessAllowed(Node node);
 
         public abstract boolean inContextPreInitialization(Object polyglotObject);
 
@@ -626,6 +637,12 @@ public abstract class Accessor {
 
         public abstract boolean isResourceLimitCancelExecution(Throwable cancelExecution);
 
+        public abstract boolean isPolyglotEngineException(Throwable throwable);
+
+        public abstract Throwable getPolyglotEngineExceptionCause(Throwable engineException);
+
+        public abstract RuntimeException createPolyglotEngineException(RuntimeException cause);
+
         public abstract int getExitExceptionExitCode(Throwable cancelExecution);
 
         public abstract SourceSection getCancelExecutionSourceLocation(Throwable cancelExecution);
@@ -653,6 +670,14 @@ public abstract class Accessor {
         public abstract boolean isPolyglotThread(Thread thread);
 
         public abstract Object getHostNull();
+
+        public abstract Object getGuestToHostCodeCache(Object polyglotContextImpl);
+
+        public abstract Object installGuestToHostCodeCache(Object polyglotContextImpl, Object cache);
+
+        public abstract boolean getNeedsAllEncodings();
+
+        public abstract boolean requireLanguageWithAllEncodings(Object encoding);
     }
 
     public abstract static class LanguageSupport extends Support {
@@ -983,7 +1008,11 @@ public abstract class Accessor {
             }
         }
 
-        public abstract RootCallTarget newCallTarget(RootNode rootNode);
+        public abstract RootCallTarget newCallTarget(CallTarget source, RootNode rootNode);
+
+        public abstract boolean isLoaded(CallTarget callTarget);
+
+        public abstract void notifyOnLoad(CallTarget callTarget);
 
         public ThreadLocalHandshake getThreadLocalHandshake() {
             return DefaultThreadLocalHandshake.SINGLETON;
@@ -1217,7 +1246,7 @@ public abstract class Accessor {
         } else if ("com.oracle.truffle.api.debug.Debugger$AccessorDebug".equals(thisClassName) ||
                         "com.oracle.truffle.tck.instrumentation.VerifierInstrument$TruffleTCKAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.api.instrumentation.test.AbstractInstrumentationTest$TestAccessor".equals(thisClassName) ||
-                        "com.oracle.truffle.api.test.polyglot.TestAPIAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.api.test.TestAPIAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.api.impl.TVMCIAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.api.impl.DefaultRuntimeAccessor".equals(thisClassName) ||
                         "org.graalvm.compiler.truffle.runtime.GraalRuntimeAccessor".equals(thisClassName) ||
@@ -1228,7 +1257,8 @@ public abstract class Accessor {
                         "com.oracle.truffle.api.library.LibraryAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.polyglot.enterprise.EnterpriseEngineAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.polyglot.enterprise.test.EnterpriseDispatchTestAccessor".equals(thisClassName) ||
-                        "com.oracle.truffle.api.staticobject.SomAccessor".equals(thisClassName)) {
+                        "com.oracle.truffle.api.staticobject.SomAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.api.strings.TStringAccessor".equals(thisClassName)) {
             // OK, classes allowed to use accessors
         } else {
             throw new IllegalStateException(thisClassName);

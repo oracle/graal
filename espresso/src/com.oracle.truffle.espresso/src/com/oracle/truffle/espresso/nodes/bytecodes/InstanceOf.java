@@ -70,7 +70,7 @@ public abstract class InstanceOf extends Node {
     public abstract static class Dynamic extends Node {
         protected static final int LIMIT = 4;
 
-        public abstract boolean execute(Klass superType, Klass maybeSubtype);
+        public abstract boolean execute(Klass maybeSubtype, Klass superType);
 
         protected static InstanceOf createInstanceOf(Klass superType) {
             return InstanceOf.create(superType, true);
@@ -78,14 +78,14 @@ public abstract class InstanceOf extends Node {
 
         @SuppressWarnings("unused")
         @Specialization(guards = "superType == cachedSuperType", limit = "LIMIT")
-        boolean doCached(Klass superType, Klass maybeSubType,
+        boolean doCached(Klass maybeSubType, Klass superType,
                         @Cached("superType") Klass cachedSuperType,
                         @Cached("createInstanceOf(cachedSuperType)") InstanceOf instanceOf) {
             return instanceOf.execute(maybeSubType);
         }
 
         @Specialization(replaces = "doCached")
-        protected boolean doGeneric(Klass superType, Klass maybeSubType) {
+        protected boolean doGeneric(Klass maybeSubType, Klass superType) {
             return superType.isAssignableFrom(maybeSubType);
         }
     }

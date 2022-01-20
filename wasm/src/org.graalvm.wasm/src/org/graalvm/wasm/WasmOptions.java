@@ -75,7 +75,9 @@ public class WasmOptions {
     public static final OptionKey<Boolean> UseUnsafeMemory = new OptionKey<>(false);
 
     // WASM Context Options
-    public static final String SATURATING_FLOAT_TO_INT_NAME = "saturating-float-to-int";
-    @Option(name = SATURATING_FLOAT_TO_INT_NAME, help = "Use saturating-float-to-int conversion", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
-    public static final OptionKey<Boolean> SATURATING_FLOAT_TO_INT = new OptionKey<>(false);
+    @Option(help = "Use saturating-float-to-int conversion", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Boolean> SaturatingFloatToInt = new OptionKey<>(false);
+
+    @Option(help = "Use sign-extension operators", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Boolean> SignExtensionOps = new OptionKey<>(false);
 }

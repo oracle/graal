@@ -24,9 +24,6 @@
  */
 package org.graalvm.compiler.hotspot.replacements;
 
-import static jdk.vm.ci.code.MemoryBarriers.LOAD_STORE;
-import static jdk.vm.ci.code.MemoryBarriers.STORE_LOAD;
-import static jdk.vm.ci.code.MemoryBarriers.STORE_STORE;
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_OPTIONVALUES;
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE;
@@ -271,11 +268,13 @@ public class MonitorSnippets implements Snippets {
             // Copy this unlocked mark word into the lock slot on the stack
             lock.writeWord(lockDisplacedMarkOffset(INJECTED_VMCONFIG), unlockedMark, DISPLACED_MARK_WORD_LOCATION);
 
-            // make sure previous store does not float below compareAndSwap
-            MembarNode.memoryBarrier(STORE_STORE);
-
-            // Test if the object's mark word is unlocked, and if so, store the
-            // (address of) the lock slot into the object's mark word.
+            /*
+             * Test if the object's mark word is unlocked, and if so, store the (address of) the
+             * lock slot into the object's mark word.
+             *
+             * Since pointer cas operations are volatile accesses, previous stores cannot float
+             * below it.
+             */
             Word currentMark = objectPointer.compareAndSwapWord(markOffset(INJECTED_VMCONFIG), unlockedMark, lock, MARK_WORD_LOCATION);
             if (probability(FAST_PATH_PROBABILITY, currentMark.equal(unlockedMark))) {
                 traceObject(trace, "+lock{cas}", object, true);
@@ -454,14 +453,25 @@ public class MonitorSnippets implements Snippets {
         // mark is a pointer to the ObjectMonitor + monitorMask
         Word monitor = mark.subtract(monitorMask(INJECTED_VMCONFIG));
         int ownerOffset = objectMonitorOwnerOffset(INJECTED_VMCONFIG);
-        if (probability(FREQUENT_PROBABILITY, monitor.logicCompareAndSwapWord(ownerOffset, WordFactory.zero(), registerAsWord(threadRegister), OBJECT_MONITOR_OWNER_LOCATION))) {
-            // success
-            traceObject(trace, "+lock{inflated:cas}", object, true);
-            counters.inflatedCas.inc();
-            return true;
+        Word owner = monitor.readWord(ownerOffset, OBJECT_MONITOR_OWNER_LOCATION);
+        // The following owner null check is essential. In the case where the null check fails, it
+        // avoids the subsequent bound-to-fail CAS operation, which would have caused the
+        // invalidation of the L1 cache of the core that runs the lock owner thread, and thus causes
+        // the lock to be held slightly longer.
+        if (probability(FREQUENT_PROBABILITY, owner.equal(0))) {
+            // it appears unlocked (owner == 0)
+            if (probability(FREQUENT_PROBABILITY, monitor.logicCompareAndSwapWord(ownerOffset, owner, registerAsWord(threadRegister), OBJECT_MONITOR_OWNER_LOCATION))) {
+                // success
+                traceObject(trace, "+lock{inflated:cas}", object, true);
+                counters.inflatedCas.inc();
+                return true;
+            } else {
+                traceObject(trace, "+lock{stub:inflated:failed-cas}", object, true);
+                counters.inflatedFailedCas.inc();
+            }
         } else {
-            traceObject(trace, "+lock{stub:inflated:failed-cas}", object, true);
-            counters.inflatedFailedCas.inc();
+            traceObject(trace, "+lock{stub:inflated:owned}", object, true);
+            counters.inflatedOwned.inc();
         }
         return false;
     }
@@ -569,7 +579,7 @@ public class MonitorSnippets implements Snippets {
                     // cxq == 0 && entryList == 0
                     // Nobody is waiting, success
                     // release_store
-                    memoryBarrier(LOAD_STORE | STORE_STORE);
+                    memoryBarrier(MembarNode.FenceKind.STORE_RELEASE);
                     monitor.writeWord(ownerOffset, zero());
                     traceObject(trace, "-lock{inflated:simple}", object, false);
                     counters.unlockInflatedSimple.inc();
@@ -580,9 +590,9 @@ public class MonitorSnippets implements Snippets {
                     if (probability(FREQUENT_PROBABILITY, succ.isNonNull())) {
                         // There may be a thread spinning on this monitor. Temporarily setting
                         // the monitor owner to null, and hope that the other thread will grab it.
-                        memoryBarrier(LOAD_STORE | STORE_STORE);
+                        memoryBarrier(MembarNode.FenceKind.STORE_RELEASE);
                         monitor.writeWord(ownerOffset, zero());
-                        memoryBarrier(STORE_STORE | STORE_LOAD);
+                        memoryBarrier(MembarNode.FenceKind.STORE_ACQUIRE);
                         succ = monitor.readWord(succOffset, OBJECT_MONITOR_SUCC_LOCATION);
                         if (probability(NOT_FREQUENT_PROBABILITY, succ.isNonNull())) {
                             // We manage to release the monitor before the other running thread even

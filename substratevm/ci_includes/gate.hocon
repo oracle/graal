@@ -17,6 +17,13 @@ gate-svm-js: {
   ]
 }
 
+svmUnittest : {
+  environment: {
+      "MX_TEST_RESULTS_PATTERN": "es-XXX.json",
+      "MX_TEST_RESULT_TAGS": "native-image"
+  }
+}
+
 builds += [
   ${labsjdk-ce-17} ${svm-common-linux-gate} ${gate-svm-js} ${svm-capabilities-base} {
     name: "gate-svm-js"
@@ -25,7 +32,7 @@ builds += [
   ${labsjdk-ce-17} ${svm-common-darwin-gate} ${gate-svm-js} {
     name: "gate-svm-darwin-js"
   }
-  ${labsjdk-ce-11} ${svm-common-linux-gate} ${linux-deploy} {
+  ${labsjdk-ce-11} ${svm-common-linux-gate} ${linux-deploy} ${svmUnittest} {
     name: "gate-svm-build-ce-11"
     downloads: {
       "MUSL_TOOLCHAIN": {
@@ -44,13 +51,13 @@ builds += [
       ${svm-cmd-gate} ["build,helloworld,test,nativeimagehelp,muslcbuild"]
     ]
   }
-  ${labsjdk-ce-11} ${svm-common-linux-gate} ${linux-deploy} {
+  ${labsjdk-ce-11} ${svm-common-linux-gate} ${linux-deploy} ${svmUnittest} {
     name: "gate-svm-modules-basic"
     run: [
       ${svm-cmd-gate} ["build,hellomodule,test"]
     ]
   }
-  ${labsjdk-ce-17} ${svm-common-linux-gate} ${eclipse} ${jdt} ${linux-deploy} {
+  ${labsjdk-ce-17} ${svm-common-linux-gate} ${eclipse} ${jdt} ${linux-deploy} ${svmUnittest} {
     name: "gate-svm-style-fullbuild"
     timelimit: "45:00"
     environment : {
@@ -60,7 +67,7 @@ builds += [
       ${svm-cmd-gate} ["style,fullbuild,helloworld,test,svmjunit"]
     ]
   }
-  ${labsjdk-ce-17} ${svm-common-gate} ${svm-common-windows-jdk17} {
+  ${labsjdk-ce-17} ${svm-common-gate} ${svm-common-windows-jdk17} ${svmUnittest} {
     name: "gate-svm-windows-basics"
     run: [
       ${svm-cmd-gate} ["build,helloworld,test,svmjunit"]

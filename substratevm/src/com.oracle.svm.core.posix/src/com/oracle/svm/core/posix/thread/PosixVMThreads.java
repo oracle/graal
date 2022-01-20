@@ -83,8 +83,9 @@ public final class PosixVMThreads extends VMThreads {
         Sched.NoTransitions.sched_yield();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
-    public boolean supportsPatientSafepoints() {
+    public boolean supportsNativeYieldAndSleep() {
         return true;
     }
 

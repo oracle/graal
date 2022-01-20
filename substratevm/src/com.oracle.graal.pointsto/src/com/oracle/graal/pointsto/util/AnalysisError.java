@@ -169,9 +169,7 @@ public class AnalysisError extends Error {
 
     public static void guarantee(boolean condition, String format, Object... args) {
         if (!condition) {
-            // Checkstyle: stop
             throw new AnalysisError(String.format(format, args));
-            // Checkstyle: resume
         }
     }
 

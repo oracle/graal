@@ -383,9 +383,10 @@ public final class JDWP {
         static class REDEFINE_CLASSES {
             public static final int ID = 18;
 
-            static CommandResult createReply(Packet packet, JDWPContext context) {
+            static CommandResult createReply(Packet packet, DebuggerController controller) {
                 PacketStream input = new PacketStream(packet);
                 PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+                JDWPContext context = controller.getContext();
                 int classes = input.readInt();
 
                 LOGGER.fine(() -> "Request to redefine %d classes received " + classes);
@@ -399,12 +400,12 @@ public final class JDWP {
                         if (klass == null) {
                             // check if klass was removed by a previous redefinition
                             if (!context.getIds().checkRemoved(refTypeId)) {
-                                reply.errorCode(ErrorCodes.INVALID_OBJECT);
+                                reply.errorCode(ErrorCodes.INVALID_CLASS);
                                 return new CommandResult(reply);
                             }
                         }
-                        if (klass == context.getNullObject()) {
-                            reply.errorCode(ErrorCodes.INVALID_OBJECT);
+                        if (klass == context.getNullObject() || klass == null) {
+                            reply.errorCode(ErrorCodes.INVALID_CLASS);
                             return new CommandResult(reply);
                         }
                     }
@@ -414,13 +415,25 @@ public final class JDWP {
                     redefineInfos.add(new RedefineInfo(klass, classBytes));
                 }
 
-                int errorCode = context.redefineClasses(redefineInfos);
-                if (errorCode != 0) {
-                    reply.errorCode(errorCode);
-                    LOGGER.warning(() -> "Redefine failed with error code: " + errorCode);
-                    return new CommandResult(reply);
+                // ensure redefinition atomicity by suspending all
+                // guest threads during the redefine transaction
+                Object[] allGuestThreads = context.getAllGuestThreads();
+                try {
+                    for (Object guestThread : allGuestThreads) {
+                        controller.suspend(guestThread);
+                    }
+                    int errorCode = context.redefineClasses(redefineInfos);
+                    if (errorCode != 0) {
+                        reply.errorCode(errorCode);
+                        LOGGER.warning(() -> "Redefine failed with error code: " + errorCode);
+                        return new CommandResult(reply);
+                    }
+                    LOGGER.fine(() -> "Redefine successful");
+                } finally {
+                    for (Object guestThread : allGuestThreads) {
+                        controller.resume(guestThread, false);
+                    }
                 }
-                LOGGER.fine(() -> "Redefine successful");
                 return new CommandResult(reply);
             }
         }
@@ -1118,7 +1131,7 @@ public final class JDWP {
                 }
 
                 // check that method is member of the class type or a super class
-                KlassRef declaringKlass = method.getDeclaringKlass();
+                KlassRef declaringKlass = method.getDeclaringKlassRef();
                 KlassRef checkedKlass = klass;
                 boolean isMember = false;
                 while (checkedKlass != null) {
@@ -1315,7 +1328,7 @@ public final class JDWP {
                     return new CommandResult(reply);
                 }
 
-                if (method.getDeclaringKlass() != itf) {
+                if (method.getDeclaringKlassRef() != itf) {
                     reply.errorCode(ErrorCodes.INVALID_METHODID);
                     return new CommandResult(reply);
                 }
@@ -1827,7 +1840,7 @@ public final class JDWP {
                     return new CommandResult(reply);
                 }
 
-                if (!context.isMemberOf(callee, method.getDeclaringKlass())) {
+                if (!context.isMemberOf(callee, method.getDeclaringKlassRef())) {
                     reply.errorCode(ErrorCodes.INVALID_METHODID);
                     return new CommandResult(reply);
                 }

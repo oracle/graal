@@ -32,6 +32,8 @@ import static jdk.vm.ci.code.MemoryBarriers.LOAD_LOAD;
 import static jdk.vm.ci.code.MemoryBarriers.LOAD_STORE;
 import static jdk.vm.ci.code.MemoryBarriers.STORE_STORE;
 
+import jdk.vm.ci.meta.ResolvedJavaField;
+
 /**
  * The new memory order modes (JDK9+) are defined with cumulative effect, from weakest to strongest:
  * Plain, Opaque, Release/Acquire, and Volatile. The existing Plain and Volatile modes are defined
@@ -40,29 +42,36 @@ import static jdk.vm.ci.code.MemoryBarriers.STORE_STORE;
  * requested for any access.) In JDK 9, these are provided without a full formal specification.
  */
 public enum MemoryOrderMode {
-    PLAIN(0, 0, 0, 0, false),
-    /**
-     * Opaque accesses are wrapped by dummy membars to avoid floating/hoisting, this is stronger
-     * than required since Opaque mode does not directly impose any ordering constraints with
-     * respect to other variables beyond Plain mode.
-     */
-    OPAQUE(0, 0, 0, 0, true),
-    ACQUIRE(0, LOAD_LOAD | LOAD_STORE, 0, 0, true),
-    RELEASE(0, 0, LOAD_STORE | STORE_STORE, 0, true),
-    RELEASE_ACQUIRE(0, LOAD_LOAD | LOAD_STORE, LOAD_STORE | STORE_STORE, 0, true),
-    VOLATILE(JMM_PRE_VOLATILE_READ, JMM_POST_VOLATILE_READ, JMM_PRE_VOLATILE_WRITE, JMM_POST_VOLATILE_WRITE, true);
+    PLAIN(0, 0, 0, 0),
+    OPAQUE(0, 0, 0, 0),
+    ACQUIRE(0, LOAD_LOAD | LOAD_STORE, 0, 0),
+    RELEASE(0, 0, LOAD_STORE | STORE_STORE, 0),
+    RELEASE_ACQUIRE(0, LOAD_LOAD | LOAD_STORE, LOAD_STORE | STORE_STORE, 0),
+    VOLATILE(JMM_PRE_VOLATILE_READ, JMM_POST_VOLATILE_READ, JMM_PRE_VOLATILE_WRITE, JMM_POST_VOLATILE_WRITE);
 
-    public final boolean emitBarriers;
-    public final int preReadBarriers;
-    public final int postReadBarriers;
-    public final int preWriteBarriers;
-    public final int postWriteBarriers;
+    public final int preReadFences;
+    public final int postReadFences;
+    public final int preWriteFences;
+    public final int postWriteFences;
+    private final boolean hasFences;
 
-    MemoryOrderMode(int preReadBarriers, int postReadBarriers, int preWriteBarriers, int postWriteBarriers, boolean emitBarriers) {
-        this.emitBarriers = emitBarriers;
-        this.preReadBarriers = preReadBarriers;
-        this.postReadBarriers = postReadBarriers;
-        this.preWriteBarriers = preWriteBarriers;
-        this.postWriteBarriers = postWriteBarriers;
+    MemoryOrderMode(int preReadFences, int postReadFences, int preWriteFences, int postWriteFences) {
+        this.preReadFences = preReadFences;
+        this.postReadFences = postReadFences;
+        this.preWriteFences = preWriteFences;
+        this.postWriteFences = postWriteFences;
+        this.hasFences = preReadFences != 0 || postReadFences != 0 || preWriteFences != 0 || postWriteFences != 0;
+    }
+
+    public boolean hasFences() {
+        return hasFences;
+    }
+
+    public static boolean ordersMemoryAccesses(MemoryOrderMode memoryOrder) {
+        return memoryOrder != PLAIN;
+    }
+
+    public static MemoryOrderMode getMemoryOrder(ResolvedJavaField field) {
+        return field.isVolatile() ? VOLATILE : PLAIN;
     }
 }

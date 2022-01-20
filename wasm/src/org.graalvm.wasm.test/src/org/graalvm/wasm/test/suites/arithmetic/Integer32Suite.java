@@ -53,7 +53,8 @@ import org.junit.Test;
 import org.graalvm.wasm.test.WasmFileSuite;
 
 public class Integer32Suite extends WasmFileSuite {
-    private final Properties saturatingFloatToIntProperties = WasmTestProperties.create("wasm.saturating-float-to-int");
+    private final Properties saturatingFloatToIntProperties = WasmTestProperties.create("wasm.SaturatingFloatToInt");
+    private final Properties signExtensionOpsProperties = WasmTestProperties.create("wasm.SignExtensionOps");
 
     private WasmStringCase[] testCases = {
                     WasmCase.create("CONST_SMALL", WasmCase.expected(42),
@@ -232,6 +233,14 @@ public class Integer32Suite extends WasmFileSuite {
                                     "(module (func (export \"_main\") (result i32) f64.const -1.235 i32.trunc_sat_f64_u))", saturatingFloatToIntProperties),
                     WasmCase.create("TRUNC_SAT_F64_U_VALID", WasmCase.expected(1),
                                     "(module (func (export \"_main\") (result i32) f64.const 1.532 i32.trunc_sat_f64_u))", saturatingFloatToIntProperties),
+                    WasmCase.create("EXTEND_8_LEADING_0", WasmCase.expected(0x0000_0001),
+                                    "(module (func (export \"_main\") (result i32) i32.const 0xFFFF_FF01 i32.extend8_s))", signExtensionOpsProperties),
+                    WasmCase.create("EXTEND_8_LEADING_1", WasmCase.expected(0xFFFF_FF81),
+                                    "(module (func (export \"_main\") (result i32) i32.const 0x0000_0081 i32.extend8_s))", signExtensionOpsProperties),
+                    WasmCase.create("EXTEND_16_LEADING_0", WasmCase.expected(0x0000_0001),
+                                    "(module (func (export \"_main\") (result i32) i32.const 0xFFFF_0001 i32.extend16_s))", signExtensionOpsProperties),
+                    WasmCase.create("EXTEND_16_LEADING_1", WasmCase.expected(0xFFFF_8001),
+                                    "(module (func (export \"_main\") (result i32) i32.const 0x0000_8001 i32.extend16_s))", signExtensionOpsProperties)
     };
 
     @Override

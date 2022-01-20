@@ -32,8 +32,8 @@ import com.oracle.svm.core.heap.Heap;
  * option was set.
  */
 public class ImmutableGCRuntimeOptionKey<T> extends ImmutableRuntimeOptionKey<T> {
-    public ImmutableGCRuntimeOptionKey(T defaultValue) {
-        super(defaultValue);
+    public ImmutableGCRuntimeOptionKey(T defaultValue, RuntimeOptionKeyFlag... flags) {
+        super(defaultValue, flags);
     }
 
     @Override

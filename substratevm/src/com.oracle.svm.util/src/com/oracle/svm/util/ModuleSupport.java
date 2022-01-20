@@ -25,23 +25,37 @@
 package com.oracle.svm.util;
 
 import java.util.NoSuchElementException;
+import java.util.Optional;
+import java.util.Set;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+
+import jdk.internal.module.Modules;
 
 @Platforms(Platform.HOSTED_ONLY.class)
 public final class ModuleSupport extends ModuleSupportBase {
     private ModuleSupport() {
     }
 
-    /**
-     * Add the proper module opening to allow accesses from accessingClass to declaringClass.
-     */
-    @SuppressWarnings("unused")
     public static void openModuleByClass(Class<?> declaringClass, Class<?> accessingClass) {
-        /* Nothing to do in JDK 8 version. JDK 11 version provides a proper implementation. */
-        assert JavaVersionUtil.JAVA_SPEC <= 8;
+        Module declaringModule = declaringClass.getModule();
+        String packageName = declaringClass.getPackageName();
+        Module namedAccessingModule = null;
+        if (accessingClass != null) {
+            Module accessingModule = accessingClass.getModule();
+            if (accessingModule.isNamed()) {
+                namedAccessingModule = accessingModule;
+            }
+        }
+        if (namedAccessingModule != null ? declaringModule.isOpen(packageName, namedAccessingModule) : declaringModule.isOpen(packageName)) {
+            return;
+        }
+        if (namedAccessingModule != null) {
+            Modules.addOpens(declaringModule, packageName, namedAccessingModule);
+        } else {
+            Modules.addOpensToAllUnnamed(declaringModule, packageName);
+        }
     }
 
     /**
@@ -50,40 +64,60 @@ public final class ModuleSupport extends ModuleSupportBase {
      */
     @SuppressWarnings("unused")
     public static void exportAndOpenPackageToClass(String moduleName, String packageName, boolean optional, Class<?> accessingClass) {
-        /* Nothing to do in JDK 8 version. JDK 11 version provides a proper implementation. */
-        assert JavaVersionUtil.JAVA_SPEC <= 8;
+        Optional<Module> value = ModuleLayer.boot().findModule(moduleName);
+        if (value.isEmpty()) {
+            if (!optional) {
+                throw new NoSuchElementException(moduleName);
+            }
+            return;
+        }
+        Module declaringModule = value.get();
+        Module accessingModule = accessingClass == null ? null : accessingClass.getModule();
+        if (accessingModule != null && accessingModule.isNamed()) {
+            if (!declaringModule.isOpen(packageName, accessingModule)) {
+                Modules.addOpens(declaringModule, packageName, accessingModule);
+            }
+        } else {
+            Modules.addOpensToAllUnnamed(declaringModule, packageName);
+        }
+
     }
 
     /**
      * Exports and opens all packages in the module named {@code name} to all unnamed modules.
-     *
-     * @param optional if {@code false} and there is no module named {@code name},
-     *            {@link NoSuchElementException} is thrown
      */
     @SuppressWarnings("unused")
     public static void exportAndOpenAllPackagesToUnnamed(String name, boolean optional) {
-        /* Nothing to do in JDK 8 version. JDK 11 version provides a proper implementation. */
-        assert JavaVersionUtil.JAVA_SPEC <= 8;
+        Optional<Module> value = ModuleLayer.boot().findModule(name);
+        if (value.isEmpty()) {
+            if (!optional) {
+                throw new NoSuchElementException("No module in boot layer named " + name + ". Available modules: " + ModuleLayer.boot());
+            }
+            return;
+        }
+        Module module = value.get();
+        Set<String> packages = module.getPackages();
+        for (String pkg : packages) {
+            Modules.addExportsToAllUnnamed(module, pkg);
+            Modules.addOpensToAllUnnamed(module, pkg);
+        }
     }
 
     /**
-     * Exports and opens {@code pkg} in the module named {@code name} to all unnamed modules.
-     *
-     * @param optional if {@code false} and there is no module named {@code name},
-     *            {@link NoSuchElementException} is thrown
+     * Exports and opens a single package {@code pkg} in the module named {@code name} to all
+     * unnamed modules.
      */
     @SuppressWarnings("unused")
     public static void exportAndOpenPackageToUnnamed(String name, String pkg, boolean optional) {
-        /* Nothing to do in JDK 8 version. JDK 11 version provides a proper implementation. */
-        assert JavaVersionUtil.JAVA_SPEC <= 8;
-    }
-
-    /**
-     * Gets the name of the module containing {@code clazz}.
-     */
-    @SuppressWarnings("unused")
-    public static String getModuleName(Class<?> clazz) {
-        assert JavaVersionUtil.JAVA_SPEC <= 8;
-        return null;
+        Optional<Module> value = ModuleLayer.boot().findModule(name);
+        if (value.isEmpty()) {
+            if (!optional) {
+                throw new NoSuchElementException(name);
+            }
+            return;
+        }
+        Module module = value.get();
+        Modules.addExportsToAllUnnamed(module, pkg);
+        Modules.addOpensToAllUnnamed(module, pkg);
     }
 }

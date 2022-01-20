@@ -164,21 +164,23 @@ CLSS public final static org.graalvm.nativeimage.Isolates$CreateIsolateParameter
  outer org.graalvm.nativeimage.Isolates
 innr public final static Builder
 meth public java.lang.String getAuxiliaryImagePath()
+meth public java.util.List<java.lang.String> getArguments()
 meth public org.graalvm.word.UnsignedWord getAuxiliaryImageReservedSpaceSize()
 meth public org.graalvm.word.UnsignedWord getReservedAddressSpaceSize()
 meth public static org.graalvm.nativeimage.Isolates$CreateIsolateParameters getDefault()
 supr java.lang.Object
-hfds DEFAULT,auxiliaryImagePath,auxiliaryImageReservedSpaceSize,reservedAddressSpaceSize
+hfds DEFAULT,arguments,auxiliaryImagePath,auxiliaryImageReservedSpaceSize,reservedAddressSpaceSize
 
 CLSS public final static org.graalvm.nativeimage.Isolates$CreateIsolateParameters$Builder
  outer org.graalvm.nativeimage.Isolates$CreateIsolateParameters
 cons public init()
 meth public org.graalvm.nativeimage.Isolates$CreateIsolateParameters build()
+meth public org.graalvm.nativeimage.Isolates$CreateIsolateParameters$Builder appendArgument(java.lang.String)
 meth public org.graalvm.nativeimage.Isolates$CreateIsolateParameters$Builder auxiliaryImagePath(java.lang.String)
 meth public org.graalvm.nativeimage.Isolates$CreateIsolateParameters$Builder auxiliaryImageReservedSpaceSize(org.graalvm.word.UnsignedWord)
 meth public org.graalvm.nativeimage.Isolates$CreateIsolateParameters$Builder reservedAddressSpaceSize(org.graalvm.word.UnsignedWord)
 supr java.lang.Object
-hfds auxiliaryImagePath,auxiliaryImageReservedSpaceSize,reservedAddressSpaceSize
+hfds arguments,auxiliaryImagePath,auxiliaryImageReservedSpaceSize,reservedAddressSpaceSize
 
 CLSS public final static org.graalvm.nativeimage.Isolates$IsolateException
  outer org.graalvm.nativeimage.Isolates
@@ -225,8 +227,8 @@ innr public final static HOSTED_ONLY
 innr public final static IOS_AARCH64
 innr public final static IOS_AMD64
 innr public final static LINUX_AARCH64
-innr public final static WINDOWS_AMD64
 innr public final static WINDOWS_AARCH64
+innr public final static WINDOWS_AMD64
 innr public static LINUX_AMD64
 meth public java.lang.String getArchitecture()
 meth public java.lang.String getOS()
@@ -321,17 +323,17 @@ CLSS public abstract interface static org.graalvm.nativeimage.Platform$WINDOWS
 intf org.graalvm.nativeimage.impl.InternalPlatform$PLATFORM_JNI
 meth public java.lang.String getOS()
 
-CLSS public final static org.graalvm.nativeimage.Platform$WINDOWS_AMD64
- outer org.graalvm.nativeimage.Platform
-cons public init()
-intf org.graalvm.nativeimage.Platform$AMD64
-intf org.graalvm.nativeimage.Platform$WINDOWS
-supr java.lang.Object
-
 CLSS public final static org.graalvm.nativeimage.Platform$WINDOWS_AARCH64
  outer org.graalvm.nativeimage.Platform
 cons public init()
 intf org.graalvm.nativeimage.Platform$AARCH64
+intf org.graalvm.nativeimage.Platform$WINDOWS
+supr java.lang.Object
+
+CLSS public final static org.graalvm.nativeimage.Platform$WINDOWS_AMD64
+ outer org.graalvm.nativeimage.Platform
+cons public init()
+intf org.graalvm.nativeimage.Platform$AMD64
 intf org.graalvm.nativeimage.Platform$WINDOWS
 supr java.lang.Object
 

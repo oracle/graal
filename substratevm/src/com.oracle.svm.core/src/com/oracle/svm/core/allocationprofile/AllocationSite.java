@@ -125,7 +125,7 @@ public final class AllocationSite {
         return className.hashCode() ^ siteName.hashCode();
     }
 
-    private static final Comparator<AllocationSite> sitesComparator = new Comparator<AllocationSite>() {
+    private static final Comparator<AllocationSite> sitesComparator = new Comparator<>() {
         @Override
         public int compare(AllocationSite o1, AllocationSite o2) {
             return Long.compare(o2.cachedSize, o1.cachedSize);

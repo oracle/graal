@@ -151,17 +151,19 @@ final class LanguageAccessor extends Accessor {
         public void initializeLanguage(TruffleLanguage<?> impl, LanguageInfo language, Object polyglotLanguage, Object polyglotLanguageInstance) {
             impl.languageInfo = language;
             impl.polyglotLanguageInstance = polyglotLanguageInstance;
-            if (impl.contextLocals == null) {
-                impl.contextLocals = Collections.emptyList();
-            } else {
-                ENGINE.initializeLanguageContextLocal(impl.contextLocals, polyglotLanguageInstance);
-                impl.contextLocals = Collections.unmodifiableList(impl.contextLocals);
-            }
-            if (impl.contextThreadLocals == null) {
-                impl.contextThreadLocals = Collections.emptyList();
-            } else {
-                ENGINE.initializeLanguageContextThreadLocal(impl.contextThreadLocals, polyglotLanguageInstance);
-                impl.contextThreadLocals = Collections.unmodifiableList(impl.contextThreadLocals);
+            if (polyglotLanguageInstance != null) {
+                if (impl.contextLocals == null) {
+                    impl.contextLocals = Collections.emptyList();
+                } else {
+                    ENGINE.initializeLanguageContextLocal(impl.contextLocals, polyglotLanguageInstance);
+                    impl.contextLocals = Collections.unmodifiableList(impl.contextLocals);
+                }
+                if (impl.contextThreadLocals == null) {
+                    impl.contextThreadLocals = Collections.emptyList();
+                } else {
+                    ENGINE.initializeLanguageContextThreadLocal(impl.contextThreadLocals, polyglotLanguageInstance);
+                    impl.contextThreadLocals = Collections.unmodifiableList(impl.contextThreadLocals);
+                }
             }
         }
 

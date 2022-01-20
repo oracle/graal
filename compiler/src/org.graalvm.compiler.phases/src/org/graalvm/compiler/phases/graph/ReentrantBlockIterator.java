@@ -42,6 +42,7 @@ import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.cfg.Block;
+import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 
 public final class ReentrantBlockIterator {
 
@@ -56,15 +57,41 @@ public final class ReentrantBlockIterator {
         }
     }
 
+    /**
+     * Abstract base class for reverse post order iteration over the {@link ControlFlowGraph}.
+     */
     public abstract static class BlockIteratorClosure<StateT> {
 
+        /**
+         * Create the initial state for the reverse post order iteration over the
+         * {@link ControlFlowGraph}.
+         */
         protected abstract StateT getInitialState();
 
+        /**
+         * Process the current block with the current state during reverse post order iteration.
+         */
         protected abstract StateT processBlock(Block block, StateT currentState);
 
+        /**
+         * Merge multiple states when processing {@link Block} starting with a
+         * {@link AbstractMergeNode}.
+         */
         protected abstract StateT merge(Block merge, List<StateT> states);
 
+        /**
+         * Clone a state for a successor invocation of
+         * {@link BlockIteratorClosure#processBlock(Block, Object)}.
+         */
         protected abstract StateT cloneState(StateT oldState);
+
+        /**
+         * Hook for subclasses to apply additional operations after
+         * {@link BlockIteratorClosure#cloneState(Object)} for successor blocks.
+         */
+        protected StateT afterSplit(@SuppressWarnings("unused") Block successor, StateT oldState) {
+            return oldState;
+        }
 
         protected abstract List<StateT> processLoop(Loop<Block> loop, StateT initialState);
     }
@@ -186,7 +213,7 @@ public final class ReentrantBlockIterator {
         for (int i = 1; i < successors.length; i++) {
             Block successor = successors[i];
             blockQueue.addFirst(successor);
-            states.put(successor.getBeginNode(), closure.cloneState(state));
+            states.put(successor.getBeginNode(), closure.afterSplit(successor, closure.cloneState(state)));
         }
         return successors[0];
     }

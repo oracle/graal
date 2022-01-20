@@ -110,6 +110,7 @@ import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.PhaseSuite;
+import org.graalvm.compiler.phases.OptimisticOptimizations.Optimization;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningPhase;
 import org.graalvm.compiler.phases.common.inlining.info.InlineInfo;
@@ -592,9 +593,14 @@ public abstract class GraalCompilerTest extends GraalTest {
      * all the paths where the value is set so it is the proper place for a test override. Setting
      * it in other places can result in inconsistent values being used in other parts of the
      * compiler.
+     *
+     * This method returns settings such that all optimizations except
+     * {@link Optimization#RemoveNeverExecutedCode} are enabled. The latter is removed to reduce a
+     * major source of indeterminism in tests caused by profiles. Most tests should ignore profiles
+     * as they can differ wildly depending on the set of tests being run.
      */
     protected OptimisticOptimizations getOptimisticOptimizations() {
-        return OptimisticOptimizations.ALL;
+        return OptimisticOptimizations.ALL.remove(Optimization.RemoveNeverExecutedCode);
     }
 
     protected final HighTierContext getDefaultHighTierContext() {

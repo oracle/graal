@@ -45,6 +45,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
@@ -69,7 +70,7 @@ import com.oracle.truffle.nfi.backend.spi.util.ProfiledArrayBuilder;
 import static com.oracle.truffle.api.dsl.Cached.Shared;
 
 @ExportLibrary(InteropLibrary.class)
-@ExportLibrary(SignatureLibrary.class)
+@ExportLibrary(value = SignatureLibrary.class, useForAOT = true, useForAOTPriority = 1)
 final class NFISignature implements TruffleObject {
 
     final String backendId;
@@ -138,6 +139,7 @@ final class NFISignature implements TruffleObject {
 
         @Specialization(guards = {"executable == cachedClosure.executable", "signature == cachedClosure.signature"}, assumptions = "getSingleContextAssumption()")
         @SuppressWarnings("unused")
+        @GenerateAOT.Exclude
         static Object doCached(NFISignature signature, Object executable,
                         @Cached("createClosure(executable, signature)") NFIClosure cachedClosure,
                         @CachedLibrary("cachedClosure.signature.nativeSignature") NFIBackendSignatureLibrary lib,
@@ -146,6 +148,7 @@ final class NFISignature implements TruffleObject {
         }
 
         @Specialization(replaces = "doCached")
+        @GenerateAOT.Exclude
         static Object doCreate(NFISignature signature, Object executable,
                         @CachedLibrary("signature.nativeSignature") NFIBackendSignatureLibrary lib) {
             NFIClosure closure = new NFIClosure(executable, signature);

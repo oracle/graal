@@ -66,7 +66,7 @@ public class SubstrateTruffleGraphBuilderPlugins {
         r0.register0("safepointBarrier", new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.add(new MembarNode(0));
+                b.add(new MembarNode(MembarNode.FenceKind.NONE));
                 return true;
             }
         });

@@ -44,4 +44,9 @@ public interface AArch64LoweringProviderMixin extends LoweringProvider {
         return true;
     }
 
+    @Override
+    default boolean writesStronglyOrdered() {
+        /* AArch64 only requires a weak memory model. */
+        return false;
+    }
 }

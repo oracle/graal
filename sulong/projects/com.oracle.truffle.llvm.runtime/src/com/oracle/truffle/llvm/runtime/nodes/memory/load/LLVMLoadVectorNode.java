@@ -109,7 +109,6 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
         @Specialization(guards = {"!isRecursive", "isAutoDerefHandle(addr)"})
         protected LLVMI1Vector doI1VectorDerefHandle(LLVMNativePointer addr,
                         @Cached LLVMDerefHandleGetReceiverNode getReceiver,
-
                         @Cached("createRecursive()") LLVMLoadI1VectorNode load) {
             return load.executeWithTarget(getReceiver.execute(addr));
         }
@@ -379,7 +378,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
 
         public abstract LLVMPointerVector executeWithTarget(Object address);
 
-        @Specialization(guards = "!isAutoDerefHandle(addr)")
+        @Specialization(guards = {"!isRecursive", "!isAutoDerefHandle(addr)"})
         @ExplodeLoop
         protected LLVMPointerVector doPointerVectorNative(LLVMNativePointer addr) {
             LLVMMemory memory = getLanguage().getLLVMMemory();
@@ -395,7 +394,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
         @Specialization(guards = {"!isRecursive", "isAutoDerefHandle(addr)"})
         protected LLVMPointerVector doPointerVectorDerefHandle(LLVMNativePointer addr,
                         @Cached LLVMDerefHandleGetReceiverNode getReceiver,
-                        @Cached("create(getVectorLength())") LLVMLoadPointerVectorNode load) {
+                        @Cached("createRecursive(getVectorLength())") LLVMLoadPointerVectorNode load) {
             return load.executeWithTarget(getReceiver.execute(addr));
         }
 
@@ -429,7 +428,7 @@ public abstract class LLVMLoadVectorNode extends LLVMLoadNode {
 
         public abstract LLVMFloatVector executeWithTarget(LLVMManagedPointer managed);
 
-        @Specialization(guards = "!isAutoDerefHandle(addr)")
+        @Specialization(guards = {"!isAutoDerefHandle(addr)"})
         @ExplodeLoop
         protected LLVMFloatVector doFloatVectorNative(LLVMNativePointer addr) {
             LLVMMemory memory = getLanguage().getLLVMMemory();

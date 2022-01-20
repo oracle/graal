@@ -38,6 +38,7 @@ import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.FloatConvert;
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.CastValue;
@@ -45,7 +46,6 @@ import org.graalvm.compiler.lir.ConstantValue;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.aarch64.AArch64AddressValue;
-import org.graalvm.compiler.lir.aarch64.AArch64ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.lir.aarch64.AArch64ArithmeticOp;
 import org.graalvm.compiler.lir.aarch64.AArch64BitManipulationOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Convert;
@@ -66,7 +66,7 @@ import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;
 
-public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implements AArch64ArithmeticLIRGeneratorTool {
+public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implements ArithmeticLIRGeneratorTool {
 
     public AArch64ArithmeticLIRGenerator(AllocatableValue nullRegisterValue) {
         this.nullRegisterValue = nullRegisterValue;
@@ -121,11 +121,11 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
          * Issue an extending load of the proper bit size and set the result to the proper kind.
          */
         GraalError.guarantee(accessKind.isInteger(), "can only extend integer kinds");
-        Variable result = getLIRGen().newVariable(LIRKind.value(resultBits == 32 ? AArch64Kind.DWORD : AArch64Kind.QWORD));
+        AArch64Kind resultKind = resultBits <= 32 ? AArch64Kind.DWORD : AArch64Kind.QWORD;
+        Variable result = getLIRGen().newVariable(LIRKind.value(resultKind));
 
-        int dstBitSize = resultBits <= 32 ? 32 : 64;
         AArch64Move.ExtendKind extend = isSigned ? AArch64Move.ExtendKind.SIGN_EXTEND : AArch64Move.ExtendKind.ZERO_EXTEND;
-        getLIRGen().append(new AArch64Move.LoadOp(accessKind, dstBitSize, extend, result, address, state));
+        getLIRGen().append(new AArch64Move.LoadOp(accessKind, resultKind.getSizeInBytes() * Byte.SIZE, extend, result, address, state));
         return result;
     }
 
@@ -594,12 +594,21 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     }
 
     @Override
-    public Variable emitVolatileLoad(LIRKind lirKind, Value address, LIRFrameState state) {
-        AArch64Kind kind = (AArch64Kind) lirKind.getPlatformKind();
-        Variable result = getLIRGen().newVariable(getLIRGen().toRegisterKind(lirKind));
-        AArch64AddressValue loadAddress = getLIRGen().asAddressValue(address, kind.getSizeInBytes() * Byte.SIZE);
-        getLIRGen().append(new AArch64Move.VolatileLoadOp(kind, result, loadAddress, state));
-        return result;
+    public Variable emitOrderedLoad(LIRKind lirKind, Value address, LIRFrameState state, MemoryOrderMode memoryOrder) {
+        switch (memoryOrder) {
+            case OPAQUE:
+                // no fences are needed for opaque memory accesses
+                return emitLoad(lirKind, address, state);
+            case ACQUIRE:
+            case VOLATILE:
+                AArch64Kind kind = (AArch64Kind) lirKind.getPlatformKind();
+                Variable result = getLIRGen().newVariable(getLIRGen().toRegisterKind(lirKind));
+                AArch64AddressValue loadAddress = getLIRGen().asAddressValue(address, kind.getSizeInBytes() * Byte.SIZE);
+                getLIRGen().append(new AArch64Move.LoadAcquireOp(kind, result, loadAddress, state));
+                return result;
+            default:
+                throw GraalError.shouldNotReachHere("Unexpected memory order");
+        }
     }
 
     @Override
@@ -620,11 +629,22 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     }
 
     @Override
-    public void emitVolatileStore(ValueKind<?> lirKind, Value address, Value inputVal, LIRFrameState state) {
-        AArch64Kind kind = (AArch64Kind) lirKind.getPlatformKind();
-        AllocatableValue input = asAllocatable(inputVal);
-        AArch64AddressValue storeAddress = getLIRGen().asAddressValue(address, kind.getSizeInBytes() * Byte.SIZE);
-        getLIRGen().append(new AArch64Move.VolatileStoreOp(kind, storeAddress, input, state));
+    public void emitOrderedStore(ValueKind<?> lirKind, Value address, Value inputVal, LIRFrameState state, MemoryOrderMode memoryOrder) {
+        switch (memoryOrder) {
+            case OPAQUE:
+                // no fences are needed for opaque memory accesses
+                emitStore(lirKind, address, inputVal, state);
+                break;
+            case RELEASE:
+            case VOLATILE:
+                AArch64Kind kind = (AArch64Kind) lirKind.getPlatformKind();
+                AllocatableValue input = asAllocatable(inputVal);
+                AArch64AddressValue storeAddress = getLIRGen().asAddressValue(address, kind.getSizeInBytes() * Byte.SIZE);
+                getLIRGen().append(new AArch64Move.StoreReleaseOp(kind, storeAddress, input, state));
+                break;
+            default:
+                throw GraalError.shouldNotReachHere("Unexpected memory order");
+        }
     }
 
     @Override

@@ -116,7 +116,7 @@ for binary in "${to_build[@]}"; do
             libpolyglot
             ;;
         js)
-            library js
+            library jsvm
             ;;
         llvm)
             launcher lli

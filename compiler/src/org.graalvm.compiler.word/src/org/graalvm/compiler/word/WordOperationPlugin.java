@@ -55,6 +55,7 @@ import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.XorNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
+import org.graalvm.compiler.nodes.extended.JavaOrderedReadNode;
 import org.graalvm.compiler.nodes.extended.JavaReadNode;
 import org.graalvm.compiler.nodes.extended.JavaWriteNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -325,6 +326,14 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
                 b.push(returnKind, readOp(b, readKind, address, location, operation.opcode()));
                 break;
             }
+            case READ_BARRIERED_VOLATILE: {
+                assert args.length == 2;
+                JavaKind readKind = wordTypes.asKind(wordMethod.getSignature().getReturnType(wordMethod.getDeclaringClass()));
+                AddressNode address = makeAddress(b, args[0], args[1]);
+                LocationIdentity location = any();
+                b.push(returnKind, readVolatileOp(b, readKind, address, location, operation.opcode()));
+                break;
+            }
             case READ_HEAP: {
                 assert args.length == 3 || args.length == 4;
                 JavaKind readKind = wordTypes.asKind(wordMethod.getSignature().getReturnType(wordMethod.getDeclaringClass()));
@@ -465,11 +474,22 @@ public class WordOperationPlugin implements NodePlugin, TypePlugin, InlineInvoke
 
     public static ValueNode readOp(GraphBuilderContext b, JavaKind readKind, AddressNode address, LocationIdentity location, BarrierType barrierType, boolean compressible) {
         /*
-         * A JavaReadNode lowered to a ReadNode that will not float. This means it cannot float
+         * A JavaReadNode is lowered to a ReadNode that will not float. This means it cannot float
          * above an explicit zero check on its base address or any other test that ensures the read
          * is safe.
          */
         JavaReadNode read = b.add(new JavaReadNode(readKind, address, location, barrierType, compressible));
+        return read;
+    }
+
+    protected ValueNode readVolatileOp(GraphBuilderContext b, JavaKind readKind, AddressNode address, LocationIdentity location, Opcode op) {
+        assert op == Opcode.READ_BARRIERED_VOLATILE;
+        /*
+         * A JavaOrderedReadNode is lowered to an OrderedReadNode that will not float. This means it
+         * cannot float above an explicit zero check on its base address or any other test that
+         * ensures the read is safe.
+         */
+        JavaReadNode read = b.add(new JavaOrderedReadNode(readKind, address, location, BarrierType.UNKNOWN, MemoryOrderMode.VOLATILE, true));
         return read;
     }
 

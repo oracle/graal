@@ -3,37 +3,9 @@
     "name" : "java.io.FileDescriptor",
     "methods" : [
         { "name" : "closeAll",
-          "justification" : "Safe, called with Closeable parameter by FileInputStream, FileOutputStream, RandomAccessFile to close the file handler. The Closeable is  megamorphic.",
+          "justification" : "Safe, called with Closeable parameter by FileInputStream, FileOutputStream, RandomAccessFile to close the file handler. The Closeable is megamorphic.",
           "parameterTypes" : [
               "java.io.Closeable"
-        ]}
-    ]
-  },
-  {
-    "name" : "java.lang.StringCoding",
-    "methods" : [
-        { "name" : "encode" ,
-          "parameterTypes" : [
-              "char[]",
-              "int",
-              "int"
-        ]},
-        { "name" : "decode",
-          "parameterTypes" : [
-              "byte[]",
-              "int",
-              "int"
-        ]}
-    ]
-  },
-  {
-    "name" : "java.lang.UNIXProcess",
-    "methods" : [
-        { "name" : "lambda$null$0" ,
-          "justification" : "UNIXProcess internal processReaperExecutor.",
-          "parameterTypes" : [
-              "java.lang.ThreadGroup",
-              "java.lang.Runnable"
         ]}
     ]
   },
@@ -98,10 +70,17 @@
   {
     "name" : "java.util.ServiceLoader",
     "methods" : [
+      { "name" : "loadProvider" ,
+        "justification" : " Loads a service provider in a module."
+      }
+    ]
+  },
+  {
+    "name" : "java.util.ServiceLoader$LazyClassPathLookupIterator",
+    "methods" : [
         { "name" : "parse" ,
           "justification" : "Reads META-INF/services files from classpath.",
           "parameterTypes" : [
-              "java.lang.Class",
               "java.net.URL"
         ]}
     ]
@@ -142,14 +121,6 @@
     ]
   },
   {
-    "name" : "java.util.concurrent.ForkJoinPool",
-    "methods" : [
-        { "name" : "makeCommonPool" ,
-          "parameterTypes" : [
-        ]}
-    ]
-  },
-  {
     "name" : "java.util.concurrent.locks.LockSupport",
     "allDeclaredMethods" : true,
     "justification" : "The LockSupport uses sun.misc.Unsafe"
@@ -165,14 +136,6 @@
   },
   {
     "name" : "sun.nio.ch.SocketChannelImpl",
-    "methods" : [
-        { "name" : "toString" ,
-          "parameterTypes" : [
-        ]}
-    ]
-  },
-  {
-    "name" : "java.security.ProtectionDomain",
     "methods" : [
         { "name" : "toString" ,
           "parameterTypes" : [

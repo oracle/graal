@@ -56,7 +56,7 @@ public final class HeapParameters {
         public static final RuntimeOptionKey<Integer> MaximumYoungGenerationSizePercent = new GCRuntimeOptionKey<>(10);
 
         @Option(help = "The size of an aligned chunk.") //
-        public static final HostedOptionKey<Long> AlignedHeapChunkSize = new HostedOptionKey<Long>(1L * 1024L * 1024L) {
+        public static final HostedOptionKey<Long> AlignedHeapChunkSize = new HostedOptionKey<>(1L * 1024L * 1024L) {
             @Override
             protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
                 int multiple = 4096;
@@ -84,7 +84,7 @@ public final class HeapParameters {
         public static final RuntimeOptionKey<Boolean> TraceHeapChunks = new RuntimeOptionKey<>(false);
 
         @Option(help = "Maximum number of survivor spaces.") //
-        public static final HostedOptionKey<Integer> MaxSurvivorSpaces = new HostedOptionKey<Integer>(null) {
+        public static final HostedOptionKey<Integer> MaxSurvivorSpaces = new HostedOptionKey<>(null) {
             @Override
             public Integer getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
                 Integer value = (Integer) values.get(this);

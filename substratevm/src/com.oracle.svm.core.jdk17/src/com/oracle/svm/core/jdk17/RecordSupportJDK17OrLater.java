@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.jdk17;
 
-// Checkstyle: allow reflection
-
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.RecordComponent;

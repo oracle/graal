@@ -35,6 +35,7 @@ import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
 import org.graalvm.compiler.nodes.java.NewMultiArrayNode;
+import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 
@@ -71,7 +72,7 @@ public final class RestrictHeapAccessAnnotationChecker {
     static Node checkViolatingNode(StructuredGraph graph, Access access) {
         if (graph != null) {
             for (Node node : graph.getNodes()) {
-                if (!isViolatingNode(node, access)) {
+                if (isViolatingNode(node, access)) {
                     return node;
                 }
             }
@@ -81,11 +82,11 @@ public final class RestrictHeapAccessAnnotationChecker {
 
     private static boolean isViolatingNode(Node node, Access access) {
         assert access != Access.UNRESTRICTED : "does not require checks";
-        return !isAllocationNode(node);
+        return isAllocationNode(node);
     }
 
-    private static boolean isAllocationNode(Node node) {
-        return (node instanceof AbstractNewObjectNode || node instanceof NewMultiArrayNode);
+    static boolean isAllocationNode(Node node) {
+        return (node instanceof CommitAllocationNode || node instanceof AbstractNewObjectNode || node instanceof NewMultiArrayNode);
     }
 
     /** A HostedMethod visitor that checks for violations of heap access restrictions. */

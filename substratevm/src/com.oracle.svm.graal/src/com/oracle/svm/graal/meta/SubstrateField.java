@@ -28,7 +28,6 @@ import static com.oracle.svm.core.util.VMError.unimplemented;
 
 import java.lang.annotation.Annotation;
 
-import com.oracle.svm.core.util.VMError;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -38,6 +37,7 @@ import com.oracle.svm.core.hub.AnnotationsEncoding;
 import com.oracle.svm.core.meta.DirectSubstrateObjectConstant;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.util.HostedStringDeduplication;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.nodes.Node.Children;
 import com.oracle.truffle.api.nodes.NodeCloneable;
@@ -115,6 +115,11 @@ public class SubstrateField implements SharedField {
     @Override
     public boolean isAccessed() {
         return isAccessed;
+    }
+
+    @Override
+    public boolean isReachable() {
+        return isAccessed || isWritten;
     }
 
     @Override

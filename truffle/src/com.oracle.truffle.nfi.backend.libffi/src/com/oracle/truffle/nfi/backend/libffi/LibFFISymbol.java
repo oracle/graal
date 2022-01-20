@@ -40,7 +40,14 @@
  */
 package com.oracle.truffle.nfi.backend.libffi;
 
-final class LibFFISymbol extends NativePointer {
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.nfi.backend.spi.BackendNativePointerLibrary;
+
+@ExportLibrary(value = BackendNativePointerLibrary.class, useForAOT = true, useForAOTPriority = 1)
+@ExportLibrary(InteropLibrary.class)
+final class LibFFISymbol extends AbstractNativePointer {
 
     protected final LibFFILibrary library;
     private final String name;
@@ -53,6 +60,18 @@ final class LibFFISymbol extends NativePointer {
         super(address);
         this.library = library;
         this.name = name;
+    }
+
+    @ExportMessage
+    @Override
+    boolean isPointer() {
+        return super.isPointer();
+    }
+
+    @ExportMessage
+    @Override
+    long asPointer() {
+        return super.asPointer();
     }
 
     @Override

@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.reflect.target;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.util.VMError;
 
@@ -73,26 +71,14 @@ class ReflectionHelper {
     }
 
     private static Target_java_lang_reflect_Executable getRoot(Target_java_lang_reflect_Executable executable) {
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            return executable.getRoot();
-        } else {
-            return SubstrateUtil.cast(SubstrateUtil.cast(executable, Target_java_lang_reflect_AccessibleObject.class).getRoot(), Target_java_lang_reflect_Executable.class);
-        }
+        return SubstrateUtil.cast(SubstrateUtil.cast(executable, Target_java_lang_reflect_AccessibleObject.class).getRoot(), Target_java_lang_reflect_Executable.class);
     }
 
     private static Target_java_lang_reflect_Method getRoot(Target_java_lang_reflect_Method method) {
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            return SubstrateUtil.cast(SubstrateUtil.cast(method, Target_java_lang_reflect_Executable.class).getRoot(), Target_java_lang_reflect_Method.class);
-        } else {
-            return SubstrateUtil.cast(SubstrateUtil.cast(method, Target_java_lang_reflect_AccessibleObject.class).getRoot(), Target_java_lang_reflect_Method.class);
-        }
+        return SubstrateUtil.cast(SubstrateUtil.cast(method, Target_java_lang_reflect_AccessibleObject.class).getRoot(), Target_java_lang_reflect_Method.class);
     }
 
     private static Target_java_lang_reflect_Constructor getRoot(Target_java_lang_reflect_Constructor constructor) {
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            return SubstrateUtil.cast(SubstrateUtil.cast(constructor, Target_java_lang_reflect_Executable.class).getRoot(), Target_java_lang_reflect_Constructor.class);
-        } else {
-            return SubstrateUtil.cast(SubstrateUtil.cast(constructor, Target_java_lang_reflect_AccessibleObject.class).getRoot(), Target_java_lang_reflect_Constructor.class);
-        }
+        return SubstrateUtil.cast(SubstrateUtil.cast(constructor, Target_java_lang_reflect_AccessibleObject.class).getRoot(), Target_java_lang_reflect_Constructor.class);
     }
 }

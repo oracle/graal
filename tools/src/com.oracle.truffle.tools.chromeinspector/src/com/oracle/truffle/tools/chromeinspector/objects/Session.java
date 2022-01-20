@@ -254,14 +254,14 @@ class Session extends AbstractInspectorObject {
         return getListeners().emit(eventName, listenerArgs);
     }
 
-    private Object post(Object[] arguments) throws ArityException, UnsupportedTypeException {
+    private Object post(Object[] arguments) throws ArityException, UnsupportedTypeException, UnsupportedMessageException {
         if (arguments.length < 1) {
             throw ArityException.create(1, -1, arguments.length);
         }
-        if (!(arguments[0] instanceof String)) {
+        if (!InteropLibrary.getUncached().isString(arguments[0])) {
             throw UnsupportedTypeException.create(new Object[]{arguments[0]});
         }
-        String method = (String) arguments[0];
+        String method = InteropLibrary.getUncached().asString(arguments[0]);
         TruffleObject params = null;
         TruffleObject callback = null;
         if (arguments.length >= 2) {

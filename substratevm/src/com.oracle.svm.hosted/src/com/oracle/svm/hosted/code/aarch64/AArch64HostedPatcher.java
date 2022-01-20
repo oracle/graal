@@ -57,7 +57,7 @@ public class AArch64HostedPatcher implements Feature {
         ImageSingletons.add(PatchConsumerFactory.HostedPatchConsumerFactory.class, new PatchConsumerFactory.HostedPatchConsumerFactory() {
             @Override
             public Consumer<CodeAnnotation> newConsumer(CompilationResult compilationResult) {
-                return new Consumer<CodeAnnotation>() {
+                return new Consumer<>() {
                     @Override
                     public void accept(CodeAnnotation annotation) {
                         if (annotation instanceof SingleInstructionAnnotation) {

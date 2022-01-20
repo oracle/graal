@@ -133,8 +133,8 @@ public class HostedConfiguration {
     }
 
     public SVMHost createHostVM(OptionValues options, ClassLoader classLoader, ClassInitializationSupport classInitializationSupport,
-                    UnsafeAutomaticSubstitutionProcessor automaticSubstitutions, Platform platform) {
-        return new SVMHost(options, classLoader, classInitializationSupport, automaticSubstitutions, platform);
+                    UnsafeAutomaticSubstitutionProcessor automaticSubstitutions, Platform platform, SnippetReflectionProvider originalSnippetReflection) {
+        return new SVMHost(options, classLoader, classInitializationSupport, automaticSubstitutions, platform, originalSnippetReflection);
     }
 
     public CompileQueue createCompileQueue(DebugContext debug, FeatureHandler featureHandler, HostedUniverse hostedUniverse,

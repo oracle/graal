@@ -75,7 +75,6 @@ import com.oracle.svm.agent.stackaccess.InterceptedState;
 import com.oracle.svm.agent.tracing.core.Tracer;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
-import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.jni.JNIObjectHandles;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
@@ -1494,7 +1493,7 @@ final class BreakpointInterceptor {
 
                     brk("java/lang/invoke/SerializedLambda", "readResolve", "()Ljava/lang/Object;", BreakpointInterceptor::serializedLambdaReadResolve),
                     brk("java/io/ObjectStreamClass", "<init>", "(Ljava/lang/Class;)V", BreakpointInterceptor::objectStreamClassConstructor),
-                    brk(Package_jdk_internal_reflect.getQualifiedName().replace(".", "/") + "/ReflectionFactory",
+                    brk("jdk/internal/reflect/ReflectionFactory",
                                     "newConstructorForSerialization",
                                     "(Ljava/lang/Class;Ljava/lang/reflect/Constructor;)Ljava/lang/reflect/Constructor;", BreakpointInterceptor::customTargetConstructorSerialization),
                     optionalBrk("java/util/ResourceBundle",

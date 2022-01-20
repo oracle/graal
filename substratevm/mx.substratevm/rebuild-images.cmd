@@ -107,7 +107,7 @@ for %%f in (%to_build%) do (
   ) else if "%%f"=="libpolyglot" (
     call :libpolyglot cmd_line
   ) else if "%%f"=="js" (
-    call :library js cmd_line
+    call :library jsvm cmd_line
   ) else if "%%f"=="llvm" (
     call :launcher lli cmd_line
   ) else if "%%f"=="python" (

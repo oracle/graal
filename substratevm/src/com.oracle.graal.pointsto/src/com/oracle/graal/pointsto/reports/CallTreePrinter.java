@@ -28,7 +28,7 @@ import static com.oracle.graal.pointsto.reports.ReportUtils.CHILD;
 import static com.oracle.graal.pointsto.reports.ReportUtils.CONNECTING_INDENT;
 import static com.oracle.graal.pointsto.reports.ReportUtils.EMPTY_INDENT;
 import static com.oracle.graal.pointsto.reports.ReportUtils.LAST_CHILD;
-import static com.oracle.graal.pointsto.reports.ReportUtils.invokeComparator;
+import static com.oracle.graal.pointsto.reports.ReportUtils.invokeInfoComparator;
 import static com.oracle.graal.pointsto.reports.ReportUtils.methodComparator;
 
 import java.io.IOException;
@@ -58,9 +58,9 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 
+import com.oracle.graal.pointsto.meta.InvokeInfo;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaKind;
@@ -196,19 +196,19 @@ public final class CallTreePrinter {
              * Process the method: iterate the invokes, for each invoke iterate the callees, if the
              * callee was not already processed add it to the tree and to the work list.
              */
-            node.method.getTypeFlow().getInvokes().stream()
-                            .sorted(invokeComparator)
-                            .forEach(invoke -> processInvoke(invoke, node, workList));
-
+            node.method.getInvokes()
+                            .stream()
+                            .sorted(invokeInfoComparator)
+                            .forEach(invokeInfo -> processInvoke(invokeInfo, node, workList));
         }
     }
 
-    private void processInvoke(InvokeTypeFlow invokeFlow, MethodNode callerNode, Deque<MethodNode> workList) {
+    private void processInvoke(InvokeInfo invokeInfo, MethodNode callerNode, Deque<MethodNode> workList) {
 
-        InvokeNode invokeNode = new InvokeNode(invokeFlow.getTargetMethod(), invokeFlow.isDirectInvoke(), sourceReference(invokeFlow));
+        InvokeNode invokeNode = new InvokeNode(invokeInfo.getTargetMethod(), invokeInfo.isDirectInvoke(), sourceReference(invokeInfo.getPosition()));
         callerNode.addInvoke(invokeNode);
 
-        invokeFlow.getCallees().stream().sorted(methodComparator).forEach(callee -> {
+        invokeInfo.getCallees().stream().sorted(methodComparator).forEach(callee -> {
             if (methodToNode.containsKey(callee)) {
                 MethodNodeReference calleeNode = new MethodNodeReference(methodToNode.get(callee));
                 invokeNode.addCallee(calleeNode);
@@ -233,9 +233,9 @@ public final class CallTreePrinter {
         }
     }
 
-    private static SourceReference[] sourceReference(InvokeTypeFlow invoke) {
+    private static SourceReference[] sourceReference(BytecodePosition position) {
         List<SourceReference> sourceReference = new ArrayList<>();
-        BytecodePosition state = invoke.getSource();
+        BytecodePosition state = position;
         while (state != null) {
             sourceReference.add(new SourceReference(state.getBCI(), state.getMethod().asStackTraceElement(state.getBCI())));
             state = state.getCaller();

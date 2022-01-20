@@ -29,8 +29,6 @@
  */
 package com.oracle.truffle.llvm.nfi;
 
-import java.io.IOException;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -41,7 +39,6 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -52,8 +49,10 @@ import com.oracle.truffle.nfi.backend.spi.NFIBackendTools;
 import com.oracle.truffle.nfi.backend.spi.types.NativeLibraryDescriptor;
 import com.oracle.truffle.nfi.backend.spi.types.NativeSimpleType;
 
+import java.io.IOException;
+
 @TruffleLanguage.Registration(id = "internal/nfi-llvm", name = "nfi-llvm", version = "6.0.0", internal = true, interactive = false, //
-                services = NFIBackendFactory.class, contextPolicy = ContextPolicy.SHARED)
+                services = NFIBackendFactory.class, contextPolicy = ContextPolicy.SHARED, dependentLanguages = "llvm")
 public final class SulongNFI extends TruffleLanguage<Env> {
 
     @CompilationFinal private SulongNFIBackend backend;
@@ -97,8 +96,7 @@ public final class SulongNFI extends TruffleLanguage<Env> {
             TruffleFile file = env.getInternalTruffleFile(descriptor.getFilename());
             try {
                 Source source = Source.newBuilder("llvm", file).build();
-                CallTarget target = env.parsePublic(source);
-                return wrap(SulongNFI.this, target);
+                return SulongNFIRootNodeGen.create(SulongNFI.this, source).getCallTarget();
             } catch (IOException ex) {
                 throw new SulongNFIException(ex.getMessage());
             }
@@ -123,19 +121,6 @@ public final class SulongNFI extends TruffleLanguage<Env> {
         Object createSignatureBuilder() {
             return SulongNFISignature.BUILDER;
         }
-    }
-
-    private static CallTarget wrap(SulongNFI nfi, CallTarget target) {
-        return new RootNode(nfi) {
-
-            @Child DirectCallNode call = DirectCallNode.create(target);
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                Object ret = call.call();
-                return new SulongNFILibrary(ret);
-            }
-        }.getCallTarget();
     }
 
     @Override

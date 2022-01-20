@@ -33,6 +33,7 @@ import java.util.RandomAccess;
 import java.util.stream.Stream;
 
 import org.graalvm.compiler.core.common.PermanentBailoutException;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 
 public abstract class NodeList<T extends Node> extends AbstractList<T> implements NodeIterable<T>, RandomAccess {
@@ -49,7 +50,18 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
     protected static final Node[] EMPTY_NODE_ARRAY = new Node[0];
 
     protected final Node self;
+    /**
+     * The array that stores the contents of this node list. We over-allocate when adding nodes, and
+     * we do not allocate a smaller array when deleting elements. Therefore not all entries in this
+     * array are valid, and the number of valid elements is tracked by {@link #size}. The valid
+     * indices into this array are those in the range {@code 0..size-1} (inclusive). Elements at
+     * indices {@code size..nodes.length-1} can be overwritten, but they must never be read.
+     */
     protected Node[] nodes;
+    /**
+     * The number of valid entries in the {@link #nodes} array. All operations must maintain the
+     * invariant {@code 0 <= size && size <= nodes.length}.
+     */
     private int size;
     protected final int initialSize;
 
@@ -114,13 +126,15 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
      * Removes {@code null} values from the list.
      */
     public void trim() {
+        self.incModCount();
         int newSize = 0;
-        for (int i = 0; i < nodes.length; ++i) {
+        for (int i = 0; i < size; ++i) {
             if (nodes[i] != null) {
                 nodes[newSize] = nodes[i];
                 newSize++;
             }
         }
+        GraalError.guarantee(newSize <= size, "size cannot increase when removing nulls");
         size = newSize;
     }
 
@@ -340,21 +354,6 @@ public abstract class NodeList<T extends Node> extends AbstractList<T> implement
     public void snapshotTo(Collection<? super T> to) {
         for (int i = 0; i < size; i++) {
             to.add(get(i));
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    public void setAll(NodeList<T> values) {
-        self.incModCount();
-        incModCount();
-        for (int i = 0; i < size(); i++) {
-            update((T) nodes[i], null);
-        }
-        nodes = Arrays.copyOf(values.nodes, values.size());
-        size = values.size();
-
-        for (int i = 0; i < size(); i++) {
-            update(null, (T) nodes[i]);
         }
     }
 

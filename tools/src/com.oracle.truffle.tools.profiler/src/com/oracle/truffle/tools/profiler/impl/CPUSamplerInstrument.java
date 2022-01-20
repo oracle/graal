@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,8 @@ package com.oracle.truffle.tools.profiler.impl;
 import static com.oracle.truffle.tools.profiler.impl.CPUSamplerCLI.GATHER_HIT_TIMES;
 import static com.oracle.truffle.tools.profiler.impl.CPUSamplerCLI.SAMPLE_CONTEXT_INITIALIZATION;
 
+import java.lang.reflect.Method;
+
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 import org.graalvm.polyglot.Engine;
@@ -41,7 +43,8 @@ import com.oracle.truffle.tools.profiler.CPUSampler;
  *
  * @since 0.30
  */
-@TruffleInstrument.Registration(id = CPUSamplerInstrument.ID, name = "CPU Sampler", version = CPUSamplerInstrument.VERSION, services = {CPUSampler.class})
+@TruffleInstrument.Registration(id = CPUSamplerInstrument.ID, name = "CPU Sampler", version = CPUSamplerInstrument.VERSION, services = {
+                CPUSampler.class}, website = "https://www.graalvm.org/tools/profiling/")
 public class CPUSamplerInstrument extends TruffleInstrument {
 
     /**
@@ -60,28 +63,16 @@ public class CPUSamplerInstrument extends TruffleInstrument {
     public static final String ID = "cpusampler";
     static final String VERSION = "0.5.0";
     private CPUSampler sampler;
-    private static ProfilerToolFactory<CPUSampler> factory;
+    private static final ProfilerToolFactory<CPUSampler> factory = getDefaultFactory();
 
-    /**
-     * Sets the factory which instantiates the {@link CPUSampler}.
-     *
-     * @param factory the factory which instantiates the {@link CPUSampler}.
-     * @since 0.30
-     */
-    public static void setFactory(ProfilerToolFactory<CPUSampler> factory) {
-        if (factory == null || !factory.getClass().getName().startsWith("com.oracle.truffle.tools.profiler")) {
-            throw new IllegalArgumentException("Wrong factory: " + factory);
-        }
-        CPUSamplerInstrument.factory = factory;
-    }
-
-    static {
-        // Be sure that the factory is initialized:
+    @SuppressWarnings("unchecked")
+    private static ProfilerToolFactory<CPUSampler> getDefaultFactory() {
         try {
-            Class.forName(CPUSampler.class.getName(), true, CPUSampler.class.getClassLoader());
-        } catch (ClassNotFoundException ex) {
-            // Can not happen
-            throw new AssertionError();
+            Method createFactory = CPUSampler.class.getDeclaredMethod("createFactory");
+            createFactory.setAccessible(true);
+            return (ProfilerToolFactory<CPUSampler>) createFactory.invoke(null);
+        } catch (Exception ex) {
+            throw new AssertionError(ex);
         }
     }
 
@@ -124,8 +115,8 @@ public class CPUSamplerInstrument extends TruffleInstrument {
 
     private static SourceSectionFilter getSourceSectionFilter(Env env) {
         final boolean internals = env.getOptions().get(CPUSamplerCLI.SAMPLE_INTERNAL);
-        final Object[] filterRootName = env.getOptions().get(CPUSamplerCLI.FILTER_ROOT);
-        final Object[] filterFile = env.getOptions().get(CPUSamplerCLI.FILTER_FILE);
+        final WildcardFilter filterRootName = env.getOptions().get(CPUSamplerCLI.FILTER_ROOT);
+        final WildcardFilter filterFile = env.getOptions().get(CPUSamplerCLI.FILTER_FILE);
         final String filterMimeType = env.getOptions().get(CPUSamplerCLI.FILTER_MIME_TYPE);
         final String filterLanguage = env.getOptions().get(CPUSamplerCLI.FILTER_LANGUAGE);
         return CPUSamplerCLI.buildFilter(true, false, false, internals, filterRootName, filterFile, filterMimeType, filterLanguage);

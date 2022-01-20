@@ -114,10 +114,10 @@ public final class ConcurrentIdentityHashMap<K, V> implements ConcurrentMap<K, V
 
     @Override
     public Set<K> keySet() {
-        return new AbstractSet<K>() {
+        return new AbstractSet<>() {
             @Override
             public Iterator<K> iterator() {
-                return new Iterator<K>() {
+                return new Iterator<>() {
                     private final Iterator<Identity<K>> underlying = wrapped.keySet().iterator();
 
                     @Override
@@ -151,10 +151,10 @@ public final class ConcurrentIdentityHashMap<K, V> implements ConcurrentMap<K, V
 
     @Override
     public Set<Entry<K, V>> entrySet() {
-        return new AbstractSet<Entry<K, V>>() {
+        return new AbstractSet<>() {
             @Override
             public Iterator<Entry<K, V>> iterator() {
-                return new Iterator<Entry<K, V>>() {
+                return new Iterator<>() {
                     private final Iterator<Entry<Identity<K>, V>> underlying = wrapped.entrySet().iterator();
 
                     @Override

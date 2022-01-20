@@ -22,12 +22,6 @@
  */
 package com.oracle.truffle.espresso.redefinition;
 
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.impl.Field;
-import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.impl.ParserField;
-import com.oracle.truffle.espresso.impl.ParserMethod;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -36,12 +30,60 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.impl.Field;
+import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.impl.ParserField;
+import com.oracle.truffle.espresso.impl.ParserMethod;
+
 public final class DetectedChange {
+    private final List<ParserField> addedStaticFields = new ArrayList<>();
+    private final List<ParserField> addedInstanceFields = new ArrayList<>();
+    private final List<Field> removedFields = new ArrayList<>();
     private final Map<Method, ParserMethod> changedMethodBodies = new HashMap<>();
     private final List<ParserMethod> addedMethods = new ArrayList<>();
-    private final Set<Method> removedMethods = new HashSet<>();
-    private final Map<Field, ParserField> changedObjectTypeFields = new HashMap<>();
+    private final Set<Method.MethodVersion> removedMethods = new HashSet<>();
+    private final Set<Method> unchangedMethods = new HashSet<>();
     private boolean classInitializerChanged;
+    private Map<ParserField, Field> mappedCompatibleFields = new HashMap<>();
+
+    public void addNewField(ParserField parserField) {
+        if (parserField.isStatic()) {
+            addedStaticFields.add(parserField);
+        } else {
+            addedInstanceFields.add(parserField);
+        }
+    }
+
+    public void addNewFields(ArrayList<ParserField> newFields) {
+        for (ParserField newField : newFields) {
+            addNewField(newField);
+        }
+    }
+
+    public void addCompatibleFields(Map<ParserField, Field> compatibleFields) {
+        mappedCompatibleFields = compatibleFields;
+    }
+
+    public Map<ParserField, Field> getMappedCompatibleFields() {
+        return Collections.unmodifiableMap(mappedCompatibleFields);
+    }
+
+    public List<ParserField> getAddedStaticFields() {
+        return Collections.unmodifiableList(addedStaticFields);
+    }
+
+    public List<ParserField> getAddedInstanceFields() {
+        return Collections.unmodifiableList(addedInstanceFields);
+    }
+
+    public void addRemovedFields(ArrayList<Field> removed) {
+        removedFields.addAll(removed);
+    }
+
+    public List<Field> getRemovedFields() {
+        return Collections.unmodifiableList(removedFields);
+    }
 
     void addMethodBodyChange(Method oldMethod, ParserMethod newMethod) {
         changedMethodBodies.put(oldMethod, newMethod);
@@ -58,36 +100,31 @@ public final class DetectedChange {
         return Collections.unmodifiableList(addedMethods);
     }
 
-    public Set<Method> getRemovedMethods() {
+    public Set<Method.MethodVersion> getRemovedMethods() {
         return Collections.unmodifiableSet(removedMethods);
+    }
+
+    public Set<Method> getUnchangedMethods() {
+        return Collections.unmodifiableSet(unchangedMethods);
     }
 
     public void addNewMethod(ParserMethod method) {
         addedMethods.add(method);
     }
 
-    public void addRemovedMethods(Method method) {
+    public void addRemovedMethod(Method.MethodVersion method) {
         removedMethods.add(method);
-    }
-
-    public void addRemovedMethods(List<Method> methods) {
-        removedMethods.addAll(methods);
     }
 
     public void addNewMethods(List<ParserMethod> newMethods) {
         addedMethods.addAll(newMethods);
     }
 
-    public void addObjectTypeFieldChange(Field oldField, ParserField newField) {
-        changedObjectTypeFields.put(oldField, newField);
-    }
-
-    public Map<Field, ParserField> getChangedObjectTypeFields() {
-        return Collections.unmodifiableMap(changedObjectTypeFields);
+    public void addUnchangedMethod(Method method) {
+        unchangedMethods.add(method);
     }
 
     public boolean clinitChanged() {
         return classInitializerChanged;
     }
-
 }

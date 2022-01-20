@@ -12,7 +12,7 @@ NFI is intended to be used, for example, to implement a language's FFI, or to ca
 
 NFI uses `libffi`.
 On a standard JVM it calls it using JNI, and on GraalVM Native Image it uses system Java.
-In the future it may be optimised by the GraalVM compiler in native executables so that native calls are made directly from the compiled code.
+In the future it may be optimised by the Graal Compiler in native executables so that native calls are made directly from the compiled code.
 
 ## Stability
 
@@ -145,7 +145,8 @@ void native_function(int32_t (*fn)(int32_t)) {
 ```
 
 ```ruby
-native_function = library['native_function'].bind("((SINT32):SINT32):VOID")
+signature = Polyglot.eval('nfi', '((SINT32):SINT32):VOID')
+native_function = signature.bind(library['native_function'])
 native_function.call(->(x) { x + 1 })
 ```
 
@@ -256,7 +257,10 @@ One thing to note is the handling of the unsigned integer types.
 Even though the Polyglot API does not specify separate messages for values fitting in unsigned types, the conversion is still using the unsigned value ranges.
 For example, the value `0xFF` passed from native to managed through a return value of type `SINT8` will result in a Polyglot number `-1`, which `fitsInByte`.
 But the same value returned as `UINT8` results in a Polyglot number `255`, which does *not* `fitsInByte`.
-Also, passing `-1` to an argument of type `UINT8` is a type error, but passing `255` is allowed, even though it does not `fitsInByte`.
+
+When passing numbers from managed code to native code, the signedness of the number is ignored, only the bits of the number are relevant.
+So for example, passing `-1` to an argument of type `UINT8` is allowed, and the result on the native side is `255`, since it has the same bits as `-1`.
+The other way round, passing `255` to an argument of type `SINT8` is also allowed, and the result on the native side is `-1`.
 
 Since in the current Polyglot API it is not possible to represent numbers outside of the signed 64-bit range, the `UINT64` type is currently handled with *signed* semantics.
 This is a known bug in the API, and will change in a future release.

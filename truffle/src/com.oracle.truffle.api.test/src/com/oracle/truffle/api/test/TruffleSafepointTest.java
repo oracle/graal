@@ -227,7 +227,7 @@ public class TruffleSafepointTest {
     public void testEnterSlowPathFallback() throws ExecutionException, InterruptedException {
         ExecutorService executorService = Executors.newFixedThreadPool(1);
         try {
-            for (int itNo = 0; itNo < 10000; itNo++) {
+            for (int itNo = 0; itNo < 1000; itNo++) {
                 CountDownLatch enterLeaveLoopLatch = new CountDownLatch(1);
                 AtomicReference<Env> envAtomicReference = new AtomicReference<>();
                 AtomicReference<Context> contextAtomicReference = new AtomicReference<>();
@@ -248,7 +248,7 @@ public class TruffleSafepointTest {
                     enterLeaveLoopLatch.countDown();
                     TruffleContext truffleContext = envAtomicReference.get().getContext();
                     try {
-                        for (int i = 0; i < 1000000; i++) {
+                        for (int i = 0; i < 100000; i++) {
                             Object prev = truffleContext.enter(INVALID_NODE);
                             truffleContext.leave(INVALID_NODE, prev);
                         }

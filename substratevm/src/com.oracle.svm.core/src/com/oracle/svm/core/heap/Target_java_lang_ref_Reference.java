@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.heap;
 
-//Checkstyle: allow reflection
-
 import java.lang.ref.PhantomReference;
 import java.lang.ref.Reference;
 import java.lang.reflect.Field;
@@ -49,10 +47,8 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.UnknownClass;
-import com.oracle.svm.core.jdk.JDK11OrLater;
 import com.oracle.svm.core.jdk.JDK17OrLater;
 import com.oracle.svm.core.jdk.JDK17_0_2OrLater;
-import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -159,45 +155,17 @@ public final class Target_java_lang_ref_Reference<T> {
     @KeepOriginal
     native boolean isEnqueued();
 
-    @Substitute
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    @SuppressWarnings("unused")
-    static boolean tryHandlePending(boolean waitForNotify) {
-        /*
-         * This method in JDK 8 was replaced by waitForReferenceProcessing in JDK 11. On JDK 8, it
-         * helped with reference handling by handling a single reference (if one is available). The
-         * only caller (apart from the reference handling thread itself) in the JDK is
-         * `Bits.reserveMemory`, which passes `false` as the parameter `waitForNotify`. So our
-         * substitution, which always waits, is a considerable change in semantics. However, since
-         * `Bits.reserveMemory` did not change much between JDK 8 and JDK 11, this is OK.
-         */
-        try {
-            return ReferenceInternals.waitForReferenceProcessing();
-        } catch (InterruptedException ex) {
-            Thread.currentThread().interrupt();
-            /*
-             * The caller might loop until "there is no more progress", i.e., until this method
-             * returns false. So returning true could lead to an infinite loop in the caller that is
-             * not interruptible.
-             */
-            return false;
-        }
-    }
-
     /** May be used by {@code JavaLangRefAccess} via {@code SharedSecrets}. */
     @Substitute
-    @TargetElement(onlyWith = JDK11OrLater.class)
     static boolean waitForReferenceProcessing() throws InterruptedException {
         return ReferenceInternals.waitForReferenceProcessing();
     }
 
     @Override
     @KeepOriginal //
-    @TargetElement(onlyWith = JDK11OrLater.class) //
     protected native Object clone() throws CloneNotSupportedException;
 
     @Substitute //
-    @TargetElement(onlyWith = JDK11OrLater.class) //
     @SuppressWarnings("unused")
     static void reachabilityFence(Object ref) {
         GraalDirectives.blackhole(ref);
@@ -228,6 +196,11 @@ class ComputeReferenceValue implements CustomFieldValueComputer {
     private static final Field REFERENT_FIELD = ReflectionUtil.lookupField(Reference.class, "referent");
 
     @Override
+    public RecomputeFieldValue.ValueAvailability valueAvailability() {
+        return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+    }
+
+    @Override
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
         if (receiver instanceof PhantomReference) {
             /*
@@ -253,6 +226,11 @@ class ComputeReferenceValue implements CustomFieldValueComputer {
 class ComputeQueueValue implements CustomFieldValueComputer {
 
     private static final Field QUEUE_FIELD = ReflectionUtil.lookupField(Reference.class, "queue");
+
+    @Override
+    public RecomputeFieldValue.ValueAvailability valueAvailability() {
+        return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+    }
 
     @Override
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {

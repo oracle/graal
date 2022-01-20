@@ -31,7 +31,6 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
@@ -253,7 +252,10 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
 
         Method reflectedMethod = m;
         if (reflectedMethod.isRemovedByRedefition()) {
-            reflectedMethod = ClassRedefinition.handleRemovedMethod(reflectedMethod, reflectedMethod.isStatic() ? reflectedMethod.getDeclaringKlass() : receiver.getKlass());
+            reflectedMethod = m.getContext().getClassRedefinition().handleRemovedMethod(
+                            reflectedMethod,
+                            reflectedMethod.isStatic() ? reflectedMethod.getDeclaringKlass() : receiver.getKlass());
+
         }
 
         Method method;      // actual method to invoke

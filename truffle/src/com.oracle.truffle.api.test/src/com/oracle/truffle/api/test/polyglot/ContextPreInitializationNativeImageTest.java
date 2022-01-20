@@ -67,14 +67,19 @@ import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
  *
  * This could potentially be improved using some white-box API that allows to explicitly store and
  * restore the preinitialized context.
+ *
+ * This test needs
+ * -Dpolyglot.image-build-time.PreinitializeContexts=ContextPreintializationNativeImageLanguage
+ * provided via com.oracle.truffle.api.test/src/META-INF/native-image/native-image.properties.
+ * Setting the property programmatically in a static initializer via
+ * System.setProperty("polyglot.image-build-time.PreinitializeContexts", LANGUAGE) is not reliable
+ * as its publishing depends on when the class is initialized. The property needs to be available
+ * before com.oracle.truffle.polyglot.PolyglotContextImpl#preInitialize() is invoked, i.e., before
+ * com.oracle.svm.truffle.TruffleBaseFeature#beforeAnalysis().
  */
 public class ContextPreInitializationNativeImageTest {
 
     static final String LANGUAGE = "ContextPreintializationNativeImageLanguage";
-
-    static {
-        System.setProperty("polyglot.image-build-time.PreinitializeContexts", LANGUAGE);
-    }
 
     @BeforeClass
     public static void runWithWeakEncapsulationOnly() {
