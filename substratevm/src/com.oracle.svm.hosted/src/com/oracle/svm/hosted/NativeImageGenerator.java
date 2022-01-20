@@ -1471,17 +1471,17 @@ public class NativeImageGenerator {
         if (SubstrateOptions.VerifyNamingConventions.getValue()) {
             for (AnalysisMethod method : aUniverse.getMethods()) {
                 if ((method.isInvoked() || method.isReachable()) && method.getAnnotation(Fold.class) == null) {
-                    checkName(method.format("%H.%n(%p)"), method);
+                    checkName(method.format("%H.%n(%p)"), method, bb);
                 }
             }
             for (AnalysisField field : aUniverse.getFields()) {
                 if (field.isAccessed()) {
-                    checkName(field.format("%H.%n"), null);
+                    checkName(field.format("%H.%n"), null, bb);
                 }
             }
             for (AnalysisType type : aUniverse.getTypes()) {
                 if (type.isReachable()) {
-                    checkName(type.toJavaName(true), null);
+                    checkName(type.toJavaName(true), null, bb);
                 }
             }
         }
@@ -1509,7 +1509,7 @@ public class NativeImageGenerator {
         // the unsupported features are reported after checkUniverse is invoked
     }
 
-    private void checkName(String name, AnalysisMethod method) {
+    public static void checkName(String name, AnalysisMethod method, BigBang bb) {
         /*
          * We do not want any parts of the native image generator in the generated image. Therefore,
          * no element whose name contains "hosted" must be seen as reachable by the static analysis.
@@ -1517,10 +1517,19 @@ public class NativeImageGenerator {
          * they are JDK internal types.
          */
         String lname = name.toLowerCase();
+        String message = null;
         if (lname.contains("hosted")) {
-            bb.getUnsupportedFeatures().addMessage(name, method, "Hosted element used at run time: " + name);
-        } else if (SubstrateUtil.isBuildingLibgraal() && (!name.startsWith("jdk.internal")) && (lname.contains("hotspot"))) {
-            bb.getUnsupportedFeatures().addMessage(name, method, "HotSpot element used at run time: " + name);
+            message = "Hosted element used at run time: " + name;
+        } else if (!name.startsWith("jdk.internal") && lname.contains("hotspot")) {
+            message = "HotSpot element used at run time: " + name;
+        }
+
+        if (message != null) {
+            if (bb != null) {
+                bb.getUnsupportedFeatures().addMessage(name, method, message);
+            } else {
+                throw new UnsupportedFeatureException(message);
+            }
         }
     }
 
