@@ -42,6 +42,7 @@ package com.oracle.truffle.regex.tregex.parser;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.RegexFlags;
@@ -912,9 +913,7 @@ public final class RegexParser {
         while (begin + 1 < group.size()) {
             int end = findSingleCharAlternatives(group, begin);
             if (end > begin + 1) {
-                group.getAlternatives().subList(begin, end).sort((Sequence a, Sequence b) -> {
-                    return a.getFirstTerm().asCharacterClass().getCharSet().getMin() - b.getFirstTerm().asCharacterClass().getCharSet().getMin();
-                });
+                group.getAlternatives().subList(begin, end).sort(Comparator.comparingInt((Sequence a) -> a.getFirstTerm().asCharacterClass().getCharSet().getMin()));
                 begin = end;
             } else {
                 begin++;
@@ -1126,7 +1125,11 @@ public final class RegexParser {
         int ret = -1;
         for (int i = begin; i < group.size(); i++) {
             Sequence s = group.getAlternatives().get(i);
-            if (s.isEmpty() || !s.getFirstTerm().isCharacterClass() || !s.getFirstTerm().asCharacterClass().wasSingleChar()) {
+            if (s.isEmpty() || !s.getFirstTerm().isCharacterClass()) {
+                return ret;
+            }
+            CharacterClass firstCC = s.getFirstTerm().asCharacterClass();
+            if (!firstCC.wasSingleChar() || firstCC.hasQuantifier() && firstCC.getQuantifier().getMin() == 0) {
                 return ret;
             }
             ret = i + 1;

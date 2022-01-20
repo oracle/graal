@@ -130,6 +130,7 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
             executor.inputSkipReverse(locals);
             locals.setLastIndex();
             if (secondIndex < postLoopIndex) {
+                executor.inputSkipReverse(locals);
                 transition.apply(executor, locals.getCGData(), locals.getIndex());
             }
             locals.setIndex(postLoopIndex);
