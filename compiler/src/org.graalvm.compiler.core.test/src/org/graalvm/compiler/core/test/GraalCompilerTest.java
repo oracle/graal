@@ -1081,7 +1081,6 @@ public abstract class GraalCompilerTest extends GraalTest {
         return graph;
     }
 
-
     /**
      * Compiles a Java method.
      *
