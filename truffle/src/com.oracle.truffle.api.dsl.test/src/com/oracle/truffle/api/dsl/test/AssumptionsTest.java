@@ -716,10 +716,6 @@ public class AssumptionsTest {
 
     }
 
-    abstract static class IndirectAssumptionUseErrors extends Node {
-
-    }
-
     static class AssumptionFields {
 
         final Assumption finalAssumption = Truffle.getRuntime().createAssumption();
