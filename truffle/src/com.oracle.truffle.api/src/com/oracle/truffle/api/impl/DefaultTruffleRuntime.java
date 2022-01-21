@@ -51,7 +51,6 @@ import java.util.ServiceLoader;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerOptions;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleRuntime;
@@ -147,11 +146,6 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
     @Override
     public MaterializedFrame createMaterializedFrame(Object[] arguments, FrameDescriptor frameDescriptor) {
         return new FrameWithoutBoxing(frameDescriptor, arguments);
-    }
-
-    @Override
-    public CompilerOptions createCompilerOptions() {
-        return new DefaultCompilerOptions();
     }
 
     @Override

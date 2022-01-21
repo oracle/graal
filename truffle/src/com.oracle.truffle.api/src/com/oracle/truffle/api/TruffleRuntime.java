@@ -160,8 +160,14 @@ public interface TruffleRuntime {
      *
      * @return the newly created compiler options object
      * @since 0.8 or earlier
+     * @deprecated in 22.1 compiler options had no effect for several releases now. Deprecated for
+     *             removal.
      */
-    CompilerOptions createCompilerOptions();
+    @SuppressWarnings("deprecation")
+    @Deprecated
+    default com.oracle.truffle.api.CompilerOptions createCompilerOptions() {
+        return com.oracle.truffle.api.impl.DefaultCompilerOptions.INSTANCE;
+    }
 
     /**
      * Accesses the current stack, i.e., the contents of the {@link Frame}s and the associated
