@@ -62,17 +62,14 @@ local jdks = common_json.jdks;
     deploy:: self.mx_cmd_base + ['--suite', 'compiler', '--suite', 'truffle', '--suite', 'sdk', '--suite', 'tools', '--suite', 'regex', '--suite', 'graal-js', '--suite', 'espresso', 'maven-deploy', '--tags=default', '--all-distribution-types', '--validate', 'full', '--licenses', 'GPLv2-CPE,UPL,MIT'],
   },
 
-  maven_base_native:: {
+  maven_base_11_only_native:: {
+    downloads+: {
+      JAVA_HOME: jdks['labsjdk-ce-11'],
+    },
     native_distributions:: 'TRUFFLE_NFI_NATIVE,SVM_HOSTED_NATIVE',
     mx_cmd_base:: ['mx', '--dynamicimports', '/substratevm', '--disable-installables=true', '--force-bash-launcher=true', '--skip-libraries=true'],
     build:: self.mx_cmd_base + ['build', '--dependencies', self.native_distributions],
     deploy:: self.mx_cmd_base + ['maven-deploy', '--only', self.native_distributions, '--tags=default', '--all-suites', '--all-distribution-types', '--validate', 'full', '--licenses', 'GPLv2-CPE,UPL,MIT'],
-  },
-
-  maven_base_11_native:: self.maven_base_native + {
-    downloads+: {
-      JAVA_HOME: jdks['labsjdk-ce-11'],
-    },
   },
 
   vm_unittest:: {
@@ -168,45 +165,45 @@ local jdks = common_json.jdks;
      name: 'post-merge-deploy-vm-maven-linux-amd64',
      timelimit: '45:00',
     },
-    vm_common.linux_deploy + vm_common.gate_vm_linux_aarch64 + self.maven_base_11_native + {
+    vm_common.linux_deploy + vm_common.gate_vm_linux_aarch64 + self.maven_base_11_only_native + {
      run: [
-       $.maven_base_11_native.build,
-       $.maven_base_11_native.deploy + ['--dry-run', 'lafo-maven'],
+       $.maven_base_11_only_native.build,
+       $.maven_base_11_only_native.deploy + ['--dry-run', 'lafo-maven'],
      ],
      name: 'gate-vm-maven-dry-run-linux-aarch64',
     },
-    vm_common.linux_deploy + vm_common.deploy_vm_linux_aarch64 + self.maven_base_11_native + {
+    vm_common.linux_deploy + vm_common.deploy_vm_linux_aarch64 + self.maven_base_11_only_native + {
      run: [
-       $.maven_base_11_native.build,
-       $.maven_base_11_native.deploy + ['lafo-maven'],
+       $.maven_base_11_only_native.build,
+       $.maven_base_11_only_native.deploy + ['lafo-maven'],
      ],
      name: 'post-merge-deploy-vm-maven-linux-aarch64',
     },
-    vm_common.darwin_deploy + vm_common.gate_vm_darwin + self.maven_base_11_native + {
+    vm_common.darwin_deploy + vm_common.gate_vm_darwin + self.maven_base_11_only_native + {
      run: [
-       $.maven_base_11_native.build,
-       $.maven_base_11_native.deploy + ['--dry-run', 'lafo-maven'],
+       $.maven_base_11_only_native.build,
+       $.maven_base_11_only_native.deploy + ['--dry-run', 'lafo-maven'],
      ],
      name: 'gate-vm-maven-dry-run-darwin-amd64',
     },
-    vm_common.darwin_deploy + vm_common.deploy_daily_vm_darwin + self.maven_base_11_native + {
+    vm_common.darwin_deploy + vm_common.deploy_daily_vm_darwin + self.maven_base_11_only_native + {
      run: [
-       $.maven_base_11_native.build,
-       $.maven_base_11_native.deploy + ['lafo-maven'],
+       $.maven_base_11_only_native.build,
+       $.maven_base_11_only_native.deploy + ['lafo-maven'],
      ],
      name: 'daily-deploy-vm-maven-darwin-amd64',
     },
-    vm_common.svm_common_windows_jdk11 + vm_common.gate_vm_windows + self.maven_base_11_native + {
+    vm_common.svm_common_windows_jdk11 + vm_common.gate_vm_windows + self.maven_base_11_only_native + {
      run: [
-       $.maven_base_11_native.build,
-       $.maven_base_11_native.deploy + ['--dry-run', 'lafo-maven'],
+       $.maven_base_11_only_native.build,
+       $.maven_base_11_only_native.deploy + ['--dry-run', 'lafo-maven'],
      ],
      name: 'gate-vm-maven-dry-run-windows-amd64',
     },
-    vm_common.svm_common_windows_jdk11 + vm_common.deploy_daily_vm_windows + self.maven_base_11_native + {
+    vm_common.svm_common_windows_jdk11 + vm_common.deploy_daily_vm_windows + self.maven_base_11_only_native + {
      run: [
-       $.maven_base_11_native.build,
-       $.maven_base_11_native.deploy + ['lafo-maven'],
+       $.maven_base_11_only_native.build,
+       $.maven_base_11_only_native.deploy + ['lafo-maven'],
      ],
      name: 'daily-deploy-vm-maven-windows-amd64',
     },
