@@ -56,14 +56,14 @@ public class MetricFactory {
                     Class<?> cls = Class.forName(className);
                     config.metric = (Metric) cls.getConstructor().newInstance();
                 } catch (ClassNotFoundException | NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException | ClassCastException e) {
-                    throw new IllegalArgumentException("Unknown metric: " + name + " (" + e.getMessage() + ")");
+                    throw new IllegalArgumentException("Unknown metric: " + name + " (" + e.getClass().getSimpleName() + ", " + e.getMessage() + ")");
                 }
         }
     }
 
     private static String classNameFor(String metricName) {
         String[] words = metricName.split("-");
-        StringBuilder result = new StringBuilder(words[0]);
+        StringBuilder result = new StringBuilder(Character.toUpperCase(words[0].charAt(0)) + words[0].substring(1));
         for (int i = 1; i < words.length; i++) {
             result.append(Character.toUpperCase(words[i].charAt(0))).append(words[i].substring(1));
         }
