@@ -78,13 +78,14 @@ class SubstrateSegfaultHandlerFeature implements Feature {
     }
 }
 
-final class SubstrateSegfaultHandlerStartupHook implements Runnable {
-
+final class SubstrateSegfaultHandlerStartupHook implements RuntimeSupport.Hook {
     @Override
-    public void run() {
-        Boolean optionValue = SubstrateSegfaultHandler.Options.InstallSegfaultHandler.getValue();
-        if (optionValue == Boolean.TRUE || (optionValue == null && ImageInfo.isExecutable())) {
-            ImageSingletons.lookup(SubstrateSegfaultHandler.class).install();
+    public void execute(boolean isFirstIsolate) {
+        if (isFirstIsolate) {
+            Boolean optionValue = SubstrateSegfaultHandler.Options.InstallSegfaultHandler.getValue();
+            if (optionValue == Boolean.TRUE || (optionValue == null && ImageInfo.isExecutable())) {
+                ImageSingletons.lookup(SubstrateSegfaultHandler.class).install();
+            }
         }
     }
 }

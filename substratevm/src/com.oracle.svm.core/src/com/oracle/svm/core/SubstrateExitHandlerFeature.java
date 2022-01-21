@@ -41,10 +41,12 @@ public class SubstrateExitHandlerFeature implements Feature {
     }
 }
 
-final class SubstrateExitHandlerStartupHook implements Runnable {
+final class SubstrateExitHandlerStartupHook implements RuntimeSupport.Hook {
     @Override
-    public void run() {
-        Target_java_lang_Terminator.setup();
+    public void execute(boolean isFirstIsolate) {
+        if (isFirstIsolate) {
+            Target_java_lang_Terminator.setup();
+        }
     }
 }
 

@@ -56,7 +56,7 @@ final class SubstrateRuntimeMXBean implements RuntimeMXBean {
     @Platforms(Platform.HOSTED_ONLY.class)
     SubstrateRuntimeMXBean() {
         managementSpecVersion = ManagementFactory.getRuntimeMXBean().getManagementSpecVersion();
-        RuntimeSupport.getRuntimeSupport().addInitializationHook(this::initialize);
+        RuntimeSupport.getRuntimeSupport().addInitializationHook(isFirstIsolate -> initialize());
     }
 
     void initialize() {
