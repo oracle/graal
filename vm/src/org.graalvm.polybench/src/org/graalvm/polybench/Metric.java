@@ -35,17 +35,27 @@ import org.graalvm.polyglot.Value;
  * Includes all the logic required to measure a particular value during an execution of a program.
  */
 @SuppressWarnings("unused")
-interface Metric {
+public abstract class Metric {
+
+    public Metric() {
+        String className = this.getClass().getName();
+        if (!className.endsWith("Metric")) {
+            throw new IllegalStateException("Plugin metrics should have class names that end with 'Metric'.");
+        }
+    }
 
     /**
      * Name of the metric, should be unique among implementations.
      */
-    String name();
+    public String name() {
+        String className = this.getClass().getSimpleName();
+        return MetricFactory.metricNameFor(className);
+    }
 
     /**
      * Unit associated with the measurement values.
      */
-    default String unit() {
+    public String unit() {
         return "n/a";
     }
 
@@ -55,41 +65,41 @@ interface Metric {
      * @throws IllegalStateException when the mode or polyglot options cannot be used with the
      *             metric.
      */
-    default void validateConfig(Config config, Map<String, String> polyglotOptions) {
+    public void validateConfig(Config config, Map<String, String> polyglotOptions) {
     }
 
     /**
      * Returns engine options required by the {@link Metric}. The returned options are set on the
      * polyglot context.
      */
-    default Map<String, String> getEngineOptions(Config config) {
+    public Map<String, String> getEngineOptions(Config config) {
         return Collections.emptyMap();
     }
 
     /**
      * Allows Metric to forward engine logging into supplied logger.
      */
-    default Handler getLogHandler() {
+    public Handler getLogHandler() {
         return null;
     }
 
-    default void parseBenchSpecificOptions(Value runner) {
+    public void parseBenchSpecificOptions(Value runner) {
     }
 
-    default void beforeIteration(boolean warmup, int iteration, Config config) {
+    public void beforeIteration(boolean warmup, int iteration, Config config) {
     }
 
-    default void afterIteration(boolean warmup, int iteration, Config config) {
+    public void afterIteration(boolean warmup, int iteration, Config config) {
     }
 
-    default Optional<Double> reportAfterIteration(Config config) {
+    public Optional<Double> reportAfterIteration(Config config) {
         return Optional.empty();
     }
 
-    default Optional<Double> reportAfterAll() {
+    public Optional<Double> reportAfterAll() {
         return Optional.empty();
     }
 
-    default void reset() {
+    public void reset() {
     }
 }

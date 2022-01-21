@@ -31,7 +31,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
-public final class AllocatedBytesMetric implements Metric {
+public final class AllocatedBytesMetric extends Metric {
 
     private double allocatedBefore;
 
