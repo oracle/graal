@@ -72,6 +72,15 @@ public class MetricFactory {
     }
 
     static String metricNameFor(String className) {
-        return null;
+        StringBuilder result = new StringBuilder(className.length());
+        result.append(Character.toLowerCase(className.charAt(0)));
+        for (int i = 1; i < className.length(); i++) {
+            char c = className.charAt(i);
+            if (Character.isUpperCase(c)) {
+                result.append('-');
+            }
+            result.append(Character.toLowerCase(c));
+        }
+        return result.toString();
     }
 }
