@@ -146,7 +146,11 @@ final class Target_java_security_AccessController {
         } catch (RuntimeException ex) {
             throw ex;
         } catch (Exception ex) {
-            throw new PrivilegedActionException(ex);
+            if (JavaVersionUtil.JAVA_SPEC > 11) {
+                throw ex;
+            } else {
+                throw new PrivilegedActionException(ex);
+            }
         } finally {
             PrivilegedStack.pop();
         }
