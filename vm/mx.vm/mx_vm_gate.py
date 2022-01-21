@@ -67,16 +67,12 @@ class VmGateTasks:
 
 def _unittest_config_participant(config):
     vmArgs, mainClass, mainClassArgs = config
-    # Disable DefaultRuntime warning
-    jdk = mx.get_jdk(tag='default')
-    if jdk.javaCompliance > '1.8':
-        # This is required by org.graalvm.component.installer.CatalogIterableTest
-        vmArgs += [
-            '--add-exports=java.base/jdk.internal.loader=ALL-UNNAMED',
-            '--add-opens=java.base/jdk.internal.loader=ALL-UNNAMED',
-        ]
-    config = (vmArgs, mainClass, mainClassArgs)
-    return config
+    # This is required by org.graalvm.component.installer.CatalogIterableTest
+    vmArgs += [
+        '--add-exports=java.base/jdk.internal.loader=ALL-UNNAMED',
+        '--add-opens=java.base/jdk.internal.loader=ALL-UNNAMED',
+    ]
+    return vmArgs, mainClass, mainClassArgs
 
 mx_unittest.add_config_participant(_unittest_config_participant)
 
