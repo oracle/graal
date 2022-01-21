@@ -28,7 +28,7 @@
 import os
 import re
 from os.path import basename, dirname, getsize, join
-from traceback import print_tb,print_stack
+from traceback import print_tb
 import inspect
 import subprocess
 
