@@ -126,7 +126,7 @@ public abstract class AccessFieldNode extends FixedWithNextNode implements Lower
 
     @Override
     public NodeSize estimatedNodeSize() {
-        if (hasMemoryFences()) {
+        if (ordersMemoryAccesses()) {
             return SIZE_2;
         }
         return super.estimatedNodeSize();

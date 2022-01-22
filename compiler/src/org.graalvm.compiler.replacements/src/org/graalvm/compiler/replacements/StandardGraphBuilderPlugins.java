@@ -1292,7 +1292,7 @@ public class StandardGraphBuilderPlugins {
 
         @Override
         public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unsafe, ValueNode address, ValueNode value) {
-            assert !memoryOrder.hasFences() : "Barriers for address based Unsafe put is not supported.";
+            assert memoryOrder == MemoryOrderMode.PLAIN || memoryOrder == MemoryOrderMode.OPAQUE : "Barriers for address based Unsafe put is not supported.";
             // Emits a null-check for the otherwise unused receiver
             unsafe.get();
             ValueNode maskedValue = b.maskSubWordValue(value, unsafeAccessKind);

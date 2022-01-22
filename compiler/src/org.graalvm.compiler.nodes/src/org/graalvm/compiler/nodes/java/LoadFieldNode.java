@@ -113,7 +113,7 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forObject) {
         NodeView view = NodeView.from(tool);
-        if (tool.allUsagesAvailable() && hasNoUsages() && !hasMemoryFences()) {
+        if (tool.allUsagesAvailable() && hasNoUsages() && !ordersMemoryAccesses()) {
             if (isStatic() || StampTool.isPointerNonNull(forObject.stamp(view))) {
                 return null;
             }
@@ -220,7 +220,7 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
 
     @Override
     public NodeCycles estimatedNodeCycles() {
-        if (hasMemoryFences()) {
+        if (ordersMemoryAccesses()) {
             return CYCLES_2;
         }
         return super.estimatedNodeCycles();
