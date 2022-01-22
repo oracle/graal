@@ -356,6 +356,6 @@ public abstract class TRegexExecutorNode extends Node {
 
     public abstract TRegexExecutorLocals createLocals(Object input, int fromIndex, int index, int maxIndex);
 
-    public abstract Object execute(TRegexExecutorLocals locals, TruffleString.CodeRange codeRange);
+    public abstract Object execute(TRegexExecutorLocals locals, TruffleString.CodeRange codeRange, boolean tString);
 
 }

@@ -46,7 +46,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -133,8 +132,8 @@ public final class RegexObject extends AbstractConstantKeysObject {
     private final AbstractRegexObject flags;
     private final int numberOfCaptureGroups;
     private final AbstractRegexObject namedCaptureGroups;
-    @CompilationFinal private CallTarget execCallTarget;
-    @CompilationFinal private CallTarget execBooleanCallTarget;
+    @CompilationFinal private RegexRootNode execRootNode;
+    @CompilationFinal private RegexRootNode execBooleanRootNode;
     private final boolean backtracking;
 
     public RegexObject(RegexExecNode execNode, RegexSource source, AbstractRegexObject flags, int numberOfCaptureGroups, Map<String, Integer> namedCaptureGroups) {
@@ -143,11 +142,11 @@ public final class RegexObject extends AbstractConstantKeysObject {
         this.flags = flags;
         this.numberOfCaptureGroups = numberOfCaptureGroups;
         this.namedCaptureGroups = namedCaptureGroups != null ? createNamedCaptureGroupMap(namedCaptureGroups) : TruffleNull.INSTANCE;
-        RootCallTarget callTarget = new RegexRootNode(execNode.getRegexLanguage(), execNode).getCallTarget();
+        RegexRootNode rootNode = new RegexRootNode(execNode.getRegexLanguage(), execNode);
         if (execNode.isBooleanMatch()) {
-            this.execBooleanCallTarget = callTarget;
+            this.execBooleanRootNode = rootNode;
         } else {
-            this.execCallTarget = callTarget;
+            this.execRootNode = rootNode;
         }
         this.backtracking = execNode.isBacktracking();
     }
@@ -177,19 +176,19 @@ public final class RegexObject extends AbstractConstantKeysObject {
     }
 
     public CallTarget getExecCallTarget() {
-        if (execCallTarget == null) {
+        if (execRootNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            execCallTarget = new RegexRootNode(language, new TRegexCompilationRequest(language, source.withoutBooleanMatch()).compile()).getCallTarget();
+            execRootNode = new RegexRootNode(language, new TRegexCompilationRequest(language, execBooleanRootNode.getSource().withoutBooleanMatch()).compile());
         }
-        return execCallTarget;
+        return execRootNode.getCallTarget();
     }
 
     public CallTarget getExecBooleanCallTarget() {
-        if (execBooleanCallTarget == null) {
+        if (execBooleanRootNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            execBooleanCallTarget = new RegexRootNode(language, new TRegexCompilationRequest(language, source.withBooleanMatch()).compile()).getCallTarget();
+            execBooleanRootNode = new RegexRootNode(language, new TRegexCompilationRequest(language, execRootNode.getSource().withBooleanMatch()).compile());
         }
-        return execBooleanCallTarget;
+        return execBooleanRootNode.getCallTarget();
     }
 
     public boolean isBacktracking() {
