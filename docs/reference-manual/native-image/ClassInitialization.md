@@ -60,7 +60,6 @@ As a result, the safety analysis would consider some methods safe but their exec
 A test that shows examples of classes that are proven safe can be found [here](https://github.com/oracle/graal/blob/master/substratevm/src/com.oracle.svm.test/src/com/oracle/svm/test/clinit/TestClassInitializationMustBeSafeEarly.java).
 The list of all classes that are proven safe is displayed in a file when `-H:+PrintClassInitialization` is set on the command line.
 
-
 ## Explicitly Specifying Class Initialization
 
 Each class can be initialized either (1) at run time, or (2) at build time.
