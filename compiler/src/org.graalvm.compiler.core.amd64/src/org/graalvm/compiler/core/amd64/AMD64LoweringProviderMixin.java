@@ -35,10 +35,6 @@ import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.calc.SubNode;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.replacements.amd64.AMD64ArrayIndexOfWithMaskNode;
-import org.graalvm.compiler.replacements.amd64.AMD64ArrayRegionEqualsWithMaskNode;
-import org.graalvm.compiler.replacements.amd64.AMD64TruffleArrayUtilsWithMaskSnippets;
 import org.graalvm.compiler.replacements.nodes.BitScanForwardNode;
 import org.graalvm.compiler.replacements.nodes.BitScanReverseNode;
 import org.graalvm.compiler.replacements.nodes.CountLeadingZerosNode;
@@ -71,17 +67,7 @@ public interface AMD64LoweringProviderMixin extends LoweringProvider {
      * Performs AMD64-specific lowerings. Returns {@code true} if the given Node {@code n} was
      * lowered, {@code false} otherwise.
      */
-    default boolean lowerAMD64(Node n, LoweringTool tool) {
-        if (n instanceof AMD64ArrayIndexOfWithMaskNode) {
-            tool.getReplacements().getSnippetTemplateCache(AMD64TruffleArrayUtilsWithMaskSnippets.Templates.class).lower((AMD64ArrayIndexOfWithMaskNode) n);
-            return true;
-        }
-
-        if (n instanceof AMD64ArrayRegionEqualsWithMaskNode) {
-            tool.getReplacements().getSnippetTemplateCache(AMD64TruffleArrayUtilsWithMaskSnippets.Templates.class).lower((AMD64ArrayRegionEqualsWithMaskNode) n);
-            return true;
-        }
-
+    default boolean lowerAMD64(Node n) {
         if (n instanceof CountLeadingZerosNode) {
             AMD64 arch = (AMD64) getTarget().arch;
             CountLeadingZerosNode count = (CountLeadingZerosNode) n;

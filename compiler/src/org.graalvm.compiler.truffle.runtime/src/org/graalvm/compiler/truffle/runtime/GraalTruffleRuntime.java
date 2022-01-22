@@ -422,6 +422,13 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                 throw new NoClassDefFoundError(className);
             }
         }
+        String className = "com.oracle.truffle.api.strings.TStringOps";
+        try {
+            Class<?> c = Class.forName(className);
+            m.put(c.getName(), c);
+        } catch (ClassNotFoundException e) {
+            throw new NoClassDefFoundError(className);
+        }
         return m;
     }
 

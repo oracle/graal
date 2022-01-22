@@ -959,9 +959,9 @@ def _graaljdk_dist(edition=None):
         base_name = 'GraalJDK_{}'.format(edition.upper())
         graaljdks = [d for d in candidates if d.base_name == base_name]
     if not graaljdks:
-        raise mx.abort("Cannot find GraalJDK image with base name '{}'".format(base_name))
+        mx.abort("Cannot find GraalJDK images with base name '{}'".format(base_name))
     if len(graaljdks) > 1:
-        raise mx.abort("Found multiple GraalJDKs with the same base name '{}'".format(base_name))
+        mx.abort("Found multiple GraalJDKs with the same base name '{}'".format(base_name))
     return graaljdks[0]
 
 def _graaljdk_home(edition=None):

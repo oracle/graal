@@ -292,6 +292,8 @@ public class AMD64ControlFlow {
             assert size == DWORD || size == QWORD;
             this.size = size;
 
+            assert x.getPlatformKind().getVectorLength() == 1;
+
             this.x = x;
             this.y = y;
 
