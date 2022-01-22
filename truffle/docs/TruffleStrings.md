@@ -369,7 +369,7 @@ abstract static class SomeNode extends Node {
 * `hashCode`: The string's hash code, exposed via `HashCodeNode`. The hash code is dependent on the string's encoding;
   strings must always be converted to a common encoding before comparing their hash codes!
 
-See the below how to query all properties exposed by `TruffleString`:
+See the below example how to query all properties exposed by `TruffleString`:
 
 ```java
 import com.oracle.truffle.api.dsl.Cached;
