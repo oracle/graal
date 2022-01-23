@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 import com.oracle.svm.core.PosixSunSecuritySubstitutions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 
 /**
  * The {@code NativePRNG} backend for {@link SecureRandom} on Linux and Darwin opens file handles
@@ -51,8 +52,10 @@ public class NativeSecureRandomFilesCloser implements Feature {
         access.registerReachabilityHandler(this::registerShutdownHook, sun.security.provider.NativePRNG.class);
     }
 
-    private void registerShutdownHook(@SuppressWarnings("unused") DuringAnalysisAccess a) {
+    private void registerShutdownHook(DuringAnalysisAccess a) {
+        DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
         Runnable hook = PosixSunSecuritySubstitutions.getShutdownHook();
         RuntimeSupport.getRuntimeSupport().addTearDownHook(hook);
+        access.rescanObject(hook);
     }
 }

@@ -50,6 +50,7 @@ import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.jfr.traceid.JfrTraceId;
 import com.oracle.svm.jfr.traceid.JfrTraceIdEpoch;
 import com.oracle.svm.jfr.traceid.JfrTraceIdMap;
@@ -226,7 +227,8 @@ public class JfrFeature implements Feature {
     }
 
     @Override
-    public void duringAnalysis(DuringAnalysisAccess access) {
+    public void duringAnalysis(DuringAnalysisAccess a) {
+        DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
         Class<?> eventClass = access.findClassByName("jdk.internal.event.Event");
         if (eventClass != null && access.isReachable(eventClass)) {
             Set<Class<?>> s = access.reachableSubtypes(eventClass);
@@ -239,6 +241,7 @@ public class JfrFeature implements Feature {
                 try {
                     Field f = c.getDeclaredField("eventHandler");
                     RuntimeReflection.register(f);
+                    access.rescanRoot(f);
                 } catch (Exception e) {
                     throw VMError.shouldNotReachHere("Unable to register eventHandler for: " + c.getCanonicalName(), e);
                 }
