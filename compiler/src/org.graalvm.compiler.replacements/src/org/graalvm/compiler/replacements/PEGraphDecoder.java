@@ -1296,8 +1296,19 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         } else if (returnNodeCount == 1) {
             ReturnNode returnNode = getSingleMatchingNode(returnAndUnwindNodes, unwindNodeCount > 0, ReturnNode.class);
             returnValue = returnNode.result();
-            FixedNode n = nodeAfterInvoke(methodScope, loopScope, invokeData, null);
-            returnNode.replaceAndDelete(n);
+            BeginNode prevBegin = null;
+            if (returnNode.predecessor() instanceof BeginNode) {
+                // Try to reuse the previous begin node instead of creating another one.
+                prevBegin = (BeginNode) returnNode.predecessor();
+            }
+            FixedNode n = nodeAfterInvoke(methodScope, loopScope, invokeData, prevBegin);
+            if (n == prevBegin) {
+                // Reusing the previous BeginNode; just remove the ReturnNode.
+                returnNode.replaceAtPredecessor(null);
+                returnNode.safeDelete();
+            } else {
+                returnNode.replaceAndDelete(n);
+            }
         } else {
             AbstractMergeNode merge = graph.add(new MergeNode());
             merge.setStateAfter((FrameState) ensureNodeCreated(methodScope, loopScope, invokeData.stateAfterOrderId));
