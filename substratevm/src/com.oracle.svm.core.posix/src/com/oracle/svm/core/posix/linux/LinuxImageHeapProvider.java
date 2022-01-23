@@ -38,7 +38,6 @@ import static org.graalvm.word.WordFactory.signed;
 
 import java.util.concurrent.ThreadLocalRandom;
 
-import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.StackValue;
@@ -70,8 +69,6 @@ import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Fcntl;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.util.PointerUtils;
-
-import jdk.vm.ci.code.MemoryBarriers;
 
 @AutomaticFeature
 class LinuxImageHeapProviderFeature implements Feature {
@@ -140,7 +137,9 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
          */
         if (fd.equal(UNASSIGNED_FD) || firstIsolate) {
             int opened = openImageFile();
-            MembarNode.memoryBarrier(MemoryBarriers.STORE_STORE);
+            /*
+             * Pointer cas operations are volatile accesses and prevent code reorderings.
+             */
             SignedWord previous = ((Pointer) CACHED_IMAGE_FD.get()).compareAndSwapWord(0, fd, signed(opened), LocationIdentity.ANY_LOCATION);
             if (previous.equal(fd)) {
                 fd = signed(opened);
@@ -230,7 +229,8 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
                 freeImageHeap(allocatedMemory);
                 return CEntryPointErrors.PROTECT_HEAP_FAILED;
             }
-            if (VirtualMemoryProvider.get().commit(relocsBegin, relocsSize, Access.READ | Access.WRITE).isNull()) {
+            Pointer committedRelocsBegin = VirtualMemoryProvider.get().commit(relocsBegin, relocsSize, Access.READ | Access.WRITE);
+            if (committedRelocsBegin.isNull() || committedRelocsBegin != relocsBegin) {
                 freeImageHeap(allocatedMemory);
                 return CEntryPointErrors.PROTECT_HEAP_FAILED;
             }
@@ -342,13 +342,18 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
                  * leave it. (We have already checked that that partition is page-aligned)
                  */
                 assert Heap.getHeap().getImageHeapOffsetInAddressSpace() == 0;
-                UnsignedWord beforeRelocSize = IMAGE_HEAP_RELOCATABLE_BEGIN.get().subtract(IMAGE_HEAP_BEGIN.get());
-                Pointer beforeRecommit = VirtualMemoryProvider.get().commit(IMAGE_HEAP_BEGIN.get(), beforeRelocSize, Access.READ);
+                UnsignedWord beforeRelocSize = IMAGE_HEAP_RELOCATABLE_BEGIN.get().subtract((Pointer) heapBase);
+                Pointer newHeapBase = VirtualMemoryProvider.get().commit(heapBase, beforeRelocSize, Access.READ);
 
-                Word afterRelocSize = IMAGE_HEAP_END.get().subtract(IMAGE_HEAP_RELOCATABLE_END.get());
-                Pointer afterRecommit = VirtualMemoryProvider.get().commit(IMAGE_HEAP_RELOCATABLE_END.get(), afterRelocSize, Access.READ);
+                if (newHeapBase.isNull() || newHeapBase.notEqual(heapBase)) {
+                    return CEntryPointErrors.MAP_HEAP_FAILED;
+                }
 
-                if (beforeRecommit.isNull() || afterRecommit.isNull()) {
+                Word relocEnd = IMAGE_HEAP_RELOCATABLE_END.get();
+                Word afterRelocSize = IMAGE_HEAP_END.get().subtract(relocEnd);
+                Pointer newRelocEnd = VirtualMemoryProvider.get().commit(relocEnd, afterRelocSize, Access.READ);
+
+                if (newRelocEnd.isNull() || newRelocEnd.notEqual(relocEnd)) {
                     return CEntryPointErrors.MAP_HEAP_FAILED;
                 }
             } else {

@@ -142,7 +142,7 @@ public class RegisterAllocationConfig {
                 max = number;
             }
         }
-        assert min < max;
+        assert min <= max;
         return new AllocatableRegisters(registers, min, max);
 
     }

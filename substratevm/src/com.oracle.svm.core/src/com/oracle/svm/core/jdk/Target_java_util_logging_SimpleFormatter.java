@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.jdk;
 
-//Checkstyle: allow reflection
-
 import java.util.logging.LogManager;
 
 import com.oracle.svm.core.annotate.Alias;

@@ -42,9 +42,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
-// Checkstyle: stop
 import sun.security.ssl.SSLLogger;
-// Checkstyle: resume
 
 /**
  * Root certificates in native image are fixed/embedded into the image, at image build time, based

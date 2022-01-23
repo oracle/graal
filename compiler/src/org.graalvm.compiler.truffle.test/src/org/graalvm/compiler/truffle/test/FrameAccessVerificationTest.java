@@ -110,6 +110,63 @@ public class FrameAccessVerificationTest extends PartialEvaluationTest {
     }
 
     @Test
+    public void repeatedClear() {
+        FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
+        int slot = builder.addSlot(FrameSlotKind.Illegal, null, null);
+        FrameDescriptor fd = builder.build();
+        RootNode root = new RootNode(null, fd) {
+            @Override
+            public String toString() {
+                return "repeatedClear";
+            }
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                /*
+                 * Merging different types leads to inefficient code that needs to deopt and
+                 * invalidate the frame intrinsics speculation.
+                 */
+                Object[] args = frame.getArguments();
+                if ((boolean) args[0]) {
+                    frame.setInt(slot, 1);
+                }
+                boundary();
+                frame.clear(slot);
+                if ((boolean) args[0]) {
+                    frame.setDouble(slot, 1);
+                }
+                boundary();
+                frame.clear(slot);
+                if ((boolean) args[0]) {
+                    frame.setFloat(slot, 1);
+                }
+                boundary();
+                frame.clear(slot);
+                if ((boolean) args[0]) {
+                    frame.setObject(slot, 1);
+                }
+                boundary();
+                frame.clear(slot);
+                if ((boolean) args[0]) {
+                    frame.setInt(slot, 1);
+                }
+                boundary();
+                if ((boolean) args[1]) {
+                    return frame.getInt(slot);
+                } else {
+                    return null;
+                }
+            }
+        };
+        Consumer<StructuredGraph> graphChecker = graph -> {
+            assertDeoptCount(graph, 0);
+            assertReturn(graph);
+            assertAllocations(graph);
+        };
+        doTest(root, graphChecker, result(1, true, true), result(null, false, false), result(FrameSlotTypeException.class, false, true), result(null, true, false));
+    }
+
+    @Test
     public void testLoop() {
         FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
         int slot = builder.addSlot(FrameSlotKind.Illegal, null, null);

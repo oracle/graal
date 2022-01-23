@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.jdk;
 
-// Checkstyle: allow reflection
-
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -47,8 +45,6 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.os.VirtualMemoryProvider;
 import com.oracle.svm.core.util.VMError;
-
-import jdk.vm.ci.code.MemoryBarriers;
 
 @TargetClass(className = "jdk.internal.misc.Unsafe")
 @SuppressWarnings({"static-method", "unused"})
@@ -112,20 +108,17 @@ final class Target_jdk_internal_misc_Unsafe_Core {
 
     @Substitute
     public void loadFence() {
-        final int fence = MemoryBarriers.LOAD_LOAD | MemoryBarriers.LOAD_STORE;
-        MembarNode.memoryBarrier(fence);
+        MembarNode.memoryBarrier(MembarNode.FenceKind.LOAD_ACQUIRE);
     }
 
     @Substitute
     public void storeFence() {
-        final int fence = MemoryBarriers.STORE_STORE | MemoryBarriers.LOAD_STORE;
-        MembarNode.memoryBarrier(fence);
+        MembarNode.memoryBarrier(MembarNode.FenceKind.STORE_RELEASE);
     }
 
     @Substitute
     public void fullFence() {
-        final int fence = MemoryBarriers.LOAD_LOAD | MemoryBarriers.LOAD_STORE | MemoryBarriers.STORE_LOAD | MemoryBarriers.STORE_STORE;
-        MembarNode.memoryBarrier(fence);
+        MembarNode.memoryBarrier(MembarNode.FenceKind.FULL);
     }
 
     @Substitute

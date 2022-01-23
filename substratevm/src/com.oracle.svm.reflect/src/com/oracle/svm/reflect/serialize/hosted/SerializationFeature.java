@@ -25,21 +25,26 @@
  */
 package com.oracle.svm.reflect.serialize.hosted;
 
-// Checkstyle: allow reflection
-
 import static com.oracle.svm.reflect.serialize.hosted.SerializationFeature.println;
+import static com.oracle.svm.reflect.serialize.hosted.SerializationFeature.warn;
 
 import java.io.Externalizable;
+import java.io.ObjectOutputStream;
 import java.io.ObjectStreamClass;
+import java.io.ObjectStreamField;
 import java.io.Serializable;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
+import jdk.vm.ci.meta.JavaKind;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -83,7 +88,7 @@ public class SerializationFeature implements Feature {
         ImageClassLoader imageClassLoader = access.getImageClassLoader();
         ConfigurationTypeResolver typeResolver = new ConfigurationTypeResolver("serialization configuration", imageClassLoader, NativeImageOptions.AllowIncompleteClasspath.getValue());
         SerializationDenyRegistry serializationDenyRegistry = new SerializationDenyRegistry(typeResolver);
-        serializationBuilder = new SerializationBuilder(serializationDenyRegistry, typeResolver);
+        serializationBuilder = new SerializationBuilder(serializationDenyRegistry, access, typeResolver);
         ImageSingletons.add(RuntimeSerializationSupport.class, serializationBuilder);
 
         SerializationConfigurationParser denyCollectorParser = new SerializationConfigurationParser(serializationDenyRegistry, ConfigurationFiles.Options.StrictConfiguration.getValue());
@@ -123,8 +128,12 @@ public class SerializationFeature implements Feature {
     }
 
     static void println(String str) {
-        // Checkstyle: stop
         System.out.println(str);
+    }
+
+    static void warn(String str) {
+        // Checkstyle: stop
+        System.err.println("Warning:" + str);
         // Checkstyle: resume
     }
 }
@@ -136,6 +145,15 @@ final class SerializationDenyRegistry implements RuntimeSerializationSupport {
 
     SerializationDenyRegistry(ConfigurationTypeResolver typeResolver) {
         this.typeResolver = typeResolver;
+    }
+
+    /**
+     * No need to deny all associated classes, only the specified class itself is registered as
+     * denied.
+     */
+    @Override
+    public void registerIncludingAssociatedClasses(ConfigurationCondition condition, Class<?> clazz) {
+        register(condition, clazz);
     }
 
     @Override
@@ -173,14 +191,20 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     private static final Method getExternalizableConstructorMethod = ReflectionUtil.lookupMethod(ObjectStreamClass.class, "getExternalizableConstructor", Class.class);
 
     private final Constructor<?> stubConstructor;
+    private final Field descField;
+    private final Method getDataLayoutMethod;
 
     private final SerializationSupport serializationSupport;
     private final SerializationDenyRegistry denyRegistry;
     private final ConfigurationTypeResolver typeResolver;
-
+    private final FeatureImpl.DuringSetupAccessImpl access;
     private boolean sealed;
 
-    SerializationBuilder(SerializationDenyRegistry serializationDenyRegistry, ConfigurationTypeResolver typeResolver) {
+    SerializationBuilder(SerializationDenyRegistry serializationDenyRegistry, FeatureImpl.DuringSetupAccessImpl access, ConfigurationTypeResolver typeResolver) {
+        this.access = access;
+        Class<?> classDataSlotClazz = access.findClassByName("java.io.ObjectStreamClass$ClassDataSlot");
+        descField = ReflectionUtil.lookupField(classDataSlotClazz, "desc");
+        getDataLayoutMethod = ReflectionUtil.lookupMethod(ObjectStreamClass.class, "getClassDataLayout");
         stubConstructor = newConstructorForSerialization(SerializationSupport.StubForAbstractClass.class, null);
         this.denyRegistry = serializationDenyRegistry;
         this.typeResolver = typeResolver;
@@ -191,6 +215,63 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
 
     private void abortIfSealed() {
         UserError.guarantee(!sealed, "Too late to add classes for serialization. Registration must happen in a Feature before the analysis has finished.");
+    }
+
+    @Override
+    public void registerIncludingAssociatedClasses(ConfigurationCondition condition, Class<?> clazz) {
+        registerIncludingAssociatedClasses(condition, clazz, new HashSet<>());
+    }
+
+    private void registerIncludingAssociatedClasses(ConfigurationCondition condition, Class<?> clazz, Set<Class<?>> alreadyVisited) {
+        if (alreadyVisited.contains(clazz)) {
+            return;
+        }
+        alreadyVisited.add(clazz);
+        String targetClassName = clazz.getName();
+        // If the serialization target is primitive, it needs to get boxed, because the target is
+        // always an Object.
+        if (clazz.isPrimitive()) {
+            Class<?> boxedType = JavaKind.fromJavaClass(clazz).toBoxedJavaClass();
+            registerIncludingAssociatedClasses(condition, boxedType, alreadyVisited);
+            return;
+        } else if (!Serializable.class.isAssignableFrom(clazz)) {
+            warn("Class " + targetClassName + " does not implement java.io.Serializable and was not registered for object serialization.\n");
+            return;
+        } else if (access.findSubclasses(clazz).size() > 1) {
+            // The classes returned from access.findSubclasses API including the base class itself
+            warn("Class " + targetClassName +
+                            " has subclasses. No classes were registered for object serialization.\n");
+            return;
+        }
+        try {
+            clazz.getDeclaredMethod("writeObject", ObjectOutputStream.class);
+            warn("Class " + targetClassName +
+                            " implements its own writeObject method for object serialization. Any serialization types it uses need to be explicitly registered.\n");
+            return;
+        } catch (NoSuchMethodException e) {
+            // Expected case. Do nothing
+        }
+        register(condition, clazz);
+
+        if (clazz.isArray()) {
+            registerIncludingAssociatedClasses(condition, clazz.getComponentType(), alreadyVisited);
+            return;
+        }
+        ObjectStreamClass osc = ObjectStreamClass.lookup(clazz);
+        try {
+            for (Object o : (Object[]) getDataLayoutMethod.invoke(osc)) {
+                ObjectStreamClass desc = (ObjectStreamClass) descField.get(o);
+                if (!desc.equals(osc) && !desc.equals(clazz)) {
+                    registerIncludingAssociatedClasses(condition, desc.forClass(), alreadyVisited);
+                }
+            }
+        } catch (ReflectiveOperationException e) {
+            VMError.shouldNotReachHere("Cannot register serialization classes due to", e);
+        }
+
+        for (ObjectStreamField field : osc.getFields()) {
+            registerIncludingAssociatedClasses(condition, field.getType(), alreadyVisited);
+        }
     }
 
     @Override

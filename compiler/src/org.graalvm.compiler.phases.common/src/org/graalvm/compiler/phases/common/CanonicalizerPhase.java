@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -313,7 +313,8 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                 workList.addAll(graph.getNewNodes(newNodesMark));
             }
 
-            tool = new Tool(graph.getAssumptions(), graph.getOptions());
+            // FIXME figure out appropriate phase
+            tool = new Tool(graph.getAssumptions(), graph.getOptions(), graph.isAfterStage(StageFlag.MID_TIER_LOWERING));
             processWorkSet(graph);
             if (features.contains(FINAL_CANONICALIZATION)) {
                 graph.setAfterStage(StageFlag.FINAL_CANONICALIZATION);
@@ -626,12 +627,14 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
             private final Assumptions assumptions;
             private final OptionValues options;
             private NodeView nodeView;
+            private final boolean afterMidTierLowering;
 
-            Tool(Assumptions assumptions, OptionValues options) {
+            Tool(Assumptions assumptions, OptionValues options, boolean afterMidTierLowering) {
                 super(context);
                 this.assumptions = assumptions;
                 this.options = options;
                 this.nodeView = getNodeView();
+                this.afterMidTierLowering = afterMidTierLowering;
             }
 
             @Override
@@ -669,6 +672,11 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
             @Override
             public boolean allUsagesAvailable() {
                 return true;
+            }
+
+            @Override
+            public boolean trySinkWriteFences() {
+                return afterMidTierLowering && context.getLowerer().writesStronglyOrdered();
             }
 
             @Override

@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.jfr;
 
-//Checkstyle: allow reflection
-
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -180,9 +178,7 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
             metaspaceMethodM.setAccessible(true);
             long metaspaceMethod = (Long) metaspaceMethodM.invoke(m);
             VMError.guarantee(metaspaceMethod != 0);
-            // Checkstyle: stop
             Class<?> hotSpotVMConfigC = Class.forName("jdk.vm.ci.hotspot.HotSpotVMConfig");
-            // Checkstyle: resume
             Method configM = hotSpotVMConfigC.getDeclaredMethod("config");
             configM.setAccessible(true);
             Field methodAccessFlagsOffsetF = hotSpotVMConfigC.getDeclaredField("methodAccessFlagsOffset");

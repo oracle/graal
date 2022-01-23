@@ -39,7 +39,7 @@ import org.graalvm.util.GuardedAnnotationAccess;
 import com.oracle.graal.pointsto.api.DefaultUnsafePartition;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
-import com.oracle.graal.pointsto.flow.FieldSinkTypeFlow;
+import com.oracle.graal.pointsto.flow.ContextInsensitiveFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
@@ -70,13 +70,14 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
 
     /**
      * Field type flow that reflects all the types flowing in this field on its declaring type and
-     * all the sub-types.
+     * all the sub-types. It doesn't track any context-sensitive information.
      */
-    private FieldSinkTypeFlow instanceFieldFlow;
+    private ContextInsensitiveFieldTypeFlow instanceFieldFlow;
 
     private AtomicBoolean isAccessed = new AtomicBoolean();
     private AtomicBoolean isRead = new AtomicBoolean();
     private AtomicBoolean isWritten = new AtomicBoolean();
+    private AtomicBoolean isFolded = new AtomicBoolean();
 
     private boolean isJNIAccessed;
     private boolean isUsedInComparison;
@@ -126,7 +127,7 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
             this.initialInstanceFieldFlow = null;
         } else {
             this.canBeNull = true;
-            this.instanceFieldFlow = new FieldSinkTypeFlow(this, getType());
+            this.instanceFieldFlow = new ContextInsensitiveFieldTypeFlow(this, getType());
             this.initialInstanceFieldFlow = new FieldTypeFlow(this, getType());
         }
     }
@@ -156,6 +157,7 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
         this.isUnsafeAccessed = other.isUnsafeAccessed;
         this.canBeNull = other.canBeNull;
         this.isWritten = new AtomicBoolean(other.isWritten.get());
+        this.isFolded = new AtomicBoolean(other.isFolded.get());
         this.isRead = new AtomicBoolean(other.isRead.get());
         notifyUpdateAccessInfo();
     }
@@ -164,6 +166,7 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
         this.isAccessed = new AtomicBoolean(this.isAccessed.get() && other.isAccessed.get());
         this.canBeNull = this.canBeNull && other.canBeNull;
         this.isWritten = new AtomicBoolean(this.isWritten.get() && other.isWritten.get());
+        this.isFolded = new AtomicBoolean(this.isFolded.get() && other.isFolded.get());
         this.isRead = new AtomicBoolean(this.isRead.get() && other.isRead.get());
         notifyUpdateAccessInfo();
     }
@@ -172,6 +175,7 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
         this.isAccessed.set(false);
         this.canBeNull = true;
         this.isWritten.set(false);
+        this.isFolded.set(false);
         this.isRead.set(false);
         notifyUpdateAccessInfo();
     }
@@ -208,38 +212,6 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
         return interceptTypeState(instanceFieldFlow.getState());
     }
 
-    // @formatter:off
-//    public TypeState getInstanceFieldTypeState() {
-//        if (instanceFieldTypeState == null) {
-//
-//            /* Collect the types of all instance field flows. */
-//            HashSet<AnalysisType> fieldTypes = new HashSet<>();
-//            boolean fieldCanBeNull = false;
-//
-//            fieldCanBeNull = collectInstanceFieldTypes(getDeclaringClass(), fieldTypes);
-//            instanceFieldTypeState = TypeState.forExactTypes(null, new ArrayList<>(fieldTypes), fieldCanBeNull);
-//
-//        }
-//        return instanceFieldTypeState;
-//    }
-
-//    private boolean collectInstanceFieldTypes(AnalysisType type, HashSet<AnalysisType> fieldTypes) {
-//        boolean fieldCanBeNull = false;
-//
-//        TypeFlow<?> fieldFlow = type.getAbstractObject().getInstanceFieldFlow(null, this, false);
-//        if (fieldFlow != null) {
-//            TypeState mergedState = fieldFlow.getState();
-//            mergedState.typesIterator().forEachRemaining(fieldTypes::add);
-//            fieldCanBeNull |= mergedState.canBeNull();
-//        }
-//
-//        for (AnalysisType subClass : type.subTypes) {
-//            fieldCanBeNull |= collectInstanceFieldTypes(subClass, fieldTypes);
-//        }
-//        return fieldCanBeNull;
-//    }
-    //@formatter:on
-
     public FieldTypeFlow getInitialInstanceFieldFlow() {
         return initialInstanceFieldFlow;
     }
@@ -250,7 +222,8 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
         return staticFieldFlow;
     }
 
-    public FieldSinkTypeFlow getInstanceFieldFlow() {
+    /** Get the field type flow, stripped of any context. */
+    public ContextInsensitiveFieldTypeFlow getInstanceFieldFlow() {
         assert !Modifier.isStatic(this.getModifiers());
 
         return instanceFieldFlow;
@@ -302,6 +275,12 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
             getUniverse().onFieldAccessed(this);
         }
         return firstAttempt;
+    }
+
+    public void markFolded() {
+        if (AtomicUtils.atomicMark(isFolded)) {
+            getDeclaringClass().registerAsReachable();
+        }
     }
 
     public void registerAsUnsafeAccessed() {
@@ -400,6 +379,14 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
         return isAccessed.get() || isWritten.get();
     }
 
+    public boolean isFolded() {
+        return isFolded.get();
+    }
+
+    public boolean isReachable() {
+        return isAccessed.get() || isRead.get() || isWritten.get() || isFolded.get();
+    }
+
     public void setCanBeNull(boolean canBeNull) {
         this.canBeNull = canBeNull;
         notifyUpdateAccessInfo();
@@ -480,7 +467,7 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
 
     @Override
     public String toString() {
-        return "AnalysisField<" + format("%h.%n") + " accessed: " + isAccessed + " reads: " + isRead + " written: " + isWritten + ">";
+        return "AnalysisField<" + format("%h.%n") + " accessed: " + isAccessed + " reads: " + isRead + " written: " + isWritten + " folded: " + isFolded + ">";
     }
 
     public void markAsUsedInComparison() {

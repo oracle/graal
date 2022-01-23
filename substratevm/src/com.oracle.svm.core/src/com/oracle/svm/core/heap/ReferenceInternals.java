@@ -140,8 +140,6 @@ public final class ReferenceInternals {
      * We duplicate the JDK 11 reference processing code here so we can also use it with JDK 8.
      */
 
-    // Checkstyle: allow synchronization
-
     private static final Object processPendingLock = new Object();
     private static boolean processPendingActive = false;
 
@@ -231,8 +229,6 @@ public final class ReferenceInternals {
             }
         }
     }
-
-    // Checkstyle: disallow synchronization
 
     public static long getSoftReferenceClock() {
         return Target_java_lang_ref_SoftReference.clock;

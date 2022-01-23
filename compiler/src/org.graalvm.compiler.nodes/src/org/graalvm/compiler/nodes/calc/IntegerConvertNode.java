@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,13 +50,13 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
  * An {@code IntegerConvert} converts an integer to an integer of different width.
  */
 @NodeInfo
-public abstract class IntegerConvertNode<OP, REV> extends UnaryNode implements ArithmeticOperation, ConvertNode, ArithmeticLIRLowerable, StampInverter {
+public abstract class IntegerConvertNode<OP> extends UnaryNode implements ArithmeticOperation, ConvertNode, ArithmeticLIRLowerable, StampInverter {
     @SuppressWarnings("rawtypes") public static final NodeClass<IntegerConvertNode> TYPE = NodeClass.create(IntegerConvertNode.class);
 
     protected final int inputBits;
     protected final int resultBits;
 
-    protected IntegerConvertNode(NodeClass<? extends IntegerConvertNode<OP, REV>> c, IntegerConvertOp<OP> opForStampComputation, int inputBits, int resultBits, ValueNode input) {
+    protected IntegerConvertNode(NodeClass<? extends IntegerConvertNode<OP>> c, IntegerConvertOp<OP> opForStampComputation, int inputBits, int resultBits, ValueNode input) {
         super(c, opForStampComputation.foldStamp(inputBits, resultBits, input.stamp(NodeView.DEFAULT)), input);
         this.inputBits = inputBits;
         this.resultBits = resultBits;
@@ -73,7 +73,7 @@ public abstract class IntegerConvertNode<OP, REV> extends UnaryNode implements A
 
     protected abstract IntegerConvertOp<OP> getOp(ArithmeticOpTable table);
 
-    protected abstract IntegerConvertOp<REV> getReverseOp(ArithmeticOpTable table);
+    protected abstract IntegerConvertOp<?> getReverseOp(ArithmeticOpTable table);
 
     @Override
     public final IntegerConvertOp<OP> getArithmeticOp() {
@@ -87,7 +87,7 @@ public abstract class IntegerConvertNode<OP, REV> extends UnaryNode implements A
 
     @Override
     public Constant reverse(Constant c, ConstantReflectionProvider constantReflection) {
-        IntegerConvertOp<REV> reverse = getReverseOp(ArithmeticOpTable.forStamp(stamp(NodeView.DEFAULT)));
+        IntegerConvertOp<?> reverse = getReverseOp(ArithmeticOpTable.forStamp(stamp(NodeView.DEFAULT)));
         return reverse.foldConstant(getResultBits(), getInputBits(), c);
     }
 

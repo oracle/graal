@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -2199,6 +2199,7 @@ public abstract class AArch64ASIMDAssembler {
      * @param imm long value to move. If size is 128, then this value is copied twice
      */
     public void moviVI(ASIMDSize size, Register dst, long imm) {
+        assert dst.getRegisterCategory().equals(SIMD);
         modifiedImmEncoding(ImmediateOp.MOVI, size, dst, imm);
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Function;
 
 import org.graalvm.collections.Pair;
@@ -82,6 +83,11 @@ final class PolyglotLanguageInstance implements VMObject {
     List<LanguageContextThreadLocal<?>> contextThreadLocals;
     LocalLocation[] contextLocalLocations;
     LocalLocation[] contextThreadLocalLocations;
+
+    @CompilationFinal private volatile Object guestToHostCodeCache;
+
+    private static final AtomicReferenceFieldUpdater<PolyglotLanguageInstance, Object> GUEST_TO_HOST_CODE_CACHE_UPDATER = //
+                    AtomicReferenceFieldUpdater.newUpdater(PolyglotLanguageInstance.class, Object.class, "guestToHostCodeCache");
 
     @SuppressWarnings("unchecked")
     PolyglotLanguageInstance(PolyglotLanguage language, PolyglotSharingLayer layer) {
@@ -132,6 +138,18 @@ final class PolyglotLanguageInstance implements VMObject {
             }
         });
         return cache;
+    }
+
+    Object getGuestToHostCodeCache() {
+        return guestToHostCodeCache;
+    }
+
+    Object installGuestToHostCodeCache(Object newCache) {
+        if (GUEST_TO_HOST_CODE_CACHE_UPDATER.compareAndSet(this, null, newCache)) {
+            return newCache;
+        } else {
+            return guestToHostCodeCache;
+        }
     }
 
     @Override

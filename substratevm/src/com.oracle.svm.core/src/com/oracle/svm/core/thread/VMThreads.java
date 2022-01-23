@@ -83,9 +83,11 @@ public abstract class VMThreads {
      * the mutexes are acquired (VMOperation queue mutex first, {@link #THREAD_MUTEX} second). If
      * the VM operation causes a safepoint, then it is possible that the {@link #THREAD_MUTEX} was
      * already acquired for safepoint reasons.</li>
-     * <li>Acquire the mutex from a thread that is either not yet attached
-     * {@link StatusSupport#STATUS_CREATED} or currently in native code
-     * ({@link StatusSupport#STATUS_IN_NATIVE}).</li>
+     * <li>Acquire the mutex from a thread that is not yet attached
+     * ({@link StatusSupport#STATUS_CREATED}).</li>
+     * <li>Acquire the mutex from a thread that is in native code
+     * ({@link StatusSupport#STATUS_IN_NATIVE}). This is also possible from a thread that is in Java
+     * state by doing an explicit transition to native, see {@link #lockVMMutexInNativeCode}.</li>
      * </ol>
      *
      * Deadlock example 1:
@@ -296,7 +298,7 @@ public abstract class VMThreads {
         assert !ThreadingSupportImpl.isRecurringCallbackRegistered(thread);
         Safepoint.setSafepointRequested(thread, Safepoint.THREAD_REQUEST_RESET);
 
-        VMThreads.THREAD_MUTEX.lockNoTransition();
+        THREAD_MUTEX.lockNoTransition();
         try {
             nextTL.set(thread, head);
             head = thread;
@@ -304,9 +306,9 @@ public abstract class VMThreads {
             /* On the initial transition to java code this thread should be synchronized. */
             ActionOnTransitionToJavaSupport.setSynchronizeCode(thread);
             StatusSupport.setStatusNative(thread);
-            VMThreads.THREAD_LIST_CONDITION.broadcast();
+            THREAD_LIST_CONDITION.broadcast();
         } finally {
-            VMThreads.THREAD_MUTEX.unlock();
+            THREAD_MUTEX.unlock();
         }
         return CEntryPointErrors.NO_ERROR;
     }
@@ -358,7 +360,7 @@ public abstract class VMThreads {
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
     @NeverInline("Must not be inlined in a caller that has an exception handler: We only support InvokeNode and not InvokeWithExceptionNode between a CFunctionPrologueNode and CFunctionEpilogueNode.")
-    private static void lockVMMutexInNativeCode() {
+    static void lockVMMutexInNativeCode() {
         CFunctionPrologueNode.cFunctionPrologue(StatusSupport.STATUS_IN_NATIVE);
         lockVMMutexInNativeCode0();
         CFunctionEpilogueNode.cFunctionEpilogue(StatusSupport.STATUS_IN_NATIVE);
@@ -367,7 +369,7 @@ public abstract class VMThreads {
     @Uninterruptible(reason = "Must not stop while in native.")
     @NeverInline("Provide a return address for the Java frame anchor.")
     private static void lockVMMutexInNativeCode0() {
-        VMThreads.THREAD_MUTEX.lockNoTransition();
+        THREAD_MUTEX.lockNoTransition();
     }
 
     @Uninterruptible(reason = "Thread is detaching and holds the THREAD_MUTEX.")
@@ -551,7 +553,7 @@ public abstract class VMThreads {
              * Accessing the VMThread list requires the lock, but locking must be without
              * transitions because the IsolateThread is not set up yet.
              */
-            VMThreads.THREAD_MUTEX.lockNoTransitionUnspecifiedOwner();
+            THREAD_MUTEX.lockNoTransitionUnspecifiedOwner();
         }
         try {
             IsolateThread thread;
@@ -560,7 +562,7 @@ public abstract class VMThreads {
             return thread;
         } finally {
             if (needsLock) {
-                VMThreads.THREAD_MUTEX.unlockNoTransitionUnspecifiedOwner();
+                THREAD_MUTEX.unlockNoTransitionUnspecifiedOwner();
             }
         }
     }

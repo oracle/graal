@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,6 +54,7 @@ import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonArray;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
+import com.oracle.truffle.regex.util.EmptyArrays;
 import com.oracle.truffle.regex.util.TBitSet;
 
 /**
@@ -72,9 +73,6 @@ import com.oracle.truffle.regex.util.TBitSet;
  * @see com.oracle.truffle.regex.tregex.parser.ast.RegexAST
  */
 public class GroupBoundaries implements JsonConvertible {
-
-    private static final byte[] EMPTY_BYTE_ARRAY = {};
-    private static final short[] EMPTY_SHORT_ARRAY = {};
 
     private final TBitSet updateIndices;
     private final TBitSet clearIndices;
@@ -139,7 +137,7 @@ public class GroupBoundaries implements JsonConvertible {
 
     private static byte[] indicesToByteArray(TBitSet indices) {
         if (indices.isEmpty()) {
-            return EMPTY_BYTE_ARRAY;
+            return EmptyArrays.BYTE;
         }
         final byte[] array = new byte[indices.numberOfSetBits()];
         int i = 0;
@@ -159,7 +157,7 @@ public class GroupBoundaries implements JsonConvertible {
 
     private static short[] indicesToShortArray(TBitSet indices) {
         if (indices.isEmpty()) {
-            return EMPTY_SHORT_ARRAY;
+            return EmptyArrays.SHORT;
         }
         final short[] array = new short[indices.numberOfSetBits()];
         writeIndicesToArray(indices, array, 0);
@@ -245,6 +243,9 @@ public class GroupBoundaries implements JsonConvertible {
     public void applyToResultFactory(PreCalculatedResultFactory resultFactory, int index, boolean trackLastGroup) {
         if (hasIndexUpdates()) {
             resultFactory.updateIndices(updateIndices, index);
+        }
+        if (hasIndexClears()) {
+            resultFactory.clearIndices(clearIndices);
         }
         if (trackLastGroup && hasLastGroup()) {
             resultFactory.setLastGroup(getLastGroup());
@@ -348,7 +349,7 @@ public class GroupBoundaries implements JsonConvertible {
 
     @TruffleBoundary
     public JsonArray indexUpdateSourceSectionsToJson(RegexAST ast) {
-        if (!hasIndexUpdates()) {
+        if (!hasIndexUpdates() || !ast.getOptions().isDumpAutomataWithSourceSections()) {
             return Json.array();
         }
         return RegexAST.sourceSectionsToJson(getUpdateIndices().stream().mapToObj(x -> ast.getSourceSections(ast.getGroupByBoundaryIndex(x)).get(x & 1)));

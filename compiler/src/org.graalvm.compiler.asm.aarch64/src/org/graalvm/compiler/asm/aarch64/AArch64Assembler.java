@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2018, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -1947,7 +1947,7 @@ public abstract class AArch64Assembler extends Assembler {
      * dst = src1 + extendType(src2) << imm.
      *
      * @param size register size. Has to be 32 or 64.
-     * @param dst general purpose register. May not be null or zero-register..
+     * @param dst general purpose register. May not be null or zero-register.
      * @param src1 general purpose register. May not be null or zero-register.
      * @param src2 general purpose register. May not be null or stackpointer.
      * @param extendType defines how src2 is extended to the same size as src1.
@@ -1964,7 +1964,7 @@ public abstract class AArch64Assembler extends Assembler {
      * dst = src1 + extendType(src2) << imm and sets condition flags.
      *
      * @param size register size. Has to be 32 or 64.
-     * @param dst general purpose register. May not be null or stackpointer..
+     * @param dst general purpose register. May not be null or stackpointer.
      * @param src1 general purpose register. May not be null or zero-register.
      * @param src2 general purpose register. May not be null or stackpointer.
      * @param extendType defines how src2 is extended to the same size as src1.
@@ -1981,7 +1981,7 @@ public abstract class AArch64Assembler extends Assembler {
      * dst = src1 - extendType(src2) << imm.
      *
      * @param size register size. Has to be 32 or 64.
-     * @param dst general purpose register. May not be null or zero-register..
+     * @param dst general purpose register. May not be null or zero-register.
      * @param src1 general purpose register. May not be null or zero-register.
      * @param src2 general purpose register. May not be null or stackpointer.
      * @param extendType defines how src2 is extended to the same size as src1.
@@ -1998,7 +1998,7 @@ public abstract class AArch64Assembler extends Assembler {
      * dst = src1 - extendType(src2) << imm and sets flags.
      *
      * @param size register size. Has to be 32 or 64.
-     * @param dst general purpose register. May not be null or stackpointer..
+     * @param dst general purpose register. May not be null or stackpointer.
      * @param src1 general purpose register. May not be null or zero-register.
      * @param src2 general purpose register. May not be null or stackpointer.
      * @param extendType defines how src2 is extended to the same size as src1.

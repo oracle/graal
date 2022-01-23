@@ -55,8 +55,14 @@ import org.graalvm.compiler.nodes.SafepointNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.NodeValueMap;
+import org.graalvm.compiler.replacements.ArrayIndexOf;
+import org.graalvm.compiler.replacements.ArrayIndexOfNode;
+import org.graalvm.compiler.replacements.amd64.AMD64ArrayRegionEqualsWithMaskNode;
+import org.graalvm.compiler.replacements.amd64.AMD64CalcStringAttributesNode;
 import org.graalvm.compiler.replacements.nodes.ArrayCompareToNode;
+import org.graalvm.compiler.replacements.nodes.ArrayCopyWithConversionsNode;
 import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
+import org.graalvm.compiler.replacements.nodes.ArrayRegionCompareToNode;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
 
 import jdk.vm.ci.amd64.AMD64;
@@ -70,7 +76,6 @@ import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.AllocatableValue;
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.Value;
 
@@ -213,86 +218,28 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
             // Emit assembly for snippet stubs
             return null;
         }
+        ForeignCallDescriptor descriptor = getForeignCallDescriptor(valueNode, getGen().getMaxVectorSize());
+        return descriptor == null ? null : lookupForeignCall(descriptor);
+    }
 
-        if (valueNode instanceof ArrayEqualsNode) {
-            ArrayEqualsNode arrayEqualsNode = (ArrayEqualsNode) valueNode;
-            JavaKind kind = arrayEqualsNode.getKind();
-            ValueNode length = arrayEqualsNode.getLength();
-
-            if (length.isConstant()) {
-                int constantLength = length.asJavaConstant().asInt();
-                if (constantLength >= 0 && constantLength * kind.getByteCount() < 2 * getGen().getMaxVectorSize()) {
-                    // Yield constant-length arrays comparison assembly
-                    return null;
-                }
-            }
-
-            switch (kind) {
-                case Boolean:
-                    return lookupForeignCall(AMD64ArrayEqualsStub.STUB_BOOLEAN_ARRAY_EQUALS);
-                case Byte:
-                    return lookupForeignCall(AMD64ArrayEqualsStub.STUB_BYTE_ARRAY_EQUALS);
-                case Char:
-                    return lookupForeignCall(AMD64ArrayEqualsStub.STUB_CHAR_ARRAY_EQUALS);
-                case Short:
-                    return lookupForeignCall(AMD64ArrayEqualsStub.STUB_SHORT_ARRAY_EQUALS);
-                case Int:
-                    return lookupForeignCall(AMD64ArrayEqualsStub.STUB_INT_ARRAY_EQUALS);
-                case Long:
-                    return lookupForeignCall(AMD64ArrayEqualsStub.STUB_LONG_ARRAY_EQUALS);
-                case Float:
-                    return lookupForeignCall(AMD64ArrayEqualsStub.STUB_FLOAT_ARRAY_EQUALS);
-                case Double:
-                    return lookupForeignCall(AMD64ArrayEqualsStub.STUB_DOUBLE_ARRAY_EQUALS);
-                default:
-                    return null;
-            }
-        } else if (valueNode instanceof ArrayCompareToNode) {
-            ArrayCompareToNode arrayCompareToNode = (ArrayCompareToNode) valueNode;
-            JavaKind kind1 = arrayCompareToNode.getKind1();
-            JavaKind kind2 = arrayCompareToNode.getKind2();
-
-            if (kind1 == JavaKind.Byte) {
-                if (kind2 == JavaKind.Byte) {
-                    return lookupForeignCall(AMD64ArrayCompareToStub.STUB_BYTE_ARRAY_COMPARE_TO_BYTE_ARRAY);
-                } else if (kind2 == JavaKind.Char) {
-                    return lookupForeignCall(AMD64ArrayCompareToStub.STUB_BYTE_ARRAY_COMPARE_TO_CHAR_ARRAY);
-                }
-            } else if (kind1 == JavaKind.Char) {
-                if (kind2 == JavaKind.Byte) {
-                    return lookupForeignCall(AMD64ArrayCompareToStub.STUB_CHAR_ARRAY_COMPARE_TO_BYTE_ARRAY);
-                } else if (kind2 == JavaKind.Char) {
-                    return lookupForeignCall(AMD64ArrayCompareToStub.STUB_CHAR_ARRAY_COMPARE_TO_CHAR_ARRAY);
-                }
-            }
+    private static ForeignCallDescriptor getForeignCallDescriptor(ValueNode valueNode, int maxVectorSize) {
+        if (valueNode instanceof ArrayIndexOfNode) {
+            return ArrayIndexOf.getStub((ArrayIndexOfNode) valueNode);
+        } else if (valueNode instanceof ArrayEqualsNode) {
+            return AMD64ArrayEqualsStub.getArrayEqualsStub((ArrayEqualsNode) valueNode, maxVectorSize);
         } else if (valueNode instanceof ArrayRegionEqualsNode) {
-            ArrayRegionEqualsNode arrayRegionEqualsNode = (ArrayRegionEqualsNode) valueNode;
-            JavaKind kind1 = arrayRegionEqualsNode.getKind1();
-            JavaKind kind2 = arrayRegionEqualsNode.getKind2();
-            ValueNode length = arrayRegionEqualsNode.getLength();
-
-            if (length.isConstant()) {
-                int constantLength = length.asJavaConstant().asInt();
-                if (constantLength >= 0 && constantLength * (Math.max(kind1.getByteCount(), kind2.getByteCount())) < 2 * getGen().getMaxVectorSize()) {
-                    // Yield constant-length arrays comparison assembly
-                    return null;
-                }
-            }
-
-            if (kind1 == kind2) {
-                switch (kind1) {
-                    case Byte:
-                        return lookupForeignCall(AMD64ArrayEqualsStub.STUB_BYTE_ARRAY_EQUALS_DIRECT);
-                    case Char:
-                        return lookupForeignCall(AMD64ArrayEqualsStub.STUB_CHAR_ARRAY_EQUALS_DIRECT);
-                    default:
-                        return null;
-                }
-            } else if (kind1 == JavaKind.Char && kind2 == JavaKind.Byte) {
-                return lookupForeignCall(AMD64ArrayEqualsStub.STUB_CHAR_ARRAY_EQUALS_BYTE_ARRAY);
-            }
+            return AMD64ArrayEqualsStub.getRegionEqualsStub((ArrayRegionEqualsNode) valueNode, maxVectorSize);
+        } else if (valueNode instanceof AMD64ArrayRegionEqualsWithMaskNode) {
+            return AMD64ArrayEqualsWithMaskStub.getStub((AMD64ArrayRegionEqualsWithMaskNode) valueNode, maxVectorSize);
+        } else if (valueNode instanceof ArrayCompareToNode) {
+            return AMD64ArrayCompareToStub.getStub((ArrayCompareToNode) valueNode);
+        } else if (valueNode instanceof ArrayRegionCompareToNode) {
+            return AMD64ArrayRegionCompareToStub.getStub((ArrayRegionCompareToNode) valueNode);
+        } else if (valueNode instanceof AMD64CalcStringAttributesNode) {
+            return AMD64CalcStringAttributesStub.getStub((AMD64CalcStringAttributesNode) valueNode);
+        } else if (valueNode instanceof ArrayCopyWithConversionsNode) {
+            return AMD64ArrayCopyWithConversionsStub.getStub((ArrayCopyWithConversionsNode) valueNode);
         }
-
         return null;
     }
 }

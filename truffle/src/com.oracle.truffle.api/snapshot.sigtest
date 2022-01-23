@@ -12,6 +12,7 @@ meth public static int indexOfWithOrMask(byte[],int,int,byte[],byte[])
 meth public static int indexOfWithOrMask(char[],int,int,char[],char[])
 meth public static int indexOfWithOrMask(java.lang.String,int,int,java.lang.String,java.lang.String)
 supr java.lang.Object
+hfds JAVA_SPEC,UNSAFE,javaStringCoderFieldOffset,javaStringValueFieldOffset
 
 CLSS public abstract interface com.oracle.truffle.api.Assumption
 meth public abstract boolean isValid()
@@ -165,6 +166,7 @@ intf java.lang.annotation.Annotation
 meth public abstract !hasdefault boolean deprecated()
 meth public abstract !hasdefault java.lang.String deprecationMessage()
 meth public abstract !hasdefault java.lang.String name()
+meth public abstract !hasdefault java.lang.String usageSyntax()
 meth public abstract !hasdefault org.graalvm.options.OptionStability stability()
 meth public abstract java.lang.String help()
 meth public abstract org.graalvm.options.OptionCategory category()
@@ -1036,7 +1038,7 @@ meth public abstract java.lang.Object execute(com.oracle.truffle.api.frame.Virtu
 meth public final <%0 extends com.oracle.truffle.api.TruffleLanguage> {%%0} getLanguage(java.lang.Class<{%%0}>)
 meth public final com.oracle.truffle.api.nodes.LanguageInfo getLanguageInfo()
 supr com.oracle.truffle.api.nodes.Node
-hfds engineRef
+hfds polyglotRef
 
 CLSS public final com.oracle.truffle.api.nodes.ExecutionSignature
 fld public final static com.oracle.truffle.api.nodes.ExecutionSignature GENERIC
@@ -1428,7 +1430,7 @@ meth public com.oracle.truffle.api.source.Source$SourceBuilder mimeType(java.lan
 meth public com.oracle.truffle.api.source.Source$SourceBuilder name(java.lang.String)
 meth public com.oracle.truffle.api.source.Source$SourceBuilder uri(java.net.URI)
 supr java.lang.Object
-hfds cached,canonicalizePath,content,fileEncoding,fileSystemContext,interactive,internal,language,mimeType,name,origin,path,uri,url
+hfds cached,canonicalizePath,content,embedderSource,fileEncoding,fileSystemContext,interactive,internal,language,mimeType,name,origin,path,uri,url
 
 CLSS public abstract com.oracle.truffle.api.source.SourceSection
 meth public abstract boolean equals(java.lang.Object)

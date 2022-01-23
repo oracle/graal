@@ -57,6 +57,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 
+import com.oracle.truffle.api.strings.TruffleString;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.SourceSection;
@@ -1616,16 +1617,17 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
         return new HostNull(polyglot);
     }
 
-    static void createDefaultValues(PolyglotImpl polyglot, PolyglotLanguageInstance languageInsance, Map<Class<?>, PolyglotValueDispatch> valueCache) {
-        addDefaultValue(polyglot, languageInsance, valueCache, false);
-        addDefaultValue(polyglot, languageInsance, valueCache, "");
-        addDefaultValue(polyglot, languageInsance, valueCache, 'a');
-        addDefaultValue(polyglot, languageInsance, valueCache, (byte) 0);
-        addDefaultValue(polyglot, languageInsance, valueCache, (short) 0);
-        addDefaultValue(polyglot, languageInsance, valueCache, 0);
-        addDefaultValue(polyglot, languageInsance, valueCache, 0L);
-        addDefaultValue(polyglot, languageInsance, valueCache, 0F);
-        addDefaultValue(polyglot, languageInsance, valueCache, 0D);
+    static void createDefaultValues(PolyglotImpl polyglot, PolyglotLanguageInstance languageInstance, Map<Class<?>, PolyglotValueDispatch> valueCache) {
+        addDefaultValue(polyglot, languageInstance, valueCache, false);
+        addDefaultValue(polyglot, languageInstance, valueCache, "");
+        addDefaultValue(polyglot, languageInstance, valueCache, TruffleString.fromJavaStringUncached("", TruffleString.Encoding.UTF_16));
+        addDefaultValue(polyglot, languageInstance, valueCache, 'a');
+        addDefaultValue(polyglot, languageInstance, valueCache, (byte) 0);
+        addDefaultValue(polyglot, languageInstance, valueCache, (short) 0);
+        addDefaultValue(polyglot, languageInstance, valueCache, 0);
+        addDefaultValue(polyglot, languageInstance, valueCache, 0L);
+        addDefaultValue(polyglot, languageInstance, valueCache, 0F);
+        addDefaultValue(polyglot, languageInstance, valueCache, 0D);
     }
 
     static void addDefaultValue(PolyglotImpl polyglot, PolyglotLanguageInstance languageInstance, Map<Class<?>, PolyglotValueDispatch> valueCache, Object primitive) {

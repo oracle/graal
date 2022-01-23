@@ -33,8 +33,8 @@
 
   builds: std.flattenArrays([
     [
-      common["linux-amd64"]  + jdk + regex_gate + regex_unittest,
-      common["darwin-amd64"] + jdk + regex_gate_lite,
+      common.linux_amd64  + jdk + regex_gate + regex_unittest,
+      common.darwin_amd64 + jdk + regex_gate_lite,
     ] for jdk in [
       common.oraclejdk11,
       common.oraclejdk17,

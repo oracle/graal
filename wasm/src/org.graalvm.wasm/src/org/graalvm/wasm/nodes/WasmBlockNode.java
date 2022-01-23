@@ -120,6 +120,8 @@ import static org.graalvm.wasm.constants.Instructions.I32_DIV_S;
 import static org.graalvm.wasm.constants.Instructions.I32_DIV_U;
 import static org.graalvm.wasm.constants.Instructions.I32_EQ;
 import static org.graalvm.wasm.constants.Instructions.I32_EQZ;
+import static org.graalvm.wasm.constants.Instructions.I32_EXTEND16_S;
+import static org.graalvm.wasm.constants.Instructions.I32_EXTEND8_S;
 import static org.graalvm.wasm.constants.Instructions.I32_GE_S;
 import static org.graalvm.wasm.constants.Instructions.I32_GE_U;
 import static org.graalvm.wasm.constants.Instructions.I32_GT_S;
@@ -168,6 +170,9 @@ import static org.graalvm.wasm.constants.Instructions.I64_DIV_S;
 import static org.graalvm.wasm.constants.Instructions.I64_DIV_U;
 import static org.graalvm.wasm.constants.Instructions.I64_EQ;
 import static org.graalvm.wasm.constants.Instructions.I64_EQZ;
+import static org.graalvm.wasm.constants.Instructions.I64_EXTEND16_S;
+import static org.graalvm.wasm.constants.Instructions.I64_EXTEND32_S;
+import static org.graalvm.wasm.constants.Instructions.I64_EXTEND8_S;
 import static org.graalvm.wasm.constants.Instructions.I64_EXTEND_I32_S;
 import static org.graalvm.wasm.constants.Instructions.I64_EXTEND_I32_U;
 import static org.graalvm.wasm.constants.Instructions.I64_GE_S;
@@ -262,6 +267,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 
 public final class WasmBlockNode extends WasmNode implements RepeatingNode {
 
@@ -283,6 +289,10 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     @CompilationFinal private final int initialProfileOffset;
     @CompilationFinal private int profileCount;
     @Children private Node[] children;
+
+    private final ConditionProfile loopUnwindProfile = ConditionProfile.create();
+    private final ConditionProfile ifUnwindProfile = ConditionProfile.create();
+    private final ConditionProfile blockUnwindProfile = ConditionProfile.create();
 
     private static final float MIN_FLOAT_TRUNCATABLE_TO_INT = Integer.MIN_VALUE;
     private static final float MAX_FLOAT_TRUNCATABLE_TO_INT = 2147483520f;
@@ -407,7 +417,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     // The unwind counter indicates how many levels up we need to branch from
                     // within the block.
                     int unwindCounter = block.execute(context, frame);
-                    if (unwindCounter > 0) {
+                    if (blockUnwindProfile.profile(unwindCounter > 0)) {
                         return unwindCounter - 1;
                     }
 
@@ -436,7 +446,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     // "shallower" than the current loop block
                     // (break out of the loop and even further).
                     int unwindCounter = executeLoopNode(childrenOffset, frame);
-                    if (unwindCounter > 0) {
+                    if (loopUnwindProfile.profile(unwindCounter > 0)) {
                         return unwindCounter - 1;
                     }
 
@@ -455,7 +465,7 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                     WasmIfNode ifNode = (WasmIfNode) children[childrenOffset];
                     stackPointer--;
                     int unwindCounter = ifNode.execute(context, frame);
-                    if (unwindCounter > 0) {
+                    if (ifUnwindProfile.profile(unwindCounter > 0)) {
                         return unwindCounter - 1;
                     }
                     childrenOffset++;
@@ -1427,6 +1437,21 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
                         default:
                             throw CompilerDirectives.shouldNotReachHere();
                     }
+                    break;
+                case I32_EXTEND8_S:
+                    i32_extend8_s(frame, stackPointer);
+                    break;
+                case I32_EXTEND16_S:
+                    i32_extend16_s(frame, stackPointer);
+                    break;
+                case I64_EXTEND8_S:
+                    i64_extend8_s(frame, stackPointer);
+                    break;
+                case I64_EXTEND16_S:
+                    i64_extend16_s(frame, stackPointer);
+                    break;
+                case I64_EXTEND32_S:
+                    i64_extend32_s(frame, stackPointer);
                     break;
                 default:
                     throw CompilerDirectives.shouldNotReachHere();
@@ -3025,6 +3050,36 @@ public final class WasmBlockNode extends WasmNode implements RepeatingNode {
     private static void f64_reinterpret_i64(VirtualFrame frame, int stackPointer) {
         long x = popLong(frame, stackPointer - 1);
         pushDouble(frame, stackPointer - 1, Double.longBitsToDouble(x));
+    }
+
+    private static void i32_extend8_s(VirtualFrame frame, int stackPointer) {
+        int x = popInt(frame, stackPointer - 1);
+        int result = (x << 24) >> 24;
+        pushInt(frame, stackPointer - 1, result);
+    }
+
+    private static void i32_extend16_s(VirtualFrame frame, int stackPointer) {
+        int x = popInt(frame, stackPointer - 1);
+        int result = (x << 16) >> 16;
+        pushInt(frame, stackPointer - 1, result);
+    }
+
+    private static void i64_extend8_s(VirtualFrame frame, int stackPointer) {
+        long x = popLong(frame, stackPointer - 1);
+        long result = (x << 56) >> 56;
+        pushLong(frame, stackPointer - 1, result);
+    }
+
+    private static void i64_extend16_s(VirtualFrame frame, int stackPointer) {
+        long x = popLong(frame, stackPointer - 1);
+        long result = (x << 48) >> 48;
+        pushLong(frame, stackPointer - 1, result);
+    }
+
+    private static void i64_extend32_s(VirtualFrame frame, int stackPointer) {
+        long x = popLong(frame, stackPointer - 1);
+        long result = (x << 32) >> 32;
+        pushLong(frame, stackPointer - 1, result);
     }
 
     // Checkstyle: resume method name check

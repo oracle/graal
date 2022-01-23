@@ -210,7 +210,7 @@ Usage: java -truffle [-options] class [args...]
 
 To rebuild the polyglot library:
     gu rebuild-images libpolyglot -cp """ + lib_espresso_cp,
-    stability="experimental",
+    stability="supported",
 ))
 
 if LLVM_JAVA_HOME:
@@ -234,12 +234,13 @@ if LLVM_JAVA_HOME:
         truffle_jars=[],
         include_in_polyglot=False,
         dir_name='java',
-        installable_id='espresso-llvm-' + edition,
+        installable_id='espresso-llvm',
+        extra_installable_qualifiers=[edition],
         installable=True,
         dependencies=['Java on Truffle', 'LLVM Runtime Native'],
         support_distributions=['espresso:ESPRESSO_LLVM_SUPPORT'],
         priority=2,
-        stability="experimental",
+        stability="supported",
     ))
 
 
@@ -272,7 +273,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     dependencies=['Java on Truffle'],
     support_libraries_distributions=['espresso:ESPRESSO_JVM_SUPPORT'],
     priority=2,
-    stability="experimental",
+    stability="supported",
 ))
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(

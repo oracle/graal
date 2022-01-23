@@ -69,19 +69,15 @@ public class PolyglotNativeAPIFeature implements Feature {
             // on Darwin, change the `id` install name
             String id = System.getProperty("org.graalvm.polyglot.install_name_id");
             if (id == null) {
-                // Checkstyle: stop This is Hosted-only code
                 String msg = String.format("Warning: no id passed through `org.graalvm.polyglot.install_name_id`:" +
                                 "\n%s might include its absolute path as id (see man install_name_tool)", imagePath);
                 System.err.println(msg);
-                // Checkstyle: resume
             } else {
                 List<String> command = Arrays.asList("install_name_tool", "-id", id, imagePath.toString());
                 try {
                     int exitCode = FileUtils.executeCommand(command);
                     if (exitCode != 0) {
-                        // Checkstyle: stop This is Hosted-only code
                         System.err.printf("Failed to set `id` install name. install_name_tool exited with code %d%n", exitCode);
-                        // Checkstyle: resume
                     }
                 } catch (IOException e) {
                     throw new RuntimeException(e);

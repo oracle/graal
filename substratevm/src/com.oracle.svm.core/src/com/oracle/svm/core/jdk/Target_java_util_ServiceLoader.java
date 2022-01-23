@@ -25,8 +25,6 @@
 
 package com.oracle.svm.core.jdk;
 
-// Checkstyle: allow reflection
-
 import java.lang.reflect.Constructor;
 import java.security.AccessControlContext;
 import java.util.HashSet;

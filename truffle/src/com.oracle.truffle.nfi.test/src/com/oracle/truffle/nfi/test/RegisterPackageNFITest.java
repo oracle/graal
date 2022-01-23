@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,12 +40,11 @@
  */
 package com.oracle.truffle.nfi.test;
 
-import static org.hamcrest.CoreMatchers.instanceOf;
-import static org.hamcrest.CoreMatchers.is;
-
 import java.util.HashMap;
 import java.util.Map;
 
+import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.CoreMatchers.is;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -63,7 +62,10 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.nfi.api.SignatureLibrary;
 import static com.oracle.truffle.nfi.test.NFITest.NFITestRootNode.getInterop;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
@@ -115,16 +117,20 @@ public class RegisterPackageNFITest extends NFITest {
 
             protected abstract void execute(FunctionRegistry receiver, String name, String signature, Object symbol);
 
-            @Specialization(limit = "3")
-            static void register(FunctionRegistry receiver, String name, String signature, Object symbol,
-                            @CachedLibrary("symbol") InteropLibrary interop) {
-                try {
-                    Object boundSymbol = interop.invokeMember(symbol, "bind", signature);
-                    receiver.add(name, boundSymbol);
-                } catch (InteropException ex) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw new AssertionError(ex);
-                }
+            @TruffleBoundary
+            CallTarget parseSignature(String signature) {
+                Source source = Source.newBuilder("nfi", signature, "signature").build();
+                return runWithPolyglot.getTruffleTestEnv().parseInternal(source);
+            }
+
+            @Specialization
+            void register(FunctionRegistry receiver, String name, String sigString, Object symbol,
+                            @Cached IndirectCallNode callSignature,
+                            @CachedLibrary(limit = "5") SignatureLibrary signatures) {
+                CallTarget sigTarget = parseSignature(sigString);
+                Object signature = callSignature.call(sigTarget);
+                Object boundSymbol = signatures.bind(signature, symbol);
+                receiver.add(name, boundSymbol);
             }
         }
     }

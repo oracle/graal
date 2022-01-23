@@ -24,13 +24,12 @@
  */
 package com.oracle.svm.core.jdk17;
 
-// Checkstyle: allow reflection
-
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.jdk.SealedClassSupport;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
+
+import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.jdk.SealedClassSupport;
 
 final class SealedClassSupportJDK17OrLater extends SealedClassSupport {
 

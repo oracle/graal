@@ -5,6 +5,12 @@ hwloc.node : ["hwloc-bind", "--cpubind", "node:${MACHINE_NODE}", "--membind", "n
 export.node0: [export, "MACHINE_NODE=0", "BENCH_RESULTS_FILE_PATH=node0-${BASE_BENCH_RESULTS_FILE_NAME}"]
 export.node1: [export, "MACHINE_NODE=1", "BENCH_RESULTS_FILE_PATH=node1-${BASE_BENCH_RESULTS_FILE_NAME}"]
 
+compilerCommon : ${common} {
+  setup : [
+    [cd, ${compiler-suite-root}]
+  ] ${download-hsdis.setup}
+}
+
 bench-common : ${compilerCommon} {
   docker : {
     "image": "phx.ocir.io/oraclelabs2/c_graal/buildslave:buildslave_ol8",

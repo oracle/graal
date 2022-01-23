@@ -31,8 +31,8 @@ import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLineInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugMethodInfo;
 
 public class MethodEntry extends MemberEntry {
-    final TypeEntry[] paramTypes;
-    final String[] paramNames;
+    private final TypeEntry[] paramTypes;
+    private final String[] paramNames;
     static final int DEOPT = 1 << 0;
     static final int IN_RANGE = 1 << 1;
     static final int INLINED = 1 << 2;

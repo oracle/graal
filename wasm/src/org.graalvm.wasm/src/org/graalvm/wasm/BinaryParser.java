@@ -994,6 +994,19 @@ public class BinaryParser extends BinaryStreamParser {
                         fail(Failure.UNSPECIFIED_MALFORMED, "Unknown opcode: 0xFC 0x%02x", miscOpcode);
                 }
                 break;
+            case Instructions.I32_EXTEND8_S:
+            case Instructions.I32_EXTEND16_S:
+                checkSignExtensionOpsSupport(opcode);
+                state.popChecked(I32_TYPE);
+                state.push(I32_TYPE);
+                break;
+            case Instructions.I64_EXTEND8_S:
+            case Instructions.I64_EXTEND16_S:
+            case Instructions.I64_EXTEND32_S:
+                checkSignExtensionOpsSupport(opcode);
+                state.popChecked(I64_TYPE);
+                state.push(I64_TYPE);
+                break;
             default:
                 fail(Failure.UNSPECIFIED_MALFORMED, "Unknown opcode: 0x%02x", opcode);
                 break;
@@ -1008,6 +1021,10 @@ public class BinaryParser extends BinaryStreamParser {
 
     private void checkSaturatingFloatToIntSupport(int opcode) {
         checkContextOption(wasmContext.getContextOptions().isSaturatingFloatToInt(), "Saturating float-to-int conversion is not enabled (opcode: 0xFC 0x%02x)", opcode);
+    }
+
+    private void checkSignExtensionOpsSupport(int opcode) {
+        checkContextOption(wasmContext.getContextOptions().isSignExtensionOps(), "Sign-extension operators are not enabled (opcode: 0x%02x)", opcode);
     }
 
     private void store(ValidationState state, byte type, int n) {
@@ -1561,6 +1578,15 @@ public class BinaryParser extends BinaryStreamParser {
     public void resetTableState(WasmContext context, WasmInstance instance) {
         if (tryJumpToSection(Section.ELEMENT)) {
             readElementSection(context, instance);
+        }
+    }
+
+    /**
+     * Reads the code section entries for all functions.
+     */
+    public void readCodeEntries() {
+        if (tryJumpToSection(Section.CODE)) {
+            readCodeSection();
         }
     }
 }

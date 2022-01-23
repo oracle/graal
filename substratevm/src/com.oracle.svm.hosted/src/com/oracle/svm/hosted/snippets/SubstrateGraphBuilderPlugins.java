@@ -332,7 +332,7 @@ public class SubstrateGraphBuilderPlugins {
         } else if (originalArrayNode instanceof AllocatedObjectNode && StampTool.isAlwaysArray(originalArrayNode)) {
             AllocatedObjectNode allocatedObjectNode = (AllocatedObjectNode) originalArrayNode;
             CommitAllocationNode commitAllocationNode = allocatedObjectNode.getCommit();
-            if (commitAllocationNode.next() != null) {
+            if (skipBeginNodes(commitAllocationNode.next()) != null) {
                 /* Nodes after the array materialization could interfere with the array. */
                 return null;
             }
@@ -416,6 +416,18 @@ public class SubstrateGraphBuilderPlugins {
             return result;
         }
         return null;
+    }
+
+    /**
+     * The graph decoding used for inlining before static analysis creates unnecessary block begin
+     * nodes. We can just ignore them.
+     */
+    private static FixedNode skipBeginNodes(FixedNode node) {
+        FixedNode cur = node;
+        while (cur instanceof AbstractBeginNode) {
+            cur = ((AbstractBeginNode) cur).next();
+        }
+        return cur;
     }
 
     private static ValueNode getDeoptProxyOriginalValue(ValueNode node) {

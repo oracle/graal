@@ -292,14 +292,18 @@ public class ClassEntry extends StructureTypeEntry {
         debugContext.log("typename %s adding %s method %s %s(%s)\n",
                         typeName, memberModifiers(modifiers), resultTypeName, methodName, formatParams(paramTypes, paramNames));
         TypeEntry resultType = debugInfoBase.lookupTypeEntry(resultTypeName);
-        TypeEntry[] paramTypeArray = new TypeEntry[paramCount];
-        String[] paramNameArray = new String[paramCount];
-        int idx = 0;
-        for (String paramTypeName : paramTypes) {
-            TypeEntry paramType = debugInfoBase.lookupTypeEntry(TypeEntry.canonicalize(paramTypeName));
-            paramTypeArray[idx++] = paramType;
+        TypeEntry[] paramTypeArray = null;
+        String[] paramNameArray = null;
+        if (paramCount != 0) {
+            paramTypeArray = new TypeEntry[paramCount];
+            paramNameArray = new String[paramCount];
+            int idx = 0;
+            for (String paramTypeName : paramTypes) {
+                TypeEntry paramType = debugInfoBase.lookupTypeEntry(TypeEntry.canonicalize(paramTypeName));
+                paramTypeArray[idx++] = paramType;
+            }
+            paramNameArray = paramNames.toArray(paramNameArray);
         }
-        paramNameArray = paramNames.toArray(paramNameArray);
         /*
          * n.b. the method file may differ from the owning class file when the method is a
          * substitution

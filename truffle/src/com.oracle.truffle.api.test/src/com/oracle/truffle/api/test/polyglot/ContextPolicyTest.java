@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import static org.junit.Assert.assertTrue;
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.options.OptionCategory;
@@ -58,6 +59,7 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.proxy.ProxyObject;
 import org.junit.After;
 import org.junit.Assume;
 import org.junit.Before;
@@ -628,6 +630,24 @@ public class ContextPolicyTest {
 
         c1.close();
         c2.close();
+    }
+
+    @Test
+    public void testGuestToHostCodeCache() {
+        Engine engine = Engine.create();
+        try (Context c1 = Context.newBuilder().engine(engine).allowExperimentalOptions(true).option(String.format("%s.Dummy", SHARED0), "1").build()) {
+            c1.initialize(SHARED0);
+            try (Context c2 = Context.newBuilder().engine(engine).allowExperimentalOptions(true).option(String.format("%s.Dummy", SHARED0), "2").build()) {
+                c2.initialize(SHARED0);
+                ProxyObject proxy = ProxyObject.fromMap(Collections.singletonMap("key", "value"));
+                c1.enter();
+                assertEquals("value", c1.asValue(proxy).getMember("key").asString());
+                c1.leave();
+                c2.enter();
+                assertEquals("key", c2.asValue(proxy).getMemberKeys().iterator().next());
+                c2.leave();
+            }
+        }
     }
 
     private static void assertEmpty() {

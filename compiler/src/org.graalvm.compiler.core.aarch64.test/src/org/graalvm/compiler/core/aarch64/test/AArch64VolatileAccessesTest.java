@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -48,11 +48,11 @@ public class AArch64VolatileAccessesTest extends MatchRuleTest {
     private static volatile double volatileDoubleField;
 
     private static Predicate<LIRInstruction> storePredicate(AArch64Kind kind) {
-        return op -> (op instanceof AArch64Move.VolatileStoreOp && ((AArch64Move.VolatileStoreOp) op).getAccessKind() == kind);
+        return op -> (op instanceof AArch64Move.StoreReleaseOp && ((AArch64Move.StoreReleaseOp) op).getAccessKind() == kind);
     }
 
     private static Predicate<LIRInstruction> loadPredicate(AArch64Kind kind) {
-        return op -> (op instanceof AArch64Move.VolatileLoadOp && ((AArch64Move.VolatileLoadOp) op).getAccessKind() == kind);
+        return op -> (op instanceof AArch64Move.LoadAcquireOp && ((AArch64Move.LoadAcquireOp) op).getAccessKind() == kind);
     }
 
     @Before

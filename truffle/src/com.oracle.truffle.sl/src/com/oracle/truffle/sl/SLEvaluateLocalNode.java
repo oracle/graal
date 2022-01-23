@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,13 +44,14 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.strings.TruffleString;
 
 final class SLEvaluateLocalNode extends RootNode {
 
-    private final String variable;
+    private final TruffleString variable;
     private final MaterializedFrame inspectFrame;
 
-    SLEvaluateLocalNode(SLLanguage language, String variableName, MaterializedFrame frame) {
+    SLEvaluateLocalNode(SLLanguage language, TruffleString variableName, MaterializedFrame frame) {
         super(language);
         this.variable = variableName;
         this.inspectFrame = frame;

@@ -73,6 +73,11 @@ public class SerializationConfiguration implements ConfigurationBase, RuntimeSer
     }
 
     @Override
+    public void registerIncludingAssociatedClasses(ConfigurationCondition condition, Class<?> clazz) {
+        register(condition, clazz);
+    }
+
+    @Override
     public void register(ConfigurationCondition condition, Class<?>... classes) {
         for (Class<?> clazz : classes) {
             registerWithTargetConstructorClass(condition, clazz, null);

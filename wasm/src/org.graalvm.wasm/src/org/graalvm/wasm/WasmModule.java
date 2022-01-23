@@ -137,4 +137,12 @@ public final class WasmModule extends SymbolTable implements TruffleObject {
     public CodeEntry[] getCodeEntries() {
         return codeEntries;
     }
+
+    public void removeCodeEntries() {
+        codeEntries = null;
+    }
+
+    public boolean hasCodeEntries() {
+        return codeEntries != null;
+    }
 }

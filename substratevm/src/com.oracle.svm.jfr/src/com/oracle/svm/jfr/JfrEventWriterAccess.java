@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.jfr;
 
-//Checkstyle: allow reflection
 import java.lang.reflect.Field;
 
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;

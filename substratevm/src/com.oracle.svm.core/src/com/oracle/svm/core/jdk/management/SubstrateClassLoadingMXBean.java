@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.jdk.management;
 
-//Checkstyle: stop
 import java.lang.management.ClassLoadingMXBean;
 import java.lang.management.ManagementFactory;
 
@@ -34,7 +33,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import sun.management.Util;
-//Checkstyle: resume
 
 class SubstrateClassLoadingMXBean implements ClassLoadingMXBean {
 

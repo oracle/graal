@@ -30,14 +30,12 @@ import static com.oracle.svm.core.util.VMError.unsupportedFeature;
 
 import java.lang.invoke.CallSite;
 import java.lang.invoke.MethodHandle;
-// Checkstyle: stop
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-// Checkstyle: resume
 
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -56,9 +54,7 @@ import com.oracle.svm.core.jdk.JDK11OrEarlier;
 import com.oracle.svm.core.jdk.JDK17OrLater;
 import com.oracle.svm.reflect.target.Target_java_lang_reflect_Field;
 
-// Checkstyle: stop
 import sun.invoke.util.VerifyAccess;
-// Checkstyle: resume
 
 /**
  * Native Image implementation of the parts of the JDK method handles engine implemented in C++. We

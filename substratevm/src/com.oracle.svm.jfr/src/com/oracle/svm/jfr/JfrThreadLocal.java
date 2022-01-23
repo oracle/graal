@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.jfr;
 
+import com.oracle.svm.jfr.events.ExecutionSampleEvent;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -98,6 +99,9 @@ public class JfrThreadLocal implements ThreadListener {
 
         // Emit ThreadStart event before thread.run().
         ThreadStartEvent.emit(isolateThread);
+
+        // Register ExecutionSampleEvent after ThreadStart event and before thread.run().
+        ExecutionSampleEvent.tryToRegisterExecutionSampleEventCallback();
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")

@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.reflect.target;
 
-// Checkstyle: allow reflection
-
 import static com.oracle.svm.core.annotate.TargetElement.CONSTRUCTOR_NAME;
 
 import java.lang.annotation.Annotation;

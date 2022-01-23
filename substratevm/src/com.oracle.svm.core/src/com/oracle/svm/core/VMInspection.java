@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core;
 
-//Checkstyle: stop
-
 import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -54,8 +52,6 @@ import com.oracle.svm.core.thread.VMThreads;
 
 import sun.misc.Signal;
 import sun.misc.SignalHandler;
-
-//Checkstyle: resume
 
 @AutomaticFeature
 public class VMInspection implements Feature {

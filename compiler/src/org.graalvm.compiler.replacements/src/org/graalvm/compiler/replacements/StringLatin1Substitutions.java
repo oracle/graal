@@ -36,8 +36,6 @@ import org.graalvm.compiler.api.replacements.ClassSubstitution;
 import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
-import org.graalvm.compiler.word.Word;
-import org.graalvm.word.Pointer;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -53,12 +51,8 @@ public class StringLatin1Substitutions {
     /** Marker value for the {@link InjectedParameter} injected parameter. */
     public static final MetaAccessProvider INJECTED = null;
 
-    private static Word pointer(byte[] target) {
-        return Word.objectToTrackedPointer(target).add(byteArrayBaseOffset(INJECTED));
-    }
-
-    private static Word byteOffsetPointer(byte[] source, int offset) {
-        return pointer(source).add(offset * byteArrayIndexScale(INJECTED));
+    private static long byteArrayOffset(long offset) {
+        return byteArrayBaseOffset(INJECTED) + (offset * byteArrayIndexScale(INJECTED));
     }
 
     @MethodSubstitution
@@ -70,7 +64,7 @@ public class StringLatin1Substitutions {
             return -1;
         }
         if (injectBranchProbability(UNLIKELY_PROBABILITY, targetCount == 1)) {
-            return ArrayIndexOf.indexOf1Byte(source, sourceCount, fromIndex, getByte(target, 0));
+            return ArrayIndexOf.indexOfB1S1(source, sourceCount, fromIndex, getByte(target, 0));
         } else {
             int haystackLength = sourceCount - (targetCount - 2);
             int offset = fromIndex;
@@ -78,7 +72,7 @@ public class StringLatin1Substitutions {
                 byte b1 = getByte(target, 0);
                 byte b2 = getByte(target, 1);
                 do {
-                    int indexOfResult = ArrayIndexOf.indexOfTwoConsecutiveBytes(source, haystackLength, offset, b1, b2);
+                    int indexOfResult = ArrayIndexOf.indexOfTwoConsecutiveBS1(source, haystackLength, offset, b1, b2);
                     if (injectBranchProbability(UNLIKELY_PROBABILITY, indexOfResult < 0)) {
                         return -1;
                     }
@@ -86,9 +80,8 @@ public class StringLatin1Substitutions {
                     if (injectBranchProbability(UNLIKELY_PROBABILITY, targetCount == 2)) {
                         return offset;
                     } else {
-                        Pointer cmpSourcePointer = byteOffsetPointer(source, offset);
-                        Pointer targetPointer = pointer(target);
-                        if (injectBranchProbability(UNLIKELY_PROBABILITY, ArrayRegionEqualsNode.regionEquals(cmpSourcePointer, targetPointer, targetCount, JavaKind.Byte))) {
+                        if (injectBranchProbability(UNLIKELY_PROBABILITY,
+                                        ArrayRegionEqualsNode.regionEquals(source, byteArrayOffset(offset), target, byteArrayOffset(0), targetCount, JavaKind.Byte))) {
                             return offset;
                         }
                     }

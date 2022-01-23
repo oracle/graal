@@ -104,6 +104,11 @@ public class HostedField implements OriginalFieldProvider, SharedField, Comparab
         return wrapped.isAccessed();
     }
 
+    @Override
+    public boolean isReachable() {
+        return wrapped.isReachable();
+    }
+
     public boolean isRead() {
         return wrapped.isRead();
     }

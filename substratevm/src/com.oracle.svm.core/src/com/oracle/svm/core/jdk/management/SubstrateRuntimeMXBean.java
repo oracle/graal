@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.jdk.management;
 
-//Checkstyle: stop
 import java.lang.management.ManagementFactory;
 import java.lang.management.RuntimeMXBean;
 import java.net.InetAddress;
@@ -48,7 +47,6 @@ import com.oracle.svm.core.JavaMainWrapper;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 
 import sun.management.Util;
-//Checkstyle: resume
 
 final class SubstrateRuntimeMXBean implements RuntimeMXBean {
 

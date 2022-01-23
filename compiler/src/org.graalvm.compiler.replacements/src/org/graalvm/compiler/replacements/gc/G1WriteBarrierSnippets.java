@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.replacements.gc;
 
-import static jdk.vm.ci.code.MemoryBarriers.STORE_LOAD;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FREQUENT_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
@@ -229,7 +228,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
 
                 // If the card is already dirty, (hence already enqueued) skip the insertion.
                 if (probability(NOT_FREQUENT_PROBABILITY, cardByte != youngCardValue())) {
-                    MembarNode.memoryBarrier(STORE_LOAD, GC_CARD_LOCATION);
+                    MembarNode.memoryBarrier(MembarNode.FenceKind.STORE_LOAD, GC_CARD_LOCATION);
                     byte cardByteReload = cardAddress.readByte(0, GC_CARD_LOCATION);
                     if (probability(NOT_FREQUENT_PROBABILITY, cardByteReload != dirtyCardValue())) {
                         log(trace, "[%d] G1-Post Thread: %p Card: %p \n", gcCycle, thread.rawValue(), WordFactory.unsigned((int) cardByte).rawValue());
@@ -308,7 +307,7 @@ public abstract class G1WriteBarrierSnippets extends WriteBarrierSnippets implem
             byte cardByte = cur.readByte(0, GC_CARD_LOCATION);
             // If the card is already dirty, (hence already enqueued) skip the insertion.
             if (probability(NOT_FREQUENT_PROBABILITY, cardByte != youngCardValue())) {
-                MembarNode.memoryBarrier(STORE_LOAD, GC_CARD_LOCATION);
+                MembarNode.memoryBarrier(MembarNode.FenceKind.STORE_LOAD, GC_CARD_LOCATION);
                 byte cardByteReload = cur.readByte(0, GC_CARD_LOCATION);
                 if (probability(NOT_FREQUENT_PROBABILITY, cardByteReload != dirtyCardValue())) {
                     cur.writeByte(0, dirtyCardValue(), GC_CARD_LOCATION);

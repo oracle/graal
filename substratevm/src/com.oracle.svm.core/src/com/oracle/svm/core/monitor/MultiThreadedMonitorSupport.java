@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.monitor;
 
-//Checkstyle: stop
-
 import java.lang.ref.ReferenceQueue;
 import java.util.Collections;
 import java.util.HashSet;
@@ -57,6 +55,7 @@ import com.oracle.svm.core.annotate.RestrictHeapAccess.Access;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.hub.DynamicHubCompanion;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.JavaContinuations;
@@ -67,8 +66,6 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.util.VMError;
 
 import sun.misc.Unsafe;
-
-//Checkstyle resume
 
 /**
  * Implementation of synchronized-related operations.
@@ -174,6 +171,12 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
                 monitorTypes.add(Class.forName("jdk.internal.ref.PhantomCleanable"));
             }
 
+            /*
+             * Use as the delegate for locking on {@link Class} (i.e. {@link DynamicHub}) since the
+             * hub itself must be immutable.
+             */
+            monitorTypes.add(DynamicHubCompanion.class);
+
             FORCE_MONITOR_SLOT_TYPES = Collections.unmodifiableSet(monitorTypes);
         } catch (ClassNotFoundException e) {
             throw VMError.shouldNotReachHere("Error building the list of types that always need a monitor slot.", e);
@@ -188,9 +191,11 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
      */
     static final ConditionObject MONITOR_WITHOUT_CONDITION = (ConditionObject) new ReentrantLock().newCondition();
 
+    // Checkstyle: stop
     /** Substituted in {@link Target_com_oracle_svm_core_monitor_MultiThreadedMonitorSupport} */
     private static long SYNC_MONITOR_CONDITION_FIELD_OFFSET = -1;
     private static long SYNC_STATE_FIELD_OFFSET = -1;
+    // Checkstyle: resume
 
     /**
      * Secondary storage for monitor slots. Synchronized to prevent concurrent access and
@@ -253,7 +258,8 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         }
     }
 
-    protected static final String NO_LONGER_UNINTERRUPTIBLE = "The monitor snippet slow path is uninterruptible to avoid stack overflow errors being thrown. Now the yellow zone is enabled and we are no longer uninterruptible, and allocation is allowed again too";
+    protected static final String NO_LONGER_UNINTERRUPTIBLE = "The monitor snippet slow path is uninterruptible to avoid stack overflow errors being thrown. " +
+                    "Now the yellow zone is enabled and we are no longer uninterruptible, and allocation is allowed again too";
 
     @RestrictHeapAccess(reason = NO_LONGER_UNINTERRUPTIBLE, access = Access.UNRESTRICTED)
     @Override
@@ -422,38 +428,20 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         return DynamicHub.fromClass(obj.getClass()).getMonitorOffset();
     }
 
-    private static final Object CLEANER_CLASS;
-    private static final Object CLEANER_REPLACEMENT;
-
-    static {
-        try {
-            CLEANER_CLASS = Class.forName("jdk.internal.ref.Cleaner");
-        } catch (ClassNotFoundException ex) {
-            throw VMError.shouldNotReachHere(ex);
+    protected static Object replaceObject(Object unreplacedObject) {
+        if (unreplacedObject instanceof DynamicHub) {
+            /*
+             * Classes (= DynamicHub) never have a monitor slot because they must be immutable.
+             * Since the companion object is never exposed to user code, we can use it as a
+             * replacement object that is mutable and is marked to always have a monitor slot.
+             */
+            return ((DynamicHub) unreplacedObject).getCompanion();
         }
-        CLEANER_REPLACEMENT = new Object();
-        VMError.guarantee(FORCE_MONITOR_SLOT_TYPES.contains(CLEANER_REPLACEMENT.getClass()), "Must have a monitor slot for Cleaner replacement object");
+        return unreplacedObject;
     }
 
     protected final ReentrantLock getOrCreateMonitor(Object unreplacedObject, boolean createIfNotExisting) {
-        Object obj;
-        if (unreplacedObject == CLEANER_CLASS) {
-            /*
-             * Workaround for jdk.internal.ref.Cleaner when cleaners do not run in a separate
-             * thread. Cleaner uses static synchronized methods. Since classes (= DynamicHub) never
-             * have a monitor slot, static synchronized methods always use the additionalMonitors
-             * map. When a Cleaner then runs at a time where the application thread already holds
-             * the additionalMonitorsLock, i.e., when a GC runs while allocating a monitor in
-             * getOrCreateMonitorFromMap(), a disallowed recursive locking of additionalMonitorsLock
-             * would happen. Note that CLEANER_REPLACEMENT is an Object which always has a monitor
-             * slot. This workaround will be removed by GR-35898 when we have a better
-             * implementation of static synchronized methods.
-             */
-            obj = CLEANER_REPLACEMENT;
-        } else {
-            obj = unreplacedObject;
-        }
-
+        Object obj = replaceObject(unreplacedObject);
         assert obj != null;
         int monitorOffset = getMonitorOffset(obj);
         if (monitorOffset != 0) {
@@ -606,6 +594,7 @@ final class Target_java_util_concurrent_locks_ReentrantLock_NonfairSync {
     volatile Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_ConditionObject objectMonitorCondition;
 }
 
+// Checkstyle: stop
 @TargetClass(MultiThreadedMonitorSupport.class)
 final class Target_com_oracle_svm_core_monitor_MultiThreadedMonitorSupport {
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FieldOffset, name = "objectMonitorCondition", declClass = Target_java_util_concurrent_locks_ReentrantLock_NonfairSync.class) //
@@ -636,3 +625,4 @@ final class Target_java_util_concurrent_locks_AbstractQueuedSynchronizer_Conditi
 @TargetClass(value = ReferenceQueue.class, innerClass = "Lock")
 final class Target_java_lang_ref_ReferenceQueue_Lock {
 }
+// Checkstyle: resume

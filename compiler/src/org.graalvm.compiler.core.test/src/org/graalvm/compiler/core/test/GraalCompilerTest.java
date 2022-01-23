@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -110,6 +110,7 @@ import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.PhaseSuite;
+import org.graalvm.compiler.phases.OptimisticOptimizations.Optimization;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningPhase;
 import org.graalvm.compiler.phases.common.inlining.info.InlineInfo;
@@ -592,9 +593,14 @@ public abstract class GraalCompilerTest extends GraalTest {
      * all the paths where the value is set so it is the proper place for a test override. Setting
      * it in other places can result in inconsistent values being used in other parts of the
      * compiler.
+     *
+     * This method returns settings such that all optimizations except
+     * {@link Optimization#RemoveNeverExecutedCode} are enabled. The latter is removed to reduce a
+     * major source of indeterminism in tests caused by profiles. Most tests should ignore profiles
+     * as they can differ wildly depending on the set of tests being run.
      */
     protected OptimisticOptimizations getOptimisticOptimizations() {
-        return OptimisticOptimizations.ALL;
+        return OptimisticOptimizations.ALL.remove(Optimization.RemoveNeverExecutedCode);
     }
 
     protected final HighTierContext getDefaultHighTierContext() {
@@ -1063,6 +1069,19 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     protected StructuredGraph parseForCompile(ResolvedJavaMethod method, CompilationIdentifier compilationId, OptionValues options) {
         return parseEager(method, AllowAssumptions.YES, compilationId, options);
+    }
+
+    /**
+     * Set {@code stableDimension} of all array constants in the graph to {@code 1}.
+     */
+    protected StructuredGraph makeAllArraysStable(StructuredGraph graph) {
+        for (ConstantNode constantNode : graph.getNodes().filter(ConstantNode.class).snapshot()) {
+            if (getConstantReflection().readArrayLength(constantNode.asJavaConstant()) != null && constantNode.getStableDimension() < 1) {
+                ConstantNode newConstantNode = graph.unique(ConstantNode.forConstant(constantNode.asJavaConstant(), 1, true, getMetaAccess()));
+                constantNode.replaceAndDelete(newConstantNode);
+            }
+        }
+        return graph;
     }
 
     /**

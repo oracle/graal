@@ -69,7 +69,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
 
     @Override
     public void collectResources(ResourceCollector resourceCollector) {
-        classLoaderSupport.classpath().stream().forEach(classpathFile -> {
+        classLoaderSupport.classpath().stream().distinct().forEach(classpathFile -> {
             try {
                 if (Files.isDirectory(classpathFile)) {
                     scanDirectory(classpathFile, resourceCollector);

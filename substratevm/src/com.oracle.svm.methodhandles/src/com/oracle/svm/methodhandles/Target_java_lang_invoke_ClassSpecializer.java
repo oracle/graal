@@ -66,17 +66,13 @@ final class Target_java_lang_invoke_ClassSpecializer_Factory {
             if (Target_java_lang_invoke_MethodHandleStatics.TRACE_RESOLVE) {
                 // Used by jlink species pregeneration plugin, see
                 // jdk.tools.jlink.internal.plugins.GenerateJLIClassesPlugin
-                // Checkstyle: stop
                 System.out.println("[SPECIES_RESOLVE] " + className + " (generated)");
-                // Checkstyle: resume
             }
             // This operation causes a lot of churn:
             linkSpeciesDataToCode(speciesData, speciesCode);
         } catch (Error ex) {
             if (Target_java_lang_invoke_MethodHandleStatics.TRACE_RESOLVE) {
-                // Checkstyle: stop
                 System.out.println("[SPECIES_RESOLVE] " + className + " (Error #2)");
-                // Checkstyle: resume
             }
             // We can get here if there is a race condition loading a class.
             // Or maybe we are out of resources. Back out of the CHM.get and retry.

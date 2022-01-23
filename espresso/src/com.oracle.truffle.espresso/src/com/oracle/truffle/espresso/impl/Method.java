@@ -131,6 +131,9 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     private boolean removedByRedefinition;
 
+    private MethodHook[] hooks = MethodHook.EMPTY;
+    private final Field.StableBoolean hasActiveHook = new Field.StableBoolean(false);
+
     Method(Method method) {
         this(method, method.getCodeAttribute());
     }
@@ -890,10 +893,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return genericSignature;
     }
 
-    private final Field.StableBoolean hasActiveHook = new Field.StableBoolean(false);
-
-    private MethodHook[] hooks = new MethodHook[0];
-
     public boolean hasActiveHook() {
         return hasActiveHook.get();
     }
@@ -904,11 +903,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     public synchronized void addMethodHook(MethodHook info) {
         hasActiveHook.set(true);
-        if (hooks.length == 0) {
-            hooks = new MethodHook[]{info};
-            return;
-        }
-
         hooks = Arrays.copyOf(hooks, hooks.length + 1);
         hooks[hooks.length - 1] = info;
     }
@@ -926,7 +920,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         if (hooks.length == 1) {
             // make sure it's the right hook
             if (hooks[0].getRequestId() == requestId) {
-                hooks = new MethodHook[0];
+                hooks = MethodHook.EMPTY;
                 hasActiveHook.set(false);
                 removed = true;
             }
@@ -959,7 +953,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         if (hooks.length == 1) {
             // make sure it's the right hook
             if (hooks[0] == hook) {
-                hooks = new MethodHook[0];
+                hooks = MethodHook.EMPTY;
                 hasActiveHook.set(false);
                 removed = true;
             }

@@ -63,8 +63,8 @@ public class LLVMIRBuilder implements AutoCloseable {
     private LLVMModuleRef module;
     private LLVMValueRef function;
 
-    private boolean primary;
-    private LLVMHelperFunctions helpers;
+    private final boolean primary;
+    private final LLVMHelperFunctions helpers;
 
     public LLVMIRBuilder(String name) {
         this.context = LLVM.LLVMContextCreate();
@@ -157,7 +157,7 @@ public class LLVMIRBuilder implements AutoCloseable {
         LinkOnce(LLVM.LLVMLinkOnceAnyLinkage),
         LinkOnceODR(LLVM.LLVMLinkOnceODRLinkage);
 
-        private int code;
+        private final int code;
 
         LinkageType(int code) {
             this.code = code;
@@ -189,7 +189,7 @@ public class LLVMIRBuilder implements AutoCloseable {
         NoRedZone("noredzone"),
         StatepointID("statepoint-id");
 
-        private String name;
+        private final String name;
 
         Attribute(String name) {
             this.name = name;
@@ -211,7 +211,7 @@ public class LLVMIRBuilder implements AutoCloseable {
     public enum GCStrategy {
         CompressedPointers("compressed-pointer");
 
-        private String name;
+        private final String name;
 
         GCStrategy(String name) {
             this.name = name;
@@ -692,8 +692,8 @@ public class LLVMIRBuilder implements AutoCloseable {
     }
 
     public static class InlineAssemblyConstraint {
-        private Type type;
-        private Location location;
+        private final Type type;
+        private final Location location;
 
         public InlineAssemblyConstraint(Type type, Location location) {
             this.type = type;
@@ -717,7 +717,7 @@ public class LLVMIRBuilder implements AutoCloseable {
         }
 
         public static final class Location {
-            private String repr;
+            private final String repr;
 
             private Location(String repr) {
                 this.repr = repr;

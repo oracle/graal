@@ -53,13 +53,13 @@ public enum JfrThreadState {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public byte getId() {
+    public long getId() {
         // First entry needs to have id 0.
-        return (byte) ordinal();
+        return ordinal();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static byte getId(Thread.State threadState) {
+    public static long getId(Thread.State threadState) {
         return threadStateToJfrThreadState(threadState).getId();
     }
 
@@ -79,7 +79,7 @@ public enum JfrThreadState {
             case TERMINATED:
                 return TERMINATED;
             default:
-                throw VMError.shouldNotReachHere("Unknown thread state - " + threadState);
+                throw VMError.shouldNotReachHere("Unknown thread state!");
         }
     }
 }

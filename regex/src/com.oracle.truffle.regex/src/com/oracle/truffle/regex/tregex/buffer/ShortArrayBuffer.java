@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,8 @@ package com.oracle.truffle.regex.tregex.buffer;
 import java.util.Arrays;
 import java.util.PrimitiveIterator;
 
+import com.oracle.truffle.regex.util.EmptyArrays;
+
 /**
  * This class is designed as a "scratchpad" for generating many short arrays of unknown size. It
  * will never shrink its internal buffer, so it should be disposed as soon as it is no longer
@@ -65,7 +67,6 @@ import java.util.PrimitiveIterator;
  */
 public class ShortArrayBuffer extends AbstractArrayBuffer implements Iterable<Integer> {
 
-    private static final short[] EMPTY = {};
     private short[] buf;
 
     public ShortArrayBuffer() {
@@ -113,7 +114,7 @@ public class ShortArrayBuffer extends AbstractArrayBuffer implements Iterable<In
     }
 
     public short[] toArray() {
-        return isEmpty() ? EMPTY : Arrays.copyOf(buf, length);
+        return isEmpty() ? EmptyArrays.SHORT : Arrays.copyOf(buf, length);
     }
 
     @Override

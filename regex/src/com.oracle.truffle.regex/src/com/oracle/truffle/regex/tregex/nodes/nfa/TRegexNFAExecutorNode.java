@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,7 @@
 package com.oracle.truffle.regex.tregex.nodes.nfa;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.nodes.LoopNode;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.RegexRootNode;
 import com.oracle.truffle.regex.tregex.TRegexOptions;
 import com.oracle.truffle.regex.tregex.nfa.NFA;
@@ -101,14 +101,14 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
     }
 
     @Override
-    public Object execute(TRegexExecutorLocals abstractLocals, boolean compactString) {
+    public Object execute(TRegexExecutorLocals abstractLocals, TruffleString.CodeRange codeRange, boolean tString) {
         TRegexNFAExecutorLocals locals = (TRegexNFAExecutorLocals) abstractLocals;
         CompilerDirectives.ensureVirtualized(locals);
 
         final int offset = rewindUpTo(locals, 0, nfa.getAnchoredEntry().length - 1);
         int anchoredInitialState = nfa.getAnchoredEntry()[offset].getTarget().getId();
         int unAnchoredInitialState = nfa.getUnAnchoredEntry()[offset].getTarget().getId();
-        if (unAnchoredInitialState != anchoredInitialState && inputAtBegin(locals)) {
+        if (unAnchoredInitialState != anchoredInitialState && nfa.getState(anchoredInitialState) != null && inputAtBegin(locals)) {
             locals.addInitialState(anchoredInitialState);
         }
         if (nfa.getState(unAnchoredInitialState) != null) {
@@ -119,7 +119,7 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
         }
         while (true) {
             if (dfaGeneratorBailedOut) {
-                LoopNode.reportLoopCount(this, 1);
+                locals.incLoopCount(this);
             }
             if (CompilerDirectives.inInterpreter()) {
                 RegexRootNode.checkThreadInterrupted();
@@ -162,7 +162,7 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
         // The loopback priority has to be lower than the priority of any path completed so far.
         // Therefore, we only follow the loopback if no path has been completed so far
         // (i.e. !locals.hasResult()).
-        if (searching && !locals.hasResult() && locals.getIndex() >= locals.getFromIndex()) {
+        if (searching && !locals.hasResult() && locals.getIndex() > locals.getFromIndex()) {
             expandState(locals, nfa.getInitialLoopBackTransition().getTarget().getId(), c, true);
         }
     }
@@ -200,7 +200,10 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
                 return;
             }
         }
-        if (searching && !locals.hasResult()) {
+        // We only expand the loopBack state if index > fromIndex. Expanding the loopBack state
+        // when index == fromIndex is: a) redundant and b) breaks MustAdvance where the actual
+        // loopBack state is only accessible after consuming at least one character.
+        if (searching && !locals.hasResult() && locals.getIndex() > locals.getFromIndex()) {
             expandStateAtEnd(locals, nfa.getInitialLoopBackTransition().getTarget(), true);
         }
     }

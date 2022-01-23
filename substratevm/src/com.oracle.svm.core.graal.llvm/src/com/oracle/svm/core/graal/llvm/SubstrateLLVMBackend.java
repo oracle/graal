@@ -82,7 +82,7 @@ public class SubstrateLLVMBackend extends SubstrateBackend {
         CompilationResult result = new CompilationResult(identifier);
         result.setMethods(method, Collections.emptySet());
 
-        LLVMGenerator generator = new LLVMGenerator(getProviders(), result, method, 0);
+        LLVMGenerator generator = new LLVMGenerator(getProviders(), result, null, method, 0);
         generator.createJNITrampoline(threadArg, threadIsolateOffset, methodIdArg, methodObjEntryPointOffset);
         byte[] bitcode = generator.getBitcode();
         result.setTargetCode(bitcode, bitcode.length);
@@ -117,7 +117,7 @@ public class SubstrateLLVMBackend extends SubstrateBackend {
             assert graph.isAfterStage(StageFlag.VALUE_PROXY_REMOVAL);
 
             ResolvedJavaMethod method = graph.method();
-            LLVMGenerator generator = new LLVMGenerator(getProviders(), result, method, LLVMOptions.IncludeLLVMDebugInfo.getValue());
+            LLVMGenerator generator = new LLVMGenerator(getProviders(), result, graph, method, LLVMOptions.IncludeLLVMDebugInfo.getValue());
             NodeLLVMBuilder nodeBuilder = newNodeLLVMBuilder(graph, generator);
 
             /* LLVM generation */

@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.jdk.localization.substitutions;
 
-// Checkstyle: stop
-
 import java.util.Locale;
 import java.util.ResourceBundle;
 import java.util.concurrent.ConcurrentHashMap;
@@ -42,8 +40,6 @@ import com.oracle.svm.core.jdk.localization.LocalizationSupport;
 import com.oracle.svm.core.jdk.localization.substitutions.modes.OptimizedLocaleMode;
 
 import sun.util.resources.Bundles.Strategy;
-
-// Checkstyle: resume
 
 @TargetClass(value = sun.util.resources.Bundles.class)
 @SuppressWarnings({"unused"})

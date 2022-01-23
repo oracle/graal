@@ -35,9 +35,7 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.util.VMError;
 
-//Checkstyle: stop
 import sun.management.Util;
-//Checkstyle: resume
 
 public abstract class SubstrateOperatingSystemMXBean extends SubstrateOperatingSystemMXBeanBase implements com.sun.management.OperatingSystemMXBean {
 

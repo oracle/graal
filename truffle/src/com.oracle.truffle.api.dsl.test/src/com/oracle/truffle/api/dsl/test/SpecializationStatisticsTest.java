@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,9 +43,12 @@ package com.oracle.truffle.api.dsl.test;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.Locale;
 
 import org.graalvm.polyglot.Context;
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.Assumption;
@@ -132,6 +135,20 @@ public class SpecializationStatisticsTest {
             return Source.newBuilder("testLang", String.valueOf(getIndex()), "testLangFile" + getIndex() + ".file").build().createSection(1);
         }
 
+    }
+
+    private Locale systemSetting;
+
+    @Before
+    public final void localeFixup() {
+        systemSetting = Locale.getDefault();
+        // make sure formatting (e.g. decimal separator) matches the expected string above
+        Locale.setDefault(Locale.ENGLISH);
+    }
+
+    @After
+    public final void localeRestore() {
+        Locale.setDefault(systemSetting);
     }
 
     @Test

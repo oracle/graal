@@ -7,9 +7,9 @@ permalink: /reference-manual/native-image/BuildOutput/
 # Native Image Build Output
 
 This page provides documentation for the build output of GraalVM Native Image.
+Below is the example output when building a native image of the `HelloWorld` class:
 
-## HelloWorld Example Output
-```text
+```shell
 ================================================================================
 GraalVM Native Image: Generating 'helloworld'...
 ================================================================================
@@ -132,9 +132,12 @@ Therefore, reducing the number of such methods also reduces the size of correspo
 The total size of all `byte[]` objects used for method metadata, a type of reflection metadata.
 To reduce the amount of method metadata, reduce the number of [classes registered for reflection](#glossary-reflection-classes).
 
+#### <a name="glossary-debug-info"></a>Debug Info
+The total size of generated debug information (if enabled).
+
 #### <a name="glossary-other-data"></a>Other Data
-The amount of data in the image that is neither in the [code area](#glossary-code-area) nor in the [image heap](#glossary-image-heap).
-This data typically contains internal information for Native Image but it can also contain other information such as debug info.
+The amount of data in the image that is neither in the [code area](#glossary-code-area), nor in the [image heap](#glossary-image-heap), nor [debug info](#glossary-debug-info).
+This data typically contains internal information for Native Image and should not be dominating.
 
 ### Resource Usage Statistics
 

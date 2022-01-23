@@ -371,7 +371,7 @@ final class PolyglotFastThreadLocals {
         return indexValue + offset;
     }
 
-    private static PolyglotSharingLayer resolveLayer(Node node) {
+    protected static PolyglotSharingLayer resolveLayer(Node node) {
         if (!CompilerDirectives.isPartialEvaluationConstant(node)) {
             // no constant folding without node
             return null;

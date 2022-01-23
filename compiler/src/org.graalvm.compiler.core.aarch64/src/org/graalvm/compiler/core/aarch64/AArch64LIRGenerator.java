@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -63,8 +63,9 @@ import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.BranchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.CompareBranchZeroOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.CondMoveOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.CondSetOp;
+import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.HashTableSwitchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.StrategySwitchOp;
-import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.TableSwitchOp;
+import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.RangeTableSwitchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Move;
 import org.graalvm.compiler.lir.aarch64.AArch64Move.MembarOp;
 import org.graalvm.compiler.lir.aarch64.AArch64PauseOp;
@@ -482,8 +483,13 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected void emitTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value key) {
-        append(new TableSwitchOp(lowKey, defaultTarget, targets, asAllocatable(key)));
+    protected void emitRangeTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value key) {
+        append(new RangeTableSwitchOp(lowKey, defaultTarget, targets, asAllocatable(key)));
+    }
+
+    @Override
+    protected void emitHashTableSwitch(JavaConstant[] keys, LabelRef defaultTarget, LabelRef[] targets, Value value, Value hash) {
+        append(new HashTableSwitchOp(keys, defaultTarget, targets, asAllocatable(value), asAllocatable(hash)));
     }
 
     @Override
@@ -509,18 +515,39 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitArrayEquals(JavaKind kind, int array1BaseOffset, int array2BaseOffset, Value array1, Value array2, Value length, boolean directPointers) {
+    public Variable emitArrayEquals(JavaKind kind, int array1BaseOffset, int array2BaseOffset, Value array1, Value array2, Value length) {
         Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
-        append(new AArch64ArrayEqualsOp(this, kind, array1BaseOffset, array2BaseOffset, result, array1, array2, asAllocatable(length), directPointers));
+        append(new AArch64ArrayEqualsOp(this, kind, array1BaseOffset, array2BaseOffset, result,
+                        asAllocatable(array1), null, asAllocatable(array2), null, asAllocatable(length)));
         return result;
     }
 
     @Override
-    public Variable emitArrayIndexOf(int arrayBaseOffset, JavaKind valueKind, boolean findTwoConsecutive, Value arrayPointer, Value arrayLength, Value fromIndex, Value... searchValues) {
-        assert searchValues.length == 1;
+    public Variable emitArrayEquals(JavaKind kind, int array1BaseOffset, int array2BaseOffset, Value array1, Value offset1, Value array2, Value offset2, Value length) {
         Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
-        append(new AArch64ArrayIndexOfOp(arrayBaseOffset, valueKind, findTwoConsecutive, this, result, asAllocatable(arrayPointer), asAllocatable(arrayLength), asAllocatable(fromIndex),
-                        asAllocatable(searchValues[0])));
+        append(new AArch64ArrayEqualsOp(this, kind, array1BaseOffset, array2BaseOffset, result,
+                        asAllocatable(array1), asAllocatable(offset1), asAllocatable(array2), asAllocatable(offset2), asAllocatable(length)));
+        return result;
+    }
+
+    @Override
+    public Variable emitArrayIndexOf(int arrayBaseOffset, JavaKind valueKind, boolean findTwoConsecutive, boolean withMask, Value arrayPointer, Value arrayOffset, Value arrayLength, Value fromIndex,
+                    Value... searchValues) {
+        if (findTwoConsecutive) {
+            GraalError.guarantee(searchValues.length == 2, "findTwoConsecutive requires exactly two search values");
+        } else if (searchValues.length > 1) {
+            throw GraalError.unimplemented("arrayIndexOf with multiple search values not yet implemented on AARCH64");
+        }
+        if (withMask) {
+            throw GraalError.unimplemented("arrayIndexOf with mask parameter not yet implemented on AARCH64");
+        }
+        Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
+        AllocatableValue[] allocatableSearchValues = new AllocatableValue[searchValues.length];
+        for (int i = 0; i < searchValues.length; i++) {
+            allocatableSearchValues[i] = asAllocatable(searchValues[i]);
+        }
+        append(new AArch64ArrayIndexOfOp(arrayBaseOffset, valueKind, findTwoConsecutive, this, result, asAllocatable(arrayPointer), asAllocatable(arrayOffset), asAllocatable(arrayLength),
+                        asAllocatable(fromIndex), allocatableSearchValues));
         return result;
     }
 

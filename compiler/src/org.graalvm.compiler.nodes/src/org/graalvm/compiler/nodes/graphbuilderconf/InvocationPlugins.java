@@ -363,6 +363,16 @@ public class InvocationPlugins {
         }
 
         /**
+         * Registers a plugin for a method with an arbitrary number of arguments.
+         *
+         * @param name the name of the method
+         * @param plugin the plugin to be registered
+         */
+        public void registerMany(String name, Type[] args, InvocationPlugin plugin) {
+            plugins.register(plugin, false, allowOverwrite, declaringType, name, args);
+        }
+
+        /**
          * Registers a plugin for a method with no arguments that is conditionally enabled. This
          * ensures that {@code Replacements} is aware of this plugin.
          *
@@ -1378,7 +1388,7 @@ public class InvocationPlugins {
      * Code only used in assertions. Putting this in a separate class reduces class load time.
      */
     private static class Checks {
-        private static final int MAX_ARITY = 7;
+        private static final int MAX_ARITY = 13;
         /**
          * The set of all {@link InvocationPlugin#apply} method signatures.
          */

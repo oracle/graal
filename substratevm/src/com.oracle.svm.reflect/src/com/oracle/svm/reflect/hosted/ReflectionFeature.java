@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.reflect.hosted;
 
-// Checkstyle: allow reflection
-
 import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;

@@ -52,8 +52,6 @@ import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.Signature;
 
-// Checkstyle: allow reflection
-
 /**
  * Provides JNI access to predetermined classes, methods and fields at runtime.
  */

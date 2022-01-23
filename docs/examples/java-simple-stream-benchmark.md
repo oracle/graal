@@ -7,11 +7,11 @@ permalink: /examples/java-simple-stream-benchmark/
 
 # Simple Java Stream Benchmark
 
-This application is a small benchmark of the Java Stream API. It demonstrates how the GraalVM compiler can achieve better performance for highly abstracted programs like those using Streams, Lambdas, or other Java features.
+This application is a small benchmark of the Java Stream API. It demonstrates how the Graal compiler can achieve better performance for highly abstracted programs like those using Streams, Lambdas, or other Java features.
 
 ## Preparation
 
-1&#46; [Download GraalVM](https://www.graalvm.org/downloads/), unzip the archive, export the GraalVM home directory as the `$JAVA_HOME` and add `$JAVA_HOME/bin` to the `PATH` environment variable:
+1&#46; [Download GraalVM](https://www.graalvm.org/downloads/), unzip the archive, export the GraalVM Home directory as the `$JAVA_HOME` and add `$JAVA_HOME/bin` to the `PATH` environment variable:
   On Linux:
   ```bash
   export JAVA_HOME=/home/${current_user}/path/to/graalvm
@@ -49,12 +49,12 @@ You can run it with the following command:
 java -jar target/benchmarks.jar
 ```
 If you would like to run the benchmark on a different JVM, you can run it with whatever `java` you have.
-However, if you just want to run it on the same JVM, but without the GraalVM compiler, you may add the `-XX:-UseJVMCICompiler` option into the same command:
+However, if you just want to run it on the same JVM, but without the Graal compiler, you may add the `-XX:-UseJVMCICompiler` option into the same command:
 ```shell
 java -XX:-UseJVMCICompiler -jar target/benchmarks.jar
 ```
 
-This way, the GraalVM compiler will not be used as the JVMCI compiler and the JVM will use its default one.
+This way, the Graal compiler will not be used as the JVMCI compiler and the JVM will use its default one.
 
 ### Note about Results
 

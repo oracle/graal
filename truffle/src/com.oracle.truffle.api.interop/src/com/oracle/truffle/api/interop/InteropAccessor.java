@@ -119,6 +119,31 @@ final class InteropAccessor extends Accessor {
         public Object createDefaultIterator(Object receiver) {
             return new ArrayIterator(receiver);
         }
+
+        @Override
+        public Node createDispatchedInteropLibrary(int limit) {
+            return InteropLibrary.getFactory().createDispatched(limit);
+        }
+
+        @Override
+        public Node getUncachedInteropLibrary() {
+            return InteropLibrary.getUncached();
+        }
+
+        @Override
+        public long unboxPointer(Node library, Object value) {
+            InteropLibrary interop = (InteropLibrary) library;
+            if (!interop.isPointer(value)) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw new IllegalArgumentException("value is not an interop pointer");
+            }
+            try {
+                return interop.asPointer(value);
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw new IllegalArgumentException("value is not an interop pointer");
+            }
+        }
     }
 
     static final class EmptyTruffleObject implements TruffleObject {

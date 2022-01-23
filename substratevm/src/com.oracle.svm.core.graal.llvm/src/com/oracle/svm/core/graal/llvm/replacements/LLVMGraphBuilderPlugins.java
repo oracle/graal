@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.graal.llvm.replacements;
 
-// Checkstyle: stop
-
 import java.lang.reflect.Type;
 import java.util.Arrays;
 
@@ -51,8 +49,6 @@ import com.oracle.svm.core.graal.llvm.replacements.LLVMIntrinsicNode.LLVMIntrins
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-
-// Checkstyle: resume
 
 public class LLVMGraphBuilderPlugins implements TargetGraphBuilderPlugins {
 

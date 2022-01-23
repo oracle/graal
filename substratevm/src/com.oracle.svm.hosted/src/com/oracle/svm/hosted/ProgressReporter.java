@@ -77,7 +77,7 @@ public class ProgressReporter {
     private static final int CHARACTERS_PER_LINE;
     private static final int PROGRESS_BAR_START = 30;
     private static final boolean IS_CI = System.console() == null || System.getenv("CI") != null;
-
+    private static final boolean IS_DUMB_TERM = isDumbTerm();
     private static final int MAX_NUM_FEATURES = 50;
     private static final int MAX_NUM_BREAKDOWN = 10;
     private static final String CODE_BREAKDOWN_TITLE = String.format("Top %d packages in code area:", MAX_NUM_BREAKDOWN);
@@ -113,6 +113,7 @@ public class ProgressReporter {
     private int numJNIMethods = -1;
     private Timer debugInfoTimer;
     private boolean initializeStageEndCompleted = false;
+    private boolean creationStageEndCompleted = false;
 
     private enum BuildStage {
         INITIALIZING("Initializing"),
@@ -136,6 +137,11 @@ public class ProgressReporter {
         CHARACTERS_PER_LINE = IS_CI ? ProgressReporterCHelper.MAX_CHARACTERS_PER_LINE : ProgressReporterCHelper.getTerminalWindowColumnsClamped();
     }
 
+    private static boolean isDumbTerm() {
+        String term = System.getenv("TERM");
+        return (term == null || term.equals("") || term.equals("dumb") || term.equals("unknown"));
+    }
+
     public static ProgressReporter singleton() {
         return ImageSingletons.lookup(ProgressReporter.class);
     }
@@ -148,12 +154,12 @@ public class ProgressReporter {
             Timer.disablePrinting();
         }
         usePrefix = SubstrateOptions.BuildOutputPrefix.getValue(options);
-        boolean enableColors = !IS_CI && OS.getCurrent() != OS.WINDOWS;
+        boolean enableColors = !IS_DUMB_TERM && !IS_CI && OS.getCurrent() != OS.WINDOWS;
         if (SubstrateOptions.BuildOutputColorful.hasBeenSet(options)) {
             enableColors = SubstrateOptions.BuildOutputColorful.getValue(options);
         }
         boolean loggingDisabled = DebugOptions.Log.getValue(options) == null;
-        boolean enableProgress = !IS_CI && loggingDisabled;
+        boolean enableProgress = !IS_DUMB_TERM && !IS_CI && loggingDisabled;
         if (SubstrateOptions.BuildOutputProgress.hasBeenSet(options)) {
             enableProgress = SubstrateOptions.BuildOutputProgress.getValue(options);
         }
@@ -363,6 +369,7 @@ public class ProgressReporter {
     public void printCreationEnd(Timer creationTimer, Timer writeTimer, int imageSize, AnalysisUniverse universe, int numHeapObjects, long imageHeapSize, int codeCacheSize,
                     int numCompilations, int debugInfoSize) {
         printStageEnd(creationTimer.getTotalTime() + writeTimer.getTotalTime());
+        creationStageEndCompleted = true;
         String format = "%9s (%5.2f%%) for ";
         l().a(format, bytesToHuman(codeCacheSize), codeCacheSize / (double) imageSize * 100)
                         .doclink("code area", "#glossary-code-area").a(":%,9d compilation units", numCompilations).flushln();
@@ -381,6 +388,18 @@ public class ProgressReporter {
         l().a(format, bytesToHuman(otherBytes), otherBytes / (double) imageSize * 100)
                         .doclink("other data", "#glossary-other-data").flushln();
         l().a("%9s in total", bytesToHuman(imageSize)).flushln();
+    }
+
+    public void ensureCreationStageEndCompleted() {
+        if (!creationStageEndCompleted) {
+            linePrinter.flushln();
+            restoreBuilderIO();
+        }
+    }
+
+    private void restoreBuilderIO() {
+        builderIO.useCapturing = false;
+        builderIO.flushCapturedContent();
     }
 
     public void printBreakdowns(Collection<CompileTask> compilationTasks, Collection<ObjectInfo> heapObjects) {
@@ -626,8 +645,7 @@ public class ProgressReporter {
         if (optionsAvailable && SubstrateOptions.BuildOutputGCWarnings.getValue()) {
             checkForExcessiveGarbageCollection();
         }
-        builderIO.useCapturing = false;
-        builderIO.flushCapturedContent();
+        restoreBuilderIO();
     }
 
     private void checkForExcessiveGarbageCollection() {

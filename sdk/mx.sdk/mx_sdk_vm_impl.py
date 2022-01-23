@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -2347,6 +2347,10 @@ class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDis
         for component_ in extra_components:
             library_configs += _get_library_configs(component_)
 
+        extra_installable_qualifiers = list(component.extra_installable_qualifiers)
+        for component_ in extra_components:
+            extra_installable_qualifiers += component_.extra_installable_qualifiers
+
         other_involved_components = []
         if self.main_component.short_name not in ('svm', 'svmee') \
                 and _get_svm_support().is_supported() \
@@ -2360,7 +2364,9 @@ class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDis
             if _skip_libraries(library_config):
                 name += '_S' + basename(library_config.destination).upper()
         if other_involved_components:
-            name += '_' + '_'.join(sorted((component.short_name.upper() for component in other_involved_components)))
+            extra_installable_qualifiers += [component.short_name for component in other_involved_components]
+        if extra_installable_qualifiers:
+            name += '_' + '_'.join(sorted(q.upper() for q in extra_installable_qualifiers))
         name += '_JAVA{}'.format(_src_jdk_version)
         self.maven = _graalvm_maven_attributes(tag='installable')
         components = [component]

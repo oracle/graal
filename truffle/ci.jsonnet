@@ -3,9 +3,9 @@
   local bench_hw = (import '../bench-common.libsonnet').bench_hw,
   local devkits = (import "../common.json").devkits,
 
-  local darwin_amd64 = common["darwin-amd64"],
-  local linux_amd64 = common["linux-amd64"],
-  local windows_amd64 = common["windows-amd64"],
+  local darwin_amd64 = common.darwin_amd64,
+  local linux_amd64 = common.linux_amd64,
+  local windows_amd64 = common.windows_amd64,
 
   local truffle_common = {
     setup+: [
@@ -161,7 +161,7 @@
 
     # BENCHMARKS
 
-    bench_hw.x52 + linux_amd64 + common.oraclejdk11 + bench_common + {
+    bench_hw.x52 + common.oraclejdk11 + bench_common + {
       name: "bench-truffle-jmh",
       notify_groups:: ["truffle_bench"],
       run: [

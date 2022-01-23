@@ -47,15 +47,13 @@ A generated self-contained native executable is specific to each individual oper
 #### Java on Truffle
 [Java on Truffle](reference-manual/java-on-truffle/README.md) is an implementation of the Java Virtual Machine Specification, built with the [Truffle language implementation framework](../truffle/docs/README.md).
 It is a complete Java VM that includes all core components, implements the same API as the Java Runtime Environment library, and reuses all JARs and native libraries from GraalVM.
-Java on Trufle is an experimental technology in GraalVM, available as of version 21.0.0.
 
 ## Available Distributions
 
-GraalVM is available as **GraalVM Enterprise** and **GraalVM Community** editions and includes support for Java 8, Java 11 and Java 16.
+GraalVM is available as **GraalVM Enterprise** and **GraalVM Community** editions and includes support for Java 11 and Java 17.
 GraalVM Enterprise is based on Oracle JDK while GraalVM Community is based on OpenJDK.
 
 GraalVM is available for Linux, macOS, and Windows platforms on x86 64-bit systems, and for Linux on ARM 64-bit system.
-The GraalVM distribution based on Oracle JDK 17 is experimental with [several known limitations](https://www.graalvm.org/release-notes/known-issues/).
 Depending on the platform, the distributions are shipped as *.tar.gz* or *.zip* archives.
 See the [Getting Started guide](getting-started/graalvm-community/get-started-graalvm-community.md) for installation instructions.
 
@@ -86,13 +84,13 @@ Tools/Utilities:
 
 * [Native Image](reference-manual/native-image/README.md) -- a technology to compile an application ahead-of-time into a native executable.
 * [LLVM toolchain](reference-manual/llvm/README.md) --  a set of tools and APIs for compiling native programs to bitcode that can be executed with on the GraalVM runtime.
-* [Java on Truffle](reference-manual/java-on-truffle/README.md) -- a JVM implementation built upon the [Truffle framework](../truffle/docs/README.md) to run Java via a Java bytecode interpreter.
 
 Runtimes:
 
-* [Node.js](reference-manual/js/README.md) -- the Node.js 14.17.6 runtime for JavaScript
+* [Java on Truffle](reference-manual/java-on-truffle/README.md) -- a JVM implementation built upon the [Truffle framework](../truffle/docs/README.md) to run Java via a Java bytecode interpreter.
+* [Node.js](reference-manual/js/README.md) -- the Node.js 14.18.1 runtime for JavaScript
 * [Python](reference-manual/python/README.md) -- Python 3.8.5 compatible
-* [Ruby](reference-manual/ruby/README.md) -- Ruby 2.7.3 compatible
+* [Ruby](reference-manual/ruby/README.md) -- Ruby 3.0.2 compatible
 * [R](reference-manual/r/README.md) -- GNU R 4.0.3 compatible
 * [GraalWasm](reference-manual/wasm/README.md) -- WebAssembly (Wasm)
 

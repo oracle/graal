@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.util;
 
-// Checkstyle: allow reflection
-
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;

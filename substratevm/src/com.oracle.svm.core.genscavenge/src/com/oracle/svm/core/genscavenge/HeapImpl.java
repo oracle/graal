@@ -28,6 +28,7 @@ import java.lang.ref.Reference;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
@@ -181,7 +182,7 @@ public final class HeapImpl extends Heap {
 
     @Override
     public void resumeAllocation() {
-        ThreadLocalAllocation.resumeInCurrentThread();
+        // Nothing to do - the next allocation will refill the TLAB.
     }
 
     @Override
@@ -296,7 +297,6 @@ public final class HeapImpl extends Heap {
         if (HeapParameters.getZapProducedHeapChunks() || HeapParameters.getZapConsumedHeapChunks()) {
             log.string("[Heap Chunk zap values: ").indent(true);
             /* Padded with spaces so the columns line up between the int and word variants. */
-            // @formatter:off
             if (HeapParameters.getZapProducedHeapChunks()) {
                 log.string("  producedHeapChunkZapInt: ")
                                 .string("  hex: ").spaces(8).hex(HeapParameters.getProducedHeapChunkZapInt())
@@ -321,7 +321,6 @@ public final class HeapImpl extends Heap {
                                 .string("  unsigned: ").unsigned(HeapParameters.getConsumedHeapChunkZapWord());
             }
             log.redent(false).string("]");
-            // @formatter:on
         }
         return log;
     }
@@ -651,6 +650,32 @@ public final class HeapImpl extends Heap {
         if (!SubstrateUtil.HOSTED) {
             GCImpl.getPolicy().updateSizeParameters();
         }
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public long getThreadAllocatedMemory(IsolateThread thread) {
+        UnsignedWord allocatedBytes = ThreadLocalAllocation.allocatedBytes.getVolatile(thread);
+
+        /*
+         * The current aligned chunk in the TLAB is only partially filled and therefore not yet
+         * accounted for in ThreadLocalAllocation.allocatedBytes. The reads below are unsynchronized
+         * and unordered with the thread updating its TLAB, so races may occur. We only use the read
+         * values if they are plausible and not obviously racy. We also accept that certain races
+         * can cause that the memory in the current aligned TLAB chunk is counted twice.
+         */
+        ThreadLocalAllocation.Descriptor tlab = ThreadLocalAllocation.getTlab(thread);
+        AlignedHeader alignedTlab = tlab.getAlignedChunk();
+        Pointer top = tlab.getAllocationTop(SubstrateAllocationSnippets.TLAB_TOP_IDENTITY);
+        Pointer start = AlignedHeapChunk.getObjectsStart(alignedTlab);
+
+        if (top.aboveThan(start)) {
+            UnsignedWord usedTlabSize = top.subtract(start);
+            if (usedTlabSize.belowOrEqual(HeapParameters.getAlignedHeapChunkSize())) {
+                return allocatedBytes.add(usedTlabSize).rawValue();
+            }
+        }
+        return allocatedBytes.rawValue();
     }
 
     static Pointer getImageHeapStart() {

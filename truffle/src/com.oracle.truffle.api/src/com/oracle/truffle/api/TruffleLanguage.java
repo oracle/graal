@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -460,6 +460,31 @@ public abstract class TruffleLanguage<C> {
          * @since 19.0
          */
         Class<? extends TruffleFile.FileTypeDetector>[] fileTypeDetectors() default {};
+
+        /**
+         * Returns {@code true} if the language uses {@code TruffleString}s with encodings not
+         * present in the following list.
+         * <ul>
+         * <li>{@code UTF-8}</li>
+         * <li>{@code UTF-16}</li>
+         * <li>{@code UTF-32}</li>
+         * <li>{@code ISO-8859-1}</li>
+         * <li>{@code US-ASCII}</li>
+         * <li>{@code BYTES}</li>
+         * </ul>
+         *
+         * @since 22.1
+         */
+        boolean needsAllEncodings() default false;
+
+        /**
+         * A link to a website with more information about the instrument. Will be shown in the help
+         * text of GraalVM launchers.
+         *
+         * @since 22.1.0
+         * @return URL for language website.
+         */
+        String website() default "";
     }
 
     /**

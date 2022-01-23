@@ -24,21 +24,20 @@
  */
 package com.oracle.svm.core.jdk.localization.substitutions;
 
+import java.util.Locale;
+import java.util.spi.LocaleServiceProvider;
+
+import org.graalvm.collections.Pair;
+import org.graalvm.nativeimage.ImageSingletons;
+
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
 import com.oracle.svm.core.jdk.localization.OptimizedLocalizationSupport;
 import com.oracle.svm.core.jdk.localization.substitutions.modes.OptimizedLocaleMode;
 import com.oracle.svm.core.util.VMError;
-import org.graalvm.collections.Pair;
-import org.graalvm.nativeimage.ImageSingletons;
 
-// Checkstyle: stop
 import sun.util.locale.provider.LocaleProviderAdapter;
-// Checkstyle: resume
-
-import java.util.Locale;
-import java.util.spi.LocaleServiceProvider;
 
 @TargetClass(value = sun.util.locale.provider.LocaleProviderAdapter.class, onlyWith = OptimizedLocaleMode.class)
 final class Target_sun_util_locale_provider_LocaleProviderAdapter_OptimizedLocaleMode {

@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.jdk;
 
-// Checkstyle: allow reflection
-
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
@@ -176,9 +174,7 @@ class JavaNetFeature implements Feature {
     }
 
     private static void printWarning(String warningMessage) {
-        // Checkstyle: stop
         System.out.println(warningMessage);
-        // Checkstyle: resume}
     }
 }
 

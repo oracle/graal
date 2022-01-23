@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,12 +59,14 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.SLRootNode;
 import com.oracle.truffle.sl.nodes.controlflow.SLBlockNode;
 import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLNull;
+import com.oracle.truffle.sl.runtime.SLStrings;
 
 /**
  * The SL implementation of {@link NodeLibrary} provides fast access to local variables. It's used
@@ -126,9 +128,8 @@ public abstract class SLScopedNode extends Node {
     @ExportMessage
     @TruffleBoundary
     final boolean hasRootInstance(@SuppressWarnings("unused") Frame frame) {
-        String functionName = getRootNode().getName();
         // The instance of the current RootNode is a function of the same name.
-        return SLContext.get(this).getFunctionRegistry().getFunction(functionName) != null;
+        return SLContext.get(this).getFunctionRegistry().getFunction(SLStrings.getSLRootName(getRootNode())) != null;
     }
 
     /**
@@ -138,9 +139,8 @@ public abstract class SLScopedNode extends Node {
     @ExportMessage
     @TruffleBoundary
     final Object getRootInstance(@SuppressWarnings("unused") Frame frame) throws UnsupportedMessageException {
-        String functionName = getRootNode().getName();
         // The instance of the current RootNode is a function of the same name.
-        Object function = SLContext.get(this).getFunctionRegistry().getFunction(functionName);
+        Object function = SLContext.get(this).getFunctionRegistry().getFunction(SLStrings.getSLRootName(getRootNode()));
         if (function != null) {
             return function;
         } else {
@@ -260,7 +260,7 @@ public abstract class SLScopedNode extends Node {
          */
         @ExportMessage
         Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
-            return root.getName();
+            return root.getTSName();
         }
 
         /**
@@ -456,10 +456,11 @@ public abstract class SLScopedNode extends Node {
         }
 
         int findArgumentIndex(String member) {
+            TruffleString memberTS = SLStrings.fromJavaString(member);
             SLWriteLocalVariableNode[] writeNodes = root.getDeclaredArguments();
             for (int i = 0; i < writeNodes.length; i++) {
                 SLWriteLocalVariableNode writeNode = writeNodes[i];
-                if (member.equals(writeNode.getSlotName())) {
+                if (memberTS.equalsUncached(writeNode.getSlotName(), SLLanguage.STRING_ENCODING)) {
                     return i;
                 }
             }
@@ -536,7 +537,7 @@ public abstract class SLScopedNode extends Node {
             if (parentBlock instanceof SLBlockNode) {
                 return "block";
             } else {
-                return ((SLRootNode) parentBlock).getName();
+                return ((SLRootNode) parentBlock).getTSName();
             }
         }
 
@@ -786,18 +787,19 @@ public abstract class SLScopedNode extends Node {
          * @param member the variable name
          */
         SLWriteLocalVariableNode findWriteNode(String member) {
+            TruffleString memberTS = SLStrings.fromJavaString(member);
             SLWriteLocalVariableNode[] writeNodes = block.getDeclaredLocalVariables();
             int parentBlockIndex = block.getParentBlockIndex();
             int index = getVisibleVariablesIndex();
             for (int i = 0; i < index; i++) {
                 SLWriteLocalVariableNode writeNode = writeNodes[i];
-                if (member.equals(writeNode.getSlotName())) {
+                if (memberTS.equalsUncached(writeNode.getSlotName(), SLLanguage.STRING_ENCODING)) {
                     return writeNode;
                 }
             }
             for (int i = parentBlockIndex; i < writeNodes.length; i++) {
                 SLWriteLocalVariableNode writeNode = writeNodes[i];
-                if (member.equals(writeNode.getSlotName())) {
+                if (memberTS.equalsUncached(writeNode.getSlotName(), SLLanguage.STRING_ENCODING)) {
                     return writeNode;
                 }
             }
@@ -891,6 +893,13 @@ public abstract class SLScopedNode extends Node {
         @ExportMessage
         @TruffleBoundary
         String asString() {
+            // frame slot's identifier object is not safe to convert to String on fast-path.
+            return writeNode.getSlotName().toJavaStringUncached();
+        }
+
+        @ExportMessage
+        @TruffleBoundary
+        TruffleString asTruffleString() {
             // frame slot's identifier object is not safe to convert to String on fast-path.
             return writeNode.getSlotName();
         }
