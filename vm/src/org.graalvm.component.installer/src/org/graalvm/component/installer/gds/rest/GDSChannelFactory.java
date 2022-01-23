@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,58 +22,57 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.component.installer.gds;
 
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.HashMap;
-import java.util.Map;
+package org.graalvm.component.installer.gds.rest;
+
 import org.graalvm.component.installer.CommandInput;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.SoftwareChannel;
 import org.graalvm.component.installer.SoftwareChannelSource;
+import java.util.HashMap;
+import java.util.Map;
+import org.graalvm.component.installer.gds.GdsCommands;
+import java.net.MalformedURLException;
+import java.net.URL;
 
 /**
- * Creates a Software channel from GDS url. The format is:
+ * Creates a Software channel for GDS REST API. The URL is:
  * <ul>
- * <li>gds://host/path/metadata.json
- * <li>gds:protocol://host/path/...
+ * <li>rest://path
+ * <li>rest:protocol://path
  * </ul>
- * If no nested protocol is given, HTTPS is used by default.
- * 
- * @author sdedic
+ *
+ * @author odouda
  */
-public class GraalChannelFactory implements SoftwareChannel.Factory {
-    private static final String PROTOCOL_OLDS_PREFIX = "gds:"; // NOI18N
+public class GDSChannelFactory implements SoftwareChannel.Factory {
+    private static final String PROTOCOL_GDS_REST_PREFIX = "rest:"; // NOI18N
     private static final String PROTOCOL_HTTTPS_PREFIX = "https:"; // NOI18N
 
     private static final Map<String, String> OPTIONS = new HashMap<>();
 
-    private MailStorage mailStorage;
+    private TokenStorage tokenStorage;
     private Feedback feedback;
 
     static {
-        OPTIONS.put(GdsCommands.OPTION_EMAIL_ADDRESS, "s");
-        OPTIONS.put(GdsCommands.LONG_OPTION_EMAIL_ADDRESS, GdsCommands.OPTION_EMAIL_ADDRESS);
+        OPTIONS.put(GdsCommands.OPTION_DOWNLOAD_TOKEN, "s");
+        OPTIONS.put(GdsCommands.LONG_OPTION_DOWNLOAD_TOKEN, GdsCommands.OPTION_DOWNLOAD_TOKEN);
     }
 
-    private MailStorage initMailStorage(CommandInput input, Feedback output) {
-        if (mailStorage == null) {
-            MailStorage ms = new MailStorage(input.getLocalRegistry(), output);
-            ms.setStorage(input.getGraalHomePath());
-            mailStorage = ms;
+    private TokenStorage initTokenStorage(Feedback output) {
+        if (tokenStorage == null) {
+            tokenStorage = new TokenStorage(output);
         }
-        return mailStorage;
+        return tokenStorage;
     }
 
     @Override
     public SoftwareChannel createChannel(SoftwareChannelSource source, CommandInput input, Feedback output) {
         feedback = output;
         String urlString = source.getLocationURL();
-        if (!urlString.startsWith(PROTOCOL_OLDS_PREFIX)) {
+        if (!urlString.startsWith(PROTOCOL_GDS_REST_PREFIX)) {
             return null;
         }
-        String rest = urlString.substring(PROTOCOL_OLDS_PREFIX.length());
+        String rest = urlString.substring(PROTOCOL_GDS_REST_PREFIX.length());
         URL u;
         try {
             if (rest.startsWith("http") || rest.startsWith("file:") || rest.startsWith("test:")) {
@@ -84,10 +83,10 @@ public class GraalChannelFactory implements SoftwareChannel.Factory {
         } catch (MalformedURLException ex) {
             throw output.failure("YUM_InvalidLocation", ex, urlString, ex.getLocalizedMessage());
         }
-        GraalChannel ch = new GraalChannel(input, output, input.getLocalRegistry());
-        ch.setEdition(source.getParameter("edition"));
+        GDSChannel ch = new GDSChannel(input, output, input.getLocalRegistry());
         ch.setIndexURL(u);
-        ch.setMailStorage(initMailStorage(input, output));
+        ch.setEdition(source.getParameter("edition"));
+        ch.setTokenStorage(initTokenStorage(output));
         return ch;
     }
 
@@ -98,7 +97,7 @@ public class GraalChannelFactory implements SoftwareChannel.Factory {
 
     @Override
     public String globalOptionsHelp() {
-        return feedback.l10n("GDS_ExtraOptionsHelp");
+        return feedback.l10n("GDS_REST_ExtraOptionsHelp");
     }
 
     @Override

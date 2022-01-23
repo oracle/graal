@@ -45,14 +45,14 @@ import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.stream.Collectors;
-
-import jdk.internal.loader.URLClassPath;
 import org.junit.Assert;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import org.junit.Assume;
 import org.junit.Test;
+import java.net.MalformedURLException;
+import java.util.stream.Stream;
 
 /**
  *
@@ -506,17 +506,25 @@ public class ComponentInstallerTest extends CommandTestBase {
         Files.copy(origInstaller, targetInstaller);
         Files.copy(origTest, targetTest);
 
-        ClassLoader cl = getClass().getClassLoader();
-        assertEquals(cl.getClass().getName(), "jdk.internal.loader.ClassLoaders$AppClassLoader");
-        Field ucp = cl.getClass().getDeclaredField("ucp");
-        ucp.setAccessible(true);
-        URLClassPath urlClassPath = (URLClassPath) ucp.get(cl);
         List<URL> urls = new ArrayList<>();
 
         urls.add(targetInstaller.toUri().toURL());
         urls.add(targetTest.toUri().toURL());
 
-        Arrays.asList(urlClassPath.getURLs()).stream().filter(u -> !(locInstaller.equals(u) || locTest.equals(u))).collect(Collectors.toCollection(() -> urls));
+        Stream<URL> urlStream;
+        if (getClass().getClassLoader() instanceof URLClassLoader) {
+            URLClassLoader myLoader = (URLClassLoader) getClass().getClassLoader();
+            urlStream = Arrays.stream(myLoader.getURLs());
+        } else {
+            urlStream = Arrays.stream(System.getProperty("java.class.path").split(System.getProperty("path.separator"))).map(e -> {
+                try {
+                    return Paths.get(e).toUri().toURL();
+                } catch (MalformedURLException ex) {
+                }
+                return null;
+            }).filter(u -> u != null);
+        }
+        urlStream.filter(u -> !(locInstaller.equals(u) || locTest.equals(u))).collect(Collectors.toCollection(() -> urls));
 
         URLClassLoader ldr = new URLClassLoader(
                         urls.toArray(new URL[urls.size()]),
