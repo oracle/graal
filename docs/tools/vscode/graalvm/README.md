@@ -196,8 +196,8 @@ Once the configuration for Native Image has been generated, follow the documenta
 
 ## Native Image Debugging
 
-GraalVM Extension Pack for Java provides Java like debugging of native executables produced by [GraalVM Native Image](https://www.graalvm.org/reference-manual/native-image/).
-You can set breakpoints, create watches and inspect the state of your application running as a native image, etc.
+GraalVM Extension Pack for Java provides Java-like debugging of native executables produced by [GraalVM Native Image](https://www.graalvm.org/reference-manual/native-image/).
+You can set breakpoints, create watches, inspect the state of your application running as a native image, etc.
 
 There are two ways to debug a native image:
   * using the GNU Debugger, `gdb`, from the command line

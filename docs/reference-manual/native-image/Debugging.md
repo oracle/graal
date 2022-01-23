@@ -7,27 +7,21 @@ permalink: /reference-manual/native-image/debugging/
 
 # Native Image Debugging
 
-It is possible to debug a native image the same way you would debug a regular Java application.
-You can set breakpoints, create watches, inspect the state of your application running as a native image, etc.
-
-There are two ways to debug a native image:
-  * using `gdb` from the command line
-  * debugging a running native image process directly from within [Visual Studio Code](https://code.visualstudio.com/)
+You can debug Java applications running as native images from the command line, or from within Visual Studio Code (VS Code) by means of the [GraalVM Tools for Java extension](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm).
+This extension provides Java-like debugging of native images in VS Code.
+You can set breakpoints, create watches, inspect the state of your application, etc.
 
 In this guide you will learn how to debug a Java application, compiled into a native executable.
 
 ## Debugging Native Images with `gdb`
 
-You can debug a native image from the command line with the GNU Debugger (GDB).
-> Note: Native Image debugging requires `gdb` debugger (GDB 7.11 or GDB 10.1+). It currently works only on Linux. The feature is experimental.
+> Note: Native Image debugging currently works on Linux and macOS. The feature is experimental.
 
+You can debug a native image from the command line with the GNU Debugger (GDB).
 The requirement is that the image should contain debug symbols in a format `gdb` debugger understands.
 > Note: For a complete debugging experience, use GraalVM Enterprise. Debug symbols are only available in GraalVM Enterprise.
 
-To build a native image with debug information, provide one of the following switches to the `native-image` builder:
-- `-g -O0`
-- `-H:Debug=2 -H:Optimize=0`
-
+To build a native image with debug information, provide the `-g -O0` option to the `native-image` builder.
 For example,
 ```shell
 javac Hello.java
@@ -89,18 +83,18 @@ Where `-g` instructs the `native-image` builder to generate debug information, a
 
 3. Select **Run | Add Configuration…** and then select **Native Image: Launch** from the list of available configurations. It will add the following code to _launch.json_:
 
-  ```json
+  ```JSON
   {
    “type”: “nativeimage”,
    “request”: “launch”,
    “name”: “Launch Native Image”,
    “nativeImagePath”: “${workspaceFolder}/build/native-image/application”
    }
-   ```
-   The value of the `nativeImagePath` property has to match the executable name and the location specified in the _pom.xml_, so change the last line of the configuration to `nativeImagePath”: “${workspaceFolder}/target/javagdb`.
+  ```
+   The value of the `nativeImagePath` property has to match the executable name and the location specified in the _pom.xml_, so change the last line of the configuration to `"nativeImagePath": "${workspaceFolder}/target/javagdb"`.
 
 4. Add some argument to specify the number that we want to calculate the factorial, for example, `“args”: “100”`. Your configuration should look like this:
-  ```json
+  ```JSON
   {
    “type”: “nativeimage”,
    “request”: “launch”,
