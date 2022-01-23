@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1067,10 +1067,17 @@ public class GraphDecoder {
         assert loopExit.stateAfter() == null;
         int stateAfterOrderId = readOrderId(methodScope);
 
-        BeginNode begin = graph.add(new BeginNode());
-
         FixedNode loopExitSuccessor = loopExit.next();
-        loopExit.replaceAtPredecessor(begin);
+
+        BeginNode begin;
+        if (loopExit.predecessor() instanceof BeginNode) {
+            // Optimization: Reuse an existing BeginNode rather than creating a new one.
+            begin = (BeginNode) loopExit.predecessor();
+            loopExit.replaceAtPredecessor(null);
+        } else {
+            begin = graph.add(new BeginNode());
+            loopExit.replaceAtPredecessor(begin);
+        }
 
         MergeNode loopExitPlaceholder = null;
         if (methodScope.loopExplosion.mergeLoops() && loopScope.loopDepth == 1) {
