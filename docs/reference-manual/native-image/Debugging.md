@@ -19,15 +19,17 @@ In this guide you will learn how to debug a Java application, compiled into a na
 
 You can debug a native image from the command line with the GNU Debugger (GDB).
 The requirement is that the image should contain debug symbols in a format `gdb` debugger understands.
-> Note: For a complete debugging experience, use GraalVM Enterprise. Debug symbols are only available in GraalVM Enterprise.
+> Note: For a complete debugging experience, it is recommended to use GraalVM Enterprise.
 
-To build a native image with debug information, provide the `-g -O0` option to the `native-image` builder.
-For example,
+To build a native image with debug information, provide the `-g -O0` option to the `native-image` builder:
 ```shell
-javac Hello.java
 native-image -g -O0 Hello
 ```
+
+Where `-g` instructs `native-image` to generate debug information, and `-O0` specifies to not perform any compiler optimizations.
+It is not required to disable optimizations, but in general it makes the debugging experience better with fewer optimizations applied.
 The resulting image will contain debug records in a format `gdb` understands.
+
 For more details on debugging Java from GDB, see the [Debug Info Feature guide](DebugInfo.md).
 
 ## Debugging Native Images in VS Code
