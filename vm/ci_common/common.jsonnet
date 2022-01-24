@@ -209,22 +209,22 @@ local devkits = common_json.devkits;
 
   bench_vm_linux_amd64: self.vm_linux_amd64 + {
     capabilities+: ['no_frequency_scaling'],
-    targets+: ['bench', 'post-merge'],
+    targets+: ['post-merge', 'bench'],
   },
 
   bench_vm_darwin: self.vm_darwin + {
     capabilities+: ['no_frequency_scaling'],
-    targets+: ['bench', 'post-merge'],
+    targets+: ['post-merge', 'bench'],
   },
 
   bench_daily_vm_linux_amd64: self.vm_linux_amd64 + {
     capabilities+: ['no_frequency_scaling'],
-    targets+: ['bench', 'daily'],
+    targets+: ['daily', 'bench'],
   },
 
   bench_daily_vm_darwin: self.vm_darwin + {
     capabilities+: ['no_frequency_scaling'],
-    targets+: ['bench', 'daily'],
+    targets+: ['daily', 'bench'],
   },
 
   bench_ondemand_vm_linux_amd64: self.vm_linux_amd64 + {
@@ -233,35 +233,35 @@ local devkits = common_json.devkits;
   },
 
   deploy_vm_linux_amd64: self.vm_linux_amd64 + {
-    targets+: ['deploy', 'post-merge'],
+    targets+: ['post-merge', 'deploy'],
   },
 
   deploy_vm_linux_aarch64: self.vm_linux_aarch64 + {
-    targets+: ['deploy', 'post-merge'],
+    targets+: ['post-merge', 'deploy'],
   },
 
   deploy_daily_vm_linux_amd64: self.vm_linux_amd64 + {
-    targets+: ['deploy', 'daily'],
+    targets+: ['daily', 'deploy'],
   },
 
   deploy_daily_vm_linux_aarch64: self.vm_linux_aarch64 + {
-    targets+: ['deploy', 'daily'],
+    targets+: ['daily', 'deploy'],
   },
 
   deploy_daily_vm_darwin: self.vm_darwin + {
-    targets+: ['deploy', 'daily'],
+    targets+: ['daily', 'deploy'],
   },
 
   deploy_daily_vm_windows: self.vm_windows + {
-    targets+: ['deploy', 'daily'],
+    targets+: ['daily', 'deploy'],
   },
 
   deploy_daily_vm_windows_jdk11: self.vm_windows_jdk11 + {
-    targets+: ['deploy', 'daily'],
+    targets+: ['daily', 'deploy'],
   },
 
   deploy_daily_vm_windows_jdk17: self.vm_windows_jdk17 + {
-    targets+: ['deploy', 'daily'],
+    targets+: ['daily', 'deploy'],
   },
 
   postmerge_vm_linux_amd64: self.vm_linux_amd64 + {
