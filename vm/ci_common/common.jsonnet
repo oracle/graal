@@ -378,28 +378,13 @@ local devkits = common_json.devkits;
   ruby_vm_build_darwin: self.svm_common_darwin + self.sulong_darwin + self.truffleruby_darwin + vm.custom_vm_darwin,
   full_vm_build_darwin: self.ruby_vm_build_darwin + self.fastr_darwin + self.graalpython_darwin,
 
-  libgraal_build_ea_only: ['mx',
-      '--env', vm.libgraal_env,
-      # enable ea asserts in the image building code
-      '--extra-image-builder-argument=-J-ea',
-      # enable ea asserts in the generated libgraal
-      '--extra-image-builder-argument=-ea',
-      'build'
-  ],
-  libgraal_build: ['mx',
-      '--env', vm.libgraal_env,
-      # enable all asserts in the image building code
-      '--extra-image-builder-argument=-J-esa',
-      '--extra-image-builder-argument=-J-ea',
-      # enable all asserts in the generated libgraal
-      '--extra-image-builder-argument=-esa',
-      '--extra-image-builder-argument=-ea',
-      'build'
-  ],
+  local libgraal_build(build_args) =
+    ['mx', '--env', vm.libgraal_env] + ['--extra-image-builder-argument=%s' % arg for arg in build_args] + ['build'],
+
   libgraal_compiler: self.svm_common_linux_amd64 + vm.custom_vm_linux + {
     run+: [
       # enable asserts in the JVM building the image and enable asserts in the resulting native image
-      $.libgraal_build,
+      libgraal_build(['-J-esa', '-J-ea', '-esa', '-ea']),
       ['mx', '--env', vm.libgraal_env, 'gate', '--task', 'LibGraal Compiler'],
     ],
     timelimit: '1:00:00',
@@ -411,11 +396,26 @@ local devkits = common_json.devkits;
     },
     run+: [
       # -ea assertions are enough to keep execution time reasonable
-      $.libgraal_build_ea_only,
+      libgraal_build(['-J-ea', '-ea']),
       ['mx', '--env', vm.libgraal_env, 'gate', '--task', 'LibGraal Truffle'],
     ],
     logs+: ['*/graal-compiler.log'],
     timelimit: '45:00',
+  },
+
+  libgraal_compiler_devmode: self.libgraal_compiler + {
+    run: [
+      # enable economy mode building with with the -Ob flag
+      libgraal_build(['-J-esa', '-J-ea', '-esa', '-ea', '-Ob']),
+      ['mx', '--env', vm.libgraal_env, 'gate', '--task', 'LibGraal Compiler'],
+    ],
+  },
+  libgraal_truffle_devmode: self.libgraal_truffle + {
+    run: [
+      # enable economy mode building with with the -Ob flag
+      libgraal_build(['-J-ea', '-ea', '-Ob']),
+      ['mx', '--env', vm.libgraal_env, 'gate', '--task', 'LibGraal Truffle'],
+    ],
   },
 
   # for cases where a maven package is not easily accessible
@@ -603,6 +603,9 @@ local devkits = common_json.devkits;
 
     self.gate_vm_linux_amd64 + self.libgraal_truffle + vm.vm_java_11 + vm.vm_unittest + { name: 'gate-vm-libgraal-truffle-11-linux-amd64' },
     self.gate_vm_linux_amd64 + self.libgraal_truffle + vm.vm_java_17 + vm.vm_unittest + { name: 'gate-vm-libgraal-truffle-17-linux-amd64' },
+
+    self.gate_vm_linux_amd64 + self.libgraal_compiler_devmode + vm.vm_java_17 + { name: 'gate-vm-libgraal-compiler-devmode-17-linux-amd64' },
+    self.gate_vm_linux_amd64 + self.libgraal_truffle_devmode + vm.vm_java_17 + { name: 'gate-vm-libgraal-truffle-devmode-17-linux-amd64' },
 
     vm.vm_java_17 + self.svm_common_linux_amd64 + self.sulong_linux + vm.custom_vm_linux + self.gate_vm_linux_amd64 + vm.vm_unittest + {
      run: [

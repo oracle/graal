@@ -12,10 +12,19 @@
 
   local svm_cmd_gate = ["mx", "--kill-with-sigquit", "--strict-compliance", "gate", "--strict-mode", "--tags"],
 
+  local svm_clone_js_benchmarks = ["git", "clone", "--depth", "1", ["mx", "urlrewrite", "https://github.com/graalvm/js-benchmarks.git"], "../../js-benchmarks"],
+
   local gate_svm_js = svm_common + {
     run: [
-      ["git", "clone", "--depth", "1", ["mx", "urlrewrite", "https://github.com/graalvm/js-benchmarks.git"], "../../js-benchmarks"],
+      svm_clone_js_benchmarks,
       svm_cmd_gate + ["build,js"],
+    ],
+  },
+
+  local gate_svm_js_devmode = svm_common + {
+    run: [
+      svm_clone_js_benchmarks,
+      svm_cmd_gate + ["build,js_devmode"],
     ],
   },
 
@@ -39,6 +48,9 @@
     },
     common.darwin_amd64 + common.oraclejdk17 + gate_svm_js {
       name: "gate-svm-darwin-js",
+    },
+    common.darwin_amd64 + common.oraclejdk17 + gate_svm_js_devmode {
+      name: "gate-svm-darwin-js-devmode",
     },
     common.linux_amd64 + common.oraclejdk11 + svm_common + maven + svm_unittest + {
       name: "gate-svm-build-ce-11",
@@ -82,6 +94,13 @@
       timelimit: "1:30:00",
       run: [
         svm_cmd_gate + ["build,helloworld,test,svmjunit"],
+      ],
+    },
+    common.windows_amd64 + common.oraclejdk17 + common.devkits["windows-jdk17"] + svm_common + svm_unittest + {
+      name: "gate-svm-windows-basics-devmode",
+      timelimit: "1:30:00",
+      run: [
+        svm_cmd_gate + ["build,helloworld_devmode,test_devmode,svmjunit_devmode"],
       ],
     },
   ],

@@ -48,6 +48,7 @@ _suite = mx.suite('vm')
 class VmGateTasks:
     compiler = 'compiler'
     substratevm = 'substratevm'
+    substratevm_devmode = 'substratevm-devmode'
     sulong = 'sulong'
     graal_js_all = 'graal-js'
     graal_js_smoke = 'graal-js-smoke'
@@ -283,6 +284,7 @@ def gate_body(args, tasks):
         mx.warn("Skipping libgraal tests: component not enabled")
 
     gate_substratevm(tasks)
+    gate_substratevm(tasks, devmode=True)
     gate_sulong(tasks)
     gate_python(tasks)
     gate_svm_sl_tck(tasks)
@@ -304,13 +306,21 @@ def graalvm_svm():
             yield native_image
     return native_image_context, svm.extensions
 
-def gate_substratevm(tasks):
-    with Task('Run Truffle host interop tests on SVM', tasks, tags=[VmGateTasks.substratevm]) as t:
+def gate_substratevm(tasks, devmode=False):
+    tag = VmGateTasks.substratevm
+    name = 'Run Truffle host interop tests on SVM'
+    extra_build_args = []
+    if devmode:
+        tag = VmGateTasks.substratevm_devmode
+        name += ' with devmode'
+        extra_build_args = ['-Ob']
+
+    with Task(name, tasks, tags=[tag]) as t:
         if t:
             tests = ['ValueHostInteropTest', 'ValueHostConversionTest']
             truffle_no_compilation = ['--initialize-at-build-time', '--macro:truffle',
                                       '-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime']
-            args = ['--build-args'] + truffle_no_compilation + ['--'] + tests
+            args = ['--build-args'] + truffle_no_compilation + extra_build_args + ['--'] + tests
             native_image_context, svm = graalvm_svm()
             with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
                 svm._native_unittest(native_image, args)
