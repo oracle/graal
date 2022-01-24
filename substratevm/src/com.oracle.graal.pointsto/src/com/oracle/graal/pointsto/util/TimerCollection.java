@@ -49,7 +49,7 @@ public class TimerCollection implements ImageBuildStatistics.TimerCollectionPrin
         CLASSLIST("classlist", false),
         CLINIT("(clinit)", true),
         FEATURES("(features)", false),
-        OBJECTS("(objects)", false),
+        VERIFY_HEAP("(verify)", false),
         ANALYSIS("analysis", true),
         UNIVERSE("universe", true),
         COMPILE_TOTAL("compile", true),
