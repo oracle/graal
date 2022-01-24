@@ -848,7 +848,7 @@ public class InvocationPlugins {
 
     /**
      * Creates a set of invocation plugins.
-     * 
+     *
      * @param resolvedPlugins if non-null, this object will contain the closed set of invocation
      *            plugins for a set of resolved methods, and no further plugin registration is
      *            permitted.
@@ -899,7 +899,10 @@ public class InvocationPlugins {
     public InvocationPlugin lookupInvocation(ResolvedJavaMethod method, boolean allowDecorators, OptionValues options) {
         if (!isDisabledIntrinsicsFilterInitialized) {
             synchronized (this) {
-                if (!isDisabledIntrinsicsFilterInitialized) {
+                if (options == null) {
+                    logDisabledIntrinsics = false;
+                    disabledIntrinsicsFilter = null;
+                } else if (!isDisabledIntrinsicsFilterInitialized) {
                     String filterValue = Options.DisableIntrinsics.getValue(options);
                     if (filterValue != null) {
                         String[] values = filterValue.split(":");
@@ -1112,8 +1115,8 @@ public class InvocationPlugins {
                 return true;
             }
             int arguments = plugin.getArgumentsSize();
-            assert arguments < SIGS.length
-                            : format("need to extend %s to support method with %d arguments: %s", InvocationPlugin.class.getSimpleName(), arguments, plugin.getMethodNameWithArgumentsDescriptor());
+            assert arguments < SIGS.length : format("need to extend %s to support method with %d arguments: %s", InvocationPlugin.class.getSimpleName(), arguments,
+                            plugin.getMethodNameWithArgumentsDescriptor());
 
             Class<?> klass = plugin.getClass();
             while (klass != InvocationPlugin.class) {

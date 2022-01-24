@@ -26,7 +26,6 @@ package org.graalvm.compiler.nodes.graphbuilderconf;
 
 import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 
-import java.lang.ref.Reference;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -136,7 +135,7 @@ public abstract class InvocationPlugin implements GraphBuilderPlugin {
 
     /**
      * Determines if this plugin requires the original method to be resolvable. For instance,
-     * {@link Reference#refersTo0} is introduced in Java 16 and is optional in earlier versions in
+     * {@code Reference#refersTo0} is introduced in Java 16 and is optional in earlier versions in
      * case it may be backported.
      */
     public boolean isOptional() {

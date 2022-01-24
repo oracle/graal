@@ -217,9 +217,9 @@ public abstract class LIRTest extends JTTTest {
         }
 
         @Override
-        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode spec, ValueNode name, ValueNode expected) {
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode spec, ValueNode outputName, ValueNode expected) {
             JavaKind returnKind = targetMethod.getSignature().getReturnKind();
-            b.addPush(returnKind, new LIRValueNode(getSnippetReflection(), returnKind, spec, name));
+            b.addPush(returnKind, new LIRValueNode(getSnippetReflection(), returnKind, spec, outputName));
             return true;
         }
     }

@@ -618,7 +618,7 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     // Fully qualified name is a workaround for JDK-8056066
-    public static class AESCryptPlugin extends InvocationPlugin {
+    public static class AESCryptPlugin extends org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin {
         private final boolean doEncrypt;
 
         public static ResolvedJavaType getType(ResolvedJavaType context, String typeName) {
