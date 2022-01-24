@@ -51,8 +51,11 @@ import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
+import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.FloatConvertNode;
+import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
+import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
@@ -161,8 +164,8 @@ public final class JNIJavaCallWrapperMethod extends NonBytecodeStaticMethod {
                     args.add(objectHandle);
                 } else if (kind == JavaKind.Float) { // C varargs promote float to double
                     args.add(metaAccess.lookupJavaType(JavaKind.Double.toJavaClass()));
-                } else {
-                    args.add(targetArg);
+                } else { // C varargs promote sub-words to int
+                    args.add(metaAccess.lookupJavaType(kind.getStackKind().toJavaClass()));
                 }
             }
         } else if (callVariant == CallVariant.ARRAY) {
@@ -370,7 +373,8 @@ public final class JNIJavaCallWrapperMethod extends NonBytecodeStaticMethod {
             }
             for (int i = 0; i < count; i++) {
                 ResolvedJavaType type = (ResolvedJavaType) invokeSignature.getParameterType(i, null);
-                JavaKind readKind = type.getJavaKind();
+                JavaKind kind = type.getJavaKind();
+                JavaKind readKind = callVariant == CallVariant.ARRAY ? kind : kind.getStackKind();
                 if (readKind == JavaKind.Float && (callVariant == CallVariant.VARARGS || callVariant == CallVariant.VA_LIST)) {
                     readKind = JavaKind.Double;
                 }
@@ -384,18 +388,14 @@ public final class JNIJavaCallWrapperMethod extends NonBytecodeStaticMethod {
                 }
                 Stamp readStamp = getNarrowStamp(providers, readKind);
                 ValueNode value = kit.append(new CInterfaceReadNode(address, locationIdentity, readStamp, BarrierType.NONE, "args[" + i + "]"));
-                JavaKind stackKind = readKind.getStackKind();
-                if (type.getJavaKind() == JavaKind.Float && (callVariant == CallVariant.VARARGS || callVariant == CallVariant.VA_LIST)) {
+                if (kind == JavaKind.Float && (callVariant == CallVariant.VARARGS || callVariant == CallVariant.VA_LIST)) {
                     value = kit.unique(new FloatConvertNode(FloatConvert.D2F, value));
-                } else if (readKind != stackKind) {
-                    assert stackKind.getBitCount() > readKind.getBitCount() : "read kind must be narrower than stack kind";
-                    if (readKind.isUnsigned()) { // needed or another op may illegally sign-extend
-                        value = kit.unique(new ZeroExtendNode(value, stackKind.getBitCount()));
-                    } else {
-                        value = kit.unique(new SignExtendNode(value, stackKind.getBitCount()));
-                    }
-                } else if (readKind.isObject()) {
+                } else if (kind.isObject()) {
                     value = kit.unboxHandle(value);
+                } else if (kind == JavaKind.Boolean) {
+                    value = convertToBoolean(kit, value);
+                } else if (kind != kind.getStackKind() && callVariant == CallVariant.ARRAY) {
+                    value = maskSubWordValue(kit, value, kind);
                 }
                 args.add(Pair.create(value, type));
             }
@@ -412,6 +412,8 @@ public final class JNIJavaCallWrapperMethod extends NonBytecodeStaticMethod {
                     value = kit.unique(new FloatConvertNode(FloatConvert.D2F, value));
                 } else if (kind.isObject()) {
                     value = kit.unboxHandle(value);
+                } else if (kind == JavaKind.Boolean) {
+                    value = convertToBoolean(kit, value);
                 }
                 args.add(Pair.create(value, type));
                 javaIndex += loadKind.getSlotCount();
@@ -420,13 +422,16 @@ public final class JNIJavaCallWrapperMethod extends NonBytecodeStaticMethod {
             ValueNode valist = kit.loadLocal(javaIndex, metaAccess.lookupJavaType(WordBase.class).getJavaKind());
             for (int i = 0; i < count; i++) {
                 ResolvedJavaType type = (ResolvedJavaType) invokeSignature.getParameterType(i, null);
-                JavaKind loadKind = type.getJavaKind();
+                JavaKind kind = type.getJavaKind();
+                JavaKind loadKind = kind.getStackKind();
                 if (loadKind.isObject()) {
                     loadKind = providers.getWordTypes().getWordKind();
                 }
                 ValueNode value = kit.append(new VaListNextArgNode(loadKind, valist));
-                if (type.getJavaKind().isObject()) {
+                if (kind.isObject()) {
                     value = kit.unboxHandle(value);
+                } else if (kind == JavaKind.Boolean) {
+                    value = convertToBoolean(kit, value);
                 }
                 args.add(Pair.create(value, type));
             }
@@ -446,14 +451,28 @@ public final class JNIJavaCallWrapperMethod extends NonBytecodeStaticMethod {
                         metaAccess.lookupJavaType(JNIMethodId.class).getJavaKind().getSlotCount();
     }
 
+    /** Converts 0 to {@code false}, and 1-255 to {@code true}. */
+    private static ValueNode convertToBoolean(JNIGraphKit kit, ValueNode value) {
+        ValueNode maskedValue = maskSubWordValue(kit, value, JavaKind.Boolean);
+        LogicNode isZero = IntegerEqualsNode.create(maskedValue, ConstantNode.forInt(0), NodeView.DEFAULT);
+        return kit.append(ConditionalNode.create(isZero, ConstantNode.forBoolean(false), ConstantNode.forBoolean(true), NodeView.DEFAULT));
+    }
+
+    /** Masks a sub-word value to ensure that unused high bits are indeed cleared. */
+    private static ValueNode maskSubWordValue(JNIGraphKit kit, ValueNode value, JavaKind kind) {
+        assert kind != kind.getStackKind();
+        ValueNode narrow = kit.append(NarrowNode.create(value, kind.getByteCount() * Byte.SIZE, NodeView.DEFAULT));
+        if (kind.isUnsigned()) {
+            return kit.append(ZeroExtendNode.create(narrow, Integer.SIZE, NodeView.DEFAULT));
+        } else {
+            return kit.append(SignExtendNode.create(narrow, Integer.SIZE, NodeView.DEFAULT));
+        }
+    }
+
     private static Stamp getNarrowStamp(HostedProviders providers, JavaKind kind) {
-        if (kind.isNumericInteger()) {
+        if (kind != kind.getStackKind()) {
             // avoid widened stamp to prevent reading undefined bits
-            if (kind.isUnsigned()) {
-                return StampFactory.forUnsignedInteger(kind.getBitCount(), kind.getMinValue(), kind.getMaxValue());
-            } else {
-                return StampFactory.forInteger(kind.getBitCount(), kind.getMinValue(), kind.getMaxValue());
-            }
+            return StampFactory.forInteger(kind.getByteCount() * Byte.SIZE);
         } else if (kind.isObject()) {
             ResolvedJavaType objectHandle = providers.getMetaAccess().lookupJavaType(JNIObjectHandle.class);
             return providers.getWordTypes().getWordStamp(objectHandle);
