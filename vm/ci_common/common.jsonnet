@@ -7,7 +7,9 @@ local devkits = common_json.devkits;
 {
   verify_name(build): build + {
     expected_prefix:: std.join('-', build.targets) + '-vm',
+    expected_suffix:: build.os + '-' + build.arch,
     assert std.startsWith(build.name, self.expected_prefix) : "'%s' is defined in '%s' with '%s' targets but does not start with '%s'" % [build.name, build.defined_in, build.targets, self.expected_prefix],
+    assert std.endsWith(build.name, self.expected_suffix) : "'%s' is defined in '%s' with os/arch '%s/%s' but does not end with '%s'" % [build.name, build.defined_in, build.os, build.arch, self.expected_suffix],
   },
 
   common_vm: graal_common.build_base + vm.vm_setup + {
@@ -638,7 +640,7 @@ local devkits = common_json.devkits;
         ['mx', '--dynamicimports', '$SVM_SUITE,/sulong', '--disable-polyglot', '--disable-libpolyglot', 'gate', '--no-warning-as-error', '--tags', 'build,sulong'],
       ],
       timelimit: '1:00:00',
-      name: 'gate-vm-native-sulong',
+      name: 'gate-vm-native-sulong-linux-amd64',
     },
   ]],
 }

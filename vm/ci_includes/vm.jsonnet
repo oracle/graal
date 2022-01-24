@@ -99,7 +99,7 @@ local jdks = common_json.jdks;
   },
 
   notify_releaser_build: vm_common.common_vm_linux + graal_common.linux_amd64 + {
-    name: 'daily-vm-notify-releaser-build',
+    name: 'daily-vm-notify-releaser-build-linux-amd64',
     packages+: {
       curl: '>=7.50.1',
       git: '>=1.8.3',
@@ -141,7 +141,7 @@ local jdks = common_json.jdks;
           ['mx', 'build'],
           ['mx', 'unittest', '--suite', 'vm'],
       ],
-      name: 'gate-vm-unittest-windows',
+      name: 'gate-vm-unittest-windows-amd64',
     },
     self.vm_java_11 + vm_common.gate_vm_linux_amd64 + vm_common.sulong_linux + {
       environment+: {
@@ -152,7 +152,7 @@ local jdks = common_json.jdks;
         ['rm', '-rf', '../.git'],
         ['mx', 'gate', '--strict-mode', '--tags', 'build'],
       ],
-      name: 'gate-vm-build-without-vcs',
+      name: 'gate-vm-build-without-vcs-linux-amd64',
     },
     vm_common.linux_deploy + vm_common.gate_vm_linux_amd64 + self.maven_base_11 + vm_common.sulong_linux + {
       run: [
