@@ -639,7 +639,6 @@ public abstract class Launcher {
         return keyword.equals(helpArg);
     }
 
-
     /**
      * Prints default help text. Prints options, starting with tool specific options. Launcher
      * implementations can override to provide launcher-specific intro / summary.
@@ -704,7 +703,7 @@ public abstract class Launcher {
     }
 
     static String optionsTitle(String kind, OptionCategory optionCategory) {
-        if (optionCategory  == null) {
+        if (optionCategory == null) {
             return kind + " options:";
         }
         String category;
