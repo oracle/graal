@@ -897,24 +897,16 @@ public class InvocationPlugins {
      * @return the plugin associated with {@code method} or {@code null} if none exists
      */
     public InvocationPlugin lookupInvocation(ResolvedJavaMethod method, boolean allowDecorators, OptionValues options) {
-        if (!isDisabledIntrinsicsFilterInitialized) {
+        if (!IS_IN_NATIVE_IMAGE && !isDisabledIntrinsicsFilterInitialized) {
             synchronized (this) {
-                if (options == null) {
-                    logDisabledIntrinsics = false;
-                    disabledIntrinsicsFilter = null;
-                } else if (!isDisabledIntrinsicsFilterInitialized) {
+                if (!isDisabledIntrinsicsFilterInitialized) {
                     String filterValue = Options.DisableIntrinsics.getValue(options);
                     if (filterValue != null) {
                         String[] values = filterValue.split(":");
                         if (values.length > 1 && "verbose".equals(values[1])) {
                             logDisabledIntrinsics = true;
-                        } else {
-                            logDisabledIntrinsics = false;
                         }
                         disabledIntrinsicsFilter = MethodFilter.parse(values[0]);
-                    } else {
-                        logDisabledIntrinsics = false;
-                        disabledIntrinsicsFilter = null;
                     }
                 }
                 isDisabledIntrinsicsFilterInitialized = true;
