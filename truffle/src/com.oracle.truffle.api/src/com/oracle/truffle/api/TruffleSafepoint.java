@@ -255,7 +255,7 @@ public abstract class TruffleSafepoint {
 
     /**
      * Allows to temporarily delay all thread local actions on the current thread. It is recommended
-     * to delay actions only for a a constant period of time and while trusted and internal guest
+     * to delay actions only for a constant period of time and while trusted and internal guest
      * code is running. Please consider using {@link #setAllowSideEffects(boolean)} before using
      * this method. While actions are disabled the value of {@link #setAllowSideEffects(boolean)}
      * has no effect. When {@link #setAllowActions(boolean) actions} are enabled again the value of
