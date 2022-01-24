@@ -128,7 +128,7 @@ local jdks = common_json.jdks;
     targets+: ['daily'],
   },
 
-  builds: vm_common.builds + vm_common_bench.builds + vm_bench.builds + vm_native.builds + [
+  builds: vm_common.builds + vm_common_bench.builds + vm_bench.builds + vm_native.builds + [{'defined_in': std.thisFile} + b  for b in [
     self.vm_java_8 + vm_common.gate_vm_linux_amd64 + self.vm_unittest + {
       run: [
         ['mx', 'build'],
@@ -265,5 +265,5 @@ local jdks = common_json.jdks;
 
     # Trigger the releaser service
     self.notify_releaser_build,
-  ],
+  ]],
 }

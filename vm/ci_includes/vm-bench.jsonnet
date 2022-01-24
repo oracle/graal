@@ -3,7 +3,7 @@ local vm_common = import '../ci_common/common.jsonnet';
 local vm_common_bench = import '../ci_common/common-bench.jsonnet';
 
 {
-  builds: [
+  builds: [{'defined_in': std.thisFile} + b for b in [
     vm_common.bench_ondemand_vm_linux_amd64 +  vm_common_bench.vm_bench_js_linux_amd64 + {
       # Override `self.vm_bench_js_linux_amd64.setup`
       setup: vm.vm_setup.setup + [
@@ -18,5 +18,5 @@ local vm_common_bench = import '../ci_common/common-bench.jsonnet';
       name: 'bench-vm-ce-no-native-gu-linux',
       timelimit: '1:00:00',
     },
-  ],
+  ]],
 }

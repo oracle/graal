@@ -591,7 +591,7 @@ local devkits = common_json.devkits;
     name: 'deploy-vm-complete-java11-darwin-amd64',
   },
 
-  builds: [
+  builds: [{'defined_in': std.thisFile} + b for b in [
     #
     # Gates
     #
@@ -615,5 +615,5 @@ local devkits = common_json.devkits;
       timelimit: '1:00:00',
       name: 'gate-vm-native-sulong',
     },
-  ],
+  ]],
 }

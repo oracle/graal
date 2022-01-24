@@ -133,7 +133,7 @@ local vm_common = import '../ci_common/common.jsonnet';
 
   vm_bench_polybench_nfi_linux_amd64: self.vm_bench_common + vm_common.svm_common_linux_amd64 + self.vm_bench_polybench_nfi,
 
-  builds: [
+  builds: [{'defined_in': std.thisFile} + b for b in [
     # We used to expand `${common_vm_linux}` here to work around some limitations in the version of pyhocon that we use in the CI
     vm_common.bench_ondemand_vm_linux_amd64 + self.vm_bench_js_linux_amd64 + { environment+: { BENCH_SUITE: 'octane' },    name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-octane-linux'},
     vm_common.bench_ondemand_vm_linux_amd64 + self.vm_bench_js_linux_amd64 + { environment+: { BENCH_SUITE: 'jetstream' }, name: 'ondemand-bench-vm-' + vm.vm_setup.short_name + '-js-jetstream-linux'},
@@ -166,5 +166,5 @@ local vm_common = import '../ci_common/common.jsonnet';
     },
 
     vm_common.gate_vm_linux_amd64 + self.vm_gate_polybench_linux + {name: 'gate-vm-' + vm.vm_setup.short_name + '-polybench-linux'},
-  ],
+  ]],
 }

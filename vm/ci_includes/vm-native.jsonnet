@@ -2,7 +2,7 @@ local vm = import 'vm.jsonnet';
 local vm_common = import '../ci_common/common.jsonnet';
 
 {
-  builds: [
+  builds: [{'defined_in': std.thisFile} + b  for b in [
     vm.vm_java_17 + vm_common.svm_common_linux_amd64 + vm.custom_vm_linux + vm_common.gate_vm_linux_amd64 + {
       run+: [
         ['export', 'SVM_SUITE=' + vm.svm_suite],
@@ -27,5 +27,5 @@ local vm_common = import '../ci_common/common.jsonnet';
       timelimit: '35:00',
       name: 'gate-svm-truffle-tck',
     },
-  ],
+  ]],
 }
