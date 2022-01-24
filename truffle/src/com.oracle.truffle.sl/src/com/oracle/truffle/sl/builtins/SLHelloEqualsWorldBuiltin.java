@@ -44,7 +44,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -60,15 +59,16 @@ public abstract class SLHelloEqualsWorldBuiltin extends SLBuiltinNode {
     @Specialization
     @TruffleBoundary
     public TruffleString change() {
-        FrameInstance frameInstance = Truffle.getRuntime().getCallerFrame();
-        Frame frame = frameInstance.getFrame(FrameAccess.READ_WRITE);
-        int count = frame.getFrameDescriptor().getNumberOfSlots();
-        for (int i = 0; i < count; i++) {
-            if (SLStrings.HELLO.equalsUncached((TruffleString) frame.getFrameDescriptor().getSlotName(i), SLLanguage.STRING_ENCODING)) {
-                frame.setObject(i, SLStrings.WORLD);
-                break;
+        return Truffle.getRuntime().iterateFrames((f) -> {
+            Frame frame = f.getFrame(FrameAccess.READ_WRITE);
+            int count = frame.getFrameDescriptor().getNumberOfSlots();
+            for (int i = 0; i < count; i++) {
+                if (SLStrings.HELLO.equalsUncached((TruffleString) frame.getFrameDescriptor().getSlotName(i), SLLanguage.STRING_ENCODING)) {
+                    frame.setObject(i, SLStrings.WORLD);
+                    break;
+                }
             }
-        }
-        return SLStrings.WORLD;
+            return SLStrings.WORLD;
+        }, 1);
     }
 }

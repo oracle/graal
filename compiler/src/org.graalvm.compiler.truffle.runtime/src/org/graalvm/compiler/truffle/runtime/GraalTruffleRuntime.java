@@ -493,7 +493,7 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     @Override
-    public DirectCallNode createDirectCallNode(CallTarget target) {
+    public final DirectCallNode createDirectCallNode(CallTarget target) {
         if (target instanceof OptimizedCallTarget) {
             OptimizedCallTarget optimizedTarget = (OptimizedCallTarget) target;
             final OptimizedDirectCallNode directCallNode = new OptimizedDirectCallNode(optimizedTarget);
@@ -505,43 +505,43 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     @Override
-    public IndirectCallNode createIndirectCallNode() {
+    public final IndirectCallNode createIndirectCallNode() {
         return new OptimizedIndirectCallNode();
     }
 
     @Override
-    public VirtualFrame createVirtualFrame(Object[] arguments, FrameDescriptor frameDescriptor) {
+    public final VirtualFrame createVirtualFrame(Object[] arguments, FrameDescriptor frameDescriptor) {
         return OptimizedCallTarget.createFrame(frameDescriptor, arguments);
     }
 
     @Override
-    public MaterializedFrame createMaterializedFrame(Object[] arguments) {
+    public final MaterializedFrame createMaterializedFrame(Object[] arguments) {
         return createMaterializedFrame(arguments, new FrameDescriptor());
     }
 
     @Override
-    public MaterializedFrame createMaterializedFrame(Object[] arguments, FrameDescriptor frameDescriptor) {
+    public final MaterializedFrame createMaterializedFrame(Object[] arguments, FrameDescriptor frameDescriptor) {
         return new FrameWithoutBoxing(frameDescriptor, arguments);
     }
 
     @Override
-    public Assumption createAssumption() {
+    public final Assumption createAssumption() {
         return createAssumption(null);
     }
 
     @Override
-    public Assumption createAssumption(String name) {
+    public final Assumption createAssumption(String name) {
         return new OptimizedAssumption(name);
     }
 
-    public GraalTruffleRuntimeListener getListener() {
+    public final GraalTruffleRuntimeListener getListener() {
         return listeners;
     }
 
     @TruffleBoundary
     @Override
-    public <T> T iterateFrames(final FrameInstanceVisitor<T> visitor) {
-        return iterateImpl(visitor, 0);
+    public final <T> T iterateFrames(FrameInstanceVisitor<T> visitor, int skipFrames) {
+        return iterateImpl(visitor, skipFrames);
     }
 
     /**
@@ -550,11 +550,11 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
      */
     private int compilationThresholdScale = FixedPointMath.toFixedPoint(1.0);
 
-    public int compilationThresholdScale() {
+    public final int compilationThresholdScale() {
         return compilationThresholdScale;
     }
 
-    void setCompilationThresholdScale(int scale) {
+    final void setCompilationThresholdScale(int scale) {
         this.compilationThresholdScale = scale;
     }
 
@@ -661,17 +661,6 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     }
 
     protected abstract StackIntrospection getStackIntrospection();
-
-    @Override
-    public FrameInstance getCallerFrame() {
-        return iterateImpl(frame -> frame, 1);
-    }
-
-    @TruffleBoundary
-    @Override
-    public FrameInstance getCurrentFrame() {
-        return iterateImpl(frame -> frame, 0);
-    }
 
     @Override
     public <T> T getCapability(Class<T> capability) {

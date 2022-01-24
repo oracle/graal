@@ -210,8 +210,8 @@ public class LLVMVaListStorage implements TruffleObject {
     }
 
     protected static DataLayout findDataLayoutFromCurrentFrame() {
-        RootCallTarget rootCallTarget = (RootCallTarget) Truffle.getRuntime().getCurrentFrame().getCallTarget();
-        return (((LLVMHasDatalayoutNode) rootCallTarget.getRootNode())).getDatalayout();
+        RootCallTarget callTarget = (RootCallTarget) Truffle.getRuntime().iterateFrames((f) -> f.getCallTarget());
+        return (((LLVMHasDatalayoutNode) callTarget.getRootNode())).getDatalayout();
     }
 
     public static long storeArgument(LLVMPointer ptr, long offset, LLVMMemMoveNode memmove, LLVMI64OffsetStoreNode storeI64Node,

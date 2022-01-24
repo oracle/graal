@@ -160,31 +160,24 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
 
     @Override
     public <T> T iterateFrames(FrameInstanceVisitor<T> visitor) {
+        return iterateFrames(visitor, 0);
+    }
+
+    public <T> T iterateFrames(FrameInstanceVisitor<T> visitor, int skipFrames) {
         T result = null;
         DefaultFrameInstance frameInstance = getThreadLocalStackTrace();
+        int skipCounter = skipFrames;
         while (frameInstance != null) {
-            result = visitor.visitFrame(frameInstance);
-            if (result != null) {
-                return result;
+            if (skipCounter <= 0) {
+                result = visitor.visitFrame(frameInstance);
+                if (result != null) {
+                    return result;
+                }
             }
             frameInstance = frameInstance.callerFrame;
+            skipCounter--;
         }
         return result;
-    }
-
-    @Override
-    public FrameInstance getCallerFrame() {
-        DefaultFrameInstance currentFrame = getThreadLocalStackTrace();
-        if (currentFrame != null) {
-            return currentFrame.callerFrame;
-        } else {
-            return null;
-        }
-    }
-
-    @Override
-    public FrameInstance getCurrentFrame() {
-        return getThreadLocalStackTrace();
     }
 
     private DefaultFrameInstance getThreadLocalStackTrace() {
