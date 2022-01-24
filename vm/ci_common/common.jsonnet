@@ -337,7 +337,19 @@ local devkits = common_json.devkits;
     targets+: ['ondemand', 'deploy'],
   },
 
+  ondemand_deploy_vm_linux_aarch64: self.vm_linux_aarch64 + {
+    targets+: ['ondemand', 'deploy'],
+  },
+
   ondemand_deploy_vm_darwin: self.vm_darwin + {
+    targets+: ['ondemand', 'deploy'],
+  },
+
+  ondemand_deploy_vm_windows_jdk11: self.vm_windows_jdk11 + {
+    targets+: ['ondemand', 'deploy'],
+  },
+
+  ondemand_deploy_vm_windows_jdk17: self.vm_windows_jdk17 + {
     targets+: ['ondemand', 'deploy'],
   },
 
