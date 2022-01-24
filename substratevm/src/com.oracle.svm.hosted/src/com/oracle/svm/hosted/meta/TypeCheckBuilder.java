@@ -417,9 +417,13 @@ public class TypeCheckBuilder {
             }
 
             boolean isInstantiated = type.getWrapped().isInstantiated();
-            assert !isInstantiated ||
+            boolean condition = !isInstantiated ||
                             ((type.isInstanceClass() &&
                                             !Modifier.isAbstract(type.getModifiers())) || type.isArray());
+            if (!condition) {
+                System.err.println("condition broken for " + type);
+            }
+            assert condition;
 
             if (subtypeStampType == null) {
                 /* Type has no instantiated subtypes. */

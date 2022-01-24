@@ -328,7 +328,11 @@ public abstract class HostedType implements SharedType, WrappedJavaType, Compara
          * Check that the SharedType implementation, which is used for JIT compilation, gives the
          * same result as the hosted implementation.
          */
-        assert hResult == null || isWordType() || hResult.equals(SharedType.super.resolveConcreteMethod(method, callerType));
+        boolean condition = hResult == null || isWordType() || hResult.equals(SharedType.super.resolveConcreteMethod(method, callerType));
+        if (!condition) {
+            System.err.println("condition failed for " + m);
+        }
+        assert condition;
 
         return hResult;
     }
