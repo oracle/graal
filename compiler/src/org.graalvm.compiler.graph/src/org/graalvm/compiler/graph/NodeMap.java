@@ -210,6 +210,14 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
                 assert NodeMap.this.values[current] != null;
                 NodeMap.this.values[current] = null;
             }
+
+            @SuppressWarnings("unchecked")
+            @Override
+            public T setValue(T newValue) {
+                T oldValue = (T) NodeMap.this.values[current];
+                NodeMap.this.values[current] = newValue;
+                return oldValue;
+            }
         };
     }
 
