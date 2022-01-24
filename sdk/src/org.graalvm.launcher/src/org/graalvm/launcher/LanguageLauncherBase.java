@@ -45,6 +45,7 @@ import static java.lang.Integer.max;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -287,19 +288,19 @@ public abstract class LanguageLauncherBase extends Launcher {
         }
         final boolean all = helpArgIs("all");
         if (all || helpArgIs("languages")) {
-            printed = printLanguageOptions(getTempEngine(), helpInternal, null);
+            printed = printLanguageOptions(getTempEngine(), null);
         }
         if (all || helpArgIs("tools")) {
-            printed = printInstrumentOptions(getTempEngine(), helpInternal, null);
+            printed = printInstrumentOptions(getTempEngine(), null);
         }
         if (all || helpArgIs("engine")) {
-            printed = printEngineOptions(getTempEngine(), helpInternal);
+            printed = printEngineOptions(getTempEngine());
         }
         if (printed) {
             return;
         }
-        printed = printLanguageOptions(getTempEngine(), helpInternal, helpArg);
-        printed |= printInstrumentOptions(getTempEngine(), helpInternal, helpArg);
+        printed = printLanguageOptions(getTempEngine(), helpArg);
+        printed |= printInstrumentOptions(getTempEngine(), helpArg);
     }
 
     /**
@@ -343,74 +344,102 @@ public abstract class LanguageLauncherBase extends Launcher {
 
     }
 
-    private boolean printEngineOptions(Engine engine, boolean includeInternal) {
-        List<PrintableOption> engineOptions = filterOptions(engine.getOptions(), includeInternal);
-        if (!engineOptions.isEmpty()) {
-            println();
-            // TODO not always user
-            printOptions(engineOptions, optionsTitle("engine", OptionCategory.USER), 2);
+    private boolean printEngineOptions(Engine engine) {
+        final Map<OptionCategory, List<PrintableOption>> options = getCategories(engine.getOptions());
+        if (options != null) {
+            println(optionsTitle("Engine", null));
+            printCategory(options, OptionCategory.USER, "   User options:");
+            printCategory(options, OptionCategory.EXPERT, "   Expert options:");
+            printCategory(options, OptionCategory.INTERNAL, "   Internal (developer) options:");
             return true;
         }
         return false;
     }
 
-    private boolean printInstrumentOptions(Engine engine, boolean includeInternal, String id) {
-        Map<Instrument, List<PrintableOption>> instrumentsOptions = new HashMap<>();
+    private boolean printInstrumentOptions(Engine engine, String id) {
+        Map<Instrument, Map<OptionCategory, List<PrintableOption>>> instrumentsOptions = new HashMap<>();
         List<Instrument> instruments = sortedInstruments(engine);
         for (Instrument instrument : instruments) {
             if (id == null || instrument.getId().equals(id)) {
-                List<PrintableOption> options = filterOptions(instrument.getOptions(), includeInternal);
-                if (!options.isEmpty()) {
-                    instrumentsOptions.put(instrument, options);
+                Map<OptionCategory, List<PrintableOption>> categories = getCategories(instrument.getOptions());
+                if (categories != null) {
+                    instrumentsOptions.put(instrument, categories);
                 }
             }
         }
         if (!instrumentsOptions.isEmpty()) {
             println();
-            // TODO not always user
-            println(optionsTitle("tool", OptionCategory.USER));
+            println(optionsTitle("Tool", null));
             for (Instrument instrument : instruments) {
-                List<PrintableOption> options = instrumentsOptions.get(instrument);
-                if (options != null) {
-                    printOptions(options, "  " + instrument.getName() + website(instrument) + ":", 4);
+                println("  " + instrument.getName() + website(instrument) + ":");
+                Map<OptionCategory, List<PrintableOption>> options = instrumentsOptions.get(instrument);
+                if (options == null) {
+                    continue;
                 }
+                printCategory(options, OptionCategory.USER, "   User options:");
+                printCategory(options, OptionCategory.EXPERT, "   Expert options:");
+                printCategory(options, OptionCategory.INTERNAL, "   Internal (developer) options:");
             }
             return true;
         }
         return false;
     }
 
-    private boolean printLanguageOptions(Engine engine, boolean includeInternal, String id) {
-        Map<Language, List<PrintableOption>> languagesOptions = new HashMap<>();
+    private boolean printLanguageOptions(Engine engine, String id) {
+        Map<Language, Map<OptionCategory, List<PrintableOption>>> languagesOptions = new HashMap<>();
         List<Language> languages = sortedLanguages(engine);
         for (Language language : languages) {
             if (id == null || language.getId().equals(id)) {
-                List<PrintableOption> options = filterOptions(language.getOptions(), includeInternal);
-                options.sort(PrintableOption::compareTo);
-                if (!options.isEmpty()) {
-                    languagesOptions.put(language, options);
+                Map<OptionCategory, List<PrintableOption>> categories = getCategories(language.getOptions());
+                if (categories != null) {
+                    languagesOptions.put(language, categories);
                 }
             }
         }
         if (!languagesOptions.isEmpty()) {
             println();
-            // TODO Should not always be user
-            println(optionsTitle("language", OptionCategory.USER));
+            println(optionsTitle("Language", null));
             for (Language language : languages) {
-                List<PrintableOption> options = languagesOptions.get(language);
-                if (options != null) {
-                    printOptions(options, title(language), 4);
+                println(title(language));
+                Map<OptionCategory, List<PrintableOption>> options = languagesOptions.get(language);
+                if (options == null) {
+                    continue;
                 }
+                printCategory(options, OptionCategory.USER, "   User options:");
+                printCategory(options, OptionCategory.EXPERT, "   Expert options:");
+                printCategory(options, OptionCategory.INTERNAL, "   Internal (developer) options:");
             }
             return true;
         }
         return false;
     }
 
-    private List<PrintableOption> filterOptions(OptionDescriptors descriptors, boolean includeInternal) {
+    private Map<OptionCategory, List<PrintableOption>> getCategories(OptionDescriptors options) {
+        List<PrintableOption> userOptions = filterOptions(options, OptionCategory.USER);
+        List<PrintableOption> expertOptions = filterOptions(options, OptionCategory.EXPERT);
+        List<PrintableOption> internalOptions = helpInternal ? filterOptions(options, OptionCategory.EXPERT) : Collections.emptyList();
+        Map<OptionCategory, List<PrintableOption>> categories = null;
+        if (!userOptions.isEmpty() || !expertOptions.isEmpty() || !internalOptions.isEmpty()) {
+            categories = new HashMap<>();
+            categories.put(OptionCategory.USER, userOptions);
+            categories.put(OptionCategory.EXPERT, expertOptions);
+            categories.put(OptionCategory.INTERNAL, internalOptions);
+        }
+        return categories;
+    }
+
+    private void printCategory(Map<OptionCategory, List<PrintableOption>> options, OptionCategory category, String title) {
+        final List<PrintableOption> printableOptions = options.get(category);
+        if (printableOptions != null && !printableOptions.isEmpty()) {
+            println();
+            printOptions(printableOptions, title, 4);
+        }
+    }
+
+    private List<PrintableOption> filterOptions(OptionDescriptors descriptors) {
         List<PrintableOption> options = new ArrayList<>();
         for (OptionDescriptor descriptor : descriptors) {
-            if (includeInternal || descriptor.getCategory() != OptionCategory.INTERNAL) {
+            if (helpInternal || descriptor.getCategory() != OptionCategory.INTERNAL) {
                 options.add(asPrintableOption(descriptor));
             }
         }

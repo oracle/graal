@@ -704,6 +704,9 @@ public abstract class Launcher {
     }
 
     static String optionsTitle(String kind, OptionCategory optionCategory) {
+        if (optionCategory  == null) {
+            return kind + " options:";
+        }
         String category;
         switch (optionCategory) {
             case USER:
