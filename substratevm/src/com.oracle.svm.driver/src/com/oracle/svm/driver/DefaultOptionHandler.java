@@ -31,7 +31,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -40,10 +39,6 @@ import org.graalvm.compiler.options.OptionType;
 
 import com.oracle.svm.driver.MacroOption.MacroOptionKind;
 import com.oracle.svm.driver.NativeImage.ArgumentQueue;
-
-import jdk.vm.ci.aarch64.AArch64;
-import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.code.Architecture;
 
 class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
@@ -208,21 +203,6 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 nativeImage.addPlainImageBuilderArg("-H:+DiagnosticsMode");
                 nativeImage.addPlainImageBuilderArg("-H:DiagnosticsDir=" + nativeImage.diagnosticsDir);
                 System.out.println("# Diagnostics mode enabled: image-build reports are saved to " + nativeImage.diagnosticsDir);
-                return true;
-            case "--list-cpu-features":
-                args.poll();
-                Architecture arch = JVMCI.getRuntime().getHostJVMCIBackend().getTarget().arch;
-                if (arch instanceof AMD64) {
-                    nativeImage.showMessage("All AMD64 CPUFeatures: " + Arrays.toString(AMD64.CPUFeature.values()));
-                    nativeImage.showNewline();
-                    nativeImage.showMessage("Host machine AMD64 CPUFeatures: " + ((AMD64) arch).getFeatures().toString());
-                } else {
-                    nativeImage.showMessage("All AArch64 CPUFeatures: " + Arrays.toString(AArch64.CPUFeature.values()));
-                    nativeImage.showNewline();
-                    nativeImage.showMessage("Host machine AArch64 CPUFeatures: " + ((AArch64) arch).getFeatures().toString());
-                }
-                nativeImage.showNewline();
-                System.exit(0);
                 return true;
             case "--disable-@files":
                 args.poll();

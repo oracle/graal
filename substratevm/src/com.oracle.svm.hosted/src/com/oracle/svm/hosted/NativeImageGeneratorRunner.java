@@ -47,6 +47,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
 
@@ -80,6 +81,7 @@ import com.oracle.svm.util.ReflectionUtil.ReflectionUtilError;
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
+import jdk.vm.ci.runtime.JVMCI;
 
 public class NativeImageGeneratorRunner {
 
@@ -265,6 +267,15 @@ public class NativeImageGeneratorRunner {
         }
         String imageName = null;
         Timer totalTimer = new Timer("[total]", false);
+
+        HostedOptionParser optionParser = classLoader.classLoaderSupport.getHostedOptionParser();
+        OptionValues parsedHostedOptions = classLoader.classLoaderSupport.getParsedHostedOptions();
+
+        if (NativeImageOptions.ListCPUFeatures.getValue(parsedHostedOptions)) {
+            printCPUFeatures(classLoader.platform);
+            return 0;
+        }
+
         ForkJoinPool analysisExecutor = null;
         ForkJoinPool compilationExecutor = null;
         OptionValues parsedHostedOptions = null;
@@ -484,6 +495,24 @@ public class NativeImageGeneratorRunner {
         }
 
         return true;
+    }
+
+    public static void printCPUFeatures(Platform platform) {
+        StringBuilder message = new StringBuilder();
+        Architecture arch = JVMCI.getRuntime().getHostJVMCIBackend().getTarget().arch;
+        if (NativeImageGenerator.includedIn(platform, Platform.AMD64.class)) {
+            message.append("All AMD64 CPUFeatures: ").append(Arrays.toString(AMD64.CPUFeature.values()));
+            if (arch instanceof AMD64) {
+                message.append("\nHost machine AMD64 CPUFeatures: ").append(((AMD64) arch).getFeatures().toString());
+            }
+        } else {
+            assert NativeImageGenerator.includedIn(platform, Platform.AARCH64.class);
+            message.append("All AArch64 CPUFeatures: ").append(Arrays.toString(AArch64.CPUFeature.values()));
+            if (arch instanceof AArch64) {
+                message.append("\nHost machine AArch64 CPUFeatures: ").append(((AArch64) arch).getFeatures().toString());
+            }
+        }
+        System.out.println(message);
     }
 
     public static String getJavaVersion() {
