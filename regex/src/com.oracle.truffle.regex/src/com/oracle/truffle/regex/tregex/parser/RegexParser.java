@@ -42,6 +42,7 @@ package com.oracle.truffle.regex.tregex.parser;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.regex.RegexFlags;
@@ -112,7 +113,7 @@ public final class RegexParser {
         this.groupCount = ast.getGroupCount();
         this.copyVisitor = new CopyVisitor(ast);
         this.countVisitor = new NodeCountVisitor();
-        this.setSourceSectionVisitor = source.getOptions().isDumpAutomata() ? new SetSourceSectionVisitor(ast) : null;
+        this.setSourceSectionVisitor = source.getOptions().isDumpAutomataWithSourceSections() ? new SetSourceSectionVisitor(ast) : null;
         this.compilationBuffer = compilationBuffer;
         this.ignoreCaptureGroups = source.getOptions().isBooleanMatch() && !lexer.hasBackReferences();
     }
@@ -608,7 +609,7 @@ public final class RegexParser {
 
     private void substitute(Token token, Group substitution) {
         Group copy = substitution.copyRecursive(ast, compilationBuffer);
-        if (source.getOptions().isDumpAutomata()) {
+        if (source.getOptions().isDumpAutomataWithSourceSections()) {
             setSourceSectionVisitor.run(copy, token);
         }
         addTerm(copy);
@@ -619,7 +620,7 @@ public final class RegexParser {
     private Group parse(boolean rootCapture) throws RegexSyntaxException {
         RegexASTRootNode rootParent = ast.createRootNode();
         Group root = createGroup(null, false, rootCapture, rootParent);
-        if (source.getOptions().isDumpAutomata()) {
+        if (source.getOptions().isDumpAutomataWithSourceSections()) {
             // set leading and trailing '/' as source sections of root
             ast.addSourceSections(root, Arrays.asList(ast.getSource().getSource().createSection(0, 1), ast.getSource().getSource().createSection(ast.getSource().getPattern().length() + 1, 1)));
         }
@@ -912,9 +913,7 @@ public final class RegexParser {
         while (begin + 1 < group.size()) {
             int end = findSingleCharAlternatives(group, begin);
             if (end > begin + 1) {
-                group.getAlternatives().subList(begin, end).sort((Sequence a, Sequence b) -> {
-                    return a.getFirstTerm().asCharacterClass().getCharSet().getMin() - b.getFirstTerm().asCharacterClass().getCharSet().getMin();
-                });
+                group.getAlternatives().subList(begin, end).sort(Comparator.comparingInt((Sequence a) -> a.getFirstTerm().asCharacterClass().getCharSet().getMin()));
                 begin = end;
             } else {
                 begin++;
@@ -1126,7 +1125,11 @@ public final class RegexParser {
         int ret = -1;
         for (int i = begin; i < group.size(); i++) {
             Sequence s = group.getAlternatives().get(i);
-            if (s.isEmpty() || !s.getFirstTerm().isCharacterClass() || !s.getFirstTerm().asCharacterClass().wasSingleChar()) {
+            if (s.isEmpty() || !s.getFirstTerm().isCharacterClass()) {
+                return ret;
+            }
+            CharacterClass firstCC = s.getFirstTerm().asCharacterClass();
+            if (!firstCC.wasSingleChar() || firstCC.hasQuantifier() && firstCC.getQuantifier().getMin() == 0) {
                 return ret;
             }
             ret = i + 1;

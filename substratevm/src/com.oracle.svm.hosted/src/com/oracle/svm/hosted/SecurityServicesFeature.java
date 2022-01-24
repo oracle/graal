@@ -191,6 +191,14 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
 
     private boolean shouldFilterProviders = true;
 
+    private Field verificationResultsField;
+    private Field providerListField;
+    private Field oidTableField;
+    private Field oidMapField;
+    private Field classCacheField;
+    private Field constructorCacheField;
+    private Field classRefField;
+
     @Override
     public void afterRegistration(AfterRegistrationAccess a) {
         ModuleSupport.exportAndOpenPackageToClass("java.base", "sun.security.x509", false, getClass());
@@ -219,6 +227,19 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
     public void duringSetup(DuringSetupAccess a) {
         DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
         addManuallyConfiguredUsedProviders(a);
+
+        verificationResultsField = access.findField("javax.crypto.JceSecurity", "verificationResults");
+        providerListField = access.findField("sun.security.jca.Providers", "providerList");
+        if (JavaVersionUtil.JAVA_SPEC >= 17) {
+            oidTableField = access.findField("sun.security.util.ObjectIdentifier", "oidTable");
+        }
+        oidMapField = access.findField(OIDMap.class, "oidMap");
+        if (JavaVersionUtil.JAVA_SPEC >= 17) {
+            classCacheField = access.findField(Service.class, "classCache");
+            constructorCacheField = access.findField(Service.class, "constructorCache");
+        } else {
+            classRefField = access.findField(Service.class, "classRef");
+        }
 
         RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
         /*
@@ -284,9 +305,39 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
     }
 
     @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        loader = ((BeforeAnalysisAccessImpl) access).getImageClassLoader();
+    public void beforeAnalysis(BeforeAnalysisAccess a) {
+        BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
+        loader = access.getImageClassLoader();
         verificationCacheCleaner = constructVerificationCacheCleaner();
+
+        /* Ensure sun.security.provider.certpath.CertPathHelper.instance is initialized. */
+        access.ensureInitialized("java.security.cert.TrustAnchor");
+        /*
+         * Ensure jdk.internal.access.SharedSecrets.javaxCryptoSpecAccess is initialized before
+         * scanning.
+         */
+        access.ensureInitialized("javax.crypto.spec.SecretKeySpec");
+        /*
+         * Ensure jdk.internal.access.SharedSecrets.javaxCryptoSealedObjectAccess is initialized
+         * before scanning.
+         */
+        access.ensureInitialized("javax.crypto.SealedObject");
+
+        /*
+         * Ensure jdk.internal.access.SharedSecrets.javaIOAccess is initialized before scanning.
+         */
+        access.ensureInitialized("java.io.Console");
+
+        /*
+         * Ensure jdk.internal.access.SharedSecrets.javaSecuritySignatureAccess is initialized
+         * before scanning.
+         */
+        access.ensureInitialized("java.security.Signature");
+
+        /*
+         * Ensure all X509Certificate caches are initialized.
+         */
+        access.ensureInitialized("sun.security.util.AnchorCertificates");
 
         if (Options.EnableSecurityServicesFeature.getValue()) {
             registerServiceReachabilityHandlers(access);
@@ -538,7 +589,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
         try (TracingAutoCloseable ignored = trace(access, trigger, serviceType)) {
             Set<Service> services = availableServices.get(serviceType);
             for (Service service : services) {
-                registerService(service);
+                registerService(access, service);
             }
         }
     }
@@ -636,7 +687,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
         if (!usedProviders.contains(provider)) {
             usedProviders.add(provider);
             registerForReflection(provider.getClass());
-
+            /* Trigger initialization of lazy field java.security.Provider.entrySet. */
+            provider.entrySet();
             try {
                 Method getVerificationResult = ReflectionUtil.lookupMethod(loader.findClassOrFail("javax.crypto.JceSecurity"), "getVerificationResult", Provider.class);
                 /*
@@ -653,7 +705,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
     }
 
     @SuppressWarnings("try")
-    private void registerService(Service service) {
+    private void registerService(DuringAnalysisAccess a, Service service) {
         TypeResult<Class<?>> serviceClassResult = loader.findClass(service.getClassName());
         if (serviceClassResult.isPresent()) {
             try (TracingAutoCloseable ignored = trace(service)) {
@@ -674,7 +726,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
                     registerJks(loader);
                 }
                 if (isCertificateFactory(service) && service.getAlgorithm().equals(X509)) {
-                    registerX509Extensions();
+                    registerX509Extensions(a);
                 }
                 registerProvider(service.getProvider());
             }
@@ -698,7 +750,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
     /**
      * Register the x509 certificate extension classes for reflection.
      */
-    private static void registerX509Extensions() {
+    private void registerX509Extensions(DuringAnalysisAccess a) {
+        DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
         /*
          * The OIDInfo class which represents the values in the map is not visible. Get the list of
          * extension names through reflection, i.e., the keys in the map, and use the
@@ -713,6 +766,29 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Feat
                 trace("Registered X.509 extension class: %s", extensionClass.getName());
             } catch (CertificateException e) {
                 throw VMError.shouldNotReachHere(e);
+            }
+        }
+        access.rescanRoot(oidMapField);
+    }
+
+    @Override
+    public void duringAnalysis(DuringAnalysisAccess a) {
+        DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
+        access.rescanRoot(verificationResultsField);
+        access.rescanRoot(providerListField);
+        if (JavaVersionUtil.JAVA_SPEC >= 17) {
+            access.rescanRoot(oidTableField);
+        }
+        if (filteredProviderList != null) {
+            for (Provider provider : filteredProviderList.providers()) {
+                for (Service service : provider.getServices()) {
+                    if (JavaVersionUtil.JAVA_SPEC >= 17) {
+                        access.rescanField(service, classCacheField);
+                        access.rescanField(service, constructorCacheField);
+                    } else {
+                        access.rescanField(service, classRefField);
+                    }
+                }
             }
         }
     }

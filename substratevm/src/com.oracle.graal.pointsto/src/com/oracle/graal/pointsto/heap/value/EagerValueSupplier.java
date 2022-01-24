@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,21 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.graal.pointsto.flow;
+package com.oracle.graal.pointsto.heap.value;
 
-import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.meta.AnalysisType;
+public final class EagerValueSupplier<V> implements ValueSupplier<V> {
 
-/** A sink type flow for all the context sensitive flows of an analysis field. */
-public class FieldSinkTypeFlow extends FieldTypeFlow {
+    private final V value;
 
-    public FieldSinkTypeFlow(AnalysisField field, AnalysisType type) {
-        super(field, type);
+    EagerValueSupplier(V value) {
+        this.value = value;
     }
 
     @Override
-    public String toString() {
-        return "FieldSinkFlow<" + source.format("%h.%n") + "\n" + getState() + ">";
+    public boolean isAvailable() {
+        return true;
     }
 
+    @Override
+    public V get() {
+        return value;
+    }
 }

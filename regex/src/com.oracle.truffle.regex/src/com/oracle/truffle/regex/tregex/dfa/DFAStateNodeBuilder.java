@@ -292,7 +292,7 @@ public final class DFAStateNodeBuilder extends BasicState<DFAStateNodeBuilder, D
             if (target.hasTransitionToAnchoredFinalState(forward)) {
                 if (anchoredFinalStateTransition == null) {
                     setAnchoredFinalState();
-                    setAnchoredFinalStateTransition(target.getTransitionToAnchoredFinalState(forward));
+                    setAnchoredFinalStateTransition(target.getFirstTransitionToFinalState(forward));
                 }
             }
             if (target.hasTransitionToUnAnchoredFinalState(forward)) {

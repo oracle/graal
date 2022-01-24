@@ -250,6 +250,13 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
     private static boolean resultsEqual(RegexResult a, RegexResult b, int numberOfCaptureGroups) {
         if (a == RegexResult.getNoMatchInstance()) {
             return b == RegexResult.getNoMatchInstance();
+        } else {
+            a.debugForceEvaluation();
+        }
+        if (b == RegexResult.getNoMatchInstance()) {
+            return a == RegexResult.getNoMatchInstance();
+        } else {
+            b.debugForceEvaluation();
         }
         if (a == RegexResult.getBooleanMatchInstance()) {
             return b != RegexResult.getNoMatchInstance();
@@ -257,8 +264,6 @@ public class TRegexExecNode extends RegexExecNode implements RegexProfile.Tracks
         if (b == RegexResult.getBooleanMatchInstance()) {
             return true;
         }
-        a.debugForceEvaluation();
-        b.debugForceEvaluation();
         for (int i = 0; i < numberOfCaptureGroups; i++) {
             if (a.getStart(i) != b.getStart(i) || a.getEnd(i) != b.getEnd(i)) {
                 return false;

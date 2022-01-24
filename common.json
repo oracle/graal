@@ -138,5 +138,41 @@
       },
       "darwin": {}
     }
+  },
+  "svm": {
+    "deps": {
+      "COMMENT.common": "graal/vm/ci_common/common.jsonnet hardcodes the properties of this object",
+      "common": {
+        "environment": {
+          "DEFAULT_VM": "server",
+          "LANG": "en_US.UTF-8"
+        },
+        "logs": [
+          "../.native-image/*/*/*/*.log",
+          "../*/*/*.log",
+          "*/*.log",
+          "*/svmbuild/*.log",
+          "*/svmbuild/images/*.log",
+          "*/*/stripped/*.map",
+          "*/callgrind.*",
+          "*.log"
+        ]
+      },
+      "linux_amd64": {
+        "packages": {
+          "devtoolset": "==7",
+          "binutils": ">=2.34",
+          "ruby": ">=2.1.0"
+        }
+      },
+      "linux_aarch64": {
+        "packages": {
+          "devtoolset": "==7",
+          "ruby": ">=2.1.0"
+        }
+      },
+      "darwin": {},
+      "windows": {}
+    }
   }
 }

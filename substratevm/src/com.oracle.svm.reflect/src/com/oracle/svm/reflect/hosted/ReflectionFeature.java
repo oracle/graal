@@ -174,6 +174,7 @@ public class ReflectionFeature implements GraalFeature {
 
         loader = access.getImageClassLoader();
         annotationSubstitutions = ((Inflation) access.getBigBang()).getAnnotationSubstitutionProcessor();
+        reflectionData.duringSetup(access);
     }
 
     @Override

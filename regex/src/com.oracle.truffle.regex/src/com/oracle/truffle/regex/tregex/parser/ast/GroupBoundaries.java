@@ -244,6 +244,9 @@ public class GroupBoundaries implements JsonConvertible {
         if (hasIndexUpdates()) {
             resultFactory.updateIndices(updateIndices, index);
         }
+        if (hasIndexClears()) {
+            resultFactory.clearIndices(clearIndices);
+        }
         if (trackLastGroup && hasLastGroup()) {
             resultFactory.setLastGroup(getLastGroup());
         }
@@ -346,7 +349,7 @@ public class GroupBoundaries implements JsonConvertible {
 
     @TruffleBoundary
     public JsonArray indexUpdateSourceSectionsToJson(RegexAST ast) {
-        if (!hasIndexUpdates()) {
+        if (!hasIndexUpdates() || !ast.getOptions().isDumpAutomataWithSourceSections()) {
             return Json.array();
         }
         return RegexAST.sourceSectionsToJson(getUpdateIndices().stream().mapToObj(x -> ast.getSourceSections(ast.getGroupByBoundaryIndex(x)).get(x & 1)));

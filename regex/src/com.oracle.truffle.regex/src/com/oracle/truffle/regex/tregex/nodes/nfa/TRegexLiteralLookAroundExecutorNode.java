@@ -92,7 +92,7 @@ public final class TRegexLiteralLookAroundExecutorNode extends TRegexExecutorNod
 
     @ExplodeLoop
     @Override
-    public Object execute(TRegexExecutorLocals abstractLocals, TruffleString.CodeRange codeRange) {
+    public Object execute(TRegexExecutorLocals abstractLocals, TruffleString.CodeRange codeRange, boolean tString) {
         TRegexBacktrackingNFAExecutorLocals locals = (TRegexBacktrackingNFAExecutorLocals) abstractLocals;
         for (int i = 0; i < matchers.length; i++) {
             if (!inputHasNext(locals) || !matchers[i].match(inputReadAndDecode(locals))) {

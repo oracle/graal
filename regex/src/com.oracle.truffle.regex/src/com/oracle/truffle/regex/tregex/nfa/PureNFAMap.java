@@ -110,7 +110,6 @@ public final class PureNFAMap {
             PureNFAState target = t.getTarget();
             switch (target.getKind()) {
                 case PureNFAState.KIND_INITIAL_OR_FINAL_STATE:
-                    break;
                 case PureNFAState.KIND_BACK_REFERENCE:
                 case PureNFAState.KIND_EMPTY_MATCH:
                     return false;

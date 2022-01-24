@@ -63,5 +63,8 @@ class JDKRegistrations extends JNIRegistrationUtil implements GraalFeature {
          * members and do not allow instantiation.
          */
         rerunClassInit(a, "java.lang.ApplicationShutdownHooks", "java.io.DeleteOnExitHook");
+
+        /* Trigger initialization of java.net.URLConnection.fileNameMap. */
+        java.net.URLConnection.getFileNameMap();
     }
 }

@@ -192,10 +192,10 @@ public final class TRegexCompilationRequest {
             if (pureNFA.getASTSubtree(lookAround).asLookAroundAssertion().isLiteral()) {
                 lookAroundExecutors[i] = new TRegexLiteralLookAroundExecutorNode(pureNFA.getASTSubtree(lookAround).asLookAroundAssertion(), compilationBuffer);
             } else {
-                lookAroundExecutors[i] = new TRegexBacktrackingNFAExecutorNode(pureNFA, lookAround, lookAroundExecutors, compilationBuffer);
+                lookAroundExecutors[i] = new TRegexBacktrackingNFAExecutorNode(pureNFA, lookAround, lookAroundExecutors, false, compilationBuffer);
             }
         }
-        return new TRegexBacktrackingNFAExecutorNode(pureNFA, pureNFA.getRoot(), lookAroundExecutors, compilationBuffer);
+        return new TRegexBacktrackingNFAExecutorNode(pureNFA, pureNFA.getRoot(), lookAroundExecutors, ast.getOptions().isMustAdvance(), compilationBuffer);
     }
 
     @TruffleBoundary
@@ -209,20 +209,22 @@ public final class TRegexCompilationRequest {
             preCalculatedResults = new PreCalculatedResultFactory[]{PreCalcResultVisitor.createResultFactory(ast)};
         }
         if (allowSimpleCG && preCalculatedResults == null && TRegexOptions.TRegexEnableTraceFinder && !ast.getRoot().hasLoops() && properties.isFixedCodePointWidth()) {
-            try {
-                phaseStart("TraceFinder NFA");
-                traceFinderNFA = NFATraceFinderGenerator.generateTraceFinder(nfa);
-                preCalculatedResults = traceFinderNFA.getPreCalculatedResults();
-                phaseEnd("TraceFinder NFA");
-                debugTraceFinder();
-            } catch (UnsupportedRegexException e) {
-                phaseEnd("TraceFinder NFA Bailout");
-                Loggers.LOG_BAILOUT_MESSAGES.fine(() -> "TraceFinder: " + e.getReason() + ": " + source);
-                // handle with capture group aware DFA, bailout will always happen before
-                // assigning preCalculatedResults
+            if (nfa.isFixedCodePointWidth()) {
+                try {
+                    phaseStart("TraceFinder NFA");
+                    traceFinderNFA = NFATraceFinderGenerator.generateTraceFinder(nfa);
+                    preCalculatedResults = traceFinderNFA.getPreCalculatedResults();
+                    phaseEnd("TraceFinder NFA");
+                    debugTraceFinder();
+                } catch (UnsupportedRegexException e) {
+                    phaseEnd("TraceFinder NFA Bailout");
+                    Loggers.LOG_BAILOUT_MESSAGES.fine(() -> "TraceFinder: " + e.getReason() + ": " + source);
+                    // handle with capture group aware DFA, bailout will always happen before
+                    // assigning preCalculatedResults
+                }
             }
         }
-        boolean traceFinder = preCalculatedResults != null;
+        boolean traceFinder = preCalculatedResults != null && preCalculatedResults.length > 0;
         final boolean trackLastGroup = ast.getOptions().getFlavor().usesLastGroupResultField();
         executorNodeForward = createDFAExecutor(nfa, true, true, false, allowSimpleCG && !traceFinder && !(ast.getRoot().startsWithCaret() && !properties.hasCaptureGroups()), trackLastGroup);
         final boolean createCaptureGroupTracker = !executorNodeForward.isSimpleCG() && (properties.hasCaptureGroups() || properties.hasLookAroundAssertions()) && !traceFinder;
