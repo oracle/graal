@@ -68,7 +68,12 @@ public interface ProcessPropertiesSupport {
 
     void exec(Path executable, String[] args);
 
-    void exec(Path executable, String[] args, Map<String, String> env);
+    @SuppressWarnings("unused")
+    default void exec(Path executable, String[] args, Map<String, String> env) {
+        /*
+         * default implementation to be removed once all implementing classes override this method
+         */
+    }
 
     int getArgumentVectorBlockSize();
 
