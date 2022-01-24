@@ -49,6 +49,7 @@ import java.security.CodeSource;
 import java.security.ProtectionDomain;
 import java.security.cert.Certificate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.StringJoiner;
@@ -67,7 +68,9 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Hybrid;
+import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.KeepOriginal;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
@@ -1024,23 +1027,29 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
      */
     public static final class ReflectionData {
         static final ReflectionData EMPTY = new ReflectionData(new Field[0], new Field[0], new Field[0], new Method[0], new Method[0], new Constructor<?>[0], new Constructor<?>[0], null, new Field[0],
-                        new Method[0], new Class<?>[0], new Class<?>[0], null, null);
+                        new Method[0], new Class<?>[0], new Class<?>[0], null, null, null, null);
 
         public static ReflectionData get(Field[] declaredFields, Field[] publicFields, Field[] publicUnhiddenFields, Method[] declaredMethods, Method[] publicMethods,
                         Constructor<?>[] declaredConstructors, Constructor<?>[] publicConstructors, Constructor<?> nullaryConstructor, Field[] declaredPublicFields,
-                        Method[] declaredPublicMethods, Class<?>[] declaredClasses, Class<?>[] publicClasses, Executable enclosingMethodOrConstructor, Object[] recordComponents) {
+                        Method[] declaredPublicMethods, Class<?>[] declaredClasses, Class<?>[] publicClasses, Executable enclosingMethodOrConstructor, Object[] recordComponents,
+                        Map<String, Annotation[]> recordAnnotations, Map<String, AnnotatedType> recordAnnotatedType) {
 
             if (z(declaredFields) && z(publicFields) && z(publicUnhiddenFields) && z(declaredMethods) && z(publicMethods) && z(declaredConstructors) &&
                             z(publicConstructors) && nullaryConstructor == null && z(declaredPublicFields) && z(declaredPublicMethods) && z(declaredClasses) &&
-                            z(publicClasses) && enclosingMethodOrConstructor == null && (recordComponents == null || z(recordComponents))) {
+                            z(publicClasses) && enclosingMethodOrConstructor == null && (recordComponents == null || z(recordComponents)) &&
+                            (recordAnnotations == null || e(recordAnnotations)) && (recordAnnotatedType == null || e(recordAnnotatedType))) {
                 return EMPTY; // avoid redundant objects in image heap
             }
             return new ReflectionData(declaredFields, publicFields, publicUnhiddenFields, declaredMethods, publicMethods, declaredConstructors, publicConstructors, nullaryConstructor,
-                            declaredPublicFields, declaredPublicMethods, declaredClasses, publicClasses, enclosingMethodOrConstructor, recordComponents);
+                            declaredPublicFields, declaredPublicMethods, declaredClasses, publicClasses, enclosingMethodOrConstructor, recordComponents, recordAnnotations, recordAnnotatedType);
         }
 
         private static boolean z(Object[] array) { // for better readability above
             return array.length == 0;
+        }
+
+        private static boolean e(Map<String, ?> map) {
+            return map.isEmpty();
         }
 
         final Field[] declaredFields;
@@ -1056,6 +1065,8 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
         final Class<?>[] declaredClasses;
         final Class<?>[] publicClasses;
         final Object[] recordComponents;
+        final Map<String, Annotation[]> recordAnnotations; // component name => annotations
+        final Map<String, AnnotatedType> recordAnnotatedType; // component name => annotated type
 
         /**
          * The result of {@link Class#getEnclosingMethod()} or
@@ -1065,8 +1076,8 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
 
         ReflectionData(Field[] declaredFields, Field[] publicFields, Field[] publicUnhiddenFields, Method[] declaredMethods, Method[] publicMethods, Constructor<?>[] declaredConstructors,
                         Constructor<?>[] publicConstructors, Constructor<?> nullaryConstructor, Field[] declaredPublicFields, Method[] declaredPublicMethods, Class<?>[] declaredClasses,
-                        Class<?>[] publicClasses, Executable enclosingMethodOrConstructor,
-                        Object[] recordComponents) {
+                        Class<?>[] publicClasses, Executable enclosingMethodOrConstructor, Object[] recordComponents, Map<String, Annotation[]> recordAnnotations,
+                        Map<String, AnnotatedType> recordAnnotatedType) {
             this.declaredFields = declaredFields;
             this.publicFields = publicFields;
             this.publicUnhiddenFields = publicUnhiddenFields;
@@ -1081,6 +1092,8 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
             this.publicClasses = publicClasses;
             this.enclosingMethodOrConstructor = enclosingMethodOrConstructor;
             this.recordComponents = recordComponents;
+            this.recordAnnotations = recordAnnotations;
+            this.recordAnnotatedType = recordAnnotatedType;
         }
     }
 
@@ -1218,10 +1231,20 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     @TargetElement(onlyWith = JDK16OrLater.class)
     private Target_java_lang_reflect_RecordComponent[] getRecordComponents0() {
         Object[] result = rd.recordComponents;
+        Map<String, Annotation[]> annotations = rd.recordAnnotations;
+        Map<String, AnnotatedType> annotatedTypes = rd.recordAnnotatedType;
         if (result == null) {
             /* See ReflectionDataBuilder.buildRecordComponents() for details. */
             throw VMError.unsupportedFeature("Record components not available for record class " + getTypeName() + ". " +
                             "All record component accessor methods of this record class must be included in the reflection configuration at image build time, then this method can be called.");
+        }
+        // Set component annotations for the the record-components
+        for (Object rec : result) {
+            Target_java_lang_reflect_RecordComponent recordComp = (Target_java_lang_reflect_RecordComponent) rec;
+            Annotation[] annot = annotations.get(recordComp.getName());
+            AnnotatedType type = annotatedTypes.get(recordComp.getName());
+            recordComp.componentAnnotations = annot;
+            recordComp.annotatedType = type;
         }
         return (Target_java_lang_reflect_RecordComponent[]) result;
     }
@@ -1671,4 +1694,41 @@ final class Target_jdk_internal_reflect_ConstantPool {
 
 @TargetClass(className = "java.lang.reflect.RecordComponent", onlyWith = JDK16OrLater.class)
 final class Target_java_lang_reflect_RecordComponent {
+
+    @Inject //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    volatile Annotation[] componentAnnotations;
+
+    @Inject //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    volatile AnnotatedType annotatedType;
+
+    @Substitute //
+    public Annotation[] getAnnotations() {
+        return componentAnnotations;
+    }
+
+    @Substitute //
+    public Annotation[] getDeclaredAnnotations() {
+        return componentAnnotations;
+    }
+
+    @Substitute //
+    public Annotation getAnnotation(Class<?> annotationClass) {
+        for (Annotation ann : componentAnnotations) {
+            if (annotationClass.isAssignableFrom(ann.annotationType())) {
+                return ann;
+            }
+        }
+        return null;
+    }
+
+    @Substitute //
+    public AnnotatedType getAnnotatedType() {
+        return annotatedType;
+    }
+
+    @Alias //
+    public native String getName();
+
 }

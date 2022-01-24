@@ -26,14 +26,19 @@ package com.oracle.svm.core.jdk16;
 
 // Checkstyle: allow reflection
 
+import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.RecordComponent;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.util.GuardedAnnotationAccess;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.RecordSupport;
@@ -70,6 +75,27 @@ final class RecordSupportJDK16OrLater extends RecordSupport {
             throw VMError.shouldNotReachHere("Malformed record class that does not declare a canonical constructor: " + clazz.getTypeName());
         }
     }
+
+    @Override
+    public Map<String, Annotation[]> getRecordComponentsAnnotations(Class<?> clazz) {
+        Map<String, Annotation[]> componentAnnotations = new HashMap<>();
+        Arrays.stream(clazz.getRecordComponents())
+                        .forEach(t -> {
+                            componentAnnotations.put(t.getName(), GuardedAnnotationAccess.getAnnotations(t));
+                        });
+        return componentAnnotations;
+    }
+
+    @Override
+    public Map<String, AnnotatedType> getRecordComponentAnnotatedType(Class<?> clazz) {
+        Map<String, AnnotatedType> componentAnnotTypes = new HashMap<>();
+        Arrays.stream(clazz.getRecordComponents())
+                        .forEach(t -> {
+                            componentAnnotTypes.put(t.getName(), t.getAnnotatedType());
+                        });
+        return componentAnnotTypes;
+    }
+
 }
 
 @AutomaticFeature

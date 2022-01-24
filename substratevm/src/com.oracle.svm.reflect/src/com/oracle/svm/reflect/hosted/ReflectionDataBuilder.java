@@ -28,6 +28,7 @@ package com.oracle.svm.reflect.hosted;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
+import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
@@ -133,6 +134,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                         EMPTY_METHODS,
                         EMPTY_CLASSES,
                         EMPTY_CLASSES,
+                        null,
+                        null,
                         null,
                         null);
     }
@@ -519,7 +522,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                             filterClasses(declaredClasses, reflectionClasses, access),
                             filterClasses(classes, reflectionClasses, access),
                             enclosingMethodOrConstructor(clazz),
-                            buildRecordComponents(clazz, access));
+                            buildRecordComponents(clazz, access),
+                            buildRecordComponentAnnotations(clazz),
+                            buildRecordAnnotatedTypes(clazz));
         }
         hub.setReflectionData(reflectionData);
     }
@@ -560,6 +565,22 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         } else {
             return null;
         }
+    }
+
+    private static Map<String, Annotation[]> buildRecordComponentAnnotations(Class<?> clazz) {
+        RecordSupport support = RecordSupport.singleton();
+        if (!support.isRecord(clazz)) {
+            return null;
+        }
+        return support.getRecordComponentsAnnotations(clazz);
+    }
+
+    private static Map<String, AnnotatedType> buildRecordAnnotatedTypes(Class<?> clazz) {
+        RecordSupport support = RecordSupport.singleton();
+        if (!support.isRecord(clazz)) {
+            return null;
+        }
+        return support.getRecordComponentAnnotatedType(clazz);
     }
 
     private static void reportLinkingErrors(Class<?> clazz, List<Throwable> errors) {

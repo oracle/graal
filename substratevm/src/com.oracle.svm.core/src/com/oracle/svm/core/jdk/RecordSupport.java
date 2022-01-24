@@ -26,8 +26,11 @@ package com.oracle.svm.core.jdk;
 
 // Checkstyle: allow reflection
 
+import java.lang.annotation.Annotation;
+import java.lang.reflect.AnnotatedType;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
+import java.util.Map;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -59,6 +62,10 @@ public abstract class RecordSupport {
      * Must only be called when {@link #isRecord} returns true.
      */
     public abstract Object[] getRecordComponents(Class<?> clazz);
+
+    public abstract Map<String, Annotation[]> getRecordComponentsAnnotations(Class<?> clazz);
+
+    public abstract Map<String, AnnotatedType> getRecordComponentAnnotatedType(Class<?> clazz);
 
     /**
      * Returns the {@code RecordComponent.getAccessor} method for each of the
@@ -99,6 +106,16 @@ final class RecordSupportBeforeJDK16 extends RecordSupport {
 
     @Override
     public Constructor<?> getCanonicalRecordConstructor(Class<?> clazz) {
+        throw VMError.shouldNotReachHere();
+    }
+
+    @Override
+    public Map<String, Annotation[]> getRecordComponentsAnnotations(Class<?> clazz) {
+        throw VMError.shouldNotReachHere();
+    }
+
+    @Override
+    public Map<String, AnnotatedType> getRecordComponentAnnotatedType(Class<?> clazz) {
         throw VMError.shouldNotReachHere();
     }
 }
