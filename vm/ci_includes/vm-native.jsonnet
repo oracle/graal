@@ -25,7 +25,7 @@ local vm_common = import '../ci_common/common.jsonnet';
         ['mx', '--dynamicimports', '$SVM_SUITE,/tools', '--disable-polyglot', '--skip-libraries=true', '--force-bash-launchers=gu,native-image-configure', 'gate', '--no-warning-as-error', '--tags', 'build,svm_sl_tck'],
       ],
       timelimit: '35:00',
-      name: 'gate-svm-truffle-tck',
+      name: 'gate-vm-svm-truffle-tck',
     },
   ]],
 }
