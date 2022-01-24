@@ -425,7 +425,7 @@ public abstract class LanguageLauncherBase extends Launcher {
     private Map<OptionCategory, List<PrintableOption>> getCategories(OptionDescriptors options) {
         List<PrintableOption> userOptions = filterOptions(options, OptionCategory.USER);
         List<PrintableOption> expertOptions = filterOptions(options, OptionCategory.EXPERT);
-        List<PrintableOption> internalOptions = helpInternal ? filterOptions(options, OptionCategory.EXPERT) : Collections.emptyList();
+        List<PrintableOption> internalOptions = helpInternal ? filterOptions(options, OptionCategory.INTERNAL) : Collections.emptyList();
         Map<OptionCategory, List<PrintableOption>> categories = null;
         if (!userOptions.isEmpty() || !expertOptions.isEmpty() || !internalOptions.isEmpty()) {
             categories = new HashMap<>();
