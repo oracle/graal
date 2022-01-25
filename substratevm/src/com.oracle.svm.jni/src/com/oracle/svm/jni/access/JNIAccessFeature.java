@@ -159,6 +159,9 @@ public class JNIAccessFeature implements Feature {
         if (!ImageSingletons.contains(JNIFieldAccessorMethod.Factory.class)) {
             ImageSingletons.add(JNIFieldAccessorMethod.Factory.class, new JNIFieldAccessorMethod.Factory());
         }
+        if (!ImageSingletons.contains(JNIJavaCallWrapperMethod.Factory.class)) {
+            ImageSingletons.add(JNIJavaCallWrapperMethod.Factory.class, new JNIJavaCallWrapperMethod.Factory());
+        }
         if (!ImageSingletons.contains(JNISupport.class)) {
             ImageSingletons.add(JNISupport.class, new JNISupport());
         }
@@ -282,20 +285,21 @@ public class JNIAccessFeature implements Feature {
         JNIAccessibleClass jniClass = addClass(method.getDeclaringClass(), access);
         JNIAccessibleMethodDescriptor descriptor = JNIAccessibleMethodDescriptor.of(method);
         jniClass.addMethodIfAbsent(descriptor, d -> {
+            JNIJavaCallWrapperMethod.Factory factory = ImageSingletons.lookup(JNIJavaCallWrapperMethod.Factory.class);
             MetaAccessProvider wrappedMetaAccess = access.getMetaAccess().getWrapped();
 
-            JNIJavaCallWrapperMethod varargsCallWrapper = new JNIJavaCallWrapperMethod(method, CallVariant.VARARGS, false, wrappedMetaAccess, nativeLibraries);
-            JNIJavaCallWrapperMethod arrayCallWrapper = new JNIJavaCallWrapperMethod(method, CallVariant.ARRAY, false, wrappedMetaAccess, nativeLibraries);
-            JNIJavaCallWrapperMethod valistCallWrapper = new JNIJavaCallWrapperMethod(method, CallVariant.VA_LIST, false, wrappedMetaAccess, nativeLibraries);
+            JNIJavaCallWrapperMethod varargsCallWrapper = factory.create(method, CallVariant.VARARGS, false, wrappedMetaAccess, nativeLibraries);
+            JNIJavaCallWrapperMethod arrayCallWrapper = factory.create(method, CallVariant.ARRAY, false, wrappedMetaAccess, nativeLibraries);
+            JNIJavaCallWrapperMethod valistCallWrapper = factory.create(method, CallVariant.VA_LIST, false, wrappedMetaAccess, nativeLibraries);
             Stream<JNIJavaCallWrapperMethod> wrappers = Stream.of(varargsCallWrapper, arrayCallWrapper, valistCallWrapper);
 
             JNIJavaCallWrapperMethod varargsNonvirtualCallWrapper = null;
             JNIJavaCallWrapperMethod arrayNonvirtualCallWrapper = null;
             JNIJavaCallWrapperMethod valistNonvirtualCallWrapper = null;
             if (!Modifier.isStatic(method.getModifiers()) && !Modifier.isAbstract(method.getModifiers())) {
-                varargsNonvirtualCallWrapper = new JNIJavaCallWrapperMethod(method, CallVariant.VARARGS, true, wrappedMetaAccess, nativeLibraries);
-                arrayNonvirtualCallWrapper = new JNIJavaCallWrapperMethod(method, CallVariant.ARRAY, true, wrappedMetaAccess, nativeLibraries);
-                valistNonvirtualCallWrapper = new JNIJavaCallWrapperMethod(method, CallVariant.VA_LIST, true, wrappedMetaAccess, nativeLibraries);
+                varargsNonvirtualCallWrapper = factory.create(method, CallVariant.VARARGS, true, wrappedMetaAccess, nativeLibraries);
+                arrayNonvirtualCallWrapper = factory.create(method, CallVariant.ARRAY, true, wrappedMetaAccess, nativeLibraries);
+                valistNonvirtualCallWrapper = factory.create(method, CallVariant.VA_LIST, true, wrappedMetaAccess, nativeLibraries);
                 wrappers = Stream.concat(wrappers, Stream.of(varargsNonvirtualCallWrapper, arrayNonvirtualCallWrapper, valistNonvirtualCallWrapper));
             }
 

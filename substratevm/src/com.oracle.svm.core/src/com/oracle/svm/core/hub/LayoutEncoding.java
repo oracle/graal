@@ -50,9 +50,14 @@ import com.oracle.svm.core.util.VMError;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
- * The layout encoding for instances is the aligned instance size (i.e., a positive number).
- * <p>
- * For arrays, the layout encoding is a negative number with the following format:<br>
+ * The layout encoding determines how the GC interprets an object. The following encodings are
+ * currently used:
+ * <ul>
+ * <li>Special objects: a positive value less or equal than {@link #LAST_SPECIAL_VALUE}.</li>
+ * <li>Instance objects: the layout encoding for instances is the aligned instance size (i.e., a
+ * positive number greater than {@link #LAST_SPECIAL_VALUE}).</li>
+ * <li>Array objects: the layout encoding for arrays is a negative number with the following
+ * format:<br>
  *
  * <code>[tag:2, free:10, base:12, indexShift:8]</code>
  * <ul>
@@ -61,6 +66,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * <li>base: the array base offset</li>
  * <li>indexShift: the array index shift for accessing array elements or for computing the array
  * size based on the array length</li>
+ * </ul>
+ * </li>
  * </ul>
  */
 @DuplicatedInNativeCode
@@ -244,9 +251,6 @@ public class LayoutEncoding {
 
     @AlwaysInline("GC performance")
     public static Pointer getObjectEndInline(Object obj) {
-        // TODO: This assumes that the object starts at obj.
-        // - In other universes obj could point to the hub in the middle of,
-        // for example, a butterfly object.
         final Pointer objStart = Word.objectToUntrackedPointer(obj);
         final UnsignedWord objSize = getSizeFromObjectInline(obj);
         return objStart.add(objSize);

@@ -26,7 +26,6 @@ package com.oracle.svm.jni;
 
 import java.util.function.Predicate;
 
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.word.PointerBase;
 
@@ -87,7 +86,7 @@ public class JNIThreadLocalPinnedObjects {
     }
 
     public static boolean unpinArrayByAddress(PointerBase address) {
-        JNISupport support = ImageSingletons.lookup(JNISupport.class);
+        JNISupport support = JNISupport.singleton();
         return unpinFirst(n -> support.isArrayLayout(n.object.getObject().getClass()) && n.object.addressOfArrayElement(0) == address);
     }
 

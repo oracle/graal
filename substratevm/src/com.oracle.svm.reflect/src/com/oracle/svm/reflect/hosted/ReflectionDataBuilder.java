@@ -446,8 +446,6 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
          * registered as unsafe-accessible, whether they have been explicitly registered or their
          * Field object is reachable in the image heap.
          */
-        ImageSingletons.lookup(ReflectionFeature.class).inspectAccessibleField(reflectField);
-
         if (!analysisField.isUnsafeAccessed() && !GuardedAnnotationAccess.isAnnotationPresent(analysisField, InjectAccessors.class)) {
             analysisField.registerAsAccessed();
             analysisField.registerAsUnsafeAccessed();

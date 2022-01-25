@@ -24,7 +24,15 @@
  */
 package com.oracle.svm.jni;
 
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.ImageSingletons;
+
 public class JNISupport {
+    @Fold
+    public static JNISupport singleton() {
+        return ImageSingletons.lookup(JNISupport.class);
+    }
+
     public boolean isArrayLayout(Class<?> clazz) {
         return clazz.isArray();
     }
