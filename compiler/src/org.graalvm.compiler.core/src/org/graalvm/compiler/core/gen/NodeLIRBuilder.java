@@ -96,6 +96,7 @@ import org.graalvm.compiler.nodes.PhiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
+import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
 import org.graalvm.compiler.nodes.calc.IntegerTestNode;
@@ -103,7 +104,6 @@ import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.cfg.Block;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.extended.ForeignCall;
-import org.graalvm.compiler.nodes.extended.ForeignCallWithExceptionNode;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
 import org.graalvm.compiler.nodes.extended.SwitchNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
@@ -660,8 +660,8 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         ForeignCallLinkage linkage = gen.getForeignCalls().lookupForeignCall(x.getDescriptor());
 
         LabelRef exceptionEdge = null;
-        if (x instanceof ForeignCallWithExceptionNode) {
-            exceptionEdge = getLIRBlock(((ForeignCallWithExceptionNode) x).exceptionEdge());
+        if (x instanceof WithExceptionNode) {
+            exceptionEdge = getLIRBlock(((WithExceptionNode) x).exceptionEdge());
         }
         LIRFrameState callState = stateWithExceptionEdge(x, exceptionEdge);
 
@@ -672,8 +672,8 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
             setResult(x.asNode(), result);
         }
 
-        if (x instanceof ForeignCallWithExceptionNode) {
-            gen.emitJump(getLIRBlock(((ForeignCallWithExceptionNode) x).next()));
+        if (x instanceof WithExceptionNode) {
+            gen.emitJump(getLIRBlock(((WithExceptionNode) x).next()));
         }
     }
 

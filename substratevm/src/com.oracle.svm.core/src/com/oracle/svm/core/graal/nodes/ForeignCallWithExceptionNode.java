@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.nodes.extended;
+package com.oracle.svm.core.graal.nodes;
 
 import static org.graalvm.compiler.nodeinfo.InputType.Memory;
 import static org.graalvm.compiler.nodeinfo.InputType.State;
@@ -43,6 +43,8 @@ import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.UnreachableBeginNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
+import org.graalvm.compiler.nodes.extended.ForeignCall;
+import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.spi.Simplifiable;
 import org.graalvm.compiler.nodes.spi.SimplifierTool;
@@ -75,7 +77,7 @@ public class ForeignCallWithExceptionNode extends WithExceptionNode implements F
     protected int bci = BytecodeFrame.UNKNOWN_BCI;
 
     public static boolean intrinsify(GraphBuilderContext b, @InjectedNodeParameter Stamp returnStamp, ForeignCallDescriptor descriptor, ValueNode... arguments) {
-        return ForeignCallNode.doIntrinsify(b, returnStamp, descriptor, arguments, true);
+        return ForeignCallNode.finishIntrinsification(b, returnStamp, new ForeignCallWithExceptionNode(descriptor, arguments));
     }
 
     public ForeignCallWithExceptionNode(ForeignCallDescriptor descriptor, ValueNode... arguments) {
