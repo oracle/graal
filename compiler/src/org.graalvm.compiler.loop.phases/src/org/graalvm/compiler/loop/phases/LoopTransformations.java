@@ -49,6 +49,7 @@ import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.GuardPhiNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
@@ -617,12 +618,13 @@ public abstract class LoopTransformations {
         if (currentPhi.graph().isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL)) {
             ValueNode set = null;
             ValueNode toProxy = inverted ? currentPhi.singleBackValueOrThis() : currentPhi;
-            if (loopToProxy.contains(toProxy)) {
+            set = toProxy;
+            if (toProxy == null) {
+                assert currentPhi instanceof GuardPhiNode : "Only guard phi nodes can have null inputs";
+            } else if (loopToProxy.contains(toProxy)) {
                 set = LoopFragmentInside.patchProxyAtPhi(currentPhi, exitToProxy, toProxy);
-            } else {
-                set = toProxy;
+                assert set != null;
             }
-            assert set != null;
             outGoingPhi.setValueAt(0, set);
         } else {
             outGoingPhi.setValueAt(0, currentPhi);
