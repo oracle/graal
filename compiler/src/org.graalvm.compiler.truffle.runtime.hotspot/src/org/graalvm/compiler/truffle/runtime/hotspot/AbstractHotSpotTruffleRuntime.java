@@ -728,22 +728,17 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         }
 
         static void traceTransferToInterpreter(AbstractHotSpotTruffleRuntime runtime, HotSpotTruffleCompiler compiler) {
-            runtime.iterateFrames(new FrameInstanceVisitor<Object>() {
-                @Override
-                public Object visitFrame(FrameInstance frameInstance) {
-                    OptimizedCallTarget callTarget = (OptimizedCallTarget) frameInstance.getCallTarget();
-                    long thread = UNSAFE.getLong(Thread.currentThread(), THREAD_EETOP_OFFSET);
-                    long pendingTransferToInterpreterAddress = thread + compiler.pendingTransferToInterpreterOffset(callTarget);
-                    boolean deoptimized = UNSAFE.getByte(pendingTransferToInterpreterAddress) != 0;
-                    if (deoptimized) {
-                        StackTraceHelper.logHostAndGuestStacktrace("transferToInterpreter", callTarget);
-                        UNSAFE.putByte(pendingTransferToInterpreterAddress, (byte) 0);
-                    }
-                    // only visit one frame
-                    return callTarget;
-                }
-            });
-
+            OptimizedCallTarget callTarget = (OptimizedCallTarget) runtime.iterateFrames((f) -> f.getCallTarget());
+            if (callTarget == null) {
+                return;
+            }
+            long thread = UNSAFE.getLong(Thread.currentThread(), THREAD_EETOP_OFFSET);
+            long pendingTransferToInterpreterAddress = thread + compiler.pendingTransferToInterpreterOffset(callTarget);
+            boolean deoptimized = UNSAFE.getByte(pendingTransferToInterpreterAddress) != 0;
+            if (deoptimized) {
+                StackTraceHelper.logHostAndGuestStacktrace("transferToInterpreter", callTarget);
+                UNSAFE.putByte(pendingTransferToInterpreterAddress, (byte) 0);
+            }
         }
     }
 
