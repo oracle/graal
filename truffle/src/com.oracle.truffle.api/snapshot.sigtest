@@ -656,6 +656,7 @@ innr public abstract interface static Interrupter
 innr public abstract interface static Interruptible
 meth public abstract <%0 extends java.lang.Object> void setBlocked(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.TruffleSafepoint$Interrupter,com.oracle.truffle.api.TruffleSafepoint$Interruptible<{%%0}>,{%%0},java.lang.Runnable,java.lang.Runnable)
 meth public abstract boolean hasPendingSideEffectingActions()
+meth public abstract boolean setAllowActions(boolean)
 meth public abstract boolean setAllowSideEffects(boolean)
 meth public static <%0 extends java.lang.Object> void setBlockedThreadInterruptible(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.TruffleSafepoint$Interruptible<{%%0}>,{%%0})
 meth public static com.oracle.truffle.api.TruffleSafepoint getCurrent()
