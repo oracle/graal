@@ -601,7 +601,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         this.context = context;
         this.name = name;
         this.type = type;
-        this.id = (possibleID >= 0) ? possibleID : context.getNewKlassId();
+        this.id = (possibleID >= 0) ? possibleID : context.getLanguage().getNewKlassId();
         this.modifiers = modifiers;
         this.runtimePackage = initRuntimePackage();
     }

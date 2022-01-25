@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.impl;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.runtime.JavaVersion;
 
+// TODO (ivan-ristovic): Remove
 public final class ContextDescription {
 
     final EspressoLanguage language;

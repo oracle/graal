@@ -26,6 +26,7 @@ import static com.oracle.truffle.espresso.jni.JniEnv.JNI_OK;
 
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Level;
 
 import org.graalvm.home.Version;
@@ -86,6 +87,12 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     public static final String VM_VENDOR = "Oracle Corporation";
     public static final String VM_NAME = "Espresso 64-Bit VM";
     public static final String VM_INFO = "mixed mode";
+
+    // region ID
+    // TODO (ivan-ristovic): Change to AtomicLong
+    private final AtomicInteger klassIdProvider = new AtomicInteger();
+    private final AtomicInteger loaderIdProvider = new AtomicInteger();
+    // endregion ID
 
     public static final String FILE_EXTENSION = ".class";
 
@@ -246,6 +253,22 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         throw new EspressoParseError(
                         "Espresso cannot evaluate Java sources directly, only a few special commands are supported: " + GetBindingsNode.EVAL_NAME + " and " + ReferenceProcessNode.EVAL_NAME + "\n" +
                                         "Use the \"" + ID + "\" language bindings to load guest Java classes e.g. context.getBindings(\"" + ID + "\").getMember(\"java.lang.Integer\")");
+    }
+
+    public int getNewLoaderId() {
+        int id = loaderIdProvider.getAndIncrement();
+        if (id < 0) {
+            throw EspressoError.shouldNotReachHere("Exhausted loader IDs");
+        }
+        return id;
+    }
+
+    public int getNewKlassId() {
+        int id = klassIdProvider.getAndIncrement();
+        if (id < 0) {
+            throw EspressoError.shouldNotReachHere("Exhausted klass IDs");
+        }
+        return id;
     }
 
     public Utf8ConstantTable getUtf8ConstantTable() {

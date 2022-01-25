@@ -158,9 +158,7 @@ public final class EspressoContext {
     // endregion Helpers
 
     // region ID
-    private final AtomicInteger klassIdProvider = new AtomicInteger();
-    private final AtomicInteger loaderIdProvider = new AtomicInteger();
-    private final int bootClassLoaderID = getNewLoaderId();
+    private final int bootClassLoaderID;
     // endregion ID
 
     // region InitControl
@@ -237,22 +235,6 @@ public final class EspressoContext {
         return logger;
     }
 
-    public int getNewKlassId() {
-        int id = klassIdProvider.getAndIncrement();
-        if (id < 0) {
-            throw EspressoError.shouldNotReachHere("Exhausted klass IDs");
-        }
-        return id;
-    }
-
-    public int getNewLoaderId() {
-        int id = loaderIdProvider.getAndIncrement();
-        if (id < 0) {
-            throw EspressoError.shouldNotReachHere("Exhausted loader IDs");
-        }
-        return id;
-    }
-
     public int getBootClassLoaderID() {
         return bootClassLoaderID;
     }
@@ -261,6 +243,7 @@ public final class EspressoContext {
         this.env = env;
         this.language = language;
 
+        this.bootClassLoaderID = language.getNewLoaderId();
         this.registries = new ClassRegistries(this);
         this.strings = new StringTable(this);
         this.substitutions = new Substitutions(this);

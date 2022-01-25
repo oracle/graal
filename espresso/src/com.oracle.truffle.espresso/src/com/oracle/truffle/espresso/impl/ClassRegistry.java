@@ -265,11 +265,10 @@ public abstract class ClassRegistry implements ContextAccess {
 
     protected ClassRegistry(EspressoContext context) {
         this.context = context;
-        this.loaderID = context.getNewLoaderId();
+        this.loaderID = context.getLanguage().getNewLoaderId();
         ReadWriteLock rwLock = new ReentrantReadWriteLock();
         this.packages = new PackageTable(rwLock);
         this.modules = new ModuleTable(rwLock);
-
     }
 
     public void initUnnamedModule(StaticObject unnamedModule) {
