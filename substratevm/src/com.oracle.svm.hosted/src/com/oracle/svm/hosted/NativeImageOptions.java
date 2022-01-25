@@ -60,15 +60,16 @@ public class NativeImageOptions {
     @Option(help = "Show CPU features specific to the target platform and exit.", type = User)//
     public static final HostedOptionKey<Boolean> ListCPUFeatures = new HostedOptionKey<>(false);
 
-    @Option(help = "Comma separated list of CPU features that will be dynamically enabled while " +
-                    "building the target executable. 'Dynamically enabled' means that the code that " +
-                    "uses certain features is guarded with a dynamic check whether they are supported " +
-                    "by the hosted environment. If a feature is not supported, a fallback variant that " +
-                    "adheres to CPUFeatures, will be executed. Because of this fallback code, enabling " +
-                    "dynamic features can result in larger executables. To completely turn off dynamic " +
-                    "CPU features, set this option to the empty string. The specific options available " +
-                    "are target platform dependent. See --list-cpu-features for feature list. ", type = User)//
-    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> DynamicCPUFeatures = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
+    @Option(help = "Comma separated list of CPU features that will be enabled for runtime checks. The " +
+                    "native image may check at run time if such features are supported by the target " +
+                    "CPU, and can optimize certain operations based on this information. If a feature " +
+                    "is not supported at run time, a less optimized variant will be executed. Because of " +
+                    "the presence of multiple code variants, enabling runtime features can result in " +
+                    "larger executables. To completely turn off runtime checked CPU features, set this " +
+                    "option to the empty string. The specific options available are target platform " +
+                    "dependent. See --list-cpu-features for feature list. The default values are: " +
+                    "AMD64: 'AVX,AVX2'; AArch64: ''", type = User)//
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> RuntimeCheckedCPUFeatures = new HostedOptionKey<>(new LocatableMultiOptionValue.Strings());
 
     @Option(help = "Overrides CPUFeatures and uses the native architecture, i.e., the architecture of a machine that builds an image. NativeArchitecture takes precedence over CPUFeatures", type = User)//
     public static final HostedOptionKey<Boolean> NativeArchitecture = new HostedOptionKey<>(false);

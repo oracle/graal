@@ -173,6 +173,7 @@ import com.oracle.svm.core.c.libc.NoLibC;
 import com.oracle.svm.core.c.libc.TemporaryBuildDirectoryProvider;
 import com.oracle.svm.core.c.struct.OffsetOf;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.cpufeature.RuntimeCPUFeatureCheck;
 import com.oracle.svm.core.graal.GraalConfiguration;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstratePlatformConfigurationProvider;
@@ -427,21 +428,19 @@ public class NativeImageGenerator {
             }
             // GR-33542 RTM is only intermittently detected and is not used by Graal
             features.remove(AMD64.CPUFeature.RTM);
-            // setup the dynamic cpu features
-            EnumSet<AMD64.CPUFeature> dynamicFeatures = features.clone();
-            if (NativeImageOptions.DynamicCPUFeatures.hasBeenSet()) {
-                dynamicFeatures.addAll(parseCSVtoEnum(AMD64.CPUFeature.class, NativeImageOptions.DynamicCPUFeatures.getValue().values(), AMD64.CPUFeature.values()));
+            // set up the runtime checked cpu features
+            EnumSet<AMD64.CPUFeature> runtimeCheckedFeatures = features.clone();
+            if (NativeImageOptions.RuntimeCheckedCPUFeatures.hasBeenSet()) {
+                runtimeCheckedFeatures.addAll(parseCSVtoEnum(AMD64.CPUFeature.class, NativeImageOptions.RuntimeCheckedCPUFeatures.getValue().values(), AMD64.CPUFeature.values()));
             } else {
-                dynamicFeatures.add(AMD64.CPUFeature.SSE3);
-                dynamicFeatures.add(AMD64.CPUFeature.SSE4_1);
-                dynamicFeatures.add(AMD64.CPUFeature.SSE4_2);
-                dynamicFeatures.add(AMD64.CPUFeature.AVX);
-                dynamicFeatures.add(AMD64.CPUFeature.AVX2);
+                for (Enum<?> feature : RuntimeCPUFeatureCheck.getSupportedFeatures(GraalAccess.getOriginalTarget().arch)) {
+                    runtimeCheckedFeatures.add((AMD64.CPUFeature) feature);
+                }
             }
             architecture = new AMD64(features, AMD64CPUFeatureAccess.allAMD64Flags());
             assert architecture instanceof AMD64 : "using AMD64 platform with a different architecture";
             int deoptScratchSpace = 2 * 8; // Space for two 64-bit registers: rax and xmm0
-            return new SubstrateTargetDescription(architecture, true, 16, 0, deoptScratchSpace, dynamicFeatures);
+            return new SubstrateTargetDescription(architecture, true, 16, 0, deoptScratchSpace, runtimeCheckedFeatures);
         } else if (includedIn(platform, Platform.AARCH64.class)) {
             Architecture architecture;
             if (NativeImageOptions.NativeArchitecture.getValue()) {
@@ -463,10 +462,10 @@ public class NativeImageGenerator {
                 architecture = new AArch64(features, AArch64CPUFeatureAccess.enabledAArch64Flags());
             }
             assert architecture instanceof AArch64 : "using AArch64 platform with a different architecture";
-            // dynamic features are the same as static features on AArch64 for the time being
-            EnumSet<AArch64.CPUFeature> dynamicFeatures = ((AArch64) architecture).getFeatures().clone();
+            // runtime checked features are the same as static features on AArch64 for now
+            EnumSet<AArch64.CPUFeature> runtimeCheckedFeatures = ((AArch64) architecture).getFeatures().clone();
             int deoptScratchSpace = 2 * 8; // Space for two 64-bit registers: r0 and v0.
-            return new SubstrateTargetDescription(architecture, true, 16, 0, deoptScratchSpace, dynamicFeatures);
+            return new SubstrateTargetDescription(architecture, true, 16, 0, deoptScratchSpace, runtimeCheckedFeatures);
         } else {
             throw UserError.abort("Architecture specified by platform is not supported: %s", platform.getClass().getTypeName());
         }

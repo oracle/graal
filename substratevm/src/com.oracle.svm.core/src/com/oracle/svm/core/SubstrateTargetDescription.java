@@ -46,13 +46,13 @@ public class SubstrateTargetDescription extends TargetDescription {
     }
 
     private final int deoptScratchSpace;
-    private final EnumSet<?> dynamicCPUFeatures;
+    private final EnumSet<?> runtimeCheckedCPUFeatures;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public SubstrateTargetDescription(Architecture arch, boolean isMP, int stackAlignment, int implicitNullCheckLimit, int deoptScratchSpace, EnumSet<?> dynamicCPUFeatures) {
+    public SubstrateTargetDescription(Architecture arch, boolean isMP, int stackAlignment, int implicitNullCheckLimit, int deoptScratchSpace, EnumSet<?> runtimeCheckedCPUFeatures) {
         super(arch, isMP, stackAlignment, implicitNullCheckLimit, shouldInlineObjectsInImageCode());
         this.deoptScratchSpace = deoptScratchSpace;
-        this.dynamicCPUFeatures = dynamicCPUFeatures;
+        this.runtimeCheckedCPUFeatures = runtimeCheckedCPUFeatures;
     }
 
     /**
@@ -63,7 +63,7 @@ public class SubstrateTargetDescription extends TargetDescription {
         return deoptScratchSpace;
     }
 
-    public EnumSet<?> getDynamicCPUFeatures() {
-        return dynamicCPUFeatures;
+    public EnumSet<?> getRuntimeCheckedCPUFeatures() {
+        return runtimeCheckedCPUFeatures;
     }
 }

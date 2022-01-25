@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,8 +38,8 @@ import jdk.vm.ci.code.Architecture;
 
 /**
  * Utilities for checking the features provided by the target CPU <em>at run time</em>. This allows
- * ahead of time compiled code to make dynamic decisions based on the actual CPU features, as
- * opposed to only the flags set at image build time.
+ * ahead of time compiled code to make decisions decisions at run time based on the actual CPU
+ * features, as opposed to only the flags set at image build time.
  * </p>
  *
  * Startup code that runs before the call to {@link RuntimeSupport#executeInitializationHooks()}
@@ -50,11 +50,16 @@ import jdk.vm.ci.code.Architecture;
 public final class RuntimeCPUFeatureCheck {
 
     /**
-     * Returns a set of features eligible for a run time CPU feature check at run time for the give
+     * Returns a set of features eligible for a CPU feature check at run time for the given
      * architecture.
      */
-    static Set<? extends Enum<?>> getSupportedFeatures(Architecture arch) {
+    public static Set<? extends Enum<?>> getSupportedFeatures(Architecture arch) {
         if (arch instanceof AMD64) {
+            /*
+             * For the time being, all supported features listed here are enabled by default (see
+             * NativeImageGenerator#createTarget). Keep this set in sync with the default values
+             * listed in the documentation for the RuntimeCheckedCPUFeatures option.
+             */
             return EnumSet.of(AMD64.CPUFeature.AVX, AMD64.CPUFeature.AVX2);
         } else {
             return Collections.emptySet();
@@ -64,8 +69,8 @@ public final class RuntimeCPUFeatureCheck {
     /**
      * Create a {@code boolean} value to check at runtime whether the CPU supports the given {@code
      * features}. If the features are statically known to be supported, this generates a
-     * {@code true} constant. If the features does not exist on the current architecture (e.g., it
-     * is a feature from a different architecture, or it is not in the set of
+     * {@code true} constant. If the feature is not eligible for runtime checks on the target
+     * architecture (e.g., it is a feature from a different architecture, or it is not in the set of
      * {@linkplain #getSupportedFeatures supported features}), this generates a {@code false}
      * constant.
      */

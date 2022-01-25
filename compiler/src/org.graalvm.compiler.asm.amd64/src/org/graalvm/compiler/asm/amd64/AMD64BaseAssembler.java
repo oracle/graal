@@ -299,6 +299,11 @@ public abstract class AMD64BaseAssembler extends Assembler {
         return features;
     }
 
+    /**
+     * Add a new item at the top of the feature stack. The new item will contain all those
+     * {@code newFeatures} that aren't already contained in {@link #getFeatures()}. A feature stack
+     * item will always be added, even if none of the features are actually new.
+     */
     public void addFeatures(EnumSet<CPUFeature> newFeatures) {
         EnumSet<CPUFeature> added = EnumSet.noneOf(CPUFeature.class);
         for (CPUFeature feature : newFeatures) {
@@ -309,17 +314,21 @@ public abstract class AMD64BaseAssembler extends Assembler {
         featuresStack.push(added);
     }
 
+    /**
+     * Removes the topmost item from the feature stack and removes all of this item's features from
+     * {@link #getFeatures()}.
+     */
     public void removeFeatures() {
         GraalError.guarantee(!featuresStack.isEmpty(), "cannot remove features since no features have been added");
         EnumSet<CPUFeature> added = featuresStack.pop();
         for (CPUFeature feature : added) {
             getFeatures().remove(feature);
         }
-
     }
 
     /**
-     * Returns {@code true} if the feature is included in the current feature stack.
+     * Returns {@code true} if the feature is included in the current topmost item of the feature
+     * stack.
      */
     public boolean isCurrentRegionFeature(CPUFeature feature) {
         if (featuresStack.isEmpty()) {

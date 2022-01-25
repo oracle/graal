@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -221,7 +221,7 @@ public final class RuntimeCPUFeatureCheckImpl {
     /**
      * Computes the feature flag mask.
      * <p>
-     * This is the dynamic version, i.e., no {@link Fold} annotation. It should only be used for
+     * This is the runtime version, i.e., no {@link Fold} annotation. It should only be used for
      * initializing the host feature mask at run time. All other usages should use
      * {@link #computeFeatureMask} to ensure it constant folds.
      *
@@ -272,28 +272,33 @@ public final class RuntimeCPUFeatureCheckImpl {
     }
 
     /**
-     * Utility method for generating the graph for a {@code boolean}-valued dynamic check for a CPU
+     * Utility method for generating the graph for a {@code boolean}-valued runtime check for a CPU
      * feature, to be used by platform-specific node intrinsics. If the feature is statically known
-     * to be supported, this generates a {@code true} constant.
+     * to be supported, this generates a {@code true} constant. If the feature is statically known
+     * to be unavailable for a runtime check, this generates a {@code false} constant.
+     * </p>
+     *
+     * The root node built by this intrinsic includes a branch probability annotation. It must be
+     * used directly as the condition of an {@code if} statement.
      */
     private static boolean buildRuntimeCPUFeatureCheck(GraphBuilderContext b, SnippetReflectionProvider snippetReflection, EnumSet<?> allFeatures) {
         // remove static features from the set
         EnumSet<?> features = removeStaticFeatures(allFeatures);
         if (features.isEmpty()) {
             /*
-             * No dynamic check needed, we know statically that the architecture has the required
+             * No runtime check needed, we know statically that the architecture has the required
              * feature.
              */
             b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(true));
-        } else if (!shouldCreateDynamicFeatureCheck(features)) {
+        } else if (!shouldCreateRuntimeFeatureCheck(features)) {
             /*
-             * No dynamic check needed, we know statically that the architecture will never have the
+             * No runtime check needed, we know statically that the architecture will never have the
              * required feature.
              */
             b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(false));
         } else {
             /*
-             * Generate a dynamic CPU feature check, reading the feature mask from a global and
+             * Generate a runtime CPU feature check, reading the feature mask from a global and
              * testing the bit of interest.
              */
             MetaAccessProvider metaAccess = b.getMetaAccess();
@@ -318,8 +323,8 @@ public final class RuntimeCPUFeatureCheckImpl {
     }
 
     /**
-     * Returns {@code true} if all features are known to be available at image build time, i.e., the
-     * dynamic feature check would always succeed.
+     * Returns a set containing those of the given {@code features} that are not known to be
+     * available at image build time.
      */
     @Fold
     public static EnumSet<?> removeStaticFeatures(EnumSet<?> features) {
@@ -330,12 +335,12 @@ public final class RuntimeCPUFeatureCheckImpl {
     }
 
     /**
-     * Returns {@code false} if any feature cannot be available at run time, i.e., the dynamic
+     * Returns {@code false} if some feature cannot be available at run time, i.e., the runtime
      * feature check would always fail.
      *
-     * This method return {@code true} only if <em>all</em> features
+     * This method returns {@code true} only if <em>all</em> of the given {@code features}
      * <ul>
-     * <li>are enabled via the {@code +H:DynamicCPUFeatures} option, and</li>
+     * <li>are enabled via the {@code +H:RuntimeCheckedCPUFeatures} option, and</li>
      * <li>are in the set of {@linkplain RuntimeCPUFeatureCheck#getSupportedFeatures features
      * enabled for run time feature checks} for the current architecture.</li>
      * </ul>
@@ -344,9 +349,9 @@ public final class RuntimeCPUFeatureCheckImpl {
      * available features}. This should be done explicitly before calling this method.
      */
     @Fold
-    public static boolean shouldCreateDynamicFeatureCheck(EnumSet<?> features) {
+    public static boolean shouldCreateRuntimeFeatureCheck(EnumSet<?> features) {
         SubstrateTargetDescription target = ConfigurationValues.getTarget();
-        return containsAll(target.getDynamicCPUFeatures(), features) && containsAll(RuntimeCPUFeatureCheck.getSupportedFeatures(target.arch), features);
+        return containsAll(target.getRuntimeCheckedCPUFeatures(), features) && containsAll(RuntimeCPUFeatureCheck.getSupportedFeatures(target.arch), features);
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
