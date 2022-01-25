@@ -46,29 +46,29 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 
-import com.oracle.svm.agent.ignoredconfig.AgentMetaInfProcessor;
-import com.oracle.svm.agent.stackaccess.InterceptedState;
-import com.oracle.svm.agent.stackaccess.EagerlyLoadedJavaStackAccess;
-import com.oracle.svm.agent.stackaccess.OnDemandJavaStackAccess;
-import com.oracle.svm.agent.tracing.TraceFileWriter;
-import com.oracle.svm.agent.tracing.ConfigurationResultWriter;
-import com.oracle.svm.agent.tracing.core.Tracer;
-import com.oracle.svm.agent.tracing.core.TracingResultWriter;
-import com.oracle.svm.core.configure.ConfigurationFile;
-import com.oracle.svm.driver.metainf.NativeImageMetaInfWalker;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.ProcessProperties;
 import org.graalvm.nativeimage.hosted.Feature;
 
-import com.oracle.svm.agent.predicatedconfig.MethodInfoRecordKeeper;
+import com.oracle.svm.agent.ignoredconfig.AgentMetaInfProcessor;
 import com.oracle.svm.agent.predicatedconfig.ConfigurationWithOriginsResultWriter;
+import com.oracle.svm.agent.predicatedconfig.MethodInfoRecordKeeper;
+import com.oracle.svm.agent.stackaccess.EagerlyLoadedJavaStackAccess;
+import com.oracle.svm.agent.stackaccess.InterceptedState;
+import com.oracle.svm.agent.stackaccess.OnDemandJavaStackAccess;
+import com.oracle.svm.agent.tracing.ConfigurationResultWriter;
+import com.oracle.svm.agent.tracing.TraceFileWriter;
+import com.oracle.svm.agent.tracing.core.Tracer;
+import com.oracle.svm.agent.tracing.core.TracingResultWriter;
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.filters.FilterConfigurationParser;
 import com.oracle.svm.configure.filters.RuleNode;
 import com.oracle.svm.configure.trace.AccessAdvisor;
 import com.oracle.svm.configure.trace.TraceProcessor;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.driver.NativeImage;
+import com.oracle.svm.driver.metainf.NativeImageMetaInfWalker;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIJavaVM;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
@@ -369,7 +369,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
     private static boolean parseFilterFiles(RuleNode filter, List<String> filterFiles) {
         for (String path : filterFiles) {
             try {
-                new FilterConfigurationParser(filter).parseAndRegister(Paths.get(path));
+                new FilterConfigurationParser(filter).parseAndRegister(Paths.get(path).toUri());
             } catch (Exception e) {
                 return error(false, "cannot parse filter file " + path + ": " + e);
             }

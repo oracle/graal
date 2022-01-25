@@ -25,9 +25,9 @@
  */
 package com.oracle.svm.core.configure;
 
-import java.nio.file.Path;
+import java.net.URI;
 
 public interface PredefinedClassesRegistry {
 
-    void add(String nameInfo, String hash, Path basePath);
+    void add(String nameInfo, String hash, URI baseUri);
 }

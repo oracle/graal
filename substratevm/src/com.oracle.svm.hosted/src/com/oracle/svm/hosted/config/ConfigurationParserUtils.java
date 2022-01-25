@@ -27,10 +27,9 @@ package com.oracle.svm.hosted.config;
 import static com.oracle.svm.core.SubstrateOptions.PrintFlags;
 
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.Reader;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
-import java.net.URLConnection;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -43,9 +42,9 @@ import java.util.stream.StreamSupport;
 
 import org.graalvm.nativeimage.impl.ReflectionRegistry;
 
+import com.oracle.svm.core.configure.ConditionalElement;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.ConfigurationParser;
-import com.oracle.svm.core.configure.ConditionalElement;
 import com.oracle.svm.core.configure.ReflectionConfigurationParser;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
@@ -118,16 +117,14 @@ public final class ConfigurationParserUtils {
 
     private static void doParseAndRegister(ConfigurationParser parser, String featureName, Object location, HostedOptionKey<LocatableMultiOptionValue.Strings> option) {
         try {
+            URI uri;
             if (location instanceof Path) {
-                parser.parseAndRegister((Path) location);
+                uri = ((Path) location).toUri();
             } else {
-                URLConnection urlConnection = ((URL) location).openConnection();
-                urlConnection.setUseCaches(false);
-                try (Reader reader = new InputStreamReader(urlConnection.getInputStream())) {
-                    parser.parseAndRegister(reader);
-                }
+                uri = ((URL) location).toURI();
             }
-        } catch (IOException | JSONParserException e) {
+            parser.parseAndRegister(uri);
+        } catch (IOException | URISyntaxException | JSONParserException e) {
             String errorMessage = e.getMessage();
             if (errorMessage == null || errorMessage.isEmpty()) {
                 errorMessage = e.toString();
