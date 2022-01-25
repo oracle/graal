@@ -4,19 +4,19 @@ toc_group: native-image
 link_title: Debug Info Feature
 permalink: /reference-manual/native-image/DebugInfo/
 ---
+
 # Debug Info Feature
 
-To add debug info to a generated native image, add the flag
-`-H:GenerateDebugInfo=<N>` to the native image command line (where `N` is
-a positive integer value -- the default value `0` means generate no
-debug info). For example,
+To add debug information to a generated native image, provide the `-g -O0` option to the `native-image` builder:
 ```shell
-javac Hello.java
-native-image -H:GenerateDebugInfo=1 Hello
+native-image -g -O0 Hello
 ```
-The resulting image should contain code (method) debug records in a
-format the GNU Debugger (GDB) understands (Windows support is still under development).
-At present it makes no difference which positive value is supplied to the `GenerateDebugInfo` option.
+
+The first option, `-g`, instructs `native-image` to generate debug information, and `-O0` specifies that no compiler optimizations should be performed.
+Disabling all optimizations is not required, but in general it makes the debugging experience better.
+The resulting image will contain debug records in a format the GNU Debugger (GDB) understands.
+
+> Note: Generating a native executable with debug information currently works on Linux and macOS. Windows support is still under development. The feature is experimental.
 
 ## Source File Caching
 
