@@ -77,6 +77,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -102,6 +103,7 @@ import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
@@ -436,6 +438,8 @@ public class TruffleSafepointTest {
         }
     }
 
+    static final ThreadLocalHandshake TL_HANDSHAKE = TestAPIAccessor.runtimeAccess().getThreadLocalHandshake();
+
     @Test
     public void testAllowActions() {
         forEachConfig((threads, events) -> {
@@ -443,6 +447,7 @@ public class TruffleSafepointTest {
 
             try (TestSetup setup = setupSafepointLoop(threads, (s, node) -> {
                 TruffleSafepoint config = TruffleSafepoint.getCurrent();
+                TL_HANDSHAKE.setChangeAllowActions(config, true);
                 boolean prev = config.setAllowActions(false);
                 try {
                     while (true) {
@@ -453,6 +458,7 @@ public class TruffleSafepointTest {
                     }
                 } finally {
                     config.setAllowActions(prev);
+                    TL_HANDSHAKE.setChangeAllowActions(config, false);
                 }
             })) {
                 AtomicInteger eventCounter = new AtomicInteger();
@@ -467,6 +473,53 @@ public class TruffleSafepointTest {
                 assertActionsAnyOrder(threads, events, runnable);
             }
         });
+    }
+
+    @TruffleLanguage.Registration(id = AllowActionsTestLanguage.ID, name = AllowActionsTestLanguage.ID)
+    static class AllowActionsTestLanguage extends TruffleLanguage<Env> {
+        static final String ID = "TruffleSafepointTest_AllowActionsTestLanguage";
+
+        boolean keepDisabled;
+
+        @Override
+        protected Env createContext(Env env) {
+            this.keepDisabled = env.getApplicationArguments()[0].equals("true");
+            return env;
+        }
+
+        @Override
+        protected void finalizeContext(Env context) {
+            // test that is succeeds
+            TruffleSafepoint.getCurrent().setAllowActions(false);
+            if (!keepDisabled) {
+                TruffleSafepoint.getCurrent().setAllowActions(true);
+                // second close succeeds
+                keepDisabled = false;
+            }
+            super.finalizeContext(context);
+        }
+
+    }
+
+    @Test
+    public void testAllowActionsSupportedInFinalizeContext() {
+        assertFails(() -> TruffleSafepoint.getCurrent().setAllowActions(false), IllegalStateException.class);
+        assertFails(() -> TruffleSafepoint.getCurrent().setAllowActions(true), IllegalStateException.class);
+
+        try (Context c = Context.newBuilder().arguments(AllowActionsTestLanguage.ID, new String[]{"false"}).build()) {
+            c.initialize(AllowActionsTestLanguage.ID);
+        }
+
+        // keep disabled so close succeeds
+        Context c = Context.newBuilder().arguments(AllowActionsTestLanguage.ID, new String[]{"true"}).build();
+        c.initialize(AllowActionsTestLanguage.ID);
+        assertFails(() -> c.close(), PolyglotException.class, (e) -> {
+            assertTrue(e.getMessage().contains("IllegalStateException"));
+            // make sure even though it failed allow actions was reset.
+            // it must not remain true.
+            assertTrue(TL_HANDSHAKE.isAllowActions(TruffleSafepoint.getCurrent()));
+        });
+        c.close();
     }
 
     @Test

@@ -99,6 +99,14 @@ public abstract class ThreadLocalHandshake {
         }
     }
 
+    public void setChangeAllowActions(TruffleSafepoint safepoint, boolean enabled) {
+        ((TruffleSafepointImpl) safepoint).setChangeAllowActions(enabled);
+    }
+
+    public boolean isAllowActions(TruffleSafepoint safepoint) {
+        return ((TruffleSafepointImpl) safepoint).isAllowActions();
+    }
+
     /**
      * If this method is invoked the thread must be guaranteed to be polled. If the thread dies and
      * {@link #poll(Node)} was not invoked then an {@link IllegalStateException} is thrown;
@@ -310,6 +318,7 @@ public abstract class ThreadLocalHandshake {
         private volatile boolean fastPendingSet;
         private boolean sideEffectsEnabled = true;
         private boolean enabled = true;
+        private volatile boolean changeAllowActionsAllowed;
         private Interrupter blockedAction;
         private boolean interrupted;
 
@@ -668,12 +677,23 @@ public abstract class ThreadLocalHandshake {
             return false;
         }
 
+        void setChangeAllowActions(boolean changeAllowActionsAllowed) {
+            this.changeAllowActionsAllowed = changeAllowActionsAllowed;
+        }
+
+        boolean isAllowActions() {
+            return enabled;
+        }
+
         @Override
         @TruffleBoundary
         public boolean setAllowActions(boolean enabled) {
             assert impl.getCurrent() == this : "Cannot be used from a different thread.";
             lock.lock();
             try {
+                if (!changeAllowActionsAllowed) {
+                    throw new IllegalStateException("Using setAllowActions is only permitted during finalization of a language. See TruffleLanguage.finalizeContext(Object) for further details.");
+                }
                 boolean prev = this.enabled;
                 this.enabled = enabled;
                 updateFastPending();
