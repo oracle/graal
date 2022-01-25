@@ -572,7 +572,7 @@ type = class _z_.java.math.BigInteger[][] : public java.math.BigInteger[][] {
 The field is typed as `_z_.java.math.BigInteger[][]` which is an empty wrapper class that inherits from the expected type `java.math.BigInteger[][]`.
 This wrapper type is essentially the same as the original but the DWARF info record that defines it includes information that tells gdb how to convert pointers to this type.
 
-When gdb is asked to print the oop stored in this field it is clear that it is an offset rather than a raw address.
+When `gdb` is asked to print the oop stored in this field it is clear that it is an offset rather than a raw address.
 
 ```
 (gdb) p/x 'java.math.BigInteger'::powerCache
