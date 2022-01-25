@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -78,15 +78,36 @@ public abstract class LLVMDispatchNode extends LLVMNode {
     protected static final int INLINE_CACHE_SIZE = 5;
 
     protected final FunctionType type;
+    @CompilationFinal LLVMFunction aotFixedIntrinsicFunction;
 
     @CompilationFinal protected Source signatureSource;
     @CompilationFinal private ContextExtension.Key<NativeContextExtension> nativeCtxExtKey;
+
+    @Child private AOTInitHelper aotInitHelper;
 
     protected LLVMDispatchNode(FunctionType type, LLVMFunction llvmFunction) {
         this.type = type;
 
         LLVMContext context = LLVMLanguage.getContext();
+
         if (llvmFunction != null && context != null && context.isAOTCacheStore()) {
+
+            // We need to pre-initialize an intrinsic function by generating its call target. It
+            // cannot be done in the constructor code as it is too early for
+            // llvmFunction.getFixedCode() to return the intrinsic.
+            // Therefore, the pre-initialization must be postponed to the AOT preparation stage
+            // using the AOTInitHelper.
+            aotInitHelper = new AOTInitHelper((language, root) -> {
+                //
+                if (llvmFunction.getFixedCode() != null && llvmFunction.getFixedCode().isIntrinsicFunctionSlowPath()) {
+                    LLVMDispatchNode.this.aotFixedIntrinsicFunction = llvmFunction;
+                    llvmFunction.getFixedCode().getIntrinsicSlowPath().cachedCallTarget(type);
+                }
+                // Throw the helper AOT init node away as it is used during the AOT preparation
+                // stage only
+                aotInitHelper = null;
+            });
+
             // Early parsing of the function's signature for the sake of the AOT preparation
             try {
                 nativeCtxExtKey = LLVMLanguage.get(this).lookupContextExtension(NativeContextExtension.class);
@@ -193,6 +214,15 @@ public abstract class LLVMDispatchNode extends LLVMNode {
     protected Object doIndirectIntrinsic(LLVMFunctionDescriptor descriptor, Object[] arguments,
                     @Cached ResolveFunctionNode resolve,
                     @Cached("create()") IndirectCallNode callNode) {
+        if (aotFixedIntrinsicFunction != null && aotFixedIntrinsicFunction.getFixedCodeAssumption().isValid()) {
+            // This branch cannot be factored out to another specialization guarded by
+            // aotFixedIntrinsicFunction.getFixedCodeAssumption() since aotFixedIntrinsicFunction
+            // is not yet initialized (by this.aotInitHelper) upon the execution of prepareForAOT
+            // (see AOTInitHelper). As aotFixedIntrinsicFunction is still null at that point,
+            // the respective specialization would not be included in the list of AOT
+            // specialization.
+            return callNode.call(aotFixedIntrinsicFunction.getFixedCode().getIntrinsic(resolve).cachedCallTarget(type), arguments);
+        }
         return callNode.call(descriptor.getFunctionCode().getIntrinsic(resolve).cachedCallTarget(type), arguments);
     }
 

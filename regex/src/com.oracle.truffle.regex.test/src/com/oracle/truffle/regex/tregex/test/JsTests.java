@@ -142,4 +142,20 @@ public class JsTests extends RegexTestBase {
     public void gr35771() {
         test("(^\\s*)|(\\s*$)", "", "", 0, true, 0, 0, 0, 0, -1, -1);
     }
+
+    @Test
+    public void justLookBehind() {
+        test("(?<=\\n)", "", "__\n__", 0, true, 3, 3);
+    }
+
+    @Test
+    public void justLookBehindSticky() {
+        test("(?<=\\n)", "y", "__\n__", 3, true, 3, 3);
+    }
+
+    @Test
+    public void gr21421() {
+        test("(?=(\\3?)|([^\\W\uaa3bt-\ua4b9]){4294967296}|(?=[^]+[\\n-\u4568\\uD3D5\\u00ca-\\u00fF]*)*|(?:\\2|^)?.){33554431}(?:(?:\\S{1,}(?:\\b|\\w{1,}))(?:\\2?)+){4,}", "im",
+                        "\u4568\u4568\u4568\u4568________\\xee0000", 0, true, 0, 20, 0, 0, -1, -1);
+    }
 }

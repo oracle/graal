@@ -50,8 +50,7 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ClassLoaderSupportImpl;
 import com.oracle.svm.hosted.FeatureImpl;
-
-import jdk.internal.module.Modules;
+import com.oracle.svm.util.ModuleSupport;
 
 public final class ClassLoaderSupportImplJDK11OrLater extends ClassLoaderSupportImpl {
 
@@ -123,10 +122,7 @@ public final class ClassLoaderSupportImplJDK11OrLater extends ClassLoaderSupport
         }
         ArrayList<ResourceBundle> resourceBundles = new ArrayList<>();
         for (Module module : modules) {
-            Module exportTargetModule = ClassLoaderSupportImplJDK11OrLater.class.getModule();
-            if (!module.isOpen(packageName, exportTargetModule)) {
-                Modules.addOpens(module, packageName, exportTargetModule);
-            }
+            ModuleSupport.exportAndOpenPackageToClass(module.getName(), packageName, false, ClassLoaderSupportImplJDK11OrLater.class);
             resourceBundles.add(ResourceBundle.getBundle(bundleName, locale, module));
         }
         return resourceBundles;

@@ -182,11 +182,12 @@ suite = {
                 "com.oracle.svm.common",
             ],
             "requires" : [
+                "java.compiler",
                 "java.logging",
                 "java.scripting",
+                "jdk.jfr",
                 "jdk.management",
                 "jdk.unsupported",
-                "java.compiler",
             ],
             "requiresConcealed" : {
                 "java.base" : [
@@ -198,18 +199,19 @@ suite = {
                     "sun.security.jca",
                     "sun.security.ssl",
                     "sun.security.util",
+                    "sun.text.spi",
                     "sun.util",
                     "sun.util.calendar",
                     "sun.util.locale.provider",
                     "sun.util.resources",
-                    "jdk.internal.module",
-                    "jdk.internal.reflect",
-                    "jdk.internal.misc",
-                    "jdk.internal.logger",
+                    "jdk.internal.event",
                     "jdk.internal.loader",
-                    "sun.text.spi",
+                    "jdk.internal.logger",
+                    "jdk.internal.misc",
+                    "jdk.internal.module",
                     "jdk.internal.perf",
                     "jdk.internal.ref",
+                    "jdk.internal.reflect",
                 ],
                 "java.desktop": [
                     "sun.java2d",
@@ -218,6 +220,12 @@ suite = {
                 "java.management": [
                     "com.sun.jmx.mbeanserver",
                     "sun.management",
+                ],
+                "jdk.jfr": [
+                    "jdk.jfr.events",
+                    "jdk.jfr.internal",
+                    "jdk.jfr.internal.jfc",
+                    "jdk.jfr.internal.handlers",
                 ],
             },
             "javaCompliance": "11+",
@@ -349,6 +357,11 @@ suite = {
             "requires" : [
                 "jdk.management",
             ],
+            "requiresConcealed" : {
+                "jdk.internal.vm.ci" : [
+                    "jdk.vm.ci.code",
+                ],
+            },
             "checkstyle": "com.oracle.svm.core",
             "javaCompliance": "11+",
             "annotationProcessors": [
@@ -409,6 +422,7 @@ suite = {
                 "java.security.sasl",
                 "java.smartcardio",
                 "java.xml.crypto",
+                "jdk.jfr",
                 "jdk.management",
                 "jdk.unsupported",
             ],
@@ -424,10 +438,22 @@ suite = {
                     "jdk.internal.module",
                     "sun.text.spi",
                     "jdk.internal.reflect",
+                    "sun.util.cldr",
+                    "sun.util.locale"
                 ],
                 "jdk.internal.vm.ci" : [
-                    "jdk.vm.ci.runtime",
                     "jdk.vm.ci.meta",
+                    "jdk.vm.ci.code",
+                    "jdk.vm.ci.code.site",
+                    "jdk.vm.ci.hotspot",
+                    "jdk.vm.ci.runtime",
+                ],
+                "jdk.management": [
+                    "com.sun.management.internal"
+                ],
+                "jdk.jfr": [
+                    "jdk.jfr.internal",
+                    "jdk.jfr.internal.jfc",
                 ],
             },
             "javaCompliance": "11+",
@@ -590,50 +616,6 @@ suite = {
             "spotbugs": "false",
         },
 
-        "com.oracle.svm.jfr": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": [
-                "com.oracle.svm.hosted",
-            ],
-            "checkstyle": "com.oracle.svm.core",
-            "javaCompliance": "11+",
-            "requires": [
-                "jdk.jfr",
-                "jdk.management",
-                "jdk.unsupported"
-            ],
-            "requiresConcealed": {
-                "jdk.management": [
-                    "com.sun.management.internal"
-                ],
-                "jdk.jfr": [
-                    "jdk.jfr.internal",
-                    "jdk.jfr.internal.consumer",
-                    "jdk.jfr.internal.jfc",
-                    "jdk.jfr.internal.handlers",
-                    "jdk.jfr.events"
-                ],
-                "jdk.internal.vm.ci": [
-                    "jdk.vm.ci.meta",
-                    "jdk.vm.ci.code",
-                    "jdk.vm.ci.code.site",
-                    "jdk.vm.ci.hotspot"
-                ],
-                "java.base": [
-                    "jdk.internal.event",
-                    "jdk.internal.misc",
-                    "jdk.internal.util.xml",
-                    "jdk.internal.util.xml.impl",
-                    "jdk.internal.org.xml.sax.helpers"
-                ]
-            },
-            "annotationProcessors": [
-                "compiler:GRAAL_PROCESSOR",
-            ],
-            "workingSets": "SVM",
-        },
-
         "com.oracle.svm.driver": {
             "subDir": "src",
             "sourceDirs": [
@@ -731,6 +713,7 @@ suite = {
                     "sun.reflect.annotation",
                     "sun.reflect.generics.repository",
                     "jdk.internal.reflect",
+                    "sun.reflect.generics.scope"
                 ],
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.code",
@@ -1101,7 +1084,6 @@ suite = {
                 "com.oracle.svm.core.genscavenge",
                 "com.oracle.svm.core.containers",
                 "com.oracle.svm.jni",
-                "com.oracle.svm.jfr",
                 "com.oracle.svm.reflect",
                 "com.oracle.svm.methodhandles"
             ],
@@ -1124,7 +1106,7 @@ suite = {
                     "com.oracle.svm.core", # Uses of com.oracle.svm.core.TypeResult
                     "com.oracle.svm.core.util", # Uses of com.oracle.svm.core.util.VMError
                     "com.oracle.svm.core.jni", # Uses of com.oracle.svm.core.jni.JNIRuntimeAccess
-                    "com.oracle.svm.jfr", # Uses of com.oracle.svm.jfr.JfrEnabled
+                    "com.oracle.svm.core.jfr", # Uses of com.oracle.svm.core.jfr.JfrEnabled
                     "com.oracle.svm.hosted                        to java.base",
                     "com.oracle.svm.hosted.agent                  to java.instrument",
                     "com.oracle.svm.truffle.api                   to org.graalvm.truffle",
@@ -1173,7 +1155,9 @@ suite = {
                         "sun.reflect.generics.reflectiveObjects",
                         "sun.reflect.generics.repository",
                         "sun.reflect.generics.tree",
+                        "sun.reflect.generics.scope",
                         "sun.util.calendar",
+                        "sun.util.locale",
                         "sun.security.jca",
                         "sun.security.util",
                         "sun.security.provider",
@@ -1182,6 +1166,7 @@ suite = {
                         "sun.reflect.generics.repository",
                         "jdk.internal.org.objectweb.asm",
                         "sun.util.locale.provider",
+                        "sun.util.cldr",
                         "sun.util.resources",
                         "sun.invoke.util",
                         "sun.net",
@@ -1473,6 +1458,8 @@ suite = {
               "exports" : [
                 "com.oracle.graal.pointsto",
                 "com.oracle.graal.pointsto.api",
+                "com.oracle.graal.pointsto.heap",
+                "com.oracle.graal.pointsto.heap.value",
                 "com.oracle.graal.pointsto.reports",
                 "com.oracle.graal.pointsto.constraints",
                 "com.oracle.graal.pointsto.util",

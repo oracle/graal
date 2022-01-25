@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -291,6 +291,8 @@ public class AMD64ControlFlow {
             super(TYPE, intCond(cond), trueDestination, falseDestination, trueDestinationProbability);
             assert size == DWORD || size == QWORD;
             this.size = size;
+
+            assert x.getPlatformKind().getVectorLength() == 1;
 
             this.x = x;
             this.y = y;

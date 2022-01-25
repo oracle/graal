@@ -46,6 +46,7 @@ import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.tregex.TRegexCompiler;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
+import com.oracle.truffle.regex.tregex.nodes.dfa.DFACaptureGroupPartialTransition;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 import com.oracle.truffle.regex.util.TBitSet;
 import org.graalvm.collections.EconomicMap;
@@ -79,6 +80,7 @@ public class CompilationBuffer {
     private CodePointSetAccumulator codePointSetAccumulator2;
     private TBitSet byteSizeBitSet;
     private EconomicMap<CodePointSet, CharMatcher> matcherDeduplicationMap;
+    private EconomicMap<DFACaptureGroupPartialTransition, DFACaptureGroupPartialTransition> lazyTransitionDeduplicationMap;
 
     public CompilationBuffer(Encoding encoding) {
         this.encoding = encoding;
@@ -192,5 +194,12 @@ public class CompilationBuffer {
             matcherDeduplicationMap = EconomicMap.create();
         }
         return matcherDeduplicationMap;
+    }
+
+    public EconomicMap<DFACaptureGroupPartialTransition, DFACaptureGroupPartialTransition> getLazyTransitionDeduplicationMap() {
+        if (lazyTransitionDeduplicationMap == null) {
+            lazyTransitionDeduplicationMap = EconomicMap.create();
+        }
+        return lazyTransitionDeduplicationMap;
     }
 }

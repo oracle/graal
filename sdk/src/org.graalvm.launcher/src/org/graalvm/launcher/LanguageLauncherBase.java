@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,9 @@
  */
 package org.graalvm.launcher;
 
-import java.io.IOException;
 import static java.lang.Integer.max;
+
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -49,6 +50,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
@@ -255,10 +257,15 @@ public abstract class LanguageLauncherBase extends Launcher {
             for (Instrument instrument : instruments) {
                 List<PrintableOption> options = instrumentsOptions.get(instrument);
                 if (options != null) {
-                    printOptions(options, "  " + instrument.getName() + ":", 4);
+                    printOptions(options, "  " + instrument.getName() + website(instrument) + ":", 4);
                 }
             }
         }
+    }
+
+    private static String website(Instrument instrument) {
+        String website = instrument.getWebsite();
+        return website.isEmpty() ? "" : " (" + website + ")";
     }
 
     private void printLanguageOptions(Engine engine, OptionCategory optionCategory) {
@@ -276,10 +283,22 @@ public abstract class LanguageLauncherBase extends Launcher {
             for (Language language : languages) {
                 List<PrintableOption> options = languagesOptions.get(language);
                 if (options != null) {
-                    printOptions(options, "  " + language.getName() + ":", 4);
+                    printOptions(options, title(language), 4);
                 }
             }
         }
+    }
+
+    private static String title(Language language) {
+        final StringBuilder title = new StringBuilder("  " + language.getName());
+        final String website = language.getWebsite();
+        if (!"".equals(website)) {
+            title.append(" (");
+            title.append(website);
+            title.append(")");
+        }
+        title.append(":");
+        return title.toString();
     }
 
     private void printLanguages(Engine engine, boolean printWhenEmpty) {
@@ -339,6 +358,7 @@ public abstract class LanguageLauncherBase extends Launcher {
                 options.add(asPrintableOption(descriptor));
             }
         }
+        options.sort(PrintableOption::compareTo);
         return options;
     }
 
@@ -346,24 +366,22 @@ public abstract class LanguageLauncherBase extends Launcher {
         return descriptor.getCategory().ordinal() == optionCategory.ordinal();
     }
 
-    void printOption(OptionCategory optionCategory, OptionDescriptor descriptor) {
-        if (!descriptor.isDeprecated() && sameCategory(descriptor, optionCategory)) {
-            printOption(asPrintableOption(descriptor));
-        }
-    }
-
     private static Launcher.PrintableOption asPrintableOption(OptionDescriptor descriptor) {
         StringBuilder key = new StringBuilder("--");
-        key.append(descriptor.getName());
-        Object defaultValue = descriptor.getKey().getDefaultValue();
-        if (defaultValue instanceof Boolean && defaultValue == Boolean.FALSE) {
-            // nothing to print
-        } else {
-            key.append("=<");
-            key.append(descriptor.getKey().getType().getName());
-            key.append(">");
+        final String name = descriptor.getName();
+        key.append(name);
+        if (descriptor.isOptionMap()) {
+            key.append(".<key>");
         }
-        return new PrintableOption(key.toString(), descriptor.getHelp());
+        if (!Boolean.FALSE.equals(descriptor.getKey().getDefaultValue())) {
+            key.append("=");
+            if (descriptor.isOptionMap()) {
+                key.append("<value>");
+            } else {
+                key.append(descriptor.getUsageSyntax());
+            }
+        }
+        return new PrintableOption(name, key.toString(), descriptor.getHelp());
     }
 
     @Override

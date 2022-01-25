@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -139,9 +139,7 @@ public class DebugOptions {
     @Option(help = "Print the name of each dump file path as it's created.")
     public static final OptionKey<Boolean> ShowDumpFiles = new OptionKey<>(false);
 
-    @Option(help = "Enable dumping to the C1Visualizer. Enabling this option implies PrintBackendCFG.", type = OptionType.Debug)
-    public static final OptionKey<Boolean> PrintCFG = new OptionKey<>(false);
-    @Option(help = "Enable dumping LIR, register allocation and code generation info to the C1Visualizer.", type = OptionType.Debug)
+    @Option(help = "Enable dumping scheduled HIR, LIR, register allocation and code generation info to the C1Visualizer.", type = OptionType.Debug)
     public static final OptionKey<Boolean> PrintBackendCFG = new OptionKey<>(false);
     @Option(help = "Enable dumping CFG built during initial BciBlockMapping", type = OptionType.Debug)
     public static final OptionKey<Boolean> PrintBlockMapping = new OptionKey<>(false);

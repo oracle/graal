@@ -1580,4 +1580,13 @@ public class BinaryParser extends BinaryStreamParser {
             readElementSection(context, instance);
         }
     }
+
+    /**
+     * Reads the code section entries for all functions.
+     */
+    public void readCodeEntries() {
+        if (tryJumpToSection(Section.CODE)) {
+            readCodeSection();
+        }
+    }
 }

@@ -252,6 +252,9 @@ public class CalcASTPropsVisitor extends DepthFirstTraversalRegexASTVisitor {
         }
         if (group.isCapturing()) {
             flags |= RegexASTNode.FLAG_HAS_CAPTURE_GROUPS;
+            if (group.getMinPath() == minPath && group.getMaxPath() == maxPath) {
+                ast.getProperties().setEmptyCaptureGroups();
+            }
         }
         group.setFlags(flags, CHANGED_FLAGS);
         group.setMinPath(minPath);

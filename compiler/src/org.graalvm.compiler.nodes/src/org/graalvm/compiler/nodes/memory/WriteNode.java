@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,13 +25,13 @@
 package org.graalvm.compiler.nodes.memory;
 
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.NamedLocationIdentity;
-import org.graalvm.compiler.nodes.calc.ReinterpretNode;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.ReinterpretNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.spi.Simplifiable;
@@ -90,6 +90,11 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerableAccess, 
     }
 
     @Override
+    public MemoryOrderMode getMemoryOrder() {
+        return MemoryOrderMode.PLAIN;
+    }
+
+    @Override
     public void simplify(SimplifierTool tool) {
         if (tool.canonicalizeReads() && hasExactlyOneUsage() && next() instanceof WriteNode) {
             WriteNode write = (WriteNode) next();
@@ -101,8 +106,8 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerableAccess, 
                 graph().removeFixed(this);
             }
         }
-        // reinterpret means nothing writing to an array - we simply write the bytes
-        if (NamedLocationIdentity.isArrayLocation(location) && value() instanceof ReinterpretNode) {
+        // reinterpret means nothing while writing - we simply write the bytes
+        if (value() instanceof ReinterpretNode) {
             tool.addToWorkList(value());
             tool.addToWorkList(((ReinterpretNode) value()).getValue());
             tool.addToWorkList(this);

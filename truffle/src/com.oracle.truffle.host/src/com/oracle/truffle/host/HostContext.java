@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,6 +51,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 
+import com.oracle.truffle.api.strings.TruffleString;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
@@ -135,8 +136,7 @@ final class HostContext {
         GuestToHostCodeCache cache = (GuestToHostCodeCache) HostAccessor.ENGINE.getGuestToHostCodeCache(internalContext);
         if (cache == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            cache = new GuestToHostCodeCache(language);
-            HostAccessor.ENGINE.setGuestToHostCodeCache(internalContext, cache);
+            cache = (GuestToHostCodeCache) HostAccessor.ENGINE.installGuestToHostCodeCache(internalContext, new GuestToHostCodeCache(language));
         }
         return cache;
     }
@@ -282,7 +282,7 @@ final class HostContext {
                         || receiver instanceof Long || receiver instanceof Float //
                         || receiver instanceof Boolean || receiver instanceof Character //
                         || receiver instanceof Byte || receiver instanceof Short //
-                        || receiver instanceof String;
+                        || receiver instanceof String || receiver instanceof TruffleString;
     }
 
     private static final ContextReference<HostContext> REFERENCE = ContextReference.create(HostLanguage.class);

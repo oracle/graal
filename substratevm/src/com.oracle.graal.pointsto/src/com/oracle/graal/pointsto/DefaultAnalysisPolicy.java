@@ -36,6 +36,7 @@ import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.AbstractSpecialInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;
+import com.oracle.graal.pointsto.flow.ContextInsensitiveFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
@@ -125,7 +126,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
 
     @Override
     public FieldTypeStore createFieldTypeStore(AnalysisObject object, AnalysisField field, AnalysisUniverse universe) {
-        return new UnifiedFieldTypeStore(field, object);
+        return new UnifiedFieldTypeStore(field, object, new ContextInsensitiveFieldTypeFlow(field, field.getType(), object));
     }
 
     @Override

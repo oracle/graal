@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -152,7 +152,7 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
             }
             List<ExecutableElement> constructors = GeneratorUtils.findUserConstructors(second.asType());
             first.getEnclosedElements().addAll(NodeFactoryFactory.createFactoryMethods(node, constructors));
-            ElementUtils.setVisibility(first.getModifiers(), ElementUtils.getVisibility(node.getTemplateType().getModifiers()));
+            ElementUtils.setVisibility(first.getModifiers(), node.getVisibility());
 
             return first;
         }
@@ -160,7 +160,7 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
 
     private static CodeTypeElement createContainer(NodeData node) {
         CodeTypeElement container;
-        Modifier visibility = ElementUtils.getVisibility(node.getTemplateType().getModifiers());
+        Modifier visibility = node.getVisibility();
         String containerName = NodeFactoryFactory.factoryClassName(node.getTemplateType());
         container = GeneratorUtils.createClass(node, null, modifiers(), containerName, null);
         if (visibility != null) {
@@ -272,7 +272,7 @@ public class NodeCodeGenerator extends CodeTypeElementFactory<NodeData> {
         }
 
         CodeTypeElement type = GeneratorUtils.createClass(node, null, modifiers(FINAL), createNodeTypeName(node.getTemplateType()), node.getTemplateType().asType());
-        ElementUtils.setVisibility(type.getModifiers(), ElementUtils.getVisibility(node.getTemplateType().getModifiers()));
+        ElementUtils.setVisibility(type.getModifiers(), node.getVisibility());
         if (node.hasErrors()) {
             generateErrorNode(context, node, type);
             return Arrays.asList(type);

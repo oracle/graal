@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1030,6 +1030,11 @@ public class GraphUtil {
         }
 
         @Override
+        public boolean trySinkWriteFences() {
+            return false;
+        }
+
+        @Override
         public Assumptions getAssumptions() {
             return assumptions;
         }
@@ -1284,4 +1289,38 @@ public class GraphUtil {
         }
         return null;
     }
+
+    /**
+     * Find the last, i.e. dominating, {@link StateSplit} node that returns {@code true} for
+     * {@link StateSplit#hasSideEffect()} and return its {@link StateSplit#stateAfter()}. That is
+     * the {@link FrameState} node describing the current frame since no {@linkplain StateSplit side
+     * effect} happened in between.
+     *
+     * This method will check Graal's invariant relations regarding side-effects and framestates.
+     */
+    public static FrameState findLastFrameState(FixedNode start) {
+        GraalError.guarantee(start.graph().getGuardsStage().areFrameStatesAtSideEffects(), "Framestates must be at side effects when looking for state split nodes");
+        assert start != null;
+        FixedNode lastFixedNode = null;
+        FixedNode currentStart = start;
+        while (true) {
+            for (FixedNode fixed : GraphUtil.predecessorIterable(currentStart)) {
+                if (fixed instanceof StateSplit) {
+                    StateSplit stateSplit = (StateSplit) fixed;
+                    GraalError.guarantee(!stateSplit.hasSideEffect() || stateSplit.stateAfter() != null, "Found state split with side-effect without framestate=%s", stateSplit);
+                    if (stateSplit.stateAfter() != null) {
+                        return stateSplit.stateAfter();
+                    }
+                }
+                lastFixedNode = fixed;
+            }
+            if (lastFixedNode instanceof LoopBeginNode) {
+                currentStart = ((LoopBeginNode) lastFixedNode).forwardEnd();
+                continue;
+            }
+            break;
+        }
+        return null;
+    }
+
 }

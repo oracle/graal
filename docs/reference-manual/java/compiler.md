@@ -76,7 +76,7 @@ This is enabled with `-Dgraal.CompilationFailureAction=Diagnose`.
 The default location of the diagnostics output is in `graal_dumps/` under the current working directory of the process but can be changed with the `-Dgraal.DumpPath` option.
 During the VM shutdown, the location of the archive containing the diagnostic data is printed to the console.
 
-Furthermore, diagnostic data can be produced for any compilation performed by the GraalVM compiler with the `-Dgraal.Dump` option.
+Furthermore, diagnostic data can be produced for any compilation performed by the Graal compiler with the `-Dgraal.Dump` option.
 This will produce diagnostic data for every method compiled by the compiler.
 To refine the set of methods for which diagnostic data is produced, use the `-Dgraal.MethodFilter=<class>.<method>` option.
 For example, `-Dgraal.MethodFilter=java.lang.String.*,HashMap.get` will produce diagnostic data only for methods in the `java.lang.String` class as well as methods named `get` in a class whose non-qualified name is `HashMap`.

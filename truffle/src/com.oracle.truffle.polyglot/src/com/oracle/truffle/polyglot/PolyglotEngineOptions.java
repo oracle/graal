@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,14 +40,14 @@
  */
 package com.oracle.truffle.polyglot;
 
+import java.util.function.Function;
+
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
-
-import com.oracle.truffle.api.Option;
 import org.graalvm.options.OptionType;
 
-import java.util.function.Function;
+import com.oracle.truffle.api.Option;
 
 @Option.Group(PolyglotEngineImpl.OPTION_GROUP_ENGINE)
 final class PolyglotEngineOptions {
@@ -61,7 +61,7 @@ final class PolyglotEngineOptions {
      * When the option is set the exceptions thrown by instruments are propagated rather than logged
      * into err.
      */
-    @Option(name = INSTRUMENT_EXCEPTIONS_ARE_THROWN_NAME, category = OptionCategory.INTERNAL, help = "Propagates exceptions thrown by instruments.")//
+    @Option(name = INSTRUMENT_EXCEPTIONS_ARE_THROWN_NAME, category = OptionCategory.INTERNAL, help = "Propagates exceptions thrown by instruments. (default: true)", usageSyntax = "true|false")//
     static final OptionKey<Boolean> InstrumentExceptionsAreThrown = new OptionKey<>(true);
 
     @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "Propagates cancel execution exception into UncaughtExceptionHandler. " +
@@ -77,8 +77,8 @@ final class PolyglotEngineOptions {
     static final OptionKey<Boolean> UseConservativeContextReferences = new OptionKey<>(false);
 
     @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "Enables specialization statistics for nodes generated with Truffle DSL and prints the result on exit. " +
-                    "In order for this flag to be functional -Atruffle.dsl.GenerateSpecializationStatistics=true needs to be set at build time." + //
-                    "Enabling this flag and the compiler option has major implications on the performance and footprint of the interpreter." + //
+                    "In order for this flag to be functional -Atruffle.dsl.GenerateSpecializationStatistics=true needs to be set at build time. " + //
+                    "Enabling this flag and the compiler option has major implications on the performance and footprint of the interpreter. " + //
                     "Do not use in production environments.")//
     static final OptionKey<Boolean> SpecializationStatistics = new OptionKey<>(false);
 
@@ -93,15 +93,15 @@ final class PolyglotEngineOptions {
     static final OptionKey<Boolean> SafepointALot = new OptionKey<>(false);
 
     @Option(category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, help = "" +
-                    "Prints the stack trace for all threads for a time interval. By default 0, which disables the output.")//
+                    "Prints the stack trace for all threads for a time interval. By default 0, which disables the output.", usageSyntax = "[1, inf)")//
     static final OptionKey<Long> TraceStackTraceInterval = new OptionKey<>(0L);
 
     @Option(category = OptionCategory.USER, stability = OptionStability.STABLE, help = "" +
-                    "Print warning when the engine is using a default Truffle runtime.")//
+                    "Print warning when the engine is using a default Truffle runtime (default: true).", usageSyntax = "true|false")//
     static final OptionKey<Boolean> WarnInterpreterOnly = new OptionKey<>(true);
 
     @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "" +
-                    "Use pre-initialized context when it's available.")//
+                    "Use pre-initialized context when it's available (default: true).", usageSyntax = "true|false")//
     static final OptionKey<Boolean> UsePreInitializedContext = new OptionKey<>(true);
 
     @Option(category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, help = "" +
@@ -127,7 +127,7 @@ final class PolyglotEngineOptions {
     }
 
     @Option(category = OptionCategory.INTERNAL, stability = OptionStability.EXPERIMENTAL, help = "" +
-                    "Set the storage strategy used by the Static Object Model. Accepted values are: ['default', 'array-based', 'field-based']")//
+                    "Set the storage strategy used by the Static Object Model. Accepted values are: ['default', 'array-based', 'field-based']", usageSyntax = "default|array-based|field-based")//
     static final OptionKey<StaticObjectStorageStrategies> StaticObjectStorageStrategy = new OptionKey<>(StaticObjectStorageStrategies.DEFAULT,
                     new OptionType<>("strategy", new Function<String, StaticObjectStorageStrategies>() {
                         @Override

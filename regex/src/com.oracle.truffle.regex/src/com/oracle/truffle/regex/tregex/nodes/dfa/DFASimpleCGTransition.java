@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,10 +50,14 @@ import com.oracle.truffle.regex.tregex.nfa.NFAStateTransition;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
+import com.oracle.truffle.regex.util.EmptyArrays;
 
 public final class DFASimpleCGTransition implements JsonConvertible {
 
-    private static final byte[] EMPTY_ARRAY = {};
+    private static final byte[] EMPTY_ARRAY = EmptyArrays.BYTE;
+    /**
+     * Separate object because this is used as a marker value!
+     */
     private static final byte[] FULL_CLEAR_ARRAY = {};
 
     private static final DFASimpleCGTransition EMPTY_INSTANCE = new DFASimpleCGTransition(EMPTY_ARRAY, EMPTY_ARRAY, -1);

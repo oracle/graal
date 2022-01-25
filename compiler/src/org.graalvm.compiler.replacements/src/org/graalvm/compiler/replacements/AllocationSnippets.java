@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,8 +40,6 @@ import org.graalvm.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
-
-import jdk.vm.ci.code.MemoryBarriers;
 
 /**
  * Snippets used for implementing NEW, ANEWARRAY and NEWARRAY.
@@ -279,7 +277,7 @@ public abstract class AllocationSnippets implements Snippets {
             fillWithGarbage(memory, headerSize, size, constantSize, false, false, snippetCounters);
         }
         if (emitMemoryBarrier) {
-            MembarNode.memoryBarrier(MemoryBarriers.STORE_STORE, LocationIdentity.init());
+            MembarNode.memoryBarrier(MembarNode.FenceKind.ALLOCATION_INIT, LocationIdentity.init());
         }
         return memory.toObjectNonNull();
     }
@@ -309,7 +307,7 @@ public abstract class AllocationSnippets implements Snippets {
             fillWithGarbage(memory, fillStartOffset, allocationSize, false, maybeUnroll, supportsOptimizedFilling, snippetCounters);
         }
         if (emitMemoryBarrier) {
-            MembarNode.memoryBarrier(MemoryBarriers.STORE_STORE, LocationIdentity.init());
+            MembarNode.memoryBarrier(MembarNode.FenceKind.ALLOCATION_INIT, LocationIdentity.init());
         }
         return memory.toObjectNonNull();
     }

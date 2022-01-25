@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -4809,7 +4809,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
         if (resolvedField.getDeclaringClass().getName().equals("Ljava/lang/ref/Reference;") && resolvedField.getName().equals("referent")) {
             LocationIdentity referentIdentity = new FieldLocationIdentity(resolvedField);
-            append(new MembarNode(0, referentIdentity));
+            append(new MembarNode(MembarNode.FenceKind.NONE, referentIdentity));
         }
 
         JavaKind fieldKind = resolvedField.getJavaKind();

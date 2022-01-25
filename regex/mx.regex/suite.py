@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -88,13 +88,18 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "truffle:TRUFFLE_API",
+        "truffle:ICU4J",
+      ],
+      "requires" : [
+        "java.logging",
+        "jdk.unsupported", # sun.misc.Unsafe
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "exports" : [
         "com.oracle.truffle.regex.chardata",
       ],
       "checkstyleVersion" : "8.36.1",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "Truffle,Regex",
       "spotbugsIgnoresGenerated" : True,
     },
@@ -112,7 +117,7 @@ suite = {
         "mx:JMH_1_21",
       ],
       "checkstyle" : "com.oracle.truffle.regex",
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "workingSets" : "Truffle,Regex",
     },
   },

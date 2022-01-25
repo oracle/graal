@@ -43,8 +43,10 @@ package com.oracle.truffle.sl.builtins;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLNull;
 
@@ -55,8 +57,9 @@ import com.oracle.truffle.sl.runtime.SLNull;
 public abstract class SLAddToHostClassPathBuiltin extends SLBuiltinNode {
 
     @Specialization
-    protected Object execute(String classPath) {
-        addToHostClassPath(classPath);
+    protected Object execute(TruffleString classPath,
+                    @Cached TruffleString.ToJavaStringNode toJavaStringNode) {
+        addToHostClassPath(toJavaStringNode.execute(classPath));
         return SLNull.SINGLETON;
     }
 

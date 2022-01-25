@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -154,6 +154,7 @@ public class TruffleTypes {
     public static final String GenerateAOT_Exclude_Name = "com.oracle.truffle.api.dsl.GenerateAOT.Exclude";
     public static final String GenerateAOT_Provider_Name = "com.oracle.truffle.api.dsl.GenerateAOT.Provider";
     public static final String GeneratedBy_Name = "com.oracle.truffle.api.dsl.GeneratedBy";
+    public static final String GeneratePackagePrivate_Name = "com.oracle.truffle.api.dsl.GeneratePackagePrivate";
     public static final String GenerateNodeFactory_Name = "com.oracle.truffle.api.dsl.GenerateNodeFactory";
     public static final String GenerateUncached_Name = "com.oracle.truffle.api.dsl.GenerateUncached";
     public static final String ImplicitCast_Name = "com.oracle.truffle.api.dsl.ImplicitCast";
@@ -193,6 +194,7 @@ public class TruffleTypes {
     public final DeclaredType GenerateAOT_Exclude = c.getDeclaredType(GenerateAOT_Exclude_Name);
     public final DeclaredType GenerateAOT_Provider = c.getDeclaredType(GenerateAOT_Provider_Name);
     public final DeclaredType GeneratedBy = c.getDeclaredType(GeneratedBy_Name);
+    public final DeclaredType GeneratePackagePrivate = c.getDeclaredType(GeneratePackagePrivate_Name);
     public final DeclaredType GenerateNodeFactory = c.getDeclaredType(GenerateNodeFactory_Name);
     public final DeclaredType GenerateUncached = c.getDeclaredType(GenerateUncached_Name);
     public final DeclaredType ImplicitCast = c.getDeclaredType(ImplicitCast_Name);

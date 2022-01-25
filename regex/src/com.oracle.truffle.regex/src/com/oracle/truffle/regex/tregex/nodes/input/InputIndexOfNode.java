@@ -43,7 +43,10 @@ package com.oracle.truffle.regex.tregex.nodes.input;
 import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.regex.tregex.string.Encodings;
+import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 
 public abstract class InputIndexOfNode extends Node {
 
@@ -51,23 +54,36 @@ public abstract class InputIndexOfNode extends Node {
         return InputIndexOfNodeGen.create();
     }
 
-    public abstract int execute(Object input, int fromIndex, int maxIndex, Object chars);
+    public abstract int execute(Object input, int fromIndex, int maxIndex, Object chars, Encoding encoding);
 
     @Specialization
-    public int doBytes(byte[] input, int fromIndex, int maxIndex, byte[] bytes) {
+    public int doBytes(byte[] input, int fromIndex, int maxIndex, byte[] bytes, @SuppressWarnings("unused") Encoding encoding) {
         return ArrayUtils.indexOf(input, fromIndex, maxIndex, bytes);
     }
 
     @Specialization
-    public int doChars(String input, int fromIndex, int maxIndex, char[] chars) {
+    public int doChars(String input, int fromIndex, int maxIndex, char[] chars, @SuppressWarnings("unused") Encoding encoding) {
         return ArrayUtils.indexOf(input, fromIndex, maxIndex, chars);
     }
 
+    @Specialization
+    public int doTStringBytes(TruffleString input, int fromIndex, int maxIndex, byte[] bytes, Encoding encoding,
+                    @Cached TruffleString.ByteIndexOfAnyByteNode indexOfRawValueNode) {
+        return indexOfRawValueNode.execute(input, fromIndex, maxIndex, bytes, encoding.getTStringEncoding());
+    }
+
+    @Specialization
+    public int doTStringChars(TruffleString input, int fromIndex, int maxIndex, char[] chars, Encoding encoding,
+                    @Cached TruffleString.CharIndexOfAnyCharUTF16Node indexOfRawValueNode) {
+        assert encoding == Encodings.UTF_16 || encoding == Encodings.UTF_16_RAW;
+        return indexOfRawValueNode.execute(input, fromIndex, maxIndex, chars);
+    }
+
     @Specialization(guards = "neitherByteArrayNorString(input)")
-    public int doTruffleObjBytes(Object input, int fromIndex, int maxIndex, byte[] bytes,
+    public int doTruffleObjBytes(Object input, int fromIndex, int maxIndex, byte[] bytes, Encoding encoding,
                     @Cached InputReadNode charAtNode) {
         for (int i = fromIndex; i < maxIndex; i++) {
-            int c = charAtNode.execute(input, i);
+            int c = charAtNode.execute(input, i, encoding);
             for (byte v : bytes) {
                 if (c == Byte.toUnsignedInt(v)) {
                     return i;
@@ -78,10 +94,10 @@ public abstract class InputIndexOfNode extends Node {
     }
 
     @Specialization(guards = "neitherByteArrayNorString(input)")
-    public int doTruffleObjChars(Object input, int fromIndex, int maxIndex, char[] chars,
+    public int doTruffleObjChars(Object input, int fromIndex, int maxIndex, char[] chars, Encoding encoding,
                     @Cached InputReadNode charAtNode) {
         for (int i = fromIndex; i < maxIndex; i++) {
-            int c = charAtNode.execute(input, i);
+            int c = charAtNode.execute(input, i, encoding);
             for (char v : chars) {
                 if (c == v) {
                     return i;
@@ -92,6 +108,6 @@ public abstract class InputIndexOfNode extends Node {
     }
 
     protected static boolean neitherByteArrayNorString(Object obj) {
-        return !(obj instanceof byte[]) && !(obj instanceof String);
+        return !(obj instanceof byte[]) && !(obj instanceof String) && !(obj instanceof TruffleString);
     }
 }

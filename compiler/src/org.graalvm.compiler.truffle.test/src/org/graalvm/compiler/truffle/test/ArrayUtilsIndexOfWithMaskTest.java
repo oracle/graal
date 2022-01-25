@@ -25,6 +25,7 @@
 package org.graalvm.compiler.truffle.test;
 
 import static com.oracle.truffle.api.test.ArrayUtilsTest.toByteArray;
+import static com.oracle.truffle.api.test.ArrayUtilsTest.toCharArray;
 
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
@@ -84,7 +85,7 @@ public class ArrayUtilsIndexOfWithMaskTest extends GraalCompilerTest {
     }
 
     public static int indexOfWithORMaskCharArray(String haystack, int fromIndex, int maxIndex, String needle, String mask) {
-        return ArrayUtils.indexOfWithOrMask(haystack.toCharArray(), fromIndex, maxIndex, needle.toCharArray(), mask.toCharArray());
+        return ArrayUtils.indexOfWithOrMask(haystack.toCharArray(), fromIndex, maxIndex, needle.toCharArray(), toCharArray(mask));
     }
 
     public static int indexOfWithORMaskString(String haystack, int fromIndex, int maxIndex, String needle, String mask) {

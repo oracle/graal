@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 import com.oracle.truffle.regex.tregex.string.Encodings.Encoding.UTF16;
@@ -342,6 +343,10 @@ public abstract class TRegexExecutorNode extends Node {
         return root.getNumberOfCaptureGroups();
     }
 
+    public boolean isBooleanMatch() {
+        return root.isBooleanMatch();
+    }
+
     public abstract boolean isForward();
 
     /**
@@ -351,6 +356,6 @@ public abstract class TRegexExecutorNode extends Node {
 
     public abstract TRegexExecutorLocals createLocals(Object input, int fromIndex, int index, int maxIndex);
 
-    public abstract Object execute(TRegexExecutorLocals locals, boolean compactString);
+    public abstract Object execute(TRegexExecutorLocals locals, TruffleString.CodeRange codeRange, boolean tString);
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -97,6 +97,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
+import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.Frame;
@@ -617,6 +618,16 @@ final class EngineAccessor extends Accessor {
         public boolean isNativeAccessAllowed(Object polyglotLanguageContext, TruffleLanguage.Env env) {
             PolyglotLanguageContext context = (PolyglotLanguageContext) polyglotLanguageContext;
             return context.context.config.nativeAccessAllowed;
+        }
+
+        @Override
+        public boolean isCurrentNativeAccessAllowed(Node node) {
+            PolyglotContextImpl context = PolyglotFastThreadLocals.getContext(PolyglotFastThreadLocals.resolveLayer(node));
+            if (context == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw new IllegalStateException("No current context entered.");
+            }
+            return context.config.nativeAccessAllowed;
         }
 
         @Override
@@ -1571,13 +1582,42 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public Object getGuestToHostCodeCache(Object polyglotContextImpl) {
-            return ((PolyglotContextImpl) polyglotContextImpl).getHostContext().getLanguageInstance().guestToHostCodeCache;
+        public boolean getNeedsAllEncodings() {
+            return LanguageCache.getNeedsAllEncodings();
         }
 
         @Override
-        public void setGuestToHostCodeCache(Object polyglotContextImpl, Object cache) {
-            ((PolyglotContextImpl) polyglotContextImpl).getHostContext().getLanguageInstance().guestToHostCodeCache = cache;
+        public boolean requireLanguageWithAllEncodings(Object encoding) {
+            PolyglotContextImpl context = PolyglotFastThreadLocals.getContext(null);
+            if (context == null) {
+                // we cannot really check this without an entered context.
+                return true;
+            }
+
+            boolean needsAllEncodingsFound = false;
+            for (PolyglotLanguage language : context.engine.languages) {
+                if (language != null && !language.isFirstInstance() && language.cache.isNeedsAllEncodings()) {
+                    needsAllEncodingsFound = true;
+                    break;
+                }
+            }
+            if (!needsAllEncodingsFound) {
+                throw new AssertionError(String.format(
+                                "The encoding %s for a new TruffleString was requested but was not configured by any language. " +
+                                                "In order to use this encoding configure your language using %s.%s(...needsAllEncodings=true).",
+                                encoding, TruffleLanguage.class.getSimpleName(), Registration.class.getSimpleName()));
+            }
+            return true;
+        }
+
+        @Override
+        public Object getGuestToHostCodeCache(Object polyglotContextImpl) {
+            return ((PolyglotContextImpl) polyglotContextImpl).getHostContext().getLanguageInstance().getGuestToHostCodeCache();
+        }
+
+        @Override
+        public Object installGuestToHostCodeCache(Object polyglotContextImpl, Object cache) {
+            return ((PolyglotContextImpl) polyglotContextImpl).getHostContext().getLanguageInstance().installGuestToHostCodeCache(cache);
         }
     }
 

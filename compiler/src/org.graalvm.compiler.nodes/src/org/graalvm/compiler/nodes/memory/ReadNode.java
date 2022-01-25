@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,6 +31,7 @@ import static org.graalvm.compiler.nodes.NamedLocationIdentity.ARRAY_LENGTH_LOCA
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugCloseable;
@@ -68,7 +69,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  * Reads an {@linkplain FixedAccessNode accessed} value.
  */
 @NodeInfo(nameTemplate = "Read#{p#location/s}", cycles = CYCLES_2, size = SIZE_1)
-public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess, Canonicalizable, Virtualizable, GuardingNode {
+public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess, Canonicalizable, Virtualizable, GuardingNode, OrderedMemoryAccess {
 
     public static final NodeClass<ReadNode> TYPE = NodeClass.create(ReadNode.class);
 
@@ -209,5 +210,10 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess,
     @Override
     public Stamp getAccessStamp(NodeView view) {
         return stamp(view);
+    }
+
+    @Override
+    public MemoryOrderMode getMemoryOrder() {
+        return MemoryOrderMode.PLAIN;
     }
 }

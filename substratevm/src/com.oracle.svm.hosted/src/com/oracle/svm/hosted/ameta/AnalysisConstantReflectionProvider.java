@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordBase;
 
+import com.oracle.graal.pointsto.heap.value.ValueSupplier;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -46,6 +47,7 @@ import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
+import com.oracle.svm.hosted.meta.HostedMetaAccess;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -102,6 +104,42 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
         return interceptValue(field, value);
     }
 
+    /** Read the field value and wrap it in a value supplier without performing any replacements. */
+    public ValueSupplier<JavaConstant> readHostedFieldValue(AnalysisField field, HostedMetaAccess hMetaAccess, JavaConstant receiver) {
+        if (classInitializationSupport.shouldInitializeAtRuntime(field.getDeclaringClass())) {
+            if (field.isStatic()) {
+                return ValueSupplier.eagerValue(readUninitializedStaticValue(field));
+            } else {
+                /*
+                 * Classes that are initialized at run time must not have instances in the image
+                 * heap. Invoking instance methods would miss the class initialization checks. Image
+                 * generation should have been aborted earlier with a user-friendly message, this is
+                 * just a safeguard.
+                 */
+                throw VMError.shouldNotReachHere("Cannot read instance field of a class that is initialized at run time: " + field.format("%H.%n"));
+            }
+        }
+
+        if (field.wrapped instanceof ReadableJavaField) {
+            ReadableJavaField readableField = (ReadableJavaField) field.wrapped;
+            if (readableField.isValueAvailableBeforeAnalysis()) {
+                /* Materialize and return the value. */
+                return ValueSupplier.eagerValue(universe.lookup(readableField.readValue(metaAccess, receiver)));
+            } else {
+                /*
+                 * Return a lazy value. This applies to RecomputeFieldValue.Kind.FieldOffset and
+                 * RecomputeFieldValue.Kind.Custom. The value becomes available during hosted
+                 * universe building and is installed by calling
+                 * ComputedValueField.processSubstrate() or by ComputedValueField.readValue().
+                 * Attempts to materialize the value earlier will result in an error.
+                 */
+                return ValueSupplier.lazyValue(() -> universe.lookup(readableField.readValue(hMetaAccess, receiver)),
+                                readableField::isValueAvailable);
+            }
+        }
+        return ValueSupplier.eagerValue(universe.lookup(originalConstantReflection.readFieldValue(field.wrapped, receiver)));
+    }
+
     /*
      * Static fields of classes that are initialized at run time have the default (uninitialized)
      * value in the image heap. But there is one important exception:
@@ -126,7 +164,8 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
      * pretty likely (although not guaranteed) that we are not returning an unintended value for a
      * class that is re-initialized at run time.
      */
-    private static JavaConstant readUninitializedStaticValue(AnalysisField field) {
+    public JavaConstant readUninitializedStaticValue(AnalysisField field) {
+        assert classInitializationSupport.shouldInitializeAtRuntime(field.getDeclaringClass());
         JavaKind kind = field.getJavaKind();
 
         boolean canHaveConstantValueAttribute = kind.isPrimitive() || field.getType().getName().equals("Ljava/lang/String;");
@@ -177,7 +216,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
                 assert value == null || value instanceof String : "String is currently the only specified object type for the ConstantValue class file attribute";
                 return SubstrateObjectConstant.forObject(value);
             default:
-                throw VMError.shouldNotReachHere();
+                throw AnalysisError.shouldNotReachHere();
         }
     }
 
@@ -269,7 +308,8 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
             if (obj instanceof DynamicHub) {
                 return getHostVM().lookupType((DynamicHub) obj);
             } else if (obj instanceof Class) {
-                throw VMError.shouldNotReachHere("Must not have java.lang.Class object: " + obj);
+                // TODO do we need to make sure the hub is scanned?
+                return metaAccess.lookupJavaType((Class<?>) obj);
             }
         }
         return null;

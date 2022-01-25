@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1069,6 +1069,19 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     protected StructuredGraph parseForCompile(ResolvedJavaMethod method, CompilationIdentifier compilationId, OptionValues options) {
         return parseEager(method, AllowAssumptions.YES, compilationId, options);
+    }
+
+    /**
+     * Set {@code stableDimension} of all array constants in the graph to {@code 1}.
+     */
+    protected StructuredGraph makeAllArraysStable(StructuredGraph graph) {
+        for (ConstantNode constantNode : graph.getNodes().filter(ConstantNode.class).snapshot()) {
+            if (getConstantReflection().readArrayLength(constantNode.asJavaConstant()) != null && constantNode.getStableDimension() < 1) {
+                ConstantNode newConstantNode = graph.unique(ConstantNode.forConstant(constantNode.asJavaConstant(), 1, true, getMetaAccess()));
+                constantNode.replaceAndDelete(newConstantNode);
+            }
+        }
+        return graph;
     }
 
     /**

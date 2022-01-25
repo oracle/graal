@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.regex.tregex.nodes.dfa;
 
+import static com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
+
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -51,6 +53,7 @@ import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorLocals;
 import com.oracle.truffle.regex.tregex.nodes.TRegexExecutorNode;
 import com.oracle.truffle.regex.tregex.nodes.input.InputIndexOfNode;
 import com.oracle.truffle.regex.tregex.nodes.input.InputIndexOfStringNode;
+import com.oracle.truffle.regex.tregex.parser.ast.InnerLiteral;
 import com.oracle.truffle.regex.tregex.string.AbstractString;
 import com.oracle.truffle.regex.tregex.util.DebugUtil;
 import com.oracle.truffle.regex.tregex.util.json.Json;
@@ -61,12 +64,12 @@ public class DFAStateNode extends DFAAbstractStateNode {
 
     /**
      * This node is used when all except a very small set of code points will loop back to the
-     * current DFA state. This node's {@link #execute(Object, int, int)} method will search for the
-     * given small set of code points in an optimized, possibly vectorized loop.
+     * current DFA state. This node's {@link #execute(Object, int, int, Encoding, boolean)} method
+     * will search for the given small set of code points in an optimized, possibly vectorized loop.
      */
     public abstract static class LoopOptimizationNode extends Node {
 
-        public abstract int execute(Object input, int preLoopIndex, int maxIndex);
+        public abstract int execute(Object input, int preLoopIndex, int maxIndex, Encoding encoding, boolean tString);
 
         public abstract int encodedLength();
 
@@ -107,8 +110,8 @@ public class DFAStateNode extends DFAAbstractStateNode {
         }
 
         @Override
-        public int execute(Object input, int fromIndex, int maxIndex) {
-            return getIndexOfNode().execute(input, fromIndex, maxIndex, chars);
+        public int execute(Object input, int fromIndex, int maxIndex, Encoding encoding, boolean tString) {
+            return getIndexOfNode().execute(input, fromIndex, maxIndex, chars, encoding);
         }
 
         @Override
@@ -133,8 +136,8 @@ public class DFAStateNode extends DFAAbstractStateNode {
         }
 
         @Override
-        public int execute(Object input, int fromIndex, int maxIndex) {
-            return getIndexOfNode().execute(input, fromIndex, maxIndex, bytes);
+        public int execute(Object input, int fromIndex, int maxIndex, Encoding encoding, boolean tString) {
+            return getIndexOfNode().execute(input, fromIndex, maxIndex, bytes, encoding);
         }
 
         @Override
@@ -148,28 +151,28 @@ public class DFAStateNode extends DFAAbstractStateNode {
      */
     public static final class LoopOptIndexOfStringNode extends LoopOptimizationNode {
 
-        private final AbstractString str;
-        private final AbstractString mask;
+        private final int literalLength;
+        private final InnerLiteral literal;
         @Child private InputIndexOfStringNode indexOfNode;
 
         public LoopOptIndexOfStringNode(AbstractString str, AbstractString mask) {
-            this.str = str;
-            this.mask = mask;
+            this.literalLength = str.encodedLength();
+            this.literal = new InnerLiteral(str, mask, 0);
         }
 
         private LoopOptIndexOfStringNode(LoopOptIndexOfStringNode copy) {
-            this.str = copy.str;
-            this.mask = copy.mask;
+            this.literalLength = copy.literalLength;
+            this.literal = copy.literal;
         }
 
         @Override
-        public int execute(Object input, int fromIndex, int maxIndex) {
-            return getIndexOfNode().execute(input, fromIndex, maxIndex, str.content(), mask == null ? null : mask.content());
+        public int execute(Object input, int fromIndex, int maxIndex, Encoding encoding, boolean tString) {
+            return getIndexOfNode().execute(input, fromIndex, maxIndex, literal.getLiteralContent(tString), literal.getMaskContent(tString), encoding);
         }
 
         @Override
         public int encodedLength() {
-            return str.encodedLength();
+            return literalLength;
         }
 
         @Override
@@ -299,12 +302,13 @@ public class DFAStateNode extends DFAAbstractStateNode {
     }
 
     /**
-     * Gets called after every call to {@link LoopOptimizationNode#execute(Object, int, int)}, which
-     * we call an {@code indexOf}-operation.
+     * Gets called after every call to
+     * {@link LoopOptimizationNode#execute(Object, int, int, Encoding, boolean)}, which we call an
+     * {@code indexOf}-operation.
      *
      * @param preLoopIndex the starting index of the {@code indexOf}-operation.
-     * @param postLoopIndex the index found by the {@code indexOf}-operation. If the
-     *            {@code indexOf}-operation did not find a match, this value is equal to
+     * @param postLoopIndex the index found by the {@code indexOf}-operation. If the {@code indexOf}
+     *            -operation did not find a match, this value is equal to
      *            {@link TRegexDFAExecutorLocals#getMaxIndex()}.
      */
     void afterIndexOf(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor, final int preLoopIndex, int postLoopIndex) {

@@ -493,7 +493,7 @@ public final class GraalFeature implements Feature {
         for (CallTreeNode node : methods.values()) {
             methodsToCompileArr[idx++] = objectReplacer.createMethod(node.implementationMethod);
         }
-        if (GraalSupport.setMethodsToCompile(methodsToCompileArr)) {
+        if (GraalSupport.setMethodsToCompile(config, methodsToCompileArr)) {
             config.requireAnalysisIteration();
         }
 
@@ -503,11 +503,11 @@ public final class GraalFeature implements Feature {
         for (NodeClass<?> nodeClass : nodeClasses) {
             metaAccess.lookupJavaType(nodeClass.getClazz()).registerAsAllocated(null);
         }
-        if (GraalSupport.setGraphEncoding(graphEncoder.getEncoding(), graphEncoder.getObjects(), nodeClasses)) {
+        if (GraalSupport.setGraphEncoding(config, graphEncoder.getEncoding(), graphEncoder.getObjects(), nodeClasses)) {
             config.requireAnalysisIteration();
         }
 
-        if (objectReplacer.updateDataDuringAnalysis(config.getMetaAccess())) {
+        if (objectReplacer.updateDataDuringAnalysis()) {
             config.requireAnalysisIteration();
         }
     }
@@ -727,9 +727,9 @@ public final class GraalFeature implements Feature {
         }
 
         ProgressReporter.singleton().setGraphEncodingByteLength(graphEncoder.getEncoding().length);
-        GraalSupport.setGraphEncoding(graphEncoder.getEncoding(), graphEncoder.getObjects(), graphEncoder.getNodeClasses());
+        GraalSupport.setGraphEncoding(config, graphEncoder.getEncoding(), graphEncoder.getObjects(), graphEncoder.getNodeClasses());
 
-        objectReplacer.updateDataDuringAnalysis((AnalysisMetaAccess) hMetaAccess.getWrapped());
+        objectReplacer.updateDataDuringAnalysis();
     }
 
     private static void removeUnreachableInvokes(CallTreeNode node) {

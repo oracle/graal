@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1418,6 +1418,12 @@ public final class Value extends AbstractValue {
      * any Number subclass including {@link BigInteger} or {@link BigDecimal}. It is recommended to
      * cast to {@link Number} and then convert to a Java primitive like with
      * {@link Number#longValue()}.
+     * <li>If the value has {@link #hasArrayElements() array elements} and it has an
+     * {@link Value#getArraySize() array size} that is smaller or equal than
+     * {@link Integer#MAX_VALUE} then the result value will implement {@link List}. Every array
+     * element of the value maps to one list element. The size of the returned list maps to the
+     * array size of the value. The returned value may also implement {@link Function} if the value
+     * can be {@link #canExecute() executed} or {@link #canInstantiate() instantiated}.
      * <li>If the value has {@link #hasHashEntries() hash entries} then the result value will
      * implement {@link Map}. The {@link Map#size() size} of the returned {@link Map} is equal to
      * the {@link #getHashSize() hash entries count}. The returned value may also implement
@@ -1428,12 +1434,6 @@ public final class Value extends AbstractValue {
      * using {@link String} keys. The {@link Map#size() size} of the returned {@link Map} is equal
      * to the count of all members. The returned value may also implement {@link Function} if the
      * value can be {@link #canExecute() executed} or {@link #canInstantiate() instantiated}.
-     * <li>If the value has {@link #hasArrayElements() array elements} and it has an
-     * {@link Value#getArraySize() array size} that is smaller or equal than
-     * {@link Integer#MAX_VALUE} then the result value will implement {@link List}. Every array
-     * element of the value maps to one list element. The size of the returned list maps to the
-     * array size of the value. The returned value may also implement {@link Function} if the value
-     * can be {@link #canExecute() executed} or {@link #canInstantiate() instantiated}.
      * <li>If the value has an {@link #hasIterator()} iterator} then the result value will implement
      * {@link Iterable}. The returned value may also implement {@link Function} if the value can be
      * {@link #canExecute() executed} or {@link #canInstantiate() instantiated}.
@@ -1444,8 +1444,9 @@ public final class Value extends AbstractValue {
      * instantiated} then the result value implements {@link Function Function}. By default the
      * argument of the function will be used as single argument to the function when executed. If a
      * value of type {@link Object Object[]} is provided then the function will be executed with
-     * those arguments. The returned function may also implement {@link Map} if the value has
-     * {@link #hasArrayElements() array elements} or {@link #hasMembers() members}.
+     * those arguments. The returned function may also implement {@link List} or {@link Map} if the
+     * value has {@link #hasArrayElements() array elements} or {@link #hasMembers() members},
+     * respectively.
      * <li>If none of the above rules apply then this {@link Value} instance is returned.
      * </ol>
      * Returned {@link #isHostObject() host objects}, {@link String}, {@link Number},

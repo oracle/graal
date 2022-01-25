@@ -38,7 +38,6 @@ import static org.graalvm.word.WordFactory.signed;
 
 import java.util.concurrent.ThreadLocalRandom;
 
-import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.StackValue;
@@ -70,8 +69,6 @@ import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Fcntl;
 import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.util.PointerUtils;
-
-import jdk.vm.ci.code.MemoryBarriers;
 
 @AutomaticFeature
 class LinuxImageHeapProviderFeature implements Feature {
@@ -140,7 +137,9 @@ public class LinuxImageHeapProvider extends AbstractImageHeapProvider {
          */
         if (fd.equal(UNASSIGNED_FD) || firstIsolate) {
             int opened = openImageFile();
-            MembarNode.memoryBarrier(MemoryBarriers.STORE_STORE);
+            /*
+             * Pointer cas operations are volatile accesses and prevent code reorderings.
+             */
             SignedWord previous = ((Pointer) CACHED_IMAGE_FD.get()).compareAndSwapWord(0, fd, signed(opened), LocationIdentity.ANY_LOCATION);
             if (previous.equal(fd)) {
                 fd = signed(opened);

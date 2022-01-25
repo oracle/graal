@@ -34,12 +34,15 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
     setup+: [
       ['cd', base.suite_name],
     ],
+    guard : {
+      excludes : ["**.md", "<graal>/**.md"]
+    },
   },
 
   linux: self.common + sulong_deps.linux + {
     packages+: {
       '00:devtoolset': '==7', # GCC 7.3.1, make 4.2.1, binutils 2.28, valgrind 3.13.0
-      '01:binutils': '>=2.34',
+      '01:binutils': '==2.34',
       git: '>=1.8.3',
       'sys:cmake': '==3.15.2',
       ruby: "==2.6.5",

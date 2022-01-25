@@ -74,4 +74,8 @@ final class PolyglotInstrumentDispatch extends AbstractInstrumentDispatch {
         return ((PolyglotInstrument) receiver).lookup(type);
     }
 
+    @Override
+    public String getWebsite(Object receiver) {
+        return ((PolyglotInstrument) receiver).getWebsite();
+    }
 }

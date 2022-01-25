@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -38,6 +38,7 @@ import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.FloatConvert;
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.CastValue;
@@ -593,12 +594,21 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     }
 
     @Override
-    public Variable emitVolatileLoad(LIRKind lirKind, Value address, LIRFrameState state) {
-        AArch64Kind kind = (AArch64Kind) lirKind.getPlatformKind();
-        Variable result = getLIRGen().newVariable(getLIRGen().toRegisterKind(lirKind));
-        AArch64AddressValue loadAddress = getLIRGen().asAddressValue(address, kind.getSizeInBytes() * Byte.SIZE);
-        getLIRGen().append(new AArch64Move.VolatileLoadOp(kind, result, loadAddress, state));
-        return result;
+    public Variable emitOrderedLoad(LIRKind lirKind, Value address, LIRFrameState state, MemoryOrderMode memoryOrder) {
+        switch (memoryOrder) {
+            case OPAQUE:
+                // no fences are needed for opaque memory accesses
+                return emitLoad(lirKind, address, state);
+            case ACQUIRE:
+            case VOLATILE:
+                AArch64Kind kind = (AArch64Kind) lirKind.getPlatformKind();
+                Variable result = getLIRGen().newVariable(getLIRGen().toRegisterKind(lirKind));
+                AArch64AddressValue loadAddress = getLIRGen().asAddressValue(address, kind.getSizeInBytes() * Byte.SIZE);
+                getLIRGen().append(new AArch64Move.LoadAcquireOp(kind, result, loadAddress, state));
+                return result;
+            default:
+                throw GraalError.shouldNotReachHere("Unexpected memory order");
+        }
     }
 
     @Override
@@ -619,11 +629,22 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     }
 
     @Override
-    public void emitVolatileStore(ValueKind<?> lirKind, Value address, Value inputVal, LIRFrameState state) {
-        AArch64Kind kind = (AArch64Kind) lirKind.getPlatformKind();
-        AllocatableValue input = asAllocatable(inputVal);
-        AArch64AddressValue storeAddress = getLIRGen().asAddressValue(address, kind.getSizeInBytes() * Byte.SIZE);
-        getLIRGen().append(new AArch64Move.VolatileStoreOp(kind, storeAddress, input, state));
+    public void emitOrderedStore(ValueKind<?> lirKind, Value address, Value inputVal, LIRFrameState state, MemoryOrderMode memoryOrder) {
+        switch (memoryOrder) {
+            case OPAQUE:
+                // no fences are needed for opaque memory accesses
+                emitStore(lirKind, address, inputVal, state);
+                break;
+            case RELEASE:
+            case VOLATILE:
+                AArch64Kind kind = (AArch64Kind) lirKind.getPlatformKind();
+                AllocatableValue input = asAllocatable(inputVal);
+                AArch64AddressValue storeAddress = getLIRGen().asAddressValue(address, kind.getSizeInBytes() * Byte.SIZE);
+                getLIRGen().append(new AArch64Move.StoreReleaseOp(kind, storeAddress, input, state));
+                break;
+            default:
+                throw GraalError.shouldNotReachHere("Unexpected memory order");
+        }
     }
 
     @Override

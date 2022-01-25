@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,10 +24,6 @@
  */
 package org.graalvm.compiler.lir.aarch64;
 
-import static jdk.vm.ci.code.MemoryBarriers.LOAD_LOAD;
-import static jdk.vm.ci.code.MemoryBarriers.LOAD_STORE;
-import static jdk.vm.ci.code.MemoryBarriers.STORE_LOAD;
-import static jdk.vm.ci.code.MemoryBarriers.STORE_STORE;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.CONST;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
@@ -121,8 +117,30 @@ public class AArch64AtomicMove {
             /*
              * Determining whether acquire and/or release semantics are needed.
              */
-            boolean acquire = ((memoryOrder.postWriteBarriers & (STORE_LOAD | STORE_STORE)) != 0) || ((memoryOrder.postReadBarriers & (LOAD_LOAD | LOAD_STORE)) != 0);
-            boolean release = ((memoryOrder.preWriteBarriers & (LOAD_STORE | STORE_STORE)) != 0) || ((memoryOrder.preReadBarriers & (LOAD_LOAD | STORE_LOAD)) != 0);
+            boolean acquire;
+            boolean release;
+            switch (memoryOrder) {
+                case PLAIN:
+                case OPAQUE:
+                    acquire = false;
+                    release = false;
+                    break;
+                case ACQUIRE:
+                    acquire = true;
+                    release = false;
+                    break;
+                case RELEASE:
+                    acquire = false;
+                    release = true;
+                    break;
+                case RELEASE_ACQUIRE:
+                case VOLATILE:
+                    acquire = true;
+                    release = true;
+                    break;
+                default:
+                    throw GraalError.shouldNotReachHere();
+            }
 
             if (AArch64LIRFlags.useLSE(masm.target.arch)) {
                 masm.mov(Math.max(memAccessSize, 32), result, expected);

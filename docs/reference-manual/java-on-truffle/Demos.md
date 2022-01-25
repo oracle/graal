@@ -151,7 +151,7 @@ It is a REPL capable of evaluating Java code and consists of two parts:
 This design naturally fits the point we are trying to illustrate. We can build a native executable of the JShell's UI part, and make it include Java on Truffle to run the code dynamically specified at run time.
 
 Prerequisites:
-* [GraalVM 21.0](https://www.graalvm.org/downloads/)
+* [Latest GraalVM](https://www.graalvm.org/downloads/)
 * [Native Image](../native-image/README.md#install-native-image)
 * [Java on Truffle](README.md#install-java-on-truffle)
 

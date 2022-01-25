@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.regex.tregex.nodes.nfa;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.charset.CharMatchers;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.matchers.CharMatcher;
@@ -91,7 +92,7 @@ public final class TRegexLiteralLookAroundExecutorNode extends TRegexExecutorNod
 
     @ExplodeLoop
     @Override
-    public Object execute(TRegexExecutorLocals abstractLocals, boolean compactString) {
+    public Object execute(TRegexExecutorLocals abstractLocals, TruffleString.CodeRange codeRange, boolean tString) {
         TRegexBacktrackingNFAExecutorLocals locals = (TRegexBacktrackingNFAExecutorLocals) abstractLocals;
         for (int i = 0; i < matchers.length; i++) {
             if (!inputHasNext(locals) || !matchers[i].match(inputReadAndDecode(locals))) {

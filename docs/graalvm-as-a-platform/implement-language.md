@@ -166,7 +166,7 @@ Skipping the native image build because SL_BUILD_NATIVE is set to false.
 
 ## Run SimpleLanguage with the Newest (Developement) version of the Compiler
 
-To run SimpleLanguage with the development version of the GraalVM compiler we must build a GraalVM with that compiler.
+To run SimpleLanguage with the development version of the Graal compiler we must build a GraalVM with that compiler.
 Clone the `graal` repository (https://github.com/oracle/graal) and follow the instructions in the `vm/README.md` file to build a GraalVM.
 
 Once that's done, point `JAVA_HOME` to the newly built GraalVM and proceed with normal building and running of SimpleLanguage.
@@ -182,7 +182,7 @@ Assuming `JAVA_HOME` points to the GraalVM installation and that the current wor
 
 ```shell
 $JAVA_HOME/bin/java \
-    -cp launcher/target/launcher-21.3.0-SNAPSHOT.jar \
+    -cp launcher/target/launcher-22.0.0-SNAPSHOT.jar \
     -Dtruffle.class.path.append=language/target/simplelanguage.jar \
     com.oracle.truffle.sl.launcher.SLMain language/tests/Add.sl
 ```
@@ -217,6 +217,6 @@ Assuming `JAVA_HOME` points to a stock JDK installation, and that the current wo
 
 ```shell
 $JAVA_HOME/bin/java \
-    -cp graal-sdk-21.3.0.jar:truffle-api-21.3.0.jar:launcher/target/launcher-21.3.0-SNAPSHOT.jar:language/target/simplelanguage.jar \
+    -cp graal-sdk-22.0.0.jar:truffle-api-22.0.0.jar:launcher/target/launcher-22.0.0-SNAPSHOT.jar:language/target/simplelanguage.jar \
     com.oracle.truffle.sl.launcher.SLMain language/tests/Add.sl
 ```

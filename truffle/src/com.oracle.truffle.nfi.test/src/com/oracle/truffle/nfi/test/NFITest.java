@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,6 +53,7 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.nfi.api.SignatureLibrary;
 import com.oracle.truffle.tck.TruffleRunner;
 
 public class NFITest {
@@ -90,7 +91,7 @@ public class NFITest {
     private static final class LookupAndBindNode extends RootNode {
 
         @Child InteropLibrary libInterop = InteropLibrary.getFactory().createDispatched(5);
-        @Child InteropLibrary symInterop = InteropLibrary.getFactory().createDispatched(5);
+        @Child SignatureLibrary signatures = SignatureLibrary.getFactory().createDispatched(5);
 
         private LookupAndBindNode() {
             super(runWithPolyglot.getTestLanguage());
@@ -104,7 +105,7 @@ public class NFITest {
 
             try {
                 Object symbol = libInterop.readMember(library, symbolName);
-                return symInterop.invokeMember(symbol, "bind", signature);
+                return signatures.bind(signature, symbol);
             } catch (InteropException e) {
                 CompilerDirectives.transferToInterpreter();
                 throw new AssertionError(e);
@@ -179,7 +180,13 @@ public class NFITest {
         }
     }
 
+    protected static Object parseSignature(String signature) {
+        Source sigSource = Source.newBuilder("nfi", signature, "signature").internal(true).build();
+        CallTarget sigTarget = runWithPolyglot.getTruffleTestEnv().parseInternal(sigSource);
+        return sigTarget.call();
+    }
+
     protected static Object lookupAndBind(Object library, String name, String signature) {
-        return lookupAndBind.call(library, name, signature);
+        return lookupAndBind.call(library, name, parseSignature(signature));
     }
 }

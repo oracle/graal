@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,9 +41,9 @@
 package com.oracle.truffle.nfi.backend.libffi;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
-import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -59,12 +59,12 @@ import com.oracle.truffle.nfi.backend.libffi.LibFFIType.NullableType;
 import com.oracle.truffle.nfi.backend.libffi.LibFFIType.ObjectType;
 import com.oracle.truffle.nfi.backend.libffi.LibFFIType.StringType;
 import com.oracle.truffle.nfi.backend.libffi.NativeArgumentBuffer.TypeTag;
-import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNodeFactory.SerializeByteArrayNodeGen;
-import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNodeFactory.SerializeDoubleArrayNodeGen;
-import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNodeFactory.SerializeFloatArrayNodeGen;
-import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNodeFactory.SerializeIntArrayNodeGen;
-import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNodeFactory.SerializeLongArrayNodeGen;
-import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNodeFactory.SerializeShortArrayNodeGen;
+import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNodeFactory.GetByteArrayTagNodeGen;
+import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNodeFactory.GetDoubleArrayTagNodeGen;
+import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNodeFactory.GetFloatArrayTagNodeGen;
+import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNodeFactory.GetIntArrayTagNodeGen;
+import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNodeFactory.GetLongArrayTagNodeGen;
+import com.oracle.truffle.nfi.backend.libffi.SerializeArgumentNodeFactory.GetShortArrayTagNodeGen;
 
 abstract class SerializeArgumentNode extends Node {
 
@@ -347,207 +347,141 @@ abstract class SerializeArgumentNode extends Node {
         }
     }
 
-    abstract static class UnwrapHostObjectNode extends Node {
+    abstract static class GetTypeTagNode extends Node {
 
-        abstract Object execute(Object value);
-
-        final boolean isHostObject(Object value) {
-            LibFFIContext ctx = LibFFIContext.get(this);
-            return ctx.env.isHostObject(value);
-        }
-
-        @Specialization(guards = "isHostObject(value)")
-        Object doHostObject(Object value) {
-            return LibFFIContext.get(this).env.asHostObject(value);
-        }
+        abstract TypeTag execute(Object value);
 
         @Fallback
-        Object doOther(@SuppressWarnings("unused") Object value) {
+        TypeTag doOther(@SuppressWarnings("unused") Object value) {
             return null;
         }
     }
 
-    abstract static class ObjectDummy extends Node {
-
-        static ObjectDummy create() {
-            return null;
-        }
-
-        abstract Object execute();
-    }
-
-    abstract static class BufferDummy extends Node {
-
-        static BufferDummy create() {
-            return null;
-        }
-
-        abstract NativeArgumentBuffer execute();
-    }
-
-    @NodeChild(value = "value", type = ObjectDummy.class, implicit = true)
-    @NodeChild(value = "buffer", type = BufferDummy.class, implicit = true)
-    @NodeChild(value = "hostObject", type = UnwrapHostObjectNode.class, executeWith = "value", implicit = true)
     abstract static class SerializeArrayNode extends SerializeArgumentNode {
 
-        SerializeArrayNode(CachedTypeInfo type) {
-            super(type);
-        }
+        @Child GetTypeTagNode getTypeTag;
 
-        static SerializeArrayNode create(ArrayType type) {
+        SerializeArrayNode(ArrayType type) {
+            super(type);
             switch (type.elementType) {
                 case UINT8:
                 case SINT8:
-                    return SerializeByteArrayNodeGen.create(type);
+                    getTypeTag = GetByteArrayTagNodeGen.create();
+                    break;
                 case UINT16:
                 case SINT16:
-                    return SerializeShortArrayNodeGen.create(type);
+                    getTypeTag = GetShortArrayTagNodeGen.create();
+                    break;
                 case UINT32:
                 case SINT32:
-                    return SerializeIntArrayNodeGen.create(type);
+                    getTypeTag = GetIntArrayTagNodeGen.create();
+                    break;
                 case UINT64:
                 case SINT64:
-                    return SerializeLongArrayNodeGen.create(type);
+                    getTypeTag = GetLongArrayTagNodeGen.create();
+                    break;
                 case FLOAT:
-                    return SerializeFloatArrayNodeGen.create(type);
+                    getTypeTag = GetFloatArrayTagNodeGen.create();
+                    break;
                 case DOUBLE:
-                    return SerializeDoubleArrayNodeGen.create(type);
+                    getTypeTag = GetDoubleArrayTagNodeGen.create();
+                    break;
                 default:
                     throw CompilerDirectives.shouldNotReachHere(type.elementType.name());
             }
         }
 
-        @Specialization(guards = "hostObject == null")
-        void doInteropObject(Object value, NativeArgumentBuffer buffer, Object hostObject,
+        final boolean isHostObject(Object value) {
+            return LibFFIContext.get(this).env.isHostObject(value);
+        }
+
+        final Object asHostObject(Object value) {
+            return LibFFIContext.get(this).env.asHostObject(value);
+        }
+
+        @Specialization(guards = {"isHostObject(value)", "tag != null"})
+        void doHostObject(@SuppressWarnings("unused") Object value, NativeArgumentBuffer buffer,
+                        @Bind("asHostObject(value)") Object hostObject,
+                        @Bind("getTypeTag.execute(hostObject)") TypeTag tag) {
+            buffer.putObject(tag, hostObject, type.size);
+        }
+
+        @Specialization(guards = "tag != null")
+        void doArray(Object value, NativeArgumentBuffer buffer,
+                        @Bind("getTypeTag.execute(value)") TypeTag tag) {
+            buffer.putObject(tag, value, type.size);
+        }
+
+        @Fallback
+        void doInteropObject(Object value, NativeArgumentBuffer buffer,
                         @Cached(parameters = "type") SerializePointerNode serialize) throws UnsupportedTypeException {
-            assert hostObject == null;
             serialize.execute(value, buffer);
         }
     }
 
-    abstract static class SerializeByteArrayNode extends SerializeArrayNode {
+    abstract static class GetByteArrayTagNode extends GetTypeTagNode {
 
-        SerializeByteArrayNode(ArrayType type) {
-            super(type);
+        @Specialization
+        TypeTag doBooleanArray(boolean[] array) {
+            assert array != null;
+            return TypeTag.BOOLEAN_ARRAY;
         }
 
         @Specialization
-        void putBooleanArray(Object value, NativeArgumentBuffer buffer, boolean[] array) {
-            assert LibFFIContext.get(this).env.asHostObject(value) == array;
-            buffer.putObject(TypeTag.BOOLEAN_ARRAY, array, type.size);
-        }
-
-        @Specialization
-        void putByteArray(Object value, NativeArgumentBuffer buffer, byte[] array) {
-            assert LibFFIContext.get(this).env.asHostObject(value) == array;
-            buffer.putObject(TypeTag.BYTE_ARRAY, array, type.size);
-        }
-
-        @Fallback
-        @SuppressWarnings("unused")
-        void doError(Object value, NativeArgumentBuffer buffer, Object array) throws UnsupportedTypeException {
-            throw UnsupportedTypeException.create(new Object[]{value});
+        TypeTag doByteArray(byte[] array) {
+            assert array != null;
+            return TypeTag.BYTE_ARRAY;
         }
     }
 
-    abstract static class SerializeShortArrayNode extends SerializeArrayNode {
+    abstract static class GetShortArrayTagNode extends GetTypeTagNode {
 
-        SerializeShortArrayNode(ArrayType type) {
-            super(type);
+        @Specialization
+        TypeTag doShortArray(short[] array) {
+            assert array != null;
+            return TypeTag.SHORT_ARRAY;
         }
 
         @Specialization
-        void putShortArray(Object value, NativeArgumentBuffer buffer, short[] array) {
-            assert LibFFIContext.get(this).env.asHostObject(value) == array;
-            buffer.putObject(TypeTag.SHORT_ARRAY, array, type.size);
-        }
-
-        @Specialization
-        void putCharArray(Object value, NativeArgumentBuffer buffer, char[] array) {
-            assert LibFFIContext.get(this).env.asHostObject(value) == array;
-            buffer.putObject(TypeTag.CHAR_ARRAY, array, type.size);
-        }
-
-        @Fallback
-        @SuppressWarnings("unused")
-        void doError(Object value, NativeArgumentBuffer buffer, Object array) throws UnsupportedTypeException {
-            throw UnsupportedTypeException.create(new Object[]{value});
+        TypeTag doCharArray(char[] array) {
+            assert array != null;
+            return TypeTag.CHAR_ARRAY;
         }
     }
 
-    abstract static class SerializeIntArrayNode extends SerializeArrayNode {
-
-        SerializeIntArrayNode(ArrayType type) {
-            super(type);
-        }
+    abstract static class GetIntArrayTagNode extends GetTypeTagNode {
 
         @Specialization
-        void putIntArray(Object value, NativeArgumentBuffer buffer, int[] array) {
-            assert LibFFIContext.get(this).env.asHostObject(value) == array;
-            buffer.putObject(TypeTag.INT_ARRAY, array, type.size);
-        }
-
-        @Fallback
-        @SuppressWarnings("unused")
-        void doError(Object value, NativeArgumentBuffer buffer, Object array) throws UnsupportedTypeException {
-            throw UnsupportedTypeException.create(new Object[]{value});
+        TypeTag doIntArray(int[] array) {
+            assert array != null;
+            return TypeTag.INT_ARRAY;
         }
     }
 
-    abstract static class SerializeLongArrayNode extends SerializeArrayNode {
-
-        SerializeLongArrayNode(ArrayType type) {
-            super(type);
-        }
+    abstract static class GetLongArrayTagNode extends GetTypeTagNode {
 
         @Specialization
-        void putLongArray(Object value, NativeArgumentBuffer buffer, long[] array) {
-            assert LibFFIContext.get(this).env.asHostObject(value) == array;
-            buffer.putObject(TypeTag.LONG_ARRAY, array, type.size);
-        }
-
-        @Fallback
-        @SuppressWarnings("unused")
-        void doError(Object value, NativeArgumentBuffer buffer, Object array) throws UnsupportedTypeException {
-            throw UnsupportedTypeException.create(new Object[]{value});
+        TypeTag doLongArray(long[] array) {
+            assert array != null;
+            return TypeTag.LONG_ARRAY;
         }
     }
 
-    abstract static class SerializeFloatArrayNode extends SerializeArrayNode {
-
-        SerializeFloatArrayNode(ArrayType type) {
-            super(type);
-        }
+    abstract static class GetFloatArrayTagNode extends GetTypeTagNode {
 
         @Specialization
-        void putFloatArray(Object value, NativeArgumentBuffer buffer, float[] array) {
-            assert LibFFIContext.get(this).env.asHostObject(value) == array;
-            buffer.putObject(TypeTag.FLOAT_ARRAY, array, type.size);
-        }
-
-        @Fallback
-        @SuppressWarnings("unused")
-        void doError(Object value, NativeArgumentBuffer buffer, Object array) throws UnsupportedTypeException {
-            throw UnsupportedTypeException.create(new Object[]{value});
+        TypeTag doFloatArray(float[] array) {
+            assert array != null;
+            return TypeTag.FLOAT_ARRAY;
         }
     }
 
-    abstract static class SerializeDoubleArrayNode extends SerializeArrayNode {
-
-        SerializeDoubleArrayNode(ArrayType type) {
-            super(type);
-        }
+    abstract static class GetDoubleArrayTagNode extends GetTypeTagNode {
 
         @Specialization
-        void putDoubleArray(Object value, NativeArgumentBuffer buffer, double[] array) {
-            assert LibFFIContext.get(this).env.asHostObject(value) == array;
-            buffer.putObject(TypeTag.DOUBLE_ARRAY, array, type.size);
-        }
-
-        @Fallback
-        @SuppressWarnings("unused")
-        void doError(Object value, NativeArgumentBuffer buffer, Object array) throws UnsupportedTypeException {
-            throw UnsupportedTypeException.create(new Object[]{value});
+        TypeTag doDoubleArray(double[] array) {
+            assert array != null;
+            return TypeTag.DOUBLE_ARRAY;
         }
     }
 }

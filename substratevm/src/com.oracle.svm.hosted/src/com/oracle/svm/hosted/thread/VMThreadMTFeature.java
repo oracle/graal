@@ -29,7 +29,6 @@ import java.util.List;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
@@ -51,6 +50,8 @@ import com.oracle.svm.core.graal.thread.AddressOfVMThreadLocalNode;
 import com.oracle.svm.core.graal.thread.CompareAndSetVMThreadLocalNode;
 import com.oracle.svm.core.graal.thread.LoadVMThreadLocalNode;
 import com.oracle.svm.core.graal.thread.StoreVMThreadLocalNode;
+import com.oracle.svm.core.graal.thread.VolatileLoadVMThreadLocalNode;
+import com.oracle.svm.core.graal.thread.VolatileStoreVMThreadLocalNode;
 import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
 import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
@@ -60,8 +61,8 @@ import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
 import com.oracle.svm.core.threadlocal.VMThreadLocalMTSupport;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 
-import jdk.vm.ci.code.MemoryBarriers;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -186,28 +187,28 @@ public class VMThreadMTFeature implements GraalFeature {
 
     private boolean handleGet(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode threadNode, boolean isVolatile) {
         VMThreadLocalInfo threadLocalInfo = threadLocalCollector.findInfo(b, receiver.get());
+
+        LoadVMThreadLocalNode node;
         if (isVolatile) {
-            b.add(new MembarNode(MemoryBarriers.JMM_PRE_VOLATILE_READ));
+            node = new VolatileLoadVMThreadLocalNode(b.getMetaAccess(), threadLocalInfo, threadNode, BarrierType.NONE);
+        } else {
+            node = new LoadVMThreadLocalNode(b.getMetaAccess(), threadLocalInfo, threadNode, BarrierType.NONE);
         }
-        boolean allowFloatingReads = !isVolatile && threadLocalInfo.allowFloatingReads;
-        b.addPush(targetMethod.getSignature().getReturnKind(), new LoadVMThreadLocalNode(b.getMetaAccess(), threadLocalInfo, threadNode, BarrierType.NONE, allowFloatingReads));
-        if (isVolatile) {
-            b.add(new MembarNode(MemoryBarriers.JMM_POST_VOLATILE_READ));
-        }
+        b.addPush(targetMethod.getSignature().getReturnKind(), node);
+
         return true;
     }
 
     private boolean handleSet(GraphBuilderContext b, Receiver receiver, ValueNode threadNode, ValueNode valueNode, boolean isVolatile) {
         VMThreadLocalInfo threadLocalInfo = threadLocalCollector.findInfo(b, receiver.get());
+
+        StoreVMThreadLocalNode store;
         if (isVolatile) {
-            b.add(new MembarNode(MemoryBarriers.JMM_PRE_VOLATILE_WRITE));
+            store = b.add(new VolatileStoreVMThreadLocalNode(threadLocalInfo, threadNode, valueNode, BarrierType.NONE));
+        } else {
+            store = b.add(new StoreVMThreadLocalNode(threadLocalInfo, threadNode, valueNode, BarrierType.NONE));
         }
-        StoreVMThreadLocalNode store = new StoreVMThreadLocalNode(threadLocalInfo, threadNode, valueNode, BarrierType.NONE);
-        b.add(store);
         assert store.stateAfter() != null : store + " has no state after with graph builder context " + b;
-        if (isVolatile) {
-            b.add(new MembarNode(MemoryBarriers.JMM_POST_VOLATILE_WRITE));
-        }
         return true;
     }
 
@@ -226,13 +227,15 @@ public class VMThreadMTFeature implements GraalFeature {
     }
 
     @Override
-    public void duringAnalysis(DuringAnalysisAccess access) {
+    public void duringAnalysis(DuringAnalysisAccess a) {
         /*
          * Update during analysis so that the static analysis sees all infos. After analysis only
          * the order is going to change.
          */
         if (VMThreadLocalInfos.setInfos(threadLocalCollector.threadLocals.values())) {
+            DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
             access.requireAnalysisIteration();
+            access.rescanField(ImageSingletons.lookup(VMThreadLocalInfos.class), VMThreadLocalCollector.threadLocalInfosField);
         }
     }
 

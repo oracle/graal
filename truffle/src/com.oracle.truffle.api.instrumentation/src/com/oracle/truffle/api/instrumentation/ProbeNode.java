@@ -67,6 +67,7 @@ import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.strings.TruffleString;
 
 /**
  * <p>
@@ -675,7 +676,8 @@ public final class ProbeNode extends Node {
                             clazz == Double.class ||
                             clazz == Character.class ||
                             clazz == Boolean.class ||
-                            clazz == String.class)) {
+                            clazz == String.class ||
+                            clazz == TruffleString.class)) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 ClassCastException ccex = new ClassCastException(clazz.getName() + " isn't allowed Truffle interop type!");
                 if (binding.isLanguageBinding()) {

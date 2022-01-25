@@ -1293,7 +1293,8 @@ public final class NodeParser extends AbstractParser<NodeData> {
         } else {
             generateUncached = false;
         }
-        return new NodeData(context, templateType, typeSystem, useNodeFactory, generateUncached);
+        boolean generatePackagePrivate = findFirstAnnotation(typeHierarchy, types.GeneratePackagePrivate) != null;
+        return new NodeData(context, templateType, typeSystem, useNodeFactory, generateUncached, generatePackagePrivate);
 
     }
 
