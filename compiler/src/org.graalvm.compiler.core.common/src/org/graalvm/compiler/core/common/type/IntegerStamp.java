@@ -1541,7 +1541,26 @@ public final class IntegerStamp extends PrimitiveStamp {
                             if (stamp.isEmpty()) {
                                 return StampFactory.forInteger(inputBits).empty();
                             }
-                            return StampFactory.forUnsignedInteger(inputBits, stamp.lowerBound(), stamp.upperBound(), stamp.downMask(), stamp.upMask());
+
+                            /*
+                             * there is no guarantee that a given result is in the range of the
+                             * input because of holes in ranges resulting from signed / unsigned
+                             * extension, so we must ensure that the extension bits are all zeros
+                             * otherwise we cannot represent the result, and we have to return an
+                             * unrestricted stamp
+                             *
+                             * This case is much less likely to happen than the case for SignExtend
+                             * but the following is defensive to ensure that we only perform valid
+                             * inversions.
+                             */
+                            long alwaysSetOutputBits = stamp.downMask();
+                            long alwaysSetExtensionBits = alwaysSetOutputBits >>> inputBits;
+                            if (alwaysSetExtensionBits != 0) {
+                                StampFactory.forInteger(inputBits).empty();
+                            }
+
+                            long inputMask = CodeUtil.mask(inputBits);
+                            return StampFactory.forUnsignedInteger(inputBits, stamp.lowerBound(), stamp.upperBound(), stamp.downMask() & inputMask, stamp.upMask() & inputMask);
                         }
                     },
 
@@ -1571,12 +1590,50 @@ public final class IntegerStamp extends PrimitiveStamp {
 
                         @Override
                         public Stamp invertStamp(int inputBits, int resultBits, Stamp outStamp) {
-                            if (outStamp.isEmpty()) {
+                            IntegerStamp stamp = (IntegerStamp) outStamp;
+                            if (stamp.isEmpty()) {
                                 return StampFactory.forInteger(inputBits).empty();
                             }
-                            IntegerStamp stamp = (IntegerStamp) outStamp;
-                            long mask = CodeUtil.mask(inputBits);
-                            return StampFactory.forIntegerWithMask(inputBits, stamp.lowerBound(), stamp.upperBound(), stamp.downMask() & mask, stamp.upMask() & mask);
+
+                            /*
+                             * there is no guarantee that a given result bit is in the range of the
+                             * input because of holes in ranges resulting from signed / unsigned
+                             * extension, so we must ensure that the extension bits are either all
+                             * zeros or all ones otherwise we cannot represent the result, and we
+                             * have to return an unrestricted stamp
+                             *
+                             * As an example:
+                             * @formatter:off
+                             * byte a = ...
+                             * char b = (char) a;
+                             * if ((short) b != 45832)
+                             * @formatter:on
+                             *
+                             * the flow from a to the use of b in terms of nodes would be:
+                             * @formatter:off
+                             * read#Array byte (stamp i8 [ -128 - 127 ])
+                             *   V
+                             * SignExtend (stamp i16 [ -128 - 127 ])
+                             *   V
+                             * ZeroExtend (stamp i32 [ 0 - 65535 ])
+                             * @formatter:on
+                             *
+                             * The stamp on the compare of b suggests that b could equal 45832
+                             * 0x0000b308. If we assume the value is 0x0000b308. We invert the
+                             * ZeroExtend to get 0xb308, but then we try to invert the SignExtend.
+                             * The sign extend could only have produced 0xff__ or 0x00__ from a byte
+                             * but 0xb308 has 0xb3, and so we cannot invert the stamp. In this case
+                             * the only sensible inversion is the unrestricted stamp.
+                             */
+                            long alwaysSetOutputBits = stamp.downMask();
+                            long alwaysSetExtensionBits = alwaysSetOutputBits >>> inputBits;
+                            long outputMask = CodeUtil.mask(resultBits);
+                            if (alwaysSetExtensionBits != 0 && alwaysSetExtensionBits != (outputMask >>> inputBits)) {
+                                return StampFactory.forInteger(inputBits).empty();
+                            }
+
+                            long inputMask = CodeUtil.mask(inputBits);
+                            return StampFactory.forIntegerWithMask(inputBits, stamp.lowerBound(), stamp.upperBound(), stamp.downMask() & inputMask, stamp.upMask() & inputMask);
                         }
                     },
 
