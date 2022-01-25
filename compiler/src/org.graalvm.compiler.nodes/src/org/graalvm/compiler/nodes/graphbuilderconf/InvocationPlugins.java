@@ -897,7 +897,7 @@ public class InvocationPlugins {
      * @return the plugin associated with {@code method} or {@code null} if none exists
      */
     public InvocationPlugin lookupInvocation(ResolvedJavaMethod method, boolean allowDecorators, OptionValues options) {
-        if (!IS_IN_NATIVE_IMAGE && !isDisabledIntrinsicsFilterInitialized) {
+        if (!isDisabledIntrinsicsFilterInitialized) {
             synchronized (this) {
                 if (!isDisabledIntrinsicsFilterInitialized) {
                     String filterValue = Options.DisableIntrinsics.getValue(options);

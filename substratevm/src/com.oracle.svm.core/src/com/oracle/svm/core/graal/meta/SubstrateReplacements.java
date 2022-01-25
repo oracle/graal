@@ -40,7 +40,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
-import com.oracle.svm.core.option.HostedOptionValues;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
@@ -85,6 +84,7 @@ import org.graalvm.util.DirectAnnotationAccess;
 
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.TargetDescription;
@@ -161,7 +161,6 @@ public class SubstrateReplacements extends ReplacementsImpl {
         access.registerAsImmutable(snippetObjects);
         access.registerAsImmutable(snippetNodeClasses);
         access.registerAsImmutable(snippetStartOffsets, SubstrateReplacements::isImmutable);
-        access.registerAsImmutable(snippetInvocationPlugins, SubstrateReplacements::isImmutable);
     }
 
     /**
