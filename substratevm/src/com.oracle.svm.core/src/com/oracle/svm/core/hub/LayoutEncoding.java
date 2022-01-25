@@ -161,6 +161,10 @@ public class LayoutEncoding {
         return encoding == ABSTRACT_VALUE;
     }
 
+    public static boolean isSpecial(int encoding) {
+        return encoding >= NEUTRAL_VALUE && encoding <= LAST_SPECIAL_VALUE;
+    }
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isInstance(int encoding) {
         return encoding > LAST_SPECIAL_VALUE;

@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.RawField;
+import org.graalvm.nativeimage.c.struct.RawFieldOffset;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.struct.UniqueLocationIdentity;
@@ -109,11 +110,21 @@ public final class ThreadLocalAllocation {
         @RawField
         void setAllocationTop(Pointer top, LocationIdentity topIdentity);
 
+        @RawFieldOffset
+        static int offsetOfAllocationTop() {
+            throw VMError.unimplemented(); // replaced
+        }
+
         @RawField
         Word getAllocationEnd(LocationIdentity endIdentity);
 
         @RawField
         void setAllocationEnd(Pointer end, LocationIdentity endIdentity);
+
+        @RawFieldOffset
+        static int offsetOfAllocationEnd() {
+            throw VMError.unimplemented(); // replaced
+        }
     }
 
     /*
