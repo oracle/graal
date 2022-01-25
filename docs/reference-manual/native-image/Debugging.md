@@ -28,7 +28,7 @@ native-image -g -O0 Hello
 ```
 
 The first flag, `-g`, instructs `native-image` to generate debug information, and `-O0` specifies that no compiler optimizations should be performed.
-Disable all optimizations is not required, but in general it makes the debugging experience better with fewer optimizations applied.
+Disabling all optimizations is not required, but in general it makes the debugging experience better with fewer optimizations applied.
 The resulting executable will contain debug records in a format `gdb` understands.
 
 For more details on debugging Java from GDB, see the [Debug Info Feature guide](DebugInfo.md).
