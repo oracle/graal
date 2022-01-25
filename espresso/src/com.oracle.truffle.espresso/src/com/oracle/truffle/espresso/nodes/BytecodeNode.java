@@ -1442,6 +1442,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                             throw e;
                         }
                         assert getContext().Polyglot;
+                        getMeta().polyglot.ForeignException.safeInitialize(); // should fold
                         wrappedException = EspressoException.wrap(
                                         StaticObject.createForeignException(getMeta(), e, InteropLibrary.getUncached(e)), getMeta());
                     } else {
@@ -1470,6 +1471,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     if (handler != null) {
                         clearOperandStack(frame, top);
                         top = EspressoFrame.VALUES_START + getMethodVersion().getCodeAttribute().getMaxLocals();
+                        checkNoForeignObjectAssumption(wrappedException.getGuestException());
                         putObject(frame, top, wrappedException.getGuestException());
                         top++;
                         int targetBCI = handler.getHandlerBCI();
