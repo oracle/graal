@@ -208,7 +208,27 @@ public final class Target_java_lang_ClassLoader {
      * boot class loader.
      */
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = ConcurrentHashMap.class)//
-    ConcurrentHashMap<?, ?> classLoaderValueMap;
+    volatile ConcurrentHashMap<?, ?> classLoaderValueMap;
+
+    /**
+     * This substitution is a temporary workaround for GR-33896 until GR-36494 is merged.
+     */
+    @Substitute //
+    @TargetElement(onlyWith = JDK17OrLater.class) //
+    @SuppressWarnings({"unused"}) //
+    ConcurrentHashMap<?, ?> createOrGetClassLoaderValueMap() {
+        ConcurrentHashMap<?, ?> result = classLoaderValueMap;
+        if (result == null) {
+            // Checkstyle: allow synchronization
+            synchronized (this) {
+                result = classLoaderValueMap;
+                if (result == null) {
+                    classLoaderValueMap = result = new ConcurrentHashMap<>();
+                }
+            }
+        }
+        return result;
+    }
 
     @Alias
     native Stream<Package> packages();
