@@ -46,9 +46,8 @@ public class CancelTest extends AbstractExitTest {
 
     @Override
     protected void afterContextClosed() {
-        // TODO: uncomment when the problem with cleaning up the context when being cancelled is
-        // solved
-        // super.afterContextClosed();
+        // The hook is guest code and as such it cannot be invoked when cancelling
+        Assert.assertFalse(exitHookCallback.called);
     }
 
     @Test
