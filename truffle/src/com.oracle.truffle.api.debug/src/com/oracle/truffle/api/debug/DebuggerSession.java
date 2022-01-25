@@ -460,7 +460,7 @@ public final class DebuggerSession implements Closeable {
             if (icallNode != null) {
                 callNode = icallNode;
             }
-            MaterializedFrame frame = frameInstance.getFrame(FrameAccess.READ_WRITE).materialize();
+            MaterializedFrame frame = frameInstance.getFrame(FrameAccess.MATERIALIZE).materialize();
             SuspendedContext context = SuspendedContext.create(callNode, null);
             return new SuspendContextAndFrame(context, frame);
         });
