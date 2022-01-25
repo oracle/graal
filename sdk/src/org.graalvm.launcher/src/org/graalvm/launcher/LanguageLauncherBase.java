@@ -444,16 +444,6 @@ public abstract class LanguageLauncherBase extends Launcher {
         }
     }
 
-    private List<PrintableOption> filterOptions(OptionDescriptors descriptors) {
-        List<PrintableOption> options = new ArrayList<>();
-        for (OptionDescriptor descriptor : descriptors) {
-            if (helpInternal || descriptor.getCategory() != OptionCategory.INTERNAL) {
-                options.add(asPrintableOption(descriptor));
-            }
-        }
-        return options;
-    }
-
     private void printLanguages(Engine engine, boolean printWhenEmpty) {
         if (engine.getLanguages().isEmpty()) {
             if (printWhenEmpty) {

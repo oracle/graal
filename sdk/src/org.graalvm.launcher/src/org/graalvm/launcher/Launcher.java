@@ -112,9 +112,6 @@ public abstract class Launcher {
     protected String helpArg = null;
     protected boolean helpInternal;
     protected boolean printed;
-    private boolean help;
-    private boolean helpExpert;
-    private boolean helpVM;
 
     /**
      * Path to the desired log file, or {@code null} if no log redirection is required.
@@ -556,16 +553,6 @@ public abstract class Launcher {
 
     private Path home;
 
-    private OptionCategory getHelpCategory() {
-        if (helpInternal) {
-            return OptionCategory.INTERNAL;
-        } else if (helpExpert) {
-            return OptionCategory.EXPERT;
-        } else {
-            return OptionCategory.USER;
-        }
-    }
-
     protected Path getGraalVMHome() {
         if (home == null) {
             home = HomeFinder.getInstance().getHomeFolder();
@@ -612,12 +599,11 @@ public abstract class Launcher {
         if (helpArg == null) {
             return false;
         }
-        OptionCategory hc = getHelpCategory();
         if ("".equals(helpArg)) {
             printed = true;
-            printDefaultHelp(hc);
+            printDefaultHelp(OptionCategory.EXPERT);
         }
-        maybePrintAdditionalHelp(hc);
+        maybePrintAdditionalHelp(OptionCategory.EXPERT);
         if (helpArgIs("all") || helpArgIs("vm")) {
             printed = true;
             out.println("");
@@ -682,24 +668,6 @@ public abstract class Launcher {
     protected void printOtherHelpCategory(String kind, String option) {
         kindAndCategory.add(kind);
         kindAndCategory.add(option);
-    }
-
-    private boolean printAllOtherHelpCategories(boolean printHelp) {
-        out.println("");
-        out.println("See http://www.graalvm.org for more information.");
-        return true;
-    }
-
-    private void printOtherHelpCategories0(String kind, String option) {
-        if (helpExpert || helpInternal) {
-            out.println("Use '" + option + "' to list user " + kind + " options.");
-        }
-        if (!helpExpert) {
-            out.println("Use '" + option + " --help:expert' to list expert " + kind + " options.");
-        }
-        if (!helpInternal) {
-            out.println("Use '" + option + " --help:internal' to list internal " + kind + " options.");
-        }
     }
 
     static String optionsTitle(String kind, OptionCategory optionCategory) {
