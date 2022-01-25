@@ -67,7 +67,12 @@ public class MetricFactory {
     }
 
     private IllegalArgumentException failureException(String name, Exception e) {
-        return new IllegalArgumentException("Unknown metric: " + name + " (" + e.getClass().getSimpleName() + ", " + e.getMessage() + ")");
+        String appendix = e.getCause() != null ? ", caused by " + failureString(e.getCause()) : "";
+        return new IllegalArgumentException("Unknown metric: " + name + " (" + failureString(e) + appendix + ")");
+    }
+
+    private String failureString(Throwable e) {
+        return e.getClass().getSimpleName() + ": " + (e.getMessage() != null ? e.getMessage() : "<no message>");
     }
 
     private String classNameFor(String metricName) {
