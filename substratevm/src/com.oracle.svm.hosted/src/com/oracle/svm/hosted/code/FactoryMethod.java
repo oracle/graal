@@ -121,7 +121,6 @@ public final class FactoryMethod extends NonBytecodeStaticMethod {
         } else {
             kit.createReturn(newInstance, newInstance.getStackKind());
         }
-
         return kit.finalizeGraph();
     }
 
