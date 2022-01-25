@@ -1274,6 +1274,11 @@ public final class ObjectKlass extends Klass {
         if (change.isChangedSuperClass()) {
             // this class was marked as a super class change, which means at least one subclass
             // hereof has this class as a new superclass.
+
+            // We need to make sure the class is initialized, since instances of subclasses
+            // which were constructed prior to having this as a super class could exist.
+            initializeImpl();
+
             // All fields must be redefined as a removed -> added combo to
             // allow old instances of the changed subclass to access the fields
             // within this class.
@@ -1306,6 +1311,8 @@ public final class ObjectKlass extends Klass {
         ObjectKlass[] superInterfaces = change.getSuperInterfaces();
         LinkedKlass[] interfaces = new LinkedKlass[superInterfaces.length];
         for (int i = 0; i < superInterfaces.length; i++) {
+            // make sure super interfaces are initialized
+            superInterfaces[i].initializeImpl();
             interfaces[i] = superInterfaces[i].getLinkedKlass();
         }
         LinkedKlass linkedKlass;

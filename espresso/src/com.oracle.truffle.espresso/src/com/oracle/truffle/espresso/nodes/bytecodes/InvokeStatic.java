@@ -82,8 +82,7 @@ public abstract class InvokeStatic extends Node {
         @Specialization(assumptions = "resolvedMethod.getRedefineAssumption()")
         Object callDirect(Object[] args,
                         @Cached("methodLookup(staticMethod)") Method.MethodVersion resolvedMethod,
-                        @Cached("create(resolvedMethod.getCallTargetNoInit())") DirectCallNode directCallNode) {
-            assert resolvedMethod.getMethod().getDeclaringKlass().isInitializedOrInitializing();
+                        @Cached("create(resolvedMethod.getCallTarget())") DirectCallNode directCallNode) {
             return directCallNode.call(args);
         }
 
@@ -91,7 +90,6 @@ public abstract class InvokeStatic extends Node {
         Object callIndirect(Object[] args,
                         @Cached IndirectCallNode indirectCallNode) {
             Method.MethodVersion target = methodLookup(staticMethod);
-            assert target.getMethod().getDeclaringKlass().isInitializedOrInitializing() : target.getMethod().getDeclaringKlass();
             return indirectCallNode.call(target.getCallTarget(), args);
         }
     }
@@ -104,12 +102,6 @@ public abstract class InvokeStatic extends Node {
              * avoid a deopt loop.
              */
             return staticMethod.getContext().getClassRedefinition().handleRemovedMethod(staticMethod, staticMethod.getDeclaringKlass()).getMethodVersion();
-        }
-        if (staticMethod.getContext().advancedRedefinitionEnabled()) {
-            // a change from interface -> concrete class can lead to an uninitialized class here
-            if (!staticMethod.getDeclaringKlass().isInitialized()) {
-                staticMethod.getDeclaringKlass().initialize();
-            }
         }
         return staticMethod.getMethodVersion();
     }
@@ -149,7 +141,6 @@ public abstract class InvokeStatic extends Node {
             Object callIndirect(Method staticMethod, Object[] args,
                             @Cached IndirectCallNode indirectCallNode) {
                 Method.MethodVersion target = methodLookup(staticMethod);
-                assert target.getMethod().getDeclaringKlass().isInitializedOrInitializing() : target.getMethod().getDeclaringKlass();
                 return indirectCallNode.call(target.getCallTarget(), args);
             }
         }

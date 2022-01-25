@@ -258,6 +258,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
         public Object execute(VirtualFrame frame) {
             Method method = getMethod();
             assert method.isSynchronized();
+            assert method.getDeclaringKlass().isInitializedOrInitializing() : method.getDeclaringKlass();
             StaticObject monitor = method.isStatic()
                             ? /* class */ method.getDeclaringKlass().mirror()
                             : /* receiver */ (StaticObject) frame.getArguments()[0];
@@ -296,6 +297,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
 
         @Override
         public Object execute(VirtualFrame frame) {
+            assert getMethod().getDeclaringKlass().isInitializedOrInitializing() : getMethod().getDeclaringKlass();
             if (usesMonitors()) {
                 initMonitorStack(frame, new MonitorStack());
             }
