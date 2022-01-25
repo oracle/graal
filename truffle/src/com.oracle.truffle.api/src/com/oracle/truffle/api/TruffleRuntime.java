@@ -251,7 +251,7 @@ public interface TruffleRuntime {
 
     /**
      * @since 0.8 or earlier
-     * @deprecated use {@link #iterateFrames(FrameInstanceVisitor, int)} instead. This was
+     * @deprecated use {@link #iterateFrames(FrameInstanceVisitor)} instead. This was
      *             deprecated because a {@link FrameInstance} must never be used after
      *             {@link FrameInstanceVisitor#visitFrame(FrameInstance)} completed. Please make
      *             sure this restriction is honored when migrating this API as this may lead to
