@@ -184,7 +184,7 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
             this.consumers.add(new ArgumentConsumer("--path", (value, config) -> config.path = value));
             this.consumers.add(new ArgumentConsumer("--class-name", (value, config) -> config.className = value));
             this.consumers.add(new ArgumentConsumer("--mode", (value, config) -> config.mode = Config.Mode.parse(value)));
-            this.consumers.add(new ArgumentConsumer("--metric", (value, config) -> MetricFactory.loadMetric(config, value)));
+            this.consumers.add(new ArgumentConsumer("--metric", (value, config) -> (new MetricFactory()).loadMetric(config, value)));
             this.consumers.add(new ArgumentConsumer("-w", (value, config) -> config.warmupIterations = Integer.parseInt(value)));
             this.consumers.add(new ArgumentConsumer("-i", (value, config) -> config.iterations = Integer.parseInt(value)));
             this.consumers.add(new ArgumentConsumer("--shared-engine", (value, config) -> config.initMultiEngine().sharedEngine = Boolean.parseBoolean(value)));

@@ -28,7 +28,7 @@ import java.lang.reflect.InvocationTargetException;
 
 public class MetricFactory {
 
-    public static void loadMetric(Config config, String name) {
+    public void loadMetric(Config config, String name) {
         switch (name) {
             case "peak-time":
                 config.metric = new PeakTimeMetric();
@@ -53,15 +53,24 @@ public class MetricFactory {
             default:
                 String className = classNameFor(name);
                 try {
-                    Class<?> cls = Class.forName(className);
+                    Class<?> cls;
+                    try {
+                        cls = Class.forName("org.graalvm.polybench." + className);
+                    } catch (ClassNotFoundException e) {
+                        cls = Class.forName("com.oracle.graalvm.polybench." + className);
+                    }
                     config.metric = (Metric) cls.getConstructor().newInstance();
-                } catch (ClassNotFoundException | NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException | ClassCastException e) {
-                    throw new IllegalArgumentException("Unknown metric: " + name + " (" + e.getClass().getSimpleName() + ", " + e.getMessage() + ")");
+                } catch (NoSuchMethodException | InstantiationException | IllegalAccessException | InvocationTargetException | ClassCastException | ClassNotFoundException e) {
+                    throw failureException(name, e);
                 }
         }
     }
 
-    private static String classNameFor(String metricName) {
+    private IllegalArgumentException failureException(String name, Exception e) {
+        return new IllegalArgumentException("Unknown metric: " + name + " (" + e.getClass().getSimpleName() + ", " + e.getMessage() + ")");
+    }
+
+    private String classNameFor(String metricName) {
         String[] words = metricName.split("-");
         StringBuilder result = new StringBuilder(Character.toUpperCase(words[0].charAt(0)) + words[0].substring(1));
         for (int i = 1; i < words.length; i++) {
