@@ -204,7 +204,8 @@ public interface TruffleRuntime {
 
     /**
      * Accesses the current stack, i.e., the contents of the {@link Frame}s and the associated
-     * {@link CallTarget}s. Iteration starts at the current frame.
+     * {@link CallTarget}s. Iteration starts at the current frame and skips a number of frames
+     * provided as argument.
      *
      * Iteration continues as long as {@link FrameInstanceVisitor#visitFrame}, which is invoked for
      * every {@link FrameInstance}, returns null. Any non-null result of the visitor indicates that
@@ -251,8 +252,8 @@ public interface TruffleRuntime {
 
     /**
      * @since 0.8 or earlier
-     * @deprecated use {@link #iterateFrames(FrameInstanceVisitor)} instead. This was
-     *             deprecated because a {@link FrameInstance} must never be used after
+     * @deprecated use {@link #iterateFrames(FrameInstanceVisitor)} instead. This was deprecated
+     *             because a {@link FrameInstance} must never be used after
      *             {@link FrameInstanceVisitor#visitFrame(FrameInstance)} completed. Please make
      *             sure this restriction is honored when migrating this API as this may lead to
      *             difficult to debug problems and sometimes even VM crashes.

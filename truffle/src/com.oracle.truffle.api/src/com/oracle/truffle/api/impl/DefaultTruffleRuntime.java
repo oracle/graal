@@ -164,6 +164,9 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
     }
 
     public <T> T iterateFrames(FrameInstanceVisitor<T> visitor, int skipFrames) {
+        if (skipFrames < 0) {
+            throw new IllegalArgumentException("The skipFrames parameter must be >= 0.");
+        }
         T result = null;
         DefaultFrameInstance frameInstance = getThreadLocalStackTrace();
         int skipCounter = skipFrames;

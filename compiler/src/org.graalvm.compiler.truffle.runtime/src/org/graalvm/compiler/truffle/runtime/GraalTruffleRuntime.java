@@ -541,6 +541,9 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
     @TruffleBoundary
     @Override
     public final <T> T iterateFrames(FrameInstanceVisitor<T> visitor, int skipFrames) {
+        if (skipFrames < 0) {
+            throw new IllegalArgumentException("The skipFrames parameter must be >= 0.");
+        }
         return iterateImpl(visitor, skipFrames);
     }
 
