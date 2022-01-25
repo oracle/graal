@@ -42,6 +42,7 @@ public class SubstitutionProfiler extends Node {
         long mask = 1L << branch;
         if ((profiles & mask) == 0) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
+            reportPolymorphicSpecialize();
             profiles |= mask;
         }
     }

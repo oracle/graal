@@ -25,7 +25,6 @@ package com.oracle.truffle.espresso.nodes;
 
 import java.util.Arrays;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
@@ -36,9 +35,6 @@ import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
 
 public final class IntrinsicSubstitutorNode extends EspressoMethodNode {
     @Child private JavaSubstitution substitution;
-
-    @CompilerDirectives.CompilationFinal //
-    int callState = 0;
 
     // Truffle does not want to report split on first call. Delay until the second.
     private final DebugCounter nbSplits;
@@ -62,7 +58,6 @@ public final class IntrinsicSubstitutorNode extends EspressoMethodNode {
         assert toSplit.substitution.shouldSplit();
         this.substitution = toSplit.substitution.split();
         this.nbSplits = toSplit.nbSplits;
-        this.callState = 3;
     }
 
     @Override
@@ -72,14 +67,6 @@ public final class IntrinsicSubstitutorNode extends EspressoMethodNode {
 
     @Override
     public Object executeBody(VirtualFrame frame) {
-        if (CompilerDirectives.inInterpreter() && callState <= 1) {
-            callState++;
-        }
-        if (CompilerDirectives.inInterpreter() && callState == 2 && !substitution.uninitialized()) {
-            // Hints to the truffle runtime that it should split this node on every new call site
-            reportPolymorphicSpecialize();
-            callState = 3;
-        }
         return substitution.invoke(frame.getArguments());
     }
 
