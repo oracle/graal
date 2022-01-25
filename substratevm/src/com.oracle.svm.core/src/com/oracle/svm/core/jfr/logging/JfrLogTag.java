@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,19 +23,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.core.jfr.logging;
 
-import static org.junit.Assume.assumeTrue;
-
-import org.graalvm.nativeimage.ImageInfo;
-import org.junit.BeforeClass;
-
-import com.oracle.svm.core.jfr.JfrEnabled;
-
-/** Base class for JFR unit tests. */
-public class JFRTest {
-    @BeforeClass
-    public static void checkForJFR() {
-        assumeTrue("skipping JFR tests", !ImageInfo.inImageCode() || JfrEnabled.get());
-    }
+/**
+ * This enum contains all log tags that are in at least one {@link jdk.jfr.internal.LogTag}. This
+ * class is necessary because {@link jdk.jfr.internal.LogTag} is an enum of log tag sets, and does
+ * not provide the individual log tags.
+ */
+enum JfrLogTag {
+    JFR,
+    SYSTEM,
+    EVENT,
+    SETTING,
+    BYTECODE,
+    PARSER,
+    METADATA,
+    STREAMING,
+    THROTTLE,
+    DCMD,
+    START
 }

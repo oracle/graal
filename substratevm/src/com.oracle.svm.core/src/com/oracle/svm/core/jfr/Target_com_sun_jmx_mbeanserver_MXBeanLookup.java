@@ -22,19 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.core.jfr;
 
-import static org.junit.Assume.assumeTrue;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.TargetClass;
 
-import org.graalvm.nativeimage.ImageInfo;
-import org.junit.BeforeClass;
+@TargetClass(className = "com.sun.jmx.mbeanserver.MXBeanLookup", onlyWith = JfrHostedEnabled.class)
+final class Target_com_sun_jmx_mbeanserver_MXBeanLookup {
 
-import com.oracle.svm.core.jfr.JfrEnabled;
+    /* Reset caches that are used at image build time when FlightRecorder is enabled. */
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "com.sun.jmx.mbeanserver.WeakIdentityHashMap") //
+    private static Target_com_sun_jmx_mbeanserver_WeakIdentityHashMap mbscToLookup;
+}
 
-/** Base class for JFR unit tests. */
-public class JFRTest {
-    @BeforeClass
-    public static void checkForJFR() {
-        assumeTrue("skipping JFR tests", !ImageInfo.inImageCode() || JfrEnabled.get());
-    }
+@TargetClass(className = "com.sun.jmx.mbeanserver.WeakIdentityHashMap", onlyWith = JfrHostedEnabled.class)
+final class Target_com_sun_jmx_mbeanserver_WeakIdentityHashMap {
 }

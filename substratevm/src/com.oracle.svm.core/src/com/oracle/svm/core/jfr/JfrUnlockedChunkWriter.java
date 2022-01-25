@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,19 +22,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.core.jfr;
 
-import static org.junit.Assume.assumeTrue;
+/**
+ * An interface that collects all {@link JfrChunkWriter} methods that may be called without holding
+ * a lock.
+ */
+public interface JfrUnlockedChunkWriter {
+    /**
+     * Initializes the chunk writer with the maximum size of a chunk.
+     */
+    void initialize(long maxChunkSize);
 
-import org.graalvm.nativeimage.ImageInfo;
-import org.junit.BeforeClass;
+    /**
+     * Locks the chunk writer returning a {@link JfrChunkWriter} which provides access to chunk
+     * writing methods that require mutual exclusion.
+     */
+    JfrChunkWriter lock();
 
-import com.oracle.svm.core.jfr.JfrEnabled;
-
-/** Base class for JFR unit tests. */
-public class JFRTest {
-    @BeforeClass
-    public static void checkForJFR() {
-        assumeTrue("skipping JFR tests", !ImageInfo.inImageCode() || JfrEnabled.get());
-    }
+    /**
+     * It is valid to call this method without locking but be aware that the result will be racy in
+     * that case.
+     */
+    boolean hasOpenFile();
 }

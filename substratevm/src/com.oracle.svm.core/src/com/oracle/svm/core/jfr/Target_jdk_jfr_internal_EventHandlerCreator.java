@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,19 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.core.jfr;
 
-import static org.junit.Assume.assumeTrue;
+import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.util.VMError;
 
-import org.graalvm.nativeimage.ImageInfo;
-import org.junit.BeforeClass;
+import jdk.jfr.internal.handlers.EventHandler;
 
-import com.oracle.svm.core.jfr.JfrEnabled;
-
-/** Base class for JFR unit tests. */
-public class JFRTest {
-    @BeforeClass
-    public static void checkForJFR() {
-        assumeTrue("skipping JFR tests", !ImageInfo.inImageCode() || JfrEnabled.get());
+@TargetClass(className = "jdk.jfr.internal.EventHandlerCreator", onlyWith = JfrEnabled.class)
+public final class Target_jdk_jfr_internal_EventHandlerCreator {
+    @Substitute
+    @SuppressWarnings("static-method")
+    public Class<? extends EventHandler> makeEventHandlerClass() {
+        throw VMError.shouldNotReachHere();
     }
 }

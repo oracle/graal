@@ -22,19 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.core.jfr;
 
-import static org.junit.Assume.assumeTrue;
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetClass;
 
-import org.graalvm.nativeimage.ImageInfo;
-import org.junit.BeforeClass;
+import jdk.jfr.internal.SecuritySupport.SafePath;
 
-import com.oracle.svm.core.jfr.JfrEnabled;
+@TargetClass(value = jdk.jfr.internal.Repository.class, onlyWith = JfrEnabled.class)
+public final class Target_jdk_jfr_internal_Repository {
+    @Alias private SafePath baseLocation;
 
-/** Base class for JFR unit tests. */
-public class JFRTest {
-    @BeforeClass
-    public static void checkForJFR() {
-        assumeTrue("skipping JFR tests", !ImageInfo.inImageCode() || JfrEnabled.get());
+    @Substitute
+    synchronized void ensureRepository() throws Exception {
+        if (baseLocation == null) {
+            SafePath path = Target_jdk_jfr_internal_SecuritySupport.getPathInProperty("java.io.tmpdir", null);
+            SubstrateUtil.cast(this, jdk.jfr.internal.Repository.class).setBasePath(path);
+        }
     }
 }

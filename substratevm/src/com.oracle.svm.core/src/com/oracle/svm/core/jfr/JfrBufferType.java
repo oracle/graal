@@ -22,19 +22,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.core.jfr;
 
-import static org.junit.Assume.assumeTrue;
-
-import org.graalvm.nativeimage.ImageInfo;
-import org.junit.BeforeClass;
-
-import com.oracle.svm.core.jfr.JfrEnabled;
-
-/** Base class for JFR unit tests. */
-public class JFRTest {
-    @BeforeClass
-    public static void checkForJFR() {
-        assumeTrue("skipping JFR tests", !ImageInfo.inImageCode() || JfrEnabled.get());
-    }
+/**
+ * List of all possible {@link JfrBuffer} types.
+ */
+public enum JfrBufferType {
+    /**
+     * A thread-local native buffer, see {@link JfrThreadLocal}.
+     */
+    THREAD_LOCAL_NATIVE,
+    /**
+     * A thread-local java buffer, see {@link JfrThreadLocal}.
+     */
+    THREAD_LOCAL_JAVA,
+    /**
+     * A global JFR buffer, see {@link JfrGlobalMemory}.
+     */
+    GLOBAL_MEMORY,
+    /**
+     * Other buffers that live in the C heap and that can be resized (i.e., reallocated) if
+     * necessary. This type is for example used for the epoch-based global buffers in
+     * {@link JfrThreadRepository}.
+     */
+    C_HEAP
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,19 +22,20 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.core.jfr;
 
-import static org.junit.Assume.assumeTrue;
+import org.graalvm.nativeimage.c.struct.RawPointerTo;
+import org.graalvm.word.PointerBase;
 
-import org.graalvm.nativeimage.ImageInfo;
-import org.junit.BeforeClass;
+/**
+ * Pointer to an array of {@link JfrBuffer}s.
+ */
+@RawPointerTo(JfrBuffer.class)
+public interface JfrBuffers extends PointerBase {
 
-import com.oracle.svm.core.jfr.JfrEnabled;
+    JfrBuffers addressOf(long index);
 
-/** Base class for JFR unit tests. */
-public class JFRTest {
-    @BeforeClass
-    public static void checkForJFR() {
-        assumeTrue("skipping JFR tests", !ImageInfo.inImageCode() || JfrEnabled.get());
-    }
+    void write(JfrBuffer value);
+
+    JfrBuffer read();
 }
