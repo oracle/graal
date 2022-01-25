@@ -44,7 +44,6 @@ import static com.oracle.truffle.api.dsl.test.TestHelper.createCallTarget;
 import static com.oracle.truffle.api.dsl.test.TestHelper.getNode;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertSame;
 import static org.junit.Assert.fail;
 
 import java.lang.reflect.Field;
@@ -174,6 +173,20 @@ public class AssumptionsTest {
             fail();
         } catch (UnsupportedSpecializationException e) {
         }
+
+        // there must be one assumption field in the generated code.
+        assertEquals(1, countAssumptionFields(node.getClass()));
+    }
+
+    private static int countAssumptionFields(Class<?> c) {
+        int count = 0;
+        for (Field f : c.getDeclaredFields()) {
+            if (Assumption.class.isAssignableFrom(f.getType()) || Assumption[].class.isAssignableFrom(f.getType())) {
+                // assert no assumption fields from the generated code
+                count++;
+            }
+        }
+        return count;
     }
 
     @NodeChild
@@ -266,6 +279,10 @@ public class AssumptionsTest {
         assertEquals("do1", root2.call(42));
         node2.assumption2.invalidate();
         assertEquals("do2", root2.call(42));
+
+        // there must be two assumption field in the generated code.
+        // as the assumption fields are not final.
+        assertEquals(2, countAssumptionFields(node.getClass()));
     }
 
     @NodeChild
@@ -561,12 +578,8 @@ public class AssumptionsTest {
     @Test
     public void testAssumptionFieldNode() {
         AssumptionFieldNode node = AssumptionFieldNodeGen.create();
-        for (Field f : node.getClass().getDeclaredFields()) {
-            if (Assumption.class.isAssignableFrom(f.getType()) || Assumption[].class.isAssignableFrom(f.getType())) {
-                // assert no assumption fields from the generated code
-                assertSame(AssumptionFieldNode.class, f.getDeclaringClass());
-            }
-        }
+        // there must be no assumption field in the generated code.
+        assertEquals(0, countAssumptionFields(node.getClass()));
 
         for (int i = 0; i < AssumptionFieldNode.SPECIALIZATIONS; i++) {
             assertEquals(i, node.execute(i));
