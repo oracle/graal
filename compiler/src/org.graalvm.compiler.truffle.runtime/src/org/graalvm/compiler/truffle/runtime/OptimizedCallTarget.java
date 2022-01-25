@@ -47,7 +47,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.CompilerOptions;
 import com.oracle.truffle.api.OptimizationFailedException;
 import com.oracle.truffle.api.ReplaceObserver;
 import com.oracle.truffle.api.RootCallTarget;
@@ -56,7 +55,6 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.impl.DefaultCompilerOptions;
 import com.oracle.truffle.api.impl.FrameWithoutBoxing;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.ControlFlowException;
@@ -108,7 +106,7 @@ import jdk.vm.ci.meta.SpeculationLog;
  *                                         rootNode.execute()
  * </pre>
  */
-@SuppressWarnings({"deprecation", "hiding"})
+@SuppressWarnings({"hiding"})
 public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootCallTarget, ReplaceObserver {
 
     private static final String NODE_REWRITING_ASSUMPTION_NAME = "nodeRewritingAssumption";
@@ -1125,14 +1123,6 @@ public abstract class OptimizedCallTarget implements CompilableTruffleAST, RootC
             }
         });
         return callNodes.toArray(new TruffleCallNode[0]);
-    }
-
-    public final CompilerOptions getCompilerOptions() {
-        final CompilerOptions options = rootNode.getCompilerOptions();
-        if (options != null) {
-            return options;
-        }
-        return DefaultCompilerOptions.INSTANCE;
     }
 
     /*
