@@ -350,7 +350,7 @@ public abstract class ThreadLocalHandshake {
                 }
 
                 if (!this.enabled) {
-                    throw new AssertionError("Invalid side-effects disabled state");
+                    throw new AssertionError("Invalid allow actions disabled state");
                 }
             } finally {
                 this.lock.unlock();
