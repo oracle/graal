@@ -24,22 +24,34 @@
  */
 package org.graalvm.compiler.hotspot.test;
 
+import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA2_IMPL_COMPRESS_MB;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA5_IMPL_COMPRESS_MB;
+import static org.graalvm.compiler.hotspot.HotSpotBackend.SHA_IMPL_COMPRESS_MB;
+
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.AlgorithmParameters;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 
+import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import org.graalvm.compiler.hotspot.meta.HotSpotGraphBuilderPlugins;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.extended.ForeignCallNode;
+import org.graalvm.compiler.replacements.SnippetSubstitutionNode;
 import org.junit.Assert;
 import org.junit.Assume;
+import org.junit.Before;
 import org.junit.Test;
 
+import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
  * Tests the intrinsification of certain crypto methods.
@@ -170,6 +182,76 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
             return new Result(plain, null);
         } catch (NoSuchAlgorithmException e) {
             return new Result(null, e);
+        }
+    }
+
+    @Test
+    public void testDigestBaseSHA() throws Exception {
+        Assume.assumeTrue("SHA1 not supported", runtime().getVMConfig().useSHA1Intrinsics());
+        testDigestBase("sun.security.provider.DigestBase", "implCompressMultiBlock", "SHA-1", SHA_IMPL_COMPRESS_MB);
+    }
+
+    @Test
+    public void testDigestBaseSHA2() throws Exception {
+        Assume.assumeTrue("SHA256 not supported", runtime().getVMConfig().useSHA256Intrinsics());
+        testDigestBase("sun.security.provider.DigestBase", "implCompressMultiBlock", "SHA-256", SHA2_IMPL_COMPRESS_MB);
+    }
+
+    @Test
+    public void testDigestBaseSHA5() throws Exception {
+        Assume.assumeTrue("SHA512 not supported", runtime().getVMConfig().useSHA512Intrinsics());
+        testDigestBase("sun.security.provider.DigestBase", "implCompressMultiBlock", "SHA-512", SHA5_IMPL_COMPRESS_MB);
+    }
+
+    @Before
+    public void clearExceptionCall() {
+        expectedCall = null;
+    }
+
+    HotSpotForeignCallDescriptor expectedCall;
+
+    @Override
+    protected void checkLowTierGraph(StructuredGraph graph) {
+        if (expectedCall != null) {
+            for (ForeignCallNode node : graph.getNodes().filter(ForeignCallNode.class)) {
+                if (node.getDescriptor() == expectedCall) {
+                    return;
+                }
+            }
+            assertTrue("expected call to " + expectedCall, false);
+        }
+    }
+
+    private void testDigestBase(String className, String methodName, String algorithm, HotSpotForeignCallDescriptor call) throws Exception {
+        Class<?> klass = Class.forName(className);
+        expectedCall = call;
+        MessageDigest digest = MessageDigest.getInstance(algorithm);
+        byte[] expected = digest.digest(input.clone());
+        ResolvedJavaMethod method = getResolvedJavaMethod(klass, methodName);
+
+        try {
+            testDigestBase(digest, expected, method);
+        } catch (BailoutException e) {
+            // The plugin may cause loading which invalidates assumptions in the graph so retry it
+            // once. This normally only occurs when running individual tests.
+            if (e.getMessage().contains("Code installation failed: dependencies failed")) {
+                testDigestBase(digest, expected, method);
+            } else {
+                throw e;
+            }
+        }
+    }
+
+    private void testDigestBase(MessageDigest digest, byte[] expected, ResolvedJavaMethod method) {
+        StructuredGraph graph = parseForCompile(method);
+        assertTrue(graph.getNodes().filter(SnippetSubstitutionNode.class).isNotEmpty());
+        InstalledCode intrinsic = getCode(method, graph, false, true, getInitialOptions());
+        try {
+            Assert.assertNotNull("missing intrinsic", intrinsic);
+            byte[] actual = digest.digest(input.clone());
+            assertDeepEquals(expected, actual);
+        } finally {
+            intrinsic.invalidate();
         }
     }
 }

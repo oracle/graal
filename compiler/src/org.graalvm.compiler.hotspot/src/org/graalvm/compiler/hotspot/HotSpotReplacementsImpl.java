@@ -87,7 +87,7 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
         if (IS_BUILDING_NATIVE_IMAGE || UseEncodedGraphs.getValue(options)) {
             synchronized (HotSpotReplacementsImpl.class) {
                 if (snippetEncoder == null) {
-                    snippetEncoder = new SymbolicSnippetEncoder(this, options);
+                    snippetEncoder = new SymbolicSnippetEncoder(this);
                 }
             }
         }
@@ -194,9 +194,10 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
         assert method.isStatic() || receiver != null : "must have a constant type for the receiver";
         if (!IS_IN_NATIVE_IMAGE) {
             assert !snippetRegistrationClosed : "Cannot register snippet after registration is closed: " + method.format("%H.%n(%p)");
-            assert registeredSnippets.add(method) : "Cannot register snippet twice: " + method.format("%H.%n(%p)");
-            if (IS_BUILDING_NATIVE_IMAGE || UseEncodedGraphs.getValue(options)) {
-                snippetEncoder.registerSnippet(method, original, receiver, trackNodeSourcePosition, options);
+            if (registeredSnippets.add(method)) {
+                if (IS_BUILDING_NATIVE_IMAGE || UseEncodedGraphs.getValue(options)) {
+                    snippetEncoder.registerSnippet(method, original, receiver, trackNodeSourcePosition);
+                }
             }
         }
     }

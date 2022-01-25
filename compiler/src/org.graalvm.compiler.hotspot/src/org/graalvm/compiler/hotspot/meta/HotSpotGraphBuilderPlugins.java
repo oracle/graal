@@ -68,9 +68,9 @@ import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.hotspot.nodes.CurrentJavaThreadNode;
 import org.graalvm.compiler.hotspot.nodes.HotSpotLoadReservedReferenceNode;
 import org.graalvm.compiler.hotspot.nodes.HotSpotStoreReservedReferenceNode;
-import org.graalvm.compiler.hotspot.replacements.BigIntegerSubstitutions;
+import org.graalvm.compiler.hotspot.replacements.BigIntegerSnippets;
 import org.graalvm.compiler.hotspot.replacements.CallSiteTargetNode;
-import org.graalvm.compiler.hotspot.replacements.DigestBaseSubstitutions;
+import org.graalvm.compiler.hotspot.replacements.DigestBaseSnippets;
 import org.graalvm.compiler.hotspot.replacements.FastNotifyNode;
 import org.graalvm.compiler.hotspot.replacements.HotSpotIdentityHashCodeNode;
 import org.graalvm.compiler.hotspot.replacements.HotSpotInvocationPluginHelper;
@@ -127,6 +127,8 @@ import org.graalvm.compiler.replacements.InvocationPluginHelper;
 import org.graalvm.compiler.replacements.MethodHandlePlugin;
 import org.graalvm.compiler.replacements.NodeIntrinsificationProvider;
 import org.graalvm.compiler.replacements.ReplacementsImpl;
+import org.graalvm.compiler.replacements.SnippetSubstitutionInvocationPlugin;
+import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopyCallNode;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopyForeignCalls;
@@ -774,8 +776,23 @@ public class HotSpotGraphBuilderPlugins {
 
     private static void registerBigIntegerPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
         Registration r = new Registration(plugins, BigInteger.class, replacements);
-        r.registerConditionalMethodSubstitution(config.useMultiplyToLenIntrinsic(), BigIntegerSubstitutions.class, "implMultiplyToLen", "multiplyToLenStatic", int[].class, int.class, int[].class,
-                        int.class, int[].class);
+        r.registerConditional(config.useMultiplyToLenIntrinsic(), new SnippetSubstitutionInvocationPlugin(true, "implMultiplyToLen", int[].class, int.class, int[].class, int.class, int[].class) {
+            BigIntegerSnippets.Templates templates;
+
+            @Override
+            public SnippetTemplate.SnippetInfo getSnippet() {
+                return getTemplates().implMultiplyToLen;
+            }
+
+            @Override
+            public BigIntegerSnippets.Templates getTemplates() {
+                if (templates == null) {
+                    templates = replacements.getSnippetTemplateCache(BigIntegerSnippets.Templates.class);
+                    assert templates != null;
+                }
+                return templates;
+            }
+        });
         r.registerConditional(config.useMulAddIntrinsic(), new InvocationPlugin("implMulAdd", int[].class, int[].class, int.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode out, ValueNode in, ValueNode offset, ValueNode len, ValueNode k) {
@@ -870,10 +887,36 @@ public class HotSpotGraphBuilderPlugins {
         boolean useSha256 = config.useSHA256Intrinsics();
         boolean useSha512 = config.useSHA512Intrinsics();
 
-        if (isIntrinsicName(config, "sun/security/provider/DigestBase", "implCompressMultiBlock0") && (useSha1 || useSha256 || useSha512)) {
-            Registration r = new Registration(plugins, "sun.security.provider.DigestBase", replacements);
-            r.registerMethodSubstitution(DigestBaseSubstitutions.class, "implCompressMultiBlock0", Receiver.class, byte[].class, int.class, int.class);
-        }
+        boolean implCompressMultiBlock0Enabled = isIntrinsicName(config, "sun/security/provider/DigestBase", "implCompressMultiBlock0") && (useSha1 || useSha256 || useSha512);
+        Registration r = new Registration(plugins, "sun.security.provider.DigestBase", replacements);
+        r.registerConditional(implCompressMultiBlock0Enabled, new SnippetSubstitutionInvocationPlugin(true, "implCompressMultiBlock0", Receiver.class, byte[].class, int.class, int.class) {
+            DigestBaseSnippets.Templates templates;
+
+            @Override
+            protected Object[] getConstantArguments(ResolvedJavaMethod targetMethod) {
+                Object[] constantArguments = new Object[4];
+                ResolvedJavaType declaringClass = targetMethod.getDeclaringClass();
+                constantArguments[0] = declaringClass;
+                constantArguments[1] = HotSpotReplacementsUtil.getType(declaringClass, "Lsun/security/provider/SHA;");
+                constantArguments[2] = HotSpotReplacementsUtil.getType(declaringClass, "Lsun/security/provider/SHA2;");
+                constantArguments[3] = HotSpotReplacementsUtil.getType(declaringClass, "Lsun/security/provider/SHA5;");
+                return constantArguments;
+            }
+
+            @Override
+            public SnippetTemplate.SnippetInfo getSnippet() {
+                return getTemplates().implCompressMultiBlock0;
+            }
+
+            @Override
+            public DigestBaseSnippets.Templates getTemplates() {
+                if (templates == null) {
+                    templates = replacements.getSnippetTemplateCache(DigestBaseSnippets.Templates.class);
+                    assert templates != null;
+                }
+                return templates;
+            }
+        });
 
         Registration rSha1 = new Registration(plugins, "sun.security.provider.SHA", replacements);
         rSha1.registerConditional(config.useSHA1Intrinsics(), new SHAInvocationPlugin(HotSpotBackend.SHA_IMPL_COMPRESS));

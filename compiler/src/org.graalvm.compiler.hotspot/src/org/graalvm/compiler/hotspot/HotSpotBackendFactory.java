@@ -120,79 +120,79 @@ public abstract class HotSpotBackendFactory {
         if (IS_BUILDING_NATIVE_IMAGE || IS_IN_NATIVE_IMAGE) {
             SnippetSignature.initPrimitiveKindCache(jvmci.getMetaAccess());
         }
-        HotSpotProviders providers;
-        HotSpotRegistersProvider registers;
         HotSpotCodeCacheProvider codeCache = (HotSpotCodeCacheProvider) jvmci.getCodeCache();
         TargetDescription target = codeCache.getTarget();
-        HotSpotHostForeignCallsProvider foreignCalls;
-        Value[] nativeABICallerSaveRegisters;
         MetaAccessProvider metaAccess = new HotSpotSnippetMetaAccessProvider(jvmci.getMetaAccess());
         HotSpotConstantReflectionProvider constantReflection = (HotSpotConstantReflectionProvider) jvmci.getConstantReflection();
         ConstantFieldProvider constantFieldProvider = new HotSpotGraalConstantFieldProvider(config, metaAccess);
-        HotSpotLoweringProvider lowerer;
-        HotSpotStampProvider stampProvider;
-        HotSpotPlatformConfigurationProvider platformConfigurationProvider;
-        HotSpotMetaAccessExtensionProvider metaAccessExtensionProvider;
-        HotSpotSnippetReflectionProvider snippetReflection;
-        LoopsDataProvider loopsDataProvider;
-        HotSpotReplacementsImpl replacements;
-        HotSpotSuitesProvider suites;
-        HotSpotWordTypes wordTypes;
-        GraphBuilderConfiguration.Plugins plugins;
-        BytecodeProvider bytecodeProvider;
+        HotSpotProviders providers;
         try (InitTimer t = timer("create providers")) {
+            HotSpotRegistersProvider registers;
             try (InitTimer rt = timer("create HotSpotRegisters provider")) {
                 registers = createRegisters();
             }
+            Value[] nativeABICallerSaveRegisters;
             try (InitTimer rt = timer("create NativeABICallerSaveRegisters")) {
                 nativeABICallerSaveRegisters = createNativeABICallerSaveRegisters(config, codeCache.getRegisterConfig());
             }
+            HotSpotWordTypes wordTypes;
             try (InitTimer rt = timer("create WordTypes")) {
                 wordTypes = createWordTypes(metaAccess, target);
             }
+            HotSpotHostForeignCallsProvider foreignCalls;
             try (InitTimer rt = timer("create ForeignCalls provider")) {
                 foreignCalls = createForeignCalls(jvmciRuntime, graalRuntime, metaAccess, codeCache, wordTypes, nativeABICallerSaveRegisters);
             }
+            HotSpotPlatformConfigurationProvider platformConfigurationProvider;
             try (InitTimer rt = timer("create platform configuration provider")) {
                 platformConfigurationProvider = createConfigInfoProvider(config, metaAccess);
             }
+            HotSpotMetaAccessExtensionProvider metaAccessExtensionProvider;
             try (InitTimer rt = timer("create MetaAccessExtensionProvider")) {
                 metaAccessExtensionProvider = createMetaAccessExtensionProvider();
             }
+            HotSpotStampProvider stampProvider;
             try (InitTimer rt = timer("create stamp provider")) {
                 stampProvider = createStampProvider();
             }
+            HotSpotLoweringProvider lowerer;
             try (InitTimer rt = timer("create Lowerer provider")) {
                 lowerer = createLowerer(graalRuntime, metaAccess, foreignCalls, registers, constantReflection, platformConfigurationProvider, metaAccessExtensionProvider, target);
             }
+            LoopsDataProvider loopsDataProvider;
             try (InitTimer rt = timer("create loopsdata provider")) {
                 loopsDataProvider = createLoopsDataProvider();
             }
 
-            HotSpotProviders p = new HotSpotProviders(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, null, stampProvider, platformConfigurationProvider,
-                            metaAccessExtensionProvider, loopsDataProvider);
-
+            HotSpotSnippetReflectionProvider snippetReflection;
             try (InitTimer rt = timer("create SnippetReflection provider")) {
                 snippetReflection = createSnippetReflection(graalRuntime, constantReflection, wordTypes);
             }
+            BytecodeProvider bytecodeProvider;
             try (InitTimer rt = timer("create Bytecode provider")) {
                 bytecodeProvider = createBytecodeProvider(metaAccess, snippetReflection);
             }
+
+            providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, null, null, registers,
+                            snippetReflection, wordTypes, stampProvider, platformConfigurationProvider, metaAccessExtensionProvider, loopsDataProvider, config);
+            HotSpotReplacementsImpl replacements;
             try (InitTimer rt = timer("create Replacements provider")) {
-                replacements = createReplacements(target, p, snippetReflection, bytecodeProvider);
+                replacements = createReplacements(target, providers, snippetReflection, bytecodeProvider);
+                providers = replacements.getProviders();
+                replacements.maybeInitializeEncoder(options);
             }
+            GraphBuilderConfiguration.Plugins plugins;
             try (InitTimer rt = timer("create GraphBuilderPhase plugins")) {
                 plugins = createGraphBuilderPlugins(graalRuntime, compilerConfiguration, config, target, constantReflection, foreignCalls, metaAccess, snippetReflection, replacements, wordTypes,
                                 options);
                 replacements.setGraphBuilderPlugins(plugins);
             }
             try (InitTimer rt = timer("create Suites provider")) {
-                suites = createSuites(config, graalRuntime, compilerConfiguration, plugins, registers, replacements, options);
+                HotSpotSuitesProvider suites = createSuites(config, graalRuntime, compilerConfiguration, plugins, registers, replacements, options);
+                providers.setSuites(suites);
             }
-            providers = new HotSpotProviders(metaAccess, codeCache, constantReflection, constantFieldProvider, foreignCalls, lowerer, replacements, suites, registers,
-                            snippetReflection, wordTypes, plugins, platformConfigurationProvider, metaAccessExtensionProvider, loopsDataProvider, config);
-            replacements.setProviders(providers);
-            replacements.maybeInitializeEncoder(options);
+            assert replacements == replacements.getProviders().getReplacements();
+            assert providers.getGraphBuilderPlugins() == plugins;
         }
         try (InitTimer rt = timer("instantiate backend")) {
             return createBackend(config, graalRuntime, providers);

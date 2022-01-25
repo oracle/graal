@@ -61,10 +61,12 @@ import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.ArrayIndexOfNode;
 import org.graalvm.compiler.replacements.InvocationPluginHelper;
+import org.graalvm.compiler.replacements.SnippetSubstitutionInvocationPlugin;
+import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.StringLatin1IndexOfCharPlugin;
-import org.graalvm.compiler.replacements.StringLatin1Substitutions;
-import org.graalvm.compiler.replacements.StringUTF16Substitutions;
+import org.graalvm.compiler.replacements.StringLatin1Snippets;
+import org.graalvm.compiler.replacements.StringUTF16Snippets;
 import org.graalvm.compiler.replacements.TargetGraphBuilderPlugins;
 import org.graalvm.compiler.replacements.nodes.ArrayCompareToNode;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
@@ -360,11 +362,28 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             }
         });
 
-        r.registerMethodSubstitution(StringLatin1Substitutions.class, "indexOf", byte[].class, int.class, byte[].class, int.class, int.class);
+        r.register(new SnippetSubstitutionInvocationPlugin(false, "indexOf", byte[].class, int.class, byte[].class, int.class, int.class) {
+            StringLatin1Snippets.Templates templates;
+
+            @Override
+            public SnippetTemplate.SnippetInfo getSnippet() {
+                return getTemplates().indexOf;
+            }
+
+            @Override
+            public StringLatin1Snippets.Templates getTemplates() {
+                if (templates == null) {
+                    templates = replacements.getSnippetTemplateCache(StringLatin1Snippets.Templates.class);
+                    assert templates != null;
+                }
+                return templates;
+            }
+        });
         r.register(new StringLatin1IndexOfCharPlugin());
     }
 
     private static void registerStringUTF16Plugins(InvocationPlugins plugins, Replacements replacements) {
+
         Registration r = new Registration(plugins, "java.lang.StringUTF16", replacements);
         r.setAllowOverwrite(true);
         r.register(new ArrayCompareToPlugin(JavaKind.Char, JavaKind.Char, "compareTo", byte[].class, byte[].class));
@@ -444,8 +463,40 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             }
         });
 
-        r.registerMethodSubstitution(StringUTF16Substitutions.class, "indexOfUnsafe", byte[].class, int.class, byte[].class, int.class, int.class);
-        r.registerMethodSubstitution(StringUTF16Substitutions.class, "indexOfLatin1Unsafe", byte[].class, int.class, byte[].class, int.class, int.class);
+        r.register(new SnippetSubstitutionInvocationPlugin(false, "indexOfUnsafe", byte[].class, int.class, byte[].class, int.class, int.class) {
+            StringUTF16Snippets.Templates templates;
+
+            @Override
+            public SnippetTemplate.SnippetInfo getSnippet() {
+                return getTemplates().indexOfUnsafe;
+            }
+
+            @Override
+            public StringUTF16Snippets.Templates getTemplates() {
+                if (templates == null) {
+                    templates = replacements.getSnippetTemplateCache(StringUTF16Snippets.Templates.class);
+                    assert templates != null;
+                }
+                return templates;
+            }
+        });
+        r.register(new SnippetSubstitutionInvocationPlugin(false, "indexOfLatin1Unsafe", byte[].class, int.class, byte[].class, int.class, int.class) {
+            StringUTF16Snippets.Templates templates;
+
+            @Override
+            public SnippetTemplate.SnippetInfo getSnippet() {
+                return getTemplates().indexOfLatin1Unsafe;
+            }
+
+            @Override
+            public StringUTF16Snippets.Templates getTemplates() {
+                if (templates == null) {
+                    templates = replacements.getSnippetTemplateCache(StringUTF16Snippets.Templates.class);
+                    assert templates != null;
+                }
+                return templates;
+            }
+        });
         r.register(new InvocationPlugin("indexOfCharUnsafe", byte[].class, int.class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode ch, ValueNode fromIndex, ValueNode max) {
@@ -454,7 +505,7 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 return true;
             }
         });
-        Registration r2 = new Registration(plugins, StringUTF16Substitutions.class, replacements);
+        Registration r2 = new Registration(plugins, StringUTF16Snippets.class, replacements);
         r2.register(new InvocationPlugin("getChar", byte[].class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg1, ValueNode arg2) {

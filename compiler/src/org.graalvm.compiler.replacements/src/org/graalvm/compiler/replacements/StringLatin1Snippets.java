@@ -32,9 +32,10 @@ import static org.graalvm.compiler.replacements.StringSubstitutions.getByte;
 import static org.graalvm.compiler.replacements.ReplacementsUtil.byteArrayBaseOffset;
 import static org.graalvm.compiler.replacements.ReplacementsUtil.byteArrayIndexScale;
 
-import org.graalvm.compiler.api.replacements.ClassSubstitution;
 import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
-import org.graalvm.compiler.api.replacements.MethodSubstitution;
+import org.graalvm.compiler.api.replacements.Snippet;
+import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -43,8 +44,16 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 /**
  * Substitutions for {@code java.lang.StringLatin1} methods.
  */
-@ClassSubstitution(className = "java.lang.StringLatin1", optional = true)
-public class StringLatin1Substitutions {
+public class StringLatin1Snippets implements Snippets {
+
+    public static class Templates extends SnippetTemplate.AbstractTemplates {
+
+        public Templates(OptionValues options, Providers providers) {
+            super(options, providers);
+        }
+
+        public final SnippetTemplate.SnippetInfo indexOf = snippet(StringLatin1Snippets.class, "indexOf");
+    }
 
     /** Marker value for the {@link InjectedParameter} injected parameter. */
     public static final MetaAccessProvider INJECTED = null;
@@ -53,7 +62,7 @@ public class StringLatin1Substitutions {
         return byteArrayBaseOffset(INJECTED) + (offset * byteArrayIndexScale(INJECTED));
     }
 
-    @MethodSubstitution
+    @Snippet
     public static int indexOf(byte[] source, int sourceCount, byte[] target, int targetCount, int fromIndex) {
         ReplacementsUtil.dynamicAssert(fromIndex >= 0, "StringLatin1.indexOf invalid args: fromIndex negative");
         ReplacementsUtil.dynamicAssert(targetCount > 0, "StringLatin1.indexOf invalid args: targetCount <= 0");

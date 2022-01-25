@@ -188,6 +188,8 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     private BoxingSnippets.Templates boxingSnippets;
     protected IdentityHashCodeSnippets.Templates identityHashCodeSnippets;
     protected IsArraySnippets.Templates isArraySnippets;
+    protected StringLatin1Snippets.Templates latin1Templates;
+    protected StringUTF16Snippets.Templates utf16templates;
 
     public DefaultJavaLoweringProvider(MetaAccessProvider metaAccess, ForeignCallsProvider foreignCalls, PlatformConfigurationProvider platformConfig,
                     MetaAccessExtensionProvider metaAccessExtensionProvider,
@@ -203,6 +205,10 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
     public void initialize(OptionValues options, SnippetCounter.Group.Factory factory, Providers providers) {
         replacements = providers.getReplacements();
         boxingSnippets = new BoxingSnippets.Templates(options, factory, providers);
+        latin1Templates = new StringLatin1Snippets.Templates(options, providers);
+        providers.getReplacements().registerSnippetTemplateCache(latin1Templates);
+        utf16templates = new StringUTF16Snippets.Templates(options, providers);
+        providers.getReplacements().registerSnippetTemplateCache(utf16templates);
         providers.getReplacements().registerSnippetTemplateCache(new SnippetCounterNode.SnippetCounterSnippets.Templates(options, providers));
     }
 

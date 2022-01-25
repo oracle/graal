@@ -108,11 +108,14 @@ public class SubstrateReplacements extends ReplacementsImpl {
     protected static class Builder {
         protected final GraphMakerFactory graphMakerFactory;
         protected final Map<ResolvedJavaMethod, StructuredGraph> graphs;
+        protected Map<ResolvedJavaMethod, Runnable> deferred;
+        protected boolean processing;
         protected final Set<ResolvedJavaMethod> delayedInvocationPluginMethods;
 
         protected Builder(GraphMakerFactory graphMakerFactory) {
             this.graphMakerFactory = graphMakerFactory;
             this.graphs = new HashMap<>();
+            this.deferred = new HashMap<>();
             this.delayedInvocationPluginMethods = new HashSet<>();
         }
     }
@@ -254,21 +257,30 @@ public class SubstrateReplacements extends ReplacementsImpl {
         assert DirectAnnotationAccess.isAnnotationPresent(method, Snippet.class) : "Snippet must be annotated with @" + Snippet.class.getSimpleName() + " " + method;
         assert method.hasBytecodes() : "Snippet must not be abstract or native";
         assert builder.graphs.get(method) == null : "snippet registered twice: " + method.getName();
+        assert builder.deferred.get(method) == null : "snippet registered twice: " + method.getName();
 
-        try (DebugContext debug = openSnippetDebugContext("Snippet_", method, options)) {
-            Object[] args = prepareConstantArguments(receiver);
-            StructuredGraph graph = makeGraph(debug, defaultBytecodeProvider, method, args, SnippetParameterInfo.getNonNullParameters(getSnippetParameterInfo(method)), null, trackNodeSourcePosition,
-                            null);
+        Runnable run = new Runnable() {
+            public void run() {
+                try (DebugContext debug = openSnippetDebugContext("Snippet_", method, options)) {
+                    Object[] args = prepareConstantArguments(receiver);
+                    StructuredGraph graph = makeGraph(debug, defaultBytecodeProvider, method, args, SnippetParameterInfo.getNonNullParameters(getSnippetParameterInfo(method)), null,
+                                    trackNodeSourcePosition, null);
 
-            // Check if all methods which should be inlined are really inlined.
-            for (MethodCallTargetNode callTarget : graph.getNodes(MethodCallTargetNode.TYPE)) {
-                ResolvedJavaMethod callee = callTarget.targetMethod();
-                if (!builder.delayedInvocationPluginMethods.contains(callee)) {
-                    throw shouldNotReachHere("method " + callee.format("%h.%n") + " not inlined in snippet " + method.format("%h.%n") + " (maybe not final?)");
+                    // Check if all methods which should be inlined are really inlined.
+                    for (MethodCallTargetNode callTarget : graph.getNodes(MethodCallTargetNode.TYPE)) {
+                        ResolvedJavaMethod callee = callTarget.targetMethod();
+                        if (!builder.delayedInvocationPluginMethods.contains(callee)) {
+                            throw shouldNotReachHere("method " + callee.format("%h.%n") + " not inlined in snippet " + method.format("%h.%n") + " (maybe not final?)");
+                        }
+                    }
+
+                    builder.graphs.put(method, graph);
                 }
             }
-
-            builder.graphs.put(method, graph);
+        };
+        builder.deferred.put(method, run);
+        if (builder.processing) {
+            System.err.println(Thread.currentThread() + " " + method);
         }
     }
 
@@ -280,6 +292,14 @@ public class SubstrateReplacements extends ReplacementsImpl {
     @Platforms(Platform.HOSTED_ONLY.class)
     public void encodeSnippets() {
         GraphEncoder encoder = new GraphEncoder(ConfigurationValues.getTarget().arch);
+        Map<ResolvedJavaMethod, Runnable> deferred = builder.deferred;
+        builder.deferred = new HashMap<>();
+        for (Runnable run : deferred.values()) {
+            run.run();
+        }
+        for (Runnable run : builder.deferred.values()) {
+            run.run();
+        }
         for (StructuredGraph graph : builder.graphs.values()) {
             encoder.prepare(graph);
         }

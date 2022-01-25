@@ -25,19 +25,21 @@
 package org.graalvm.compiler.hotspot.replacements;
 
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_METAACCESS;
-import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_INTRINSIC_CONTEXT;
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
 import static org.graalvm.compiler.nodes.java.InstanceOfNode.doInstanceof;
 
-import org.graalvm.compiler.api.replacements.ClassSubstitution;
 import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.api.replacements.MethodSubstitution;
+import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotBackend;
 import org.graalvm.compiler.nodes.ComputeObjectAddressNode;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
+import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.ReplacementsUtil;
+import org.graalvm.compiler.replacements.SnippetTemplate;
+import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.WordFactory;
@@ -45,15 +47,24 @@ import org.graalvm.word.WordFactory;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-@ClassSubstitution(className = "sun.security.provider.DigestBase", optional = true)
-public class DigestBaseSubstitutions {
+public class DigestBaseSnippets implements Snippets {
 
-    @MethodSubstitution(isStatic = false)
-    static int implCompressMultiBlock0(Object receiver, byte[] buf, int ofs, int limit) {
-        Object realReceiver = PiNode.piCastNonNull(receiver, HotSpotReplacementsUtil.methodHolderClass(INJECTED_INTRINSIC_CONTEXT));
-        ResolvedJavaType sha1type = HotSpotReplacementsUtil.getType(INJECTED_INTRINSIC_CONTEXT, "Lsun/security/provider/SHA;");
-        ResolvedJavaType sha256type = HotSpotReplacementsUtil.getType(INJECTED_INTRINSIC_CONTEXT, "Lsun/security/provider/SHA2;");
-        ResolvedJavaType sha512type = HotSpotReplacementsUtil.getType(INJECTED_INTRINSIC_CONTEXT, "Lsun/security/provider/SHA5;");
+    public static class Templates extends SnippetTemplate.AbstractTemplates {
+
+        public Templates(OptionValues options, Providers providers) {
+            super(options, providers);
+        }
+
+        public final SnippetTemplate.SnippetInfo implCompressMultiBlock0 = snippet(DigestBaseSnippets.class, "implCompressMultiBlock0");
+    }
+
+    @Snippet(allowPartialIntrinsicArgumentMismatch = true)
+    static int implCompressMultiBlock0(Object receiver, byte[] buf, int ofs, int limit,
+                    @Snippet.ConstantParameter ResolvedJavaType receiverType,
+                    @Snippet.ConstantParameter ResolvedJavaType sha1type,
+                    @Snippet.ConstantParameter ResolvedJavaType sha256type,
+                    @Snippet.ConstantParameter ResolvedJavaType sha512type) {
+        Object realReceiver = PiNode.piCastNonNull(receiver, receiverType);
 
         Word bufAddr = WordFactory.unsigned(ComputeObjectAddressNode.get(buf, ReplacementsUtil.getArrayBaseOffset(INJECTED_METAACCESS, JavaKind.Byte) + ofs));
         if (useSHA1Intrinsics(INJECTED_VMCONFIG) && doInstanceof(sha1type, realReceiver)) {
@@ -72,7 +83,9 @@ public class DigestBaseSubstitutions {
             Word stateAddr = WordFactory.unsigned(ComputeObjectAddressNode.get(state, ReplacementsUtil.getArrayBaseOffset(INJECTED_METAACCESS, JavaKind.Int)));
             return HotSpotBackend.sha5ImplCompressMBStub(bufAddr, stateAddr, ofs, limit);
         } else {
-            return implCompressMultiBlock0(realReceiver, buf, ofs, limit);
+            // This will be replaced by an invoke of original method with the extra
+            // ConstantParameter arguments removed.
+            return implCompressMultiBlock0(receiver, buf, ofs, limit, receiverType, sha1type, sha256type, sha512type);
         }
     }
 

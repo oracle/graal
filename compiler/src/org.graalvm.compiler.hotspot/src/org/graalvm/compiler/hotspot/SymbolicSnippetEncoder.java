@@ -24,12 +24,9 @@
  */
 package org.graalvm.compiler.hotspot;
 
-import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
-import static org.graalvm.compiler.core.common.GraalOptions.UseEncodedGraphs;
 import static org.graalvm.compiler.hotspot.EncodedSnippets.methodKey;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createIntrinsicInlineInfo;
 import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
-import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.ROOT_COMPILATION_ENCODING;
 
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
@@ -43,12 +40,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.BiFunction;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
@@ -148,12 +145,6 @@ import jdk.vm.ci.meta.UnresolvedJavaType;
  * or the option {@link org.graalvm.compiler.core.common.GraalOptions#UseEncodedGraphs} is enabled.
  */
 public class SymbolicSnippetEncoder {
-
-    /**
-     * This is a customized HotSpotReplacementsImpl intended only for parsing snippets and method
-     * substitutions for graph encoding.
-     */
-    private final HotSpotSnippetReplacementsImpl snippetReplacements;
 
     /**
      * A mapping from the method substitution method to the original method name. The string key and
@@ -281,6 +272,8 @@ public class SymbolicSnippetEncoder {
         }
     }
 
+    private final EconomicMap<GraphKey, BiFunction<OptionValues, HotSpotSnippetReplacementsImpl, Void>> pendingSnippetGraphs = EconomicMap.create();
+
     /**
      * All the graphs parsed so far.
      */
@@ -291,8 +284,6 @@ public class SymbolicSnippetEncoder {
     private final EconomicSet<MethodSubstitutionPlugin> knownPlugins = EconomicSet.create();
 
     private final EconomicSet<InvocationPlugin> conditionalPlugins = EconomicSet.create();
-
-    private int preparedPlugins = 0;
 
     /**
      * The invocation plugins which were delayed during graph preparation.
@@ -319,7 +310,7 @@ public class SymbolicSnippetEncoder {
             }
 
             // Force inlining when parsing replacements
-            return createIntrinsicInlineInfo(method, snippetReplacements.getDefaultReplacementBytecodeProvider());
+            return createIntrinsicInlineInfo(method, originalReplacements.getDefaultReplacementBytecodeProvider());
         }
 
         @Override
@@ -331,9 +322,15 @@ public class SymbolicSnippetEncoder {
     /**
      * This plugin disables the snippet counter machinery.
      */
-    private class SnippetCounterPlugin implements NodePlugin {
+    static final class SnippetCounterPlugin implements NodePlugin {
         String snippetCounterName = 'L' + SnippetCounter.class.getName().replace('.', '/') + ';';
         String snippetIntegerHistogramName = 'L' + SnippetIntegerHistogram.class.getName().replace('.', '/') + ';';
+
+        private final ReplacementsImpl snippetReplacements;
+
+        private SnippetCounterPlugin(ReplacementsImpl snippetReplacements) {
+            this.snippetReplacements = snippetReplacements;
+        }
 
         @Override
         public boolean handleLoadField(GraphBuilderContext b, ValueNode object, ResolvedJavaField field) {
@@ -354,18 +351,8 @@ public class SymbolicSnippetEncoder {
         }
     }
 
-    SymbolicSnippetEncoder(HotSpotReplacementsImpl replacements, OptionValues options) {
-        assert IS_BUILDING_NATIVE_IMAGE || UseEncodedGraphs.getValue(options);
+    SymbolicSnippetEncoder(HotSpotReplacementsImpl replacements) {
         this.originalReplacements = replacements;
-        GraphBuilderConfiguration.Plugins plugins = replacements.getGraphBuilderPlugins();
-        InvocationPlugins invocationPlugins = plugins.getInvocationPlugins();
-        GraphBuilderConfiguration.Plugins copy = new GraphBuilderConfiguration.Plugins(plugins, invocationPlugins);
-        copy.clearInlineInvokePlugins();
-        copy.appendInlineInvokePlugin(new SnippetInlineInvokePlugin());
-        copy.appendNodePlugin(new SnippetCounterPlugin());
-        HotSpotProviders providers = replacements.getProviders().copyWith(new HotSpotSubstrateConstantReflectionProvider(replacements.getProviders().getConstantReflection()));
-        this.snippetReplacements = new HotSpotSnippetReplacementsImpl(replacements, providers.copyWith(copy));
-        this.snippetReplacements.setGraphBuilderPlugins(copy);
     }
 
     synchronized void registerMethodSubstitution(MethodSubstitutionPlugin plugin) {
@@ -382,21 +369,8 @@ public class SymbolicSnippetEncoder {
         }
     }
 
-    /**
-     * Compiles the snippet and stores the graph.
-     */
-    private synchronized void registerMethodSubstitution(MethodSubstitutionPlugin plugin, ResolvedJavaMethod original, IntrinsicContext.CompilationContext context, OptionValues options) {
-        ResolvedJavaMethod method = plugin.getSubstitute(snippetReplacements.getProviders().getMetaAccess());
-        assert method.getAnnotation(MethodSubstitution.class) != null : "MethodSubstitution must be annotated with @" + MethodSubstitution.class.getSimpleName();
-        String originalMethodString = plugin.originalMethodAsString();
-        StructuredGraph subst = buildGraph(method, original, originalMethodString, null, null, true, false, context, options);
-        MethodSubstitutionKey key = new MethodSubstitutionKey(method, original, context, plugin);
-        originalMethods.put(key.keyString(), originalMethodString);
-        preparedSnippetGraphs.put(key, subst);
-    }
-
     private StructuredGraph buildGraph(ResolvedJavaMethod method, ResolvedJavaMethod original, String originalMethodString, Object receiver, BitSet nonNullParameters, boolean requireInlining,
-                    boolean trackNodeSourcePosition, IntrinsicContext.CompilationContext context, OptionValues options) {
+                    boolean trackNodeSourcePosition, IntrinsicContext.CompilationContext context, OptionValues options, ReplacementsImpl snippetReplacements) {
         assert method.hasBytecodes() : "Snippet must not be abstract or native";
         Object[] args = null;
         if (receiver != null) {
@@ -420,7 +394,7 @@ public class SymbolicSnippetEncoder {
             // Check if all methods which should be inlined are really inlined.
             for (MethodCallTargetNode callTarget : graph.getNodes(MethodCallTargetNode.TYPE)) {
                 ResolvedJavaMethod callee = callTarget.targetMethod();
-                if (requireInlining && !delayedInvocationPluginMethods.contains(callee) && !Objects.equals(callee, original)) {
+                if (requireInlining && !delayedInvocationPluginMethods.contains(callee) && !Objects.equals(callee, original) && !Objects.equals(callee, method)) {
                     throw GraalError.shouldNotReachHere("method " + callee.format("%H.%n") + " not inlined in snippet " + method.getName() + " (maybe not final?)");
                 }
             }
@@ -466,14 +440,14 @@ public class SymbolicSnippetEncoder {
         int startOffset = encoder.encode(graph);
         EncodedGraph encodedGraph = new EncodedGraph(encoder.getEncoding(), startOffset, encoder.getObjects(), encoder.getNodeClasses(), graph);
 
-        HotSpotProviders originalProvider = snippetReplacements.getProviders();
+        HotSpotProviders originalProvider = originalReplacements.getProviders();
 
         SnippetReflectionProvider snippetReflection = originalProvider.getSnippetReflection();
         SymbolicSnippetEncoder.HotSpotSubstrateConstantReflectionProvider constantReflection = new SymbolicSnippetEncoder.HotSpotSubstrateConstantReflectionProvider(
                         originalProvider.getConstantReflection());
         HotSpotProviders newProviders = new HotSpotProviders(originalProvider.getMetaAccess(), originalProvider.getCodeCache(), constantReflection,
                         originalProvider.getConstantFieldProvider(), originalProvider.getForeignCalls(), originalProvider.getLowerer(), null, originalProvider.getSuites(),
-                        originalProvider.getRegisters(), snippetReflection, originalProvider.getWordTypes(), originalProvider.getGraphBuilderPlugins(),
+                        originalProvider.getRegisters(), snippetReflection, originalProvider.getWordTypes(), originalProvider.getStampProvider(),
                         originalProvider.getPlatformConfigurationProvider(), originalProvider.getMetaAccessExtensionProvider(), originalProvider.getLoopsDataProvider(), originalProvider.getConfig());
         HotSpotSnippetReplacementsImpl filteringReplacements = new HotSpotSnippetReplacementsImpl(newProviders, snippetReflection,
                         originalProvider.getReplacements().getDefaultReplacementBytecodeProvider(), originalProvider.getCodeCache().getTarget());
@@ -512,17 +486,20 @@ public class SymbolicSnippetEncoder {
      */
     @SuppressWarnings("try")
     private synchronized EncodedSnippets maybeEncodeSnippets(OptionValues options) {
-        EconomicSet<MethodSubstitutionPlugin> plugins = this.knownPlugins;
-        if (preparedPlugins != plugins.size()) {
-            for (MethodSubstitutionPlugin plugin : plugins) {
-                ResolvedJavaMethod original = plugin.getOriginalMethod(originalReplacements.getProviders().getMetaAccess());
-                registerMethodSubstitution(plugin, original, INLINE_AFTER_PARSING, options);
-                if (!original.isNative()) {
-                    registerMethodSubstitution(plugin, original, ROOT_COMPILATION_ENCODING, options);
-                }
-                lookupSnippetType(plugin.getDeclaringClass());
+        GraphBuilderConfiguration.Plugins plugins = originalReplacements.getGraphBuilderPlugins();
+        InvocationPlugins invocationPlugins = plugins.getInvocationPlugins();
+        GraphBuilderConfiguration.Plugins copy = new GraphBuilderConfiguration.Plugins(plugins, invocationPlugins);
+        HotSpotProviders providers = originalReplacements.getProviders().copyWith(new HotSpotSubstrateConstantReflectionProvider(originalReplacements.getProviders().getConstantReflection()));
+        HotSpotSnippetReplacementsImpl snippetReplacements = new HotSpotSnippetReplacementsImpl(originalReplacements, providers.copyWith());
+        snippetReplacements.setGraphBuilderPlugins(copy);
+        copy.clearInlineInvokePlugins();
+        copy.appendInlineInvokePlugin(new SnippetInlineInvokePlugin());
+        copy.appendNodePlugin(new SnippetCounterPlugin(snippetReplacements));
+
+        if (!pendingSnippetGraphs.isEmpty()) {
+            for (BiFunction<OptionValues, HotSpotSnippetReplacementsImpl, Void> function : pendingSnippetGraphs.getValues()) {
+                function.apply(options, snippetReplacements);
             }
-            preparedPlugins = plugins.size();
         }
         EconomicMap<GraphKey, StructuredGraph> graphs = this.preparedSnippetGraphs;
         if (encodedGraphs != graphs.size()) {
@@ -541,19 +518,18 @@ public class SymbolicSnippetEncoder {
 
     }
 
-    synchronized void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition, OptionValues options) {
+    synchronized void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition) {
         assert method.getAnnotation(Snippet.class) != null : "Snippet must be annotated with @" + Snippet.class.getSimpleName();
         SnippetKey key = new SnippetKey(method, original, receiver);
         findSnippetMethod(method);
 
-        if (!preparedSnippetGraphs.containsKey(key)) {
+        if (!pendingSnippetGraphs.containsKey(key)) {
             if (original != null) {
                 originalMethods.put(key.keyString(), methodKey(original));
             }
             SnippetParameterInfo info = new SnippetParameterInfo(method);
-            StructuredGraph snippet = buildGraph(method, original, null, receiver, SnippetParameterInfo.getNonNullParameters(info), true, trackNodeSourcePosition, INLINE_AFTER_PARSING, options);
-            preparedSnippetGraphs.put(key, snippet);
             snippetParameterInfos.put(key.keyString(), info);
+
             int i = 0;
             int offset = 0;
             if (!method.isStatic()) {
@@ -577,6 +553,15 @@ public class SymbolicSnippetEncoder {
                     }
                 }
             }
+            pendingSnippetGraphs.put(key, new BiFunction<OptionValues, HotSpotSnippetReplacementsImpl, Void>() {
+                @Override
+                public Void apply(OptionValues cmopileOptions, HotSpotSnippetReplacementsImpl snippetReplacements) {
+                    StructuredGraph snippet = buildGraph(method, original, null, receiver, SnippetParameterInfo.getNonNullParameters(info), true, trackNodeSourcePosition, INLINE_AFTER_PARSING,
+                                    cmopileOptions, snippetReplacements);
+                    preparedSnippetGraphs.put(key, snippet);
+                    return null;
+                }
+            });
         }
     }
 
@@ -783,8 +768,18 @@ public class SymbolicSnippetEncoder {
          */
         private Object filterSnippetObject(DebugContext debug, Object o) {
             checkIllegalSnippetObjects(o);
+            Object cached = cachedFilteredObjects.get(0);
+            if (cached != null) {
+                return cached;
+            }
             if (o instanceof HotSpotResolvedJavaMethod) {
-                return filterMethod(debug, (HotSpotResolvedJavaMethod) o);
+                HotSpotResolvedJavaMethod method = (HotSpotResolvedJavaMethod) o;
+                if (isGraalClass(method.getDeclaringClass())) {
+                    ResolvedJavaMethod snippetMethod = findSnippetMethod(method);
+                    cachedFilteredObjects.put(method, snippetMethod);
+                    return snippetMethod;
+                }
+                return filterMethod(debug, method);
             } else if (o instanceof HotSpotResolvedJavaField) {
                 return filterField(debug, (HotSpotResolvedJavaField) o);
             } else if (o instanceof HotSpotResolvedJavaType) {
@@ -813,6 +808,9 @@ public class SymbolicSnippetEncoder {
             if (symbolic != null) {
                 return symbolic;
             }
+            if (isGraalClass(method.getDeclaringClass())) {
+                throw new GraalError("Graal methods shouldn't leak into image: " + method);
+            }
             UnresolvedJavaType type = (UnresolvedJavaType) filterType(debug, method.getDeclaringClass());
             String methodName = method.getName();
             String signature = method.getSignature().toMethodDescriptor();
@@ -837,6 +835,9 @@ public class SymbolicSnippetEncoder {
             UnresolvedJavaType unresolvedJavaType = (UnresolvedJavaType) cachedFilteredObjects.get(type);
             if (unresolvedJavaType != null) {
                 return unresolvedJavaType;
+            }
+            if (isGraalClass(type)) {
+                throw new GraalError("Graal types shouldn't leak into image: " + type);
             }
             unresolvedJavaType = UnresolvedJavaType.create(type.getName());
             debug.log(DebugContext.VERBOSE_LEVEL, "filtered %s -> %s", type, unresolvedJavaType);

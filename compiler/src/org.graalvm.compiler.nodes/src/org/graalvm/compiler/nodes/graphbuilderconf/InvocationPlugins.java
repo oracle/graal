@@ -441,6 +441,11 @@ public class InvocationPlugins {
     private volatile List<Runnable> deferredRegistrations;
 
     /**
+     * Flag to avoid recursive deferred registration.
+     */
+    private boolean processingDeferredRegistrations;
+
+    /**
      * Adds a {@link Runnable} for doing registration deferred until the first time
      * {@link #get(ResolvedJavaMethod)} or {@link #closeRegistration()} is called on this object.
      */
@@ -643,11 +648,15 @@ public class InvocationPlugins {
         }
     }
 
-    private void flushDeferrables() {
+    public void flushDeferrables() {
         if (deferredRegistrations != null) {
             synchronized (this) {
                 if (deferredRegistrations != null) {
+                    if (processingDeferredRegistrations) {
+                        throw new GraalError("recursively performing deferred registration");
+                    }
                     try {
+                        processingDeferredRegistrations = true;
                         for (Runnable deferrable : deferredRegistrations) {
                             deferrable.run();
                         }
@@ -671,6 +680,8 @@ public class InvocationPlugins {
                         };
                         deferredRegistrations.add(rethrow);
                         rethrow.run();
+                    } finally {
+                        processingDeferredRegistrations = false;
                     }
                 }
             }
@@ -1113,7 +1124,7 @@ public class InvocationPlugins {
             Class<?> klass = plugin.getClass();
             while (klass != InvocationPlugin.class) {
                 for (Method m : klass.getDeclaredMethods()) {
-                    if (m.getName().equals("defaultHandler")) {
+                    if (m.getName().equals("defaultHandler") || m.getName().equals("execute")) {
                         return true;
                     }
                     if (m.getName().equals("apply")) {
