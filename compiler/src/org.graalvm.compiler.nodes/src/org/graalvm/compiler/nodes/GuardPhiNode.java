@@ -69,19 +69,19 @@ public final class GuardPhiNode extends PhiNode implements GuardingNode {
     @Override
     public ValueNode canonical(CanonicalizerTool tool) {
         if (isLoopPhi()) {
-            fail: {
-                // if all values but the first are null we can replace with the first
-                for (int i = 1; i < valueCount(); i++) {
-                    ValueNode value = valueAt(i);
-                    if (value != null) {
-                        break fail;
-                    }
+            boolean allBackValuesNull = true;
+            for (int i = 1; i < valueCount(); i++) {
+                ValueNode value = valueAt(i);
+                if (value != null) {
+                    allBackValuesNull = false;
+                    break;
                 }
+            }
+            if (allBackValuesNull) {
                 // all values but the first are null, an allowed value for the guard phi, return the
                 // first value instead
                 return valueAt(0);
             }
-
         }
         return super.canonical(tool);
     }
