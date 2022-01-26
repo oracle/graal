@@ -58,6 +58,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.graalvm.polyglot.proxy.ProxyObject;
+import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -255,6 +256,56 @@ public class HostAdapterTest extends AbstractPolyglotTest {
             assertFails(() -> {
                 createHostAdapterClass(env, null);
             }, NullPointerException.class);
+        }
+    }
+
+    @Test
+    public void testCreateHostAdapterFinalClass() {
+        try (TestContext c = new TestContext((b) -> b.allowHostAccess(HostAccess.ALL))) {
+            TruffleLanguage.Env env = c.env;
+            assertFails(() -> {
+                createHostAdapterClass(env, new Class<?>[]{Class.class});
+            }, IllegalArgumentException.class, e -> assertThat(e.getMessage(), containsString("final class")));
+        }
+    }
+
+    @Test
+    public void testCreateHostAdapterMultipleClasses() {
+        try (TestContext c = new TestContext((b) -> b.allowHostAccess(HostAccess.ALL))) {
+            TruffleLanguage.Env env = c.env;
+            assertFails(() -> {
+                createHostAdapterClass(env, new Class<?>[]{Extensible.class, NonDefaultConstructor.class});
+            }, IllegalArgumentException.class, e -> assertThat(e.getMessage(), containsString("multiple classes")));
+        }
+    }
+
+    @Test
+    public void testCreateHostAdapterIllegalArgumentType() {
+        Assume.assumeFalse(using == Using.Deprecated);
+        try (TestContext c = new TestContext((b) -> b.allowHostAccess(HostAccess.EXPLICIT))) {
+            final String expectedMessage = "Types must be host symbols or host classes";
+            TruffleLanguage.Env env = c.env;
+            // java.lang.Class is not an allowed argument type.
+            assertFails(() -> {
+                env.createHostAdapter(new Object[]{Interface.class});
+            }, IllegalArgumentException.class, e -> assertThat(e.getMessage(), containsString(expectedMessage)));
+
+            // Arbitrary HostObject.
+            assertFails(() -> {
+                env.createHostAdapter(new Object[]{env.asGuestValue(new Object())});
+            }, IllegalArgumentException.class, e -> assertThat(e.getMessage(), containsString(expectedMessage)));
+            // Arbitrary TruffleObject.
+            assertFails(() -> {
+                env.createHostAdapter(new Object[]{env.asGuestValue(ProxyObject.fromMap(Collections.emptyMap()))});
+            }, IllegalArgumentException.class, e -> assertThat(e.getMessage(), containsString(expectedMessage)));
+
+            // Interop primitive types are not allowed either.
+            assertFails(() -> {
+                env.createHostAdapter(new Object[]{"invalid"});
+            }, IllegalArgumentException.class, e -> assertThat(e.getMessage(), containsString(expectedMessage)));
+            assertFails(() -> {
+                env.createHostAdapter(new Object[]{42});
+            }, IllegalArgumentException.class, e -> assertThat(e.getMessage(), containsString(expectedMessage)));
         }
     }
 
