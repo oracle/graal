@@ -257,12 +257,6 @@ local jdks = common_json.jdks;
     vm_common.deploy_vm_ruby_java11_linux_amd64 + {publishArtifacts: [{name: 'daily-deploy-vm-ruby-java11-linux-amd64', patterns: ['daily-deploy-vm-ruby-java11-linux-amd64']}]},
     vm_common.deploy_vm_ruby_java11_darwin_amd64 + {publishArtifacts: [{name: 'daily-deploy-vm-ruby-java11-darwin-amd64', patterns: ['daily-deploy-vm-ruby-java11-darwin-amd64']}]},
 
-    #
-    # Deploy GraalVM Complete
-    #
-    vm_common.deploy_vm_complete_java11_linux_amd64,
-    vm_common.deploy_vm_complete_java11_darwin_amd64,
-
     # Trigger the releaser service
     self.notify_releaser_build,
   ]]],

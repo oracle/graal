@@ -590,34 +590,6 @@ local devkits = common_json.devkits;
   deploy_vm_ruby_java11_linux_amd64: vm.vm_java_11 + self.ruby_vm_build_linux + self.linux_deploy + self.deploy_daily_vm_linux_amd64 + self.deploy_graalvm_ruby + {name: 'daily-deploy-vm-ruby-java11-linux-amd64'},
   deploy_vm_ruby_java11_darwin_amd64: vm.vm_java_11 + self.ruby_vm_build_darwin + self.darwin_deploy + self.deploy_daily_vm_darwin + self.deploy_graalvm_ruby + {name: 'daily-deploy-vm-ruby-java11-darwin-amd64'},
 
-  #
-  # Deploy GraalVM Complete
-  #
-
-  # Linux/AMD64
-  deploy_vm_complete_java11_linux_amd64: vm.vm_linux_amd64_java_11 + self.full_vm_build_linux + self.linux_deploy + self.ondemand_deploy_vm_linux_amd64 + {
-    run+: [
-      $.mx_vm_installables + ['graalvm-show'],
-      $.mx_vm_installables + ['build'],
-      $.mx_vm_installables + $.maven_deploy_sdk_base,
-      self.ci_resources.infra.notify_nexus_deploy,
-    ],
-    timelimit: '1:30:00',
-    name: 'ondemand-deploy-vm-complete-java11-linux-amd64',
-  },
-
-  # Darwin/AMD64
-  deploy_vm_complete_java11_darwin_amd64: vm.vm_java_11 + self.full_vm_build_darwin + self.darwin_deploy + self.ondemand_deploy_vm_darwin + {
-    run+: [
-      $.mx_vm_installables + ['graalvm-show'],
-      $.mx_vm_installables + ['build'],
-      $.mx_vm_installables + $.maven_deploy_sdk_base,
-      self.ci_resources.infra.notify_nexus_deploy,
-    ],
-    timelimit: '2:30:00',
-    name: 'ondemand-deploy-vm-complete-java11-darwin-amd64',
-  },
-
   builds: [{'defined_in': std.thisFile} + b for b in [
     #
     # Gates
