@@ -72,10 +72,6 @@ and linking
 * `-esa`: enable assertions in all system classes.
 * `-g`: generate debugging information. Please be informed that debug information produced on GraalVM Community will differ from that generated on GraalVM Enterprise.
 
-<!-- * GraalVM Enterprise only: `--gc=<value>`: select the Native Image garbage collector implementation. Allowed options for `<value>` are `G1` for G1 garbage collector or `serial` for Serial garbage collector (default).
-* GraalVM Enterprise only: `--pgo`: a comma-separated list of files from which to read the data collected for profile-guided optimization of AOT compiled code (reads from _default.iprof_ if nothing is specified).
-* GraalVM Enterprise only: `--pgo-instrument`: instrument AOT compiled code to collect data for profile-guided optimization into the _default.iprof_ file. -->
-
 ### Macro Options
 * `--language:nfi`: make the Truffle Native Function Interface language available
 * `--language:python`: make Python available as a language for the image
@@ -91,9 +87,9 @@ and linking
 * `--tool:insight`: add support for detailed access to a program's runtime behavior, allowing users to inspect values and types at invocation or allocation sites
 * `--tool:dap`: add support to allow image to open a debugger port serving the Debug Adapter Protocol in IDEs like VS Code
 * `--tool:chromeinspector`: add debugging support to a GraalVM supported language
-* `--tool:insightheap`: ?
+* `--tool:insightheap`: snapshot a region of image heap during the execution
 * `--tool:lsp`: add the Language Server Protocol support to later attach compatible debuggers to GraalVM in IDEs like VS Code
-* `--tool:sandbox`: ?
+* `--tool:sandbox`: enables the Truffle sandbox resource limits. For more information, check the [dedicated documentation](..reference-manual/embedding/embed-languages.md/#enterprise-sandbox-resource-limits)
 * `--tool:profiler`: add profiling support to a GraalVM supported language
 
 The `--language:nodejs`, `--language:python`, `--language:ruby`, `--language:R`, `--language:wasm`, and `--language:llvm` polyglot macro options become available once the corresponding languages are added to the base GraalVM installation (see the [GraalVM Updater](../graalvm-updater.md) guide).
@@ -111,6 +107,5 @@ The `--language:nodejs`, `--language:python`, `--language:ruby`, `--language:R`,
 * `--add-exports`: value `<module>/<package>=<target-module>(,<target-module>)*` updates `<module>` to export `<package>` to `<target-module>`, regardless of module declaration. `<target-module>` can be `ALL-UNNAMED` to export to all unnamed modules
 * `--add-opens`: value `<module>/<package>=<target-module>(,<target-module>)*` updates `<module>` to open `<package>` to `<target-module>`, regardless of module declaration
 * `--add-reads`: value `<module>=<target-module>(,<target-module>)*` updates `<module>` to read `<target-module>`, regardless of module declaration. `<target-module>` can be `ALL-UNNAMED` to read all unnamed modules
-<!-- * `--help-experimental-build-server`: display help for the image-build server specific options -->
 
 Native Image options are also distinguished as hosted and runtime options. Continue reading to the [Native Image Hosted and Runtime Options](HostedvsRuntimeOptions.md) guide.
