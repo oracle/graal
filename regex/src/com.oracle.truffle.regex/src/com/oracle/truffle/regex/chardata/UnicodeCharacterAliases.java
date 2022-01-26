@@ -43,7 +43,7 @@
  * For terms of use, see http://www.unicode.org/terms_of_use.html
  */
 
-package com.oracle.truffle.regex.charset;
+package com.oracle.truffle.regex.chardata;
 
 import org.graalvm.collections.EconomicMap;
 
