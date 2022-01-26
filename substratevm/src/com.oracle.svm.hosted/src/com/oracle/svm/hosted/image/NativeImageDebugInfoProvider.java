@@ -25,35 +25,16 @@
  */
 package com.oracle.svm.hosted.image;
 
-import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange.Type.CONTRACT;
-import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange.Type.EXTEND;
-
-import java.lang.reflect.Modifier;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Set;
-import java.util.function.Consumer;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
-import jdk.vm.ci.meta.JavaType;
-import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.compiler.code.SourceMapping;
-import org.graalvm.compiler.core.common.CompressEncoding;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.graph.NodeSourcePosition;
-import org.graalvm.nativeimage.ImageSingletons;
-
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
+import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.code.CompilationResultFrameTree.Builder;
+import com.oracle.svm.core.code.CompilationResultFrameTree.CallNode;
+import com.oracle.svm.core.code.CompilationResultFrameTree.FrameNode;
+import com.oracle.svm.core.code.CompilationResultFrameTree.Visitor;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
@@ -77,13 +58,40 @@ import com.oracle.svm.hosted.substitute.InjectedFieldsType;
 import com.oracle.svm.hosted.substitute.SubstitutionField;
 import com.oracle.svm.hosted.substitute.SubstitutionMethod;
 import com.oracle.svm.hosted.substitute.SubstitutionType;
-
+import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.code.RegisterValue;
+import jdk.vm.ci.code.StackSlot;
+import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.JavaValue;
 import jdk.vm.ci.meta.LineNumberTable;
+import jdk.vm.ci.meta.Local;
+import jdk.vm.ci.meta.LocalVariableTable;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
+import org.graalvm.compiler.code.CompilationResult;
+import org.graalvm.compiler.core.common.CompressEncoding;
+import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.nativeimage.ImageSingletons;
+
+import java.lang.reflect.Modifier;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Set;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange.Type.CONTRACT;
+import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange.Type.EXTEND;
 
 /**
  * Implementation of the DebugInfoProvider API interface that allows type, code and heap data info
@@ -949,13 +957,38 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
-        public Stream<DebugLineInfo> lineInfoProvider() {
+        public Stream<DebugLocationInfo> locationInfoProvider() {
+            // can we still provide locals if we have no file name?
             if (fileName().length() == 0) {
                 return Stream.empty();
             }
-            return compilation.getSourceMappings().stream()
-                            .filter(NativeImageDebugInfoProvider::filterLineInfoSourceMapping)
-                            .map(sourceMapping -> new NativeImageDebugLineInfo(sourceMapping));
+            final CallNode root = new Builder(debugContext, compilation.getTargetCodeSize(), true).build(compilation);
+            if (root == null) {
+                return Stream.empty();
+            }
+            final List<DebugLocationInfo> locationInfos = new ArrayList<>();
+            final ResolvedJavaMethod rootMethod = root.frame.getMethod();
+            if (SubstrateOptions.OmitInlinedMethodDebugLineInfo.getValue()) {
+                root.visitChildren(new Visitor() {
+                    @Override
+                    public void apply(FrameNode node, Object... args) {
+                        if (node.frame.getCaller() == null && node.frame.getMethod() == rootMethod) {
+                            locationInfos.add(new NativeImageDebugLocationInfo(node));
+                        }
+                    }
+                });
+            } else {
+                root.visitChildren(new Visitor() {
+                    @Override
+                    public void apply(FrameNode node, Object... args) {
+                        NativeImageDebugLocationInfo callerInfo = (args.length == 0 ? null : (NativeImageDebugLocationInfo) args[0]);
+                        NativeImageDebugLocationInfo locationInfo =  new NativeImageDebugLocationInfo(node, callerInfo);
+                        locationInfos.add(locationInfo);
+                        node.visitChildren(this, locationInfo);
+                    }
+                });
+            }
+            return locationInfos.stream();
         }
 
         @Override
@@ -1051,57 +1084,81 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
     }
 
-    private static boolean filterLineInfoSourceMapping(SourceMapping sourceMapping) {
-        NodeSourcePosition sourcePosition = sourceMapping.getSourcePosition();
-        /* Don't report line info for zero length ranges. */
-        if (sourceMapping.getStartOffset() == sourceMapping.getEndOffset()) {
-            return false;
-        }
-        /* Don't report inline line info unless the user has configured it. */
-        if (SubstrateOptions.OmitInlinedMethodDebugLineInfo.getValue() && sourcePosition.getCaller() != null) {
-            return false;
-        }
-        return true;
-    }
-
     /**
-     * Implementation of the DebugLineInfo API interface that allows line number info (and more) to
-     * be passed to an ObjectFile when generation of debug info is enabled.
+     * Implementation of the DebugLocationInfo API interface that allows line number and local var
+     * info to be passed to an ObjectFile when generation of debug info is enabled.
      */
-    private class NativeImageDebugLineInfo implements DebugLineInfo {
+    private class NativeImageDebugLocationInfo implements DebugLocationInfo {
         private final int bci;
         private final ResolvedJavaMethod method;
         private final int lo;
         private final int hi;
         private Path cachePath;
         private Path fullFilePath;
-        private DebugLineInfo callersLineInfo;
+        private DebugLocationInfo callersLocationInfo;
+        private List<DebugLocalInfo> localInfoList;
 
-        NativeImageDebugLineInfo(SourceMapping sourceMapping) {
-            this(sourceMapping.getSourcePosition(), sourceMapping.getStartOffset(), sourceMapping.getEndOffset());
+        NativeImageDebugLocationInfo(FrameNode frameNode) {
+            this(frameNode, null);
         }
 
-        NativeImageDebugLineInfo(DebugLineInfo lineInfo, NodeSourcePosition position) {
-            this(position, lineInfo.addressLo(), lineInfo.addressHi());
-        }
-
-        NativeImageDebugLineInfo(NodeSourcePosition position, int lo, int hi) {
-            this.bci = position.getBCI();
-            this.method = position.getMethod();
-            this.lo = lo;
-            this.hi = hi;
+        NativeImageDebugLocationInfo(FrameNode frameNode, NativeImageDebugLocationInfo callersLocationInfo) {
+            BytecodePosition bcpos = frameNode.frame;
+            this.bci = bcpos.getBCI();
+            this.method = bcpos.getMethod();
+            this.lo = frameNode.getStartPos();
+            this.hi = frameNode.getEndPos() + 1;
             this.cachePath = SubstrateOptions.getDebugInfoSourceCacheRoot();
-            NodeSourcePosition callerPosition = position.getCaller();
-            /* Skip substitutions with bytecode index -1 */
-            while (callerPosition != null && callerPosition.isSubstitution() && callerPosition.getBCI() == -1) {
-                callerPosition = callerPosition.getCaller();
-            }
-            if (callerPosition != null) {
-                callersLineInfo = new NativeImageDebugLineInfo(this, callerPosition);
-            } else {
-                callersLineInfo = null;
-            }
+            this.callersLocationInfo = callersLocationInfo;
             computeFullFilePath();
+            this.localInfoList = initLocalInfoList(bcpos);
+        }
+
+        private List<DebugLocalInfo> initLocalInfoList(BytecodePosition bcpos) {
+            if (!(bcpos instanceof BytecodeFrame)) {
+                return null;
+            }
+
+            BytecodeFrame frame = (BytecodeFrame) bcpos;
+            if (frame.numLocals == 0) {
+                return null;
+            }
+            Local[] localsBySlot = getLocalsBySlot();
+            if (localsBySlot == null) {
+                // TODO perhaps try synthesising locals info here
+                return null;
+            }
+            int count = Integer.min(localsBySlot.length, frame.numLocals);
+            ArrayList<DebugLocalInfo> localInfos = new ArrayList<>(count);
+            for (int i = 0; i < count; i++) {
+                JavaValue value = frame.getLocalValue(i);
+                JavaKind kind = frame.getLocalValueKind(i);
+                Local l = localsBySlot[i];
+                String name;
+                ResolvedJavaType type;
+                if (l != null) {
+                    name = l.getName();
+                    type = l.getType().resolve(method.getDeclaringClass());
+                } else {
+                    name = "_" + i;
+                    type = null;
+                }
+                localInfos.add(new NativeImageDebugLocalInfo(name, value, kind, type));
+            }
+            return localInfos;
+        }
+
+        private Local[] getLocalsBySlot() {
+            LocalVariableTable lvt = method.getLocalVariableTable();
+            Local[] nonEmptySortedLocals = null;
+            if (lvt != null) {
+                Local[] locals = lvt.getLocals();
+                if (locals != null && locals.length > 0) {
+                    nonEmptySortedLocals = Arrays.copyOf(locals, locals.length);
+                    Arrays.sort(nonEmptySortedLocals, (Local l1, Local l2) -> l1.getSlot() - l2.getSlot());
+                }
+            }
+            return nonEmptySortedLocals;
         }
 
         @Override
@@ -1240,8 +1297,17 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         }
 
         @Override
-        public DebugLineInfo getCaller() {
-            return callersLineInfo;
+        public DebugLocationInfo getCaller() {
+            return callersLocationInfo;
+        }
+
+        @Override
+        public Stream<DebugLocalInfo> localsProvider() {
+            if (localInfoList != null) {
+                return localInfoList.stream();
+            } else {
+                return Stream.empty();
+            }
         }
 
         @SuppressWarnings("try")
@@ -1284,6 +1350,81 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         public int vtableOffset() {
             /* TODO - convert index to offset (+ sizeof DynamicHub) */
             return isVirtual() ? ((HostedMethod) method).getVTableIndex() : -1;
+        }
+    }
+
+    public class NativeImageDebugLocalInfo implements DebugLocalInfo {
+        private final String name;
+        private ResolvedJavaType type;
+        private final JavaValue value;
+        private final JavaKind kind;
+        private LocalKind localKind;
+
+        NativeImageDebugLocalInfo(String name, JavaValue value, JavaKind kind, ResolvedJavaType type) {
+            this.name = name;
+            this.value = value;
+            this.kind = kind;
+            this.type = type;
+            if (value instanceof RegisterValue) {
+                this.localKind = LocalKind.REGISTER;
+            } else if (value instanceof StackSlot) {
+                this.localKind = LocalKind.STACKSLOT;
+            } else if (value instanceof Constant) {
+                this.localKind = LocalKind.CONSTANT;
+            } else {
+                this.localKind = LocalKind.UNDEFINED;
+            }
+        }
+
+        @Override
+        public String name() {
+            return name;
+        }
+
+        @Override
+        public String typeName() {
+            if (type != null) {
+                return toJavaName(type);
+            }
+            if (kind == JavaKind.Object) {
+                return "java.lang.Object";
+            } else {
+                return kind.getJavaName();
+            }
+        }
+
+        @Override
+        public String valueString() {
+            switch (localKind) {
+                case REGISTER:
+                    return "reg[" + regIndex() + "]";
+                case STACKSLOT:
+                    return "stack[" + stackSlot() + "]";
+                case CONSTANT:
+                    return (constantValue() != null ? constantValue().toValueString() : "null");
+                default:
+                    return "-";
+            }
+        }
+
+        @Override
+        public LocalKind localKind() {
+            return null;
+        }
+
+        @Override
+        public int regIndex() {
+            return ((RegisterValue) value).getRegister().encoding();
+        }
+
+        @Override
+        public int stackSlot() {
+            return ((StackSlot) value).getRawOffset();
+        }
+
+        @Override
+        public Constant constantValue() {
+            return null;
         }
     }
 

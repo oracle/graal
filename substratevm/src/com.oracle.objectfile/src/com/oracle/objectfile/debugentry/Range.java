@@ -26,8 +26,6 @@
 
 package com.oracle.objectfile.debugentry;
 
-import org.graalvm.compiler.debug.DebugContext;
-
 /**
  * Details of a specific address range in a compiled method either a primary range identifying a
  * whole method or a sub-range identifying a sequence of instructions that belong to an inlined
@@ -255,100 +253,5 @@ public class Range {
 
     public int getDepth() {
         return depth;
-    }
-
-    /**
-     * Minimizes the nodes in the tree that track the inline call hierarchy and associated code
-     * ranges. The initial range tree models the call hierarchy as presented in the original debug
-     * line info. It consists of a root node each of whose children is a sequence of linear call
-     * chains, either a single leaf node for some given file and line or a series of inline calls to
-     * such a leaf node. In this initial tree all node ranges in a given chain have the same lo and
-     * hi address and chains are properly ordered by range The merge algorithm works across siblings
-     * at successive depths starting at depth 1. Once all possible nodes at a given depth have been
-     * merged their children can then be merged. A successor node may only be merged into its
-     * predecessor if the nodes have contiguous ranges and idenitfy the same method, line and file.
-     * The range and children of the merged node are, respectively, the union of the input ranges
-     * and children. This preserves the invariant that child ranges lie within their parent range.
-     *
-     * @param debugContext
-     */
-    public void mergeSubranges(DebugContext debugContext) {
-        Range next = getFirstCallee();
-        if (next == null) {
-            return;
-        }
-        debugContext.log(DebugContext.DETAILED_LEVEL, "Merge subranges [0x%x, 0x%x] %s", lo, hi, getFullMethodNameWithParams());
-        /* merge siblings together if possible, reparenting children to the merged node */
-        while (next != null) {
-            next = next.maybeMergeSibling(debugContext);
-        }
-        /* now recurse down to merge children of whatever nodes remain */
-        next = getFirstCallee();
-        /* now this level is merged recursively merge children of each child node. */
-        while (next != null) {
-            next.mergeSubranges(debugContext);
-            next = next.getSiblingCallee();
-        }
-    }
-
-    /**
-     * Removes and merges the next sibling returning the current node or it skips past the current
-     * node as is and returns the next sibling or null if no sibling exists.
-     */
-    private Range maybeMergeSibling(DebugContext debugContext) {
-        Range sibling = getSiblingCallee();
-        debugContext.log(DebugContext.DETAILED_LEVEL, "Merge subrange (maybe) [0x%x, 0x%x] %s", lo, hi, getFullMethodNameWithParams());
-        if (sibling == null) {
-            /* all child nodes at this level have been merged */
-            return null;
-        }
-        if (hi < sibling.lo) {
-            /* cannot merge non-contiguous ranges, move on. */
-            return sibling;
-        }
-        if (getMethodEntry() != sibling.getMethodEntry()) {
-            /* cannot merge distinct callers, move on. */
-            return sibling;
-        }
-        if (getLine() != sibling.getLine()) {
-            /* cannot merge callers with different line numbers, move on. */
-            return sibling;
-        }
-        if (isLeaf() != sibling.isLeaf()) {
-            /*
-             * cannot merge leafs with non-leafs as that results in them becoming non-leafs and not
-             * getting proper line info
-             */
-            return sibling;
-        }
-        /* splice out the sibling from the chain and update this one to include it. */
-        unlink(debugContext, sibling);
-        /* relocate the siblings children to this node. */
-        reparentChildren(debugContext, sibling);
-        /* return the merged node so we can maybe merge it again. */
-        return this;
-    }
-
-    private void unlink(DebugContext debugContext, Range sibling) {
-        assert hi == sibling.lo : String.format("gap in range [0x%x,0x%x] %s [0x%x,0x%x] %s",
-                        lo, hi, getFullMethodNameWithParams(), sibling.getLo(), sibling.getHi(), sibling.getFullMethodNameWithParams());
-        assert this.isInlined == sibling.isInlined : String.format("change in inlined [0x%x,0x%x] %s %s [0x%x,0x%x] %s %s",
-                        lo, hi, getFullMethodNameWithParams(), Boolean.valueOf(this.isInlined), sibling.lo, sibling.hi, sibling.getFullMethodNameWithParams(), Boolean.valueOf(sibling.isInlined));
-        debugContext.log(DebugContext.DETAILED_LEVEL, "Combining [0x%x, 0x%x] %s into [0x%x, 0x%x] %s", sibling.lo, sibling.hi, sibling.getFullMethodName(), lo, hi, getFullMethodNameWithParams());
-        this.hi = sibling.hi;
-        this.siblingCallee = sibling.siblingCallee;
-    }
-
-    private void reparentChildren(DebugContext debugContext, Range sibling) {
-        Range siblingNext = sibling.getFirstCallee();
-        while (siblingNext != null) {
-            debugContext.log(DebugContext.DETAILED_LEVEL, "Reparenting [0x%x, 0x%x] %s to [0x%x, 0x%x] %s", siblingNext.lo, siblingNext.hi, siblingNext.getFullMethodName(), lo, hi,
-                            getFullMethodNameWithParams());
-            siblingNext.caller = this;
-            Range newSiblingNext = siblingNext.siblingCallee;
-            siblingNext.siblingCallee = null;
-            addCallee(siblingNext);
-            siblingNext = newSiblingNext;
-        }
     }
 }

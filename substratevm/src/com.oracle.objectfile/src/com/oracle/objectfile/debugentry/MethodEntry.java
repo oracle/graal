@@ -27,7 +27,7 @@
 package com.oracle.objectfile.debugentry;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugCodeInfo;
-import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLineInfo;
+import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocationInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugMethodInfo;
 
 public class MethodEntry extends MemberEntry {
@@ -154,9 +154,9 @@ public class MethodEntry extends MemberEntry {
      * @param debugMethodInfo
      */
     public void updateRangeInfo(DebugInfoBase debugInfoBase, DebugMethodInfo debugMethodInfo) {
-        if (debugMethodInfo instanceof DebugLineInfo) {
-            DebugLineInfo lineInfo = (DebugLineInfo) debugMethodInfo;
-            if (lineInfo.getCaller() != null) {
+        if (debugMethodInfo instanceof DebugLocationInfo) {
+            DebugLocationInfo locationInfo = (DebugLocationInfo) debugMethodInfo;
+            if (locationInfo.getCaller() != null) {
                 /* this is a real inlined method not just a top level primary range */
                 setIsInlined();
             }

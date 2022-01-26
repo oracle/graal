@@ -26,10 +26,16 @@
 package com.oracle.svm.core.code;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.function.Consumer;
 
+import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.meta.JavaValue;
+import jdk.vm.ci.meta.Local;
+import jdk.vm.ci.meta.LocalVariableTable;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.code.SourceMapping;
 import org.graalvm.compiler.debug.DebugContext;
@@ -214,7 +220,18 @@ public final class CompilationResultFrameTree {
                 return res;
             }
             if (o instanceof SourceMappingWrapper) {
-                assert this == o;
+                int thisSize = getSize();
+                int thatSize = o.getSize();
+                // sort zero length source mappings earlier
+                if (thisSize == 0) {
+                    if (thatSize > 0) {
+                        return -1;
+                    }
+                } else if (thatSize == 0) {
+                    if (thisSize > 0) {
+                        return 1;
+                    }
+                }
                 return 0;
             }
             return -1; /* make Infopoints go first */
@@ -276,6 +293,48 @@ public final class CompilationResultFrameTree {
         @Override
         public String toString() {
             return String.format("-%s, span %d, bci %d, method %s", getPosStr(), getSpan(), frame.getBCI(), frame.getMethod().format("%h.%n(%p)"));
+        }
+
+        public String getLocalsStr() {
+            String localsInfo = "";
+            if (frame instanceof BytecodeFrame) {
+                BytecodeFrame bcf = (BytecodeFrame) frame;
+                Local[] locals = getLocalsBySlot(frame.getMethod());
+                StringBuilder sb = new StringBuilder();
+                if (locals == null) {
+                    return localsInfo;
+                }
+                int combinedLength = Integer.min(locals.length, bcf.numLocals);
+                for (int i = 0; i < combinedLength; i++) {
+                    JavaValue value = bcf.getLocalValue(i);
+                    if (i > 0) {
+                        sb.append(", ");
+                    }
+                    sb.append("li(");
+                    Local local = locals != null ? locals[i] : null;
+                    if (local != null) {
+                        sb.append(local.getName());
+                        sb.append("=");
+                    }
+                    sb.append(value);
+                    sb.append(")");
+                }
+                localsInfo = sb.toString();
+            }
+            return localsInfo;
+        }
+
+        private static Local[] getLocalsBySlot(ResolvedJavaMethod method) {
+            LocalVariableTable lvt = method.getLocalVariableTable();
+            Local[] nonEmptySortedLocals = null;
+            if (lvt != null) {
+                Local[] locals = lvt.getLocals();
+                if (locals != null && locals.length > 0) {
+                    nonEmptySortedLocals = Arrays.copyOf(locals, locals.length);
+                    Arrays.sort(nonEmptySortedLocals, (Local l1, Local l2) -> l1.getSlot() - l2.getSlot());
+                }
+            }
+            return nonEmptySortedLocals;
         }
 
         public void visit(Visitor visitor, Object... varargs) {
@@ -678,12 +737,14 @@ public final class CompilationResultFrameTree {
         private final Consumer<String> printer;
         private final boolean onlyCallTree;
         private final boolean showSourcePos;
+        private final boolean showLocals;
         private final int maxDepth;
 
         FrameTreeDumper(Consumer<String> printer, boolean onlyCallTree, boolean showSourcePos, int maxDepth) {
             this.printer = printer;
             this.onlyCallTree = onlyCallTree;
             this.showSourcePos = showSourcePos;
+            this.showLocals = true;
             this.maxDepth = maxDepth;
         }
 
@@ -709,6 +770,10 @@ public final class CompilationResultFrameTree {
             } else {
                 StackTraceElement stackTraceElement = node.getStackTraceElement();
                 printer.accept(" at " + stackTraceElement.getFileName() + ":" + stackTraceElement.getLineNumber());
+            }
+            if (showLocals) {
+                printer.accept(" locals: ");
+                printer.accept(node.getLocalsStr());
             }
             printer.accept("\n");
             node.visitChildren(this, level + 1);

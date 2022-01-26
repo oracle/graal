@@ -31,6 +31,7 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 
+import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.debug.DebugContext;
 
@@ -274,10 +275,10 @@ public interface DebugInfoProvider {
         int line();
 
         /**
-         * @return a stream of records detailing line numbers and addresses within the compiled
-         *         method.
+         * @return a stream of records detailing source local var and line locations within the
+         *         compiled method.
          */
-        Stream<DebugLineInfo> lineInfoProvider();
+        Stream<DebugLocationInfo> locationInfoProvider();
 
         /**
          * @return the size of the method frame between prologue and epilogue.
@@ -314,7 +315,7 @@ public interface DebugInfoProvider {
      * Access details of code generated for a specific outer or inlined method at a given line
      * number.
      */
-    interface DebugLineInfo extends DebugRangeInfo {
+    interface DebugLocationInfo extends DebugRangeInfo {
         /**
          * @return the lowest address containing code generated for an outer or inlined code segment
          *         reported at this line represented as an offset into the code segment.
@@ -333,9 +334,43 @@ public interface DebugInfoProvider {
         int line();
 
         /**
-         * @return the {@link DebugLineInfo} of the nested inline caller-line
+         * @return the {@link DebugLocationInfo} of the nested inline caller-line
          */
-        DebugLineInfo getCaller();
+        DebugLocationInfo getCaller();
+
+        /**
+         * @return a stream of {@link DebugLocalInfo} objects identifying local or parameter
+         *         variables present in the frame of the current range.
+         */
+        Stream<DebugLocalInfo> localsProvider();
+    }
+
+    /**
+     * A DebugLocalInfo identifies a local or parameter variable present in the current frame, which
+     * may be undefined. If not then the instance records its type and either its (constant) value
+     * or the register or slot location in which the value can be found.
+     */
+    interface DebugLocalInfo {
+        enum LocalKind {
+            UNDEFINED,
+            REGISTER,
+            STACKSLOT,
+            CONSTANT
+        }
+
+        String name();
+
+        String typeName();
+
+        String valueString();
+
+        LocalKind localKind();
+
+        int regIndex();
+
+        int stackSlot();
+
+        Constant constantValue();
     }
 
     interface DebugFrameSizeChange {
