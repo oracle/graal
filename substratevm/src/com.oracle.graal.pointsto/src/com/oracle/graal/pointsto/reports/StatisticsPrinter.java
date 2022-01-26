@@ -26,6 +26,8 @@ package com.oracle.graal.pointsto.reports;
 
 import java.io.File;
 import java.io.PrintWriter;
+import java.text.NumberFormat;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.Consumer;
 
@@ -106,7 +108,9 @@ public final class StatisticsPrinter {
     }
 
     public static void print(PrintWriter out, String key, double value) {
-        out.format("%s\"%s\": %.2f,%n", INDENT, key, value);
+        NumberFormat nf = NumberFormat.getInstance(Locale.ENGLISH);
+        nf.setGroupingUsed(false);
+        out.format("%s\"%s\": %s,%n", INDENT, key, nf.format(value));
     }
 
     public static void printLast(PrintWriter out, String key, long value) {
