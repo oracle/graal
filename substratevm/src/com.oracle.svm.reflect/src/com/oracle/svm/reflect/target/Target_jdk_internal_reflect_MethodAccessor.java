@@ -25,8 +25,7 @@
 package com.oracle.svm.reflect.target;
 
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
 
-@TargetClass(classNameProvider = Package_jdk_internal_reflect.class, className = "MethodAccessor")
+@TargetClass(className = "jdk.internal.reflect.MethodAccessor")
 public final class Target_jdk_internal_reflect_MethodAccessor {
 }

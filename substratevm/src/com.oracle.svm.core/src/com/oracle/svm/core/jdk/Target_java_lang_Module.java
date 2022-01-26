@@ -24,9 +24,65 @@
  */
 package com.oracle.svm.core.jdk;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.util.Arrays;
+import java.util.Objects;
+
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
 
 @SuppressWarnings("unused")
-@TargetClass(className = "java.lang.Module", onlyWith = JDK11OrLater.class)
-public final class Target_java_lang_Module {
+@TargetClass(value = java.lang.Module.class)
+final class Target_java_lang_Module {
+
+    @Alias //
+    private String name;
+
+    @SuppressWarnings("static-method")
+    @Substitute
+    private InputStream getResourceAsStream(String resourceName) {
+        ResourceStorageEntry res = Resources.get(name, resourceName);
+        return res == null ? null : new ByteArrayInputStream(res.getData().get(0));
+    }
+
+    @Substitute //
+    @TargetElement(onlyWith = JDK11OrEarlier.class)
+    private static void defineModule0(Module module, boolean isOpen, String version, String location, String[] pns) {
+        ModuleUtil.defineModule(module, isOpen, Arrays.asList(pns));
+    }
+
+    @Substitute
+    private static void addReads0(Module from, Module to) {
+        if (Objects.isNull(from)) {
+            throw new NullPointerException("from_module is null");
+        }
+    }
+
+    @Substitute
+    private static void addExports0(Module from, String pn, Module to) {
+        if (Objects.isNull(to)) {
+            throw new NullPointerException("to_module is null");
+        }
+
+        ModuleUtil.checkFromModuleAndPackageNullability(from, pn);
+        ModuleUtil.checkIsPackageContainedInModule(pn, from);
+    }
+
+    @Substitute
+    private static void addExportsToAll0(Module from, String pn) {
+        ModuleUtil.checkFromModuleAndPackageNullability(from, pn);
+        ModuleUtil.checkIsPackageContainedInModule(pn, from);
+    }
+
+    @Substitute
+    private static void addExportsToAllUnnamed0(Module from, String pn) {
+        ModuleUtil.checkFromModuleAndPackageNullability(from, pn);
+        if (from.isNamed()) {
+            ModuleUtil.checkIsPackageContainedInModule(pn, from);
+        }
+    }
 }

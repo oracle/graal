@@ -83,11 +83,6 @@ public final class TestReceiverLanguage extends ProxyLanguage {
         return new TestReceiverRootNode(languageInstance, source).getCallTarget();
     }
 
-    @Override
-    protected Object findMetaObject(LanguageContext context, Object value) {
-        return "String";
-    }
-
     private static class TestReceiverRootNode extends RootNode {
 
         @Node.Child private TestReceiverStatementNode statement;

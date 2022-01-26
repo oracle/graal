@@ -31,7 +31,6 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 
 /**
  * INVOKESTATIC bytecode.
@@ -80,7 +79,7 @@ public abstract class InvokeStatic extends Node {
         public abstract Object execute(Object[] args);
 
         @SuppressWarnings("unused")
-        @Specialization(assumptions = "resolvedMethod.getAssumption()")
+        @Specialization(assumptions = "resolvedMethod.getRedefineAssumption()")
         Object callDirect(Object[] args,
                         @Cached("methodLookup(staticMethod)") Method.MethodVersion resolvedMethod,
                         @Cached("create(resolvedMethod.getCallTargetNoInit())") DirectCallNode directCallNode) {
@@ -104,7 +103,7 @@ public abstract class InvokeStatic extends Node {
              * Accept a slow path once the method has been removed put method behind a boundary to
              * avoid a deopt loop.
              */
-            return ClassRedefinition.handleRemovedMethod(staticMethod, staticMethod.getDeclaringKlass()).getMethodVersion();
+            return staticMethod.getContext().getClassRedefinition().handleRemovedMethod(staticMethod, staticMethod.getDeclaringKlass()).getMethodVersion();
         }
         return staticMethod.getMethodVersion();
     }

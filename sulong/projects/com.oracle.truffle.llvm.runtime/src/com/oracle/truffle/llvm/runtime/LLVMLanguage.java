@@ -29,23 +29,12 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import java.lang.ref.ReferenceQueue;
-import java.lang.ref.WeakReference;
-import java.nio.ByteOrder;
-import java.util.ArrayList;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
-
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.MapCursor;
-import org.graalvm.options.OptionDescriptors;
-import org.graalvm.options.OptionValues;
-
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -80,6 +69,17 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.target.TargetTriple;
 import com.oracle.truffle.llvm.toolchain.config.LLVMConfig;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.MapCursor;
+import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionValues;
+
+import java.lang.ref.ReferenceQueue;
+import java.lang.ref.WeakReference;
+import java.nio.ByteOrder;
+import java.util.ArrayList;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
 @TruffleLanguage.Registration(id = LLVMLanguage.ID, name = LLVMLanguage.NAME, internal = false, interactive = false, defaultMimeType = LLVMLanguage.LLVM_BITCODE_MIME_TYPE, //
                 byteMimeTypes = {LLVMLanguage.LLVM_BITCODE_MIME_TYPE, LLVMLanguage.LLVM_ELF_SHARED_MIME_TYPE, LLVMLanguage.LLVM_ELF_EXEC_MIME_TYPE, LLVMLanguage.LLVM_MACHO_MIME_TYPE,
@@ -192,13 +192,21 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     @Override
     protected void initializeContext(LLVMContext context) {
+        if (context.getEnv().isPreInitialization()) {
+            context.initializationDeferred();
+        } else {
+            context.initialize(createContextExtensions(context.getEnv()));
+        }
+    }
+
+    private ContextExtension[] createContextExtensions(Env env) {
         ContextExtension[] ctxExts = new ContextExtension[contextExtensions.length];
         for (int i = 0; i < contextExtensions.length; i++) {
             ContextExtensionKey<?> key = contextExtensions[i];
-            ContextExtension ext = key.factory.create(context.getEnv());
+            ContextExtension ext = key.factory.create(env);
             ctxExts[i] = key.clazz.cast(ext); // fail early if the factory returns a wrong class
         }
-        context.initialize(ctxExts);
+        return ctxExts;
     }
 
     /**
@@ -375,7 +383,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         if (!compatible) {
             return false;
         }
-        return context.patchContext(newEnv);
+        return context.patchContext(newEnv, createContextExtensions(newEnv));
     }
 
     @Override
@@ -424,7 +432,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
             return null;
         }
 
-        @CompilerDirectives.TruffleBoundary(allowInlining = true)
+        @TruffleBoundary(allowInlining = true)
         private static LLVMPointer getElement(ArrayList<LLVMPointer> list, int idx) {
             return list.get(idx);
         }
@@ -505,7 +513,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         return defaultTargetTriple;
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public LLVMInteropType getInteropType(LLVMSourceType sourceType) {
         return interopTypeRegistry.get(sourceType);
     }
@@ -529,6 +537,9 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
      */
     @Override
     protected CallTarget parse(ParsingRequest request) {
+        if (LLVMContext.get(null).getEnv().isPreInitialization()) {
+            throw new UnsupportedOperationException("Parsing not supported during context pre-initialization");
+        }
         Source source = request.getSource();
         String path = source.getPath();
         if (source.isCached()) {
@@ -565,6 +576,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         }
     }
 
+    @TruffleBoundary
     public CallTarget getCachedLibrary(String path) {
         synchronized (libraryCacheLock) {
             lazyCacheCleanup();

@@ -40,32 +40,28 @@
  */
 package org.graalvm.wasm;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.profiles.BranchProfile;
-
 import org.graalvm.wasm.collection.IntArrayList;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.profiles.BranchProfile;
+
 public final class WasmCodeEntry {
-    private static final Object STACK_LOCALS_SLOT_INDEX = 0;
 
     private final WasmFunction function;
     @CompilationFinal(dimensions = 1) private final byte[] data;
-    @CompilationFinal(dimensions = 1) private byte[] localTypes;
+    @CompilationFinal(dimensions = 1) private final byte[] localTypes;
     @CompilationFinal(dimensions = 1) private int[] intConstants;
     @CompilationFinal(dimensions = 2) private int[][] branchTables;
     @CompilationFinal(dimensions = 1) private int[] profileCounters;
-    @CompilationFinal private FrameSlot stackLocalsSlot;
-    @CompilationFinal private int maxStackSize;
+    private final int maxStackSize;
     private final BranchProfile errorBranch = BranchProfile.create();
 
-    public WasmCodeEntry(WasmFunction function, byte[] data) {
+    public WasmCodeEntry(WasmFunction function, byte[] data, byte[] localTypes, int maxStackSize) {
         this.function = function;
         this.data = data;
-        this.localTypes = null;
+        this.localTypes = localTypes;
+        this.maxStackSize = maxStackSize;
         this.intConstants = null;
         this.profileCounters = null;
     }
@@ -78,21 +74,8 @@ public final class WasmCodeEntry {
         return data;
     }
 
-    public void initStackLocals(FrameDescriptor frameDescriptor, int maximumStackSize) {
-        this.stackLocalsSlot = frameDescriptor.addFrameSlot(STACK_LOCALS_SLOT_INDEX, FrameSlotKind.Object);
-        this.maxStackSize = maximumStackSize;
-    }
-
     public int maxStackSize() {
         return maxStackSize;
-    }
-
-    public FrameSlot stackLocalsSlot() {
-        return stackLocalsSlot;
-    }
-
-    public void setLocalTypes(byte[] localTypes) {
-        this.localTypes = localTypes;
     }
 
     public byte localType(int index) {

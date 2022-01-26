@@ -177,7 +177,7 @@ def _run_graalvm_cmd(cmd_args, config, nonZeroIsFatal=True, out=None, err=None, 
             config_args += ['--components=' + ','.join(c.name for c in components)]
         dynamic_imports = [x for x, _ in mx.get_dynamic_imports()]
         if dynamic_imports:
-            config_args += ['--dynamicimports', ','.join(dynamic_imports)]
+            config_args += ['--dynamicimports=' + ','.join(dynamic_imports)]
         primary_suite_dir = None
 
     args = config_args + cmd_args
@@ -322,6 +322,8 @@ def svm_gate_body(args, tasks):
                 javac_command = ['--javac-command', ' '.join(javac_image_command(svmbuild_dir()))]
                 helloworld(['--output-path', svmbuild_dir()] + javac_command)
                 helloworld(['--output-path', svmbuild_dir(), '--shared'])  # Build and run helloworld as shared library
+                if not mx.is_windows():
+                    helloworld(['--output-path', svmbuild_dir(), '-J-XX:StartFlightRecording=dumponexit=true'])  # Build and run helloworld with FlightRecorder at image build time
                 cinterfacetutorial([])
                 clinittest([])
 
@@ -403,9 +405,10 @@ def svm_gate_body(args, tasks):
             config = GraalVMConfig.build(primary_suite_dir=join(suite.vc_dir, 'vm'), # Run from `vm` to clone the right revision of `graal-js` if needed
                                          dynamicimports=['/' + svm_suite().name, '/graal-js'])
             with native_image_context(IMAGE_ASSERTION_FLAGS, config=config) as native_image:
-                js = build_js(native_image)
-                test_run([js, '-e', 'print("hello:" + Array.from(new Array(10), (x,i) => i*i ).join("|"))'], 'hello:0|1|4|9|16|25|36|49|64|81\n')
-                test_js(js, [('octane-richards', 1000, 100, 300)])
+                jslib = build_js_lib(native_image)
+                env = launcher_library_overrride_env(jslib)
+                test_run([get_js_launcher(jslib), '-e', 'print("hello:" + Array.from(new Array(10), (x,i) => i*i ).join("|"))'], 'hello:0|1|4|9|16|25|36|49|64|81\n', env=env)
+                test_js(jslib, [('octane-richards', 1000, 100, 300)])
 
     with Task('module build demo', tasks, tags=[GraalTags.hellomodule]) as t:
         if t:
@@ -526,9 +529,9 @@ def _native_unittest(native_image, cmdline_args):
     _native_junit(native_image, unittest_args, unmask(pargs.build_args), unmask(pargs.run_args), blacklist, whitelist, pargs.preserve_image, builder_on_modulepath)
 
 
-def js_image_test(binary, bench_location, name, warmup_iterations, iterations, timeout=None, bin_args=None):
+def js_image_test(jslib, bench_location, name, warmup_iterations, iterations, timeout=None, bin_args=None):
     bin_args = bin_args if bin_args is not None else []
-    jsruncmd = [binary] + bin_args + [join(bench_location, 'harness.js'), '--', join(bench_location, name + '.js'),
+    jsruncmd = [get_js_launcher(jslib)] + bin_args + [join(bench_location, 'harness.js'), '--', join(bench_location, name + '.js'),
                                       '--', '--warmup-iterations=' + str(warmup_iterations),
                                       '--iterations=' + str(iterations)]
     mx.log(' '.join(jsruncmd))
@@ -544,7 +547,9 @@ def js_image_test(binary, bench_location, name, warmup_iterations, iterations, t
         stderrdata.append(x)
         mx.warn(x.rstrip())
 
-    returncode = mx.run(jsruncmd, cwd=bench_location, out=stdout_collector, err=stderr_collector, nonZeroIsFatal=False, timeout=timeout)
+    env = launcher_library_overrride_env(jslib)
+
+    returncode = mx.run(jsruncmd, cwd=bench_location, out=stdout_collector, err=stderr_collector, nonZeroIsFatal=False, timeout=timeout, env=env)
 
     if returncode == mx.ERROR_TIMEOUT:
         print('INFO: TIMEOUT (> %d): %s' % (timeout, name))
@@ -559,16 +564,23 @@ def js_image_test(binary, bench_location, name, warmup_iterations, iterations, t
     if not passing:
         mx.abort('JS benchmark ' + name + ' failed')
 
+def launcher_library_overrride_env(lib_path):
+    env = os.environ.copy()
+    env['GRAALVM_LAUNCHER_LIBRARY'] = lib_path
+    return env
 
-def build_js(native_image):
-    return native_image(['--macro:js-launcher'])
+def build_js_lib(native_image):
+    return mx.add_lib_suffix(native_image(['--macro:jsvm-library']))
+
+def get_js_launcher(jslib):
+    return os.path.join(os.path.dirname(jslib), "..", "bin", "js")
 
 def test_js(js, benchmarks, bin_args=None):
     bench_location = join(suite.dir, '..', '..', 'js-benchmarks')
     for benchmark_name, warmup_iterations, iterations, timeout in benchmarks:
         js_image_test(js, bench_location, benchmark_name, warmup_iterations, iterations, timeout, bin_args=bin_args)
 
-def test_run(cmds, expected_stdout, timeout=10):
+def test_run(cmds, expected_stdout, timeout=10, env=None):
     stdoutdata = []
     def stdout_collector(x):
         stdoutdata.append(x)
@@ -577,7 +589,7 @@ def test_run(cmds, expected_stdout, timeout=10):
     def stderr_collector(x):
         stderrdata.append(x)
         mx.warn(x.rstrip())
-    returncode = mx.run(cmds, out=stdout_collector, err=stderr_collector, nonZeroIsFatal=False, timeout=timeout)
+    returncode = mx.run(cmds, out=stdout_collector, err=stderr_collector, nonZeroIsFatal=False, timeout=timeout, env=env)
     if ''.join(stdoutdata) != expected_stdout:
         mx.abort('Error: stdout does not match expected_stdout')
     return (returncode, stdoutdata, stderrdata)
@@ -655,7 +667,9 @@ def _helloworld(native_image, javac_command, path, build_only, args):
                 pout, pin = os.pipe()
                 os.dup2(pin, 1)  # connect stdout to pipe
                 os.environ[envkey] = output
-                lib.run_main(1, 'dummy')  # call run_main of shared lib
+                argc = 1
+                argv = (ctypes.c_char_p * argc)(b'dummy')
+                lib.run_main(argc, argv)  # call run_main of shared lib
                 call_stdout = os.read(pout, 120)  # get pipe contents
                 actual_output.append(call_stdout)
                 os.dup2(stdout, 1)  # restore original stdout
@@ -983,6 +997,9 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
                 # These 2 arguments provide walkable call stacks for a crash in libgraal
                 '-H:+PreserveFramePointer',
                 '-H:-DeleteLocalSymbols',
+
+                # No VM-internal threads may be spawned for libgraal.
+                '-H:-AllowVMInternalThreads',
             ],
         ),
     ],
@@ -1097,6 +1114,7 @@ def hellomodule(args):
     with native_image_context(hosted_assertions=False, config=config) as native_image:
         module_path_sep = ';' if mx.is_windows() else ':'
         moduletest_run_args = [
+            '-ea',
             '--add-exports=moduletests.hello.lib/hello.privateLib=moduletests.hello.app',
             '--add-opens=moduletests.hello.lib/hello.privateLib2=moduletests.hello.app',
             '-p', module_path_sep.join(module_path), '-m', 'moduletests.hello.app'

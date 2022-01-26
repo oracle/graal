@@ -29,6 +29,8 @@ import static jdk.vm.ci.common.JVMCIError.guarantee;
 import java.util.Collection;
 import java.util.Collections;
 
+import com.oracle.graal.pointsto.meta.InvokeInfo;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import org.graalvm.compiler.nodes.ParameterNode;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
@@ -43,7 +45,7 @@ import com.oracle.graal.pointsto.typestate.TypeState;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaKind;
 
-public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> {
+public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implements InvokeInfo {
 
     protected final BytecodeLocation location;
 
@@ -60,9 +62,9 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> {
     protected final InvokeTypeFlow originalInvoke;
 
     protected final AnalysisType receiverType;
-    protected final AnalysisMethod targetMethod;
+    protected final PointsToAnalysisMethod targetMethod;
 
-    protected InvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, AnalysisMethod targetMethod,
+    protected InvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
                     TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
         super(invokeLocation, null);
         this.originalInvoke = null;
@@ -93,13 +95,12 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> {
         }
     }
 
-    public abstract boolean isDirectInvoke();
-
     public AnalysisType getReceiverType() {
         return receiverType;
     }
 
-    public AnalysisMethod getTargetMethod() {
+    @Override
+    public PointsToAnalysisMethod getTargetMethod() {
         return targetMethod;
     }
 
@@ -252,7 +253,13 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> {
      * If this is an invoke clone it returns the callees registered with the clone. If this is the
      * original invoke it returns the current registered callees of all clones.
      */
+    @Override
     public abstract Collection<AnalysisMethod> getCallees();
+
+    @Override
+    public BytecodePosition getPosition() {
+        return getSource();
+    }
 
     /**
      * Checks if this invoke can be statically bound.
@@ -266,6 +273,7 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> {
      * statically bound. If the invoke doesn't link to any callee then it is unreachable, i.e., it
      * has no implementation, and should be removed by the analysis client.
      */
+    @Override
     public boolean canBeStaticallyBound() {
         /*
          * Check whether this method can be trivially statically bound, i.e., without the help of
@@ -296,7 +304,7 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> {
      * the receiver type of the method, i.e., its declaring class. Therefore this invoke will link
      * with all possible callees.
      */
-    public static AbstractVirtualInvokeTypeFlow createContextInsensitiveInvoke(PointsToAnalysis bb, AnalysisMethod method, BytecodePosition originalLocation) {
+    public static AbstractVirtualInvokeTypeFlow createContextInsensitiveInvoke(PointsToAnalysis bb, PointsToAnalysisMethod method, BytecodePosition originalLocation) {
         /*
          * The context insensitive invoke has actual parameters and return flows that will be linked
          * to the original actual parameters and return flows at each call site where it will be
@@ -350,7 +358,7 @@ abstract class DirectInvokeTypeFlow extends InvokeTypeFlow {
      */
     protected AnalysisContext callerContext;
 
-    protected DirectInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, AnalysisMethod targetMethod,
+    protected DirectInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
                     TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
         super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
         callerContext = null;
@@ -381,7 +389,7 @@ final class StaticInvokeTypeFlow extends DirectInvokeTypeFlow {
 
     private AnalysisContext calleeContext;
 
-    protected StaticInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, AnalysisMethod targetMethod,
+    protected StaticInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
                     TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
         super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
         calleeContext = null;

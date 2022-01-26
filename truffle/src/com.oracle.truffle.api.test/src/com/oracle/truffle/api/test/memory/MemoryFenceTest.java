@@ -41,13 +41,22 @@
 
 package com.oracle.truffle.api.test.memory;
 
-import com.oracle.truffle.api.memory.MemoryFence;
+import org.junit.BeforeClass;
 import org.junit.Test;
+
+import com.oracle.truffle.api.memory.MemoryFence;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 /**
  * Smoke test of the API methods.
  */
 public class MemoryFenceTest {
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
+
     @Test
     public void testFull() {
         MemoryFence.full();

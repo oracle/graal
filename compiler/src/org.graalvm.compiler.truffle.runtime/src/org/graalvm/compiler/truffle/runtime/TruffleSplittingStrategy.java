@@ -211,6 +211,14 @@ final class TruffleSplittingStrategy {
 
     static void newTargetCreated(RootCallTarget target) {
         final OptimizedCallTarget callTarget = (OptimizedCallTarget) target;
+        if (callTarget.isOSR()) {
+            /*
+             * There is no splitting needed for OSR call targets as there are no direct call nodes
+             * created with OSR targets. so there is also no need to increase the splitting budget
+             * from call targets that are created like this.
+             */
+            return;
+        }
         final EngineData engineData = callTarget.engine;
         if (engineData.splitting) {
             engineData.splitLimit = (int) (engineData.splitLimit + engineData.splittingGrowthLimit * callTarget.getUninitializedNodeCount());

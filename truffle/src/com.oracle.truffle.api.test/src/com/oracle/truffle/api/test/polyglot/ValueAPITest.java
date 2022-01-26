@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -92,6 +92,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
@@ -109,6 +110,7 @@ import org.graalvm.polyglot.proxy.ProxyArray;
 import org.graalvm.polyglot.proxy.ProxyDate;
 import org.graalvm.polyglot.proxy.ProxyDuration;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
+import org.graalvm.polyglot.proxy.ProxyHashMap;
 import org.graalvm.polyglot.proxy.ProxyInstant;
 import org.graalvm.polyglot.proxy.ProxyInstantiable;
 import org.graalvm.polyglot.proxy.ProxyObject;
@@ -120,7 +122,6 @@ import org.junit.BeforeClass;
 import org.junit.ComparisonFailure;
 import org.junit.Test;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
@@ -132,7 +133,6 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.tck.tests.ValueAssert.Trait;
 
@@ -742,9 +742,8 @@ public class ValueAPITest {
         mapAndArray.map.put("foo", "bar");
         mapAndArray.array.add(42);
 
-        objectCoercionTest(mapAndArray, Map.class, (v) -> {
-            assertNull(v.get(0L));
-            assertEquals("bar", v.get("foo"));
+        objectCoercionTest(mapAndArray, List.class, (v) -> {
+            assertEquals(42, v.get(0));
             assertEquals(1, v.size());
             assertFalse(v instanceof Function);
 
@@ -794,9 +793,8 @@ public class ValueAPITest {
         mapAndArrayAndExecutable.array.add(42);
         mapAndArrayAndExecutable.executableResult = "foobarbaz";
 
-        objectCoercionTest(mapAndArrayAndExecutable, Map.class, (v) -> {
-            assertNull(v.get(0L));
-            assertEquals("bar", v.get("foo"));
+        objectCoercionTest(mapAndArrayAndExecutable, List.class, (v) -> {
+            assertEquals(42, v.get(0));
             assertEquals(1, v.size());
             assertTrue(v instanceof Function);
             assertEquals("foobarbaz", ((Function<Object, Object>) v).apply(new Object[0]));
@@ -813,9 +811,8 @@ public class ValueAPITest {
         mapAndArrayAndInstantiable.array.add(42);
         mapAndArrayAndInstantiable.instantiableResult = "foobarbaz";
 
-        objectCoercionTest(mapAndArrayAndInstantiable, Map.class, (v) -> {
-            assertNull(v.get(0L));
-            assertEquals("bar", v.get("foo"));
+        objectCoercionTest(mapAndArrayAndInstantiable, List.class, (v) -> {
+            assertEquals(42, v.get(0));
             assertEquals(1, v.size());
             assertTrue(v instanceof Function);
             assertEquals("foobarbaz", ((Function<Object, Object>) v).apply(new Object[0]));
@@ -832,9 +829,8 @@ public class ValueAPITest {
         mapAndArrayAndExecutableAndInstantiable.array.add(42);
         mapAndArrayAndExecutableAndInstantiable.executableResult = "foobarbaz";
 
-        objectCoercionTest(mapAndArrayAndExecutableAndInstantiable, Map.class, (v) -> {
-            assertNull(v.get(0L));
-            assertEquals("bar", v.get("foo"));
+        objectCoercionTest(mapAndArrayAndExecutableAndInstantiable, List.class, (v) -> {
+            assertEquals(42, v.get(0));
             assertEquals(1, v.size());
             assertTrue(v instanceof Function);
             assertEquals("foobarbaz", ((Function<Object, Object>) v).apply(new Object[0]));
@@ -866,6 +862,62 @@ public class ValueAPITest {
             assertTrue(value.canInvokeMember("foo"));
             assertEquals("foobarbaz", value.invokeMember("foo").asString());
         }, false);
+
+        HashEntries hashEntries = new HashEntries();
+        hashEntries.hashEntries.put("foo", "foobarbaz");
+
+        objectCoercionTest(hashEntries, Map.class, (v) -> {
+            assertEquals(1, v.size());
+            assertEquals("foobarbaz", v.get("foo"));
+            Value value = context.asValue(v);
+            assertTrue(value.hasHashEntries());
+            assertFalse(value.hasMembers());
+        });
+
+        HashEntriesAndArray hashEntriesAndArray = new HashEntriesAndArray();
+        hashEntries.hashEntries.put("foo", "foobarbaz");
+        hashEntriesAndArray.array.add(42);
+        hashEntriesAndArray.array.add(43);
+
+        objectCoercionTest(hashEntriesAndArray, List.class, (v) -> {
+            assertEquals(2, v.size());
+            assertEquals(42, v.get(0));
+            assertEquals(43, v.get(1));
+            Value value = context.asValue(v);
+            assertTrue(value.hasHashEntries());
+            assertTrue(value.hasArrayElements());
+            assertFalse(value.hasMembers());
+        });
+
+        HashEntriesAndMembers hashEntriesAndMembers = new HashEntriesAndMembers();
+        hashEntriesAndMembers.hashEntries.put("foo", "foobarbaz");
+        hashEntriesAndMembers.members.put("member1", "whatever");
+        hashEntriesAndMembers.members.put("member2", "whatever");
+
+        objectCoercionTest(hashEntriesAndMembers, Map.class, (v) -> {
+            assertEquals(1, v.size());
+            assertEquals("foobarbaz", v.get("foo"));
+            Value value = context.asValue(v);
+            assertTrue(value.hasHashEntries());
+            assertTrue(value.hasMembers());
+        });
+
+        HashEntriesAndArrayAndMembers hashEntriesAndArrayAndMembers = new HashEntriesAndArrayAndMembers();
+        hashEntriesAndArrayAndMembers.hashEntries.put("foo", "foobarbaz");
+        hashEntriesAndArrayAndMembers.members.put("member1", "whatever");
+        hashEntriesAndArrayAndMembers.members.put("member2", "whatever");
+        hashEntriesAndArrayAndMembers.array.addAll(Arrays.asList(42, 43, 44));
+
+        objectCoercionTest(hashEntriesAndArrayAndMembers, List.class, (v) -> {
+            assertEquals(3, v.size());
+            assertEquals(42, v.get(0));
+            assertEquals(43, v.get(1));
+            assertEquals(44, v.get(2));
+            Value value = context.asValue(v);
+            assertTrue(value.hasHashEntries());
+            assertTrue(value.hasMembers());
+            assertTrue(value.hasArrayElements());
+        });
     }
 
     private static <T> void objectCoercionTest(Object value, Class<T> expectedType, Consumer<T> validator) {
@@ -1056,6 +1108,115 @@ public class ValueAPITest {
 
         public long getSize() {
             return array.size();
+        }
+    }
+
+    static class HashEntries implements ProxyHashMap {
+
+        final Map<Object, Object> hashEntries;
+        private final ProxyHashMap delegate;
+
+        HashEntries() {
+            this.hashEntries = new LinkedHashMap<>();
+            this.delegate = ProxyHashMap.from(hashEntries);
+        }
+
+        @Override
+        public long getHashSize() {
+            return delegate.getHashSize();
+        }
+
+        @Override
+        public boolean hasHashEntry(Value key) {
+            return delegate.hasHashEntry(key);
+        }
+
+        @Override
+        public Object getHashValue(Value key) {
+            return delegate.getHashValue(key);
+        }
+
+        @Override
+        public void putHashEntry(Value key, Value value) {
+            delegate.putHashEntry(key, value);
+        }
+
+        @Override
+        public boolean removeHashEntry(Value key) {
+            return delegate.removeHashEntry(key);
+        }
+
+        @Override
+        public Object getHashEntriesIterator() {
+            return delegate.getHashEntriesIterator();
+        }
+    }
+
+    static class HashEntriesAndArray extends HashEntries implements ProxyArray {
+
+        final List<Object> array = new ArrayList<>();
+
+        @Override
+        public Object get(long index) {
+            return array.get((int) index);
+        }
+
+        @Override
+        public void set(long index, Value value) {
+            array.set((int) index, value);
+        }
+
+        @Override
+        public long getSize() {
+            return array.size();
+        }
+    }
+
+    static class HashEntriesAndMembers extends HashEntries implements ProxyObject {
+        final Map<String, Object> members = new HashMap<>();
+
+        @Override
+        public Object getMember(String key) {
+            return members.get(key);
+        }
+
+        @Override
+        public ProxyArray getMemberKeys() {
+            return ProxyArray.fromArray(members.keySet().toArray());
+        }
+
+        @Override
+        public boolean hasMember(String key) {
+            return members.containsKey(key);
+        }
+
+        @Override
+        public void putMember(String key, Value value) {
+            members.put(key, value);
+        }
+    }
+
+    static class HashEntriesAndArrayAndMembers extends HashEntriesAndArray implements ProxyObject {
+        final Map<String, Object> members = new HashMap<>();
+
+        @Override
+        public Object getMember(String key) {
+            return members.get(key);
+        }
+
+        @Override
+        public ProxyArray getMemberKeys() {
+            return ProxyArray.fromArray(members.keySet().toArray());
+        }
+
+        @Override
+        public boolean hasMember(String key) {
+            return members.containsKey(key);
+        }
+
+        @Override
+        public void putMember(String key, Value value) {
+            members.put(key, value);
         }
     }
 
@@ -1865,58 +2026,6 @@ public class ValueAPITest {
             return false;
         }
 
-    }
-
-    @Test
-    public void testValueContextPropagation() {
-        Object o = new TestObject();
-
-        ProxyLanguage.setDelegate(new ProxyLanguage() {
-            @Override
-            protected CallTarget parse(ParsingRequest request) throws Exception {
-                return RootNode.createConstantNode(o).getCallTarget();
-            }
-
-            @Override
-            protected boolean isObjectOfLanguage(Object object) {
-                return object == o;
-            }
-
-            @Override
-            protected String toString(@SuppressWarnings("hiding") LanguageContext context, Object value) {
-                if (o == value) {
-                    return "true";
-                } else {
-                    return "false";
-                }
-            }
-        });
-        Value v = context.eval(ProxyLanguage.ID, "");
-        assertEquals("true", v.toString());
-        assertEquals("true", context.asValue(v).toString());
-        assertEquals("true", v.as(Map.class).toString());
-        assertEquals("true", v.as(Function.class).toString());
-        assertEquals("true", v.as(List.class).toString());
-        assertEquals("true", context.asValue(v.as(Map.class)).toString());
-        assertEquals("true", context.asValue(v.as(Function.class)).toString());
-        assertEquals("true", context.asValue(v.as(List.class)).toString());
-
-        assertEquals(v, v);
-        assertEquals(v, context.asValue(v));
-
-        assertEquals(v.as(Map.class), v.as(Map.class));
-        assertEquals(v.as(Function.class), v.as(Function.class));
-        assertEquals(v.as(List.class), v.as(List.class));
-        assertEquals(v.as(Map.class), context.asValue(v.as(Map.class)).as(Map.class));
-        assertEquals(v.as(Function.class), context.asValue(v.as(Function.class)).as(Function.class));
-        assertEquals(v.as(List.class), context.asValue(v.as(List.class)).as(List.class));
-
-        assertNotEquals(v.as(Function.class), v.as(Map.class));
-        assertNotEquals(v.as(Function.class), v.as(List.class));
-        assertNotEquals(v.as(Map.class), v.as(Function.class));
-        assertNotEquals(v.as(Map.class), v.as(List.class));
-        assertNotEquals(v.as(List.class), v.as(Function.class));
-        assertNotEquals(v.as(List.class), v.as(Map.class));
     }
 
     @Test

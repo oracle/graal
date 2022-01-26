@@ -33,8 +33,8 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.CErrorNumber;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.headers.Sysctl;
@@ -56,7 +56,7 @@ class DarwinPhysicalMemory extends PhysicalMemory {
             physicalMemorySizePointer.write(SizeOf.unsigned(WordPointer.class));
             final int sysctlResult = Sysctl.sysctl(namePointer, 2, physicalMemoryPointer, physicalMemorySizePointer, WordFactory.nullPointer(), 0);
             if (sysctlResult != 0) {
-                Log.log().string("DarwinPhysicalMemory.PhysicalMemorySupportImpl.size(): sysctl() returns with errno: ").signed(CErrorNumber.getCErrorNumber()).newline();
+                Log.log().string("DarwinPhysicalMemory.PhysicalMemorySupportImpl.size(): sysctl() returns with errno: ").signed(LibC.errno()).newline();
                 throw VMError.shouldNotReachHere("DarwinPhysicalMemory.PhysicalMemorySupportImpl.size() failed.");
             }
             return physicalMemoryPointer.read();

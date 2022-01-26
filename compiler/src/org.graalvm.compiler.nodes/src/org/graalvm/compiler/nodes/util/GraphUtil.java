@@ -1030,6 +1030,11 @@ public class GraphUtil {
         }
 
         @Override
+        public boolean trySinkWriteFences() {
+            return false;
+        }
+
+        @Override
         public Assumptions getAssumptions() {
             return assumptions;
         }

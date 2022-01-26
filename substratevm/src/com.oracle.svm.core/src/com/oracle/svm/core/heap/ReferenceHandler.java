@@ -26,26 +26,20 @@ package com.oracle.svm.core.heap;
 
 import java.lang.ref.Reference;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.stack.StackOverflowCheck;
-import com.oracle.svm.core.thread.ThreadingSupportImpl;
-import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
 public final class ReferenceHandler {
-    @Fold
     public static boolean useDedicatedThread() {
-        return SubstrateOptions.UseReferenceHandlerThread.getValue() && SubstrateOptions.MultiThreaded.getValue();
+        return ReferenceHandlerThread.isSupported() && ReferenceHandlerThread.isEnabled();
     }
 
-    public static void maybeProcessCurrentlyPending() {
-        if (useDedicatedThread()) {
-            return;
-        }
+    public static void processPendingReferencesInRegularThread() {
+        assert !useDedicatedThread() && isReferenceHandlingAllowed();
+
         /*
          * We might be running in a user thread that is close to a stack overflow, so enable the
          * yellow zone of the stack to ensure that we have sufficient stack space for enqueueing
@@ -66,46 +60,29 @@ public final class ReferenceHandler {
     static void processCleaners() {
         // Note: (sun.misc|jdk.internal).Cleaner objects are invoked in pending reference processing
 
-        if (JavaVersionUtil.JAVA_SPEC > 8) {
-            // Process the JDK's common cleaner, additional cleaners start their own threads
-            Target_java_lang_ref_Cleaner commonCleaner = Target_jdk_internal_ref_CleanerFactory.cleaner();
-            Reference<?> ref = commonCleaner.impl.queue.poll();
-            while (ref != null) {
-                try {
-                    Target_java_lang_ref_Cleaner_Cleanable cl = SubstrateUtil.cast(ref, Target_java_lang_ref_Cleaner_Cleanable.class);
-                    cl.clean();
-                } catch (Throwable e) {
-                    // ignore exceptions from the cleanup action and thread interrupts
-                }
-                ref = commonCleaner.impl.queue.poll();
+        // Process the JDK's common cleaner, additional cleaners start their own threads
+        Target_java_lang_ref_Cleaner commonCleaner = Target_jdk_internal_ref_CleanerFactory.cleaner();
+        Reference<?> ref = commonCleaner.impl.queue.poll();
+        while (ref != null) {
+            try {
+                Target_java_lang_ref_Cleaner_Cleanable cl = SubstrateUtil.cast(ref, Target_java_lang_ref_Cleaner_Cleanable.class);
+                cl.clean();
+            } catch (Throwable e) {
+                // ignore exceptions from the cleanup action and thread interrupts
             }
+            ref = commonCleaner.impl.queue.poll();
         }
+    }
+
+    public static boolean isReferenceHandlingAllowed() {
+        /*
+         * Inside a VMOperation, we are not allowed to do certain things, e.g., perform
+         * synchronization (because it can deadlock when a lock is held outside the VMOperation).
+         * Similar restrictions apply if we are too early in the attach sequence of a thread.
+         */
+        return !VMOperation.isInProgress() && JavaThreads.currentJavaThreadInitialized();
     }
 
     private ReferenceHandler() {
-    }
-}
-
-final class ReferenceHandlerRunnable implements Runnable {
-    @Override
-    public void run() {
-        /*
-         * Precaution: this thread does not register a callback itself, but a subclass of Reference,
-         * ReferenceQueue, or a Cleaner or Cleanable might do strange things.
-         */
-        ThreadingSupportImpl.pauseRecurringCallback("An exception in a recurring callback must not interrupt pending reference processing because it could result in a memory leak.");
-        try {
-            while (true) {
-                ReferenceInternals.waitForPendingReferences();
-                ReferenceInternals.processPendingReferences();
-                ReferenceHandler.processCleaners();
-            }
-        } catch (InterruptedException e) {
-            VMError.guarantee(VMThreads.isTearingDown(), "Reference Handler should only be interrupted during tear-down");
-        } catch (Throwable t) {
-            VMError.shouldNotReachHere("Reference processing and cleaners must handle all potential exceptions", t);
-        } finally {
-            ThreadingSupportImpl.resumeRecurringCallback();
-        }
     }
 }

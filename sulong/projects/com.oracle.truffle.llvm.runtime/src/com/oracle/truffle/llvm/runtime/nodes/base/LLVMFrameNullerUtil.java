@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.runtime.nodes.base;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 
@@ -40,7 +39,7 @@ public final class LLVMFrameNullerUtil {
         // no instances
     }
 
-    public static void nullFrameSlot(VirtualFrame frame, FrameSlot frameSlot) {
+    public static void nullFrameSlot(VirtualFrame frame, int frameSlot) {
         CompilerAsserts.partialEvaluationConstant(frameSlot);
         if (CompilerDirectives.inInterpreter()) {
             // Nulling frame slots is only necessary in compiled code (otherwise, we would compute
@@ -50,7 +49,7 @@ public final class LLVMFrameNullerUtil {
             // reason, we also must NOT use a switch statement.
             return;
         }
-        FrameSlotKind kind = frame.getFrameDescriptor().getFrameSlotKind(frameSlot);
+        FrameSlotKind kind = frame.getFrameDescriptor().getSlotKind(frameSlot);
         if (kind == FrameSlotKind.Object) {
             frame.setObject(frameSlot, null);
         } else if (kind == FrameSlotKind.Boolean) {

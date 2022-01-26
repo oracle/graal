@@ -79,6 +79,10 @@ import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 @SuppressWarnings({"unused", "deprecation"})
 public class CachedContextTest extends AbstractPolyglotTest {
 
+    public CachedContextTest() {
+        needsLanguageEnv = true;
+    }
+
     @Test
     public void testContextLookup1() {
         setupEnv();

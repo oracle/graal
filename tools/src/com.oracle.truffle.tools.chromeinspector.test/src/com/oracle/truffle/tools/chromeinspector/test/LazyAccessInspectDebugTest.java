@@ -26,16 +26,14 @@ package com.oracle.truffle.tools.chromeinspector.test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import org.junit.Test;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.polyglot.Source;
+import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -216,8 +214,8 @@ public class LazyAccessInspectDebugTest {
             @Override
             public Object execute(VirtualFrame frame) {
                 TruffleObject obj = new LazyReadObject(false);
-                FrameSlot slot = frame.getFrameDescriptor().findOrAddFrameSlot("o", FrameSlotKind.Object);
-                frame.setObject(slot, obj);
+                int slot = frame.getFrameDescriptor().findOrAddAuxiliarySlot("o");
+                frame.setAuxiliarySlot(slot, obj);
                 return statement.execute(frame);
             }
 

@@ -8,25 +8,25 @@ vm_bench_common: {
 
 vm_bench_js_linux: ${vm_java_17} ${svm-common-linux-amd64} ${sulong_linux} ${custom_vm_linux} ${vm_bench_common} {
   cmd_base: ${mx_vm_common} [--dynamicimports, js-benchmarks, benchmark, --results-file, ${vm_bench_common.result_file}]
-  config_base: ["--js-vm=graal-js", "--js-vm-config=default", "--jvm=graalvm-${VM_ENV}"]
+  config_base: ["--js-vm=graal-js", "--js-vm-config=default", "--jvm=graalvm-${VM_ENV}-java${BASE_JDK_SHORT_VERSION}"]
   cmd: ${vm_bench_js_linux.cmd_base} ["${BENCH_SUITE}:*", --] ${vm_bench_js_linux.config_base}
   setup: ${common_vm.setup} [
     ${mx_vm_common} [build]
     [git, clone, --depth, "1", [mx, urlrewrite, "https://github.com/graalvm/js-benchmarks.git"], ../../js-benchmarks]
   ]
   run: [
-      ${vm_bench_js_linux.cmd} ["--jvm-config=jvm-interpreter"]
+      ${vm_bench_js_linux.cmd} ["--jvm-config=jvm"]
       ${vm_bench_common.upload}
-      ${vm_bench_js_linux.cmd} ["--jvm-config=native-interpreter"]
+      ${vm_bench_js_linux.cmd} ["--jvm-config=native"]
       ${vm_bench_common.upload}
   ]
 }
 
 vm_polybench_linux_commands: {
   base_cmd: [mx, --env, "polybench-${VM_ENV}"]
-  interpreter_bench_cmd: ${vm_polybench_linux_commands.base_cmd} [benchmark, "polybench:~[compiler/dispatch.js,warmup/specjbb2005.js]", --results-file, ${vm_bench_polybench_linux_interpreter.result_file}, --, "--polybench-vm=graalvm-${VM_ENV}-java17"]
-  compiler_bench_cmd: ${vm_polybench_linux_commands.base_cmd} [benchmark, "polybench:*[compiler/dispatch.js]", --results-file, ${vm_bench_polybench_linux_compiler.result_file}, --, "--polybench-vm=graalvm-${VM_ENV}-java17"]
-  warmup_bench_cmd: ${vm_polybench_linux_commands.base_cmd} [benchmark, "--fork-count-file", "ci_common/benchmark-forks.json",  "polybench:*[warmup/specjbb2005.js]", --results-file, ${vm_bench_polybench_linux_warmup.result_file}, --, "--polybench-vm=graalvm-${VM_ENV}-java17"]
+  interpreter_bench_cmd: ${vm_polybench_linux_commands.base_cmd} [benchmark, "polybench:~r[(compiler/.*)|(warmup/.*)]", --results-file, ${vm_bench_polybench_linux_interpreter.result_file}, --, "--polybench-vm=graalvm-${VM_ENV}-java${BASE_JDK_SHORT_VERSION}"]
+  compiler_bench_cmd: ${vm_polybench_linux_commands.base_cmd} [benchmark, "polybench:*[compiler/dispatch.js]", --results-file, ${vm_bench_polybench_linux_compiler.result_file}, --, "--polybench-vm=graalvm-${VM_ENV}-java${BASE_JDK_SHORT_VERSION}"]
+  warmup_bench_cmd: ${vm_polybench_linux_commands.base_cmd} [benchmark, "--fork-count-file", "ci_common/benchmark-forks.json",  "polybench:r[warmup/.*]", --results-file, ${vm_bench_polybench_linux_warmup.result_file}, --, "--polybench-vm=graalvm-${VM_ENV}-java${BASE_JDK_SHORT_VERSION}"]
 }
 
 vm_bench_polybench_linux_common: ${svm-common-linux-amd64} ${truffleruby_linux} ${custom_vm_linux} ${vm_bench_common} {
@@ -66,7 +66,7 @@ vm_bench_polybench_linux_compiler: ${vm_bench_polybench_linux_common} ${vm_java_
 }
 
 vm_bench_polybench_linux_context_init: ${vm_bench_polybench_linux_common} ${vm_java_17} {
-  bench_cmd: ${vm_polybench_linux_commands.base_cmd} [benchmark, "--fork-count-file", "ci_common/benchmark-forks.json", "polybench:*[interpreter/pyinit.py,interpreter/jsinit.js,interpreter/rbinit.rb]", --results-file, ${vm_bench_polybench_linux_context_init.result_file}, --, "-w", "0", "-i", "0", "--polybench-vm=graalvm-${VM_ENV}-java17"]
+  bench_cmd: ${vm_polybench_linux_commands.base_cmd} [benchmark, "--fork-count-file", "ci_common/benchmark-forks.json", "polybench:*[interpreter/pyinit.py,interpreter/jsinit.js,interpreter/rbinit.rb]", --results-file, ${vm_bench_polybench_linux_context_init.result_file}, --, "-w", "0", "-i", "0", "--polybench-vm=graalvm-${VM_ENV}-java${BASE_JDK_SHORT_VERSION}"]
   run: [
     ${vm_bench_polybench_linux_context_init.bench_cmd} ["--polybench-vm-config=jvm-standard", "--metric=none"]
     ${vm_bench_common.upload}

@@ -27,12 +27,10 @@ package com.oracle.svm.methodhandles;
 import java.lang.invoke.CallSite;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
-// Checkstyle: stop
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-// Checkstyle: resume
 import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -42,16 +40,13 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.svm.core.BuildPhaseProvider;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.invoke.MethodHandleIntrinsic;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
-// Checkstyle: stop
 import sun.invoke.util.ValueConversions;
 import sun.invoke.util.Wrapper;
-// Checkstyle: resume
 
 /**
  * Method handles are implemented in Native Image through reflection. A method handle can have one
@@ -99,11 +94,6 @@ public class MethodHandleFeature implements Feature {
     private Field lambdaFormArity;
     private Field nameFunction;
     private Field namedFunctionMemberName;
-
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.areMethodHandlesSupported();
-    }
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
@@ -218,6 +208,9 @@ public class MethodHandleFeature implements Feature {
                         access.findClassByName("java.lang.invoke.VarHandle$AccessDescriptor")));
         RuntimeReflection.register(ReflectionUtil.lookupMethod(invokersClazz, "checkVarHandleExactType", access.findClassByName("java.lang.invoke.VarHandle"),
                         access.findClassByName("java.lang.invoke.VarHandle$AccessDescriptor")));
+        if (JavaVersionUtil.JAVA_SPEC >= 17) {
+            RuntimeReflection.register(ReflectionUtil.lookupMethod(invokersClazz, "directVarHandleTarget", access.findClassByName("java.lang.invoke.VarHandle")));
+        }
     }
 
     private static void registerValueConversionBoxFunctionsForReflection(DuringAnalysisAccess access) {

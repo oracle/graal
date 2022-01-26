@@ -33,7 +33,7 @@ import org.graalvm.compiler.lir.alloc.lsra.LinearScanLifetimeAnalysisPhase;
 import org.graalvm.compiler.lir.alloc.lsra.LinearScanResolveDataFlowPhase;
 import org.graalvm.compiler.lir.alloc.lsra.MoveResolver;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
-import org.graalvm.compiler.lir.gen.LIRGeneratorTool.MoveFactory;
+import org.graalvm.compiler.lir.gen.MoveFactory;
 import org.graalvm.compiler.lir.ssa.SSAUtil;
 
 import jdk.vm.ci.code.TargetDescription;

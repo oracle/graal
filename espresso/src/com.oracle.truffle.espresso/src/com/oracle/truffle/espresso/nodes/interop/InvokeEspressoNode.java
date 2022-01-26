@@ -34,7 +34,6 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
@@ -45,11 +44,14 @@ public abstract class InvokeEspressoNode extends Node {
     static final int LIMIT = 4;
 
     public final Object execute(Method method, Object receiver, Object[] arguments) throws ArityException, UnsupportedTypeException {
-        Method resolutionSeed = method;
-        if (resolutionSeed.isRemovedByRedefition()) {
-            resolutionSeed = ClassRedefinition.handleRemovedMethod(method, method.isStatic() ? method.getDeclaringKlass() : ((StaticObject) receiver).getKlass());
+        Method.MethodVersion resolutionSeed = method.getMethodVersion();
+        if (!resolutionSeed.getRedefineAssumption().isValid()) {
+            // OK, we know it's a removed method then
+            resolutionSeed = method.getContext().getClassRedefinition().handleRemovedMethod(
+                            method,
+                            method.isStatic() ? method.getDeclaringKlass() : ((StaticObject) receiver).getKlass()).getMethodVersion();
         }
-        Object result = executeMethod(resolutionSeed.getMethodVersion(), receiver, arguments);
+        Object result = executeMethod(resolutionSeed, receiver, arguments);
         /*
          * Unwrap foreign objects (invariant: foreign objects are always wrapped when coming in
          * Espresso and unwrapped when going out)
@@ -75,7 +77,7 @@ public abstract class InvokeEspressoNode extends Node {
     abstract Object executeMethod(Method.MethodVersion method, Object receiver, Object[] arguments) throws ArityException, UnsupportedTypeException;
 
     @ExplodeLoop
-    @Specialization(guards = "method == cachedMethod", limit = "LIMIT", assumptions = "cachedMethod.getAssumption()")
+    @Specialization(guards = "method == cachedMethod", limit = "LIMIT", assumptions = "cachedMethod.getRedefineAssumption()")
     Object doCached(Method.MethodVersion method, Object receiver, Object[] arguments,
                     @Cached("method") Method.MethodVersion cachedMethod,
                     @Cached("createToEspresso(method.getMethod().getParameterCount())") ToEspressoNode[] toEspressoNodes,

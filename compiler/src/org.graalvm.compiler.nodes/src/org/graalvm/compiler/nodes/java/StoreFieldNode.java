@@ -26,6 +26,7 @@ package org.graalvm.compiler.nodes.java;
 
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
 
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
@@ -79,16 +80,22 @@ public final class StoreFieldNode extends AccessFieldNode implements StateSplit,
     }
 
     public StoreFieldNode(ValueNode object, ResolvedJavaField field, ValueNode value) {
-        this(object, field, value, field.isVolatile());
+        this(object, field, value, MemoryOrderMode.getMemoryOrder(field));
     }
 
-    public StoreFieldNode(ValueNode object, ResolvedJavaField field, ValueNode value, boolean volatileAccess) {
-        super(TYPE, StampFactory.forVoid(), object, field, volatileAccess);
+    public StoreFieldNode(ValueNode object, ResolvedJavaField field, ValueNode value, MemoryOrderMode memoryOrder) {
+        super(TYPE, StampFactory.forVoid(), object, field, memoryOrder);
         this.value = value;
     }
 
-    public StoreFieldNode(ValueNode object, ResolvedJavaField field, ValueNode value, FrameState stateAfter, boolean volatileAccess) {
-        super(TYPE, StampFactory.forVoid(), object, field, volatileAccess);
+    public StoreFieldNode(ValueNode object, ResolvedJavaField field, ValueNode value, FrameState stateAfter) {
+        super(TYPE, StampFactory.forVoid(), object, field, MemoryOrderMode.getMemoryOrder(field));
+        this.value = value;
+        this.stateAfter = stateAfter;
+    }
+
+    public StoreFieldNode(ValueNode object, ResolvedJavaField field, ValueNode value, FrameState stateAfter, MemoryOrderMode memoryOrder) {
+        super(TYPE, StampFactory.forVoid(), object, field, memoryOrder);
         this.value = value;
         this.stateAfter = stateAfter;
     }
@@ -112,7 +119,7 @@ public final class StoreFieldNode extends AccessFieldNode implements StateSplit,
 
     @Override
     public NodeCycles estimatedNodeCycles() {
-        if (isVolatile()) {
+        if (hasMemoryFences()) {
             return CYCLES_8;
         }
         return super.estimatedNodeCycles();

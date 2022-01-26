@@ -42,14 +42,16 @@ package com.oracle.truffle.api.debug.test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.GenerateWrapper;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
@@ -68,7 +70,6 @@ import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 public final class TestDebugNoContentLanguage extends ProxyLanguage {
 
     private final SourceInfo sourceInfo;
-    private SourceSection varLocation;
 
     public TestDebugNoContentLanguage(String path, boolean lineInfo, boolean columnInfo) {
         this.sourceInfo = new SourceInfo(path, lineInfo, columnInfo);
@@ -78,26 +79,8 @@ public final class TestDebugNoContentLanguage extends ProxyLanguage {
     protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
         Source source = request.getSource();
         sourceInfo.createSource(LanguageContext.get(null).getEnv(), source);
-        CharSequence characters = source.getCharacters();
-        int varStartPos = source.getLength() - 1;
-        while (varStartPos > 0) {
-            if (Character.isWhitespace(characters.charAt(varStartPos))) {
-                varStartPos++;
-                break;
-            } else {
-                varStartPos--;
-            }
-        }
-        varLocation = sourceInfo.copySection(source.createSection(varStartPos, source.getLength() - varStartPos));
-        return new TestRootNode(languageInstance, source, sourceInfo).getCallTarget();
-    }
 
-    @Override
-    protected SourceSection findSourceLocation(LanguageContext context, Object value) {
-        if ("A".equals(value)) {
-            return varLocation;
-        }
-        return super.findSourceLocation(context, value);
+        return new TestRootNode(languageInstance, source, sourceInfo).getCallTarget();
     }
 
     private static final class SourceInfo {
@@ -131,12 +114,14 @@ public final class TestDebugNoContentLanguage extends ProxyLanguage {
         }
     }
 
-    private static final class TestRootNode extends RootNode {
+    static final class TestRootNode extends RootNode {
 
         @Node.Child private TestStatementNoContentNode statement;
         private final String name;
         private final SourceSection rootSection;
-        private final FrameSlot slotA;
+        private final int slotA;
+
+        private SourceSection varLocation;
 
         TestRootNode(TruffleLanguage<?> language, Source parsedSource, SourceInfo sourceInfo) {
             super(language);
@@ -152,7 +137,18 @@ public final class TestDebugNoContentLanguage extends ProxyLanguage {
             statement = new TestStatementNoContentNode(statementSection);
             name = word(parseRootSection.getCharacters().toString());
             insert(statement);
-            slotA = getFrameDescriptor().findOrAddFrameSlot("a", FrameSlotKind.Object);
+            slotA = getFrameDescriptor().findOrAddAuxiliarySlot("a");
+            CharSequence characters = parsedSource.getCharacters();
+            int varStartPos = parsedSource.getLength() - 1;
+            while (varStartPos > 0) {
+                if (Character.isWhitespace(characters.charAt(varStartPos))) {
+                    varStartPos++;
+                    break;
+                } else {
+                    varStartPos--;
+                }
+            }
+            varLocation = sourceInfo.copySection(parsedSource.createSection(varStartPos, parsedSource.getLength() - varStartPos));
         }
 
         private static String word(String str) {
@@ -175,13 +171,36 @@ public final class TestDebugNoContentLanguage extends ProxyLanguage {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            frame.setObject(slotA, "A");
+            frame.setAuxiliarySlot(slotA, new SourceAnnotatedObject(varLocation));
             return statement.execute(frame);
         }
 
         @Override
         protected boolean isInstrumentable() {
             return true;
+        }
+
+    }
+
+    @ExportLibrary(value = InteropLibrary.class, delegateTo = "delegate")
+    static class SourceAnnotatedObject implements TruffleObject {
+
+        final String delegate = "A";
+
+        final SourceSection sourceSection;
+
+        SourceAnnotatedObject(SourceSection sourceSection) {
+            this.sourceSection = sourceSection;
+        }
+
+        @ExportMessage
+        boolean hasSourceLocation() {
+            return true;
+        }
+
+        @ExportMessage
+        SourceSection getSourceLocation() {
+            return sourceSection;
         }
 
     }

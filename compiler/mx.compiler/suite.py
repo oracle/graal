@@ -1,10 +1,10 @@
 suite = {
-  "mxversion" : "5.309.2",
+  "mxversion" : "5.316.15",
   "name" : "compiler",
   "sourceinprojectwhitelist" : [],
 
   "groupId" : "org.graalvm.compiler",
-  "version" : "22.0.0",
+  "version" : "22.1.0",
   "release" : False,
   "url" : "http://www.graalvm.org/",
   "developer" : {
@@ -146,33 +146,37 @@ suite = {
     },
 
     "HSDIS" : {
-      "urlbase": "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/hsdis",
-      "os_arch": {
-        "linux": {
-          "amd64": {
-            "sha1": "124fdfe42933ec6f529af5df4062d83e9d0570dc",
-            "urls": ["{urlbase}/intel/hsdis-amd64-linux-0d031013db9a80d6c88330c42c983fbfa7053193.tar.gz"],
+      "urlbase" : "https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/hsdis",
+      "packedResource" : True,
+      "os_arch" : {
+        "linux" : {
+          "amd64" : {
+            "sha1" : "124fdfe42933ec6f529af5df4062d83e9d0570dc",
+            "urls" : ["{urlbase}/intel/hsdis-amd64-linux-0d031013db9a80d6c88330c42c983fbfa7053193.tar.gz"],
           },
-          "aarch64": {
-            "sha1": "fb71a14c57a6e6f494aaaa5a84773a3e35344b9b",
-            "urls": ["{urlbase}/hsdis-aarch64-linux-fcc9b70ac91c00db8a50b0d4345490a68e3743e1.tar.gz"],
-          },
-        },
-        "darwin": {
-          "amd64": {
-            "sha1": "5026b67af00cc876db1ed194b91d7cc2ba06710d",
-            "urls": ["{urlbase}/intel/hsdis-amd64-darwin-67f6d23cbebd8998450a88b5bef362171f66f11a.tar.gz"],
-          },
-          "aarch64": {
-            # GR-34811
-            "optional": True,
+          "aarch64" : {
+            "sha1" : "fb71a14c57a6e6f494aaaa5a84773a3e35344b9b",
+            "urls" : ["{urlbase}/hsdis-aarch64-linux-fcc9b70ac91c00db8a50b0d4345490a68e3743e1.tar.gz"],
           },
         },
-        "windows": {
-          "amd64": {
-            "sha1": "d2dc8ca4c9af811761ceb3c9873129c5f8c2e3b9",
-            "urls": ["{urlbase}/intel/hsdis-amd64-windows-6a388372cdd5fe905c1a26ced614334e405d1f30.zip"],
+        "darwin" : {
+          "amd64" : {
+            "sha1" : "5026b67af00cc876db1ed194b91d7cc2ba06710d",
+            "urls" : ["{urlbase}/intel/hsdis-amd64-darwin-67f6d23cbebd8998450a88b5bef362171f66f11a.tar.gz"],
           },
+          # GR-34811
+          "aarch64" : {
+            "optional" : True,
+          }
+        },
+        "windows" : {
+          "amd64" : {
+            "sha1" : "b603814c8136e0086f33355d38a5f67d115101da",
+            "urls" : ["{urlbase}/intel/hsdis-amd64-windows-6a388372cdd5fe905c1a26ced614334e405d1f30-2.zip"],
+          },
+          "aarch64" : {
+            "optional" : True,
+          }
         },
       },
     },
@@ -429,7 +433,7 @@ suite = {
       "workingSets" : "API,Graal",
     },
 
-    "org.graalvm.nativebridge.jni" : {
+    "org.graalvm.jniutils" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
@@ -444,12 +448,38 @@ suite = {
       "workingSets" : "API,Graal",
     },
 
+    "org.graalvm.nativebridge" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "org.graalvm.jniutils",
+      ],
+      "annotationProcessors" : [
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "8,11+",
+      "workingSets" : "API,Graal",
+    },
+
+    "org.graalvm.nativebridge.processor" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+      	"org.graalvm.compiler.processor",
+      ],
+      "annotationProcessors" : [
+      ],
+      "checkstyle" : "org.graalvm.compiler.graph",
+      "javaCompliance" : "8,11+",
+      "workingSets" : "API,Graal",
+    },
+
     "org.graalvm.libgraal.jni" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.debug",
-        "org.graalvm.nativebridge.jni",
+        "org.graalvm.jniutils",
         "org.graalvm.libgraal.jni.annotation",
         "sdk:GRAAL_SDK",
         "JVMCI_HOTSPOT",
@@ -509,6 +539,9 @@ suite = {
     "org.graalvm.compiler.api.directives" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
+      "dependencies" : [
+        "JVMCI_API",
+      ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
       "workingSets" : "API,Graal",
@@ -1111,7 +1144,6 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.replacements",
-        "org.graalvm.compiler.lir.aarch64",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
@@ -1126,7 +1158,6 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.replacements",
-        "org.graalvm.compiler.lir.amd64",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
@@ -1433,6 +1464,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "org.graalvm.compiler.replacements.amd64",
+        "org.graalvm.compiler.lir.amd64",
         "org.graalvm.compiler.core",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
@@ -2160,6 +2192,15 @@ suite = {
       "maven": False,
     },
 
+    "GRAAL_NATIVEBRIDGE_PROCESSOR" : {
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.nativebridge.processor"
+      ],
+      "distDependencies" : ["GRAAL_PROCESSOR"],
+      "maven": False,
+    },
+
     "GRAAL_LIBGRAAL_PROCESSOR" : {
       "subDir" : "src",
       "dependencies" : [
@@ -2223,6 +2264,7 @@ suite = {
         "GRAAL_GRAPHIO",
         "GRAAL_LIBGRAAL_PROCESSOR"],
       "dependencies" : [
+        "org.graalvm.nativebridge",
         "org.graalvm.libgraal",
         "org.graalvm.libgraal.jni",
         "org.graalvm.compiler.options",
@@ -2328,6 +2370,31 @@ suite = {
       "dependencies" : ["org.graalvm.micro.benchmarks"],
       "testDistribution" : True,
       "maven": False,
+    },
+
+    "HSDIS_GRAALVM_SUPPORT" : {
+      "native" : True,
+      "description" : "Disassembler support distribution for the GraalVM",
+      "os_arch" : {
+        "linux" : {
+          "<others>" : {
+            "layout" : {
+              "hsdis-<arch>.so" : "file:<path:HSDIS>/*",
+            },
+          },
+        },
+        "<others>" : {
+          "amd64" : {
+            "layout" : {
+              "<libsuffix:hsdis-amd64>" : "file:<path:HSDIS>/*",
+            },
+          },
+          "aarch64" : {
+            # GR-34811
+            "optional" : True,
+          },
+        },
+      },
     },
   },
 }

@@ -46,6 +46,7 @@ import org.graalvm.wasm.exception.WasmException;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -126,5 +127,21 @@ public class WasmType implements TruffleObject {
     @TruffleBoundary
     public String toString() {
         return "wasm-value-type[" + name + "]";
+    }
+
+    public static FrameSlotKind asFrameSlotKind(byte type) {
+        CompilerAsserts.neverPartOfCompilation();
+        switch (type) {
+            case I32_TYPE:
+                return FrameSlotKind.Int;
+            case I64_TYPE:
+                return FrameSlotKind.Long;
+            case F32_TYPE:
+                return FrameSlotKind.Float;
+            case F64_TYPE:
+                return FrameSlotKind.Double;
+            default:
+                return null;
+        }
     }
 }

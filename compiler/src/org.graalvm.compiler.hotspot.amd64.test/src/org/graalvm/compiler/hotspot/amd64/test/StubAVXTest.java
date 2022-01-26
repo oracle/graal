@@ -74,6 +74,8 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Value;
 
+import java.util.BitSet;
+
 public class StubAVXTest extends LIRTest {
 
     @Before
@@ -192,12 +194,12 @@ public class StubAVXTest extends LIRTest {
         }
 
         @Override
-        protected StructuredGraph buildInitialGraph(DebugContext debug, CompilationIdentifier compilationId, Object[] args) {
+        protected StructuredGraph buildInitialGraph(DebugContext debug, CompilationIdentifier compilationId, Object[] args, BitSet nonNullParameters) {
             // Build the snippet graph directly since snippet registration is closed at this point.
             ReplacementsImpl d = (ReplacementsImpl) providers.getReplacements();
             MetaAccessProvider metaAccess = d.getProviders().getMetaAccess();
             BytecodeProvider bytecodes = new ClassfileBytecodeProvider(metaAccess, d.snippetReflection, ClassLoader.getSystemClassLoader());
-            return d.makeGraph(debug, bytecodes, method, args, null, false, null);
+            return d.makeGraph(debug, bytecodes, method, args, nonNullParameters, null, false, null);
         }
     }
 

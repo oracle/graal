@@ -42,9 +42,11 @@ package com.oracle.truffle.api.test.host;
 
 import static org.junit.Assert.assertEquals;
 
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public final class CallbackWithOverloadConvertTest extends ProxyLanguageEnvTest {
     private char ch;
@@ -64,6 +66,11 @@ public final class CallbackWithOverloadConvertTest extends ProxyLanguageEnvTest 
 
     public interface CallWithChar {
         void callback(char v);
+    }
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
     }
 
     @Test

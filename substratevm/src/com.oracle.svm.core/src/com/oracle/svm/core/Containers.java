@@ -26,6 +26,7 @@ package com.oracle.svm.core;
 
 import static com.oracle.svm.core.Containers.Options.PreferContainerQuotaForCPUCount;
 import static com.oracle.svm.core.Containers.Options.UseContainerSupport;
+import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
 
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -54,7 +55,7 @@ public class Containers {
 
         @Option(help = "Calculate the container CPU availability based on the value of quotas (if set), when true. " +
                         "Otherwise, use the CPU shares value, provided it is less than quota.")//
-        public static final RuntimeOptionKey<Boolean> PreferContainerQuotaForCPUCount = new RuntimeOptionKey<>(true);
+        public static final RuntimeOptionKey<Boolean> PreferContainerQuotaForCPUCount = new RuntimeOptionKey<>(true, RelevantForCompilationIsolates);
     }
 
     /** Sentinel used when the value is unknown. */

@@ -30,6 +30,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.DeoptTest;
 import com.oracle.svm.core.annotate.Specialize;
 import com.oracle.svm.hosted.code.CompileQueue.CompileFunction;
@@ -52,6 +53,8 @@ public class CompilationInfo {
     protected boolean isTrivialMethod;
 
     protected boolean canDeoptForTesting;
+
+    protected boolean modifiesSpecialRegisters;
 
     /**
      * The constant arguments for a {@link DeoptTest} method called by a {@link Specialize} method.
@@ -134,6 +137,11 @@ public class CompilationInfo {
 
     public StructuredGraph getGraph() {
         return graph;
+    }
+
+    public boolean modifiesSpecialRegisters() {
+        assert SubstrateOptions.useLLVMBackend();
+        return modifiesSpecialRegisters;
     }
 
     public boolean isTrivialMethod() {

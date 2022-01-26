@@ -33,7 +33,6 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
@@ -74,7 +73,7 @@ public abstract class InvokeSpecial extends Node {
              * Accept a slow path once the method has been removed put method behind a boundary to
              * avoid a deopt loop.
              */
-            return ClassRedefinition.handleRemovedMethod(method, receiver.getKlass()).getMethodVersion();
+            return method.getContext().getClassRedefinition().handleRemovedMethod(method, receiver.getKlass()).getMethodVersion();
         }
         return method.getMethodVersion();
     }
@@ -96,7 +95,7 @@ public abstract class InvokeSpecial extends Node {
         }
 
         @SuppressWarnings("unused")
-        @Specialization(assumptions = "resolvedMethod.getAssumption()")
+        @Specialization(assumptions = "resolvedMethod.getRedefineAssumption()")
         public Object callDirect(Object[] args,
                         @Bind("getReceiver(args)") StaticObject receiver,
                         // TODO(peterssen): Use the method's declaring class instead of the first

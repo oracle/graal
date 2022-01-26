@@ -143,22 +143,20 @@ public class NodeDefaultsTest extends InteropLibraryBaseTest {
     }
 
     @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings("static-method")
     static final class ProxyLanguageValue implements TruffleObject {
 
         @ExportMessage
-        @SuppressWarnings("static-method")
         boolean hasLanguage() {
             return true;
         }
 
         @ExportMessage
-        @SuppressWarnings("static-method")
         Class<? extends TruffleLanguage<?>> getLanguage() {
             return ProxyLanguage.class;
         }
 
         @ExportMessage
-        @SuppressWarnings("static-method")
         Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
             return "Proxy value";
         }

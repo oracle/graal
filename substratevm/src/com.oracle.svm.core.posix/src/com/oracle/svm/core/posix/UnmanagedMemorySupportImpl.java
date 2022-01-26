@@ -33,7 +33,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.posix.headers.LibC;
+import com.oracle.svm.core.headers.LibC;
 
 class UnmanagedMemorySupportImpl implements UnmanagedMemorySupport {
     @Override

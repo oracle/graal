@@ -54,4 +54,8 @@ public final class HostClassLoadingTestClass1 {
     }
 
     public static int staticField = 42;
+
+    public static HostClassLoadingTestClass1 getInstance() {
+        return new HostClassLoadingTestClass1();
+    }
 }

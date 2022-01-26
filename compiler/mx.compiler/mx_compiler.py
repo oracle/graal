@@ -541,7 +541,7 @@ def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVM
             pass
         else:
             # metadata package was deprecated, exclude it
-            if t: mx.javadoc(['--exclude-packages', 'com.oracle.truffle.dsl.processor.java,com.oracle.truffle.api.object.dsl'], quietForNoPackages=True)
+            if t: mx.javadoc(['--exclude-packages', 'com.oracle.truffle.dsl.processor.java'], quietForNoPackages=True)
 
 def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix=''):
     # run DaCapo benchmarks #
@@ -1368,7 +1368,7 @@ cmp_ce_components = [
         dir_name='graal',
         license_files=[],
         third_party_license_files=[],
-        support_libraries_distributions=['compiler:HSDIS'],
+        support_libraries_distributions=['compiler:HSDIS_GRAALVM_SUPPORT'],
     )
 ]
 

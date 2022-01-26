@@ -48,6 +48,7 @@ import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MemoryAccessProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -252,6 +253,26 @@ public final class IntegerStamp extends PrimitiveStamp {
         }
     }
 
+    @Override
+    public Constant readConstant(MemoryAccessProvider provider, Constant base, long displacement, Stamp accessStamp) {
+        PrimitiveStamp primitiveAccess = (PrimitiveStamp) accessStamp;
+        int accessBits = primitiveAccess.getBits();
+        GraalError.guarantee(getBits() >= ((PrimitiveStamp) accessStamp).getBits(), "access size should be less than or equal the result");
+
+        JavaConstant constant = super.readJavaConstant(provider, base, displacement, accessBits);
+        if (constant == null) {
+            return null;
+        }
+        if (constant.getJavaKind().getBitCount() != accessBits) {
+            if (canBeNegative()) {
+                constant = JavaConstant.forPrimitiveInt(getBits(), CodeUtil.signExtend(constant.asLong(), accessBits));
+            } else {
+                constant = JavaConstant.forPrimitiveInt(getBits(), CodeUtil.zeroExtend(constant.asLong(), accessBits));
+            }
+        }
+        return constant;
+    }
+
     /**
      * The signed inclusive lower bound on the value described by this stamp.
      */
@@ -395,7 +416,8 @@ public final class IntegerStamp extends PrimitiveStamp {
     public boolean isCompatible(Constant constant) {
         if (constant instanceof PrimitiveConstant) {
             PrimitiveConstant prim = (PrimitiveConstant) constant;
-            return prim.getJavaKind().isNumericInteger();
+            JavaKind kind = prim.getJavaKind();
+            return kind.isNumericInteger() && kind.getBitCount() == getBits();
         }
         return false;
     }
@@ -1355,6 +1377,10 @@ public final class IntegerStamp extends PrimitiveStamp {
                                 int shiftAmount = (int) (shift.lowerBound() & shiftMask);
                                 if (shiftAmount == 0) {
                                     return value;
+                                }
+                                if (shiftAmount >= bits) {
+                                    IntegerStamp result = IntegerStamp.create(bits, 0, 0, 0, 0);
+                                    return result;
                                 }
                                 // the mask of bits that will be lost or shifted into the sign bit
                                 if (testNoSignChangeAfterShifting(bits, value.lowerBound(), shiftAmount) && testNoSignChangeAfterShifting(bits, value.upperBound(), shiftAmount)) {

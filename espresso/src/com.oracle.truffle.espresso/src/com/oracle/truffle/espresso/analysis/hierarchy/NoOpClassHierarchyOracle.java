@@ -33,7 +33,7 @@ public class NoOpClassHierarchyOracle implements ClassHierarchyOracle {
     protected static final AssumptionGuardedValue<ObjectKlass> NotSingleImplementor = AssumptionGuardedValue.createInvalid();
 
     @Override
-    public ClassHierarchyAssumption createAssumptionForNewKlass(ObjectKlass newKlass) {
+    public ClassHierarchyAssumption createAssumptionForNewKlass(ObjectKlass.KlassVersion newKlass) {
         if (newKlass.isFinalFlagSet()) {
             return ClassHierarchyAssumptionImpl.AlwaysValid;
         }
@@ -54,7 +54,7 @@ public class NoOpClassHierarchyOracle implements ClassHierarchyOracle {
     }
 
     @Override
-    public SingleImplementor initializeImplementorForNewKlass(ObjectKlass klass) {
+    public SingleImplementor initializeImplementorForNewKlass(ObjectKlass.KlassVersion klass) {
         return SingleImplementor.MultipleImplementors;
     }
 

@@ -63,8 +63,9 @@ import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.BranchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.CompareBranchZeroOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.CondMoveOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.CondSetOp;
+import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.HashTableSwitchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.StrategySwitchOp;
-import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.TableSwitchOp;
+import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.RangeTableSwitchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Move;
 import org.graalvm.compiler.lir.aarch64.AArch64Move.MembarOp;
 import org.graalvm.compiler.lir.aarch64.AArch64PauseOp;
@@ -74,6 +75,7 @@ import org.graalvm.compiler.lir.aarch64.AArch64ZapStackOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ZeroMemoryOp;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGenerator;
+import org.graalvm.compiler.lir.gen.MoveFactory;
 import org.graalvm.compiler.phases.util.Providers;
 
 import jdk.vm.ci.aarch64.AArch64;
@@ -274,7 +276,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         } else if (isIntConstant(trueValue, 0) && isIntConstant(falseValue, 1)) {
             append(new CondSetOp(result, cmpCondition.negate()));
         } else {
-            append(new CondMoveOp(result, cmpCondition, loadReg(trueValue), loadReg(falseValue)));
+            append(new CondMoveOp(result, cmpCondition, asAllocatable(trueValue), asAllocatable(falseValue)));
         }
         return result;
     }
@@ -436,10 +438,10 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
             mirrored = true;
         } else {
             left = a;
-            right = bIsConstant ? b : loadReg(b);
+            right = bIsConstant ? b : asAllocatable(b);
             mirrored = false;
         }
-        left = loadReg(left);
+        left = asAllocatable(left);
         append(kind.isInteger() ? new AArch64Compare.CompareOp(left, right) : new AArch64Compare.FloatCompareOp(left, right, condition, unorderedIsTrue));
         return mirrored;
     }
@@ -465,7 +467,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         } else if (isIntConstant(trueValue, 0) && isIntConstant(falseValue, 1)) {
             append(new CondSetOp(result, ConditionFlag.NE));
         } else {
-            append(new CondMoveOp(result, ConditionFlag.EQ, load(trueValue), load(falseValue)));
+            append(new CondMoveOp(result, ConditionFlag.EQ, asAllocatable(trueValue), asAllocatable(falseValue)));
         }
         return result;
     }
@@ -481,8 +483,13 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    protected void emitTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value key) {
-        append(new TableSwitchOp(lowKey, defaultTarget, targets, asAllocatable(key)));
+    protected void emitRangeTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value key) {
+        append(new RangeTableSwitchOp(lowKey, defaultTarget, targets, asAllocatable(key)));
+    }
+
+    @Override
+    protected void emitHashTableSwitch(JavaConstant[] keys, LabelRef defaultTarget, LabelRef[] targets, Value value, Value hash) {
+        append(new HashTableSwitchOp(keys, defaultTarget, targets, asAllocatable(value), asAllocatable(hash)));
     }
 
     @Override
@@ -549,31 +556,6 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
                     return JavaConstant.forDouble(Double.longBitsToDouble(dead));
                 }
         }
-    }
-
-    /**
-     * Loads value into virtual register. Contrary to {@link #load(Value)} this handles
-     * RegisterValues (i.e. values corresponding to fixed physical registers) correctly, by not
-     * creating an unnecessary move into a virtual register.
-     *
-     * This avoids generating the following code:
-     *
-     * <pre>
-     * mov x0, x19 # x19 is fixed thread register
-     * ldr x0, [x0]
-     * </pre>
-     *
-     * instead of:
-     *
-     * <pre>
-     * ldr x0, [x19]
-     * </pre>
-     */
-    protected AllocatableValue loadReg(Value val) {
-        if (!(LIRValueUtil.isVariable(val) || val instanceof RegisterValue)) {
-            return emitMove(val);
-        }
-        return (AllocatableValue) val;
     }
 
     @Override

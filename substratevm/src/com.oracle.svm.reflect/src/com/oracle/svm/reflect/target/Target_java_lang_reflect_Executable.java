@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.reflect.target;
 
-// Checkstyle: allow reflection
-
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.AnnotatedType;
@@ -43,8 +41,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK8OrEarlier;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.NativeImageOptions;
@@ -93,10 +89,6 @@ public final class Target_java_lang_reflect_Executable {
     Object[] annotatedExceptionTypes;
 
     @Alias //
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    native Target_java_lang_reflect_Executable getRoot();
-
-    @Alias //
     public native int getModifiers();
 
     @Alias //
@@ -134,7 +126,6 @@ public final class Target_java_lang_reflect_Executable {
             if (!MethodMetadataDecoderImpl.hasQueriedMethods()) {
                 throw VMError.shouldNotReachHere();
             }
-            // Checkstyle: stop
             synchronized (this) {
                 if ((declAnnos = declaredAnnotations) == null) {
                     Target_java_lang_reflect_Executable holder = ReflectionHelper.getHolder(this);
@@ -145,7 +136,6 @@ public final class Target_java_lang_reflect_Executable {
                     declaredAnnotations = declAnnos;
                 }
             }
-            // Checkstyle: resume
         }
         return declAnnos;
     }
@@ -242,6 +232,10 @@ public final class Target_java_lang_reflect_Executable {
     }
 
     public static final class ParameterAnnotationsComputer implements CustomFieldValueComputer {
+        @Override
+        public RecomputeFieldValue.ValueAvailability valueAvailability() {
+            return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+        }
 
         @Override
         public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
@@ -251,6 +245,10 @@ public final class Target_java_lang_reflect_Executable {
     }
 
     public static final class AnnotatedReceiverTypeComputer implements CustomFieldValueComputer {
+        @Override
+        public RecomputeFieldValue.ValueAvailability valueAvailability() {
+            return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+        }
 
         @Override
         public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
@@ -260,6 +258,10 @@ public final class Target_java_lang_reflect_Executable {
     }
 
     public static final class AnnotatedParameterTypesComputer implements CustomFieldValueComputer {
+        @Override
+        public RecomputeFieldValue.ValueAvailability valueAvailability() {
+            return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+        }
 
         @Override
         public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
@@ -269,6 +271,10 @@ public final class Target_java_lang_reflect_Executable {
     }
 
     public static final class AnnotatedReturnTypeComputer implements CustomFieldValueComputer {
+        @Override
+        public RecomputeFieldValue.ValueAvailability valueAvailability() {
+            return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+        }
 
         @Override
         public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
@@ -278,6 +284,10 @@ public final class Target_java_lang_reflect_Executable {
     }
 
     public static final class AnnotatedExceptionTypesComputer implements CustomFieldValueComputer {
+        @Override
+        public RecomputeFieldValue.ValueAvailability valueAvailability() {
+            return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+        }
 
         @Override
         public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {

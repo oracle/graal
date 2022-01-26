@@ -47,17 +47,34 @@ import jdk.vm.ci.code.MemoryBarriers;
 @NodeInfo(nameTemplate = "Membar#{p#location/s}", allowedUsageTypes = Memory, cycles = CYCLES_2, size = SIZE_2)
 public final class MembarNode extends FixedWithNextNode implements LIRLowerable, SingleMemoryKill {
 
-    public static final NodeClass<MembarNode> TYPE = NodeClass.create(MembarNode.class);
-    protected final int barriers;
-    protected final LocationIdentity location;
+    public enum FenceKind {
+        NONE(0),
+        STORE_LOAD(MemoryBarriers.STORE_LOAD),
+        STORE_STORE(MemoryBarriers.STORE_STORE),
+        LOAD_ACQUIRE(MemoryBarriers.LOAD_LOAD | MemoryBarriers.LOAD_STORE),
+        STORE_ACQUIRE(MemoryBarriers.STORE_LOAD | MemoryBarriers.STORE_STORE),
+        STORE_RELEASE(MemoryBarriers.LOAD_STORE | MemoryBarriers.STORE_STORE),
+        CONSTRUCTOR_FREEZE(MemoryBarriers.LOAD_STORE | MemoryBarriers.STORE_STORE),
+        FULL(MemoryBarriers.LOAD_LOAD | MemoryBarriers.STORE_LOAD | MemoryBarriers.LOAD_STORE | MemoryBarriers.STORE_STORE);
 
-    public MembarNode(int barriers) {
-        this(barriers, LocationIdentity.any());
+        private final int barriers;
+
+        FenceKind(int barriers) {
+            this.barriers = barriers;
+        }
     }
 
-    public MembarNode(int barriers, LocationIdentity location) {
+    public static final NodeClass<MembarNode> TYPE = NodeClass.create(MembarNode.class);
+    protected final FenceKind fence;
+    protected final LocationIdentity location;
+
+    public MembarNode(FenceKind fence) {
+        this(fence, LocationIdentity.any());
+    }
+
+    public MembarNode(FenceKind fence, LocationIdentity location) {
         super(TYPE, StampFactory.forVoid());
-        this.barriers = barriers;
+        this.fence = fence;
         this.location = location;
     }
 
@@ -68,22 +85,18 @@ public final class MembarNode extends FixedWithNextNode implements LIRLowerable,
 
     @Override
     public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
-        map.put("barriersString", MemoryBarriers.barriersString(barriers));
+        map.put("barriersString", MemoryBarriers.barriersString(fence.barriers));
         return super.getDebugProperties(map);
-    }
-
-    public int getBarriers() {
-        return barriers;
     }
 
     @Override
     public void generate(NodeLIRBuilderTool generator) {
-        generator.getLIRGeneratorTool().emitMembar(barriers);
+        generator.getLIRGeneratorTool().emitMembar(fence.barriers);
     }
 
     @NodeIntrinsic
-    public static native void memoryBarrier(@ConstantNodeParameter int barriers);
+    public static native void memoryBarrier(@ConstantNodeParameter FenceKind fence);
 
     @NodeIntrinsic
-    public static native void memoryBarrier(@ConstantNodeParameter int barriers, @ConstantNodeParameter LocationIdentity location);
+    public static native void memoryBarrier(@ConstantNodeParameter FenceKind fence, @ConstantNodeParameter LocationIdentity location);
 }

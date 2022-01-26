@@ -392,7 +392,7 @@ native-image --language:js --initialize-at-build-time -cp . HelloPolyglot
 It should be mentioned that you can also include a guest language into the native image, but exclude the JIT compiler by passing the `-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime` option to the builder.
 Be aware, the flag `-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime` has to placed *after* all the Truffle language/tool options, so that it will override the default settings.
 
-You can build the above example again but this time the created image will only contain the Truffle language interpreter (the GraalVM compiler will not be included in the image) by running:
+You can build the above example again but this time the created image will only contain the Truffle language interpreter (the Graal compiler will not be included in the image) by running:
 ```shell
 native-image --language:js -Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime --initialize-at-build-time -cp . HelloPolyglotInterpreter
 ```
@@ -613,7 +613,96 @@ In this code:
 <!-- Enterprise Sandbox Resource Limits -->
 {% include_relative sandbox-options.md %}
 
-## Dependency setup
+## Polyglot Isolates
+
+On GraalVM Enterprise, a Polyglot engine can be configured to run in a dedicated native image isolate.
+This experimental feature is enabled with the `--engine.SpawnIsolate` option.
+An engine running in this mode executes within a VM-level fault domain with its own garbage collector and JIT compiler.
+The fact that an engine runs within an isolate is completely transparent with respect to the Polyglot API and interoperability:
+
+```java
+import org.graalvm.polyglot.*;
+
+public class PolyglotIsolate {
+  public static void main(String[] args) {
+    Context context = Context.newBuilder("js")
+      .allowHostAccess(HostAccess.SCOPED)
+      .allowExperimentalOptions(true)
+      .option("engine.SpawnIsolate", "true").build();
+    Value function = context.eval("js", "x => x+1")
+    assert function.canExecute();
+    int x = function.execute(41).asInt();
+    assert x == 42;
+  }
+}
+```
+
+Since the host's GC and the isolate's GC are not aware of one another, cyclic references between objects on both heaps may occur.
+We thus strongly recommend to use [scoped parameters for host callbacks](#controlling-host-callback-parameter-scoping) to avoid cyclic references.
+
+Multiple contexts can be spawned in the same isolated engine by [sharing engines](#code-caching-across-multiple-contexts):
+
+```java
+public class PolyglotIsolateMultipleContexts {
+    public static void main(String[] args) {
+        try (Engine engine = Engine.newBuilder()
+                .allowExperimentalOptions(true)
+                .option("engine.SpawnIsolate", "js").build()) {
+            Source source = Source.create("js", "21 + 21");
+            try (Context context = Context.newBuilder()
+                .engine(engine)
+                .build()) {
+                    int v = context.eval(source).asInt();
+                    assert v == 42;
+            }
+            try (Context context = Context.newBuilder()
+                .engine(engine)
+                .build()) {
+                    int v = context.eval(source).asInt();
+                    assert v == 42;
+            }
+        }
+    }
+}
+```
+
+Note how we need to specify the language for the isolated engine as a parameter to `--engine.SpawnIsolate` in this case.
+The reason is that an isolated engine needs to know which set of languages should be available.
+Behind the scenes, GraalVM will then locate the corresponding native image language library.
+If only a single language is selected, then the library for the language will be loaded.
+If multiple languages are selected, then `libpolyglot`, the library containing all Truffle languages shipped with GraalVM, will be loaded.
+If a matching library is not available, creation of the engine will fail.
+
+Only one language library can be loaded during GraalVM's lifetime.
+This means that the first isolated engine that is created sets the default for the remainder of the execution: if an isolated engine with solely Javascript was created first, only Javascript will be available in isolated languages.
+
+### Passing Native Image Runtime Options
+Engines running in an isolate can make use of [native image runtime options](../native-image/HostedvsRuntimeOptions/) by passing `--engine.IsolateOption.<option>` to the engine builder.
+For example, this can be used to limit the maximum heap memory used by an engine by setting the maximum heap size for the isolate via `--engine.IsolateOption.MaxHeapSize=128m`:
+
+```java
+import org.graalvm.polyglot.*;
+
+public class PolyglotIsolateMaxHeap {
+  public static void main(String[] args) {
+    try {
+      Context context = Context.newBuilder("js")
+        .allowHostAccess(HostAccess.SCOPED)
+        .allowExperimentalOptions(true)
+        .option("engine.SpawnIsolate", "true")
+        .option("engine.IsolateOption.MaxHeapSize", "64m").build()
+      context.eval("js", "var a = [];while (true) {a.push('foobar');}");
+    } catch (PolyglotException ex) {
+      if (ex.isResourceExhausted()) {
+        System.out.println("Resource exhausted");
+      }
+    }
+  }
+}
+```
+Exceeding the maximum heap size will automatically close the context and raise a `PolyglotException`.
+
+## Dependency Setup
 
 To best make use of the embedding API of GraalVM (i.e. `org.graalvm.polyglot.*`) your project should use a GraalVM as `JAVA_HOME`.
 In addition to that, you should specify the `graal-sdk.jar` (which is included in GraalVM) as a provided dependency to your projects.

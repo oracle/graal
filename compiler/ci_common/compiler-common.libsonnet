@@ -16,7 +16,8 @@
     ]
   },
 
-  bench_jdks:: [common.labsjdk11, common.labsjdk17],
+  bench_jdks:: [common["labsjdk-ee-11"], common["labsjdk-ee-17"]],
+
   // Benchmarking building blocks
   // ****************************
   compiler_bench_base:: bench_common.bench_base + {
@@ -29,7 +30,7 @@
     benchmark_cmd:: bench_common.hwlocIfNuma(self.should_use_hwloc, self.plain_benchmark_cmd, node=self.default_numa_node),
     min_heap_size:: if std.objectHasAll(self.environment, 'XMS') then ["-Xms${XMS}"] else [],
     max_heap_size:: if std.objectHasAll(self.environment, 'XMX') then ["-Xmx${XMX}"] else [],
-    extra_vm_args:: ["--profiler=${MX_PROFILER}", "--jvm=${JVM}", "--jvm-config=${JVM_CONFIG}", "-XX:+PrintConcurrentLocks", "-Dgraal.CompilationFailureAction=Diagnose"] + self.min_heap_size + self.max_heap_size,
+    extra_vm_args:: ["--profiler=${MX_PROFILER}", "--jvm=${JVM}", "--jvm-config=${JVM_CONFIG}", "-XX:+PrintConcurrentLocks", "-Dgraal.CompilationFailureAction=Diagnose", "-Dgraal.WarnMissingIntrinsic=true"] + self.min_heap_size + self.max_heap_size,
     should_mx_build:: true,
     setup+: [
       ["cd", "./" + config.compiler.compiler_suite],
@@ -95,4 +96,18 @@
       "JVM_CONFIG"+: "-economy",
     }
   },
+
+  avx2_mode:: {
+    platform+:: "-avx2",
+    environment+: {
+      "JVM_CONFIG"+: "-avx2",
+    }
+  },
+
+  avx3_mode:: {
+    platform+:: "-avx3",
+    environment+: {
+      "JVM_CONFIG"+: "-avx3",
+    }
+  }
 }

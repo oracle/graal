@@ -47,6 +47,9 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -60,6 +63,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 import org.graalvm.polyglot.Context;
@@ -69,6 +73,7 @@ import org.graalvm.polyglot.PolyglotException.StackFrame;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -91,6 +96,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class PolyglotExceptionTest extends AbstractPolyglotTest {
 
@@ -117,6 +123,11 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
                 throw UnsupportedMessageException.create();
             }
         }
+    }
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
     }
 
     @Test
@@ -532,6 +543,7 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
 
     @Test
     public void testCancelDoesNotMaskInternalError() throws InterruptedException, ExecutionException {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
         enterContext = false;
         CountDownLatch waitingStarted = new CountDownLatch(1);
         setupEnv(Context.create(), new ProxyLanguage() {
@@ -628,6 +640,23 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
                 Assert.assertEquals("MyError", e.getMessage());
                 Assert.assertTrue(e.isGuestException());
             }
+        }
+    }
+
+    @Test
+    public void testSerialization() throws IOException {
+        setupEnv();
+        Value throwError = context.asValue((ProxyExecutable) arguments -> {
+            throw new RuntimeException();
+        });
+        AtomicReference<PolyglotException> polyglotExceptionHolder = new AtomicReference<>();
+        AbstractPolyglotTest.assertFails(() -> throwError.execute(), PolyglotException.class, (pe) -> polyglotExceptionHolder.set(pe));
+        assertNotNull(polyglotExceptionHolder.get());
+        try (ObjectOutputStream out = new ObjectOutputStream(new ByteArrayOutputStream())) {
+            AbstractPolyglotTest.assertFails(() -> {
+                out.writeObject(polyglotExceptionHolder.get());
+                return null;
+            }, IOException.class, (ioe) -> assertEquals("PolyglotException serialization is not supported.", ioe.getMessage()));
         }
     }
 

@@ -60,6 +60,10 @@ enum closure_arg_type {
     ARG_SKIP
 };
 
+/**
+ * It is very important that this struct contains no strong references to anything that might
+ * indirectly reference a Truffle context or engine. See the comment in ClosureNativePointer.
+ */
 struct closure_data {
     ffi_closure closure;
 

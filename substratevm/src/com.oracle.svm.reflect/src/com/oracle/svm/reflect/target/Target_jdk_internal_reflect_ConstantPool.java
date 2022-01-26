@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.reflect.target;
 
-// Checkstyle: allow reflection
-
 import static com.oracle.svm.core.util.VMError.unimplemented;
 
 import java.lang.reflect.Field;
@@ -34,12 +32,9 @@ import java.lang.reflect.Member;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.code.CodeInfoAccess;
 import com.oracle.svm.core.code.CodeInfoTable;
-import com.oracle.svm.core.jdk.JDK11OrLater;
-import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
 
 /**
  * This class provides a "fake" constant pool to be used while parsing encoded annotation values in
@@ -50,7 +45,7 @@ import com.oracle.svm.core.jdk.Package_jdk_internal_reflect;
  * decoding logic for free.
  */
 @SuppressWarnings({"unused", "static-method", "hiding"})
-@TargetClass(classNameProvider = Package_jdk_internal_reflect.class, className = "ConstantPool")
+@TargetClass(className = "jdk.internal.reflect.ConstantPool")
 public final class Target_jdk_internal_reflect_ConstantPool {
     // Number of entries in this constant pool (= maximum valid constant pool index)
     @Substitute
@@ -70,7 +65,6 @@ public final class Target_jdk_internal_reflect_ConstantPool {
 
     // Returns a class reference index for a method or a field.
     @Substitute
-    @TargetElement(onlyWith = JDK11OrLater.class)
     public int getClassRefIndexAt(int index) {
         throw unimplemented();
     }
@@ -100,21 +94,18 @@ public final class Target_jdk_internal_reflect_ConstantPool {
     // Fetches the class name, member (field, method or interface
     // method) name, and type descriptor as an array of three Strings
     @Substitute
-    @TargetElement(onlyWith = JDK11OrLater.class)
     public String[] getMemberRefInfoAt(int index) {
         throw unimplemented();
     }
 
     // Returns a name and type reference index for a method, a field or an invokedynamic.
     @Substitute
-    @TargetElement(onlyWith = JDK11OrLater.class)
     public int getNameAndTypeRefIndexAt(int index) {
         throw unimplemented();
     }
 
     // Fetches the name and type from name_and_type index as an array of two Strings
     @Substitute
-    @TargetElement(onlyWith = JDK11OrLater.class)
     public String[] getNameAndTypeRefInfoAt(int index) {
         throw unimplemented();
     }
@@ -150,7 +141,6 @@ public final class Target_jdk_internal_reflect_ConstantPool {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK11OrLater.class)
     public Target_jdk_internal_reflect_ConstantPool_Tag getTagAt(int index) {
         throw unimplemented();
     }
@@ -167,7 +157,6 @@ public final class Target_jdk_internal_reflect_ConstantPool {
     private native Class<?> getClassAtIfLoaded0(Object constantPoolOop, int index);
 
     @Delete
-    @TargetElement(onlyWith = JDK11OrLater.class)
     private native int getClassRefIndexAt0(Object constantPoolOop, int index);
 
     @Delete
@@ -183,15 +172,12 @@ public final class Target_jdk_internal_reflect_ConstantPool {
     private native Field getFieldAtIfLoaded0(Object constantPoolOop, int index);
 
     @Delete
-    @TargetElement(onlyWith = JDK11OrLater.class)
     private native String[] getMemberRefInfoAt0(Object constantPoolOop, int index);
 
     @Delete
-    @TargetElement(onlyWith = JDK11OrLater.class)
     private native int getNameAndTypeRefIndexAt0(Object constantPoolOop, int index);
 
     @Delete
-    @TargetElement(onlyWith = JDK11OrLater.class)
     private native String[] getNameAndTypeRefInfoAt0(Object constantPoolOop, int index);
 
     @Delete
@@ -213,10 +199,9 @@ public final class Target_jdk_internal_reflect_ConstantPool {
     private native String getUTF8At0(Object constantPoolOop, int index);
 
     @Delete
-    @TargetElement(onlyWith = JDK11OrLater.class)
     private native byte getTagAt0(Object constantPoolOop, int index);
 }
 
-@TargetClass(classNameProvider = Package_jdk_internal_reflect.class, className = "ConstantPool", innerClass = "Tag", onlyWith = JDK11OrLater.class)
+@TargetClass(className = "jdk.internal.reflect.ConstantPool", innerClass = "Tag")
 final class Target_jdk_internal_reflect_ConstantPool_Tag {
 }

@@ -79,15 +79,15 @@ public final class CallTree extends Graph {
         Boolean details = request.options.get(PolyglotCompilerOptions.TraceInliningDetails);
         if (request.options.get(PolyglotCompilerOptions.TraceInlining) || details) {
             TruffleCompilerRuntime runtime = TruffleCompilerRuntime.getRuntime();
-            runtime.logEvent(root.getTruffleAST(), 0, "Inline start", root.getName(), root.getStringProperties(), null);
+            runtime.logEvent(root.getDirectCallTarget(), 0, "Inline start", root.getName(), root.getStringProperties(), null);
             traceRecursive(runtime, root, details, 0);
-            runtime.logEvent(root.getTruffleAST(), 0, "Inline done", root.getName(), root.getStringProperties(), null);
+            runtime.logEvent(root.getDirectCallTarget(), 0, "Inline done", root.getName(), root.getStringProperties(), null);
         }
     }
 
     private void traceRecursive(TruffleCompilerRuntime runtime, CallNode node, boolean details, int depth) {
         if (depth != 0) {
-            runtime.logEvent(root.getTruffleAST(), depth, node.getState().toString(), node.getName(), node.getStringProperties(), null);
+            runtime.logEvent(root.getDirectCallTarget(), depth, node.getState().toString(), node.getName(), node.getStringProperties(), null);
         }
         if (node.getState() == CallNode.State.Inlined || details) {
             for (CallNode child : node.getChildren()) {

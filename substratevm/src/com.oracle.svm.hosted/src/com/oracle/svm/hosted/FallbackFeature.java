@@ -26,6 +26,9 @@ package com.oracle.svm.hosted;
 
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.lang.module.ModuleDescriptor;
+import java.lang.module.ModuleFinder;
+import java.lang.module.ModuleReference;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
@@ -34,6 +37,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -61,6 +65,10 @@ public class FallbackFeature implements Feature {
     private final List<String> jniCalls = new ArrayList<>();
     private final List<String> proxyCalls = new ArrayList<>();
     private final List<String> serializationCalls = new ArrayList<>();
+
+    private final Set<ModuleDescriptor> systemModuleDescriptors = ModuleFinder.ofSystem().findAll().stream()
+                    .map(ModuleReference::descriptor)
+                    .collect(Collectors.toSet());
 
     private static class AutoProxyInvoke {
         private final ResolvedJavaMethod method;
@@ -103,7 +111,7 @@ public class FallbackFeature implements Feature {
         void check(ReflectionInvocationCheck check, BytecodePosition invokeLocation);
     }
 
-    private static class ReflectionInvocationCheck {
+    private class ReflectionInvocationCheck {
         private final Method reflectionMethod;
         private final InvokeChecker checker;
         private AnalysisMethod trackedReflectionMethod;
@@ -120,10 +128,18 @@ public class FallbackFeature implements Feature {
         }
 
         void apply(BytecodePosition invokeLocation) {
-            ClassLoader classLoader = ((AnalysisMethod) invokeLocation.getMethod()).getDeclaringClass().getJavaClass().getClassLoader();
-            if (NativeImageSystemClassLoader.singleton().isNativeImageClassLoader(classLoader)) {
-                checker.check(this, invokeLocation);
+            Class<?> javaClass = ((AnalysisMethod) invokeLocation.getMethod()).getDeclaringClass().getJavaClass();
+            if (systemModuleDescriptors.contains(javaClass.getModule().getDescriptor())) {
+                /* Ensure all JDK system modules are excluded from reporting reflection use. */
+                return;
             }
+            ClassLoader classLoader = javaClass.getClassLoader();
+            if (!NativeImageSystemClassLoader.singleton().isNativeImageClassLoader(classLoader)) {
+                /* Classes not loaded by NativeImageClassLoader are also excluded. */
+                return;
+            }
+            /* Collect reflection use in application classes. */
+            checker.check(this, invokeLocation);
         }
 
         String locationString(BytecodePosition invokeLocation) {

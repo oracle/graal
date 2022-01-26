@@ -1,4 +1,4 @@
 DYNAMIC_IMPORTS=/compiler,/graal-js,/regex,/sdk,/substratevm,/sulong,/tools,/truffle
-COMPONENTS=cmp,cov,dap,gu,gvm,ins,insight,insightheap,js,llrc,llrl,llrn,lsp,nfi,ni,nic,nil,poly,polynative,pro,rgx,sdk,svm,svml,svmnfi,tfl,tflm,vvm
+COMPONENTS=cmp,cov,dap,gu,gvm,icu4j,ins,insight,insightheap,js,llrc,llrl,llrn,lsp,nfi-libffi,ni,nic,nil,poly,polynative,pro,rgx,sdk,svm,svml,svmnfi,tfl,tflm,vvm
 NATIVE_IMAGES=false
 DISABLE_INSTALLABLES=ni,nil

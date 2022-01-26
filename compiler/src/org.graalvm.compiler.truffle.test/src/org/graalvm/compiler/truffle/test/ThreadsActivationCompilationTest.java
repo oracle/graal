@@ -45,6 +45,10 @@ import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
 
 public class ThreadsActivationCompilationTest extends AbstractPolyglotTest {
 
+    public ThreadsActivationCompilationTest() {
+        needsInstrumentEnv = true;
+    }
+
     @Test
     public void testThreadActivationCompilation() {
         setupEnv(Context.newBuilder().allowExperimentalOptions(true).option("engine.CompileImmediately", "false").option("engine.BackgroundCompilation", "false").build());

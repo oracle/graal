@@ -52,7 +52,6 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.Indent;
-import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
@@ -77,6 +76,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.reports.StatisticsPrinter;
 import com.oracle.graal.pointsto.typestate.PointsToStats;
 import com.oracle.graal.pointsto.typestate.TypeState;
@@ -318,12 +318,6 @@ public abstract class PointsToAnalysis implements BigBang {
         return true;
     }
 
-    /** You can blacklist certain callees here. */
-    @SuppressWarnings("unused")
-    public boolean isCallAllowed(PointsToAnalysis bb, AnalysisMethod caller, AnalysisMethod target, NodeSourcePosition srcPosition) {
-        return true;
-    }
-
     @Override
     public void cleanupAfterAnalysis() {
         allSynchronizedTypeFlow = null;
@@ -444,7 +438,7 @@ public abstract class PointsToAnalysis implements BigBang {
         }
         aMethod.registerAsRootMethod();
 
-        final MethodTypeFlow methodFlow = aMethod.getTypeFlow();
+        final MethodTypeFlow methodFlow = assertPointsToAnalysisMethod(aMethod).getTypeFlow();
         try (Indent indent = debug.logAndIndent("add root method %s", aMethod.getName())) {
             boolean isStatic = Modifier.isStatic(aMethod.getModifiers());
             int paramCount = aMethod.getSignature().getParameterCount(!isStatic);
@@ -475,6 +469,11 @@ public abstract class PointsToAnalysis implements BigBang {
         });
 
         return aMethod;
+    }
+
+    public static PointsToAnalysisMethod assertPointsToAnalysisMethod(AnalysisMethod aMethod) {
+        assert aMethod instanceof PointsToAnalysisMethod : "Only points-to analysis methods are supported";
+        return ((PointsToAnalysisMethod) aMethod);
     }
 
     @Override
@@ -746,20 +745,16 @@ public abstract class PointsToAnalysis implements BigBang {
                                     numIterations, analysisChanged ? "DID" : "DID NOT"));
                 }
 
-                /*
-                 * Allow features to change the universe.
-                 */
-                try (StopTimer t2 = getProcessFeaturesTimer().start()) {
-                    int numTypes = universe.getTypes().size();
-                    int numMethods = universe.getMethods().size();
-                    int numFields = universe.getFields().size();
-                    if (analysisEndCondition.apply(universe)) {
-                        if (numTypes != universe.getTypes().size() || numMethods != universe.getMethods().size() || numFields != universe.getFields().size()) {
-                            throw AnalysisError.shouldNotReachHere(
-                                            "When a feature makes more types, methods, or fields reachable, it must require another analysis iteration via DuringAnalysisAccess.requireAnalysisIteration()");
-                        }
-                        return;
+                /* Allow features to change the universe. */
+                int numTypes = universe.getTypes().size();
+                int numMethods = universe.getMethods().size();
+                int numFields = universe.getFields().size();
+                if (analysisEndCondition.apply(universe)) {
+                    if (numTypes != universe.getTypes().size() || numMethods != universe.getMethods().size() || numFields != universe.getFields().size()) {
+                        throw AnalysisError.shouldNotReachHere(
+                                        "When a feature makes more types, methods, or fields reachable, it must require another analysis iteration via DuringAnalysisAccess.requireAnalysisIteration()");
                     }
+                    return;
                 }
             }
         }
@@ -773,6 +768,24 @@ public abstract class PointsToAnalysis implements BigBang {
 
     private static ForkJoinPool.ForkJoinWorkerThreadFactory debugThreadFactory(DebugContext debug) {
         return pool -> new SubstrateWorkerThread(pool, debug);
+    }
+
+    @Override
+    public void onTypeInstantiated(AnalysisType type, AnalysisType.UsageKind usageKind) {
+        /* Register the type as instantiated with all its super types. */
+
+        assert type.isAllocated() || type.isInHeap();
+        assert type.isArray() || (type.isInstanceClass() && !type.isAbstract()) : this;
+        universe.hostVM().checkForbidden(type, usageKind);
+
+        TypeState typeState = TypeState.forExactType(this, type, true);
+        TypeState typeStateNonNull = TypeState.forExactType(this, type, false);
+
+        /* Register the instantiated type with its super types. */
+        type.forAllSuperTypes(t -> {
+            t.instantiatedTypes.addState(this, typeState);
+            t.instantiatedTypesNonNull.addState(this, typeStateNonNull);
+        });
     }
 
     public static class ConstantObjectsProfiler {

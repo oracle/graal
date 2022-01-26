@@ -91,13 +91,11 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentationHandler.InstrumentClientInstrumenter;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * The service provider interface (SPI) for Truffle instruments: clients of Truffle instrumentation
@@ -452,8 +450,6 @@ public abstract class TruffleInstrument {
      */
     @SuppressWarnings("static-method")
     public static final class Env {
-
-        private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
         private final Object polyglotInstrument;
         private final InputStream in;
@@ -923,188 +919,6 @@ public abstract class TruffleInstrument {
         }
 
         /**
-         * Returns the scoped view of a value for a location in the AST. Allows the language to
-         * augment the perspective that tools have on values depending on location and frame. This
-         * may be useful to apply local specific visibility and accessibility rules. A typical
-         * implementation of this method may do the following:
-         * <ul>
-         * <li>Apply visiblity and scoping rules to the value hiding or removing members from the
-         * object.
-         * <li>Add or remove implicit members that are only available within this source location.
-         * </ul>
-         * <p>
-         * The provided language must match the language of the {@link Node#getRootNode() root node}
-         * of the location provided. The frame must have the same {@link FrameDescriptor} associated
-         * as the {@link RootNode} of the provided location. The provided location must be
-         * {@link InstrumentableNode#isInstrumentable() instrumentable}. If any of these
-         * pre-conditions are violated then an {@link IllegalArgumentException} is thrown.
-         * <p>
-         * If a value is not yet associated with the provided language, then a
-         * {@link #getLanguageView(LanguageInfo, Object) language view} will be requested
-         * implicitly. Only {@link InteropLibrary interop} messages should be used on the result of
-         * this method.
-         *
-         * @param language the language must match the language
-         * @param location the location to provide scope for. Never <code>null</code> and returns
-         *            <code>true</code> for {@link InstrumentableNode#isInstrumentable()}. E.g. any
-         *            location observed using {@link EventContext#getInstrumentedNode()}.
-         * @param frame the frame of the current activation of the parent {@link RootNode}.
-         * @param value the value to provide scope information for.
-         *
-         * @see com.oracle.truffle.api.interop.NodeLibrary#getView(Object, Frame, Object)
-         * @since 20.1
-         * @deprecated in 20.3 for removal, use {@link #getLanguageView(LanguageInfo, Object)}
-         *             followed by
-         *             {@link com.oracle.truffle.api.interop.NodeLibrary#getView(Object, Frame, Object)}
-         *             instead.
-         */
-        @Deprecated
-        @TruffleBoundary
-        public Object getScopedView(LanguageInfo language, Node location, Frame frame, Object value) {
-            try {
-                Objects.requireNonNull(language);
-                return InstrumentAccessor.engineAccess().getScopedView(language, location, frame, value);
-            } catch (Throwable t) {
-                throw engineToInstrumentException(t);
-            }
-        }
-
-        /**
-         * Uses the provided language to print a string representation of this value. The behavior
-         * of this method is undefined if a type unknown to the language is passed as a value.
-         *
-         * @param language a language
-         * @param value a known value of that language, must be an interop type (i.e. either
-         *            implementing TruffleObject or be a primitive value)
-         * @return a human readable string representation of the value.
-         * @see #findLanguage(java.lang.Object)
-         * @since 0.27
-         * @deprecated in 20.1 for removal, use {@link #getLanguageView(LanguageInfo, Object)} and
-         *             {@link InteropLibrary#toDisplayString(Object)} instead.
-         */
-        @Deprecated
-        @TruffleBoundary
-        public String toString(LanguageInfo language, Object value) {
-            try {
-                Object displayString = INTEROP.toDisplayString(getLanguageView(language, value));
-                try {
-                    return INTEROP.asString(displayString);
-                } catch (UnsupportedMessageException e) {
-                    throw new AssertionError("Message toDisplayResult does not return a value string.");
-                }
-            } catch (Throwable t) {
-                throw engineToInstrumentException(t);
-            }
-        }
-
-        /**
-         * Uses the provided language to find a metaobject of a value, if any. The metaobject
-         * represents a description of the object, reveals it's kind and it's features. Some
-         * information that a metaobject might define includes the base object's type, interface,
-         * class, methods, attributes, etc. When no metaobject is known, <code>null</code> is
-         * returned. For the best results, use the {@link #findLanguage(java.lang.Object) value's
-         * language}, if any.
-         *
-         * @param language a language
-         * @param value a value to find the metaobject of, must be an interop type (i.e. either
-         *            implementing TruffleObject or be a primitive value)
-         * @return the metaobject, or <code>null</code>
-         * @see #findLanguage(java.lang.Object)
-         * @since 0.27
-         * @deprecated in 20.1 for removal, use {@link #getLanguageView(LanguageInfo, Object)} and
-         *             {@link InteropLibrary#getMetaObject(Object)} instead.
-         */
-        @Deprecated
-        public Object findMetaObject(LanguageInfo language, Object value) {
-            try {
-                InstrumentAccessor.interopAccess().checkInteropType(value);
-                try {
-                    return INTEROP.getMetaObject(getLanguageView(language, value));
-                } catch (UnsupportedMessageException e) {
-                    return null;
-                }
-            } catch (Throwable t) {
-                throw engineToInstrumentException(t);
-            }
-        }
-
-        /**
-         * Uses the provided language to find a source location where a value is declared, if any.
-         * For the best results, use the {@link #findLanguage(java.lang.Object) value's language},
-         * if any.
-         *
-         * @param language a language
-         * @param value a value to get the source location for, must be an interop type (i.e. either
-         *            implementing TruffleObject or be a primitive value)
-         * @return a source location of the object, or <code>null</code>
-         * @see #findLanguage(java.lang.Object)
-         * @since 0.27
-         * @deprecated in 20.1 for removal, use {@link InteropLibrary#getSourceLocation(Object)}
-         *             instead.
-         */
-        @Deprecated
-        public SourceSection findSourceLocation(LanguageInfo language, Object value) {
-            try {
-                try {
-                    Object view = getLanguageView(language, value);
-                    if (INTEROP.hasSourceLocation(view)) {
-                        return INTEROP.getSourceLocation(view);
-                    }
-                } catch (UnsupportedMessageException e) {
-                }
-                return null;
-            } catch (Throwable t) {
-                throw engineToInstrumentException(t);
-            }
-        }
-
-        /**
-         * Find a language that created the value, if any. This method will return <code>null</code>
-         * for values representing a primitive value, or objects that are not associated with any
-         * language.
-         *
-         * @param value the value to find a language of
-         * @return the language, or <code>null</code> when there is no language associated with the
-         *         value.
-         * @since 0.27
-         * @deprecated use {@link InteropLibrary#getLanguage(Object)} with
-         *             {@link #getLanguageInfo(Class)} instead.
-         */
-        @Deprecated
-        public LanguageInfo findLanguage(Object value) {
-            try {
-                LanguageInfo language = null;
-                if (INTEROP.hasLanguage(value)) {
-                    try {
-                        language = getLanguageInfo(INTEROP.getLanguage(value));
-                    } catch (UnsupportedMessageException e) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                        throw new AssertionError(e);
-                    }
-                }
-                return language;
-            } catch (Throwable t) {
-                throw engineToInstrumentException(t);
-            }
-        }
-
-        /**
-         * Returns the polyglot scope - symbols explicitly exported by languages.
-         *
-         * @return a read-only map of symbol names and their values
-         * @since 0.30
-         * @deprecated Use {@link #getPolyglotBindings()} instead.
-         */
-        @Deprecated
-        public Map<String, ? extends Object> getExportedSymbols() {
-            try {
-                return InstrumentAccessor.engineAccess().getExportedSymbols();
-            } catch (Throwable t) {
-                throw engineToInstrumentException(t);
-            }
-        }
-
-        /**
          * Returns the polyglot scope - symbols explicitly exported by languages. The polyglot
          * bindings of the current entered context are returned.
          *
@@ -1117,70 +931,6 @@ public abstract class TruffleInstrument {
             } catch (Throwable t) {
                 throw engineToInstrumentException(t);
             }
-        }
-
-        /**
-         * Find a list of local scopes enclosing the given {@link Node node}. The scopes contain
-         * variables that are valid at the provided node and that have a relation to it. Unless the
-         * node is in a global scope, it is expected that there is at least one scope provided, that
-         * corresponds to the enclosing function. Global top scopes are provided by
-         * {@link #findTopScopes(java.lang.String)}. The iteration order corresponds with the scope
-         * nesting, from the inner-most to the outer-most.
-         * <p>
-         * Scopes may depend on the information provided by the frame. <br/>
-         * Lexical scopes are returned when <code>frame</code> argument is <code>null</code>.
-         *
-         * @param node a node to get the enclosing scopes for. The node needs to be inside a
-         *            {@link RootNode} associated with a language.
-         * @param frame The current frame the node is in, or <code>null</code> for lexical access
-         *            when the program is not running, or is not suspended at the node's location.
-         * @return an {@link Iterable} providing list of scopes from the inner-most to the
-         *         outer-most.
-         * @see TruffleLanguage#findLocalScopes(java.lang.Object, com.oracle.truffle.api.nodes.Node,
-         *      com.oracle.truffle.api.frame.Frame)
-         * @since 0.30
-         * @deprecated in 20.3, use NodeLibrary instead.
-         */
-        @Deprecated
-        @SuppressWarnings("deprecation")
-        public Iterable<com.oracle.truffle.api.Scope> findLocalScopes(Node node, Frame frame) {
-            try {
-                RootNode rootNode = node.getRootNode();
-                if (rootNode == null) {
-                    throw new IllegalArgumentException("The node " + node + " does not have a RootNode.");
-                }
-                LanguageInfo languageInfo = rootNode.getLanguageInfo();
-                if (languageInfo == null) {
-                    throw new IllegalArgumentException("The root node " + rootNode + " does not have a language associated.");
-                }
-                Iterable<com.oracle.truffle.api.Scope> langScopes = InstrumentAccessor.engineAccess().findLibraryLocalScopesToLegacy(node, frame);
-                assert langScopes != null : languageInfo.getId();
-                return langScopes;
-            } catch (Throwable t) {
-                throw engineToInstrumentException(t);
-            }
-        }
-
-        /**
-         * Find a list of top scopes of a language. The iteration order corresponds with the scope
-         * nesting, from the inner-most to the outer-most.
-         *
-         * @param languageId a language id.
-         * @return a list of top scopes, can be empty when no top scopes are provided by the
-         *         language
-         * @see TruffleLanguage#findTopScopes(java.lang.Object)
-         * @since 0.30
-         * @deprecated in 20.3, use {@link #getScope(LanguageInfo)} instead.
-         */
-        @Deprecated
-        @SuppressWarnings("deprecation")
-        public Iterable<com.oracle.truffle.api.Scope> findTopScopes(String languageId) {
-            LanguageInfo languageInfo = getLanguages().get(languageId);
-            if (languageInfo == null) {
-                throw new IllegalArgumentException("Unknown language: " + languageId + ". Known languages are: " + getLanguages().keySet());
-            }
-            Object scope = getScope(languageInfo);
-            return InstrumentAccessor.engineAccess().topScopesToLegacy(scope);
         }
 
         /**
@@ -1259,13 +1009,6 @@ public abstract class TruffleInstrument {
          */
         public TruffleLogger getLogger(Class<?> forClass) {
             return getLogger(forClass.getName());
-        }
-
-        @SuppressWarnings("deprecation")
-        static Iterable<com.oracle.truffle.api.Scope> findTopScopes(TruffleLanguage.Env env) {
-            Iterable<com.oracle.truffle.api.Scope> langScopes = InstrumentAccessor.langAccess().findTopScopes(env);
-            assert langScopes != null : InstrumentAccessor.langAccess().getLanguageInfo(env).getId();
-            return langScopes;
         }
 
         private static class MessageTransportProxy implements MessageTransport {

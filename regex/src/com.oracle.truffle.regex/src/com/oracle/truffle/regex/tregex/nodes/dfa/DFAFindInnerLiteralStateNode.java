@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.regex.tregex.nodes.dfa;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.regex.tregex.nodes.input.InputIndexOfStringNode;
 import com.oracle.truffle.regex.tregex.parser.ast.InnerLiteral;
 import com.oracle.truffle.regex.tregex.util.json.Json;
@@ -75,11 +76,13 @@ public final class DFAFindInnerLiteralStateNode extends DFAAbstractStateNode {
     }
 
     int executeInnerLiteralSearch(TRegexDFAExecutorLocals locals, TRegexDFAExecutorNode executor) {
-        return indexOfNode.execute(locals.getInput(), locals.getIndex(), executor.getMaxIndex(locals), innerLiteral.getLiteral().content(), innerLiteral.getMaskContent());
+        return indexOfNode.execute(locals.getInput(), locals.getIndex(), executor.getMaxIndex(locals),
+                        innerLiteral.getLiteralContent(locals.getInput()),
+                        innerLiteral.getMaskContent(locals.getInput()), executor.getEncoding());
     }
 
-    boolean prefixMatcherMatches(TRegexDFAExecutorLocals locals, boolean compactString) {
-        Object result = prefixMatcher.execute(locals.toInnerLiteralBackwardLocals(), compactString);
+    boolean prefixMatcherMatches(TRegexDFAExecutorLocals locals, TruffleString.CodeRange codeRange) {
+        Object result = prefixMatcher.execute(locals.toInnerLiteralBackwardLocals(), codeRange);
         return prefixMatcher.isSimpleCG() ? result != null : (int) result != TRegexDFAExecutorNode.NO_MATCH;
     }
 

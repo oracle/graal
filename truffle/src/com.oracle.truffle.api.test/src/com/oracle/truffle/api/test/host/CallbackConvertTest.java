@@ -44,10 +44,12 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 import org.graalvm.polyglot.HostAccess.Implementable;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public final class CallbackConvertTest extends AbstractPolyglotTest {
     private char ch;
@@ -64,6 +66,15 @@ public final class CallbackConvertTest extends AbstractPolyglotTest {
     @Implementable
     public interface CallWithChar {
         void callback(char v);
+    }
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
+
+    public CallbackConvertTest() {
+        needsLanguageEnv = true;
     }
 
     protected TruffleObject asTruffleObject(Object javaObj) {

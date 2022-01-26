@@ -30,12 +30,12 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 
 import jdk.vm.ci.meta.JavaKind;
 
@@ -45,27 +45,56 @@ public final class VirtualFrameSetNode extends VirtualFrameAccessorNode implemen
 
     @Input private ValueNode value;
 
-    public VirtualFrameSetNode(Receiver frame, int frameSlotIndex, int accessTag, ValueNode value) {
-        super(TYPE, StampFactory.forVoid(), frame, frameSlotIndex, accessTag);
+    private final boolean setTag;
+
+    public VirtualFrameSetNode(Receiver frame, int frameSlotIndex, int accessTag, ValueNode value, VirtualFrameAccessType type) {
+        super(TYPE, StampFactory.forVoid(), frame, frameSlotIndex, accessTag, type);
         this.value = value;
+        this.setTag = true;
+    }
+
+    public VirtualFrameSetNode(NewFrameNode frame, int frameSlotIndex, int accessTag, ValueNode value, VirtualFrameAccessType type, boolean setTag) {
+        super(TYPE, StampFactory.forVoid(), frame, frameSlotIndex, accessTag, type);
+        this.value = value;
+        this.setTag = setTag;
     }
 
     @Override
     public void virtualize(VirtualizerTool tool) {
-        ValueNode tagAlias = tool.getAlias(frame.virtualFrameTagArray);
-        ValueNode dataAlias = tool.getAlias(
-                        TruffleCompilerRuntime.getRuntime().getJavaKindForFrameSlotKind(accessTag) == JavaKind.Object ? frame.virtualFrameObjectArray : frame.virtualFramePrimitiveArray);
+        JavaKind valueKind = value.getStackKind();
+        if (type == VirtualFrameAccessType.Auxiliary) {
+            ValueNode dataAlias = tool.getAlias(frame.getObjectArray(type));
 
-        if (tagAlias instanceof VirtualObjectNode && dataAlias instanceof VirtualObjectNode) {
-            VirtualObjectNode tagVirtual = (VirtualObjectNode) tagAlias;
-            VirtualObjectNode dataVirtual = (VirtualObjectNode) dataAlias;
+            assert valueKind == JavaKind.Object;
+            // no tags array
+            if (dataAlias instanceof VirtualObjectNode) {
+                VirtualObjectNode dataVirtual = (VirtualObjectNode) dataAlias;
 
-            if (frameSlotIndex < tagVirtual.entryCount() && frameSlotIndex < dataVirtual.entryCount()) {
-                tool.setVirtualEntry(tagVirtual, frameSlotIndex, getConstant(accessTag));
+                if (frameSlotIndex < dataVirtual.entryCount()) {
+                    if (tool.setVirtualEntry(dataVirtual, frameSlotIndex, value, valueKind, -1)) {
+                        tool.delete();
+                        return;
+                    }
+                }
+            }
+        } else {
+            ValueNode tagAlias = tool.getAlias(frame.getTagArray(type));
+            ValueNode dataAlias = tool.getAlias(valueKind == JavaKind.Object ? frame.getObjectArray(type) : frame.getPrimitiveArray(type));
+            if (tagAlias instanceof VirtualObjectNode && dataAlias instanceof VirtualObjectNode) {
 
-                ValueNode dataEntry = tool.getEntry(dataVirtual, frameSlotIndex);
-                if (dataEntry.getStackKind() == value.getStackKind()) {
-                    if (tool.setVirtualEntry(dataVirtual, frameSlotIndex, value, value.getStackKind(), -1)) {
+                VirtualObjectNode tagVirtual = (VirtualObjectNode) tagAlias;
+                VirtualObjectNode dataVirtual = (VirtualObjectNode) dataAlias;
+
+                if (frameSlotIndex < tagVirtual.entryCount() && frameSlotIndex < dataVirtual.entryCount()) {
+                    if (setTag) {
+                        tool.setVirtualEntry(tagVirtual, frameSlotIndex, getConstant(accessTag));
+                    }
+                    if (tool.setVirtualEntry(dataVirtual, frameSlotIndex, value, valueKind == JavaKind.Object ? JavaKind.Object : JavaKind.Long, -1)) {
+                        if (valueKind == JavaKind.Object) {
+                            // clear out native entry
+                            ValueNode primitiveAlias = tool.getAlias(frame.getPrimitiveArray(type));
+                            tool.setVirtualEntry((VirtualObjectNode) primitiveAlias, frameSlotIndex, ConstantNode.defaultForKind(JavaKind.Long, graph()), JavaKind.Long, -1);
+                        }
                         tool.delete();
                         return;
                     }

@@ -48,7 +48,7 @@ import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.memory.VolatileReadNode;
+import org.graalvm.compiler.nodes.memory.OrderedReadNode;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
@@ -194,9 +194,9 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
             } else if (nonConstant instanceof ConvertNode) {
                 ConvertNode convert = (ConvertNode) nonConstant;
                 boolean multiUsage = (convert.asNode().hasMoreThanOneUsage() && convert.getValue().hasExactlyOneUsage());
-                if (!multiUsage && convert.asNode().hasMoreThanOneUsage() && convert.getValue() instanceof VolatileReadNode) {
+                if (!multiUsage && convert.asNode().hasMoreThanOneUsage() && convert.getValue() instanceof OrderedReadNode) {
                     // Only account for data usages
-                    VolatileReadNode read = (VolatileReadNode) convert.getValue();
+                    OrderedReadNode read = (OrderedReadNode) convert.getValue();
                     int nonMemoryEdges = 0;
                     for (Node u : read.usages()) {
                         for (Position pos : u.inputPositions()) {

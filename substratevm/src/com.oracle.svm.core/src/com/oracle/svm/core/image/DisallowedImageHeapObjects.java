@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.image;
 
-// Checkstyle: allow reflection
-
 import java.io.FileDescriptor;
 import java.lang.reflect.Field;
 import java.nio.Buffer;
@@ -50,13 +48,11 @@ public final class DisallowedImageHeapObjects {
 
     private static final Class<?> CANCELLABLE_CLASS;
     static {
-        // Checkstyle: stop
         try {
             CANCELLABLE_CLASS = Class.forName("sun.nio.fs.Cancellable");
         } catch (ClassNotFoundException ex) {
             throw VMError.shouldNotReachHere(ex);
         }
-        // Checkstyle: resume
     }
 
     public static void check(Object obj, DisallowedObjectReporter reporter) {

@@ -61,7 +61,7 @@ public class StaticAnalysisResultsBuilder extends AbstractAnalysisResultsBuilder
     @Override
     public StaticAnalysisResults makeOrApplyResults(AnalysisMethod method) {
 
-        MethodTypeFlow methodFlow = method.getTypeFlow();
+        MethodTypeFlow methodFlow = PointsToAnalysis.assertPointsToAnalysisMethod(method).getTypeFlow();
         MethodFlowsGraph originalFlows = methodFlow.getOriginalMethodFlows();
 
         ArrayList<JavaTypeProfile> paramProfiles = new ArrayList<>(originalFlows.getParameters().length);

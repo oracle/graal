@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 
+import com.oracle.truffle.sl.runtime.SLStrings;
 import org.graalvm.compiler.truffle.runtime.OptimizedBlockNode;
 import org.graalvm.compiler.truffle.runtime.OptimizedBlockNode.PartialBlocks;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
@@ -631,7 +632,7 @@ public class OptimizedBlockNodeTest {
         context.getBindings("sl").getMember(name).execute();
         context.enter();
         try {
-            OptimizedCallTarget target = ((OptimizedCallTarget) SLContext.get(null).getFunctionRegistry().getFunction(name).getCallTarget());
+            OptimizedCallTarget target = ((OptimizedCallTarget) SLContext.get(null).getFunctionRegistry().getFunction(SLStrings.fromJavaString(name)).getCallTarget());
             // we invalidate to make sure the call counts are updated.
             target.invalidate("invalidate for test");
             return target;

@@ -1,5 +1,5 @@
 DYNAMIC_IMPORTS=/compiler,/regex,/sdk,/substratevm,/sulong,/tools,/truffle,truffleruby
-COMPONENTS=cmp,cov,dap,gvm,ins,insight,insightheap,lg,llp,llrc,llrn,lsp,nfi,pro,rby,rbyl,rgx,sdk,svm,svmnfi,tfl,tflm,vvm
+COMPONENTS=cmp,cov,dap,gvm,ins,insight,insightheap,lg,llp,llrc,llrn,lsp,nfi-libffi,pro,rby,rbyl,rgx,sdk,svm,svmnfi,tfl,tflm,vvm
 EXCLUDE_COMPONENTS=libpoly
-NATIVE_IMAGES=graalvm-native-binutil,graalvm-native-clang,graalvm-native-clang++,graalvm-native-ld,lib:jvmcicompiler,truffleruby
+NATIVE_IMAGES=graalvm-native-binutil,graalvm-native-clang,graalvm-native-clang++,graalvm-native-ld,lib:jvmcicompiler,lib:rubyvm
 DISABLE_INSTALLABLES=False

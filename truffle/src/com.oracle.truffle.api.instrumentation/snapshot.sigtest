@@ -395,29 +395,13 @@ meth public com.oracle.truffle.api.TruffleLogger getLogger(java.lang.Class<?>)
 meth public com.oracle.truffle.api.TruffleLogger getLogger(java.lang.String)
 meth public com.oracle.truffle.api.instrumentation.Instrumenter getInstrumenter()
 meth public com.oracle.truffle.api.nodes.ExecutableNode parseInline(com.oracle.truffle.api.source.Source,com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.MaterializedFrame)
-meth public com.oracle.truffle.api.nodes.LanguageInfo findLanguage(java.lang.Object)
- anno 0 java.lang.Deprecated()
 meth public com.oracle.truffle.api.nodes.LanguageInfo getLanguageInfo(java.lang.Class<? extends com.oracle.truffle.api.TruffleLanguage<?>>)
-meth public com.oracle.truffle.api.source.SourceSection findSourceLocation(com.oracle.truffle.api.nodes.LanguageInfo,java.lang.Object)
- anno 0 java.lang.Deprecated()
 meth public java.io.InputStream in()
 meth public java.io.OutputStream err()
 meth public java.io.OutputStream out()
-meth public java.lang.Iterable<com.oracle.truffle.api.Scope> findLocalScopes(com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.Frame)
- anno 0 java.lang.Deprecated()
-meth public java.lang.Iterable<com.oracle.truffle.api.Scope> findTopScopes(java.lang.String)
- anno 0 java.lang.Deprecated()
-meth public java.lang.Object findMetaObject(com.oracle.truffle.api.nodes.LanguageInfo,java.lang.Object)
- anno 0 java.lang.Deprecated()
 meth public java.lang.Object getLanguageView(com.oracle.truffle.api.nodes.LanguageInfo,java.lang.Object)
 meth public java.lang.Object getPolyglotBindings()
 meth public java.lang.Object getScope(com.oracle.truffle.api.nodes.LanguageInfo)
-meth public java.lang.Object getScopedView(com.oracle.truffle.api.nodes.LanguageInfo,com.oracle.truffle.api.nodes.Node,com.oracle.truffle.api.frame.Frame,java.lang.Object)
- anno 0 java.lang.Deprecated()
-meth public java.lang.String toString(com.oracle.truffle.api.nodes.LanguageInfo,java.lang.Object)
- anno 0 java.lang.Deprecated()
-meth public java.util.Map<java.lang.String,?> getExportedSymbols()
- anno 0 java.lang.Deprecated()
 meth public java.util.Map<java.lang.String,com.oracle.truffle.api.InstrumentInfo> getInstruments()
 meth public java.util.Map<java.lang.String,com.oracle.truffle.api.nodes.LanguageInfo> getLanguages()
 meth public java.util.concurrent.Future<java.lang.Void> submitThreadLocal(com.oracle.truffle.api.TruffleContext,java.lang.Thread[],com.oracle.truffle.api.ThreadLocalAction)
@@ -428,7 +412,7 @@ meth public org.graalvm.polyglot.io.MessageEndpoint startServer(java.net.URI,org
 meth public void registerService(java.lang.Object)
 meth public void setAsynchronousStackDepth(int)
 supr java.lang.Object
-hfds INTEROP,err,in,instrumenter,messageTransport,options,out,polyglotInstrument,services
+hfds err,in,instrumenter,messageTransport,options,out,polyglotInstrument,services
 hcls GuardedExecutableNode,MessageTransportProxy
 
 CLSS public abstract interface static com.oracle.truffle.api.instrumentation.TruffleInstrument$Provider

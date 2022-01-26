@@ -6,12 +6,12 @@
   local uniq_key(o) = o['suite'],
   // convenient sets of benchmark suites for easy reuse
   groups:: {
-    open_suites:: std.set([$.awfy, $.dacapo, $.scala_dacapo, $.renaissance], keyF=uniq_key),
+    open_suites:: std.set([$.awfy, $.dacapo, $.scala_dacapo, $.renaissance, $.renaissance_0_13], keyF=uniq_key),
     spec_suites:: std.set([$.specjvm2008, $.specjbb2005, $.specjbb2015], keyF=uniq_key),
-    legacy_and_secondary_suites:: std.set([$.renaissance_legacy, $.dacapo_size_variants, $.scala_dacapo_size_variants], keyF=uniq_key),
+    legacy_and_secondary_suites:: std.set([$.renaissance_legacy], keyF=uniq_key),
     jmh_micros_suites:: std.set([$.micros_graal_dist, $.micros_misc_graal_dist , $.micros_shootout_graal_dist], keyF=uniq_key),
     graal_internals_suites:: std.set([$.micros_graal_whitebox], keyF=uniq_key),
-    special_suites:: std.set([$.renaissance_0_10, $.renaissance_0_13, $.specjbb2015_full_machine], keyF=uniq_key),
+    special_suites:: std.set([$.renaissance_0_10, $.dacapo_size_variants, $.scala_dacapo_size_variants, $.specjbb2015_full_machine], keyF=uniq_key),
     microservice_suites:: std.set([$.microservice_benchmarks], keyF=uniq_key),
 
     main_suites:: std.set([$.specjvm2008] + self.open_suites + self.legacy_and_secondary_suites, keyF=uniq_key),
@@ -96,10 +96,11 @@
       self.benchmark_cmd + ["scala-dacapo-large:*", "--"] + self.extra_vm_args,
       self._bench_upload(),
       self.benchmark_cmd + ["scala-dacapo-huge:*", "--"] + self.extra_vm_args,
-      self._bench_upload(),
-      self.benchmark_cmd + ["scala-dacapo-gargantuan:*", "--"] + self.extra_vm_args
+      // Disabling the 'gargantuan' sizes since they require a lot of compute time for little added value
+      //self._bench_upload(),
+      //self.benchmark_cmd + ["scala-dacapo-gargantuan:*", "--"] + self.extra_vm_args
     ],
-    timelimit: "07:00:00",
+    timelimit: "08:00:00",
     forks_batches:: null, # weekly forks disabled
     forks_timelimit:: null,
     min_jdk_version:: 8,

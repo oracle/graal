@@ -32,8 +32,6 @@ package com.oracle.truffle.llvm.runtime.nodes.control;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
@@ -45,16 +43,15 @@ import com.oracle.truffle.llvm.runtime.nodes.base.LLVMBasicBlockNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMInvokeNode;
 
 public final class LLVMLoopDispatchNode extends LLVMNode implements RepeatingNode {
-    private final FrameSlot exceptionValueSlot;
+    private final int exceptionValueSlot;
     private final int headerId;
     @Children private final LLVMBasicBlockNode[] bodyNodes;
     @CompilationFinal(dimensions = 1) private final int[] indexMapping;
     @CompilationFinal(dimensions = 1) private final int[] loopSuccessors;
-    private final FrameSlot successorSlot;
+    private final int successorSlot;
     @CompilationFinal(dimensions = 1) private final LLVMBasicBlockNode[] originalBodyNodes;
 
-    public LLVMLoopDispatchNode(FrameSlot exceptionValueSlot, LLVMBasicBlockNode[] bodyNodes, LLVMBasicBlockNode[] originalBodyNodes, int headerId, int[] indexMapping, int[] successors,
-                    FrameSlot successorSlot) {
+    public LLVMLoopDispatchNode(int exceptionValueSlot, LLVMBasicBlockNode[] bodyNodes, LLVMBasicBlockNode[] originalBodyNodes, int headerId, int[] indexMapping, int[] successors, int successorSlot) {
         this.exceptionValueSlot = exceptionValueSlot;
         this.bodyNodes = bodyNodes;
         this.originalBodyNodes = originalBodyNodes;
@@ -177,7 +174,7 @@ public final class LLVMLoopDispatchNode extends LLVMNode implements RepeatingNod
             } else if (controlFlowNode instanceof LLVMLoopNode) {
                 LLVMLoopNode loop = (LLVMLoopNode) controlFlowNode;
                 loop.executeLoop(frame);
-                int successorBasicBlockIndex = FrameUtil.getIntSafe(frame, successorSlot);
+                int successorBasicBlockIndex = frame.getInt(successorSlot);
                 frame.setInt(successorSlot, 0); // null frame
                 int[] successors = loop.getSuccessors();
                 for (int i = 0; i < successors.length - 1; i++) {

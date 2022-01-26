@@ -191,7 +191,9 @@ class NativeImageBenchmarkMixin(object):
         return mx.apply_command_mapper_hooks(cmd, vm.command_mapper_hooks)
 
     def extra_image_build_argument(self, _, args):
-        return parse_prefixed_args('-Dnative-image.benchmark.extra-image-build-argument=', args)
+        updated_args = parse_prefixed_args('-Dnative-image.benchmark.extra-image-build-argument=', args)
+        updated_args.append('-H:-BuildOutputUseNewStyle')  # remove after GR-35755 is resolved properly
+        return updated_args
 
     def extra_run_arg(self, benchmark, args, image_run_args):
         """Returns all arguments passed to the final image.
@@ -953,8 +955,12 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
 
     def runWrk1(self, wrkFlags):
         distro = self.getOS()
-        wrkDirectory = mx.library('WRK', True).get_path(True)
-        wrkPath = os.path.join(wrkDirectory, "wrk-{os}".format(os=distro))
+        arch = mx.get_arch()
+        wrkDirectory = mx.library('WRK_MULTIARCH', True).get_path(True)
+        wrkPath = os.path.join(wrkDirectory, "wrk-{os}-{arch}".format(os=distro, arch=arch))
+
+        if not os.path.exists(wrkPath):
+            raise ValueError("Unsupported OS or arch. Binary doesn't exist: {}".format(wrkPath))
 
         runWrkCmd = [wrkPath] + wrkFlags
         mx.log("Running Wrk: {0}".format(runWrkCmd))
@@ -964,8 +970,12 @@ class BaseWrkBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
 
     def runWrk2(self, wrkFlags):
         distro = self.getOS()
-        wrkDirectory = mx.library('WRK2', True).get_path(True)
-        wrkPath = os.path.join(wrkDirectory, "wrk-{os}".format(os=distro))
+        arch = mx.get_arch()
+        wrkDirectory = mx.library('WRK2_MULTIARCH', True).get_path(True)
+        wrkPath = os.path.join(wrkDirectory, "wrk-{os}-{arch}".format(os=distro, arch=arch))
+
+        if not os.path.exists(wrkPath):
+            raise ValueError("Unsupported OS or arch. Binary doesn't exist: {}".format(wrkPath))
 
         runWrkCmd = [wrkPath] + wrkFlags
         mx.log("Running Wrk2: {0}".format(runWrkCmd))

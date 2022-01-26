@@ -216,7 +216,7 @@ public final class BytecodeExceptionNode extends AbstractMemoryCheckpoint implem
         boolean rethrowException = false;
         boolean duringCall = true;
         return stateAfter.duplicateModified(graph(), stateAfter.bci, rethrowException, duringCall,
-                        JavaKind.Object, null, null);
+                        JavaKind.Object, null, null, null);
     }
 
 }

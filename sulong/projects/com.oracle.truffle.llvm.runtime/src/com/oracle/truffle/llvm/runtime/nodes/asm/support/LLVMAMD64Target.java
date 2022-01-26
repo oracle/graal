@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -30,18 +30,17 @@
 package com.oracle.truffle.llvm.runtime.nodes.asm.support;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
 
 public class LLVMAMD64Target {
     private final Object location;
     private final int shift;
 
-    public LLVMAMD64Target(FrameSlot location) {
+    public LLVMAMD64Target(int location) {
         this(location, 0);
     }
 
-    public LLVMAMD64Target(FrameSlot location, int shift) {
+    public LLVMAMD64Target(int location, int shift) {
         this.location = location;
         this.shift = shift;
     }
@@ -55,8 +54,8 @@ public class LLVMAMD64Target {
         CompilerAsserts.neverPartOfCompilation();
         if (location instanceof LLVMExpressionNode) {
             return (LLVMExpressionNode) location;
-        } else if (location instanceof FrameSlot) {
-            return LLVMAMD64FrameSlotNodeGen.create((FrameSlot) location);
+        } else if (location instanceof Integer) {
+            return LLVMAMD64FrameSlotNodeGen.create((Integer) location);
         } else {
             throw new IllegalStateException();
         }

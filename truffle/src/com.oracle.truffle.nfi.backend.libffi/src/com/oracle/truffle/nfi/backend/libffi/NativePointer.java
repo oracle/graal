@@ -40,68 +40,32 @@
  */
 package com.oracle.truffle.nfi.backend.libffi;
 
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.nfi.backend.spi.BackendNativePointerLibrary;
 
-@ExportLibrary(InteropLibrary.class)
-@ExportLibrary(SerializeArgumentLibrary.class)
-@SuppressWarnings("unused")
-class NativePointer implements TruffleObject {
+@ExportLibrary(value = BackendNativePointerLibrary.class, useForAOT = true, useForAOTPriority = 1)
+final class NativePointer extends AbstractNativePointer {
 
     static final NativePointer NULL = new NativePointer(0);
 
-    final long nativePointer;
+    NativePointer(long nativePointer) {
+        super(nativePointer);
+    }
 
     static Object create(LibFFILanguage language, long nativePointer) {
         return language.getTools().createBindableSymbol(new NativePointer(nativePointer));
     }
 
-    NativePointer(long nativePointer) {
-        this.nativePointer = nativePointer;
-    }
-
+    @ExportMessage(library = BackendNativePointerLibrary.class)
     @Override
-    public String toString() {
-        return String.valueOf(nativePointer);
-    }
-
-    @ExportMessage
     boolean isPointer() {
-        return true;
+        return super.isPointer();
     }
 
-    @ExportMessage
+    @ExportMessage(library = BackendNativePointerLibrary.class)
+    @Override
     long asPointer() {
-        return nativePointer;
-    }
-
-    @ExportMessage
-    boolean isNull() {
-        return nativePointer == 0;
-    }
-
-    @ExportMessage
-    void putPointer(NativeArgumentBuffer buffer, int ptrSize) {
-        buffer.putPointer(nativePointer, ptrSize);
-    }
-
-    @ExportMessage
-    boolean hasLanguage() {
-        return true;
-    }
-
-    @ExportMessage
-    Class<? extends TruffleLanguage<?>> getLanguage() {
-        return LibFFILanguage.class;
-    }
-
-    @ExportMessage
-    @TruffleBoundary
-    Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
-        return "NativePointer(" + nativePointer + ")";
+        return super.asPointer();
     }
 }

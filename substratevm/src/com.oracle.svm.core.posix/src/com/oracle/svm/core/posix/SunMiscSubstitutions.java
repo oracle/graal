@@ -27,25 +27,18 @@ package com.oracle.svm.core.posix;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.Function;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.CErrorNumber;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK11OrLater;
-import com.oracle.svm.core.jdk.JDK8OrEarlier;
+import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.IsDefined;
@@ -56,30 +49,11 @@ import com.oracle.svm.core.posix.headers.Signal.SignalDispatcher;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.util.VMError;
 
-@Platforms(Platform.HOSTED_ONLY.class)
-class Package_jdk_internal_misc implements Function<TargetClass, String> {
-    @Override
-    public String apply(TargetClass annotation) {
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            return "sun.misc." + annotation.className();
-        } else {
-            return "jdk.internal.misc." + annotation.className();
-        }
-    }
-}
-
-@TargetClass(classNameProvider = Package_jdk_internal_misc.class, className = "Signal")
+@TargetClass(className = "jdk.internal.misc.Signal")
 final class Target_jdk_internal_misc_Signal {
 
     @Substitute
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private static /* native */ int findSignal(String signalName) {
-        return Util_jdk_internal_misc_Signal.numberFromName(signalName);
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDK11OrLater.class)
-    private static /* native */ int findSignal0(String signalName) {
+    private static int findSignal0(String signalName) {
         return Util_jdk_internal_misc_Signal.numberFromName(signalName);
     }
 
@@ -168,7 +142,7 @@ final class Util_jdk_internal_misc_Signal {
                     /* Open the C signal handling mechanism. */
                     final int openResult = CSunMiscSignal.open();
                     if (openResult != 0) {
-                        final int openErrno = CErrorNumber.getCErrorNumber();
+                        final int openErrno = LibC.errno();
                         /* Check for the C signal handling mechanism already being open. */
                         if (openErrno == Errno.EBUSY()) {
                             throw new IllegalArgumentException("C signal handling mechanism is in use.");
@@ -416,7 +390,7 @@ final class IgnoreSIGPIPEStartupHook implements Runnable {
     }
 }
 
-@TargetClass(className = "jdk.internal.misc.VM", onlyWith = JDK11OrLater.class)
+@TargetClass(className = "jdk.internal.misc.VM")
 final class Target_jdk_internal_misc_VM {
 
     /* Implementation from src/hotspot/share/prims/jvm.cpp#L286 translated to Java. */

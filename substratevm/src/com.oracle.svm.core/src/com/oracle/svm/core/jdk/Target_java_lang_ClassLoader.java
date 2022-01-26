@@ -34,6 +34,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Stream;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
@@ -45,20 +46,15 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
+import com.oracle.svm.core.util.LazyFinalReference;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
-@TargetClass(className = "jdk.internal.loader.Resource", onlyWith = JDK11OrLater.class)
+@TargetClass(className = "jdk.internal.loader.Resource")
 @SuppressWarnings("unused")
-final class Target_jdk_internal_loader_Resource_JDK11OrLater {
-
-}
-
-@TargetClass(className = "sun.misc.Resource", onlyWith = JDK8OrEarlier.class)
-@SuppressWarnings("unused")
-final class Target_sun_misc_Resource_JDK8OrEarlier {
+final class Target_jdk_internal_loader_Resource {
 
 }
 
@@ -86,11 +82,7 @@ public final class Target_java_lang_ClassLoader {
      * information must be reset.
      */
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = PackageFieldTransformer.class)//
-    @TargetElement(name = "packages", onlyWith = JDK8OrEarlier.class)//
-    private HashMap<String, Package> packagesJDK8;
-    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = PackageFieldTransformer.class)//
-    @TargetElement(name = "packages", onlyWith = JDK11OrLater.class)//
-    private ConcurrentHashMap<String, Package> packagesJDK11;
+    private ConcurrentHashMap<String, Package> packages;
 
     @Alias //
     private static ClassLoader scl;
@@ -185,9 +177,8 @@ public final class Target_java_lang_ClassLoader {
     }
 
     @Substitute //
-    @TargetElement(onlyWith = JDK11OrLater.class) //
     @SuppressWarnings("unused")
-    Class<?> loadClass(Target_java_lang_Module module, String name) {
+    Class<?> loadClass(Module module, String name) {
         /* The module system is not supported for now, therefore the module parameter is ignored. */
         try {
             return loadClass(name, false);
@@ -211,6 +202,22 @@ public final class Target_java_lang_ClassLoader {
         return ClassForNameSupport.forNameOrNull(name, SubstrateUtil.cast(this, ClassLoader.class));
     }
 
+    /**
+     * All ClassLoaderValue are reset at run time for now. See also
+     * {@link Target_jdk_internal_loader_BootLoader#CLASS_LOADER_VALUE_MAP} for resetting of the
+     * boot class loader.
+     */
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = ConcurrentHashMap.class)//
+    ConcurrentHashMap<?, ?> classLoaderValueMap;
+
+    @Alias
+    native Stream<Package> packages();
+
+    @SuppressWarnings("static-method")
+    @Substitute
+    public Target_java_lang_Module getUnnamedModule() {
+        return ClassLoaderUtil.unnamedModuleReference.get();
+    }
     /*
      * The assertion status of classes is fixed at image build time because it is baked into the AOT
      * compiled code. All methods that modify the assertion status are substituted to throw an
@@ -303,28 +310,17 @@ public final class Target_java_lang_ClassLoader {
     }
 
     @Delete
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private native Class<?> defineClass0(String name, byte[] b, int off, int len, ProtectionDomain pd);
-
-    @Delete
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private native Class<?> defineClass1(String name, byte[] b, int off, int len, ProtectionDomain pd, String source);
-
-    @Delete
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private native Class<?> defineClass2(String name, java.nio.ByteBuffer b, int off, int len, ProtectionDomain pd, String source);
-
-    @Delete
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private native void resolveClass0(Class<?> c);
-
-    @Delete
-    @TargetElement(onlyWith = JDK11OrLater.class)
     private static native Class<?> defineClass1(ClassLoader loader, String name, byte[] b, int off, int len, ProtectionDomain pd, String source);
 
     @Delete
-    @TargetElement(onlyWith = JDK11OrLater.class)
     private static native Class<?> defineClass2(ClassLoader loader, String name, java.nio.ByteBuffer b, int off, int len, ProtectionDomain pd, String source);
+
+    @Substitute
+    @TargetElement(onlyWith = JDK17OrLater.class)
+    @SuppressWarnings("unused")
+    private static Class<?> defineClass0(ClassLoader loader, Class<?> lookup, String name, byte[] b, int off, int len, ProtectionDomain pd, boolean initialize, int flags, Object classData) {
+        throw VMError.unsupportedFeature("Defining hidden classes at runtime is not supported.");
+    }
 
     @Delete
     @TargetElement(onlyWith = JDK11OrEarlier.class)
@@ -348,13 +344,13 @@ public final class Target_java_lang_ClassLoader {
      */
 
     @Delete //
-    @TargetElement(onlyWith = {JDK11OrLater.class, JDK11OrEarlier.class}) //
+    @TargetElement(onlyWith = JDK11OrEarlier.class) //
     private static Set<String> loadedLibraryNames;
     @Delete //
-    @TargetElement(onlyWith = {JDK11OrLater.class, JDK11OrEarlier.class}) //
+    @TargetElement(onlyWith = JDK11OrEarlier.class) //
     private static Map<String, Target_java_lang_ClassLoader_NativeLibrary> systemNativeLibraries;
     @Delete //
-    @TargetElement(onlyWith = {JDK11OrLater.class, JDK11OrEarlier.class}) //
+    @TargetElement(onlyWith = JDK11OrEarlier.class) //
     private Map<String, Target_java_lang_ClassLoader_NativeLibrary> nativeLibraries;
     // Checkstyle: stop
     @Delete //
@@ -366,11 +362,11 @@ public final class Target_java_lang_ClassLoader {
     // Checkstyle: resume
 
     @Delete
-    @TargetElement(onlyWith = {JDK11OrLater.class, JDK11OrEarlier.class})
+    @TargetElement(onlyWith = JDK11OrEarlier.class)
     private native Map<String, Target_java_lang_ClassLoader_NativeLibrary> nativeLibraries();
 
     @Delete
-    @TargetElement(onlyWith = {JDK11OrLater.class, JDK11OrEarlier.class})
+    @TargetElement(onlyWith = JDK11OrEarlier.class)
     private static native Map<String, Target_java_lang_ClassLoader_NativeLibrary> systemNativeLibraries();
 
     @Delete
@@ -388,27 +384,12 @@ final class Target_java_lang_ClassLoader_NativeLibrary {
      */
 
     @Delete
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private native void load(String name, boolean isBuiltin);
-
-    @Delete
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private native long find(String name);
-
-    @Delete
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private native void unload(String name, boolean isBuiltin);
-
-    @Delete
-    @TargetElement(onlyWith = JDK11OrLater.class)
     private native boolean load0(String name, boolean isBuiltin);
 
     @Delete
-    @TargetElement(onlyWith = JDK11OrLater.class)
     private native long findEntry(String name);
 
     @Delete
-    @TargetElement(onlyWith = JDK11OrLater.class)
     private static native void unload(String name, boolean isBuiltin, long handle);
 }
 
@@ -416,11 +397,12 @@ final class Target_java_lang_ClassLoader_NativeLibrary {
 final class Target_java_lang_AssertionStatusDirectives {
 }
 
-@TargetClass(className = "java.lang.NamedPackage", onlyWith = JDK11OrLater.class) //
-final class Target_java_lang_NamedPackage {
-}
-
 class PackageFieldTransformer implements RecomputeFieldValue.CustomFieldValueTransformer {
+    @Override
+    public RecomputeFieldValue.ValueAvailability valueAvailability() {
+        return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+    }
+
     @Override
     public Object transform(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver, Object originalValue) {
         assert receiver instanceof ClassLoader;
@@ -437,4 +419,9 @@ class PackageFieldTransformer implements RecomputeFieldValue.CustomFieldValueTra
             return useConcurrentHashMap ? packages : new HashMap<>(packages);
         }
     }
+}
+
+final class ClassLoaderUtil {
+
+    public static final LazyFinalReference<Target_java_lang_Module> unnamedModuleReference = new LazyFinalReference<>(Target_java_lang_Module::new);
 }

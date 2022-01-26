@@ -384,6 +384,9 @@ public final class NFAExport {
         if (fullLabels && state.hasPossibleResults()) {
             sb.append("_r").append(state.getPossibleResults());
         }
+        if (fullLabels && state.isMustAdvance()) {
+            sb.append("_ma");
+        }
         return sb.toString();
     }
 

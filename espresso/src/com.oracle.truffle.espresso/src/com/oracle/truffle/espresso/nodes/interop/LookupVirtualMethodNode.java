@@ -101,7 +101,7 @@ public abstract class LookupVirtualMethodNode extends AbstractLookupNode {
     }
 
     @Override
-    Method[] getMethodArray(Klass k) {
+    Method.MethodVersion[] getMethodArray(Klass k) {
         assert k instanceof ObjectKlass;
         return ((ObjectKlass) k).getVTable();
     }

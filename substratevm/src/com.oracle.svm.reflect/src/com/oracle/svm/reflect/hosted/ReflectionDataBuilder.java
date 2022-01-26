@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.reflect.hosted;
 
-//Checkstyle: allow reflection
-
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Constructor;
@@ -33,6 +31,7 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -65,17 +64,20 @@ import com.oracle.svm.core.hub.AnnotationTypeSupport;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.RecordSupport;
+import com.oracle.svm.core.jdk.SealedClassSupport;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.FeatureAccessImpl;
+import com.oracle.svm.hosted.annotation.AnnotationSubstitutionType;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 import sun.reflect.annotation.AnnotationType;
 import sun.reflect.annotation.TypeAnnotation;
 import sun.reflect.annotation.TypeAnnotationParser;
@@ -98,6 +100,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private Set<AnalysisMethod> hidingMethods;
 
     private final Set<Class<?>> processedClasses = new HashSet<>();
+
+    /* Keep track of annotation interface members to include in proxy classes */
+    private final Map<Class<?>, Set<Member>> annotationMembers = new HashMap<>();
 
     private final ReflectionDataAccessors accessors;
 
@@ -132,6 +137,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                         EMPTY_FIELDS,
                         EMPTY_METHODS,
                         EMPTY_CLASSES,
+                        null,
                         EMPTY_CLASSES,
                         null,
                         null);
@@ -234,6 +240,33 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                     processClass(access, originalClass);
                     processedClasses.add(originalClass);
                     access.requireAnalysisIteration();
+                }
+                if (type.getWrappedWithoutResolve() instanceof AnnotationSubstitutionType) {
+                    /*
+                     * Proxy classes for annotations present the annotation default methods and
+                     * fields as their own.
+                     */
+                    ResolvedJavaType annotationType = ((AnnotationSubstitutionType) type.getWrappedWithoutResolve()).getAnnotationInterfaceType();
+                    Class<?> annotationClass = access.getUniverse().lookup(annotationType).getJavaClass();
+                    if (!annotationMembers.containsKey(annotationClass)) {
+                        processClass(access, annotationClass);
+                    }
+                    for (Member member : annotationMembers.get(annotationClass)) {
+                        try {
+                            if (member instanceof Field) {
+                                Field field = (Field) member;
+                                register(ConfigurationCondition.alwaysTrue(), false, originalClass.getDeclaredField(field.getName()));
+                            } else if (member instanceof Method) {
+                                Method method = (Method) member;
+                                register(ConfigurationCondition.alwaysTrue(), false, originalClass.getDeclaredMethod(method.getName(), method.getParameterTypes()));
+                            }
+                        } catch (NoSuchFieldException | NoSuchMethodException e) {
+                            /*
+                             * The annotation member is not present in the proxy class so we don't
+                             * add it.
+                             */
+                        }
+                    }
                 }
             }
         }
@@ -495,6 +528,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         query(clazz::getDeclaredConstructors, errors);
         query(clazz::getConstructors, errors);
         Class<?>[] declaredClasses = query(clazz::getDeclaredClasses, errors);
+        Class<?>[] permittedClasses = SealedClassSupport.singleton().getPermittedSubclasses(clazz);
         Class<?>[] classes = query(clazz::getClasses, errors);
         reportLinkingErrors(clazz, errors);
 
@@ -517,11 +551,25 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                             filterFields(accessors.getDeclaredPublicFields(originalReflectionData), reflectionFields, access),
                             filterMethods(accessors.getDeclaredPublicMethods(originalReflectionData), reflectionMethods, access),
                             filterClasses(declaredClasses, reflectionClasses, access),
+                            filterClasses(permittedClasses, reflectionClasses, access, true),
+                            /* null is different from Class<?>[0] here. */
                             filterClasses(classes, reflectionClasses, access),
                             enclosingMethodOrConstructor(clazz),
                             buildRecordComponents(clazz, access));
         }
         hub.setReflectionData(reflectionData);
+
+        if (type.isAnnotation()) {
+            /*
+             * Cache the annotation members to allow proxy classes seen later to include those in
+             * their own reflection data
+             */
+            Set<Member> members = new HashSet<>();
+            Collections.addAll(members, filterFields(accessors.getDeclaredFields(originalReflectionData), reflectionFields, access));
+            Collections.addAll(members, filterMethods(accessors.getDeclaredMethods(originalReflectionData), reflectionMethods, access));
+            annotationMembers.put(clazz, members);
+            access.requireAnalysisIteration(); /* Need the proxy class to see the added members */
+        }
     }
 
     private static <T> T query(Callable<T> callable, List<Throwable> errors) {
@@ -568,9 +616,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
         String messages = errors.stream().map(e -> e.getClass().getTypeName() + ": " + e.getMessage())
                         .distinct().collect(Collectors.joining(", "));
-        // Checkstyle: stop
         System.out.println("Warning: Could not register complete reflection metadata for " + clazz.getTypeName() + ". Reason(s): " + messages);
-        // Checkstyle: resume
     }
 
     protected void afterAnalysis() {
@@ -679,8 +725,16 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private static Class<?>[] filterClasses(Object classes, Set<Class<?>> filter, DuringAnalysisAccessImpl access) {
+        return filterClasses(classes, filter, access, false);
+    }
+
+    private static Class<?>[] filterClasses(Object classes, Set<Class<?>> filter, DuringAnalysisAccessImpl access, boolean keepNull) {
         if (classes == null) {
-            return EMPTY_CLASSES;
+            if (keepNull) {
+                return null;
+            } else {
+                return EMPTY_CLASSES;
+            }
         }
         List<Class<?>> result = new ArrayList<>();
         for (Class<?> clazz : (Class<?>[]) classes) {
@@ -699,6 +753,21 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     @Override
     public Set<ResolvedJavaMethod> getHidingMethods() {
         return hidingMethods != null ? Collections.unmodifiableSet(hidingMethods) : Collections.emptySet();
+    }
+
+    @Override
+    public int getReflectionClassesCount() {
+        return reflectionClasses.size();
+    }
+
+    @Override
+    public int getReflectionMethodsCount() {
+        return reflectionMethods.size();
+    }
+
+    @Override
+    public int getReflectionFieldsCount() {
+        return reflectionFields.size();
     }
 
     static final class ReflectionDataAccessors {

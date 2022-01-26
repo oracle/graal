@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.reflect.target;
 
-// Checkstyle: allow reflection
-
 import java.lang.reflect.Array;
 import java.lang.reflect.Executable;
 import java.util.ArrayList;
@@ -163,6 +161,12 @@ public class MethodMetadataDecoderImpl implements MethodMetadataDecoder {
             }
         }
         return allMethods.toArray(new MethodDescriptor[0]);
+    }
+
+    @Override
+    public long getMetadataByteLength() {
+        MethodMetadataEncoding encoding = ImageSingletons.lookup(MethodMetadataEncoding.class);
+        return encoding.getMethodsEncoding().length + encoding.getIndexEncoding().length;
     }
 
     private static int getOffset(int typeID) {

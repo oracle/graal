@@ -76,6 +76,7 @@ import org.graalvm.compiler.lir.aarch64.AArch64PrefetchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64RestoreRegistersOp;
 import org.graalvm.compiler.lir.aarch64.AArch64SaveRegistersOp;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
+import org.graalvm.compiler.lir.gen.MoveFactory;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64Kind;
@@ -209,10 +210,10 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
         Value localX = x;
         Value localY = y;
         if (localX instanceof HotSpotObjectConstant) {
-            localX = load(localX);
+            localX = asAllocatable(localX);
         }
         if (localY instanceof HotSpotObjectConstant) {
-            localY = load(localY);
+            localY = asAllocatable(localY);
         }
         super.emitCompareBranch(cmpKind, localX, localY, cond, unorderedIsTrue, trueDestination, falseDestination, trueDestinationProbability);
     }
@@ -226,7 +227,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
             if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(c)) {
                 localA = AArch64.zr.asValue(LIRKind.value(AArch64Kind.DWORD));
             } else if (c instanceof HotSpotObjectConstant) {
-                localA = load(localA);
+                localA = asAllocatable(localA);
             }
         }
         if (isConstantValue(b)) {
@@ -234,7 +235,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
             if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(c)) {
                 localB = AArch64.zr.asValue(LIRKind.value(AArch64Kind.DWORD));
             } else if (c instanceof HotSpotObjectConstant) {
-                localB = load(localB);
+                localB = asAllocatable(localB);
             }
         }
         return super.emitCompare(cmpKind, localA, localB, condition, unorderedIsTrue);
@@ -422,7 +423,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
         int bitMemoryTransferSize = value.getValueKind().getPlatformKind().getSizeInBytes() * Byte.SIZE;
         RegisterValue thread = getProviders().getRegisters().getThreadRegister().asValue(wordKind);
         AArch64AddressValue address = AArch64AddressValue.makeAddress(wordKind, bitMemoryTransferSize, thread, offset);
-        append(new StoreOp((AArch64Kind) value.getPlatformKind(), address, loadReg(value), null));
+        append(new StoreOp((AArch64Kind) value.getPlatformKind(), address, asAllocatable(value), null));
     }
 
     @Override
@@ -474,10 +475,9 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
         final EnumSet<AArch64.Flag> flags = ((AArch64) target().arch).getFlags();
 
         boolean isDcZvaProhibited = true;
-        int zvaLength = 0;
-        if (GraalHotSpotVMConfig.JDK >= 16) {
-            zvaLength = config.zvaLength;
-            isDcZvaProhibited = 0 == config.zvaLength;
+        int zvaLength = config.zvaLength;
+        if (zvaLength != Integer.MAX_VALUE) {
+            isDcZvaProhibited = 0 == zvaLength;
         } else {
             int dczidValue = config.psrInfoDczidValue;
 

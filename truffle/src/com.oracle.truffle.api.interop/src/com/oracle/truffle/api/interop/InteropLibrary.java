@@ -61,17 +61,18 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.zone.ZoneRules;
+import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.interop.InteropLibrary.Asserts;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary.Abstract;
@@ -186,6 +187,7 @@ import com.oracle.truffle.api.utilities.TriState;
 @DefaultExport(DefaultDoubleExports.class)
 @DefaultExport(DefaultCharacterExports.class)
 @DefaultExport(DefaultStringExports.class)
+@DefaultExport(DefaultTStringExports.class)
 @SuppressWarnings("unused")
 public abstract class InteropLibrary extends Library {
 
@@ -364,7 +366,7 @@ public abstract class InteropLibrary extends Library {
      * @see #asString(Object)
      * @since 19.0
      */
-    @Abstract(ifExported = "asString")
+    @Abstract(ifExported = {"asString", "asTruffleString"})
     public boolean isString(Object receiver) {
         return false;
     }
@@ -381,6 +383,19 @@ public abstract class InteropLibrary extends Library {
     @Abstract(ifExported = "isString")
     public String asString(Object receiver) throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Returns the {@link TruffleString} value if the receiver represents a {@link #isString(Object)
+     * string} like value.
+     *
+     * @throws UnsupportedMessageException if and only if {@link #isString(Object)} returns
+     *             <code>false</code> for the same receiver.
+     * @see #isString(Object)
+     * @since 21.3
+     */
+    public TruffleString asTruffleString(Object receiver) throws UnsupportedMessageException {
+        return TruffleString.fromJavaStringUncached(asString(receiver), TruffleString.Encoding.UTF_16);
     }
 
     // Number Messages
@@ -2260,13 +2275,6 @@ public abstract class InteropLibrary extends Library {
     @Abstract(ifExported = {"getSourceLocation"})
     @TruffleBoundary
     public boolean hasSourceLocation(Object receiver) {
-        Env env = getLegacyEnv(receiver, false);
-        if (env != null) {
-            SourceSection location = InteropAccessor.ACCESSOR.languageSupport().legacyFindSourceLocation(env, receiver);
-            if (location != null) {
-                return true;
-            }
-        }
         // A workaround for missing inheritance feature for default exports.
         if (InteropAccessor.EXCEPTION.isException(receiver)) {
             return InteropAccessor.EXCEPTION.hasSourceLocation(receiver);
@@ -2293,13 +2301,6 @@ public abstract class InteropLibrary extends Library {
     @Abstract(ifExported = {"hasSourceLocation"})
     @TruffleBoundary
     public SourceSection getSourceLocation(Object receiver) throws UnsupportedMessageException {
-        Env env = getLegacyEnv(receiver, false);
-        if (env != null) {
-            SourceSection location = InteropAccessor.ACCESSOR.languageSupport().legacyFindSourceLocation(env, receiver);
-            if (location != null) {
-                return location;
-            }
-        }
         // A workaround for missing inheritance feature for default exports.
         if (InteropAccessor.EXCEPTION.isException(receiver)) {
             return InteropAccessor.EXCEPTION.getSourceLocation(receiver);
@@ -2332,9 +2333,8 @@ public abstract class InteropLibrary extends Library {
      * @since 20.1
      */
     @Abstract(ifExported = {"getLanguage", "isScope"})
-    @TruffleBoundary
     public boolean hasLanguage(Object receiver) {
-        return getLegacyEnv(receiver, false) != null;
+        return false;
     }
 
     /**
@@ -2351,12 +2351,7 @@ public abstract class InteropLibrary extends Library {
      */
     @SuppressWarnings("unchecked")
     @Abstract(ifExported = {"hasLanguage"})
-    @TruffleBoundary
     public Class<? extends TruffleLanguage<?>> getLanguage(Object receiver) throws UnsupportedMessageException {
-        Env env = getLegacyEnv(receiver, false);
-        if (env != null) {
-            return (Class<? extends TruffleLanguage<?>>) InteropAccessor.ACCESSOR.languageSupport().getSPI(env).getClass();
-        }
         throw UnsupportedMessageException.create();
     }
 
@@ -2384,15 +2379,7 @@ public abstract class InteropLibrary extends Library {
      * @since 20.1
      */
     @Abstract(ifExported = {"getMetaObject"})
-    @TruffleBoundary
     public boolean hasMetaObject(Object receiver) {
-        Env env = getLegacyEnv(receiver, false);
-        if (env != null) {
-            Object metaObject = InteropAccessor.ACCESSOR.languageSupport().legacyFindMetaObject(env, receiver);
-            if (metaObject != null) {
-                return true;
-            }
-        }
         return false;
     }
 
@@ -2420,15 +2407,7 @@ public abstract class InteropLibrary extends Library {
      * @since 20.1
      */
     @Abstract(ifExported = {"hasMetaObject"})
-    @TruffleBoundary
     public Object getMetaObject(Object receiver) throws UnsupportedMessageException {
-        Env env = getLegacyEnv(receiver, false);
-        if (env != null) {
-            Object metaObject = InteropAccessor.ACCESSOR.languageSupport().legacyFindMetaObject(env, receiver);
-            if (metaObject != null) {
-                return new LegacyMetaObjectWrapper(receiver, metaObject);
-            }
-        }
         throw UnsupportedMessageException.create();
     }
 
@@ -2452,16 +2431,11 @@ public abstract class InteropLibrary extends Library {
     @Abstract(ifExported = {"hasLanguage", "getLanguage", "isScope"})
     @TruffleBoundary
     public Object toDisplayString(Object receiver, boolean allowSideEffects) {
-        Env env = getLegacyEnv(receiver, false);
-        if (env != null && allowSideEffects) {
-            return InteropAccessor.ACCESSOR.languageSupport().legacyToString(env, receiver);
+        if (allowSideEffects) {
+            return Objects.toString(receiver);
         } else {
             return receiver.getClass().getTypeName() + "@" + Integer.toHexString(System.identityHashCode(receiver));
         }
-    }
-
-    private static Env getLegacyEnv(Object receiver, boolean nullForhost) {
-        return InteropAccessor.ACCESSOR.engineSupport().getLegacyLanguageEnv(receiver, nullForhost);
     }
 
     /**
@@ -2908,7 +2882,8 @@ public abstract class InteropLibrary extends Library {
                         || receiver instanceof Long //
                         || receiver instanceof Float //
                         || receiver instanceof Double //
-                        || receiver instanceof String;
+                        || receiver instanceof String //
+                        || receiver instanceof TruffleString;
     }
 
     /**
@@ -2973,10 +2948,6 @@ public abstract class InteropLibrary extends Library {
         }
 
         private boolean notOtherType(Object receiver, Type type) {
-            if (receiver instanceof LegacyMetaObjectWrapper) {
-                // ignore other type assertions for legacy meta object wrapper
-                return true;
-            }
             assert type == Type.NULL || !delegate.isNull(receiver) : violationInvariant(receiver);
             assert type == Type.BOOLEAN || !delegate.isBoolean(receiver) : violationInvariant(receiver);
             assert type == Type.STRING || !delegate.isString(receiver) : violationInvariant(receiver);
@@ -3116,6 +3087,24 @@ public abstract class InteropLibrary extends Library {
                 String result = delegate.asString(receiver);
                 assert wasString : violationInvariant(receiver);
                 assert validProtocolReturn(receiver, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
+                assert !wasString : violationInvariant(receiver);
+                throw e;
+            }
+        }
+
+        @Override
+        public TruffleString asTruffleString(Object receiver) throws UnsupportedMessageException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.asTruffleString(receiver);
+            }
+            assert preCondition(receiver);
+            boolean wasString = delegate.isString(receiver);
+            try {
+                TruffleString result = delegate.asTruffleString(receiver);
+                assert wasString : violationInvariant(receiver);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationInvariant(receiver);

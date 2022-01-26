@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.c.libc;
 
-// Checkstyle: stop
-
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -37,20 +35,27 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.util.GuardedAnnotationAccess;
 
-// Checkstyle: resume
-
 public interface LibCBase {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     static boolean containsLibCAnnotation(AnnotatedElement element) {
-        return GuardedAnnotationAccess.getAnnotation(element, LibC.class) != null;
+        return GuardedAnnotationAccess.getAnnotation(element, LibCSpecific.class) != null;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     static boolean isProvidedInCurrentLibc(AnnotatedElement element) {
         LibCBase currentLibC = ImageSingletons.lookup(LibCBase.class);
-        LibC targetLibC = GuardedAnnotationAccess.getAnnotation(element, LibC.class);
+        LibCSpecific targetLibC = GuardedAnnotationAccess.getAnnotation(element, LibCSpecific.class);
         return targetLibC != null && Arrays.asList(targetLibC.value()).contains(currentLibC.getClass());
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    static boolean isPlatformEquivalent(Class<? extends Platform> platformClass) {
+        Platform platform = ImageSingletons.lookup(Platform.class);
+        // Checkstyle: allow Class.getSimpleName
+        String simpleName = platformClass.getSimpleName();
+        // Checkstyle: disallow Class.getSimpleName
+        return simpleName.toLowerCase().equals(platform.getOS()) || Platform.includedIn(platformClass);
     }
 
     @Fold

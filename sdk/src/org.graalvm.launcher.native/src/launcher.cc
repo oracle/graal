@@ -168,24 +168,28 @@ std::string exe_directory() {
 }
 
 // load the language library (either native library or libjvm) and return a pointer to the JNI_CreateJavaVM function
-CreateJVM loadliblang(std::string exeDir) {
-    std::stringstream liblangPath;
-    liblangPath << exeDir << DIR_SEP_STR << LIBLANG_RELPATH_STR;
+CreateJVM loadliblang(std::string liblangPath) {
     if (debug) {
-        std::cout << "Loading library " << liblangPath.str() << std::endl;
+        std::cout << "Loading library " << liblangPath << std::endl;
     }
 #if defined (__linux__) || defined (__APPLE__)
-        void* jvmHandle = dlopen(liblangPath.str().c_str(), RTLD_NOW);
+        void* jvmHandle = dlopen(liblangPath.c_str(), RTLD_NOW);
         if (jvmHandle != NULL) {
             return (CreateJVM) dlsym(jvmHandle, "JNI_CreateJavaVM");
         }
 #else
-        HMODULE jvmHandle = LoadLibraryA(liblangPath.str().c_str());
+        HMODULE jvmHandle = LoadLibraryA(liblangPath.c_str());
         if (jvmHandle != NULL) {
             return (CreateJVM) GetProcAddress(jvmHandle, "JNI_CreateJavaVM");
         }
 #endif
     return NULL;
+}
+
+std::string liblang_path(std::string exeDir) {
+    std::stringstream liblangPath;
+    liblangPath << exeDir << DIR_SEP_STR << LIBLANG_RELPATH_STR;
+    return liblangPath.str();
 }
 
 // parse the VM arguments that should be passed to JNI_CreateJavaVM
@@ -290,7 +294,7 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
         vmArgs.push_back(cp.str());
     #endif
 
-    vmInitArgs->options = (JavaVMOption *)malloc(vmArgs.size() * sizeof(JavaVMOption));
+    vmInitArgs->options = new JavaVMOption[vmArgs.size()];;
     vmInitArgs->nOptions = vmArgs.size();
     JavaVMOption *curOpt = vmInitArgs->options;
     for(const auto& arg: vmArgs) {
@@ -305,7 +309,13 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
 int main(int argc, char *argv[]) {
     debug = (getenv("VERBOSE_GRAALVM_LAUNCHERS") != NULL);
     std::string exeDir = exe_directory();
-    CreateJVM createJVM = loadliblang(exeDir);
+    std::string libPath;
+    if (char *libOverridePath = getenv("GRAALVM_LAUNCHER_LIBRARY")) {
+        libPath = std::string(libOverridePath);
+    } else {
+        libPath = liblang_path(exeDir);
+    }
+    CreateJVM createJVM = loadliblang(libPath);
     if (!createJVM) {
         std::cerr << "Could not load language library." << std::endl;
         return -1;
@@ -316,7 +326,7 @@ int main(int argc, char *argv[]) {
     vmInitArgs.nOptions = 0;
     parse_vm_options(argc, argv, exeDir, &vmInitArgs);
     vmInitArgs.version = JNI_VERSION_1_8;
-    vmInitArgs.ignoreUnrecognized = false;
+    vmInitArgs.ignoreUnrecognized = true;
 
     int res = createJVM(&jvm, (void**)&env, &vmInitArgs);
     if (res != JNI_OK) {
@@ -328,6 +338,7 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < vmInitArgs.nOptions; i++) {
         free(vmInitArgs.options[i].optionString);
     }
+    delete vmInitArgs.options;
 
     jclass byteArrayClass = env->FindClass("[B");
     if (byteArrayClass == NULL) {

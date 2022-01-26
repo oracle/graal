@@ -1,4 +1,4 @@
 DYNAMIC_IMPORTS=/compiler,/graal-js,/regex,/sdk,/substratevm,/sulong,/tools,/truffle
-COMPONENTS=cmp,cov,dap,dis,gu,gvm,ins,insight,insightheap,js,lg,llp,llrc,llrl,llrn,lsp,nfi,ni,nic,nil,nju,njucp,poly,polynative,pro,rgx,sdk,svm,svml,svmnfi,tfl,tflm,vvm
-NATIVE_IMAGES=graalvm-native-binutil,graalvm-native-clang,graalvm-native-clang++,graalvm-native-ld,gu,js,lib:jvmcicompiler,lib:native-image-agent,lib:native-image-diagnostics-agent,lli,native-image,native-image-configure
+COMPONENTS=cmp,cov,dap,dis,gu,gvm,icu4j,ins,insight,insightheap,js,lg,llp,llrc,llrl,llrn,lsp,nfi-libffi,ni,nic,nil,nju,njucp,poly,polynative,pro,rgx,sdk,svm,svml,svmnfi,tfl,tflm,vvm
+NATIVE_IMAGES=graalvm-native-binutil,graalvm-native-clang,graalvm-native-clang++,graalvm-native-ld,gu,lib:jsvm,lib:jvmcicompiler,lib:native-image-agent,lib:native-image-diagnostics-agent,lli,native-image,native-image-configure
 DISABLE_INSTALLABLES=llp

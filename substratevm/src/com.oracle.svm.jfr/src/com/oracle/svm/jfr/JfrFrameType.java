@@ -49,8 +49,8 @@ public enum JfrFrameType {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public byte getId() {
+    public long getId() {
         // First entry needs to have id 0.
-        return (byte) ordinal();
+        return ordinal();
     }
 }

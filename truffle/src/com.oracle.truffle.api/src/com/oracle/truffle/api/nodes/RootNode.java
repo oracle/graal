@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -172,7 +172,14 @@ public abstract class RootNode extends ExecutableNode {
     public Node copy() {
         RootNode root = (RootNode) super.copy();
         root.frameDescriptor = frameDescriptor;
+        resetFieldsAfterCopy(root);
         return root;
+    }
+
+    private static void resetFieldsAfterCopy(RootNode root) {
+        root.callTarget = null;
+        root.instrumentationBits = 0;
+        root.lock = null;
     }
 
     /**
@@ -333,6 +340,38 @@ public abstract class RootNode extends ExecutableNode {
         throw new UnsupportedOperationException();
     }
 
+    final RootNode cloneUninitializedImpl(CallTarget sourceCallTarget, RootNode uninitializedRootNode) {
+        RootNode clonedRoot;
+        if (isCloneUninitializedSupported()) {
+            assert uninitializedRootNode == null : "uninitializedRootNode should not have been created";
+            clonedRoot = cloneUninitialized();
+
+            // if the language copied we cannot be sure
+            // that the call target is not reset (with their own means of copying)
+            // so better make sure they are reset.
+            resetFieldsAfterCopy(clonedRoot);
+        } else {
+            clonedRoot = NodeUtil.cloneNode(uninitializedRootNode);
+            // regular cloning guarantees that call target, instrumentation bits,
+            // and lock are null. See #copy().
+            assert clonedRoot.callTarget == null;
+            assert clonedRoot.instrumentationBits == 0;
+            assert clonedRoot.lock == null;
+        }
+
+        RootCallTarget clonedTarget = NodeAccessor.RUNTIME.newCallTarget(sourceCallTarget, clonedRoot);
+
+        ReentrantLock l = clonedRoot.getLazyLock();
+        l.lock();
+        try {
+            clonedRoot.setupCallTarget(clonedTarget, "callTarget not null. Was getCallTarget on the result of RootNode.cloneUninitialized called?");
+        } finally {
+            l.unlock();
+        }
+
+        return clonedRoot;
+    }
+
     /**
      * Executes this function using the specified frame and returns the result value.
      *
@@ -346,20 +385,41 @@ public abstract class RootNode extends ExecutableNode {
     /** @since 0.8 or earlier */
     public final RootCallTarget getCallTarget() {
         RootCallTarget target = this.callTarget;
-        if (target == null) {
+        // Check isLoaded to avoid returning a CallTarget before notifyOnLoad() is done
+        if (target == null || !NodeAccessor.RUNTIME.isLoaded(target)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             ReentrantLock l = getLazyLock();
             l.lock();
             try {
                 target = this.callTarget;
                 if (target == null) {
-                    this.callTarget = target = NodeAccessor.RUNTIME.newCallTarget(this);
+                    target = NodeAccessor.RUNTIME.newCallTarget(null, this);
+                    this.setupCallTarget(target, "callTarget was set by newCallTarget but should not");
                 }
             } finally {
                 l.unlock();
             }
         }
         return target;
+    }
+
+    private void setupCallTarget(RootCallTarget callTarget, String message) {
+        assert getLazyLock().isHeldByCurrentThread();
+
+        if (this.callTarget != null) {
+            throw CompilerDirectives.shouldNotReachHere(message);
+        }
+        this.callTarget = callTarget;
+
+        // Call notifyOnLoad() after the callTarget field is set, so the invariant that if a
+        // CallTarget exists for a RootNode then that rootNode.callTarget points to the CallTarget
+        // always holds, and no matter what notifyOnLoad() does the 1-1 relation between the
+        // RootNode and CallTarget is already there.
+        NodeAccessor.RUNTIME.notifyOnLoad(callTarget);
+    }
+
+    final RootCallTarget getCallTargetWithoutInitialization() {
+        return callTarget;
     }
 
     /** @since 0.8 or earlier */

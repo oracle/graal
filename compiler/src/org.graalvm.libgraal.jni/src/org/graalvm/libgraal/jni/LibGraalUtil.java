@@ -24,9 +24,9 @@
  */
 package org.graalvm.libgraal.jni;
 
-import org.graalvm.nativebridge.jni.JNI;
-import org.graalvm.nativebridge.jni.JNI.JNIEnv;
-import org.graalvm.nativebridge.jni.JNIMethodScope;
+import org.graalvm.jniutils.JNI;
+import org.graalvm.jniutils.JNI.JNIEnv;
+import org.graalvm.jniutils.JNIMethodScope;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CEntryPoint;

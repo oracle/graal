@@ -131,13 +131,18 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
         return SubstrateFastThreadLocal.SINGLETON;
     }
 
+    @Override
+    protected AutoCloseable openCompilerThreadScope() {
+        return new CompilerThreadScope();
+    }
+
     private void initializeAtRuntime(OptimizedCallTarget callTarget) {
         truffleCompiler.initialize(getOptionsForCompiler(callTarget), callTarget, true);
         if (SubstrateTruffleOptions.isMultiThreaded()) {
             compileQueue = TruffleSupport.singleton().createBackgroundCompileQueue(this);
         }
         if (callTarget.engine.traceTransferToInterpreter) {
-            RuntimeOptionValues.singleton().update(Deoptimizer.Options.TraceDeoptimization, true);
+            Deoptimizer.Options.TraceDeoptimization.update(true);
         }
         installDefaultListeners();
         RuntimeSupport.getRuntimeSupport().addTearDownHook(this::teardown);
@@ -226,14 +231,12 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
 
     private void ensureInitializedAtRuntime(OptimizedCallTarget callTarget) {
         if (!SubstrateUtil.HOSTED && !initialized) {
-            // Checkstyle: stop
             synchronized (this) {
                 if (!initialized) {
                     initializeAtRuntime(callTarget);
                     initialized = true;
                 }
             }
-            // Checkstyle: resume
         }
     }
 
@@ -417,6 +420,22 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
             return hasNextTier;
         }
 
+    }
+
+    private static final class CompilerThreadScope implements AutoCloseable {
+
+        CompilerThreadScope() {
+            open();
+        }
+
+        // Substituted by EnterpriseTruffleFeature
+        private void open() {
+        }
+
+        // Substituted by EnterpriseTruffleFeature
+        @Override
+        public void close() {
+        }
     }
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,6 +37,7 @@ import java.util.Map.Entry;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
@@ -86,13 +87,13 @@ public final class CPUSampler implements Closeable {
         }
     };
 
-    static {
-        CPUSamplerInstrument.setFactory(new ProfilerToolFactory<CPUSampler>() {
+    static ProfilerToolFactory<CPUSampler> createFactory() {
+        return new ProfilerToolFactory<CPUSampler>() {
             @Override
             public CPUSampler create(Env env) {
                 return new CPUSampler(env);
             }
-        });
+        };
     }
 
     private final Env env;
@@ -109,7 +110,7 @@ public final class CPUSampler implements Closeable {
     private Thread processingThread;
     private ResultProcessingRunnable processingThreadRunnable;
 
-    private volatile SafepointStackSampler safepointStackSampler = new SafepointStackSampler(stackLimit, filter, period);
+    private volatile SafepointStackSampler safepointStackSampler = new SafepointStackSampler(stackLimit, filter);
     private boolean gatherSelfHitTimes = false;
 
     /*
@@ -404,18 +405,34 @@ public final class CPUSampler implements Closeable {
     }
 
     /**
+     * Sample all threads and gather their current stack trace entries with a default time out.
+     * Short hand for: {@link #takeSample(long, TimeUnit) takeSample}(this.getPeriod(),
+     * TimeUnit.MILLISECONDS).
+     *
+     * @see #takeSample(long, TimeUnit)
+     * @since 19.0
+     */
+    public Map<Thread, List<StackTraceEntry>> takeSample() {
+        return takeSample(this.period, TimeUnit.MILLISECONDS);
+    }
+
+    /**
      * Sample all threads and gather their current stack trace entries. The returned map and lists
      * are unmodifiable and represent atomic snapshots of the stack at the time when this method was
      * invoked. Only active threads are sampled. A thread is active if it has at least one entry on
      * the stack. The sampling is initialized if this method is invoked for the first time or
      * reinitialized if the configuration changes.
+     * <p>
+     * If the given timeout is exceeded the sampling will be stopped. If a timeout occurs it may
+     * lead to an incomplete or empty result. For example, if only one thread times out the result
+     * of other threads may still be reported.
      *
-     * @since 19.0
+     * @since 22.0
      */
-    public Map<Thread, List<StackTraceEntry>> takeSample() {
+    public Map<Thread, List<StackTraceEntry>> takeSample(long timeout, TimeUnit timeoutUnit) {
         synchronized (CPUSampler.this) {
             if (safepointStackSampler == null) {
-                this.safepointStackSampler = new SafepointStackSampler(stackLimit, filter, period);
+                this.safepointStackSampler = new SafepointStackSampler(stackLimit, filter);
             }
             if (activeContexts.isEmpty()) {
                 return Collections.emptyMap();
@@ -425,7 +442,7 @@ public final class CPUSampler implements Closeable {
                 throw new IllegalArgumentException("Cannot sample a context that is currently active on the current thread.");
             }
             Map<Thread, List<StackTraceEntry>> stacks = new HashMap<>();
-            List<StackSample> sample = safepointStackSampler.sample(env, context, activeContexts.get(context), !sampleContextInitialization);
+            List<StackSample> sample = safepointStackSampler.sample(env, context, activeContexts.get(context), !sampleContextInitialization, timeout, timeoutUnit);
             for (StackSample stackSample : sample) {
                 stacks.put(stackSample.thread, stackSample.stack);
             }
@@ -449,7 +466,7 @@ public final class CPUSampler implements Closeable {
         if (samplerThread == null) {
             samplerThread = new Timer("Sampling thread", true);
         }
-        this.safepointStackSampler = new SafepointStackSampler(stackLimit, filter, period);
+        this.safepointStackSampler = new SafepointStackSampler(stackLimit, filter);
         this.samplerTask = new SamplingTimerTask();
         this.samplerThread.scheduleAtFixedRate(samplerTask, delay, period);
 
@@ -698,7 +715,7 @@ public final class CPUSampler implements Closeable {
                 if (context.isClosed()) {
                     continue;
                 }
-                List<StackSample> samples = safepointStackSampler.sample(env, context, activeContexts.get(context), !sampleContextInitialization);
+                List<StackSample> samples = safepointStackSampler.sample(env, context, activeContexts.get(context), !sampleContextInitialization, period, TimeUnit.MILLISECONDS);
                 resultsToProcess.add(new SamplingResult(samples, context, taskStartTime));
             }
         }

@@ -77,24 +77,39 @@ public abstract class RegexTestBase {
     abstract String getEngineOptions();
 
     Value compileRegex(String pattern, String flags) {
-        return context.eval("regexDummyLang", "RegressionTestMode=true" + (getEngineOptions().isEmpty() ? "" : "," + getEngineOptions()) + '/' + pattern + '/' + flags);
+        return compileRegex(pattern, flags, "");
     }
 
-    Value compileRegex(Object pattern, Object flags, Encodings.Encoding encoding) {
-        return context.eval("regexDummyLang", "RegressionTestMode=true,Encoding=" + encoding.getName() + (getEngineOptions().isEmpty() ? "" : "," + getEngineOptions()) + '/' + pattern + '/' + flags);
+    Value compileRegex(String pattern, String flags, Encodings.Encoding encoding) {
+        return compileRegex(pattern, flags, "Encoding=" + encoding.getName());
+    }
+
+    Value compileRegex(String pattern, String flags, String options) {
+        StringBuilder combinedOptions = new StringBuilder("RegressionTestMode=true");
+        if (!getEngineOptions().isEmpty()) {
+            combinedOptions.append("," + getEngineOptions());
+        }
+        if (!options.isEmpty()) {
+            combinedOptions.append("," + options);
+        }
+        return context.eval("regexDummyLang", combinedOptions.toString() + '/' + pattern + '/' + flags);
     }
 
     Value execRegex(Value compiledRegex, Object input, int fromIndex) {
         return compiledRegex.invokeMember("exec", input, fromIndex);
     }
 
-    void test(String pattern, String flags, Object input, int fromIndex, boolean isMatch, int... captureGroupBounds) {
-        Value compiledRegex = compileRegex(pattern, flags);
-        Value result = execRegex(compiledRegex, input, fromIndex);
-        validateResult(result, compiledRegex.getMember("groupCount").asInt(), isMatch, captureGroupBounds);
+    void test(String pattern, String flags, Object input, int fromIndex, boolean isMatch, int... captureGroupBoundsAndLastGroup) {
+        test(pattern, flags, "", input, fromIndex, isMatch, captureGroupBoundsAndLastGroup);
     }
 
-    void testBytes(String pattern, String flags, Encodings.Encoding encoding, String input, int fromIndex, boolean isMatch, int... captureGroupBounds) {
+    void test(String pattern, String flags, String options, Object input, int fromIndex, boolean isMatch, int... captureGroupBoundsAndLastGroup) {
+        Value compiledRegex = compileRegex(pattern, flags, options);
+        Value result = execRegex(compiledRegex, input, fromIndex);
+        validateResult(result, compiledRegex.getMember("groupCount").asInt(), isMatch, captureGroupBoundsAndLastGroup);
+    }
+
+    void testBytes(String pattern, String flags, Encodings.Encoding encoding, String input, int fromIndex, boolean isMatch, int... captureGroupBoundsAndLastGroup) {
         Value compiledRegex = compileRegex(pattern, flags, encoding);
 
         byte[] bytes = input.getBytes(encodingToCharSet(encoding));
@@ -105,19 +120,22 @@ public abstract class RegexTestBase {
         ProxyArray proxy = ProxyArray.fromArray(objects);
 
         Value result = execRegex(compiledRegex, proxy, fromIndex);
-        validateResult(result, compiledRegex.getMember("groupCount").asInt(), isMatch, captureGroupBounds);
+        validateResult(result, compiledRegex.getMember("groupCount").asInt(), isMatch, captureGroupBoundsAndLastGroup);
     }
 
-    private static void validateResult(Value result, int groupCount, boolean isMatch, int... captureGroupBounds) {
-        assert captureGroupBounds.length % 2 == 0;
+    private static void validateResult(Value result, int groupCount, boolean isMatch, int... captureGroupBoundsAndLastGroup) {
         assertEquals(isMatch, result.getMember("isMatch").asBoolean());
         if (isMatch) {
-            assertEquals(captureGroupBounds.length / 2, groupCount);
-            for (int i = 0; i < captureGroupBounds.length / 2; i++) {
-                if (captureGroupBounds[i * 2] != result.invokeMember("getStart", i).asInt() || captureGroupBounds[i * 2 + 1] != result.invokeMember("getEnd", i).asInt()) {
-                    fail(result, captureGroupBounds);
+            assertEquals(captureGroupBoundsAndLastGroup.length / 2, groupCount);
+            for (int i = 0; i < captureGroupBoundsAndLastGroup.length / 2; i++) {
+                if (captureGroupBoundsAndLastGroup[i * 2] != result.invokeMember("getStart", i).asInt() || captureGroupBoundsAndLastGroup[i * 2 + 1] != result.invokeMember("getEnd", i).asInt()) {
+                    fail(result, captureGroupBoundsAndLastGroup);
                 }
             }
+        }
+        int lastGroup = captureGroupBoundsAndLastGroup.length % 2 == 1 ? captureGroupBoundsAndLastGroup[captureGroupBoundsAndLastGroup.length - 1] : -1;
+        if (lastGroup != result.getMember("lastGroup").asInt()) {
+            fail(result, captureGroupBoundsAndLastGroup);
         }
     }
 
@@ -142,9 +160,9 @@ public abstract class RegexTestBase {
         Assert.fail();
     }
 
-    private static void fail(Value result, int... captureGroupBounds) {
-        StringBuilder sb = new StringBuilder("expected: ").append(Arrays.toString(captureGroupBounds)).append(", actual: [");
-        for (int i = 0; i < captureGroupBounds.length / 2; i++) {
+    private static void fail(Value result, int... captureGroupBoundsAndLastGroup) {
+        StringBuilder sb = new StringBuilder("expected: ").append(Arrays.toString(captureGroupBoundsAndLastGroup)).append(", actual: [");
+        for (int i = 0; i < captureGroupBoundsAndLastGroup.length / 2; i++) {
             if (i > 0) {
                 sb.append(", ");
             }
@@ -152,6 +170,8 @@ public abstract class RegexTestBase {
             sb.append(", ");
             sb.append(result.invokeMember("getEnd", i).asInt());
         }
+        sb.append(", ");
+        sb.append(result.getMember("lastGroup").asInt());
         Assert.fail(sb.append("]").toString());
     }
 }

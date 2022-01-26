@@ -219,7 +219,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
 
             assert exceptionEdge.stateAfter().bci == invoke.bci();
             assert exceptionEdge.stateAfter().rethrowException();
-            exceptionMerge.setStateAfter(exceptionEdge.stateAfter().duplicateModified(JavaKind.Object, JavaKind.Object, exceptionObjectPhi));
+            exceptionMerge.setStateAfter(exceptionEdge.stateAfter().duplicateModified(JavaKind.Object, JavaKind.Object, exceptionObjectPhi, null));
         }
 
         // create one separate block for each invoked method
@@ -420,7 +420,7 @@ public class MultiTypeGuardInlineInfo extends AbstractInlineInfo {
 
             ExceptionObjectNode newExceptionEdge = (ExceptionObjectNode) exceptionEdge.copyWithInputs();
             // set new state (pop old exception object, push new one)
-            newExceptionEdge.setStateAfter(stateAfterException.duplicateModified(JavaKind.Object, JavaKind.Object, newExceptionEdge));
+            newExceptionEdge.setStateAfter(stateAfterException.duplicateModified(JavaKind.Object, JavaKind.Object, newExceptionEdge, null));
 
             EndNode endNode = graph.add(new EndNode());
             newExceptionEdge.setNext(endNode);

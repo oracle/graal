@@ -42,18 +42,18 @@ package com.oracle.truffle.polyglot;
 
 import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Function;
 
 import org.graalvm.collections.Pair;
-import org.graalvm.polyglot.Source;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.polyglot.PolyglotImpl.VMObject;
@@ -65,14 +65,15 @@ final class PolyglotLanguageInstance implements VMObject {
 
     final PolyglotLanguage language;
     final TruffleLanguage<Object> spi;
+    /*
+     * The sharing layer might change for the host language only.
+     */
+    @CompilationFinal PolyglotSharingLayer sharing;
 
-    private final PolyglotSourceCache sourceCache;
     private final Map<Class<?>, PolyglotValueDispatch> valueCache;
     private final Map<Class<?>, CallTarget> callTargetCache;
 
     final Map<Object, Object> hostToGuestCodeCache = new ConcurrentHashMap<>();
-    private volatile OptionValuesImpl firstOptionValues;
-    private volatile boolean multiContextInitialized;
     final Map<Class<?>, ClassLoader> staticObjectClassLoaders = new ConcurrentHashMap<>();
     final ConcurrentHashMap<Pair<Class<?>, Class<?>>, Object> generatorCache = new ConcurrentHashMap<>();
 
@@ -82,17 +83,22 @@ final class PolyglotLanguageInstance implements VMObject {
     List<LanguageContextThreadLocal<?>> contextThreadLocals;
     LocalLocation[] contextLocalLocations;
     LocalLocation[] contextThreadLocalLocations;
-    int claimedCount;
+
+    @CompilationFinal private volatile Object guestToHostCodeCache;
+
+    private static final AtomicReferenceFieldUpdater<PolyglotLanguageInstance, Object> GUEST_TO_HOST_CODE_CACHE_UPDATER = //
+                    AtomicReferenceFieldUpdater.newUpdater(PolyglotLanguageInstance.class, Object.class, "guestToHostCodeCache");
 
     @SuppressWarnings("unchecked")
-    PolyglotLanguageInstance(PolyglotLanguage language) {
+    PolyglotLanguageInstance(PolyglotLanguage language, PolyglotSharingLayer layer) {
         this.language = language;
-        this.sourceCache = new PolyglotSourceCache();
+        this.sharing = layer;
+
         this.valueCache = new ConcurrentHashMap<>();
         this.callTargetCache = new ConcurrentHashMap<>();
         try {
             this.spi = (TruffleLanguage<Object>) language.cache.loadLanguage();
-            LANGUAGE.initializeLanguage(spi, language.info, language, this);
+            LANGUAGE.initializeLanguage(spi, language.info, language, language.isHost() ? null : this);
         } catch (Exception e) {
             throw new IllegalStateException(String.format("Error initializing language '%s' using class '%s'.", language.cache.getId(), language.cache.getClassName()), e);
         }
@@ -111,47 +117,6 @@ final class PolyglotLanguageInstance implements VMObject {
         return language.engine;
     }
 
-    boolean areOptionsCompatible(OptionValuesImpl newOptionValues) {
-        OptionValuesImpl firstOptions = this.firstOptionValues;
-        if (firstOptionValues == null) {
-            return true;
-        } else {
-            return EngineAccessor.LANGUAGE.areOptionsCompatible(spi, firstOptions, newOptionValues);
-        }
-    }
-
-    void claim(OptionValuesImpl optionValues) {
-        assert Thread.holdsLock(language.engine.lock);
-        if (this.firstOptionValues == null) {
-            this.firstOptionValues = optionValues;
-        }
-        claimedCount++;
-    }
-
-    void patchFirstOptions(OptionValuesImpl optionValues) {
-        this.firstOptionValues = optionValues;
-    }
-
-    void ensureMultiContextInitialized() {
-        assert Thread.holdsLock(language.engine.lock);
-        if (!language.engine.singleContext.isValid() && language.cache.getPolicy() != ContextPolicy.EXCLUSIVE) {
-            if (!multiContextInitialized) {
-                multiContextInitialized = true;
-                language.engine.initializeMultiContext();
-                this.singleLanguageContext.invalidate();
-                LANGUAGE.initializeMultiContext(spi);
-            }
-        }
-    }
-
-    PolyglotSourceCache getSourceCache() {
-        return sourceCache;
-    }
-
-    void listCachedSources(Collection<Source> sources) {
-        sourceCache.listCachedSources(this, sources);
-    }
-
     PolyglotValueDispatch lookupValueCache(PolyglotContextImpl context, Object guestValue) {
         PolyglotValueDispatch cache = valueCache.get(guestValue.getClass());
         if (cache == null) {
@@ -162,6 +127,7 @@ final class PolyglotLanguageInstance implements VMObject {
                 language.engine.leaveIfNeeded(prev, context);
             }
         }
+        assert Objects.equals(cache.languageInstance.sharing, this.sharing) : PolyglotSharingLayer.invalidSharingError(null, cache.languageInstance.sharing, this.sharing);
         return cache;
     }
 
@@ -172,6 +138,23 @@ final class PolyglotLanguageInstance implements VMObject {
             }
         });
         return cache;
+    }
+
+    Object getGuestToHostCodeCache() {
+        return guestToHostCodeCache;
+    }
+
+    Object installGuestToHostCodeCache(Object newCache) {
+        if (GUEST_TO_HOST_CODE_CACHE_UPDATER.compareAndSet(this, null, newCache)) {
+            return newCache;
+        } else {
+            return guestToHostCodeCache;
+        }
+    }
+
+    @Override
+    public String toString() {
+        return "PolyglotLanguageInstance[" + spi + "]";
     }
 
 }

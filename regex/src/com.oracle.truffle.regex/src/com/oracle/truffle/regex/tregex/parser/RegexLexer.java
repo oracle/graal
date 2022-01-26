@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.oracle.truffle.api.ArrayUtils;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexSource;
@@ -114,7 +115,7 @@ public final class RegexLexer {
      *            {@link RegexSource#getPattern()}.
      */
     private void setSourceSection(Token t, int startIndex, int endIndex) {
-        if (source.getOptions().isDumpAutomata()) {
+        if (source.getOptions().isDumpAutomataWithSourceSections()) {
             // RegexSource#getSource() prepends a slash ('/') to the pattern, so we have to add an
             // offset of 1 here.
             t.setSourceSection(source.getSource().createSection(startIndex + 1, endIndex - startIndex));
@@ -131,6 +132,19 @@ public final class RegexLexer {
         final char c = pattern.charAt(index);
         advance();
         return c;
+    }
+
+    private boolean findChars(char... chars) {
+        if (atEnd()) {
+            return false;
+        }
+        int i = ArrayUtils.indexOf(pattern, index, pattern.length(), chars);
+        if (i < 0) {
+            index = pattern.length();
+            return false;
+        }
+        index = i;
+        return true;
     }
 
     private void advance() {
@@ -216,7 +230,7 @@ public final class RegexLexer {
         // which might turn into a non-capturing group or a look-around assertion.
         boolean insideCharClass = false;
         final int restoreIndex = index;
-        while (!atEnd()) {
+        while (findChars('\\', '[', ']', '(')) {
             switch (consumeChar()) {
                 case '\\':
                     // skip escaped char
@@ -234,10 +248,41 @@ public final class RegexLexer {
                     }
                     break;
                 default:
-                    break;
+                    throw CompilerDirectives.shouldNotReachHere();
             }
         }
         index = restoreIndex;
+    }
+
+    public boolean hasBackReferences() {
+        int nCG = numberOfCaptureGroups();
+        final int restoreIndex = index;
+        boolean insideCharClass = false;
+        while (findChars('\\', '[', ']')) {
+            switch (consumeChar()) {
+                case '\\':
+                    if (!atEnd()) {
+                        char c = consumeChar();
+                        if (!insideCharClass) {
+                            if ('1' <= c && c <= '9' && parseInteger(c - '0') < nCG) {
+                                index = restoreIndex;
+                                return true;
+                            }
+                        }
+                    }
+                    break;
+                case '[':
+                    insideCharClass = true;
+                    break;
+                case ']':
+                    insideCharClass = false;
+                    break;
+                default:
+                    throw CompilerDirectives.shouldNotReachHere();
+            }
+        }
+        index = restoreIndex;
+        return false;
     }
 
     private Token charClass(int codePoint) {

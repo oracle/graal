@@ -65,7 +65,7 @@ import com.oracle.truffle.api.nodes.RootNode;
  *
  * @since 20.3
  */
-@DefaultExport(LegacyNodeExports.class)
+@DefaultExport(DefaultNodeExports.class)
 @GenerateLibrary(assertions = NodeLibrary.Asserts.class, receiverType = Node.class)
 public abstract class NodeLibrary extends Library {
 
@@ -286,11 +286,11 @@ public abstract class NodeLibrary extends Library {
     static class Asserts extends NodeLibrary {
 
         @Child private NodeLibrary delegate;
-        private final boolean isLegacyDelegate;
+        private final boolean isDefaultDelegate;
 
         Asserts(NodeLibrary delegate) {
             this.delegate = delegate;
-            isLegacyDelegate = delegate.getClass().getName().startsWith("com.oracle.truffle.api.interop.LegacyNodeExportsGen$NodeLibraryExports");
+            this.isDefaultDelegate = delegate.getClass().getName().startsWith(DefaultNodeExports.class.getName());
         }
 
         @Override
@@ -482,7 +482,7 @@ public abstract class NodeLibrary extends Library {
             assert nodeObject instanceof Node : String.format("The node '%s' does not extend Node.", nodeObject);
             Node node = (Node) nodeObject;
             assert node.getRootNode() != null : String.format("The node '%s' does not have a RootNode.", node);
-            assert InteropAccessor.ACCESSOR.instrumentSupport().isInstrumentable(node) || isLegacyDelegate : String.format(
+            assert InteropAccessor.ACCESSOR.instrumentSupport().isInstrumentable(node) || isDefaultDelegate : String.format(
                             "The node '%s' is not instrumentable. Implement InstrumentableNode and return true from isInstrumentable()", node);
             return true;
         }

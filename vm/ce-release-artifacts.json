@@ -361,6 +361,28 @@
         ]
     },
     {
+        "name": "espresso-llvm-installable-ce-java11",
+        "core": false,
+        "jdk": "jdk_11",
+        "artifacts": [
+            {
+                "os": "linux",
+                "arch": "amd64"
+            }
+        ]
+    },
+    {
+        "name": "espresso-llvm-installable-ce-java17",
+        "core": false,
+        "jdk": "jdk_17",
+        "artifacts": [
+            {
+                "os": "linux",
+                "arch": "amd64"
+            }
+        ]
+    },
+    {
         "name": "nodejs-installable-svm-java11",
         "core": false,
         "jdk": "jdk_11",

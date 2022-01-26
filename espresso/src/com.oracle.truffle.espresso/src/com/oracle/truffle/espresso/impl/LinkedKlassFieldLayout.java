@@ -28,7 +28,6 @@ import java.util.Set;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.staticobject.StaticShape;
 import com.oracle.truffle.api.staticobject.StaticShape.Builder;
-import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
@@ -50,17 +49,18 @@ final class LinkedKlassFieldLayout {
 
     final int fieldTableLength;
 
-    LinkedKlassFieldLayout(EspressoLanguage language, JavaVersion version, ParserKlass parserKlass, LinkedKlass superKlass) {
-        Builder instanceBuilder = StaticShape.newBuilder(language);
-        Builder staticBuilder = StaticShape.newBuilder(language);
+    LinkedKlassFieldLayout(ContextDescription description, ParserKlass parserKlass, LinkedKlass superKlass) {
+        StaticShape.Builder instanceBuilder = StaticShape.newBuilder(description.language);
+        StaticShape.Builder staticBuilder = StaticShape.newBuilder(description.language);
 
-        FieldCounter fieldCounter = new FieldCounter(parserKlass, version);
+        FieldCounter fieldCounter = new FieldCounter(parserKlass, description.javaVersion);
         int nextInstanceFieldIndex = 0;
         int nextStaticFieldIndex = 0;
         int nextInstanceFieldSlot = superKlass == null ? 0 : superKlass.getFieldTableLength();
         int nextStaticFieldSlot = 0;
-        instanceFields = new LinkedField[fieldCounter.instanceFields];
+
         staticFields = new LinkedField[fieldCounter.staticFields];
+        instanceFields = new LinkedField[fieldCounter.instanceFields];
 
         LinkedField.IdMode idMode = getIdMode(parserKlass);
 
@@ -71,12 +71,14 @@ final class LinkedKlassFieldLayout {
                 createAndRegisterLinkedField(parserKlass, parserField, nextInstanceFieldSlot++, nextInstanceFieldIndex++, idMode, instanceBuilder, instanceFields);
             }
         }
+
         for (HiddenField hiddenField : fieldCounter.hiddenFieldNames) {
-            if (hiddenField.versionRange.contains(version)) {
+            if (hiddenField.versionRange.contains(description.javaVersion)) {
                 ParserField hiddenParserField = new ParserField(ParserField.HIDDEN, hiddenField.name, hiddenField.type, null);
                 createAndRegisterLinkedField(parserKlass, hiddenParserField, nextInstanceFieldSlot++, nextInstanceFieldIndex++, idMode, instanceBuilder, instanceFields);
             }
         }
+
         if (superKlass == null) {
             instanceShape = instanceBuilder.build(StaticObject.class, StaticObjectFactory.class);
         } else {
@@ -89,7 +91,7 @@ final class LinkedKlassFieldLayout {
     /**
      * Makes sure that the field IDs passed to the shape builder are all unique.
      */
-    private static LinkedField.IdMode getIdMode(ParserKlass parserKlass) {
+    static LinkedField.IdMode getIdMode(ParserKlass parserKlass) {
         ParserField[] parserFields = parserKlass.getFields();
 
         boolean noDup = true;

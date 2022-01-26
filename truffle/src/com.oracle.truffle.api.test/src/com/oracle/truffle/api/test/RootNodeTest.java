@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,10 +40,17 @@
  */
 package com.oracle.truffle.api.test;
 
+import static org.hamcrest.CoreMatchers.instanceOf;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNull;
+
 import java.util.List;
 
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -51,6 +58,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -61,6 +69,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 /**
  * <h3>Creating a Root Node</h3>
@@ -81,10 +90,34 @@ import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
  */
 public class RootNodeTest {
 
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
+
     @Test
     public void test() {
         Object result = new TestRootNode().getCallTarget().call();
         Assert.assertEquals(42, result);
+    }
+
+    @Test
+    public void testCopy() {
+        TestRootNode originalRoot = new TestRootNode(new FrameDescriptor());
+        // Trigger the lazy initialization
+        TestAPIAccessor.nodeAccess().getLock(originalRoot);
+        originalRoot.getCallTarget();
+        TestAPIAccessor.nodeAccess().setRootNodeBits(originalRoot, 1);
+
+        Node copy = originalRoot.copy();
+        assertThat(copy, instanceOf(TestRootNode.class));
+
+        TestRootNode rootCopy = (TestRootNode) copy;
+        assertEquals(originalRoot.getFrameDescriptor(), rootCopy.getFrameDescriptor());
+        assertNull(TestAPIAccessor.nodeAccess().getCallTargetWithoutInitialization(rootCopy));
+        assertNotEquals(TestAPIAccessor.nodeAccess().getLock(originalRoot),
+                        TestAPIAccessor.nodeAccess().getLock(rootCopy));
+        assertEquals(0, TestAPIAccessor.nodeAccess().getRootNodeBits(rootCopy));
     }
 
     @Test(expected = IllegalStateException.class)
@@ -121,9 +154,9 @@ public class RootNodeTest {
         } catch (TestException e) {
             List<TruffleStackTraceElement> stackTrace = TruffleStackTrace.getStackTrace(e);
             Assert.assertEquals(1, stackTrace.size());
-            Assert.assertNull(stackTrace.get(0).getLocation());
+            assertNull(stackTrace.get(0).getLocation());
             Assert.assertEquals(rootNode.getCallTarget(), stackTrace.get(0).getTarget());
-            Assert.assertNull(stackTrace.get(0).getFrame());
+            assertNull(stackTrace.get(0).getFrame());
         }
     }
 
@@ -253,7 +286,7 @@ public class RootNodeTest {
     private static void asserCapturedFrames(RootNode rootNode, Object arg, Throwable e, MaterializedFrame frame) {
         List<TruffleStackTraceElement> stackTrace = TruffleStackTrace.getStackTrace(e);
         Assert.assertEquals(1, stackTrace.size());
-        Assert.assertNull(stackTrace.get(0).getLocation());
+        assertNull(stackTrace.get(0).getLocation());
         Assert.assertEquals(rootNode.getCallTarget(), stackTrace.get(0).getTarget());
         Assert.assertNotNull(stackTrace.get(0).getFrame());
         Assert.assertEquals(1, stackTrace.get(0).getFrame().getArguments().length);
@@ -265,6 +298,10 @@ public class RootNodeTest {
 
         TestRootNode() {
             super(null);
+        }
+
+        TestRootNode(FrameDescriptor frameDescriptor) {
+            super(null, frameDescriptor);
         }
 
         @Override

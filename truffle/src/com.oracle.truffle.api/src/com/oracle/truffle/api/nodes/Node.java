@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -419,7 +419,9 @@ public abstract class Node implements NodeInterface, Cloneable {
             } else if (node instanceof BytecodeOSRNode) {
                 NodeAccessor.RUNTIME.onOSRNodeReplaced((BytecodeOSRNode) node, oldNode, newNode, reason);
             } else if (node instanceof RootNode) {
-                CallTarget target = ((RootNode) node).getCallTarget();
+                // Avoid creating a CallTarget here if replace() is called before this RootNode has
+                // a CallTarget
+                CallTarget target = ((RootNode) node).getCallTargetWithoutInitialization();
                 if (target instanceof ReplaceObserver) {
                     consumed = ((ReplaceObserver) target).nodeReplaced(oldNode, newNode, reason);
                 }

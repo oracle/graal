@@ -37,6 +37,7 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Formattable;
@@ -978,9 +979,10 @@ public class SnippetTemplate {
         this.info = args.info;
 
         Object[] constantArgs = getConstantArgs(args);
+        BitSet nonNullParameters = getNonNullParameters(args);
         boolean shouldTrackNodeSourcePosition1 = trackNodeSourcePosition || (providers.getCodeCache() != null && providers.getCodeCache().shouldDebugNonSafepoints());
-        StructuredGraph snippetGraph = providers.getReplacements().getSnippet(args.info.method, args.info.original, constantArgs, shouldTrackNodeSourcePosition1, replacee.getNodeSourcePosition(),
-                        options);
+        StructuredGraph snippetGraph = providers.getReplacements().getSnippet(args.info.method, args.info.original, constantArgs, nonNullParameters, shouldTrackNodeSourcePosition1,
+                        replacee.getNodeSourcePosition(), options);
         assert snippetGraph.getAssumptions() == null : snippetGraph;
 
         ResolvedJavaMethod method = snippetGraph.method();
@@ -1031,7 +1033,7 @@ public class SnippetTemplate {
                         nodeReplacements.put(parameter, placeholder);
                         placeholders[i] = placeholder;
                     } else if (args.info.isNonNullParameter(i)) {
-                        parameter.setStamp(parameter.stamp(NodeView.DEFAULT).join(StampFactory.objectNonNull()));
+                        GraalError.guarantee(StampTool.isPointerNonNull(parameter), "Expected %s to have a non-null stamp, but was %s", parameter, parameter.stamp(NodeView.DEFAULT));
                     }
                 }
             }
@@ -1451,6 +1453,16 @@ public class SnippetTemplate {
             }
         }
         return constantArgs;
+    }
+
+    private static BitSet getNonNullParameters(Arguments args) {
+        BitSet nonNullParameters = new BitSet(args.info.getParameterCount());
+        for (int i = 0; i < args.info.getParameterCount(); i++) {
+            if (args.info.isNonNullParameter(i)) {
+                nonNullParameters.set(i);
+            }
+        }
+        return nonNullParameters;
     }
 
     private static boolean checkAllVarargPlaceholdersAreDeleted(int parameterCount, VarargsPlaceholderNode[] placeholders) {
@@ -2010,7 +2022,7 @@ public class SnippetTemplate {
                     returnDuplicate.replaceAndDelete(next);
                 }
             }
-            if (unwindPath != null) {
+            if (unwindPath != null && unwindPath.isAlive()) {
                 GraalError.guarantee(replacee.graph().isBeforeStage(StageFlag.FLOATING_READS) || replacee instanceof WithExceptionNode,
                                 "Using a snippet with an UnwindNode after floating reads would require support for the memory graph (unless the replacee has an exception edge)");
                 GraalError.guarantee(replacee instanceof WithExceptionNode, "Snippet has an UnwindNode, but replacee is not a node with an exception handler");
@@ -2047,10 +2059,11 @@ public class SnippetTemplate {
                 }
             } else {
                 /*
-                 * Since the snippet unwindPath is null, a placeholder WithExceptionNode needs to be
-                 * added for any WithExceptionNode replacee. This placeholder WithExceptionNode
-                 * temporarily preserves the replacee's original exception edge and is needed
-                 * because lowering should not remove edges from the original CFG.
+                 * Since the snippet unwindPath is null or has been deleted, a placeholder
+                 * WithExceptionNode needs to be added for any WithExceptionNode replacee. This
+                 * placeholder WithExceptionNode temporarily preserves the replacee's original
+                 * exception edge and is needed because lowering should not remove edges from the
+                 * original CFG.
                  */
                 if (replacee instanceof WithExceptionNode) {
                     GraalError.guarantee(originalWithExceptionNextNode != null, "Need to have next node to link placeholder to: %s", replacee);

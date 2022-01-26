@@ -23,7 +23,7 @@
 suite = {
     "mxversion": "5.280.5",
     "name": "espresso",
-    "version" : "22.0.0",
+    "version" : "22.1.0",
     "release" : False,
     "groupId" : "org.graalvm.espresso",
     "url" : "https://www.graalvm.org/reference-manual/java-on-truffle/",
@@ -70,6 +70,25 @@ suite = {
                 "urls": [
                     {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
                 ]
+            },
+            {
+                "name": "sulong",
+                "subdir": True,
+                "urls": [
+                    {"url": "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind": "binary"},
+                ],
+                "os_arch": {
+                    "windows": {
+                        "<others>": {
+                            "ignore": True,
+                        },
+                    },
+                    "<others>": {
+                        "<others>": {
+                            "ignore": False,
+                        }
+                    }
+                }
             },
             {
                 "name" : "java-benchmarks",
@@ -198,6 +217,7 @@ suite = {
                 "<others>": {
                     "<others>": {
                         "cflags": ["-Wall", "-Werror"],
+                        "toolchain": "sulong:SULONG_BOOTSTRAP_TOOLCHAIN",
                     },
                 },
             },
@@ -249,6 +269,7 @@ suite = {
                             "-Wl,-current_version,1.0.0",
                             "-Wl,-compatibility_version,1.0.0"
                         ],
+                        "toolchain": "sulong:SULONG_BOOTSTRAP_TOOLCHAIN",
                     },
                 },
                 "linux": {
@@ -258,6 +279,7 @@ suite = {
                             "-Wl,-soname,libjvm.so",
                             "-Wl,--version-script,<path:espresso:com.oracle.truffle.espresso.mokapot>/mapfile-vers",
                         ],
+                        "toolchain": "sulong:SULONG_BOOTSTRAP_TOOLCHAIN",
                     },
                 },
                 "windows": {
@@ -299,7 +321,6 @@ suite = {
             ],
             "javaProperties": {
                 "org.graalvm.language.java.home": "<path:ESPRESSO_SUPPORT>",
-                "polyglot.java.JVMLibraryPath": "<path:ESPRESSO_JVM_SUPPORT>/truffle",
             },
             "maven": False,
         },
@@ -355,6 +376,8 @@ suite = {
                 "lib/": [
                     "dependency:espresso:com.oracle.truffle.espresso.eden/<lib:eden>",
                     "dependency:espresso:com.oracle.truffle.espresso.native/<lib:nespresso>",
+                    # Copy of libjvm.so, accessible by Sulong via the default Truffle file system.
+                    "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
                     "dependency:espresso:POLYGLOT/*",
                     "dependency:espresso:HOTSWAP/*",
                 ],

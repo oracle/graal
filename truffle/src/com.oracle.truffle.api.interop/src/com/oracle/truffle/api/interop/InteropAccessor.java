@@ -49,10 +49,11 @@ import com.oracle.truffle.api.nodes.Node;
 final class InteropAccessor extends Accessor {
 
     static final InteropAccessor ACCESSOR = new InteropAccessor();
-
     static final LanguageSupport LANGUAGE = ACCESSOR.languageSupport();
-
     static final ExceptionSupport EXCEPTION = ACCESSOR.exceptionSupport();
+    static final InstrumentSupport INSTRUMENT = ACCESSOR.instrumentSupport();
+    static final NodeSupport NODES = ACCESSOR.nodeSupport();
+    static final HostSupport HOST = ACCESSOR.hostSupport();
 
     private InteropAccessor() {
     }
@@ -115,21 +116,33 @@ final class InteropAccessor extends Accessor {
         }
 
         @Override
-        public Object createLegacyMetaObjectWrapper(Object receiver, Object result) {
-            return new LegacyMetaObjectWrapper(receiver, result);
-        }
-
-        @Override
-        public Object unwrapLegacyMetaObjectWrapper(Object receiver) {
-            if (receiver instanceof LegacyMetaObjectWrapper) {
-                return ((LegacyMetaObjectWrapper) receiver).delegate;
-            }
-            return receiver;
-        }
-
-        @Override
         public Object createDefaultIterator(Object receiver) {
             return new ArrayIterator(receiver);
+        }
+
+        @Override
+        public Node createDispatchedInteropLibrary(int limit) {
+            return InteropLibrary.getFactory().createDispatched(limit);
+        }
+
+        @Override
+        public Node getUncachedInteropLibrary() {
+            return InteropLibrary.getUncached();
+        }
+
+        @Override
+        public long unboxPointer(Node library, Object value) {
+            InteropLibrary interop = (InteropLibrary) library;
+            if (!interop.isPointer(value)) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw new IllegalArgumentException("value is not an interop pointer");
+            }
+            try {
+                return interop.asPointer(value);
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw new IllegalArgumentException("value is not an interop pointer");
+            }
         }
     }
 

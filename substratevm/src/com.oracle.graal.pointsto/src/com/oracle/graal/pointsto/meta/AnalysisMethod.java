@@ -31,30 +31,24 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
-import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
-import com.oracle.graal.pointsto.BigBang;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.java.BytecodeParser.BytecodeParserError;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.util.GuardedAnnotationAccess;
 
-import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
-import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
-import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
-import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
@@ -76,9 +70,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 
-public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, OriginalMethodProvider {
+public abstract class AnalysisMethod implements WrappedJavaMethod, GraphProvider, OriginalMethodProvider {
 
-    private final AnalysisUniverse universe;
     public final ResolvedJavaMethod wrapped;
 
     private final int id;
@@ -86,7 +79,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
     private final ExceptionHandler[] exceptionHandlers;
     private final LocalVariableTable localVariableTable;
     private final String qualifiedName;
-    private MethodTypeFlow typeFlow;
+
     private final AnalysisType declaringClass;
 
     private final AtomicBoolean isRootMethod = new AtomicBoolean();
@@ -108,11 +101,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
      */
     protected AnalysisMethod[] implementations;
 
-    private ConcurrentMap<InvokeTypeFlow, Object> invokedBy;
-    private ConcurrentMap<InvokeTypeFlow, Object> implementationInvokedBy;
-
     public AnalysisMethod(AnalysisUniverse universe, ResolvedJavaMethod wrapped) {
-        this.universe = universe;
         this.wrapped = wrapped;
         this.id = universe.nextMethodId.getAndIncrement();
         declaringClass = universe.lookup(wrapped.getDeclaringClass());
@@ -127,7 +116,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
         exceptionHandlers = new ExceptionHandler[original.length];
         for (int i = 0; i < original.length; i++) {
             ExceptionHandler h = original[i];
-            JavaType catchType = getCatchType(h);
+            JavaType catchType = getCatchType(universe, h);
             exceptionHandlers[i] = new ExceptionHandler(h.getStartBCI(), h.getEndBCI(), h.getHandlerBCI(), h.catchTypeCPI(), catchType);
         }
 
@@ -150,9 +139,6 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
 
         }
         localVariableTable = newLocalVariableTable;
-
-        typeFlow = new MethodTypeFlow(universe.hostVM().options(), this);
-
         this.qualifiedName = format("%H.%n(%P)");
     }
 
@@ -160,7 +146,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
         return qualifiedName;
     }
 
-    private JavaType getCatchType(ExceptionHandler handler) {
+    private JavaType getCatchType(AnalysisUniverse universe, ExceptionHandler handler) {
         JavaType catchType = handler.getCatchType();
         if (catchType == null) {
             return null;
@@ -179,31 +165,32 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
         return universe.lookup(resolvedCatchType);
     }
 
+    private AnalysisUniverse getUniverse() {
+        /* Access the universe via the declaring class to avoid storing it here. */
+        return declaringClass.getUniverse();
+    }
+
     public void cleanupAfterAnalysis() {
-        typeFlow = null;
-        invokedBy = null;
-        implementationInvokedBy = null;
-        contextInsensitiveInvoke.set(null);
         if (parsedGraphCacheState.get() instanceof AnalysisParsedGraph) {
             parsedGraphCacheState.set(GRAPH_CACHE_CLEARED);
         }
     }
 
-    public void startTrackInvocations() {
-        if (invokedBy == null) {
-            invokedBy = new ConcurrentHashMap<>();
-        }
-        if (implementationInvokedBy == null) {
-            implementationInvokedBy = new ConcurrentHashMap<>();
-        }
-    }
+    public abstract void startTrackInvocations();
+
+    /**
+     * @return analysis related invoke information for given method, mainly the possible callees to
+     *         traverse the call graph
+     */
+    public abstract Collection<InvokeInfo> getInvokes();
+
+    /**
+     * @return the parsing context in which given method was parsed
+     */
+    public abstract StackTraceElement[] getParsingContext();
 
     public int getId() {
         return id;
-    }
-
-    public MethodTypeFlow getTypeFlow() {
-        return typeFlow;
     }
 
     /**
@@ -225,18 +212,12 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
         startTrackInvocations();
     }
 
-    public boolean registerAsInvoked(InvokeTypeFlow invoke) {
-        if (invokedBy != null && invoke != null) {
-            invokedBy.put(invoke, Boolean.TRUE);
-        }
+    public boolean registerAsInvoked() {
         return AtomicUtils.atomicMark(isInvoked);
     }
 
-    public boolean registerAsImplementationInvoked(InvokeTypeFlow invoke) {
+    public boolean registerAsImplementationInvoked() {
         assert !Modifier.isAbstract(getModifiers());
-        if (implementationInvokedBy != null && invoke != null) {
-            implementationInvokedBy.put(invoke, Boolean.TRUE);
-        }
 
         /*
          * The class constant of the declaring class is used for exception metadata, so marking a
@@ -260,17 +241,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
     }
 
     /** Get the list of all invoke locations for this method, as inferred by the static analysis. */
-    public List<BytecodePosition> getInvokeLocations() {
-        List<BytecodePosition> locations = new ArrayList<>();
-        for (InvokeTypeFlow invoke : implementationInvokedBy.keySet()) {
-            if (InvokeTypeFlow.isContextInsensitiveVirtualInvoke(invoke)) {
-                locations.addAll(((AbstractVirtualInvokeTypeFlow) invoke).getInvokeLocations());
-            } else {
-                locations.add(invoke.getSource());
-            }
-        }
-        return locations;
-    }
+    public abstract List<BytecodePosition> getInvokeLocations();
 
     public boolean isEntryPoint() {
         return entryPointData != null;
@@ -291,7 +262,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
      * as invoked also makes the declaring class reachable.
      *
      * Class is always marked as reachable regardless of the success of the atomic mark, same reason
-     * as in {@link AnalysisMethod#registerAsImplementationInvoked(InvokeTypeFlow)}.
+     * as in {@link AnalysisMethod#registerAsImplementationInvoked()}.
      */
     public boolean registerAsRootMethod() {
         getDeclaringClass().registerAsReachable();
@@ -340,7 +311,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
 
     @Override
     public WrappedSignature getSignature() {
-        return universe.lookup(wrapped.getSignature(), getDeclaringClass());
+        return getUniverse().lookup(wrapped.getSignature(), getDeclaringClass());
     }
 
     @Override
@@ -428,7 +399,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
     }
 
     public AnalysisMethod[] getImplementations() {
-        assert universe.analysisDataValid;
+        assert getUniverse().analysisDataValid;
         if (implementations == null) {
             return new AnalysisMethod[0];
         }
@@ -456,7 +427,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
 
     @Override
     public ConstantPool getConstantPool() {
-        return universe.lookup(wrapped.getConstantPool(), getDeclaringClass());
+        return getUniverse().lookup(wrapped.getConstantPool(), getDeclaringClass());
     }
 
     @Override
@@ -551,35 +522,7 @@ public class AnalysisMethod implements WrappedJavaMethod, GraphProvider, Origina
 
     @Override
     public Executable getJavaMethod() {
-        return OriginalMethodProvider.getJavaMethod(universe.getOriginalSnippetReflection(), wrapped);
-    }
-
-    /**
-     * Unique, per method, context insensitive invoke. The context insensitive invoke uses the
-     * receiver type of the method, i.e., its declaring class. Therefore this invoke will link with
-     * all possible callees.
-     */
-    private final AtomicReference<InvokeTypeFlow> contextInsensitiveInvoke = new AtomicReference<>();
-
-    public InvokeTypeFlow initAndGetContextInsensitiveInvoke(PointsToAnalysis bb, BytecodePosition originalLocation) {
-        if (contextInsensitiveInvoke.get() == null) {
-            InvokeTypeFlow invoke = InvokeTypeFlow.createContextInsensitiveInvoke(bb, this, originalLocation);
-            boolean set = contextInsensitiveInvoke.compareAndSet(null, invoke);
-            if (set) {
-                /*
-                 * Only register the winning context insensitive invoke as an observer of the target
-                 * method declaring class type flow.
-                 */
-                InvokeTypeFlow.initContextInsensitiveInvoke(bb, this, invoke);
-            }
-        }
-        return contextInsensitiveInvoke.get();
-    }
-
-    public InvokeTypeFlow getContextInsensitiveInvoke() {
-        InvokeTypeFlow invoke = contextInsensitiveInvoke.get();
-        AnalysisError.guarantee(invoke != null);
-        return invoke;
+        return OriginalMethodProvider.getJavaMethod(getUniverse().getOriginalSnippetReflection(), wrapped);
     }
 
     /**

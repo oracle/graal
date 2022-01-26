@@ -53,7 +53,8 @@ import org.junit.Test;
 import org.graalvm.wasm.test.WasmFileSuite;
 
 public class Integer64Suite extends WasmFileSuite {
-    private final Properties saturatingFloatToIntProperties = WasmTestProperties.create("wasm.saturating-float-to-int");
+    private final Properties saturatingFloatToIntProperties = WasmTestProperties.create("wasm.SaturatingFloatToInt");
+    private final Properties signExtensionOpsProperties = WasmTestProperties.create("wasm.SignExtensionOps");
 
     private WasmStringCase[] testCases = {
                     WasmCase.create("CONST_SMALL", WasmCase.expected(42L),
@@ -228,6 +229,18 @@ public class Integer64Suite extends WasmFileSuite {
                                     "(module (func (export \"_main\") (result i64) f64.const -1.235 i64.trunc_sat_f64_u))", saturatingFloatToIntProperties),
                     WasmCase.create("TRUNC_SAT_F64_U_VALID", WasmCase.expected(1L),
                                     "(module (func (export \"_main\") (result i64) f64.const 1.532 i64.trunc_sat_f64_u))", saturatingFloatToIntProperties),
+                    WasmCase.create("EXTEND_8_LEADING_0", WasmCase.expected(0x0000_0000_0000_0001L),
+                                    "(module (func (export \"_main\") (result i64) i64.const 0xFFFF_FFFF_FFFF_FF01 i64.extend8_s))", signExtensionOpsProperties),
+                    WasmCase.create("EXTEND_8_LEADING_1", WasmCase.expected(0xFFFF_FFFF_FFFF_FF81L),
+                                    "(module (func (export \"_main\") (result i64) i64.const 0x0000_0000_0000_0081 i64.extend8_s))", signExtensionOpsProperties),
+                    WasmCase.create("EXTEND_16_LEADING_0", WasmCase.expected(0x0000_0000_0000_0001L),
+                                    "(module (func (export \"_main\") (result i64) i64.const 0xFFFF_FFFF_FFFF_0001 i64.extend16_s))", signExtensionOpsProperties),
+                    WasmCase.create("EXTEND_16_LEADING_1", WasmCase.expected(0xFFFF_FFFF_FFFF_8001L),
+                                    "(module (func (export \"_main\") (result i64) i64.const 0x0000_0000_0000_8001 i64.extend16_s))", signExtensionOpsProperties),
+                    WasmCase.create("EXTEND_32_LEADING_0", WasmCase.expected(0x0000_0000_0000_0001L),
+                                    "(module (func (export \"_main\") (result i64) i64.const 0xFFFF_FFFF_0000_0001 i64.extend32_s))", signExtensionOpsProperties),
+                    WasmCase.create("EXTEND_32_LEADING_1", WasmCase.expected(0xFFFF_FFFF_8000_0001L),
+                                    "(module (func (export \"_main\") (result i64) i64.const 0x0000_0000_8000_0001 i64.extend32_s))", signExtensionOpsProperties)
     };
 
     @Override

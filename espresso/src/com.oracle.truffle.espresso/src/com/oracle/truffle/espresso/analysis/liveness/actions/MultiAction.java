@@ -26,6 +26,7 @@ package com.oracle.truffle.espresso.analysis.liveness.actions;
 import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.analysis.liveness.LocalVariableAction;
 import com.oracle.truffle.espresso.nodes.BytecodeNode;
@@ -39,9 +40,9 @@ public final class MultiAction extends LocalVariableAction {
 
     @Override
     @ExplodeLoop
-    public void execute(long[] primitives, Object[] refs) {
+    public void execute(VirtualFrame frame) {
         for (int local : actions) {
-            BytecodeNode.freeLocal(primitives, refs, local);
+            BytecodeNode.freeLocal(frame, local);
         }
     }
 

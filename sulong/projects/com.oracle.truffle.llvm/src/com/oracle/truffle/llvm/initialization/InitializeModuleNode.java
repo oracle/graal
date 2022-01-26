@@ -109,9 +109,11 @@ public final class InitializeModuleNode extends LLVMNode implements LLVMHasDatal
     public static RootCallTarget createDestructor(LLVMParserResult parserResult, String moduleName, LLVMLanguage language) {
         LLVMStatementNode[] destructors = createStructor(DESTRUCTORS_VARNAME, parserResult, DESCENDING_PRIORITY);
         if (destructors.length > 0) {
-            FrameDescriptor frameDescriptor = new FrameDescriptor();
-            LLVMStatementRootNode root = new LLVMStatementRootNode(language, StaticInitsNodeGen.create(destructors, "fini", moduleName), frameDescriptor,
-                            parserResult.getRuntime().getNodeFactory().createStackAccess(frameDescriptor));
+            NodeFactory nodeFactory = parserResult.getRuntime().getNodeFactory();
+            FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
+            nodeFactory.addStackSlots(builder);
+            FrameDescriptor frameDescriptor = builder.build();
+            LLVMStatementRootNode root = new LLVMStatementRootNode(language, StaticInitsNodeGen.create(destructors, "fini", moduleName), frameDescriptor, nodeFactory.createStackAccess());
             return root.getCallTarget();
         } else {
             return null;

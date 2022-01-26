@@ -44,7 +44,7 @@ import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Dlfcn;
 import com.oracle.svm.core.posix.headers.Dlfcn.GNUExtensions.Lmid_t;
 import com.oracle.svm.core.posix.headers.Dlfcn.GNUExtensions.Lmid_tPointer;
-import com.oracle.svm.core.posix.headers.LibC;
+import com.oracle.svm.core.posix.headers.PosixLibC;
 import com.oracle.svm.core.posix.linux.libc.GLibC;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.truffle.nfi.Target_com_oracle_truffle_nfi_backend_libffi_NFIUnsatisfiedLinkError;
@@ -92,9 +92,10 @@ final class PosixTruffleNFISupport extends TruffleNFISupport {
 
     @Override
     protected CCharPointer strdupImpl(CCharPointer src) {
-        return LibC.strdup(src);
+        return PosixLibC.strdup(src);
     }
 
+    @Platforms(Platform.LINUX.class)
     private static PointerBase dlmopen(Lmid_t lmid, String filename, int mode) {
         try (CTypeConversion.CCharPointerHolder pathPin = CTypeConversion.toCString(filename)) {
             CCharPointer pathPtr = pathPin.get();
@@ -105,6 +106,7 @@ final class PosixTruffleNFISupport extends TruffleNFISupport {
     /**
      * A single linking namespace is created lazily and registered on the NFI context instance.
      */
+    @Platforms(Platform.LINUX.class)
     private static PointerBase loadLibraryInNamespace(long nativeContext, String name, int mode) {
         assert (mode & isolatedNamespaceFlag) == 0;
         Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContextLinux context = SubstrateUtil.cast(getContext(nativeContext), Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContextLinux.class);
@@ -112,7 +114,6 @@ final class PosixTruffleNFISupport extends TruffleNFISupport {
         // Double-checked locking on the NFI context instance.
         long namespaceId = context.isolatedNamespaceId;
         if (namespaceId == 0) {
-            // Checkstyle: allow synchronization
             synchronized (context) {
                 namespaceId = context.isolatedNamespaceId;
                 if (namespaceId == 0) {

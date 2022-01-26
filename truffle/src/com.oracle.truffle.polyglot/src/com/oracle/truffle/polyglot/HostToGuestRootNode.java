@@ -40,9 +40,10 @@
  */
 package com.oracle.truffle.polyglot;
 
+import java.util.Objects;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -56,31 +57,26 @@ abstract class HostToGuestRootNode extends RootNode {
     @CompilationFinal private boolean seenEnter;
     @CompilationFinal private boolean seenNonEnter;
 
-    private final PolyglotEngineImpl engine;
+    private final PolyglotLanguage language;
+    private final PolyglotSharingLayer layer;
     @CompilationFinal private boolean seenError;
 
-    HostToGuestRootNode(PolyglotEngineImpl engine) {
-        this(engine, null);
+    /*
+     * This constructor is only used for uncached locations. Which will never get executed.
+     */
+    HostToGuestRootNode(PolyglotSharingLayer layer) {
+        super(null);
+        assert layer != null;
+        this.layer = layer;
+        this.language = null;
+        EngineAccessor.NODES.setSharingLayer(this, layer);
     }
 
-    HostToGuestRootNode() {
-        this(null, null);
-    }
-
-    HostToGuestRootNode(TruffleLanguage<?> language) {
-        this(null, language);
-    }
-
-    private HostToGuestRootNode(PolyglotEngineImpl engine, TruffleLanguage<?> language) {
-        super(language);
-        if (engine == null) {
-            this.engine = (PolyglotEngineImpl) EngineAccessor.NODES.getPolyglotEngine(this);
-        } else {
-            assert language == null : "unsupported state";
-            this.engine = engine;
-            EngineAccessor.NODES.setPolyglotEngine(this, engine);
-        }
-        assert this.engine != null : "all host to guest root nodes need to be initialized when entered";
+    HostToGuestRootNode(PolyglotLanguageInstance language) {
+        super(null);
+        EngineAccessor.NODES.setSharingLayer(this, language.sharing);
+        this.layer = language.sharing;
+        this.language = language.language;
     }
 
     protected abstract Class<?> getReceiverType();
@@ -88,26 +84,30 @@ abstract class HostToGuestRootNode extends RootNode {
     @Override
     public final Object execute(VirtualFrame frame) {
         Object[] args = frame.getArguments();
-        PolyglotLanguageContext languageContext = (PolyglotLanguageContext) args[0];
-        PolyglotContextImpl constantContext = engine.singleContextValue.getConstant();
+        PolyglotLanguageContext languageContext = layer.getSingleConstantLanguageContext(language);
+        if (languageContext == null) {
+            languageContext = (PolyglotLanguageContext) args[0];
+        }
+        PolyglotContextImpl constantContext = layer.getSingleConstantContext();
         if (constantContext == null) {
             constantContext = languageContext.context;
         } else {
             assert languageContext.context == constantContext;
         }
-
         PolyglotContextImpl context = constantContext;
+
+        assert Objects.equals(layer, languageContext.context.layer) : PolyglotSharingLayer.invalidSharingError(this, layer, languageContext.context.layer);
 
         Object[] prev;
         boolean needsEnter;
         try {
-            needsEnter = engine.needsEnter(context);
+            needsEnter = layer.engine.needsEnter(context);
             if (needsEnter) {
                 if (!seenEnter) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     seenEnter = true;
                 }
-                prev = engine.enterCached(context, true);
+                prev = layer.engine.enterCached(context, true);
             } else {
                 if (!seenNonEnter) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -130,7 +130,7 @@ abstract class HostToGuestRootNode extends RootNode {
         } finally {
             if (needsEnter) {
                 try {
-                    engine.leaveCached(prev, context);
+                    layer.engine.leaveCached(prev, context);
                 } catch (Throwable e) {
                     throw handleException(languageContext, e, false, RuntimeException.class);
                 }

@@ -41,8 +41,6 @@ import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import jdk.vm.ci.code.MemoryBarriers;
-
 /**
  * Snippets used for implementing NEW, ANEWARRAY and NEWARRAY.
  */
@@ -279,7 +277,7 @@ public abstract class AllocationSnippets implements Snippets {
             fillWithGarbage(memory, headerSize, size, constantSize, false, false, snippetCounters);
         }
         if (emitMemoryBarrier) {
-            MembarNode.memoryBarrier(MemoryBarriers.STORE_STORE, LocationIdentity.init());
+            MembarNode.memoryBarrier(MembarNode.FenceKind.STORE_STORE, LocationIdentity.init());
         }
         return memory.toObjectNonNull();
     }
@@ -309,7 +307,7 @@ public abstract class AllocationSnippets implements Snippets {
             fillWithGarbage(memory, fillStartOffset, allocationSize, false, maybeUnroll, supportsOptimizedFilling, snippetCounters);
         }
         if (emitMemoryBarrier) {
-            MembarNode.memoryBarrier(MemoryBarriers.STORE_STORE, LocationIdentity.init());
+            MembarNode.memoryBarrier(MembarNode.FenceKind.STORE_STORE, LocationIdentity.init());
         }
         return memory.toObjectNonNull();
     }

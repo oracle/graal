@@ -28,7 +28,6 @@ import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 
@@ -46,12 +45,6 @@ abstract class AbstractOptimizedLoopNode extends LoopNode {
     @Override
     public final RepeatingNode getRepeatingNode() {
         return repeatingNode;
-    }
-
-    @SuppressWarnings("deprecation")
-    @Override
-    public final void executeLoop(VirtualFrame frame) {
-        execute(frame);
     }
 
     protected final void profileCounted(long iterations) {

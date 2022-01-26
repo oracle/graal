@@ -40,6 +40,11 @@
  */
 package com.oracle.truffle.api.test;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -47,27 +52,30 @@ import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
 import java.util.stream.Collectors;
 
-import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.RootNode;
 import org.graalvm.collections.Pair;
 import org.junit.Assert;
+import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.DisableOnDebug;
 import org.junit.rules.TestRule;
 import org.junit.rules.Timeout;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
+@SuppressWarnings("deprecation")
 @AddExports("org.graalvm.truffle/com.oracle.truffle.api.frame")
 public class FrameDescriptorThreadSafetyTest {
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     // Some of the thread safety tests may be not terminating when
     // the FrameDescriptor is not threadsafe, therefore their execution time is limited
@@ -105,13 +113,13 @@ public class FrameDescriptorThreadSafetyTest {
     public void findOrAddFrameSlot() throws InterruptedException {
         final FrameDescriptor frameDescriptor = makeThreadSafe(new FrameDescriptor());
 
-        List<List<FrameSlot>> results = content(PARTIES_COUNT, ITERATIONS,
+        List<List<com.oracle.truffle.api.frame.FrameSlot>> results = content(PARTIES_COUNT, ITERATIONS,
                         (partyIndex, iteration) -> frameDescriptor.findOrAddFrameSlot("v" + iteration));
 
         assertEquals(ITERATIONS, frameDescriptor.getSize());
 
         for (int i = 0; i < ITERATIONS; i++) {
-            final FrameSlot slot = frameDescriptor.findFrameSlot("v" + i);
+            final com.oracle.truffle.api.frame.FrameSlot slot = frameDescriptor.findFrameSlot("v" + i);
             assertNotNull(slot);
             assertTrue(results.get(i).stream().allMatch(v -> v == slot));
         }
@@ -146,7 +154,7 @@ public class FrameDescriptorThreadSafetyTest {
     @Test
     public void setFrameSlotKind() throws InterruptedException {
         final FrameDescriptor frameDescriptor = makeThreadSafe(new FrameDescriptor());
-        final FrameSlot slot = frameDescriptor.addFrameSlot("v");
+        final com.oracle.truffle.api.frame.FrameSlot slot = frameDescriptor.addFrameSlot("v");
 
         List<List<Pair<Assumption, Boolean>>> results = content(PARTIES_COUNT, ITERATIONS,
                         () -> frameDescriptor.setFrameSlotKind(slot, FrameSlotKind.Boolean),
@@ -179,12 +187,12 @@ public class FrameDescriptorThreadSafetyTest {
     @Test(expected = UnsupportedOperationException.class)
     public void getSlotsReturnsUnmodifiableSnapshot() {
         final FrameDescriptor frameDescriptor = makeThreadSafe(new FrameDescriptor());
-        List<? extends FrameSlot> slotsSnapshot1 = frameDescriptor.getSlots();
+        List<? extends com.oracle.truffle.api.frame.FrameSlot> slotsSnapshot1 = frameDescriptor.getSlots();
         assertTrue(slotsSnapshot1.isEmpty());
 
         frameDescriptor.addFrameSlot("v");
         assertTrue(slotsSnapshot1.isEmpty());
-        List<? extends FrameSlot> slotsSnapshot2 = frameDescriptor.getSlots();
+        List<? extends com.oracle.truffle.api.frame.FrameSlot> slotsSnapshot2 = frameDescriptor.getSlots();
         assertEquals(1, slotsSnapshot2.size());
 
         slotsSnapshot2.remove(0); // throws

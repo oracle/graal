@@ -41,6 +41,7 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.os.ImageHeapProvider;
 
@@ -220,8 +221,15 @@ public abstract class Heap {
     public abstract boolean printLocationInfo(Log log, UnsignedWord value, boolean allowJavaHeapAccess, boolean allowUnsafeOperations);
 
     /**
-     * (Re)computes minimum/maximum/initial sizes of space based on the available
-     * {@linkplain PhysicalMemory physical memory} and current runtime option values.
+     * Notify the GC that the value of a GC-relevant option changed.
      */
-    public abstract void updateSizeParameters();
+    public abstract void optionValueChanged(RuntimeOptionKey<?> key);
+
+    /**
+     * Returns the number of bytes that were allocated by the given thread. The caller of this
+     * method must ensure that the given {@link IsolateThread} remains alive during the execution of
+     * this method.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public abstract long getThreadAllocatedMemory(IsolateThread thread);
 }

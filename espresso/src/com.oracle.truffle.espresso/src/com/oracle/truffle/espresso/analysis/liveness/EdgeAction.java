@@ -23,6 +23,8 @@
 
 package com.oracle.truffle.espresso.analysis.liveness;
 
+import com.oracle.truffle.api.frame.VirtualFrame;
+
 public interface EdgeAction {
-    void onEdge(long[] primitives, Object[] refs, int fromBCI);
+    void onEdge(VirtualFrame frame, int fromBCI);
 }

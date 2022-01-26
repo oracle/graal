@@ -102,6 +102,19 @@ public final class CompilerDirectives {
     }
 
     /**
+     * Returns a boolean value indicating whether the method is executed in a compilation tier which
+     * can be replaced with a higher tier (e.g. interpretation tier can be replaced by a first tier,
+     * a first tier by a second tier compilation).
+     *
+     * @return {@code true} when executed in the first tier Truffle compilation, {@code false}
+     *         otherwise.
+     * @since 22.0.0
+     */
+    public static boolean hasNextTier() {
+        return true;
+    }
+
+    /**
      * Returns a boolean value indicating whether the method is executed in the compiled code.
      *
      * @return {@code false} when executed in the interpreter, {@code true} in compiled code.

@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.jni;
 
-// Checkstyle: allow reflection
-
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 

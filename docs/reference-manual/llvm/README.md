@@ -9,7 +9,7 @@ permalink: /reference-manual/llvm/
 The GraalVM LLVM runtime can execute programming languages that can be transformed to LLVM bitcode.
 This includes languages like C/C++, Fortran and others.
 
-In contrast to static compilation that is normally used for LLVM-based languages, GraalVM's implementation of the `lli` tool first interprets LLVM bitcode and then dynamically compiles the hot parts of the program using the GraalVM compiler.
+In contrast to static compilation that is normally used for LLVM-based languages, GraalVM's implementation of the `lli` tool first interprets LLVM bitcode and then dynamically compiles the hot parts of the program using the Graal compiler.
 This allows seamless interoperability with the dynamic languages supported by GraalVM.
 
 ## Running LLVM Bitcode on GraalVM

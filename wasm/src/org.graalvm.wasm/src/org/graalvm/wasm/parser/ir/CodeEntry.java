@@ -78,7 +78,10 @@ public class CodeEntry {
             rootNode.codeEntry().setBranchTables(tables);
         }
         rootNode.codeEntry().setProfileCount(profileCount);
-        rootNode.codeEntry().initStackLocals(rootNode.getFrameDescriptor(), maxStackSize);
+    }
+
+    public int getMaxStackSize() {
+        return maxStackSize;
     }
 
     public int getFunctionIndex() {

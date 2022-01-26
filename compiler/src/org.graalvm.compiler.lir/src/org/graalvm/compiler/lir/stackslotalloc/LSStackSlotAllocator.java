@@ -42,6 +42,7 @@ import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.cfg.AbstractBlockBase;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.lir.LIR;
@@ -53,6 +54,7 @@ import org.graalvm.compiler.lir.VirtualStackSlot;
 import org.graalvm.compiler.lir.framemap.FrameMap;
 import org.graalvm.compiler.lir.framemap.FrameMapBuilderTool;
 import org.graalvm.compiler.lir.framemap.SimpleVirtualStackSlot;
+import org.graalvm.compiler.lir.framemap.SimpleVirtualStackSlotAlias;
 import org.graalvm.compiler.lir.framemap.VirtualStackSlotRange;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.phases.AllocationPhase;
@@ -278,8 +280,15 @@ public final class LSStackSlotAllocator extends AllocationPhase {
                 StackSlotAllocatorUtil.virtualFramesize.add(debug, slotRange.getSizeInBytes());
                 StackSlotAllocatorUtil.allocatedSlots.increment(debug);
             } else {
-                assert virtualSlot instanceof SimpleVirtualStackSlot : "Unexpected VirtualStackSlot type: " + virtualSlot;
-                StackSlot slot = findFreeSlot((SimpleVirtualStackSlot) virtualSlot);
+                SimpleVirtualStackSlot simpleSlot;
+                if (virtualSlot instanceof SimpleVirtualStackSlot) {
+                    simpleSlot = (SimpleVirtualStackSlot) virtualSlot;
+                } else if (virtualSlot instanceof SimpleVirtualStackSlotAlias) {
+                    simpleSlot = ((SimpleVirtualStackSlotAlias) virtualSlot).getAliasedSlot();
+                } else {
+                    throw GraalError.shouldNotReachHere("Unexpected VirtualStackSlot type: " + virtualSlot);
+                }
+                StackSlot slot = findFreeSlot(simpleSlot);
                 if (slot != null) {
                     /*
                      * Free stack slot available. Note that we create a new one because the kind
@@ -290,8 +299,9 @@ public final class LSStackSlotAllocator extends AllocationPhase {
                     debug.log(BASIC_LEVEL, "Reuse stack slot %s (reallocated from %s) for virtual stack slot %s", location, slot, virtualSlot);
                 } else {
                     // Allocate new stack slot.
-                    location = frameMapBuilder.getFrameMap().allocateSpillSlot(virtualSlot.getValueKind());
-                    StackSlotAllocatorUtil.virtualFramesize.add(debug, frameMapBuilder.getFrameMap().spillSlotSize(virtualSlot.getValueKind()));
+                    ValueKind<?> slotKind = simpleSlot.getValueKind();
+                    location = frameMapBuilder.getFrameMap().allocateSpillSlot(slotKind);
+                    StackSlotAllocatorUtil.virtualFramesize.add(debug, frameMapBuilder.getFrameMap().spillSlotSize(slotKind));
                     StackSlotAllocatorUtil.allocatedSlots.increment(debug);
                     debug.log(BASIC_LEVEL, "New stack slot %s for virtual stack slot %s", location, virtualSlot);
                 }
@@ -430,10 +440,16 @@ public final class LSStackSlotAllocator extends AllocationPhase {
             @Override
             public Value doValue(Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
                 if (isVirtualStackSlot(value)) {
-                    VirtualStackSlot slot = asVirtualStackSlot(value);
-                    StackInterval interval = get(slot);
+                    VirtualStackSlot virtualSlot = asVirtualStackSlot(value);
+                    StackInterval interval = get(virtualSlot);
                     assert interval != null;
-                    return interval.location();
+                    StackSlot slot = interval.location();
+                    if (virtualSlot instanceof SimpleVirtualStackSlotAlias) {
+                        GraalError.guarantee(mode == LIRInstruction.OperandMode.USE || mode == LIRInstruction.OperandMode.ALIVE, "Invalid application of SimpleVirtualStackSlotAlias");
+                        // return the same slot, but with the alias's kind.
+                        return StackSlot.get(virtualSlot.getValueKind(), slot.getRawOffset(), slot.getRawAddFrameSize());
+                    }
+                    return slot;
                 }
                 return value;
             }

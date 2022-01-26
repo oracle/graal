@@ -31,6 +31,7 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
+import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.replacements.nodes.BasicArrayCopyNode;
 import org.graalvm.word.LocationIdentity;
 
@@ -49,12 +50,9 @@ public final class ArrayCopyNode extends BasicArrayCopyNode implements Lowerable
 
     protected final boolean forceAnyLocation;
 
-    public ArrayCopyNode(int bci, ValueNode src, ValueNode srcPos, ValueNode dst, ValueNode dstPos, ValueNode length) {
-        this(bci, src, srcPos, dst, dstPos, length, false);
-    }
-
-    public ArrayCopyNode(int bci, ValueNode src, ValueNode srcPos, ValueNode dst, ValueNode dstPos, ValueNode length, boolean forceAnyLocation) {
+    protected ArrayCopyNode(int bci, ValueNode src, ValueNode srcPos, ValueNode dst, ValueNode dstPos, ValueNode length, boolean forceAnyLocation) {
         super(TYPE, src, srcPos, dst, dstPos, length, null, bci);
+        assert StampTool.isPointerNonNull(src) && StampTool.isPointerNonNull(dst) : "must have been null checked";
         this.forceAnyLocation = forceAnyLocation;
         if (!forceAnyLocation) {
             elementKind = selectComponentKind(this);

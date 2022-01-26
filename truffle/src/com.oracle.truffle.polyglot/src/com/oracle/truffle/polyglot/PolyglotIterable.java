@@ -110,6 +110,7 @@ class PolyglotIterable<T> implements Iterable<T>, PolyglotWrapper {
 
     static final class Cache {
 
+        final PolyglotLanguageInstance languageInstance;
         final Class<?> receiverClass;
         final Class<?> valueClass;
         final Type valueType;
@@ -117,7 +118,8 @@ class PolyglotIterable<T> implements Iterable<T>, PolyglotWrapper {
         final CallTarget apply;
         final Type iteratorType;
 
-        private Cache(Class<?> receiverClass, Class<?> valueClass, Type valueType) {
+        private Cache(PolyglotLanguageInstance languageInstance, Class<?> receiverClass, Class<?> valueClass, Type valueType) {
+            this.languageInstance = languageInstance;
             this.receiverClass = receiverClass;
             this.valueClass = valueClass;
             this.valueType = valueType;
@@ -130,7 +132,7 @@ class PolyglotIterable<T> implements Iterable<T>, PolyglotWrapper {
             Key cacheKey = new Key(receiverClass, valueClass, valueType);
             Cache cache = HostToGuestRootNode.lookupHostCodeCache(languageContext, cacheKey, Cache.class);
             if (cache == null) {
-                cache = HostToGuestRootNode.installHostCodeCache(languageContext, cacheKey, new Cache(receiverClass, valueClass, valueType), Cache.class);
+                cache = HostToGuestRootNode.installHostCodeCache(languageContext, cacheKey, new Cache(languageContext.getLanguageInstance(), receiverClass, valueClass, valueType), Cache.class);
             }
             assert cache.receiverClass == receiverClass;
             assert cache.valueClass == valueClass;
@@ -177,6 +179,7 @@ class PolyglotIterable<T> implements Iterable<T>, PolyglotWrapper {
             final Cache cache;
 
             PolyglotIterableNode(Cache cache) {
+                super(cache.languageInstance);
                 this.cache = cache;
             }
 

@@ -40,6 +40,7 @@
 # SOFTWARE.
 #
 
+set -e
 
 if [[ $(pwd) != *graal/regex/src/com.oracle.truffle.regex/tools ]]
 then
@@ -65,7 +66,7 @@ unzip -d dat dat/ucd.nounihan.flat.zip
 
 ./unicode-script.sh
 
-clojure --init generate_case_fold_table.clj --eval '(-main)' > dat/case-fold-table.txt
+clojure -Sdeps '{:paths ["."]}' -M --main generate-case-fold-table > dat/case-fold-table.txt
 
 ./update_case_fold_table.py
 

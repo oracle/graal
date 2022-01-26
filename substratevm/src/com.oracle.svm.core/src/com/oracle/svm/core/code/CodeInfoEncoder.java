@@ -92,12 +92,17 @@ public class CodeInfoEncoder {
         public final Counter.Group group = new Counter.Group(Options.CodeInfoEncoderCounters, "CodeInfoEncoder");
         final Counter methodCount = new Counter(group, "Number of methods", "Number of methods encoded");
         final Counter codeSize = new Counter(group, "Code size", "Total size of machine code");
+        final Counter referenceMapSize = new Counter(group, "Reference map size", "Total size of encoded reference maps");
         final Counter frameInfoSize = new Counter(group, "Frame info size", "Total size of encoded frame information");
         final Counter frameCount = new Counter(group, "Number of frames", "Number of frames encoded");
         final Counter stackValueCount = new Counter(group, "Number of stack values", "Number of stack values encoded");
         final Counter registerValueCount = new Counter(group, "Number of register values", "Number of register values encoded");
         final Counter constantValueCount = new Counter(group, "Number of constant values", "Number of constant values encoded");
         final Counter virtualObjectsCount = new Counter(group, "Number of virtual objects", "Number of virtual objects encoded");
+
+        public void addToReferenceMapSize(long size) {
+            referenceMapSize.add(size);
+        }
     }
 
     public static final class Encoders {
@@ -247,6 +252,7 @@ public class CodeInfoEncoder {
             referenceMapEncoder.add(data.referenceMap);
         }
         referenceMapEncoding = referenceMapEncoder.encodeAll();
+        ImageSingletons.lookup(Counters.class).addToReferenceMapSize(referenceMapEncoder.getEncodingSize());
         for (IPData data : entries.values()) {
             data.referenceMapIndex = referenceMapEncoder.lookupEncoding(data.referenceMap);
         }

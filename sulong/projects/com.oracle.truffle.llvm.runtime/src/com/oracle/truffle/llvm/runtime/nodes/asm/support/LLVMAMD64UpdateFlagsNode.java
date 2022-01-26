@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,17 +29,16 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.asm.support;
 
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 
 public class LLVMAMD64UpdateFlagsNode extends LLVMNode {
     public static class LLVMAMD64UpdatePZSFlagsNode extends LLVMAMD64UpdateFlagsNode {
-        private final FrameSlot pf;
-        private final FrameSlot zf;
-        private final FrameSlot sf;
+        private final int pf;
+        private final int zf;
+        private final int sf;
 
-        public LLVMAMD64UpdatePZSFlagsNode(FrameSlot pf, FrameSlot zf, FrameSlot sf) {
+        public LLVMAMD64UpdatePZSFlagsNode(int pf, int zf, int sf) {
             this.pf = pf;
             this.zf = zf;
             this.sf = sf;
@@ -71,12 +70,12 @@ public class LLVMAMD64UpdateFlagsNode extends LLVMNode {
     }
 
     public static class LLVMAMD64UpdatePZSOFlagsNode extends LLVMAMD64UpdateFlagsNode {
-        private final FrameSlot pf;
-        private final FrameSlot zf;
-        private final FrameSlot sf;
-        private final FrameSlot of;
+        private final int pf;
+        private final int zf;
+        private final int sf;
+        private final int of;
 
-        public LLVMAMD64UpdatePZSOFlagsNode(FrameSlot pf, FrameSlot zf, FrameSlot sf, FrameSlot of) {
+        public LLVMAMD64UpdatePZSOFlagsNode(int pf, int zf, int sf, int of) {
             this.pf = pf;
             this.zf = zf;
             this.sf = sf;
@@ -113,13 +112,13 @@ public class LLVMAMD64UpdateFlagsNode extends LLVMNode {
     }
 
     public static class LLVMAMD64UpdateCPZSOFlagsNode extends LLVMAMD64UpdateFlagsNode {
-        private final FrameSlot cf;
-        private final FrameSlot pf;
-        private final FrameSlot zf;
-        private final FrameSlot sf;
-        private final FrameSlot of;
+        private final int cf;
+        private final int pf;
+        private final int zf;
+        private final int sf;
+        private final int of;
 
-        public LLVMAMD64UpdateCPZSOFlagsNode(FrameSlot cf, FrameSlot pf, FrameSlot zf, FrameSlot sf, FrameSlot of) {
+        public LLVMAMD64UpdateCPZSOFlagsNode(int cf, int pf, int zf, int sf, int of) {
             this.cf = cf;
             this.pf = pf;
             this.zf = zf;
@@ -161,14 +160,14 @@ public class LLVMAMD64UpdateFlagsNode extends LLVMNode {
     }
 
     public static class LLVMAMD64UpdateCPAZSOFlagsNode extends LLVMAMD64UpdateFlagsNode {
-        private final FrameSlot cf;
-        private final FrameSlot pf;
-        private final FrameSlot af;
-        private final FrameSlot zf;
-        private final FrameSlot sf;
-        private final FrameSlot of;
+        private final int cf;
+        private final int pf;
+        private final int af;
+        private final int zf;
+        private final int sf;
+        private final int of;
 
-        public LLVMAMD64UpdateCPAZSOFlagsNode(FrameSlot cf, FrameSlot pf, FrameSlot af, FrameSlot zf, FrameSlot sf, FrameSlot of) {
+        public LLVMAMD64UpdateCPAZSOFlagsNode(int cf, int pf, int af, int zf, int sf, int of) {
             this.cf = cf;
             this.pf = pf;
             this.af = af;

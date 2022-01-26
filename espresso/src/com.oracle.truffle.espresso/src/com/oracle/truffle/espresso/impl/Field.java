@@ -44,102 +44,152 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
  * Represents a resolved Espresso field.
+ *
+ * <h3>Class Redefinition</h3>
+ *
+ * In the presence of Class Redefinition a field can have three different behaviors:
+ *
+ * 1. An Original Field is a field that was declared in the first linked
+ * {@link ObjectKlass.KlassVersion}. Accessing Original Fields is done directly through the
+ * underlying {@link LinkedField}.
+ *
+ * 2. A {@link RedefineAddedField} which represents a field that was added by a
+ * {@link com.oracle.truffle.espresso.redefinition.ClassRedefinition}. Management of Redefine Added
+ * Fields is done through {@link ExtensionFieldsMetadata}. Accessing a Redefined Added Field
+ * normally happens through the associated {@link RedefineAddedField.FieldStorageObject instance}
+ * unless the Redefine Added Field has a Compatible Field {@link #hasCompatibleField()}. A
+ * Compatible field is always an Original Field that has the same name and type as the associated
+ * Redefine Added Field. A Redefine Added field can be assigned a Compatible Field if e.g. the field
+ * access modifiers changed. The state of the field is thus maintained by the Compatible (Original)
+ * Field. In this case the Redefine Added Field serves only as an up-to-date representative of the
+ * field in the runtime.
+ *
+ * 3. A Delegation Field is a special field that is created whenever a certain field requires to be
+ * re-resolved due to class redefinition. It allows obsolete code that uses a field to continue
+ * accessing that field even though the field could no longer be resolved by the caller. Delegation
+ * fields are always constructed as if they're Redefine Added Fields to trigger the alternative
+ * access path as described above. Moreover, to delegate accesses to the field that maintains the
+ * value (this could be either an Original Field or a Redefine Added Field) a Delegation field is
+ * assigned the underlying field as a Compatible Field.
  */
-public final class Field extends Member<Type> implements FieldRef {
+public class Field extends Member<Type> implements FieldRef {
 
     public static final Field[] EMPTY_ARRAY = new Field[0];
 
-    private final LinkedField linkedField;
-    private final ObjectKlass holder;
+    final LinkedField linkedField;
+    protected final ObjectKlass.KlassVersion holder;
 
-    @CompilationFinal private FieldVersion fieldVersion;
-    @CompilationFinal private boolean changedByRedefinition = false;
+    protected final RuntimeConstantPool pool;
+    @CompilationFinal private volatile Klass typeKlassCache;
+    @CompilationFinal private Symbol<ModifiedUTF8> genericSignature;
 
-    public Field(ObjectKlass holder, LinkedField linkedField, RuntimeConstantPool pool) {
+    private boolean removedByRedefinition;
+
+    public Field(ObjectKlass.KlassVersion holder, LinkedField linkedField, RuntimeConstantPool pool) {
         this.linkedField = linkedField;
         this.holder = holder;
-        this.fieldVersion = new FieldVersion(linkedField.getType(), pool);
+        this.pool = pool;
     }
 
     @Override
-    public Symbol<Name> getName() {
+    public final Symbol<Name> getName() {
         return linkedField.getName();
     }
 
-    public Symbol<Type> getType() {
+    public final Symbol<Type> getType() {
         return linkedField.getType();
     }
 
-    public Attribute[] getAttributes() {
+    public void removeByRedefintion() {
+        removedByRedefinition = true;
+    }
+
+    public final boolean isRemoved() {
+        return removedByRedefinition;
+    }
+
+    public final boolean needsReResolution() {
+        return !holder.getAssumption().isValid();
+    }
+
+    public final Attribute[] getAttributes() {
         return linkedField.getParserField().getAttributes();
     }
 
-    public Symbol<ModifiedUTF8> getGenericSignature() {
-        return getFieldVersion().getGenericSignature();
-    }
-
-    public FieldVersion getFieldVersion() {
-        FieldVersion version = fieldVersion;
-        if (!version.getAssumption().isValid()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            do {
-                version = fieldVersion;
-            } while (!version.getAssumption().isValid());
+    public final Symbol<ModifiedUTF8> getGenericSignature() {
+        if (genericSignature == null) {
+            SignatureAttribute attr = (SignatureAttribute) linkedField.getAttribute(SignatureAttribute.NAME);
+            if (attr == null) {
+                genericSignature = ModifiedUTF8.fromSymbol(getType());
+            } else {
+                genericSignature = pool.symbolAt(attr.getSignatureIndex());
+            }
         }
-        return version;
+        return genericSignature;
     }
 
-    public void redefineField(ParserField parserField, RuntimeConstantPool pool) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        // first, redefine the underlying parserField
-        linkedField.redefine(parserField);
-        // update the field version and invalidate old version
-        FieldVersion old = fieldVersion;
-        fieldVersion = new FieldVersion(parserField.getType(), pool);
-        old.getAssumption().invalidate();
-        changedByRedefinition = true;
-    }
-
-    public boolean isHidden() {
+    public final boolean isHidden() {
         return linkedField.isHidden();
     }
 
-    public boolean isTrustedFinal() {
+    public final boolean isTrustedFinal() {
         ObjectKlass k = getDeclaringKlass();
         return isFinalFlagSet() && (isStatic() || k.isHidden() || k.isRecord());
     }
 
-    public JavaKind getKind() {
+    public final JavaKind getKind() {
         return linkedField.getKind();
     }
 
     @Override
-    public int getModifiers() {
+    public final int getModifiers() {
         return linkedField.getFlags() & Constants.JVM_RECOGNIZED_FIELD_MODIFIERS;
     }
 
     @Override
-    public ObjectKlass getDeclaringKlass() {
-        return holder;
+    public final ObjectKlass getDeclaringKlass() {
+        return holder.getKlass();
     }
 
     /**
      * The slot serves as the position in the `field table` of the ObjectKlass.
      */
-    public int getSlot() {
+    public final int getSlot() {
         return linkedField.getSlot();
     }
 
     @Override
-    public String toString() {
+    public final String toString() {
         return getDeclaringKlass().getNameAsString() + "." + getName() + ": " + getType();
     }
 
-    public Klass resolveTypeKlass() {
-        return getFieldVersion().resolveTypeKlass();
+    public final Klass resolveTypeKlass() {
+        Klass tk = typeKlassCache;
+        if (tk == null) {
+            if (CompilerDirectives.isPartialEvaluationConstant(this)) {
+                // This can be used from contexts where this is not a constant (e.g., Unsafe)
+                // as well as context where this is constant (e.g., field access)
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+            }
+            doResolveType();
+        }
+        return typeKlassCache;
     }
 
-    public Attribute getAttribute(Symbol<Name> attrName) {
+    @TruffleBoundary
+    private void doResolveType() {
+        synchronized (this) {
+            Klass tk = typeKlassCache;
+            if (tk == null) {
+                tk = holder.getKlass().getMeta().resolveSymbolOrFail(getType(),
+                                holder.getKlass().getDefiningClassLoader(),
+                                holder.getKlass().protectionDomain());
+                typeKlassCache = tk;
+            }
+        }
+    }
+
+    public final Attribute getAttribute(Symbol<Name> attrName) {
         return linkedField.getAttribute(attrName);
     }
 
@@ -156,18 +206,18 @@ public final class Field extends Member<Type> implements FieldRef {
     }
 
     @TruffleBoundary
-    public void checkLoadingConstraints(StaticObject loader1, StaticObject loader2) {
+    public final void checkLoadingConstraints(StaticObject loader1, StaticObject loader2) {
         getDeclaringKlass().getContext().getRegistries().checkLoadingConstraint(getType(), loader1, loader2);
     }
 
     // region Field accesses
 
     // region Generic
-    public Object get(StaticObject obj) {
+    public final Object get(StaticObject obj) {
         return get(obj, false);
     }
 
-    public Object get(StaticObject obj, boolean forceVolatile) {
+    public final Object get(StaticObject obj, boolean forceVolatile) {
         // @formatter:off
         switch (getKind()) {
             case Boolean: return getBoolean(obj, forceVolatile);
@@ -184,11 +234,11 @@ public final class Field extends Member<Type> implements FieldRef {
         // @formatter:on
     }
 
-    public void set(StaticObject obj, Object value) {
+    public final void set(StaticObject obj, Object value) {
         set(obj, value, false);
     }
 
-    public void set(StaticObject obj, Object value, boolean forceVolatile) {
+    public final void set(StaticObject obj, Object value, boolean forceVolatile) {
         // @formatter:off
         switch (getKind()) {
             case Boolean: setBoolean(obj, (boolean) value, forceVolatile); break;
@@ -205,83 +255,83 @@ public final class Field extends Member<Type> implements FieldRef {
         // @formatter:on
     }
 
-    public boolean getAsBoolean(Meta meta, StaticObject obj, boolean defaultIfNull) {
+    public final boolean getAsBoolean(Meta meta, StaticObject obj, boolean defaultIfNull) {
         return getAsBoolean(meta, obj, defaultIfNull, false);
     }
 
-    public boolean getAsBoolean(Meta meta, StaticObject obj, boolean defaultIfNull, boolean forceVolatile) {
+    public final boolean getAsBoolean(Meta meta, StaticObject obj, boolean defaultIfNull, boolean forceVolatile) {
         Object val = get(obj, forceVolatile);
         return meta.asBoolean(val, defaultIfNull);
     }
 
-    public byte getAsByte(Meta meta, StaticObject obj, boolean defaultIfNull) {
+    public final byte getAsByte(Meta meta, StaticObject obj, boolean defaultIfNull) {
         return getAsByte(meta, obj, defaultIfNull, false);
     }
 
-    public byte getAsByte(Meta meta, StaticObject obj, boolean defaultIfNull, boolean forceVolatile) {
+    public final byte getAsByte(Meta meta, StaticObject obj, boolean defaultIfNull, boolean forceVolatile) {
         Object val = get(obj, forceVolatile);
         return meta.asByte(val, defaultIfNull);
     }
 
-    public short getAsShort(Meta meta, StaticObject obj, boolean defaultIfNull) {
+    public final short getAsShort(Meta meta, StaticObject obj, boolean defaultIfNull) {
         return getAsShort(meta, obj, defaultIfNull, false);
     }
 
-    public short getAsShort(Meta meta, StaticObject obj, boolean defaultIfNull, boolean forceVolatile) {
+    public final short getAsShort(Meta meta, StaticObject obj, boolean defaultIfNull, boolean forceVolatile) {
         Object val = get(obj, forceVolatile);
         return meta.asShort(val, defaultIfNull);
     }
 
-    public char getAsChar(Meta meta, StaticObject obj, boolean defaultIfNull) {
+    public final char getAsChar(Meta meta, StaticObject obj, boolean defaultIfNull) {
         return getAsChar(meta, obj, defaultIfNull, false);
     }
 
-    public char getAsChar(Meta meta, StaticObject obj, boolean defaultIfNull, boolean forceVolatile) {
+    public final char getAsChar(Meta meta, StaticObject obj, boolean defaultIfNull, boolean forceVolatile) {
         Object val = get(obj, forceVolatile);
         return meta.asChar(val, defaultIfNull);
     }
 
-    public int getAsInt(Meta meta, StaticObject obj, boolean defaultIfNull) {
+    public final int getAsInt(Meta meta, StaticObject obj, boolean defaultIfNull) {
         return getAsInt(meta, obj, defaultIfNull, false);
     }
 
-    public int getAsInt(Meta meta, StaticObject obj, boolean defaultIfNull, boolean forceVolatile) {
+    public final int getAsInt(Meta meta, StaticObject obj, boolean defaultIfNull, boolean forceVolatile) {
         Object val = get(obj, forceVolatile);
         return meta.asInt(val, defaultIfNull);
     }
 
-    public float getAsFloat(Meta meta, StaticObject obj, boolean defaultIfNull) {
+    public final float getAsFloat(Meta meta, StaticObject obj, boolean defaultIfNull) {
         return getAsFloat(meta, obj, defaultIfNull, false);
     }
 
-    public float getAsFloat(Meta meta, StaticObject obj, boolean defaultIfNull, boolean forceVolatile) {
+    public final float getAsFloat(Meta meta, StaticObject obj, boolean defaultIfNull, boolean forceVolatile) {
         Object val = get(obj, forceVolatile);
         return meta.asFloat(val, defaultIfNull);
     }
 
-    public long getAsLong(Meta meta, StaticObject obj, boolean defaultIfNull) {
+    public final long getAsLong(Meta meta, StaticObject obj, boolean defaultIfNull) {
         return getAsLong(meta, obj, defaultIfNull, false);
     }
 
-    public long getAsLong(Meta meta, StaticObject obj, boolean defaultIfNull, boolean forceVolatile) {
+    public final long getAsLong(Meta meta, StaticObject obj, boolean defaultIfNull, boolean forceVolatile) {
         Object val = get(obj, forceVolatile);
         return meta.asLong(val, defaultIfNull);
     }
 
-    public double getAsDouble(Meta meta, StaticObject obj, boolean defaultIfNull) {
+    public final double getAsDouble(Meta meta, StaticObject obj, boolean defaultIfNull) {
         return getAsDouble(meta, obj, defaultIfNull, false);
     }
 
-    public double getAsDouble(Meta meta, StaticObject obj, boolean defaultIfNull, boolean forceVolatile) {
+    public final double getAsDouble(Meta meta, StaticObject obj, boolean defaultIfNull, boolean forceVolatile) {
         Object val = get(obj, forceVolatile);
         return meta.asDouble(val, defaultIfNull);
     }
 
-    public StaticObject getAsObject(Meta meta, StaticObject obj) {
+    public final StaticObject getAsObject(Meta meta, StaticObject obj) {
         return getAsObject(meta, obj, false);
     }
 
-    public StaticObject getAsObject(Meta meta, StaticObject obj, boolean forceVolatile) {
+    public final StaticObject getAsObject(Meta meta, StaticObject obj, boolean forceVolatile) {
         Object val = get(obj, forceVolatile);
         return meta.asObject(val);
     }
@@ -312,33 +362,21 @@ public final class Field extends Member<Type> implements FieldRef {
     // endregion helper methods
 
     // To access hidden fields, use the dedicated `(g|s)etHiddenObjectField` methods
-    public StaticObject getObject(StaticObject obj) {
-        return getFieldVersion().getObject(obj, false);
+    public final StaticObject getObject(StaticObject obj) {
+        return getObject(obj, false);
     }
 
-    public StaticObject getObject(StaticObject obj, boolean forceVolatile) {
-        return getFieldVersion().getObject(obj, forceVolatile);
+    protected StaticObject getObject(StaticObject obj, boolean forceVolatile) {
+        assert !isHidden() : this + " is hidden, use getHiddenObject";
+        return (StaticObject) getObjectHelper(obj, forceVolatile);
     }
 
-    public void setObject(StaticObject obj, Object value) {
+    public final void setObject(StaticObject obj, Object value) {
         setObject(obj, value, false);
     }
 
     public void setObject(StaticObject obj, Object value, boolean forceVolatile) {
         assert !isHidden() : this + " is hidden, use setHiddenObject";
-        if (changedByRedefinition) {
-            // for changed fields we put in a type guard on the field value against the current type
-            StaticObject staticObject = (StaticObject) value;
-            if (staticObject == StaticObject.NULL || resolveTypeKlass().isAssignableFrom((((StaticObject) value).getKlass()))) {
-                setObjectHelper(obj, value, forceVolatile);
-            } else {
-                // we don't allow to write a value that is incompatible
-                // with the current declared field type
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                Meta meta = resolveTypeKlass().getContext().getMeta();
-                throw meta.throwException(meta.java_lang_IncompatibleClassChangeError);
-            }
-        }
         setObjectHelper(obj, value, forceVolatile);
     }
 
@@ -364,20 +402,20 @@ public final class Field extends Member<Type> implements FieldRef {
     }
 
     // region hidden Object
-    public Object getHiddenObject(StaticObject obj) {
+    public final Object getHiddenObject(StaticObject obj) {
         return getHiddenObject(obj, false);
     }
 
-    public Object getHiddenObject(StaticObject obj, boolean forceVolatile) {
+    public final Object getHiddenObject(StaticObject obj, boolean forceVolatile) {
         assert isHidden() : this + " is not hidden, use getObject";
         return getObjectHelper(obj, forceVolatile);
     }
 
-    public void setHiddenObject(StaticObject obj, Object value) {
+    public final void setHiddenObject(StaticObject obj, Object value) {
         setHiddenObject(obj, value, false);
     }
 
-    public void setHiddenObject(StaticObject obj, Object value, boolean forceVolatile) {
+    public final void setHiddenObject(StaticObject obj, Object value, boolean forceVolatile) {
         assert isHidden() : this + " is not hidden, use setObject";
         setObjectHelper(obj, value, forceVolatile);
     }
@@ -385,7 +423,7 @@ public final class Field extends Member<Type> implements FieldRef {
     // endregion Object
 
     // region boolean
-    public boolean getBoolean(StaticObject obj) {
+    public final boolean getBoolean(StaticObject obj) {
         return getBoolean(obj, false);
     }
 
@@ -399,7 +437,7 @@ public final class Field extends Member<Type> implements FieldRef {
         }
     }
 
-    public void setBoolean(StaticObject obj, boolean value) {
+    public final void setBoolean(StaticObject obj, boolean value) {
         setBoolean(obj, value, false);
     }
 
@@ -427,7 +465,7 @@ public final class Field extends Member<Type> implements FieldRef {
     // endregion boolean
 
     // region byte
-    public byte getByte(StaticObject obj) {
+    public final byte getByte(StaticObject obj) {
         return getByte(obj, false);
     }
 
@@ -441,7 +479,7 @@ public final class Field extends Member<Type> implements FieldRef {
         }
     }
 
-    public void setByte(StaticObject obj, byte value) {
+    public final void setByte(StaticObject obj, byte value) {
         setByte(obj, value, false);
     }
 
@@ -469,7 +507,7 @@ public final class Field extends Member<Type> implements FieldRef {
     // endregion byte
 
     // region char
-    public char getChar(StaticObject obj) {
+    public final char getChar(StaticObject obj) {
         return getChar(obj, false);
     }
 
@@ -483,7 +521,7 @@ public final class Field extends Member<Type> implements FieldRef {
         }
     }
 
-    public void setChar(StaticObject obj, char value) {
+    public final void setChar(StaticObject obj, char value) {
         setChar(obj, value, false);
     }
 
@@ -511,7 +549,7 @@ public final class Field extends Member<Type> implements FieldRef {
     // endregion char
 
     // region double
-    public double getDouble(StaticObject obj) {
+    public final double getDouble(StaticObject obj) {
         return getDouble(obj, false);
     }
 
@@ -525,7 +563,7 @@ public final class Field extends Member<Type> implements FieldRef {
         }
     }
 
-    public void setDouble(StaticObject obj, double value) {
+    public final void setDouble(StaticObject obj, double value) {
         setDouble(obj, value, false);
     }
 
@@ -553,7 +591,7 @@ public final class Field extends Member<Type> implements FieldRef {
     // endregion double
 
     // region float
-    public float getFloat(StaticObject obj) {
+    public final float getFloat(StaticObject obj) {
         return getFloat(obj, false);
     }
 
@@ -567,7 +605,7 @@ public final class Field extends Member<Type> implements FieldRef {
         }
     }
 
-    public void setFloat(StaticObject obj, float value) {
+    public final void setFloat(StaticObject obj, float value) {
         setFloat(obj, value, false);
     }
 
@@ -595,7 +633,7 @@ public final class Field extends Member<Type> implements FieldRef {
     // endregion float
 
     // region int
-    public int getInt(StaticObject obj) {
+    public final int getInt(StaticObject obj) {
         return getInt(obj, false);
     }
 
@@ -609,7 +647,7 @@ public final class Field extends Member<Type> implements FieldRef {
         }
     }
 
-    public void setInt(StaticObject obj, int value) {
+    public final void setInt(StaticObject obj, int value) {
         setInt(obj, value, false);
     }
 
@@ -637,7 +675,7 @@ public final class Field extends Member<Type> implements FieldRef {
     // endregion int
 
     // region long
-    public long getLong(StaticObject obj) {
+    public final long getLong(StaticObject obj) {
         return getLong(obj, false);
     }
 
@@ -652,7 +690,7 @@ public final class Field extends Member<Type> implements FieldRef {
         }
     }
 
-    public void setLong(StaticObject obj, long value) {
+    public final void setLong(StaticObject obj, long value) {
         setLong(obj, value, false);
     }
 
@@ -682,7 +720,7 @@ public final class Field extends Member<Type> implements FieldRef {
     // endregion long
 
     // region short
-    public short getShort(StaticObject obj) {
+    public final short getShort(StaticObject obj) {
         return getShort(obj, false);
     }
 
@@ -696,7 +734,7 @@ public final class Field extends Member<Type> implements FieldRef {
         }
     }
 
-    public void setShort(StaticObject obj, short value) {
+    public final void setShort(StaticObject obj, short value) {
         setShort(obj, value, false);
     }
 
@@ -727,33 +765,33 @@ public final class Field extends Member<Type> implements FieldRef {
 
     // region jdwp-specific
     @Override
-    public byte getTagConstant() {
+    public final byte getTagConstant() {
         return getKind().toTagConstant();
     }
 
     @Override
-    public String getNameAsString() {
+    public final String getNameAsString() {
         return getName().toString();
     }
 
     @Override
-    public String getTypeAsString() {
+    public final String getTypeAsString() {
         return getType().toString();
     }
 
     @Override
-    public String getGenericSignatureAsString() {
+    public final String getGenericSignatureAsString() {
         Symbol<ModifiedUTF8> signature = getGenericSignature();
         return signature.toString();
     }
 
     @Override
-    public Object getValue(Object self) {
+    public final Object getValue(Object self) {
         return get((StaticObject) self);
     }
 
     @Override
-    public void setValue(Object self, Object value) {
+    public final void setValue(Object self, Object value) {
         set((StaticObject) self, value);
     }
 
@@ -763,17 +801,17 @@ public final class Field extends Member<Type> implements FieldRef {
     private FieldBreakpoint[] infos = null;
 
     @Override
-    public boolean hasActiveBreakpoint() {
+    public final boolean hasActiveBreakpoint() {
         return hasActiveBreakpoints.get();
     }
 
     @Override
-    public FieldBreakpoint[] getFieldBreakpointInfos() {
+    public final FieldBreakpoint[] getFieldBreakpointInfos() {
         return infos;
     }
 
     @Override
-    public void addFieldBreakpointInfo(FieldBreakpoint info) {
+    public final void addFieldBreakpointInfo(FieldBreakpoint info) {
         if (infos == null) {
             infos = new FieldBreakpoint[]{info};
             hasActiveBreakpoints.set(true);
@@ -789,7 +827,7 @@ public final class Field extends Member<Type> implements FieldRef {
     }
 
     @Override
-    public void removeFieldBreakpointInfo(int requestId) {
+    public final void removeFieldBreakpointInfo(int requestId) {
         // shrink the array to avoid null values
         switch (infos.length) {
             case 0:
@@ -815,6 +853,18 @@ public final class Field extends Member<Type> implements FieldRef {
                     return;
                 }
         }
+    }
+
+    public void setCompatibleField(@SuppressWarnings("unused") Field field) {
+        // only applicable to RedefineAddedFields
+    }
+
+    public boolean hasCompatibleField() {
+        return false;
+    }
+
+    public Field getCompatibleField() {
+        return null;
     }
 
     /**
@@ -855,88 +905,4 @@ public final class Field extends Member<Type> implements FieldRef {
         }
     }
     // endregion jdwp-specific
-
-    public final class FieldVersion {
-        private final Assumption assumption;
-        private final Symbol<Symbol.Type> type;
-        private final RuntimeConstantPool pool;
-        @CompilationFinal private volatile Klass typeKlassCache;
-        @CompilationFinal private Symbol<ModifiedUTF8> genericSignature;
-
-        FieldVersion(Symbol<Symbol.Type> type, RuntimeConstantPool pool) {
-            this.assumption = Truffle.getRuntime().createAssumption();
-            this.type = type;
-            this.pool = pool;
-        }
-
-        public Assumption getAssumption() {
-            return assumption;
-        }
-
-        // To access hidden fields, use the dedicated `(g|s)etHiddenObjectField` methods
-        public StaticObject getObject(StaticObject obj) {
-            return getObject(obj, false);
-        }
-
-        private StaticObject getObject(StaticObject obj, boolean forceVolatile) {
-            assert !isHidden() : this + " is hidden, use getHiddenObject";
-            if (changedByRedefinition) {
-                // for changed fields we put in a type guard on the field value against the new type
-                StaticObject value = (StaticObject) getObjectHelper(obj, forceVolatile);
-
-                if (resolveTypeKlass().isAssignableFrom(value.getKlass())) {
-                    return value;
-                } else {
-                    return StaticObject.NULL;
-                }
-            }
-            return (StaticObject) getObjectHelper(obj, forceVolatile);
-        }
-
-        public Symbol<ModifiedUTF8> getGenericSignature() {
-            if (genericSignature == null) {
-                SignatureAttribute attr = (SignatureAttribute) linkedField.getAttribute(SignatureAttribute.NAME);
-                if (attr == null) {
-                    genericSignature = ModifiedUTF8.fromSymbol(type);
-                } else {
-                    genericSignature = pool.symbolAt(attr.getSignatureIndex());
-                }
-            }
-            return genericSignature;
-        }
-
-        public Klass resolveTypeKlass() {
-            Klass tk = typeKlassCache;
-            if (tk == null) {
-                if (CompilerDirectives.isPartialEvaluationConstant(this)) {
-                    // This can be used from contexts where this is not a constant (e.g., Unsafe)
-                    // as well as context where this is constant (e.g., field access)
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                }
-                doResolveType();
-            }
-            return typeKlassCache;
-        }
-
-        @TruffleBoundary
-        private void doResolveType() {
-            synchronized (this) {
-                Klass tk = typeKlassCache;
-                if (tk == null) {
-                    tk = holder.getMeta().resolveSymbolOrFail(getType(),
-                                    holder.getDefiningClassLoader(),
-                                    holder.protectionDomain());
-                    typeKlassCache = tk;
-                }
-            }
-        }
-
-        public Field getField() {
-            return Field.this;
-        }
-
-        public Symbol<Type> getType() {
-            return type;
-        }
-    }
 }

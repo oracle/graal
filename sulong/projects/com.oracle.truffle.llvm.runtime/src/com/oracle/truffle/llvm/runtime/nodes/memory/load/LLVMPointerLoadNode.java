@@ -30,7 +30,6 @@
 package com.oracle.truffle.llvm.runtime.nodes.memory.load;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -72,10 +71,15 @@ public abstract class LLVMPointerLoadNode extends LLVMLoadNode {
         }
 
         @Specialization(limit = "3")
-        @GenerateAOT.Exclude
         protected LLVMPointer doIndirectedForeign(LLVMManagedPointer addr, long offset,
                         @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary nativeRead) {
             return nativeRead.readPointer(addr.getObject(), addr.getOffset() + offset);
+        }
+
+        @Specialization(replaces = "doIndirectedForeign")
+        protected LLVMPointer doIndirectedForeignAOT(LLVMManagedPointer addr, long offset,
+                        @CachedLibrary(limit = "3") LLVMManagedReadLibrary nativeRead) {
+            return doIndirectedForeign(addr, offset, nativeRead);
         }
     }
 
@@ -92,9 +96,15 @@ public abstract class LLVMPointerLoadNode extends LLVMLoadNode {
     }
 
     @Specialization(limit = "3")
-    @GenerateAOT.Exclude
     protected LLVMPointer doIndirectedForeign(LLVMManagedPointer addr,
                     @CachedLibrary("addr.getObject()") LLVMManagedReadLibrary read) {
         return read.readPointer(addr.getObject(), addr.getOffset());
     }
+
+    @Specialization(replaces = "doIndirectedForeign")
+    protected LLVMPointer doIndirectedForeignAOT(LLVMManagedPointer addr,
+                    @CachedLibrary(limit = "3") LLVMManagedReadLibrary read) {
+        return doIndirectedForeign(addr, read);
+    }
+
 }

@@ -93,7 +93,7 @@ import com.oracle.svm.util.ModuleSupport;
 public class NativeImage {
 
     private static final String DEFAULT_GENERATOR_CLASS_NAME = NativeImageGeneratorRunner.class.getName();
-    private static final String DEFAULT_GENERATOR_MODULE_NAME = ModuleSupport.getModuleName(NativeImageGeneratorRunner.class);
+    private static final String DEFAULT_GENERATOR_MODULE_NAME = NativeImageGeneratorRunner.class.getModule().getName();
 
     private static final String DEFAULT_GENERATOR_9PLUS_SUFFIX = "$JDK9Plus";
     private static final String CUSTOM_SYSTEM_CLASS_LOADER = NativeImageSystemClassLoader.class.getCanonicalName();
@@ -257,6 +257,7 @@ public class NativeImage {
     private LinkedHashSet<EnabledOption> enabledLanguages;
 
     private final List<ExcludeConfig> excludedConfigs = new ArrayList<>();
+    private final LinkedHashSet<String> addModules = new LinkedHashSet<>();
 
     protected static class BuildConfiguration {
 
@@ -797,10 +798,7 @@ public class NativeImage {
             addImageBuilderJavaArgs(oXmx + xmxVal);
         }
         /* Prevent JVM that runs the image builder to steal focus */
-        if (OS.getCurrent() != OS.WINDOWS || JavaVersionUtil.JAVA_SPEC > 8) {
-            /* Conditional because of https://bugs.openjdk.java.net/browse/JDK-8159956 */
-            addImageBuilderJavaArgs("-Djava.awt.headless=true");
-        }
+        addImageBuilderJavaArgs("-Djava.awt.headless=true");
         addImageBuilderJavaArgs("-Dorg.graalvm.version=" + graalvmVersion);
         addImageBuilderJavaArgs("-Dorg.graalvm.config=" + graalvmConfig);
         addImageBuilderJavaArgs("-Dcom.oracle.graalvm.isaot=true");
@@ -1161,6 +1159,10 @@ public class NativeImage {
             return 2;
         }
 
+        if (!addModules.isEmpty()) {
+            imageBuilderJavaArgs.add("-D" + ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES + "=" + String.join(",", addModules));
+        }
+
         List<String> finalImageBuilderJavaArgs = Stream.concat(config.getBuilderJavaArgs().stream(), imageBuilderJavaArgs.stream()).collect(Collectors.toList());
         return buildImage(finalImageBuilderJavaArgs, imageBuilderBootClasspath, imageBuilderClasspath, imageBuilderModulePath, imageBuilderArgs, finalImageClasspath, finalImageModulePath);
     }
@@ -1506,6 +1508,10 @@ public class NativeImage {
 
     public void addImageBuilderModulePath(Path modulePathEntry) {
         imageBuilderModulePath.add(canonicalize(modulePathEntry));
+    }
+
+    public void addAddedModules(String addModulesArg) {
+        addModules.addAll(Arrays.asList(SubstrateUtil.split(addModulesArg, ",")));
     }
 
     void addImageBuilderClasspath(Path classpath) {

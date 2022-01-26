@@ -400,7 +400,7 @@ public abstract class Log implements AutoCloseable {
 
         @Override
         public Log string(byte[] value) {
-            return null;
+            return this;
         }
 
         @Override
@@ -545,7 +545,7 @@ public abstract class Log implements AutoCloseable {
 
         @Override
         public Log exception(Throwable t) {
-            return null;
+            return this;
         }
 
         @Override
@@ -560,7 +560,7 @@ public abstract class Log implements AutoCloseable {
 
         @Override
         public Log indent(boolean addOrRemove) {
-            return null;
+            return this;
         }
 
         @Override

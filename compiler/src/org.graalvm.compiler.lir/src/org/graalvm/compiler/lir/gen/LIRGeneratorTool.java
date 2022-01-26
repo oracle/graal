@@ -57,44 +57,6 @@ import jdk.vm.ci.meta.ValueKind;
 
 public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindFactory<LIRKind> {
 
-    /**
-     * Factory for creating moves.
-     */
-    interface MoveFactory {
-
-        /**
-         * Checks whether the loading of the supplied constant can be deferred until usage.
-         */
-        @SuppressWarnings("unused")
-        default boolean mayEmbedConstantLoad(Constant constant) {
-            return false;
-        }
-
-        /**
-         * Checks whether the supplied constant can be used without loading it into a register for
-         * most operations, i.e., for commonly used arithmetic, logical, and comparison operations.
-         *
-         * @param constant The constant to check.
-         * @return True if the constant can be used directly, false if the constant needs to be in a
-         *         register.
-         */
-        boolean canInlineConstant(Constant constant);
-
-        /**
-         * @param constant The constant that might be moved to a stack slot.
-         * @return {@code true} if constant to stack moves are supported for this constant.
-         */
-        boolean allowConstantToStackMove(Constant constant);
-
-        LIRInstruction createMove(AllocatableValue result, Value input);
-
-        LIRInstruction createStackMove(AllocatableValue result, AllocatableValue input);
-
-        LIRInstruction createLoad(AllocatableValue result, Constant input);
-
-        LIRInstruction createStackLoad(AllocatableValue result, Constant input);
-    }
-
     abstract class BlockScope implements AutoCloseable {
 
         public abstract AbstractBlockBase<?> getCurrentBlock();
@@ -214,6 +176,10 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
      */
     void emitReturn(JavaKind javaKind, Value input);
 
+    /**
+     * Returns an {@link AllocatableValue} holding the {@code value} by moving it if necessary. If
+     * {@code value} is already an {@link AllocatableValue}, returns it unchanged.
+     */
     AllocatableValue asAllocatable(Value value);
 
     Variable load(Value value);

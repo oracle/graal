@@ -40,28 +40,26 @@
  */
 package com.oracle.truffle.api.test.interop;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import org.junit.Test;
+
 import com.oracle.truffle.api.exception.AbstractTruffleException;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.StopIterationException;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
-import org.graalvm.polyglot.Context;
-import org.junit.Test;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
 
 @SuppressWarnings("deprecation")
 public class InteropDefaultsTest extends InteropLibraryBaseTest {
@@ -333,7 +331,7 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
         String expectedToString = v.toString();
         toStringInvoked.set(false);
         assertEquals(expectedToString, l.toDisplayString(v));
-        assertFalse(toStringInvoked.get());
+        assertTrue(toStringInvoked.get());
         assertNoTypes(v);
     }
 
@@ -354,106 +352,6 @@ public class InteropDefaultsTest extends InteropLibraryBaseTest {
         MetaDataLegacyOnlyLangauge() {
         }
 
-    }
-
-    @Test
-    public void testMetaDataLegacyBehavior() throws InteropException {
-        setupEnv(Context.create(), new ProxyLanguage() {
-            @Override
-            protected boolean isObjectOfLanguage(Object object) {
-                return object instanceof MetaDataLegacyObject || object instanceof MetaDataLegacyOnlyLangauge;
-            }
-
-            @Override
-            protected SourceSection findSourceLocation(LanguageContext c, Object value) {
-                if (value instanceof MetaDataLegacyObject) {
-                    return ((MetaDataLegacyObject) value).section;
-                }
-                return null;
-            }
-
-            @Override
-            protected Object findMetaObject(LanguageContext c, Object value) {
-                if (value instanceof MetaDataLegacyObject) {
-                    return ((MetaDataLegacyObject) value).metaObject;
-                }
-                return null;
-            }
-
-            @Override
-            protected String toString(LanguageContext c, Object value) {
-                if (value instanceof MetaDataLegacyObject) {
-                    return "MetaDataLegacyObject";
-                }
-                return super.toString(c, value);
-            }
-
-        });
-        SourceSection section = Source.newBuilder(ProxyLanguage.ID, "", "").build().createUnavailableSection();
-        Object v1 = new MetaDataLegacyObject(section, "meta-object");
-        InteropLibrary libV1 = createLibrary(InteropLibrary.class, v1);
-
-        assertTrue(libV1.hasLanguage(v1));
-        assertSame(ProxyLanguage.class, libV1.getLanguage(v1));
-        assertTrue(libV1.hasMetaObject(v1));
-        Object metaObject = libV1.getMetaObject(v1);
-        InteropLibrary metaObjectInterop = createLibrary(InteropLibrary.class, metaObject);
-        assertTrue(metaObjectInterop.isMetaObject(metaObject));
-        assertTrue(metaObjectInterop.isMetaInstance(metaObject, v1));
-        assertEquals("meta-object", metaObjectInterop.toDisplayString(metaObject));
-        assertEquals("meta-object", metaObjectInterop.getMetaSimpleName(metaObject));
-        assertEquals("meta-object", metaObjectInterop.getMetaQualifiedName(metaObject));
-        assertTrue(libV1.hasSourceLocation(v1));
-        assertSame(section, libV1.getSourceLocation(v1));
-        assertEquals("MetaDataLegacyObject", libV1.toDisplayString(v1));
-
-        assertNoBoolean(v1);
-        assertNotNull(v1);
-        assertNoObject(v1);
-        assertNoArray(v1);
-        assertNoBuffer(v1);
-        assertNoString(v1);
-        assertNoNumber(v1);
-        assertNoNative(v1);
-        assertNotExecutable(v1);
-        assertNotInstantiable(v1);
-        assertNoMetaObject(v1);
-        // has meta-object
-        assertNoDate(v1);
-        assertNoTime(v1);
-        assertNoTimeZone(v1);
-        assertNoDuration(v1);
-        // has source section
-        // has language
-
-        Object v2 = new MetaDataLegacyOnlyLangauge();
-        InteropLibrary libV2 = createLibrary(InteropLibrary.class, v2);
-        assertTrue(libV2.hasLanguage(v2));
-        assertSame(ProxyLanguage.class, libV2.getLanguage(v2));
-        assertFalse(libV2.hasMetaObject(v2));
-        assertFails(() -> libV2.getMetaObject(v2), UnsupportedMessageException.class);
-        assertFalse(libV2.hasSourceLocation(v2));
-        assertFails(() -> libV2.getSourceLocation(v2), UnsupportedMessageException.class);
-        assertEquals(v2.toString(), libV2.toDisplayString(v2));
-
-        assertNoBoolean(v2);
-        assertNotNull(v2);
-        assertNoObject(v2);
-        assertNoArray(v2);
-        assertNoBuffer(v2);
-        assertNoString(v2);
-        assertNoNumber(v2);
-        assertNoNative(v2);
-        assertNotExecutable(v2);
-        assertNotInstantiable(v2);
-        assertNoMetaObject(v2);
-        assertHasNoMetaObject(v2);
-        assertNoDate(v2);
-        assertNoTime(v2);
-        assertNoTimeZone(v2);
-        assertNoDuration(v2);
-        assertNoSourceLocation(v2);
-        // has language
     }
 
     private void assertNoTypes(Object v) {

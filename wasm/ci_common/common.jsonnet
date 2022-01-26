@@ -5,30 +5,10 @@ local wasm_suite_root = root_ci.wasm_suite_root;
 local graal_suite_root = root_ci.graal_suite_root;
 
 {
-  local jdks = (import "../../common.json").jdks,
   local mx = (import "../../graal-common.json").mx_version,
-  local labsjdk8 = jdks.oraclejdk8,
-  local labsjdk11 = jdks["labsjdk-ce-11"],
+  local common = (import "../../common.jsonnet"),
 
   devkits: (import "../../common.json").devkits,
-
-  jdk8: {
-    downloads+: {
-      JAVA_HOME: labsjdk8,
-    },
-    environment+: {
-      JDK_JVMCI_ARGS: '--jdk=jvmci',
-    },
-  },
-
-  jdk11: {
-    downloads+: {
-      JAVA_HOME: labsjdk11,
-    },
-    environment+: {
-      JDK_JVMCI_ARGS: '--jdk=',
-    },
-  },
 
   gate: {
     targets+: ['gate'],
@@ -124,8 +104,8 @@ local graal_suite_root = root_ci.graal_suite_root;
     },
   },
 
-  local gate_cmd       = ['mx', '--strict-compliance', 'gate', '--strict-mode', '--tags', '${GATE_TAGS}'],
-  local gate_cmd_jvmci = ['mx', '--strict-compliance', '--dynamicimports', graal_suite_root, '${JDK_JVMCI_ARGS}', 'gate', '--strict-mode', '--tags', '${GATE_TAGS}'],
+  local gate_cmd      = ['mx', '--strict-compliance', 'gate', '--strict-mode', '--tags', '${GATE_TAGS}'],
+  local gate_cmd_full = ['mx', '--strict-compliance', '--dynamicimports', graal_suite_root, 'gate', '--strict-mode', '--tags', '${GATE_TAGS}'],
 
   setup_common: {
     setup+: [
@@ -149,25 +129,25 @@ local graal_suite_root = root_ci.graal_suite_root;
     timelimit: '45:00',
   },
 
-  gate_graalwasm_jvmci: {
+  gate_graalwasm_full: {
     setup+: [
       ['cd', wasm_suite_root],
       ['mx', 'sversions'],
     ],
     run+: [
-      gate_cmd_jvmci
+      gate_cmd_full
     ],
     timelimit: '1:00:00',
   },
 
-  gate_graalwasm_emsdk_jvmci: self.setup_emsdk + {
+  gate_graalwasm_emsdk_full: self.setup_emsdk + {
     run+: [
-      gate_cmd_jvmci
+      gate_cmd_full
     ],
     timelimit: '45:00',
   },
 
-  bench_graalwasm_emsdk_jvmci: self.setup_emsdk + {
+  bench_graalwasm_emsdk_full: self.setup_emsdk + {
     environment+: {
       BENCH_RESULTS_FILE_PATH : 'bench-results.json',
     },
@@ -195,12 +175,12 @@ local graal_suite_root = root_ci.graal_suite_root;
     logs+: ["*/es-*.json"]
   },
 
-  jdk8_gate_linux_eclipse_jdt              : self.jdk8 + self.gate + self.linux + self.eclipse + self.jdt,
-  jdk8_gate_linux_wabt                     : self.jdk8 + self.gate + self.linux + self.wabt,
-  jdk8_gate_linux_wabt_emsdk               : self.jdk8 + self.gate + self.linux + self.wabt + self.emsdk,
-  jdk8_gate_linux_wabt_emsdk_ocamlbuild    : self.jdk8 + self.gate + self.linux + self.wabt + self.emsdk + self.ocamlbuild,
-  jdk8_bench_linux_wabt_emsdk              : self.jdk8 + self.bench + self.linux + self.wabt + self.emsdk,
-  jdk8_gate_windows_wabt                   : self.jdk8 + self.gate + self.windows + self.wabt,
+  jdk17_gate_linux_eclipse_jdt              : common.labsjdk17 + self.gate  + self.linux   + self.eclipse + self.jdt,
+  jdk17_gate_linux_wabt                     : common.labsjdk17 + self.gate  + self.linux   + self.wabt,
+  jdk17_gate_linux_wabt_emsdk               : common.labsjdk17 + self.gate  + self.linux   + self.wabt    + self.emsdk,
+  jdk17_gate_linux_wabt_emsdk_ocamlbuild    : common.labsjdk17 + self.gate  + self.linux   + self.wabt    + self.emsdk + self.ocamlbuild,
+  jdk17_bench_linux_wabt_emsdk              : common.labsjdk17 + self.bench + self.linux   + self.wabt    + self.emsdk,
+  jdk17_gate_windows_wabt                   : common.labsjdk17 + self.gate  + self.windows + self.wabt,
 
-  jdk11_gate_linux_wabt                    : self.jdk11 + self.gate + self.linux + self.wabt,
+  jdk11_gate_linux_wabt                     : common.labsjdk11 + self.gate  + self.linux   + self.wabt,
 }

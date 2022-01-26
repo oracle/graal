@@ -24,10 +24,6 @@
  */
 package com.oracle.svm.core.hub;
 
-// Checkstyle: allow reflection
-
-import static com.oracle.svm.core.hub.DynamicHub.NO_CLASS_LOADER;
-
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
@@ -39,26 +35,38 @@ import java.util.List;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.hub.DynamicHub.ReflectionData;
+import com.oracle.svm.core.jdk.ProtectionDomainSupport;
 import com.oracle.svm.core.reflect.MethodMetadataDecoder;
 import com.oracle.svm.core.reflect.MethodMetadataDecoder.MethodDescriptor;
 import com.oracle.svm.core.util.VMError;
 
-/** An optional, non-immutable companion to a {@link DynamicHub} instance. */
+/**
+ * The mutable parts of a {@link DynamicHub} instance.
+ */
 public final class DynamicHubCompanion {
-    private final DynamicHub hub;
+    /** Marker value for {@link #classLoader}. */
+    private static final Object NO_CLASS_LOADER = new Object();
 
     private String packageName;
-    private Object classLoader = NO_CLASS_LOADER;
+    /**
+     * Classloader used for loading this class. Most classes have the correct class loader set
+     * already at image build time. {@link PredefinedClassesSupport Predefined classes} get their
+     * classloader only at run time, before "loading" the field value is {@link #NO_CLASS_LOADER}.
+     */
+    private Object classLoader;
     private ProtectionDomain protectionDomain;
     private ReflectionData completeReflectionData;
 
-    public DynamicHubCompanion(DynamicHub hub) {
-        this.hub = hub;
+    @Platforms(Platform.HOSTED_ONLY.class)
+    DynamicHubCompanion(Class<?> hostedJavaClass, ClassLoader classLoader) {
+        this.classLoader = PredefinedClassesSupport.isPredefined(hostedJavaClass) ? NO_CLASS_LOADER : classLoader;
     }
 
-    public String getPackageName() {
+    String getPackageName(DynamicHub hub) {
         if (packageName == null) {
             packageName = hub.computePackageName();
         }
@@ -69,30 +77,30 @@ public final class DynamicHubCompanion {
         return classLoader != NO_CLASS_LOADER;
     }
 
-    public ClassLoader getClassLoader() {
+    ClassLoader getClassLoader() {
         Object loader = classLoader;
         VMError.guarantee(loader != NO_CLASS_LOADER);
         return (ClassLoader) loader;
     }
 
-    public void setClassLoader(ClassLoader loader) {
+    void setClassLoader(ClassLoader loader) {
         VMError.guarantee(classLoader == NO_CLASS_LOADER && loader != NO_CLASS_LOADER);
         classLoader = loader;
     }
 
-    public ProtectionDomain getProtectionDomain() {
+    ProtectionDomain getProtectionDomain() {
         if (protectionDomain == null) {
-            protectionDomain = DynamicHub.allPermDomainReference.get();
+            protectionDomain = ProtectionDomainSupport.allPermDomain();
         }
         return protectionDomain;
     }
 
-    public void setProtectionDomain(ProtectionDomain domain) {
+    void setProtectionDomain(ProtectionDomain domain) {
         VMError.guarantee(protectionDomain == null && domain != null);
         protectionDomain = domain;
     }
 
-    public ReflectionData getCompleteReflectionData() {
+    ReflectionData getCompleteReflectionData(DynamicHub hub) {
         if (completeReflectionData == null) {
             List<Method> newDeclaredMethods = new ArrayList<>(Arrays.asList(hub.rd.declaredMethods));
             List<Method> newPublicMethods = new ArrayList<>(Arrays.asList(hub.rd.publicMethods));
@@ -142,7 +150,8 @@ public final class DynamicHubCompanion {
             completeReflectionData = new ReflectionData(hub.rd.declaredFields, hub.rd.publicFields, hub.rd.publicUnhiddenFields, newDeclaredMethods.toArray(new Method[0]),
                             newPublicMethods.toArray(new Method[0]),
                             newDeclaredConstructors.toArray(new Constructor<?>[0]), newPublicConstructors.toArray(new Constructor<?>[0]), hub.rd.nullaryConstructor, hub.rd.declaredPublicFields,
-                            newDeclaredPublicMethods.toArray(new Method[0]), hub.rd.declaredClasses, hub.rd.publicClasses, hub.rd.enclosingMethodOrConstructor, hub.rd.recordComponents);
+                            newDeclaredPublicMethods.toArray(new Method[0]), hub.rd.declaredClasses, hub.rd.permittedSubclasses, hub.rd.publicClasses, hub.rd.enclosingMethodOrConstructor,
+                            hub.rd.recordComponents);
         }
         return completeReflectionData;
     }

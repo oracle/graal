@@ -42,17 +42,17 @@ package com.oracle.truffle.api.impl;
 
 import java.util.function.Function;
 
-import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
+import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -78,10 +78,20 @@ final class DefaultRuntimeAccessor extends Accessor {
         }
 
         @Override
-        public RootCallTarget newCallTarget(RootNode rootNode) {
-            DefaultCallTarget target = new DefaultCallTarget(rootNode);
-            DefaultRuntimeAccessor.INSTRUMENT.onLoad(rootNode);
-            return target;
+        public RootCallTarget newCallTarget(CallTarget sourceCallTarget, RootNode rootNode) {
+            return new DefaultCallTarget(rootNode);
+        }
+
+        @Override
+        public boolean isLoaded(CallTarget callTarget) {
+            return ((DefaultCallTarget) callTarget).isLoaded();
+        }
+
+        @Override
+        public void notifyOnLoad(CallTarget callTarget) {
+            DefaultCallTarget target = (DefaultCallTarget) callTarget;
+            DefaultRuntimeAccessor.INSTRUMENT.onLoad(target.getRootNode());
+            target.setLoaded();
         }
 
         @Override
@@ -169,11 +179,6 @@ final class DefaultRuntimeAccessor extends Accessor {
         @Override
         public <T> T unsafeCast(Object value, Class<T> type, boolean condition, boolean nonNull, boolean exact) {
             return (T) value;
-        }
-
-        @Override
-        public boolean inFirstTier() {
-            return false;
         }
 
         @Override

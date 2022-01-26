@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.reflect;
 
-// Checkstyle: allow reflection
-
 import java.lang.reflect.Executable;
 
 import org.graalvm.collections.Pair;
@@ -36,6 +34,8 @@ public interface MethodMetadataDecoder {
     Pair<Executable[], MethodDescriptor[]> getQueriedAndHidingMethods(DynamicHub declaringType);
 
     MethodDescriptor[] getAllReachableMethods();
+
+    long getMetadataByteLength();
 
     class MethodDescriptor {
         private final Class<?> declaringClass;

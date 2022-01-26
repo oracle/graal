@@ -46,10 +46,15 @@ public final class SpeculationReasonGroup {
     private static final AtomicInteger nextId = new AtomicInteger(1);
 
     /**
-     * Creates speculation group whose context will always match {@code signature}.
+     * Creates a speculation group whose context will always match {@code signature}.
+     *
+     * This constructor is deleted in libgraal to ensure group ids are allocated during build time.
+     * Without this invariant, it would possible for 2 different groups to have the same id if the
+     * groups are allocated in different libgraal isolates (since static variables are
+     * isolate-local).
      */
     public SpeculationReasonGroup(String name, Class<?>... signature) {
-        this.id = nextId.get();
+        this.id = nextId.getAndIncrement();
         this.name = name;
         this.signature = signature;
         for (Class<?> c : signature) {

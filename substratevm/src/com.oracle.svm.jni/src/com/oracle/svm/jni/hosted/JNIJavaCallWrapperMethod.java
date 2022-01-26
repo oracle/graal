@@ -24,11 +24,10 @@
  */
 package com.oracle.svm.jni.hosted;
 
-// Checkstyle: allow reflection
-
 import java.lang.reflect.Executable;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.graalvm.collections.Pair;
@@ -44,6 +43,7 @@ import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.IfNode;
+import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -59,11 +59,11 @@ import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
+import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.type.StampTool;
-import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.word.LocationIdentity;
@@ -84,7 +84,8 @@ import com.oracle.svm.hosted.c.NativeLibraries;
 import com.oracle.svm.hosted.c.info.ElementInfo;
 import com.oracle.svm.hosted.c.info.StructFieldInfo;
 import com.oracle.svm.hosted.c.info.StructInfo;
-import com.oracle.svm.hosted.code.NonBytecodeStaticMethod;
+import com.oracle.svm.hosted.code.EntryPointCallStubMethod;
+import com.oracle.svm.hosted.code.FactoryMethodSupport;
 import com.oracle.svm.hosted.code.SimpleSignature;
 import com.oracle.svm.jni.JNIJavaCallWrappers;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
@@ -113,7 +114,7 @@ import jdk.vm.ci.meta.Signature;
  * @see <a href="https://docs.oracle.com/en/java/javase/11/docs/specs/jni/functions.html">Java 11
  *      JNI functions documentation</a>
  */
-public final class JNIJavaCallWrapperMethod extends NonBytecodeStaticMethod {
+public final class JNIJavaCallWrapperMethod extends EntryPointCallStubMethod {
 
     public enum CallVariant {
         VARARGS,
@@ -223,10 +224,9 @@ public final class JNIJavaCallWrapperMethod extends NonBytecodeStaticMethod {
         /* Dynamically type-check the receiver type, and invoke the method if it matches. */
         InvokeKind invokeKind = invokeMethod.isStatic() ? InvokeKind.Static : //
                         ((nonVirtual || invokeMethod.isConstructor()) ? InvokeKind.Special : InvokeKind.Virtual);
-        JNIJavaCallWrapperMethodSupport support = ImageSingletons.lookup(JNIJavaCallWrapperMethodSupport.class);
         ValueNode returnValue;
         if (!invokeMethod.hasReceiver()) {
-            returnValue = support.createMethodCall(kit, invokeMethod, invokeKind, state, args);
+            returnValue = createMethodCall(kit, invokeMethod, invokeKind, state, args);
         } else if (invokeMethod.isConstructor()) {
             /*
              * If the target method is a constructor, we can narrow down the JNI call to two
@@ -243,17 +243,17 @@ public final class JNIJavaCallWrapperMethod extends NonBytecodeStaticMethod {
             ObjectEqualsNode isNewObjectCall = kit.unique(new ObjectEqualsNode(unboxedReceiver, hubNode));
             kit.startIf(isNewObjectCall, BranchProbabilityNode.FAST_PATH_PROFILE);
             kit.thenPart();
-            ValueNode createdObjectOrNull = support.createNewObjectCall(kit, invokeMethod, state, args);
+            ValueNode createdObjectOrNull = createNewObjectCall(metaAccess, kit, invokeMethod, state, args);
             kit.elsePart();
             args[0] = typeChecked(kit, unboxedReceiver, invokeMethod.getDeclaringClass(), illegalTypeEnds, true);
-            ValueNode unboxedReceiverOrNull = support.createMethodCall(kit, invokeMethod, invokeKind, state, args);
+            ValueNode unboxedReceiverOrNull = createMethodCall(kit, invokeMethod, invokeKind, state, args);
             AbstractMergeNode merge = kit.endIf();
             merge.setStateAfter(kit.getFrameState().create(kit.bci(), merge));
             returnValue = kit.unique(new ValuePhiNode(StampFactory.object(), merge, new ValueNode[]{createdObjectOrNull, unboxedReceiverOrNull}));
         } else {
             // This is a JNI call via `Call<Type>Method` to a non-static method
             args[0] = typeChecked(kit, unboxedReceiver, invokeMethod.getDeclaringClass(), illegalTypeEnds, true);
-            returnValue = support.createMethodCall(kit, invokeMethod, invokeKind, state, args);
+            returnValue = createMethodCall(kit, invokeMethod, invokeKind, state, args);
         }
         JavaKind returnKind = (returnValue != null) ? returnValue.getStackKind() : JavaKind.Void;
 
@@ -321,6 +321,67 @@ public final class JNIJavaCallWrapperMethod extends NonBytecodeStaticMethod {
         return kit.finalizeGraph();
     }
 
+    /**
+     * Builds the object allocation for a JNI {@code NewObject} call, returning a node that contains
+     * the created object or for {@code null} when an exception occurred (in which case the
+     * exception becomes a JNI pending exception).
+     */
+    private static ValueNode createNewObjectCall(UniverseMetaAccess metaAccess, JNIGraphKit kit, ResolvedJavaMethod constructor, FrameStateBuilder state, ValueNode... argsWithReceiver) {
+        assert constructor.isConstructor() : "Cannot create a NewObject call to the non-constructor method " + constructor;
+
+        ResolvedJavaMethod factoryMethod = FactoryMethodSupport.singleton().lookup(metaAccess, constructor, false);
+
+        int bci = kit.bci();
+        ValueNode[] argsWithoutReceiver = Arrays.copyOfRange(argsWithReceiver, 1, argsWithReceiver.length);
+        ValueNode createdObject = startInvokeWithRetainedException(kit, factoryMethod, InvokeKind.Static, state, bci, argsWithoutReceiver);
+        AbstractMergeNode merge = kit.endInvokeWithException();
+        merge.setStateAfter(state.create(bci, merge));
+
+        Stamp objectStamp = StampFactory.forDeclaredType(null, constructor.getDeclaringClass(), true).getTrustedStamp();
+        ValueNode exceptionValue = kit.unique(ConstantNode.defaultForKind(JavaKind.Object));
+        return kit.getGraph().addWithoutUnique(new ValuePhiNode(objectStamp, merge, new ValueNode[]{createdObject, exceptionValue}));
+    }
+
+    /**
+     * Builds a JNI {@code Call<Type>Method} call, returning a node that contains the return value
+     * or null/zero/false when an exception occurred (in which case the exception becomes a JNI
+     * pending exception).
+     */
+    private static ValueNode createMethodCall(JNIGraphKit kit, ResolvedJavaMethod invokeMethod, InvokeKind invokeKind, FrameStateBuilder state, ValueNode... args) {
+        int bci = kit.bci();
+        InvokeWithExceptionNode invoke = startInvokeWithRetainedException(kit, invokeMethod, invokeKind, state, bci, args);
+        AbstractMergeNode invokeMerge = kit.endInvokeWithException();
+
+        if (invoke.getStackKind() == JavaKind.Void && !invokeMethod.isConstructor()) {
+            invokeMerge.setStateAfter(state.create(bci, invokeMerge));
+            return null;
+        }
+
+        ValueNode successValue = invokeMethod.isConstructor() ? args[0] : invoke;
+        ValueNode exceptionValue = kit.unique(ConstantNode.defaultForKind(successValue.getStackKind()));
+        ValueNode[] inputs = {successValue, exceptionValue};
+        ValueNode returnValue = kit.getGraph().addWithoutUnique(new ValuePhiNode(successValue.stamp(NodeView.DEFAULT), invokeMerge, inputs));
+        JavaKind returnKind = returnValue.getStackKind();
+        state.push(returnKind, returnValue);
+        invokeMerge.setStateAfter(state.create(bci, invokeMerge));
+        state.pop(returnKind);
+        return returnValue;
+    }
+
+    private static InvokeWithExceptionNode startInvokeWithRetainedException(JNIGraphKit kit, ResolvedJavaMethod invokeMethod, InvokeKind kind, FrameStateBuilder state, int bci, ValueNode... args) {
+        ValueNode formerPendingException = kit.getAndClearPendingException();
+        InvokeWithExceptionNode invoke = kit.startInvokeWithException(invokeMethod, kind, state, bci, args);
+
+        kit.noExceptionPart(); // no new exception was thrown, restore the formerly pending one
+        kit.setPendingException(formerPendingException);
+
+        kit.exceptionPart();
+        ExceptionObjectNode exceptionObject = kit.exceptionObject();
+        kit.setPendingException(exceptionObject);
+
+        return invoke;
+    }
+
     private static PiNode typeChecked(JNIGraphKit kit, ValueNode uncheckedValue, ResolvedJavaType type, List<EndNode> illegalTypeEnds, boolean isReceiver) {
         ValueNode value = uncheckedValue;
         if (isReceiver && !StampTool.isPointerNonNull(value)) {
@@ -376,7 +437,8 @@ public final class JNIJavaCallWrapperMethod extends NonBytecodeStaticMethod {
                 }
                 StructFieldInfo fieldInfo = getJNIValueOffsetOf(elementType, readKind);
                 int offset = i * elementSize + fieldInfo.getOffsetInfo().getProperty();
-                ConstantNode offsetConstant = kit.createConstant(JavaConstant.forInt(offset), providers.getWordTypes().getWordKind());
+                JavaKind wordKind = providers.getWordTypes().getWordKind();
+                ConstantNode offsetConstant = kit.createConstant(JavaConstant.forIntegerKind(wordKind, offset), wordKind);
                 OffsetAddressNode address = kit.unique(new OffsetAddressNode(array, offsetConstant));
                 LocationIdentity locationIdentity = fieldInfo.getLocationIdentity();
                 if (locationIdentity == null) {

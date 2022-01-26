@@ -26,7 +26,7 @@ package org.graalvm.libgraal.jni;
 
 import jdk.vm.ci.services.Services;
 import org.graalvm.compiler.debug.TTY;
-import org.graalvm.nativebridge.jni.NativeBridgeSupport;
+import org.graalvm.jniutils.NativeBridgeSupport;
 
 import java.util.concurrent.atomic.AtomicInteger;
 

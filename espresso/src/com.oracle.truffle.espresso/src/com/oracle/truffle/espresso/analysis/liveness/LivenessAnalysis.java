@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.BitSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.analysis.DepthFirstBlockIterator;
 import com.oracle.truffle.espresso.analysis.GraphBuilder;
 import com.oracle.truffle.espresso.analysis.Util;
@@ -52,15 +53,15 @@ public class LivenessAnalysis {
 
     public static final LivenessAnalysis NO_ANALYSIS = new LivenessAnalysis() {
         @Override
-        public void performPostBCI(long[] primitives, Object[] refs, int bci) {
+        public void performPostBCI(VirtualFrame frame, int bci) {
         }
 
         @Override
-        public void performOnEdge(long[] primitives, Object[] refs, int bci, int nextBci) {
+        public void performOnEdge(VirtualFrame frame, int bci, int nextBci) {
         }
 
         @Override
-        public void onStart(long[] primitives, Object[] refs) {
+        public void onStart(VirtualFrame frame) {
         }
     };
 
@@ -75,32 +76,33 @@ public class LivenessAnalysis {
     private final EdgeAction[] edge;
     private final LocalVariableAction onStart;
 
-    public void performOnEdge(long[] primitives, Object[] refs, int bci, int nextBci) {
+    public void performOnEdge(VirtualFrame frame, int bci, int nextBci) {
         if (CompilerDirectives.inCompiledCode()) {
             if (edge != null && edge[nextBci] != null) {
-                edge[nextBci].onEdge(primitives, refs, bci);
+                edge[nextBci].onEdge(frame, bci);
             }
         }
     }
 
-    public void onStart(long[] primitives, Object[] refs) {
+    public void onStart(VirtualFrame frame) {
         if (CompilerDirectives.inCompiledCode()) {
             if (onStart != null) {
-                onStart.execute(primitives, refs);
+                onStart.execute(frame);
             }
         }
     }
 
-    public void performPostBCI(long[] primitives, Object[] refs, int bci) {
+    public void performPostBCI(VirtualFrame frame, int bci) {
         if (CompilerDirectives.inCompiledCode()) {
             if (result != null && result[bci] != null) {
-                result[bci].execute(primitives, refs);
+                result[bci].execute(frame);
             }
         }
     }
 
     @SuppressWarnings("try")
-    public static LivenessAnalysis analyze(Method method) {
+    public static LivenessAnalysis analyze(Method.MethodVersion methodVersion) {
+        Method method = methodVersion.getMethod();
         if (!method.getContext().livenessAnalysis) {
             return NO_ANALYSIS;
         }
@@ -122,7 +124,7 @@ public class LivenessAnalysis {
             // Computes the entry/end live sets for each variable for each block.
             BlockBoundaryFinder blockBoundaryFinder;
             try (DebugCloseable boundary = STATE_TIMER.scope(scope)) {
-                blockBoundaryFinder = new BlockBoundaryFinder(method, loadStoreClosure.result());
+                blockBoundaryFinder = new BlockBoundaryFinder(methodVersion, loadStoreClosure.result());
                 DepthFirstBlockIterator.analyze(method, graph, blockBoundaryFinder);
             }
 
@@ -151,7 +153,7 @@ public class LivenessAnalysis {
             // Using the live sets and history, build a set of action for each bci, such that it
             // frees as early as possible each dead local.
             try (DebugCloseable actionFinder = ACTION_TIMER.scope(scope)) {
-                Builder builder = new Builder(graph, method, blockBoundaryFinder.result());
+                Builder builder = new Builder(graph, methodVersion, blockBoundaryFinder.result());
                 builder.build();
                 return new LivenessAnalysis(builder.actions, builder.edge, builder.onStart);
             }
@@ -174,10 +176,10 @@ public class LivenessAnalysis {
         private LocalVariableAction onStart;
 
         private final Graph<? extends LinkedBlock> graph;
-        private final Method method;
+        private final Method.MethodVersion method;
         private final BlockBoundaryResult helper;
 
-        private Builder(Graph<? extends LinkedBlock> graph, Method method, BlockBoundaryResult helper) {
+        private Builder(Graph<? extends LinkedBlock> graph, Method.MethodVersion method, BlockBoundaryResult helper) {
             this.actions = new LocalVariableAction[method.getOriginalCode().length];
             this.edge = new EdgeAction[method.getOriginalCode().length];
             this.graph = graph;

@@ -137,7 +137,7 @@ public class InspectorObjectTest {
         Value urlsValue = testOpenCloseOpen.execute(inspector);
         String[] urls = urlsValue.toString().split(",");
         testURL(urls[0]);
-        Assert.assertEquals(urls[1], "null");
+        Assert.assertEquals("null", urls[1]);
         testURL(urls[2]);
     }
 
