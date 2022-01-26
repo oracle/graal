@@ -590,15 +590,15 @@ local devkits = common_json.devkits;
   deploy_vm_ruby_java11_linux_amd64: vm.vm_java_11 + self.ruby_vm_build_linux + self.linux_deploy + self.deploy_daily_vm_linux_amd64 + self.deploy_graalvm_ruby + {name: 'daily-deploy-vm-ruby-java11-linux-amd64'},
   deploy_vm_ruby_java11_darwin_amd64: vm.vm_java_11 + self.ruby_vm_build_darwin + self.darwin_deploy + self.deploy_daily_vm_darwin + self.deploy_graalvm_ruby + {name: 'daily-deploy-vm-ruby-java11-darwin-amd64'},
 
-  builds: [{'defined_in': std.thisFile} + b for b in [
+  local builds = [
     #
     # Gates
     #
     vm.vm_java_17 + common_json.downloads.eclipse + common_json.downloads.jdt + self.gate_vm_linux_amd64 + {
-      run: [
-        ['mx', 'gate', '-B=--force-deprecation-as-warning', '--tags', 'style,fullbuild'],
-      ],
-      name: 'gate-vm-style-jdk17-linux-amd64',
+     run: [
+       ['mx', 'gate', '-B=--force-deprecation-as-warning', '--tags', 'style,fullbuild'],
+     ],
+     name: 'gate-vm-style-jdk17-linux-amd64',
     },
     self.gate_vm_linux_amd64 + self.libgraal_compiler + vm.vm_java_11 + { name: 'gate-vm-libgraal-compiler-11-linux-amd64' },
     self.gate_vm_linux_amd64 + self.libgraal_compiler + vm.vm_java_17 + { name: 'gate-vm-libgraal-compiler-17-linux-amd64' },
@@ -607,12 +607,14 @@ local devkits = common_json.devkits;
     self.gate_vm_linux_amd64 + self.libgraal_truffle + vm.vm_java_17 + vm.vm_unittest + { name: 'gate-vm-libgraal-truffle-17-linux-amd64' },
 
     vm.vm_java_17 + self.svm_common_linux_amd64 + self.sulong_linux + vm.custom_vm_linux + self.gate_vm_linux_amd64 + vm.vm_unittest + {
-      run: [
-        ['export', 'SVM_SUITE=' + vm.svm_suite],
-        ['mx', '--dynamicimports', '$SVM_SUITE,/sulong', '--disable-polyglot', '--disable-libpolyglot', 'gate', '--no-warning-as-error', '--tags', 'build,sulong'],
-      ],
-      timelimit: '1:00:00',
-      name: 'gate-vm-native-sulong-linux-amd64',
+     run: [
+       ['export', 'SVM_SUITE=' + vm.svm_suite],
+       ['mx', '--dynamicimports', '$SVM_SUITE,/sulong', '--disable-polyglot', '--disable-libpolyglot', 'gate', '--no-warning-as-error', '--tags', 'build,sulong'],
+     ],
+     timelimit: '1:00:00',
+     name: 'gate-vm-native-sulong-linux-amd64',
     },
-  ]],
+  ],
+
+  builds: [{'defined_in': std.thisFile} + b for b in builds],
 }
