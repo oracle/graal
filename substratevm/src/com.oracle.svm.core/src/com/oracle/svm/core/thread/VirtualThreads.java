@@ -29,6 +29,7 @@ import java.util.concurrent.ThreadFactory;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 
+/** Operations on virtual threads. */
 public interface VirtualThreads {
     @Fold
     static VirtualThreads get() {

@@ -86,6 +86,28 @@ import com.oracle.svm.core.util.VMError;
 
 import sun.misc.Unsafe;
 
+/**
+ * Implements operations on {@linkplain Target_java_lang_Thread Java threads}, which are on a higher
+ * abstraction level than {@link IsolateThread}s. This class distinguishes these types of threads:
+ *
+ * <ul>
+ * <li><em>Platform threads</em> are typical Java threads which correspond to an OS thread.</li>
+ * <li><em>Virtual threads</em> are light-weight threads that exist as Java objects, but are not
+ * associated with an OS thread. They are temporarily mounted (scheduled) on one or several,
+ * potentially different, platform threads.</li>
+ * <li><em>Carrier thread</em> is the term for the platform thread on which a virtual thread is
+ * currently mounted (if it is mounted). Typically there is a pool of potential carrier threads
+ * which are available to execute virtual threads.</li>
+ * </ul>
+ *
+ * Methods with <em>platform</em> or <em>carrier</em> in their names must be called <em>only</em>
+ * for that type of thread. Methods without that designation distinguish between the thread types
+ * and choose the appropriate action.
+ *
+ * @see VirtualThreads
+ * @see <a href="https://openjdk.java.net/projects/loom/">Wiki and source code of Project Loom on
+ *      which concepts of virtual threads, carrier threads, etc. are modeled</a>
+ */
 public abstract class JavaThreads {
     @Fold
     public static JavaThreads singleton() {
@@ -261,10 +283,10 @@ public abstract class JavaThreads {
         assert !isVirtual(thread);
         /*
          * As we don't use a lock, it is possible to observe any kinds of races with other threads
-         * that try to set interrupted to true. However, those races don't cause any correctness
-         * issues as we only reset interrupted to false if we observed that it was true earlier.
-         * There also can't be any problematic races with other calls to isInterrupted as
-         * clearInterrupted may only be true if this method is being executed by the current thread.
+         * that try to set the interrupted status to true. However, those races don't cause any
+         * correctness issues as we only reset it to false if we observed that it was true earlier.
+         * There also can't be any problematic races with other calls to check the interrupt status
+         * because it is cleared only by the current thread.
          */
         return getAndWriteInterruptedFlag(thread, false);
     }

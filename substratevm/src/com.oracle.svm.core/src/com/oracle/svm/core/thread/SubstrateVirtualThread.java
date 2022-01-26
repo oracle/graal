@@ -25,6 +25,7 @@
 package com.oracle.svm.core.thread;
 
 // Checkstyle: stop
+
 import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 import java.util.Locale;
@@ -37,6 +38,7 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
+import org.graalvm.nativeimage.IsolateThread;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -52,6 +54,13 @@ import sun.misc.Unsafe;
 
 // Checkstyle: allow synchronization
 
+/**
+ * Implementation of {@link Thread} that does not correspond to an {@linkplain IsolateThread OS
+ * thread} and instead gets mounted (scheduled to run) on a <em>platform thread</em> (OS thread),
+ * which, until when it is unmounted again, is called its <em>carrier thread</em>.
+ *
+ * This class is based on Project Loom's {@code java.lang.VirtualThread}.
+ */
 final class SubstrateVirtualThread extends Thread {
     private static final Unsafe U = GraalUnsafeAccess.getUnsafe();
     private static final ScheduledExecutorService UNPARKER = createDelayedTaskScheduler();
@@ -97,7 +106,11 @@ final class SubstrateVirtualThread extends Thread {
     // carrier thread when mounted
     private volatile Thread carrierThread;
 
-    // number of active pinnings to the carrier thread
+    /**
+     * Number of active {@linkplain #pin() pinnings} of this virtual thread to its current carrier
+     * thread, which prevent it from yielding and therefore unmounting. This is typically needed
+     * when using or acquiring resources that are associated with the carrier thread.
+     */
     private short pins;
 
     // termination object when joining, created lazily if needed

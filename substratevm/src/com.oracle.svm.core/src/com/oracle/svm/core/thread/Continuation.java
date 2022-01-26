@@ -76,7 +76,7 @@ public final class Continuation {
 
     void enter() {
         int stateBefore = StackOverflowCheck.singleton().getState();
-        VMError.guarantee(!StackOverflowCheck.singleton().isYellowZoneAvailable(), "Stack overflow checks must be active when entering a continuation");
+        VMError.guarantee(!StackOverflowCheck.singleton().isYellowZoneAvailable());
 
         boolean isContinue = ip.isNonNull();
         if (isContinue) {
@@ -153,7 +153,7 @@ public final class Continuation {
         ip = leafIP;
 
         KnownIntrinsics.farReturn(0, rootSP, rootIP, false);
-        throw VMError.shouldNotReachHere("value should be returned by `farReturn`");
+        throw VMError.shouldNotReachHere();
     }
 
     public boolean isStarted() {

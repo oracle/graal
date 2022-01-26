@@ -34,10 +34,12 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.util.VMError;
 
 /**
- * Code specific to virtual threads is part of the {@link Thread} methods, e.g. {@code yield} or
- * {@code sleep}, and the implementation for platform threads generally in {@code yield0} or
- * {@code sleep0}, so we only substitute this platform thread code in
- * {@link Target_java_lang_Thread}, and never expect these methods to be reachable.
+ * In a Project Loom JDK, code specific to virtual threads is part of the {@link Thread} methods,
+ * e.g. {@code yield} or {@code sleep}, and the implementation for platform threads is generally in
+ * methods named {@code yield0} or {@code sleep0}, so we only substitute that platform thread code
+ * in {@link Target_java_lang_Thread}, and generally do not expect these methods to be reachable.
+ *
+ * @see <a href="https://openjdk.java.net/projects/loom/">Project Loom (Wiki, code, etc.)</a>
  */
 final class LoomVirtualThreads implements VirtualThreads {
     private static Target_java_lang_VirtualThread cast(Thread thread) {
