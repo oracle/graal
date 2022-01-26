@@ -1879,7 +1879,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
             del benchmarks["naive-bayes"]
             del benchmarks["page-rank"]
 
-        if mx.get_arch() != "amd64" or mx.get_jdk().javaCompliance > '11':
+        if self.version() in ["0.9.0", "0.10.0", "0.11.0", "0.12.0", "0.13.0"] and mx.get_arch() != "amd64" or mx.get_jdk().javaCompliance > '11':
             # GR-33879
             # JNA libraries needed are currently limited to amd64: renaissance-benchmarks/renaissance #153
             del benchmarks["db-shootout"]
@@ -1900,7 +1900,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
         return "0.11.0"  # stick to 0.11.0 for both JIT and AOT until Native Image is compatible with 0.13.0 (GR-34147)
 
     def availableSuiteVersions(self):
-        return ["0.9.0", "0.10.0", "0.11.0", "0.12.0", "0.13.0"]
+        return ["0.9.0", "0.10.0", "0.11.0", "0.12.0", "0.13.0", "0.14.0"]
 
     def renaissancePath(self):
         lib = mx.library(self.renaissanceLibraryName())
@@ -1926,7 +1926,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
 
     def vmArgs(self, bmSuiteArgs):
         vm_args = super(RenaissanceBenchmarkSuite, self).vmArgs(bmSuiteArgs)
-        # The --add-opens flag will be available in the next Renaissance release (> 0.13.0).
+        # Those --add-opens flags are specified in the manifest as of renaissance 0.14.0
         if java_home_jdk().javaCompliance > '16' and self.version() in ["0.9.0", "0.10.0", "0.11.0", "0.12.0",
                                                                         "0.13.0"]:
             vm_args += ["--add-opens", "java.management/sun.management=ALL-UNNAMED"]
