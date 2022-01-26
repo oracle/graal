@@ -739,6 +739,10 @@ public abstract class Launcher {
      * @since 20.0
      */
     protected boolean parseCommonOption(String defaultOptionPrefix, Map<String, String> polyglotOptions, boolean experimentalOptions, String arg) {
+        // Ignore, these were already parsed before
+        if ("--experimental-options".equals(arg) || "--experimental-options=false".equals(arg) || "--experimental-options=true".equals(arg)) {
+            return true;
+        }
         if (!arg.startsWith("--help")) {
             return false;
         }
