@@ -191,11 +191,6 @@ final class PolyglotSharingLayer {
                 // as the sharing layer is not published.
                 s.contextPolicy = ContextPolicy.EXCLUSIVE;
             }
-
-            if (!isSingleContext()) {
-                this.hostLanguage.singleLanguageContext.invalidate();
-            }
-
         } else {
             // layer was used before and is sharable
             previousLanguageOptions = s.previousLanguageOptions;
@@ -242,6 +237,7 @@ final class PolyglotSharingLayer {
             s.singleContextValue.update(context);
         } else {
             s.singleContextValue.invalidate();
+            hostLanguage.singleLanguageContext.invalidate();
         }
 
         s.claimedCount++;
