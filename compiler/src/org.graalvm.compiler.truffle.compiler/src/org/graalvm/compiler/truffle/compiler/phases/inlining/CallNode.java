@@ -75,6 +75,8 @@ public final class CallNode extends Node implements Comparable<CallNode> {
     // Effectively final, cannot be initialized in the constructor because needs getParent() to
     // calculate
     private int recursionDepth;
+    // Effectively final, populated only as part of expanded if debug dump level >= info
+    @SuppressWarnings("unused") private StructuredGraph irAfterPE;
     // Effectively final, populated only as part of expanded
     private StructuredGraph ir;
     // Effectively final, populated only as part of expanded (unless root, root does not have
@@ -107,6 +109,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         root.ir = request.graph;
         root.policyData = callTree.getPolicy().newCallNodeData(root);
         final GraphManager.Entry entry = callTree.getGraphManager().peRoot();
+        root.irAfterPE = entry.graphAfterPEForDebugDump;
         EconomicMap<Invoke, TruffleCallNode> invokeToTruffleCallNode = entry.invokeToTruffleCallNode;
         root.verifyTrivial(entry);
         addChildren(root, invokeToTruffleCallNode);
@@ -232,6 +235,7 @@ public final class CallNode extends Node implements Comparable<CallNode> {
         }
         verifyTrivial(entry);
         ir = copyGraphAndAddChildren(entry);
+        irAfterPE = entry.graphAfterPEForDebugDump;
         addIndirectChildren(entry);
         getPolicy().afterExpand(this);
     }
