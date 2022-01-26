@@ -50,12 +50,12 @@ public interface EspressoReference {
     StaticObject getGuestReference();
 
     /**
-     * {@link Reference<StaticObject>#get()}
+     * {@link Reference<StaticObject>#get()}.
      */
     StaticObject get();
 
     /**
-     * {@link Reference#clear()}
+     * {@link Reference#clear()}.
      */
     void clear();
 

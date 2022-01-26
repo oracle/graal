@@ -23,7 +23,6 @@
 
 package com.oracle.truffle.espresso.runtime;
 
-import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -154,7 +153,7 @@ class EspressoReferenceDrainer implements ContextAccess {
         // Cleaner references extends PhantomReference but are cleared.
         // See HotSpot's ReferenceProcessor::process_discovered_references in referenceProcessor.cpp
         if (InterpreterToVM.instanceOf(ref, getMeta().sun_misc_Cleaner)) {
-            ((Reference<?>) wrapper).clear();
+            wrapper.clear();
         }
         getMeta().java_lang_ref_Reference_next.compareAndSwapObject(ref, StaticObject.NULL, ref);
     }
