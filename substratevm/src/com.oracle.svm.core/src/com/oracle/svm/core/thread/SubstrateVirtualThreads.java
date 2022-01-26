@@ -68,7 +68,7 @@ final class SubstrateVirtualThreads implements VirtualThreads {
 
     @Override
     public boolean getAndClearInterrupt(Thread thread) {
-        return cast(thread).getAndClearCarrierInterrupt();
+        return cast(thread).getAndClearInterrupt();
     }
 
     @Override

@@ -266,6 +266,10 @@ public abstract class JavaThreads {
      * in VM-internal contexts.
      */
     static boolean isInterrupted(Thread thread) {
+        return getInterruptedFlag(thread);
+    }
+
+    private static boolean getInterruptedFlag(Thread thread) {
         if (JavaVersionUtil.JAVA_SPEC >= 17) {
             return toTarget(thread).interruptedJDK17OrLater;
         }
@@ -276,11 +280,10 @@ public abstract class JavaThreads {
         if (supportsVirtual() && isVirtual(thread)) {
             return VirtualThreads.get().getAndClearInterrupt(thread);
         }
-        return platformGetAndClearInterrupt(thread);
+        return getAndClearInterruptedFlag(thread);
     }
 
-    static boolean platformGetAndClearInterrupt(Thread thread) {
-        assert !isVirtual(thread);
+    static boolean getAndClearInterruptedFlag(Thread thread) {
         /*
          * As we don't use a lock, it is possible to observe any kinds of races with other threads
          * that try to set the interrupted status to true. However, those races don't cause any
@@ -288,32 +291,27 @@ public abstract class JavaThreads {
          * There also can't be any problematic races with other calls to check the interrupt status
          * because it is cleared only by the current thread.
          */
-        return getAndWriteInterruptedFlag(thread, false);
+        boolean oldValue = isInterrupted(thread);
+        if (oldValue) {
+            writeInterruptedFlag(thread, false);
+        }
+        return oldValue;
     }
 
     static void platformSetInterrupt(Thread thread) {
         assert !isVirtual(thread);
-        boolean oldValue = getAndWriteInterruptedFlag(thread, true);
-        if (!oldValue) {
+        if (!isInterrupted(thread)) {
+            writeInterruptedFlag(thread, true);
             toTarget(thread).interrupt0();
         }
     }
 
-    static boolean getAndWriteInterruptedFlag(Thread thread, boolean newValue) {
-        Target_java_lang_Thread tjlt = toTarget(thread);
-        boolean oldValue;
-        if (JavaVersionUtil.JAVA_SPEC <= 11) {
-            oldValue = tjlt.interruptedJDK11OrEarlier;
-            if (oldValue != newValue) {
-                tjlt.interruptedJDK11OrEarlier = newValue;
-            }
+    static void writeInterruptedFlag(Thread thread, boolean value) {
+        if (JavaVersionUtil.JAVA_SPEC >= 17) {
+            toTarget(thread).interruptedJDK17OrLater = value;
         } else {
-            oldValue = tjlt.interruptedJDK17OrLater;
-            if (oldValue != newValue) {
-                tjlt.interruptedJDK17OrLater = newValue;
-            }
+            toTarget(thread).interruptedJDK11OrEarlier = value;
         }
-        return oldValue;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

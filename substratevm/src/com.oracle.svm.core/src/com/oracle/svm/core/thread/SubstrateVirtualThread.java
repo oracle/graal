@@ -185,7 +185,7 @@ final class SubstrateVirtualThread extends Thread {
             Object token = switchToCarrierAndAcquireInterruptLock();
             try {
                 if (!JavaThreads.isInterrupted(this)) {
-                    JavaThreads.platformGetAndClearInterrupt(carrier);
+                    JavaThreads.getAndClearInterruptedFlag(carrier);
                 }
             } finally {
                 releaseInterruptLockAndSwitchBack(token);
@@ -203,7 +203,7 @@ final class SubstrateVirtualThread extends Thread {
         synchronized (interruptLock()) { // synchronize with interrupt
             this.carrierThread = null; // can be a weaker write with release semantics
         }
-        JavaThreads.platformGetAndClearInterrupt(carrier);
+        JavaThreads.getAndClearInterruptedFlag(carrier);
     }
 
     private boolean yieldContinuation() {
@@ -483,7 +483,7 @@ final class SubstrateVirtualThread extends Thread {
         if (Thread.currentThread() != this) {
             Object token = switchToCarrierAndAcquireInterruptLock();
             try {
-                JavaThreads.getAndWriteInterruptedFlag(this, true);
+                JavaThreads.writeInterruptedFlag(this, true);
                 Target_sun_nio_ch_Interruptible b = JavaThreads.toTarget(this).blocker;
                 if (b != null) {
                     b.interrupt(this);
@@ -496,17 +496,19 @@ final class SubstrateVirtualThread extends Thread {
                 releaseInterruptLockAndSwitchBack(token);
             }
         } else {
-            JavaThreads.getAndWriteInterruptedFlag(this, true);
+            JavaThreads.writeInterruptedFlag(this, true);
             JavaThreads.platformSetInterrupt(carrierThread);
         }
         unpark();
     }
 
-    boolean getAndClearCarrierInterrupt() {
+    boolean getAndClearInterrupt() {
         assert Thread.currentThread() == this;
         Object token = switchToCarrierAndAcquireInterruptLock();
         try {
-            return JavaThreads.platformGetAndClearInterrupt(carrierThread);
+            boolean oldValue = JavaThreads.getAndClearInterruptedFlag(this);
+            JavaThreads.getAndClearInterruptedFlag(carrierThread);
+            return oldValue;
         } finally {
             releaseInterruptLockAndSwitchBack(token);
         }
