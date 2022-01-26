@@ -1228,7 +1228,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         @SuppressWarnings("try")
         @Override
         public void debugContext(Consumer<DebugContext> action) {
-            try (DebugContext.Scope s = debugContext.scope("DebugCodeInfo", provenance)) {
+            try (DebugContext.Scope s = debugContext.scope("DebugDataInfo", provenance)) {
                 action.accept(debugContext);
             } catch (Throwable e) {
                 throw debugContext.handle(e);
