@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -270,17 +270,5 @@ public final class ArrayKlass extends Klass {
     @Override
     public Assumption getRedefineAssumption() {
         return componentType.getRedefineAssumption();
-    }
-
-    private static class HierarchyInfo {
-        private final Klass[] supertypesWithSelfCache;
-        private final int hierarchyDepth;
-        private final ObjectKlass.KlassVersion[] transitiveInterfaceCache;
-
-        HierarchyInfo(Klass[] supertypesWithSelfCache, int hierarchyDepth, ObjectKlass.KlassVersion[] transitiveInterfaceCache) {
-            this.supertypesWithSelfCache = supertypesWithSelfCache;
-            this.hierarchyDepth = hierarchyDepth;
-            this.transitiveInterfaceCache = transitiveInterfaceCache;
-        }
     }
 }

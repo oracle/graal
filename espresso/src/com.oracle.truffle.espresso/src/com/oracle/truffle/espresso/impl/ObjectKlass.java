@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1525,12 +1525,7 @@ public final class ObjectKlass extends Klass {
         private final ClassHierarchyAssumption noConcreteSubclassesAssumption;
         // endregion
 
-        @CompilationFinal(dimensions = 1) //
-        private Klass[] supertypesWithSelfCache;
-
-        @CompilationFinal private int hierarchyDepth = -1;
-
-        @CompilationFinal(dimensions = 1) private KlassVersion[] transitiveInterfaceCache;
+        @CompilationFinal private HierarchyInfo hierarchyInfo;
 
         // used to create the first version only
         private KlassVersion(RuntimeConstantPool pool, LinkedKlass linkedKlass, ObjectKlass superKlass, ObjectKlass[] superInterfaces) {
@@ -1766,48 +1761,40 @@ public final class ObjectKlass extends Klass {
 
         // index 0 is Object, index hierarchyDepth is this
         public Klass[] getSuperTypes() {
-            Klass[] supertypes = supertypesWithSelfCache;
-            if (supertypes == null) {
+            return getHierarchyInfo().supertypesWithSelfCache;
+        }
+        
+        public int getHierarchyDepth() {
+            return getHierarchyInfo().hierarchyDepth;
+        }
+        
+        public ObjectKlass.KlassVersion[] getTransitiveInterfacesList() {
+            return getHierarchyInfo().transitiveInterfaceCache;
+        }
+
+        private HierarchyInfo getHierarchyInfo() {
+            HierarchyInfo info = hierarchyInfo;
+            if (info == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                if (superKlass == null) {
-                    this.supertypesWithSelfCache = new Klass[]{this.getKlass()};
-                    return supertypesWithSelfCache;
-                }
+                info = hierarchyInfo = updateHierarchyInfo();
+            }
+            return info;
+        }
+
+        private HierarchyInfo updateHierarchyInfo() {
+            int depth = superKlass == null ? 0 : superKlass.getHierarchyDepth() + 1;
+
+            Klass[] supertypes;
+            if (superKlass == null) {
+                supertypes = new Klass[]{this.getKlass()};
+            } else {
                 Klass[] superKlassTypes = superKlass.getSuperTypes();
                 supertypes = new Klass[superKlassTypes.length + 1];
-                int depth = getHierarchyDepth();
                 assert supertypes.length == depth + 1;
-                supertypes[depth] = this.getKlass();
                 System.arraycopy(superKlassTypes, 0, supertypes, 0, depth);
-                supertypesWithSelfCache = supertypes;
+                supertypes[depth] = this.getKlass();
             }
-            return supertypes;
-        }
-
-        public int getHierarchyDepth() {
-            int result = hierarchyDepth;
-            if (result == -1) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                if (superKlass == null) {
-                    // java.lang.Object
-                    result = 0;
-                } else {
-                    result = superKlass.getHierarchyDepth() + 1;
-                }
-                hierarchyDepth = result;
-            }
-            return result;
-        }
-
-        public ObjectKlass.KlassVersion[] getTransitiveInterfacesList() {
-            ObjectKlass.KlassVersion[] transitiveInterfaces = transitiveInterfaceCache;
-            if (transitiveInterfaces == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                // Use the itable construction.
-                transitiveInterfaces = iKlassTable;
-                transitiveInterfaceCache = transitiveInterfaces;
-            }
-            return transitiveInterfaces;
+            return new HierarchyInfo(supertypes, depth, iKlassTable);
         }
     }
 }
