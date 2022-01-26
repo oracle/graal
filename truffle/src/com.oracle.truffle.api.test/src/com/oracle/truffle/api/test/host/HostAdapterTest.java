@@ -40,9 +40,11 @@
  */
 package com.oracle.truffle.api.test.host;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -64,13 +66,14 @@ import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 @RunWith(Parameterized.class)
-public class HostAdapterTest {
+public class HostAdapterTest extends AbstractPolyglotTest {
 
     public enum Using {
         HostSymbol,
@@ -115,8 +118,6 @@ public class HostAdapterTest {
             context.close();
         }
     }
-
-    private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
     @BeforeClass
     public static void runWithWeakEncapsulationOnly() {
@@ -170,11 +171,10 @@ public class HostAdapterTest {
 
             Object instance2 = INTEROP.instantiate(adapter, env.asGuestValue(ProxyObject.fromMap(Collections.singletonMap("baseMethod", (ProxyExecutable) (args) -> "override"))));
             assertEquals("override", INTEROP.invokeMember(instance2, "baseMethod"));
-            try {
-                INTEROP.invokeMember(instance2, "abstractMethod");
-                fail("should have thrown");
-            } catch (Exception e) {
-            }
+
+            assertFails(() -> {
+                return INTEROP.invokeMember(instance2, "abstractMethod");
+            }, AbstractTruffleException.class, e -> assertTrue(e.toString(), env.isHostException(e)));
         }
     }
 
@@ -227,27 +227,20 @@ public class HostAdapterTest {
     @Test
     public void testCreateHostAdapterImplementationsNotAllowed() {
         try (TestContext c = new TestContext((b) -> b.allowHostAccess(HostAccess.EXPLICIT))) {
+            final String expectedMessage = "Implementation not allowed";
             TruffleLanguage.Env env = c.env;
-            try {
+            assertFails(() -> {
                 createHostAdapterClass(env, new Class<?>[]{Interface.class});
-                fail("should have thrown");
-            } catch (IllegalArgumentException | SecurityException e) {
-            }
-            try {
+            }, IllegalArgumentException.class, e -> assertThat(e.getMessage(), containsString(expectedMessage)));
+            assertFails(() -> {
                 createHostAdapterClass(env, new Class<?>[]{Interface.class, Callable.class});
-                fail("should have thrown");
-            } catch (IllegalArgumentException | SecurityException e) {
-            }
-            try {
+            }, IllegalArgumentException.class, e -> assertThat(e.getMessage(), containsString(expectedMessage)));
+            assertFails(() -> {
                 createHostAdapterClass(env, new Class<?>[]{Extensible.class});
-                fail("should have thrown");
-            } catch (IllegalArgumentException | SecurityException e) {
-            }
-            try {
+            }, IllegalArgumentException.class, e -> assertThat(e.getMessage(), containsString(expectedMessage)));
+            assertFails(() -> {
                 createHostAdapterClass(env, new Class<?>[]{Extensible.class, Interface.class, Callable.class});
-                fail("should have thrown");
-            } catch (IllegalArgumentException | SecurityException e) {
-            }
+            }, IllegalArgumentException.class, e -> assertThat(e.getMessage(), containsString(expectedMessage)));
         }
     }
 
@@ -255,16 +248,13 @@ public class HostAdapterTest {
     public void testCreateHostAdapterIllegalArgument() {
         try (TestContext c = new TestContext((b) -> b.allowHostAccess(HostAccess.EXPLICIT))) {
             TruffleLanguage.Env env = c.env;
-            try {
+            assertFails(() -> {
                 createHostAdapterClass(env, new Class<?>[]{});
-                fail("should have thrown");
-            } catch (IllegalArgumentException e) {
-            }
-            try {
+            }, IllegalArgumentException.class, e -> assertThat(e.getMessage(), containsString("Expected at least one type")));
+
+            assertFails(() -> {
                 createHostAdapterClass(env, null);
-                fail("should have thrown");
-            } catch (NullPointerException e) {
-            }
+            }, NullPointerException.class);
         }
     }
 
