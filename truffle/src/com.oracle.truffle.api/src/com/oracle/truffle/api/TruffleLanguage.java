@@ -3039,7 +3039,8 @@ public abstract class TruffleLanguage<C> {
          * {@linkplain com.oracle.truffle.api.interop.InteropLibrary#isMemberInvocable invocable}
          * members. Implementations must be
          * {@linkplain org.graalvm.polyglot.HostAccess.Builder#allowImplementations(Class) allowed}
-         * for these types. The returned adapter class is also a
+         * for these types. The returned host adapter class is an instantiable
+         * {@linkplain #isHostObject(Object) host object} that is also a
          * {@linkplain com.oracle.truffle.api.interop.InteropLibrary#isMetaObject meta object}, so
          * {@link com.oracle.truffle.api.interop.InteropLibrary#isMetaInstance isMetaInstance} can
          * be used to check if an object is an instance of this adapter class. See usage example
