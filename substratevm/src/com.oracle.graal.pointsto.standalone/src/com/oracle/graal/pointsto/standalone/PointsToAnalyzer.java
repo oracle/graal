@@ -32,7 +32,6 @@ import java.io.File;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.net.URLClassLoader;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -73,6 +72,7 @@ import com.oracle.graal.pointsto.standalone.heap.StandaloneHeapSnapshotVerifier;
 import com.oracle.graal.pointsto.standalone.heap.StandaloneImageHeapScanner;
 import com.oracle.graal.pointsto.standalone.meta.StandaloneConstantFieldProvider;
 import com.oracle.graal.pointsto.standalone.meta.StandaloneConstantReflectionProvider;
+import com.oracle.graal.pointsto.standalone.replacements.AccessControllerSubstitutionProcessor;
 import com.oracle.graal.pointsto.standalone.util.Timer;
 import com.oracle.graal.pointsto.typestate.DefaultAnalysisPolicy;
 import com.oracle.graal.pointsto.util.AnalysisError;
@@ -105,7 +105,7 @@ public final class PointsToAnalyzer {
     private final OptionValues options;
     private final StandalonePointsToAnalysis bigbang;
     private final StandaloneAnalysisFeatureManager standaloneAnalysisFeatureManager;
-    private final ClassLoader analysisClassLoader;
+    private final StandaloneAnalysisClassLoader standaloneAnalysisClassLoader;
     private final DebugContext debugContext;
     private StandaloneAnalysisFeatureImpl.OnAnalysisExitAccessImpl onAnalysisExitAccess;
     private final String analysisName;
@@ -131,20 +131,22 @@ public final class PointsToAnalyzer {
                 e.printStackTrace();
             }
         }
-        analysisClassLoader = new URLClassLoader(urls.toArray(new URL[0]), ClassLoader.getPlatformClassLoader());
+        standaloneAnalysisClassLoader = new StandaloneAnalysisClassLoader(urls.toArray(new URL[0]), ClassLoader.getPlatformClassLoader());
         Providers originalProviders = GraalAccess.getOriginalProviders();
         SnippetReflectionProvider snippetReflection = originalProviders.getSnippetReflection();
         MetaAccessProvider originalMetaAccess = originalProviders.getMetaAccess();
         debugContext = new DebugContext.Builder(options, new GraalDebugHandlersFactory(snippetReflection)).build();
         ForkJoinPool executor = PointsToAnalysis.createExecutor(debugContext, Math.min(Runtime.getRuntime().availableProcessors(), 32));
-        StandaloneHost standaloneHost = new StandaloneHost(options, analysisClassLoader);
+        StandaloneHost standaloneHost = new StandaloneHost(options, standaloneAnalysisClassLoader);
         int wordSize = getWordSize();
         AnalysisPolicy analysisPolicy = PointstoOptions.AllocationSiteSensitiveHeap.getValue(options) ? new BytecodeSensitiveAnalysisPolicy(options)
                         : new DefaultAnalysisPolicy(options);
 
         JavaKind wordKind = JavaKind.fromWordSize(wordSize);
-        AnalysisUniverse aUniverse = new AnalysisUniverse(standaloneHost, wordKind,
-                        analysisPolicy, SubstitutionProcessor.IDENTITY, originalMetaAccess, snippetReflection, new PointsToAnalysisFactory(), new StandaloneAnnotationExtractor());
+        AccessControllerSubstitutionProcessor accessControllerSubstitutionProcessor = new AccessControllerSubstitutionProcessor(originalMetaAccess, standaloneAnalysisClassLoader);
+        AnalysisUniverse aUniverse = new AnalysisUniverse(standaloneHost, wordKind, analysisPolicy,
+                        SubstitutionProcessor.chain(accessControllerSubstitutionProcessor, SubstitutionProcessor.IDENTITY),
+                        originalMetaAccess, snippetReflection, new PointsToAnalysisFactory(), new StandaloneAnnotationExtractor());
         AnalysisMetaAccess aMetaAccess = new StandaloneAnalysisMetaAccess(aUniverse, originalMetaAccess);
         StandaloneConstantReflectionProvider aConstantReflection = new StandaloneConstantReflectionProvider(aUniverse, HotSpotJVMCIRuntime.runtime());
         StandaloneConstantFieldProvider aConstantFieldProvider = new StandaloneConstantFieldProvider(aMetaAccess);
@@ -162,7 +164,7 @@ public final class PointsToAnalyzer {
         aUniverse.setBigBang(bigbang);
         ImageHeap heap = new ImageHeap();
         StandaloneImageHeapScanner heapScanner = new StandaloneImageHeapScanner(bigbang, heap, aMetaAccess,
-                        snippetReflection, aConstantReflection, new AnalysisObjectScanningObserver(bigbang), analysisClassLoader);
+                        snippetReflection, aConstantReflection, new AnalysisObjectScanningObserver(bigbang), standaloneAnalysisClassLoader);
         aUniverse.setHeapScanner(heapScanner);
         HeapSnapshotVerifier heapVerifier = new StandaloneHeapSnapshotVerifier(bigbang, heap, heapScanner);
         aUniverse.setHeapVerifier(heapVerifier);
@@ -286,11 +288,12 @@ public final class PointsToAnalyzer {
         registerEntryMethods();
         registerFeatures();
         int exitCode = 0;
-        Feature.BeforeAnalysisAccess beforeAnalysisAccess = new StandaloneAnalysisFeatureImpl.BeforeAnalysisAccessImpl(standaloneAnalysisFeatureManager, analysisClassLoader, bigbang, debugContext);
+        Feature.BeforeAnalysisAccess beforeAnalysisAccess = new StandaloneAnalysisFeatureImpl.BeforeAnalysisAccessImpl(standaloneAnalysisFeatureManager, standaloneAnalysisClassLoader, bigbang,
+                        debugContext);
         standaloneAnalysisFeatureManager.forEachFeature(feature -> feature.beforeAnalysis(beforeAnalysisAccess));
         try (Timer t = new Timer("analysis", analysisName)) {
-            StandaloneAnalysisFeatureImpl.DuringAnalysisAccessImpl config = new StandaloneAnalysisFeatureImpl.DuringAnalysisAccessImpl(standaloneAnalysisFeatureManager, analysisClassLoader, bigbang,
-                            debugContext);
+            StandaloneAnalysisFeatureImpl.DuringAnalysisAccessImpl config = new StandaloneAnalysisFeatureImpl.DuringAnalysisAccessImpl(standaloneAnalysisFeatureManager,
+                            standaloneAnalysisClassLoader, bigbang, debugContext);
             bigbang.runAnalysis(debugContext, (analysisUniverse) -> {
                 bigbang.getHostVM().notifyClassReachabilityListener(analysisUniverse, config);
                 standaloneAnalysisFeatureManager.forEachFeature(feature -> feature.duringAnalysis(config));
@@ -300,7 +303,7 @@ public final class PointsToAnalyzer {
             reportException(e);
             exitCode = 1;
         }
-        onAnalysisExitAccess = new StandaloneAnalysisFeatureImpl.OnAnalysisExitAccessImpl(standaloneAnalysisFeatureManager, analysisClassLoader, bigbang, debugContext);
+        onAnalysisExitAccess = new StandaloneAnalysisFeatureImpl.OnAnalysisExitAccessImpl(standaloneAnalysisFeatureManager, standaloneAnalysisClassLoader, bigbang, debugContext);
         standaloneAnalysisFeatureManager.forEachFeature(feature -> feature.onAnalysisExit(onAnalysisExitAccess));
         AnalysisReporter.printAnalysisReports("pointsto_" + analysisName, options, StandaloneOptions.reportsPath(options, "reports").toString(), bigbang);
         bigbang.getUnsupportedFeatures().report(bigbang);
@@ -337,7 +340,7 @@ public final class PointsToAnalyzer {
         if (mainEntryIsSet) {
             String entryClass = analysisName;
             try {
-                Class<?> analysisMainClass = Class.forName(entryClass, false, analysisClassLoader);
+                Class<?> analysisMainClass = Class.forName(entryClass, false, standaloneAnalysisClassLoader);
                 Method main = analysisMainClass.getDeclaredMethod("main", String[].class);
                 // main method is static, whatever the invokeSpecial is it is ignored.
                 bigbang.addRootMethod(main, true, "Single entry point, registered in " + PointsToAnalyzer.class);
@@ -350,7 +353,7 @@ public final class PointsToAnalyzer {
 
         if (entrypointsAreSet) {
             String entryPointsFile = StandaloneOptions.AnalysisEntryPointsFile.getValue(options);
-            MethodConfigReader.readMethodFromFile(entryPointsFile, bigbang, analysisClassLoader, m -> {
+            MethodConfigReader.readMethodFromFile(entryPointsFile, bigbang, standaloneAnalysisClassLoader, m -> {
                 // We need to start analyzing from any method given by user, even it is a virtual
                 // method.
                 boolean isInvokeSpecial = m.isConstructor() || m.isFinal();
@@ -379,6 +382,6 @@ public final class PointsToAnalyzer {
     }
 
     public ClassLoader getClassLoader() {
-        return analysisClassLoader;
+        return standaloneAnalysisClassLoader;
     }
 }
