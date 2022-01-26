@@ -297,7 +297,7 @@ public abstract class EspressoRootNode extends RootNode implements ContextAccess
 
         @Override
         public Object execute(VirtualFrame frame) {
-            assert getMethod().getDeclaringKlass().isInitializedOrInitializing() : getMethod().getDeclaringKlass();
+            assert getMethod().getDeclaringKlass().isInitializedOrInitializing() || getContext().anyHierarchyChanged() : getMethod().getDeclaringKlass();
             if (usesMonitors()) {
                 initMonitorStack(frame, new MonitorStack());
             }
