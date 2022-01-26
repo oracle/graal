@@ -345,9 +345,13 @@ public abstract class PartialEvaluator {
         try (PerformanceInformationHandler handler = PerformanceInformationHandler.install(request.options)) {
             try (DebugContext.Scope s = request.debug.scope("CreateGraph", request.graph);
                             Indent indent = request.debug.logAndIndent("evaluate %s", request.graph);) {
-                inliningGraphPE(request);
+                boolean inlined = inliningGraphPE(request);
                 assert GraphOrder.assertSchedulableGraph(request.graph) : "PE result must be schedulable in order to apply subsequent phases";
-                truffleTier(request);
+                // If no inlining has happened, we can skip the final Truffle tier round
+                // since these phases have already been run during PE of the root.
+                if (inlined) {
+                    truffleTier(request);
+                }
                 applyInstrumentationPhases(request);
                 handler.reportPerformanceWarnings(request.compilable, request.graph);
                 if (request.task.isCancelled()) {
@@ -638,11 +642,15 @@ public abstract class PartialEvaluator {
     }
 
     @SuppressWarnings({"unused", "try"})
-    private void inliningGraphPE(Request request) {
+    private boolean inliningGraphPE(Request request) {
+        boolean inlined;
         try (DebugCloseable a = PartialEvaluationTimer.start(request.debug)) {
-            new AgnosticInliningPhase(this, request).apply(request.graph, providers);
+            AgnosticInliningPhase inliningPhase = new AgnosticInliningPhase(this, request);
+            inliningPhase.apply(request.graph, providers);
+            inlined = inliningPhase.hasInlined();
         }
         request.graph.maybeCompress();
+        return inlined;
     }
 
     protected void applyInstrumentationPhases(Request request) {
