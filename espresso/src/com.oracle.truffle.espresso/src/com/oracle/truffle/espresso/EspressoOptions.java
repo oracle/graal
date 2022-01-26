@@ -495,7 +495,7 @@ public final class EspressoOptions {
                 }
             });
 
-    @Option(help = "Sets the mode of the bytecode verifier.", //
+    @Option(help = "Selects the jimage reader.", //
             category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<JImageMode> JImage = new OptionKey<>(null, JIMAGE_MODE_OPTION_TYPE);
 
