@@ -194,8 +194,8 @@ public class ReflectionObjectReplacer implements Function<Object, Object> {
              */
             try {
                 abstractScope.lookup("");
-            } catch (UnsatisfiedLinkError | NoClassDefFoundError e) {
-                // The lookup calls Class.getEnclosingClass() which may fail.
+            } catch (LinkageError | InternalError e) {
+                /* The lookup calls Class.getEnclosingClass() which may fail. */
             }
         }
     }
