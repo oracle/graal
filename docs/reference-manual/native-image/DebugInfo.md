@@ -16,6 +16,8 @@ The first option, `-g`, instructs `native-image` to generate debug information, 
 Disabling all optimizations is not required, but in general it makes the debugging experience better.
 The resulting image will contain debug records in a format the GNU Debugger (GDB) understands.
 
+> Note: Native Image debugging currently works on Linux with initial support for macOS. The feature is experimental.
+
 ## Source File Caching
 
 The `GenerateDebugInfo` option also enables caching of sources for any JDK runtime classes, GraalVM classes, and application classes which can be located during native image generation.
