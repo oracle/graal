@@ -25,7 +25,6 @@
 package org.graalvm.compiler.hotspot.aarch64;
 
 import static jdk.vm.ci.aarch64.AArch64.lr;
-import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 import static jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig.fp;
 import static jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig.inlineCacheRegister;
 import static jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig.metaspaceMethodRegister;
@@ -52,7 +51,6 @@ import org.graalvm.compiler.nodes.DirectCallTargetNode;
 import org.graalvm.compiler.nodes.FullInfopointNode;
 import org.graalvm.compiler.nodes.IndirectCallTargetNode;
 import org.graalvm.compiler.nodes.NodeView;
-import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.SafepointNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -63,8 +61,6 @@ import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
-import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -97,25 +93,14 @@ public class AArch64HotSpotNodeLIRBuilder extends AArch64NodeLIRBuilder implemen
     protected void emitPrologue(StructuredGraph graph) {
         CallingConvention incomingArguments = gen.getResult().getCallingConvention();
         Value[] params = new Value[incomingArguments.getArgumentCount() + 2];
-        for (int i = 0; i < incomingArguments.getArgumentCount(); i++) {
-            params[i] = incomingArguments.getArgument(i);
-            if (isStackSlot(params[i])) {
-                StackSlot slot = ValueUtil.asStackSlot(params[i]);
-                if (slot.isInCallerFrame() && !gen.getResult().getLIR().hasArgInCallerFrame()) {
-                    gen.getResult().getLIR().setHasArgInCallerFrame();
-                }
-            }
-        }
+
+        prologAssignParams(incomingArguments, params);
         params[params.length - 2] = fp.asValue(LIRKind.value(AArch64Kind.QWORD));
         params[params.length - 1] = lr.asValue(LIRKind.value(AArch64Kind.QWORD));
 
         gen.emitIncomingValues(params);
 
-        for (ParameterNode param : graph.getNodes(ParameterNode.TYPE)) {
-            Value paramValue = params[param.index()];
-            assert paramValue.getValueKind().equals(getLIRGeneratorTool().getLIRKind(param.stamp(NodeView.DEFAULT))) : paramValue.getValueKind() + " != " + param.stamp(NodeView.DEFAULT);
-            setResult(param, gen.emitMove(paramValue));
-        }
+        prologSetParameterNodes(graph, params);
     }
 
     @Override
