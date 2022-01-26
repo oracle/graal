@@ -69,12 +69,14 @@ final class Target_jdk_internal_misc_Unsafe_JavaThreads {
      */
     @Substitute
     void unpark(Object threadObj) {
-        if (threadObj == null) {
-            throw new NullPointerException("Unsafe.unpark(thread == null)");
-        } else if (!(threadObj instanceof Thread)) {
-            throw new IllegalArgumentException("Unsafe.unpark(!(thread instanceof Thread))");
+        if (threadObj != null) {
+            if (!(threadObj instanceof Thread)) {
+                throw new IllegalArgumentException("Unsafe.unpark(!(thread instanceof Thread))");
+            }
+            Thread thread = (Thread) threadObj;
+            if (!VirtualThreads.isSupported() || !VirtualThreads.get().isVirtual(thread)) {
+                JavaThreads.platformUnpark(thread);
+            }
         }
-        Thread thread = (Thread) threadObj;
-        JavaThreads.platformUnpark(thread);
     }
 }
