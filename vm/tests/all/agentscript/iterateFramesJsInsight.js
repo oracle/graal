@@ -1,8 +1,10 @@
 insight.on('enter', (ctx, frames) => {
-  if (ctx.line !== 3) return;
+  if (ctx.line !== 1 && ctx.line !== 3) return;
+  let log = `at ${ctx.source.name}:${ctx.line} `;
   ctx.iterateFrames((at, locals) => {
-      print(JSON.stringify(locals, null, 2));
+      log += JSON.stringify(locals);
   });
+  print(log);
 }, {
   statements: true,
   sourceFilter: (s) => s.name.indexOf('JsTypesMod') >= 0
