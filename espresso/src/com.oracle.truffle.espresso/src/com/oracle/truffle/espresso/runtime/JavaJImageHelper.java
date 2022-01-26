@@ -31,9 +31,8 @@ import com.oracle.truffle.espresso.runtime.jimage.BasicImageReader;
 import com.oracle.truffle.espresso.runtime.jimage.ImageLocation;
 
 public class JavaJImageHelper implements JImageHelper {
-    private final BasicImageReader reader;
-
     private final EspressoContext context;
+    private final BasicImageReader reader;
 
     public JavaJImageHelper(BasicImageReader reader, EspressoContext context) {
         this.reader = reader;

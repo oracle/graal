@@ -497,7 +497,7 @@ public final class EspressoOptions {
 
     @Option(help = "Selects the jimage reader.", //
             category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
-    public static final OptionKey<JImageMode> JImage = new OptionKey<>(null, JIMAGE_MODE_OPTION_TYPE);
+    public static final OptionKey<JImageMode> JImage = new OptionKey<>(JImageMode.JAVA, JIMAGE_MODE_OPTION_TYPE);
 
     // These are host properties e.g. use --vm.Despresso.DebugCounters=true .
     public static final boolean DebugCounters = booleanProperty("espresso.DebugCounters", false);

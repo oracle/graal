@@ -322,12 +322,8 @@ public final class EspressoContext {
         this.HotSwapAPI = env.getOptions().get(EspressoOptions.HotSwapAPI);
 
         EspressoOptions.JImageMode requestedJImageMode = env.getOptions().get(EspressoOptions.JImage);
-        if (requestedJImageMode == null) {
-            if (NativeAccessAllowed) {
-                requestedJImageMode = EspressoOptions.JImageMode.NATIVE;
-            } else {
-                requestedJImageMode = EspressoOptions.JImageMode.JAVA;
-            }
+        if (!NativeAccessAllowed && requestedJImageMode == EspressoOptions.JImageMode.NATIVE) {
+            throw new IllegalArgumentException("JImage=native can only be set if native access is allowed");
         }
         this.jimageMode = requestedJImageMode;
 
