@@ -7,14 +7,15 @@ permalink: /reference-manual/native-image/DebugInfo/
 
 # Debug Info Feature
 
-To add debug information to a generated native image, provide the `-g -O0` option to the `native-image` builder:
+To add debug information to a generated native image, provide the `-g` option to the `native-image` builder:
 ```shell
-native-image -g -O0 Hello
+native-image -g Hello
 ```
 
-The first option, `-g`, instructs `native-image` to generate debug information, and `-O0` specifies that no compiler optimizations should be performed.
-Disabling all optimizations is not required, but in general it makes the debugging experience better.
+The `-g` flag instructs `native-image` to generate debug information.
 The resulting image will contain debug records in a format the GNU Debugger (GDB) understands.
+Additionally, you can pass `-O0` to the builder which specifies that no compiler optimizations should be performed.
+Disabling all optimizations is not required, but in general it makes the debugging experience better.
 
 > Note: Native Image debugging currently works on Linux with initial support for macOS. The feature is experimental.
 
@@ -41,7 +42,7 @@ javac --source-path apps/greeter/src \
 javac -cp apps/greeter/classes \
     --source-path apps/hello/src \
     -d apps/hello/classes org/my/hello/Hello.java
-native-image -g -O0 \
+native-image -g \
     -H:-SpawnIsolates \
     -H:DebugInfoSourceSearchPath=apps/hello/src \
     -H:DebugInfoSourceSearchPath=apps/greeter/src \
@@ -54,7 +55,7 @@ It can identify either a directory, a source JAR, or a source zip file.
 It is also possible to specify several source roots at once using a comma separator:
 
 ```shell
-native-image -g -O0 \
+native-image -g \
     -H:DebugInfoSourceSearchPath=apps/hello/target/hello-sources.jar,apps/greeter/target/greeter-sources.jar \
     -cp apps/target/hello.jar:apps/target/greeter.jar \
     org.my.Hello
@@ -68,7 +69,7 @@ As an example, the following variant of the previous command specifies an absolu
 
 ```shell
 SOURCE_CACHE_ROOT=/tmp/$$/sources
-native-image -g -O0 \
+native-image -g \
     -H:-SpawnIsolates \
     -H:DebugInfoSourceCacheRoot=$SOURCE_CACHE_ROOT \
     -H:DebugInfoSourceSearchPath=apps/hello/target/hello-sources.jar,apps/greeter/target/greeter-sources.jar \
