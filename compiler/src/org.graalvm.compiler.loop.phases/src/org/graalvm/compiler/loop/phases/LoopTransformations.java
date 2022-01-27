@@ -34,6 +34,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.common.RetryableBailoutException;
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph.Mark;
 import org.graalvm.compiler.graph.Graph.NodeEventScope;
 import org.graalvm.compiler.graph.Node;
@@ -620,7 +621,7 @@ public abstract class LoopTransformations {
             ValueNode toProxy = inverted ? currentPhi.singleBackValueOrThis() : currentPhi;
             set = toProxy;
             if (toProxy == null) {
-                assert currentPhi instanceof GuardPhiNode : "Only guard phi nodes can have null inputs";
+                GraalError.guarantee(currentPhi instanceof GuardPhiNode, "Only guard phi nodes can have null inputs %s", currentPhi);
             } else if (loopToProxy.contains(toProxy)) {
                 set = LoopFragmentInside.patchProxyAtPhi(currentPhi, exitToProxy, toProxy);
                 assert set != null;
