@@ -743,21 +743,28 @@ public abstract class Launcher {
         if ("--experimental-options".equals(arg) || "--experimental-options=false".equals(arg) || "--experimental-options=true".equals(arg)) {
             return true;
         }
-        if (!arg.startsWith("--help")) {
-            return false;
+        if (arg.startsWith("--help")) {
+            return parseHelpArg(arg);
         }
-        final int index = arg.indexOf(':');
+        return false;
+    }
+
+    private boolean parseHelpArg(String arg) {
+        int index = arg.indexOf(':');
         if (index < 0) {
             helpArg = "";
             return true;
         }
         String helpArgCandidate = arg.substring(index + 1);
-        if (helpArgCandidate.endsWith(":internal")) {
-            helpInternal = true;
-            helpArg = helpArgCandidate.substring(0, helpArgCandidate.indexOf(":internal"));
+        index = helpArgCandidate.indexOf(':');
+        if (index < 0) {
+            helpArg = helpArgCandidate;
             return true;
         }
-        helpArg = helpArgCandidate;
+        helpArg = helpArgCandidate.substring(0, index);
+        if (helpArgCandidate.endsWith(":internal")) {
+            helpInternal = true;
+        }
         return true;
     }
 
