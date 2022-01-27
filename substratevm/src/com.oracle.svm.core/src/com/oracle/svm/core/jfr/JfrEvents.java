@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -51,7 +51,12 @@ public enum JfrEvents {
     OSInformation("jdk.OSInformation"),
     PhysicalMemory("jdk.PhysicalMemory"),
     ExecutionSample("jdk.ExecutionSample"),
-    NativeMethodSample("jdk.NativeMethodSample");
+    NativeMethodSample("jdk.NativeMethodSample"),
+    GCPhasePauseEvent("jdk.GCPhasePause"),
+    GCPhasePauseLevel1Event("jdk.GCPhasePauseLevel1"),
+    GCPhasePauseLevel2Event("jdk.GCPhasePauseLevel2"),
+    GCPhasePauseLevel3Event("jdk.GCPhasePauseLevel3"),
+    GCPhasePauseLevel4Event("jdk.GCPhasePauseLevel4");
 
     private final long id;
 
