@@ -60,7 +60,6 @@ import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.junit.Assert;
 import org.junit.Test;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.configure.ResourcesRegistry;
 
 public class NativeImageResourceFileSystemProviderTest {
@@ -73,9 +72,7 @@ public class NativeImageResourceFileSystemProviderTest {
     private static final int TIME_SPAN = 1_000_000;
 
     // Register resources.
-    @SuppressWarnings("unused")
-    @AutomaticFeature
-    private static final class RegisterResourceFeature implements Feature {
+    public static final class TestFeature implements Feature {
         @Override
         public void beforeAnalysis(BeforeAnalysisAccess access) {
             ResourcesRegistry registry = ImageSingletons.lookup(ResourcesRegistry.class);
