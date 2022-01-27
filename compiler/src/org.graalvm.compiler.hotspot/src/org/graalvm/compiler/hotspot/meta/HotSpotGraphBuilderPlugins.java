@@ -212,7 +212,7 @@ public class HotSpotGraphBuilderPlugins {
                 registerStringPlugins(invocationPlugins, replacements, wordTypes, foreignCalls, config);
                 registerArraysSupportPlugins(invocationPlugins, config, replacements);
                 registerReferencePlugins(invocationPlugins, replacements);
-                registerTrufflePlugins(invocationPlugins, wordTypes, config, replacements);
+                registerTrufflePlugins(invocationPlugins, wordTypes, config);
             }
 
         });
@@ -229,9 +229,14 @@ public class HotSpotGraphBuilderPlugins {
         return plugins;
     }
 
-    private static void registerTrufflePlugins(InvocationPlugins plugins, WordTypes wordTypes, GraalHotSpotVMConfig config, Replacements replacements) {
-        InvocationPlugins.Registration tl = new InvocationPlugins.Registration(plugins, "org.graalvm.compiler.truffle.runtime.hotspot.HotSpotFastThreadLocal", replacements);
-        tl.registerConditional(config.jvmciReservedReference0Offset != -1, new InvocationPlugin("get", Receiver.class) {
+    private static void registerTrufflePlugins(InvocationPlugins plugins, WordTypes wordTypes, GraalHotSpotVMConfig config) {
+        if (config.jvmciReservedReference0Offset == -1) {
+            // cannot install intrinsics without
+            return;
+        }
+
+        Registration tl = new Registration(plugins, "org.graalvm.compiler.truffle.runtime.hotspot.HotSpotFastThreadLocal");
+        tl.register(new InvocationPlugin("get", Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 int jvmciReservedReference0Offset = config.jvmciReservedReference0Offset;
@@ -239,9 +244,8 @@ public class HotSpotGraphBuilderPlugins {
                 b.addPush(JavaKind.Object, new HotSpotLoadReservedReferenceNode(b.getMetaAccess(), wordTypes, jvmciReservedReference0Offset));
                 return true;
             }
-
         });
-        tl.registerConditional(config.jvmciReservedReference0Offset != -1, new InvocationPlugin("set", Receiver.class, Object[].class) {
+        tl.register(new InvocationPlugin("set", Receiver.class, Object[].class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
                             ValueNode value) {
@@ -271,22 +275,26 @@ public class HotSpotGraphBuilderPlugins {
                 return true;
             }
         });
-        r.registerConditional(config.inlineNotify(), new InlineOnlyInvocationPlugin("notify", Receiver.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                ValueNode object = receiver.get();
-                b.add(new FastNotifyNode(object, false, b.bci()));
-                return true;
-            }
-        });
-        r.registerConditional(config.inlineNotifyAll(), new InlineOnlyInvocationPlugin("notifyAll", Receiver.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                ValueNode object = receiver.get();
-                b.add(new FastNotifyNode(object, true, b.bci()));
-                return true;
-            }
-        });
+        if (config.inlineNotify()) {
+            r.register(new InlineOnlyInvocationPlugin("notify", Receiver.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                    ValueNode object = receiver.get();
+                    b.add(new FastNotifyNode(object, false, b.bci()));
+                    return true;
+                }
+            });
+        }
+        if (config.inlineNotifyAll()) {
+            r.register(new InlineOnlyInvocationPlugin("notifyAll", Receiver.class) {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                    ValueNode object = receiver.get();
+                    b.add(new FastNotifyNode(object, true, b.bci()));
+                    return true;
+                }
+            });
+        }
     }
 
     private static void registerClassPlugins(Plugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
