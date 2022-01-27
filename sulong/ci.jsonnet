@@ -69,7 +69,7 @@ local sc = (import "ci_common/sulong-common.jsonnet");
     ],
   },
 
-  local builds = [
+  builds: [ sc.defBuild(b) for b in [
     sc.gate + $.sulong + sc.labsjdk_ce_17 + sc.linux_amd64 + common.eclipse + sc.gateTags("style") + { name: "gate-sulong-style-jdk17-linux-amd64" },
     sc.gate + $.sulong + sc.labsjdk_ce_17 + sc.linux_amd64 + common.eclipse + common.jdt + sc.gateTags("fullbuild") + { name: "gate-sulong-fullbuild-jdk17-linux-amd64" },
     sc.Description("Recreate generated sources (parsers, etc.) and check for modification") +
@@ -97,7 +97,5 @@ local sc = (import "ci_common/sulong-common.jsonnet");
     sc.gate + $.sulong + sc.labsjdk_ce_17 + sc.linux_aarch64 + sc.llvmBundled + sc.requireGMP + sc.gateTags(basicTagsNoNWCC) + { name: "gate-sulong-basic-llvm-jdk17-linux-aarch64", timelimit: "30:00" },
 
     sc.weekly + $.sulong + sc.labsjdk_ce_17 + sc.linux_amd64 + sc.llvmBundled + sc.requireGMP + sc.requireGCC + $.sulong_coverage { name: "weekly-sulong-coverage-jdk17-linux-amd64" },
-  ],
-
-  builds: [ sc.defBuild(b) for b in builds],
+  ]],
 }
