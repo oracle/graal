@@ -29,6 +29,7 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 
 import java.lang.ref.Reference;
 
+import com.oracle.svm.core.thread.JavaThreads;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
@@ -151,7 +152,7 @@ public final class GCImpl implements GC {
             if (outOfMemory) {
                 throw OUT_OF_MEMORY_ERROR;
             }
-            doReferenceHandling();
+            doReferenceHandlingInRegularThread();
         }
     }
 
@@ -1055,46 +1056,23 @@ public final class GCImpl implements GC {
         collectionInProgress = false;
     }
 
+    // This method will be removed as soon as possible, see GR-36676.
+    static void doReferenceHandlingInRegularThread() {
+        if (ReferenceHandler.useRegularJavaThread() && !VMOperation.isInProgress() && JavaThreads.currentJavaThreadInitialized()) {
+            doReferenceHandling();
+        }
+    }
+
     /**
-     * NOTE: All code that is transitively reachable from this method may get executed as a side
-     * effect of a GC or as a side effect of an allocation slow path. To prevent hard to debug
-     * transient issues, we execute as little code as possible in this method. Multiple threads may
-     * execute this method concurrently.
-     *
-     * Without a dedicated reference handler thread, arbitrary complex code can get executed as a
-     * side effect of this method. So, allocations of Java objects or an explicitly triggered GC can
-     * result in a recursive invocation of methods.
-     *
-     * This can have the effect that global state changes unexpectedly and may result in issues that
-     * look similar to races but that can even happen in single-threaded environments, e.g.:
-     *
-     * <pre>
-     * {@code
-     * private static Object singleton;
-     *
-     * private static synchronized Object createSingleton() {
-     *     if (singleton == null) {
-     *         Object o = new Object();
-     *         // If the allocation above enters the allocation slow path code, then it is possible
-     *         // that doReferenceHandling() gets executed by the current thread. If the method
-     *         // createSingleton() is called as a side effect of doReferenceHandling(), then the
-     *         // assertion below may fail because the singleton got already initialized by the same
-     *         // thread in the meanwhile.
-     *         assert singleton == null;
-     *         singleton = o;
-     *     }
-     *     return result;
-     * }
-     * }
-     * </pre>
+     * Inside a VMOperation, we are not allowed to do certain things, e.g., perform synchronization
+     * (because it can deadlock when a lock is held outside the VMOperation). Similar restrictions
+     * apply if we are too early in the attach sequence of a thread.
      */
     static void doReferenceHandling() {
-        if (ReferenceHandler.useDedicatedThread()) {
-            return;
-        }
-
+        assert !VMOperation.isInProgress() : "could result in deadlocks";
+        assert JavaThreads.currentJavaThreadInitialized() : "thread is not fully initialized yet";
         /* Most of the time, we won't have a pending reference list. So, we do that check first. */
-        if (HeapImpl.getHeapImpl().hasReferencePendingListUnsafe() && ReferenceHandler.isReferenceHandlingAllowed()) {
+        if (HeapImpl.getHeapImpl().hasReferencePendingListUnsafe()) {
             long startTime = System.nanoTime();
             ReferenceHandler.processPendingReferencesInRegularThread();
 

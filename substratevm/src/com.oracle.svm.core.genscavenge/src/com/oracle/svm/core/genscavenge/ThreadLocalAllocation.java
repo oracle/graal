@@ -175,13 +175,35 @@ public final class ThreadLocalAllocation {
     }
 
     /**
-     * NOTE: All code that is transitively reachable from this method may get executed as a side
-     * effect of an allocation slow path. To prevent hard to debug transient issues, we execute as
-     * little code as possible in this method (see {@link GCImpl#doReferenceHandling()} for more
-     * details). Multiple threads may execute this method concurrently.
+     * NOTE: Multiple threads may execute this method concurrently. All code that is transitively
+     * reachable from this method may get executed as a side effect of an allocation slow path. To
+     * prevent hard to debug transient issues, we execute as little code as possible in this method.
+     *
+     * If the executed code is too complex, then it can happen that we unexpectedly change some
+     * shared global state as a side effect of an allocation. This may result in issues that look
+     * similar to races but that can even happen in single-threaded environments, e.g.:
+     * 
+     * <pre>
+     * {@code
+     * private static Object singleton;
+     *
+     * private static synchronized Object createSingleton() {
+     *     if (singleton == null) {
+     *         Object o = new Object();
+     *         // If the allocation above enters the allocation slow path code, and executes a complex
+     *         // slow path hook, then it is possible that createSingleton() gets recursively execute
+     *         // by the current thread. So, the assertion below may fail because the singleton got
+     *         // already initialized by the same thread in the meanwhile.
+     *         assert singleton == null;
+     *         singleton = o;
+     *     }
+     *     return result;
+     * }
+     * }
+     * </pre>
      */
     private static void runSlowPathHooks() {
-        GCImpl.doReferenceHandling();
+        GCImpl.doReferenceHandlingInRegularThread();
         GCImpl.getPolicy().updateSizeParameters();
     }
 

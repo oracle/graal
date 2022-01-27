@@ -52,6 +52,7 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.core.heap.Heap;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.code.DisassemblerProvider;
@@ -656,8 +657,16 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalCompiler {
         // This scope is required to allow Graal compilations of host methods to call methods
         // on the TruffleCompilerRuntime. This is, for example, required to find out about
         // Truffle-specific method annotations.
-        try (JNIMethodScope scope = LibGraalUtil.openScope("<called from VM>", env)) {
-            return compiler.compileMethod(request, true, compiler.getGraalRuntime().getOptions());
+        try {
+            try (JNIMethodScope scope = LibGraalUtil.openScope("<called from VM>", env)) {
+                return compiler.compileMethod(request, true, compiler.getGraalRuntime().getOptions());
+            }
+        } finally {
+            /*
+             * libgraal doesn't use a dedicated reference handler thread, so we trigger the
+             * reference handling manually when a compilation finishes.
+             */
+            Heap.getHeap().doReferenceHandling();
         }
     }
 }

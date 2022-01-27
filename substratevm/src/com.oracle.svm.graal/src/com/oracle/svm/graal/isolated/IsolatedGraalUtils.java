@@ -27,6 +27,7 @@ package com.oracle.svm.graal.isolated;
 import java.lang.reflect.Array;
 import java.nio.ByteBuffer;
 
+import com.oracle.svm.core.heap.ReferenceHandlerMode;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableMapCursor;
 import org.graalvm.compiler.code.CompilationResult;
@@ -66,8 +67,8 @@ public final class IsolatedGraalUtils {
         if (addressSpaceSize > 0) {
             builder.reservedAddressSpaceSize(WordFactory.signed(addressSpaceSize));
         }
-        // Compilation isolates never need a dedicated reference handler thread.
-        builder.appendArgument(getOptionString(SubstrateOptions.ConcealedOptions.UseReferenceHandlerThread, false));
+        // Compilation isolates do the reference handling manually to avoid the extra thread.
+        builder.appendArgument(getOptionString(SubstrateOptions.ConcealedOptions.ReferenceHandlerMode, ReferenceHandlerMode.ExecuteManually));
         CreateIsolateParameters params = builder.build();
         CompilerIsolateThread isolate = (CompilerIsolateThread) Isolates.createIsolate(params);
         initializeCompilationIsolate(isolate);
@@ -192,8 +193,8 @@ public final class IsolatedGraalUtils {
         RuntimeOptionValues.singleton().update(options);
     }
 
-    private static String getOptionString(RuntimeOptionKey<Boolean> option, boolean value) {
-        return "-XX:" + (value ? "+" : "-") + option.getName();
+    private static String getOptionString(RuntimeOptionKey<Integer> option, int value) {
+        return "-XX:" + option.getName() + "=" + value;
     }
 
     private IsolatedGraalUtils() {

@@ -64,6 +64,7 @@ import com.oracle.svm.core.heap.NoAllocationVerifier;
 import com.oracle.svm.core.heap.ObjectHeader;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.heap.PhysicalMemory;
+import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.heap.ReferenceHandlerThread;
 import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.heap.RuntimeCodeInfoGCSupport;
@@ -468,6 +469,13 @@ public final class HeapImpl extends Heap {
     @Override
     public BarrierSet createBarrierSet(MetaAccessProvider metaAccess) {
         return RememberedSet.get().createBarrierSet(metaAccess);
+    }
+
+    @Override
+    public void doReferenceHandling() {
+        if (ReferenceHandler.isExecutedManually()) {
+            GCImpl.doReferenceHandling();
+        }
     }
 
     @SuppressFBWarnings(value = "VO_VOLATILE_INCREMENT", justification = "Only the GC increments the volatile field 'refListOfferCounter'.")

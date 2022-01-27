@@ -26,19 +26,33 @@ package com.oracle.svm.core.heap;
 
 import java.lang.ref.Reference;
 
+import com.oracle.svm.core.IsolateArgumentParser;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.stack.StackOverflowCheck;
-import com.oracle.svm.core.thread.PlatformThreads;
-import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
 public final class ReferenceHandler {
     public static boolean useDedicatedThread() {
-        return ReferenceHandlerThread.isSupported() && ReferenceHandlerThread.isEnabled();
+        if (ReferenceHandlerThread.isSupported()) {
+            int optionIndex = IsolateArgumentParser.getOptionIndex(SubstrateOptions.ConcealedOptions.ReferenceHandlerMode);
+            return IsolateArgumentParser.getIntOptionValue(optionIndex) == ReferenceHandlerMode.UseDedicatedThread;
+        }
+        return false;
+    }
+
+    public static boolean useRegularJavaThread() {
+        int optionIndex = IsolateArgumentParser.getOptionIndex(SubstrateOptions.ConcealedOptions.ReferenceHandlerMode);
+        return IsolateArgumentParser.getIntOptionValue(optionIndex) == ReferenceHandlerMode.UseRegularJavaThreads;
+    }
+
+    public static boolean isExecutedManually() {
+        int optionIndex = IsolateArgumentParser.getOptionIndex(SubstrateOptions.ConcealedOptions.ReferenceHandlerMode);
+        return IsolateArgumentParser.getIntOptionValue(optionIndex) == ReferenceHandlerMode.ExecuteManually;
     }
 
     public static void processPendingReferencesInRegularThread() {
-        assert !useDedicatedThread() && isReferenceHandlingAllowed();
+        assert !useDedicatedThread();
 
         /*
          * We might be running in a user thread that is close to a stack overflow, so enable the
@@ -80,7 +94,7 @@ public final class ReferenceHandler {
          * synchronization (because it can deadlock when a lock is held outside the VMOperation).
          * Similar restrictions apply if we are too early in the attach sequence of a thread.
          */
-        return !VMOperation.isInProgress() && PlatformThreads.isCurrentAssigned();
+        return !VMOperation.isInProgress() && JavaThreads.currentJavaThreadInitialized();
     }
 
     private ReferenceHandler() {
