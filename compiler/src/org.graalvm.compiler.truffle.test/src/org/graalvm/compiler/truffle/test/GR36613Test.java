@@ -34,28 +34,29 @@ public class GR36613Test {
 
     @Test
     public void test() throws InterruptedException {
-        Engine engine = Engine.newBuilder().allowExperimentalOptions(true).option("engine.BackgroundCompilation", "false").option("engine.MultiTier", "false").build();
-        for (int iteration = 0; iteration < 2; iteration++) {
-            /*
-             * If GR-36613 is not fixed then this fails on the second iteration.
-             */
-            try (Context context = Context.newBuilder().allowHostAccess(HostAccess.ALL).engine(engine).build()) {
-                // make sure sharing layer is claimed
-                context.initialize("sl");
-
-                Value v = context.asValue(this);
-
+        try (Engine engine = Engine.newBuilder().allowExperimentalOptions(true).option("engine.BackgroundCompilation", "false").option("engine.MultiTier", "false").build()) {
+            for (int iteration = 0; iteration < 2; iteration++) {
                 /*
-                 * Touch the context on a separate thread to make sure enter/leave cache is
-                 * invalidated and the closed check is actually performed.
+                 * If GR-36613 is not fixed then this fails on the second iteration.
                  */
-                Thread t = new Thread(() -> context.initialize("sl"));
-                t.start();
-                t.join();
+                try (Context context = Context.newBuilder().allowHostAccess(HostAccess.ALL).engine(engine).build()) {
+                    // make sure sharing layer is claimed
+                    context.initialize("sl");
 
-                // make sure its compiled
-                for (int i = 0; i < 10000; i++) {
-                    v.invokeMember("dummy");
+                    Value v = context.asValue(this);
+
+                    /*
+                     * Touch the context on a separate thread to make sure enter/leave cache is
+                     * invalidated and the closed check is actually performed.
+                     */
+                    Thread t = new Thread(() -> context.initialize("sl"));
+                    t.start();
+                    t.join();
+
+                    // make sure its compiled
+                    for (int i = 0; i < 10000; i++) {
+                        v.invokeMember("dummy");
+                    }
                 }
             }
         }
