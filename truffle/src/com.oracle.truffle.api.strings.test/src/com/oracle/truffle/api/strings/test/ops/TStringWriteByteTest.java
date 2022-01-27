@@ -108,7 +108,7 @@ public class TStringWriteByteTest extends TStringTestBase {
         });
     }
 
-    private void checkNotifyExternal(MutableTruffleString string, TruffleString.Encoding encoding, Runnable mutate) {
+    private static void checkNotifyExternal(MutableTruffleString string, TruffleString.Encoding encoding, Runnable mutate) {
         TruffleString.CodeRange codeRangeBeforeMutate = string.getCodeRangeUncached(encoding);
         mutate.run();
         TruffleString.CodeRange codeRangeAfterMutate = string.getCodeRangeUncached(encoding);

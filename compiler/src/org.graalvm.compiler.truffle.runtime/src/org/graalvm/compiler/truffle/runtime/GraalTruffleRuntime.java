@@ -401,7 +401,8 @@ public abstract class GraalTruffleRuntime implements TruffleRuntime, TruffleComp
                         BranchProfile.class,
                         ConditionProfile.class,
                         Objects.class,
-                        TruffleSafepoint.class
+                        TruffleSafepoint.class,
+                        BaseOSRRootNode.class
         }) {
             m.put(c.getName(), c);
         }
