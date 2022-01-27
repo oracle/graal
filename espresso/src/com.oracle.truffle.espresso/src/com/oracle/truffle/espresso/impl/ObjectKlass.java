@@ -1757,11 +1757,11 @@ public final class ObjectKlass extends Klass {
         public Klass[] getSuperTypes() {
             return getHierarchyInfo().supertypesWithSelfCache;
         }
-        
+
         public int getHierarchyDepth() {
             return getHierarchyInfo().hierarchyDepth;
         }
-        
+
         public ObjectKlass.KlassVersion[] getTransitiveInterfacesList() {
             return getHierarchyInfo().transitiveInterfaceCache;
         }

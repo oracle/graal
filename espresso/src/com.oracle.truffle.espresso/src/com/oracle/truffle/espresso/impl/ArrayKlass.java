@@ -58,10 +58,10 @@ public final class ArrayKlass extends Klass {
 
     ArrayKlass(Klass componentType) {
         super(componentType.getContext(),
-                null, // TODO(peterssen): Internal, , or / name?
-                componentType.getTypes().arrayOf(componentType.getType()),
-                // Arrays (of static inner class) may have protected access.
-                (componentType.getElementalType().getModifiers() & (ACC_PUBLIC | ACC_PRIVATE | ACC_PROTECTED)) | ACC_FINAL | ACC_ABSTRACT);
+                        null, // TODO(peterssen): Internal, , or / name?
+                        componentType.getTypes().arrayOf(componentType.getType()),
+                        // Arrays (of static inner class) may have protected access.
+                        (componentType.getElementalType().getModifiers() & (ACC_PUBLIC | ACC_PRIVATE | ACC_PROTECTED)) | ACC_FINAL | ACC_ABSTRACT);
         EspressoError.guarantee(componentType.getJavaKind() != JavaKind.Void, "Invalid void[] class.");
         this.componentType = componentType;
         this.elementalType = componentType.getElementalType();
