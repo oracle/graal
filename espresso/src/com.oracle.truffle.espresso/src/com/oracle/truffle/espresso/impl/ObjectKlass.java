@@ -46,6 +46,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyAssumption;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyOracle;
@@ -79,7 +80,6 @@ import com.oracle.truffle.espresso.redefinition.DetectedChange;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
-import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.verifier.MethodVerifier;
@@ -329,14 +329,14 @@ public final class ObjectKlass extends Klass {
                 }
             } catch (EspressoException e) {
                 setErroneousInitialization();
-                StaticObject cause = e.getExceptionObject();
+                StaticObject cause = e.getGuestException();
                 Meta meta = getMeta();
                 if (!InterpreterToVM.instanceOf(cause, meta.java_lang_Error)) {
                     throw meta.throwExceptionWithCause(meta.java_lang_ExceptionInInitializerError, cause);
                 } else {
                     throw e;
                 }
-            } catch (EspressoExitException e) {
+            } catch (AbstractTruffleException e) {
                 setErroneousInitialization();
                 throw e;
             } catch (Throwable e) {

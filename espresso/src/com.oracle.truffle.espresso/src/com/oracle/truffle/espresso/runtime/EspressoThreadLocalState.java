@@ -41,7 +41,7 @@ public class EspressoThreadLocalState {
         if (espressoException == null) {
             return null;
         }
-        return espressoException.getExceptionObject();
+        return espressoException.getGuestException();
     }
 
     public EspressoException getPendingException() {

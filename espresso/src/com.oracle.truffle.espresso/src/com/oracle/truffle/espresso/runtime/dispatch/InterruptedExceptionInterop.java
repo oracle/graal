@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,33 +20,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.runtime;
 
-import com.oracle.truffle.api.exception.AbstractTruffleException;
+package com.oracle.truffle.espresso.runtime.dispatch;
+
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.espresso.runtime.StaticObject;
 
-@ExportLibrary(InteropLibrary.class)
-public final class EspressoExitException extends AbstractTruffleException {
-
-    private static final long serialVersionUID = 7140601650442131207L;
-
-    private final int status;
-
-    public EspressoExitException(int status) {
-        this.status = status;
-    }
-
+@ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
+public class InterruptedExceptionInterop extends ThrowableInterop {
     @ExportMessage
-    @SuppressWarnings("static-method")
-    public ExceptionType getExceptionType() {
-        return ExceptionType.EXIT;
-    }
-
-    @ExportMessage
-    public int getExceptionExitStatus() {
-        return status;
+    public static ExceptionType getExceptionType(@SuppressWarnings("unused") StaticObject receiver) {
+        return ExceptionType.INTERRUPT;
     }
 }

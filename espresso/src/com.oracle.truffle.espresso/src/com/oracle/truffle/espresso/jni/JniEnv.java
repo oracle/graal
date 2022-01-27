@@ -1575,7 +1575,7 @@ public final class JniEnv extends NativeEnv {
     public boolean ExceptionCheck() {
         EspressoException ex = getPendingEspressoException();
         // ex != null => ex != NULL
-        assert ex == null || StaticObject.notNull(ex.getExceptionObject());
+        assert ex == null || StaticObject.notNull(ex.getGuestException());
         return ex != null;
     }
 
@@ -1654,7 +1654,7 @@ public final class JniEnv extends NativeEnv {
     public void ExceptionDescribe() {
         EspressoException ex = getPendingEspressoException();
         if (ex != null) {
-            StaticObject guestException = ex.getExceptionObject();
+            StaticObject guestException = ex.getGuestException();
             assert InterpreterToVM.instanceOf(guestException, getMeta().java_lang_Throwable);
             // Dynamic lookup.
             Method printStackTrace = guestException.getKlass().lookupMethod(Name.printStackTrace, Signature._void);
@@ -1700,7 +1700,7 @@ public final class JniEnv extends NativeEnv {
         try {
             InterpreterToVM.monitorExit(object, meta);
         } catch (EspressoException e) {
-            assert InterpreterToVM.instanceOf(e.getExceptionObject(), getMeta().java_lang_IllegalMonitorStateException);
+            assert InterpreterToVM.instanceOf(e.getGuestException(), getMeta().java_lang_IllegalMonitorStateException);
             setPendingException(e);
             return JNI_ERR;
         }
@@ -2698,7 +2698,7 @@ public final class JniEnv extends NativeEnv {
             EspressoError.guarantee(StaticObject.notNull(guestClass), "Class.forName returned null");
         } catch (EspressoException e) {
             profiler.profile(5);
-            if (InterpreterToVM.instanceOf(e.getExceptionObject(), meta.java_lang_ClassNotFoundException)) {
+            if (InterpreterToVM.instanceOf(e.getGuestException(), meta.java_lang_ClassNotFoundException)) {
                 profiler.profile(4);
                 throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, name);
             }
