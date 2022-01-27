@@ -725,7 +725,7 @@ public final class InterpreterToVM implements ContextAccess {
         FrameCounter c = new FrameCounter();
         int size = EspressoContext.DEFAULT_STACK_SIZE;
         VM.StackTrace frames = new VM.StackTrace();
-        Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<Object>() {
+        Truffle.getRuntime().iterateFrames(new FrameInstanceVisitor<>() {
             boolean first = skipFirst;
 
             @Override

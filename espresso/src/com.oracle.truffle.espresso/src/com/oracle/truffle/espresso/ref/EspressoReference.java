@@ -35,7 +35,7 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
  * Marker interface for Espresso non-strong reference implementations.
  *
  * <p>
- * All classes implementing {@link EspressoReference} must extend {@link Reference<StaticObject>
+ * All classes implementing {@link EspressoReference} must extend {@link Reference
  * Reference&lt;StaticObject&gt;} or one of it's subclasses; note that the generic
  * &lt;StaticObject&gt; parameter is relevant e.g. a class extending {@code Reference&lt;T&gt;} is
  * not valid.
@@ -50,12 +50,12 @@ public interface EspressoReference {
     StaticObject getGuestReference();
 
     /**
-     * {@link Reference<StaticObject>#get()}.
+     * {@link Reference#get() Reference&lt;StaticObject&gt;#get()}.
      */
     StaticObject get();
 
     /**
-     * {@link Reference#clear()}.
+     * {@link Reference#clear() Reference&lt;StaticObject&gt;#clear()}.
      */
     void clear();
 
@@ -94,6 +94,7 @@ public interface EspressoReference {
      * With {@link WeakReference}, {@link Object#finalize()} will never be called on collected
      * objects.
      */
+    @SuppressWarnings("javadoc")
     static EspressoReference createFinal(EspressoContext context, @JavaType(internalName = "Ljava/lang/ref/FinalReference;") StaticObject guestReference,
                     @JavaType(Object.class) StaticObject referent) {
         if (!context.UseHostFinalReference || !FinalizationSupport.canUseHostFinalReference()) {

@@ -48,7 +48,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
  */
 final class InterfaceTables {
 
-    private static final Comparator<TableData> SORTER = new Comparator<TableData>() {
+    private static final Comparator<TableData> SORTER = new Comparator<>() {
         @Override
         public int compare(TableData o1, TableData o2) {
             return Integer.compare(o1.klass.getKlass().getId(), o2.klass.getKlass().getId());

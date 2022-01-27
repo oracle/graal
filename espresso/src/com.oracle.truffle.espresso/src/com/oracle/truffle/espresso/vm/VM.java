@@ -2582,7 +2582,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         // TODO(garcia) This must only be called from SecurityManager.getClassContext
         ArrayList<StaticObject> result = new ArrayList<>();
         Truffle.getRuntime().iterateFrames(
-                        new FrameInstanceVisitor<Object>() {
+                        new FrameInstanceVisitor<>() {
                             @Override
                             public Object visitFrame(FrameInstance frameInstance) {
                                 Method m = getMethodFromFrame(frameInstance);
