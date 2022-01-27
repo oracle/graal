@@ -750,6 +750,14 @@ public abstract class Launcher {
     }
 
     private boolean parseHelpArg(String arg) {
+        // legacy behaviour support
+        if ("--help:expert".equals(arg)) {
+            return true;
+        }
+        if ("--help:internal".equals(arg)) {
+            helpInternal = true;
+            return true;
+        }
         int index = arg.indexOf(':');
         if (index < 0) {
             helpArg = "";
