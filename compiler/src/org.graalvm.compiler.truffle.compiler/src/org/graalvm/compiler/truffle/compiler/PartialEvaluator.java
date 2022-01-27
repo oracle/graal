@@ -642,7 +642,6 @@ public abstract class PartialEvaluator {
         try (DebugCloseable a = PartialEvaluationTimer.start(request.debug)) {
             new AgnosticInliningPhase(this, request).apply(request.graph, providers);
         }
-        request.debug.dump(DebugContext.BASIC_LEVEL, request.graph, "After Partial Evaluation");
         request.graph.maybeCompress();
     }
 

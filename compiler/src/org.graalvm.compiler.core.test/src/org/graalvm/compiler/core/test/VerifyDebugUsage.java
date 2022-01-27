@@ -114,7 +114,6 @@ public class VerifyDebugUsage extends VerifyStringFormatterUsage {
                     "org.graalvm.compiler.phases.BasePhase.dumpAfter",
                     "org.graalvm.compiler.phases.BasePhase.dumpBefore",
                     "org.graalvm.compiler.core.GraalCompiler.emitFrontEnd",
-                    "org.graalvm.compiler.truffle.compiler.PartialEvaluator.inliningGraphPE",
                     "org.graalvm.compiler.truffle.compiler.PerformanceInformationHandler.reportPerformanceWarnings",
                     "org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl.compilePEGraph",
                     "org.graalvm.compiler.core.test.VerifyDebugUsageTest$ValidDumpUsagePhase.run",
