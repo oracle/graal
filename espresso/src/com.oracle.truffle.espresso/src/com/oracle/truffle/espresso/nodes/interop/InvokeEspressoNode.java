@@ -122,6 +122,11 @@ public abstract class InvokeEspressoNode extends Node {
                     throws ArityException, UnsupportedTypeException {
 
         checkValidInvoke(method.getMethod(), receiver);
+        // explicitly ensure declaring class is initialized
+        if (!method.getMethod().getDeclaringKlass().isInitialized()) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            method.getMethod().getDeclaringKlass().safeInitialize();
+        }
 
         int expectedArity = method.getMethod().getParameterCount();
         if (arguments.length != expectedArity) {
