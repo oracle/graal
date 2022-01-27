@@ -44,7 +44,6 @@ import org.graalvm.compiler.phases.common.FrameStateAssignmentPhase;
 import org.graalvm.compiler.phases.common.GuardLoweringPhase;
 import org.graalvm.compiler.phases.common.LoweringPhase;
 import org.graalvm.compiler.phases.common.RemoveValueProxyPhase;
-import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -102,17 +101,6 @@ public interface MacroInvokable extends Invokable, Lowerable, StateSplit, Single
     Invoke replaceWithInvoke();
 
     /**
-     * Gets a snippet to be used for lowering this macro node. The returned graph (if non-null) must
-     * have been
-     * {@linkplain MacroInvokable#lowerReplacement(StructuredGraph, StructuredGraph, LoweringTool)
-     * lowered}.
-     */
-    @SuppressWarnings("unused")
-    default StructuredGraph getLoweredSnippetGraph(LoweringTool tool) {
-        return null;
-    }
-
-    /**
      * Applies {@linkplain LoweringPhase lowering} to a replacement graph.
      *
      * @param replacementGraph a replacement (i.e., snippet or method substitution) graph
@@ -140,31 +128,16 @@ public interface MacroInvokable extends Invokable, Lowerable, StateSplit, Single
 
     @Override
     default void lower(LoweringTool tool) {
-        StructuredGraph replacementGraph = getLoweredSnippetGraph(tool);
-
         Invoke invoke = replaceWithInvoke();
         assert invoke.asNode().verify();
 
-        if (replacementGraph != null) {
-            // Pull out the receiver null check so that a replaced
-            // receiver can be lowered if necessary
-            if (!getTargetMethod().isStatic()) {
-                ValueNode nonNullReceiver = InliningUtil.nonNullReceiver(invoke);
-                if (nonNullReceiver instanceof Lowerable) {
-                    ((Lowerable) nonNullReceiver).lower(tool);
-                }
-            }
-            InliningUtil.inline(invoke, replacementGraph, false, getTargetMethod(), "Replace with graph.", "LoweringPhase");
-            replacementGraph.getDebug().dump(DebugContext.DETAILED_LEVEL, asNode().graph(), "After inlining replacement %s", replacementGraph);
-        } else {
-            if (isPlaceholderBci(invoke.bci())) {
-                throw new GraalError("%s: cannot lower to invoke with placeholder BCI: %s", asNode().graph(), this);
-            }
-
-            if (invoke.stateAfter() == null) {
-                throw new GraalError("%s: cannot lower to invoke without state: %s", asNode().graph(), this);
-            }
-            invoke.lower(tool);
+        if (isPlaceholderBci(invoke.bci())) {
+            throw new GraalError("%s: cannot lower to invoke with placeholder BCI: %s", asNode().graph(), this);
         }
+
+        if (invoke.stateAfter() == null) {
+            throw new GraalError("%s: cannot lower to invoke without state: %s", asNode().graph(), this);
+        }
+        invoke.lower(tool);
     }
 }

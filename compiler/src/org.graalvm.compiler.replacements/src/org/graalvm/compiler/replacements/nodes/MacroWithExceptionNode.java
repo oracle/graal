@@ -30,6 +30,7 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
 
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeInputList;
@@ -39,6 +40,7 @@ import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
@@ -87,6 +89,17 @@ public abstract class MacroWithExceptionNode extends WithExceptionNode implement
     }
 
     @Override
+    public boolean inferStamp() {
+        verifyStamp();
+        return false;
+    }
+
+    protected void verifyStamp() {
+        GraalError.guarantee(returnStamp.getTrustedStamp().equals(stamp(NodeView.DEFAULT)), "Stamp of replaced node %s must be the same as the original Invoke %s, but is %s ",
+                        this, returnStamp.getTrustedStamp(), stamp(NodeView.DEFAULT));
+    }
+
+    @Override
     public ResolvedJavaMethod getContextMethod() {
         return callerMethod;
     }
@@ -120,14 +133,9 @@ public abstract class MacroWithExceptionNode extends WithExceptionNode implement
     @SuppressWarnings("try")
     public Invoke replaceWithInvoke() {
         try (DebugCloseable context = withNodeSourcePosition()) {
-            InvokeWithExceptionNode invoke = createInvoke();
-            graph().replaceWithExceptionSplit(this, invoke);
+            InvokeWithExceptionNode invoke = createInvoke(this, true);
             return invoke;
         }
-    }
-
-    protected InvokeWithExceptionNode createInvoke() {
-        return createInvoke(this);
     }
 
     /**
@@ -137,8 +145,9 @@ public abstract class MacroWithExceptionNode extends WithExceptionNode implement
      * @param oldResult represents the result of this node in the {@link #stateAfter()}. Usually, it
      *            is {@code this}, but if this node has already been replaced it might be a
      *            different one.
+     * @param verifyStamp
      */
-    public InvokeWithExceptionNode createInvoke(Node oldResult) {
+    public InvokeWithExceptionNode createInvoke(Node oldResult, boolean verifyStamp) {
         MethodCallTargetNode callTarget = graph().add(new MethodCallTargetNode(invokeKind, targetMethod, getArguments().toArray(new ValueNode[arguments.size()]), returnStamp, null));
         InvokeWithExceptionNode invoke = graph().add(new InvokeWithExceptionNode(callTarget, null, bci));
         if (stateAfter() != null) {
@@ -147,6 +156,11 @@ public abstract class MacroWithExceptionNode extends WithExceptionNode implement
                 invoke.stateAfter().replaceFirstInput(oldResult, invoke);
             }
         }
+        graph().replaceWithExceptionSplit(this, invoke);
+        if (verifyStamp) {
+            verifyStamp();
+        }
+        assert invoke.verify();
         return invoke;
     }
 
