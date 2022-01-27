@@ -87,7 +87,8 @@ public abstract class VMThreads {
      * ({@link StatusSupport#STATUS_CREATED}).</li>
      * <li>Acquire the mutex from a thread that is in native code
      * ({@link StatusSupport#STATUS_IN_NATIVE}). This is also possible from a thread that is in Java
-     * state by doing an explicit transition to native, see {@link #lockVMMutexInNativeCode}.</li>
+     * state by doing an explicit transition to native, see
+     * {@link #lockThreadMutexInNativeCode}.</li>
      * </ol>
      *
      * Deadlock example 1:
@@ -332,7 +333,7 @@ public abstract class VMThreads {
         // From this point on, all code must be fully uninterruptible because this thread either
         // holds the THREAD_MUTEX (see the JavaDoc on THREAD_MUTEX) or because the IsolateThread was
         // already freed.
-        lockVMMutexInNativeCode();
+        lockThreadMutexInNativeCode();
         OSThreadHandle threadToCleanup;
         try {
             detachThreadInSafeContext(thread);
@@ -360,15 +361,15 @@ public abstract class VMThreads {
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
     @NeverInline("Must not be inlined in a caller that has an exception handler: We only support InvokeNode and not InvokeWithExceptionNode between a CFunctionPrologueNode and CFunctionEpilogueNode.")
-    static void lockVMMutexInNativeCode() {
+    static void lockThreadMutexInNativeCode() {
         CFunctionPrologueNode.cFunctionPrologue(StatusSupport.STATUS_IN_NATIVE);
-        lockVMMutexInNativeCode0();
+        lockThreadMutexInNativeCode0();
         CFunctionEpilogueNode.cFunctionEpilogue(StatusSupport.STATUS_IN_NATIVE);
     }
 
     @Uninterruptible(reason = "Must not stop while in native.")
     @NeverInline("Provide a return address for the Java frame anchor.")
-    private static void lockVMMutexInNativeCode0() {
+    private static void lockThreadMutexInNativeCode0() {
         THREAD_MUTEX.lockNoTransition();
     }
 
