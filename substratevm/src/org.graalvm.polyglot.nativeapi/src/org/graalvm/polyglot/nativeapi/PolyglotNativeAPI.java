@@ -240,7 +240,7 @@ public final class PolyglotNativeAPI {
                     "",
                     "// Write the language handles into the array",
                     "poly_engine_get_languages(thread, engine, &languages_ptr, &num_languages);",
-                    "</code>"
+                    "</code>",
                     " @param engine for which languages are returned.",
                     " @param language_array array to write <code>poly_language</code>s to or NULL.",
                     " @param size the number of languages in the engine.",
