@@ -37,7 +37,7 @@ import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.core.configure.ConditionalElement;
 
-public class ProxyConfiguration implements ConfigurationBase {
+public final class ProxyConfiguration extends ConfigurationBase<ProxyConfiguration, ProxyConfiguration.ProxyConfigurationFilterPredicate> {
     private final Set<ConditionalElement<List<String>>> interfaceLists = ConcurrentHashMap.newKeySet();
 
     public ProxyConfiguration() {
@@ -46,6 +46,39 @@ public class ProxyConfiguration implements ConfigurationBase {
     public ProxyConfiguration(ProxyConfiguration other) {
         for (ConditionalElement<List<String>> interfaceList : other.interfaceLists) {
             interfaceLists.add(new ConditionalElement<>(interfaceList.getCondition(), new ArrayList<>(interfaceList.getElement())));
+        }
+    }
+
+    @Override
+    public ProxyConfiguration copy() {
+        return new ProxyConfiguration(this);
+    }
+
+    @Override
+    protected void merge(ProxyConfiguration other) {
+        for (ConditionalElement<List<String>> interfaceList : other.interfaceLists) {
+            interfaceLists.add(new ConditionalElement<>(interfaceList.getCondition(), new ArrayList<>(interfaceList.getElement())));
+        }
+    }
+
+    @Override
+    protected void intersect(ProxyConfiguration other) {
+        interfaceLists.retainAll(other.interfaceLists);
+    }
+
+    @Override
+    protected void filter(ProxyConfigurationFilterPredicate predicate) {
+        interfaceLists.removeIf(predicate::testProxyInterfaceList);
+    }
+
+    @Override
+    public void subtract(ProxyConfiguration other) {
+        interfaceLists.removeAll(other.interfaceLists);
+    }
+
+    public void addWithCondition(ConfigurationCondition condition, ProxyConfiguration other) {
+        for (ConditionalElement<List<String>> interfaceList : other.interfaceLists) {
+            add(condition, new ArrayList<>(interfaceList.getElement()));
         }
     }
 
@@ -59,10 +92,6 @@ public class ProxyConfiguration implements ConfigurationBase {
 
     public boolean contains(ConfigurationCondition condition, String... interfaces) {
         return contains(condition, Arrays.asList(interfaces));
-    }
-
-    public void removeAll(ProxyConfiguration other) {
-        interfaceLists.removeAll(other.interfaceLists);
     }
 
     @Override
@@ -107,4 +136,9 @@ public class ProxyConfiguration implements ConfigurationBase {
         return l1.size() - l2.size();
     }
 
+    public interface ProxyConfigurationFilterPredicate {
+
+        boolean testProxyInterfaceList(ConditionalElement<List<String>> conditionalElement);
+
+    }
 }

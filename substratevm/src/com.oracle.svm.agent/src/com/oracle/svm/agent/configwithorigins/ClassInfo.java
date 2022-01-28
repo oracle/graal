@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.agent.predicatedconfig;
+package com.oracle.svm.agent.configwithorigins;
 
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jvmtiagentbase.Support;
@@ -36,6 +36,7 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static com.oracle.svm.jvmtiagentbase.Support.check;
+import static com.oracle.svm.jvmtiagentbase.Support.checkPhase;
 import static org.graalvm.word.WordFactory.nullPointer;
 
 class ClassInfo {
@@ -48,13 +49,13 @@ class ClassInfo {
         this.nameAndSignatureToMethodInfoMap = new ConcurrentHashMap<>();
     }
 
-    MethodInfo findOrCreateMethodInfo(long rawJMethodIdValue) {
+    MethodInfo findOrCreateMethodInfo(long rawJMethodIdValue) throws Support.WrongPhaseException {
         JNIMethodId jMethodId = WordFactory.pointer(rawJMethodIdValue);
 
         CCharPointerPointer methodNamePtr = StackValue.get(CCharPointerPointer.class);
         CCharPointerPointer methodSignaturePtr = StackValue.get(CCharPointerPointer.class);
 
-        check(Support.jvmtiFunctions().GetMethodName().invoke(Support.jvmtiEnv(), jMethodId, methodNamePtr, methodSignaturePtr, nullPointer()));
+        checkPhase(Support.jvmtiFunctions().GetMethodName().invoke(Support.jvmtiEnv(), jMethodId, methodNamePtr, methodSignaturePtr, nullPointer()));
         String methodName = MethodInfoRecordKeeper.getJavaStringAndFreeNativeString(methodNamePtr.read());
         String methodSignature = MethodInfoRecordKeeper.getJavaStringAndFreeNativeString(methodSignaturePtr.read());
         String methodNameAndSignature = combineMethodNameAndSignature(methodName, methodSignature);

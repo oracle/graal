@@ -35,13 +35,15 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Predicate;
 
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
+
 import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.PredefinedClassesConfigurationParser;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 
-public class PredefinedClassesConfiguration implements ConfigurationBase {
+public final class PredefinedClassesConfiguration extends ConfigurationBase<PredefinedClassesConfiguration, PredefinedClassesConfiguration.PredefinedClassFilterPredicate> {
     private final Path[] classDestinationDirs;
     private final ConcurrentMap<String, ConfigurationPredefinedClass> classes = new ConcurrentHashMap<>();
     private final Predicate<String> shouldExcludeClassWithHash;
@@ -49,6 +51,42 @@ public class PredefinedClassesConfiguration implements ConfigurationBase {
     public PredefinedClassesConfiguration(Path[] classDestinationDirs, Predicate<String> shouldExcludeClassWithHash) {
         this.classDestinationDirs = classDestinationDirs;
         this.shouldExcludeClassWithHash = shouldExcludeClassWithHash;
+    }
+
+    public PredefinedClassesConfiguration(PredefinedClassesConfiguration other) {
+        this.classDestinationDirs = other.classDestinationDirs;
+        classes.putAll(other.classes);
+        this.shouldExcludeClassWithHash = other.shouldExcludeClassWithHash;
+    }
+
+    @Override
+    public PredefinedClassesConfiguration copy() {
+        return new PredefinedClassesConfiguration(this);
+    }
+
+    @Override
+    protected void merge(PredefinedClassesConfiguration other) {
+        classes.putAll(other.classes);
+    }
+
+    @Override
+    protected void subtract(PredefinedClassesConfiguration other) {
+        classes.keySet().removeAll(other.classes.keySet());
+    }
+
+    @Override
+    protected void intersect(PredefinedClassesConfiguration other) {
+        classes.keySet().retainAll(classes.keySet());
+    }
+
+    @Override
+    protected void filter(PredefinedClassFilterPredicate predicate) {
+        classes.values().removeIf(predicate::testPredefinedClass);
+    }
+
+    public void addWithCondition(ConfigurationCondition condition, PredefinedClassesConfiguration other) {
+        /* Not implemented with conditions yet */
+        classes.putAll(other.classes);
     }
 
     public void add(String nameInfo, byte[] classData) {
@@ -135,5 +173,11 @@ public class PredefinedClassesConfiguration implements ConfigurationBase {
 
     public boolean containsClassWithHash(String hash) {
         return classes.containsKey(hash);
+    }
+
+    public interface PredefinedClassFilterPredicate {
+
+        boolean testPredefinedClass(ConfigurationPredefinedClass clazz);
+
     }
 }

@@ -68,6 +68,12 @@ public final class FieldInfo {
         return get(kind, newFinalButWritable);
     }
 
+    public FieldInfo newIntersectedWith(FieldInfo other) {
+        assert kind.equals(other.kind);
+        boolean newFinalButWritable = finalButWritable && other.finalButWritable;
+        return get(kind, newFinalButWritable);
+    }
+
     public ConfigurationMemberDeclaration getKind() {
         return kind;
     }

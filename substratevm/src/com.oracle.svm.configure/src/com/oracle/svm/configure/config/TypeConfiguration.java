@@ -28,6 +28,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -38,19 +39,55 @@ import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.core.configure.ConditionalElement;
 import com.oracle.svm.core.util.VMError;
 
-public class TypeConfiguration implements ConfigurationBase {
-    public static TypeConfiguration copyAndSubtract(TypeConfiguration config, TypeConfiguration toSubtract) {
-        TypeConfiguration copy = new TypeConfiguration();
-        config.types.forEach((key, type) -> {
-            ConfigurationType subtractType = toSubtract.types.get(key);
-            copy.types.compute(key, (k, v) -> ConfigurationType.copyAndSubtract(type, subtractType));
-        });
-        return copy;
-    }
+public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration, TypeConfiguration.TypeConfigurationFilterPredicate> {
 
     private final ConcurrentMap<ConditionalElement<String>, ConfigurationType> types = new ConcurrentHashMap<>();
 
     public TypeConfiguration() {
+    }
+
+    public TypeConfiguration(TypeConfiguration other) {
+        other.types.forEach((key, value) -> types.put(key, new ConfigurationType(value)));
+    }
+
+    @Override
+    public TypeConfiguration copy() {
+        return new TypeConfiguration(this);
+    }
+
+    @Override
+    protected void merge(TypeConfiguration other) {
+        other.types.forEach((key, value) -> {
+            types.compute(key, (k, v) -> {
+                if (v != null) {
+                    return ConfigurationType.copyAndMerge(v, value);
+                }
+                return value;
+            });
+        });
+    }
+
+    @Override
+    protected void subtract(TypeConfiguration other) {
+        types.forEach((key, type) -> {
+            ConfigurationType subtractType = other.types.get(key);
+            types.compute(key, (k, v) -> ConfigurationType.copyAndSubtract(type, subtractType));
+        });
+    }
+
+    @Override
+    protected void intersect(TypeConfiguration other) {
+        types.forEach((key, type) -> {
+            ConfigurationType intersectedType = other.types.get(key);
+            if (intersectedType != null) {
+                types.compute(key, (k, v) -> ConfigurationType.copyAndIntersect(type, intersectedType));
+            }
+        });
+    }
+
+    @Override
+    protected void filter(TypeConfigurationFilterPredicate predicate) {
+        types.entrySet().removeIf(entry -> predicate.testIncludedType(entry.getKey(), entry.getValue()));
     }
 
     public ConfigurationType get(ConfigurationCondition condition, String qualifiedJavaName) {
@@ -64,8 +101,25 @@ public class TypeConfiguration implements ConfigurationBase {
         }
     }
 
+    public void addOrMerge(ConfigurationType type) {
+        types.compute(new ConditionalElement<>(type.getCondition(), type.getQualifiedJavaName()), (key, value) -> {
+            if (value == null) {
+                return type;
+            } else {
+                value.mergeFrom(type);
+                return value;
+            }
+        });
+    }
+
     public ConfigurationType getOrCreateType(ConfigurationCondition condition, String qualifiedForNameString) {
         return types.computeIfAbsent(new ConditionalElement<>(condition, qualifiedForNameString), p -> new ConfigurationType(p.getCondition(), p.getElement()));
+    }
+
+    public void addWithCondition(ConfigurationCondition condition, TypeConfiguration other) {
+        other.types.forEach((key, value) -> {
+            addOrMerge(new ConfigurationType(value, condition));
+        });
     }
 
     @Override
@@ -88,4 +142,26 @@ public class TypeConfiguration implements ConfigurationBase {
         return types.isEmpty();
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        TypeConfiguration that = (TypeConfiguration) o;
+        return types.equals(that.types);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(types);
+    }
+
+    public interface TypeConfigurationFilterPredicate {
+
+        boolean testIncludedType(ConditionalElement<String> conditionalElement, ConfigurationType type);
+
+    }
 }

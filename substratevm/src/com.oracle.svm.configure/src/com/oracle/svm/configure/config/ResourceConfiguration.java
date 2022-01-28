@@ -29,6 +29,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -42,7 +43,7 @@ import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.core.configure.ConditionalElement;
 import com.oracle.svm.core.configure.ResourcesRegistry;
 
-public class ResourceConfiguration implements ConfigurationBase {
+public final class ResourceConfiguration extends ConfigurationBase<ResourceConfiguration, ResourceConfiguration.ResourceConfigurationFilterPredicate> {
 
     private static final String PROPERTY_BUNDLE = "java.util.PropertyResourceBundle";
 
@@ -80,7 +81,7 @@ public class ResourceConfiguration implements ConfigurationBase {
         }
     }
 
-    private static final class BundleConfiguration {
+    public static final class BundleConfiguration {
         public final ConfigurationCondition condition;
         public final String baseName;
         public final Set<String> locales = ConcurrentHashMap.newKeySet();
@@ -89,6 +90,12 @@ public class ResourceConfiguration implements ConfigurationBase {
         private BundleConfiguration(ConfigurationCondition condition, String baseName) {
             this.condition = condition;
             this.baseName = baseName;
+        }
+
+        private BundleConfiguration(BundleConfiguration other) {
+            this(other.condition, other.baseName);
+            locales.addAll(other.locales);
+            classNames.addAll(other.classNames);
         }
     }
 
@@ -102,13 +109,53 @@ public class ResourceConfiguration implements ConfigurationBase {
     public ResourceConfiguration(ResourceConfiguration other) {
         addedResources.putAll(other.addedResources);
         ignoredResources.putAll(other.ignoredResources);
-        bundles.putAll(other.bundles);
+        for (Map.Entry<ConditionalElement<String>, BundleConfiguration> entry : other.bundles.entrySet()) {
+            bundles.put(entry.getKey(), new BundleConfiguration(entry.getValue()));
+        }
     }
 
-    public void removeAll(ResourceConfiguration other) {
+    @Override
+    public ResourceConfiguration copy() {
+        return new ResourceConfiguration(this);
+    }
+
+    @Override
+    public void subtract(ResourceConfiguration other) {
         addedResources.keySet().removeAll(other.addedResources.keySet());
         ignoredResources.keySet().removeAll(other.ignoredResources.keySet());
         bundles.keySet().removeAll(other.bundles.keySet());
+    }
+
+    @Override
+    protected void merge(ResourceConfiguration other) {
+        addedResources.putAll(other.addedResources);
+        ignoredResources.putAll(other.ignoredResources);
+        bundles.putAll(other.bundles);
+    }
+
+    @Override
+    protected void intersect(ResourceConfiguration other) {
+        addedResources.keySet().retainAll(other.addedResources.keySet());
+        ignoredResources.keySet().retainAll(other.ignoredResources.keySet());
+        bundles.keySet().retainAll(other.bundles.keySet());
+    }
+
+    @Override
+    protected void filter(ResourceConfigurationFilterPredicate predicate) {
+        addedResources.entrySet().removeIf(entry -> predicate.testIncludedResource(entry.getKey(), entry.getValue()));
+        bundles.entrySet().removeIf(entry -> predicate.testIncludedBundle(entry.getKey(), entry.getValue()));
+    }
+
+    public void addWithCondition(ConfigurationCondition condition, ResourceConfiguration other) {
+        for (Map.Entry<ConditionalElement<String>, Pattern> entry : other.addedResources.entrySet()) {
+            addedResources.put(new ConditionalElement<>(condition, entry.getKey().getElement()), entry.getValue());
+        }
+        for (Map.Entry<ConditionalElement<String>, Pattern> entry : other.ignoredResources.entrySet()) {
+            ignoredResources.put(new ConditionalElement<>(condition, entry.getKey().getElement()), entry.getValue());
+        }
+        for (Map.Entry<ConditionalElement<String>, BundleConfiguration> entry : other.bundles.entrySet()) {
+            bundles.put(new ConditionalElement<>(condition, entry.getKey().getElement()), new BundleConfiguration(entry.getValue()));
+        }
     }
 
     public void addResourcePattern(ConfigurationCondition condition, String pattern) {
@@ -217,5 +264,11 @@ public class ResourceConfiguration implements ConfigurationBase {
         ConfigurationConditionPrintable.printConditionAttribute(p.getCondition(), w);
         w.quote(elementName).append(':').quote(p.getElement());
         w.unindent().newline().append('}');
+    }
+
+    public interface ResourceConfigurationFilterPredicate {
+        boolean testIncludedResource(ConditionalElement<String> condition, Pattern pattern);
+
+        boolean testIncludedBundle(ConditionalElement<String> condition, BundleConfiguration bundleConfiguration);
     }
 }

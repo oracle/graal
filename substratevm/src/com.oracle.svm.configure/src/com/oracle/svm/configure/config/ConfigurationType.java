@@ -67,6 +67,24 @@ public class ConfigurationType implements JsonPrintable {
         return copy.isEmpty() ? null : copy;
     }
 
+    static ConfigurationType copyAndIntersect(ConfigurationType type, ConfigurationType toIntersect) {
+        ConfigurationType copy = new ConfigurationType(type);
+        if (copy.equals(toIntersect)) {
+            return copy;
+        }
+
+        assert type.getCondition().equals(toIntersect.getCondition());
+        assert type.getQualifiedJavaName().equals(toIntersect.getQualifiedJavaName());
+        copy.intersectWith(toIntersect);
+        return copy.isEmpty() ? null : copy;
+    }
+
+    static ConfigurationType copyAndMerge(ConfigurationType type, ConfigurationType toMerge) {
+        ConfigurationType copy = new ConfigurationType(type);
+        copy.mergeFrom(toMerge);
+        return copy;
+    }
+
     private final ConfigurationCondition condition;
     private final String qualifiedJavaName;
 
@@ -90,16 +108,20 @@ public class ConfigurationType implements JsonPrintable {
         this.qualifiedJavaName = qualifiedJavaName;
     }
 
-    private ConfigurationType(ConfigurationType other) {
+    ConfigurationType(ConfigurationType other, ConfigurationCondition condition) {
         // Our object is not yet published, so it is sufficient to take only the other object's lock
         synchronized (other) {
             qualifiedJavaName = other.qualifiedJavaName;
-            condition = other.condition;
+            this.condition = condition;
             mergeFrom(other);
         }
     }
 
-    private void mergeFrom(ConfigurationType other) {
+    ConfigurationType(ConfigurationType other) {
+        this(other, other.condition);
+    }
+
+    void mergeFrom(ConfigurationType other) {
         assert condition.equals(other.condition);
         assert qualifiedJavaName.equals(other.qualifiedJavaName);
         mergeFlagsFrom(other);
@@ -171,6 +193,39 @@ public class ConfigurationType implements JsonPrintable {
         }
         if (hasAllPublicConstructors != ConfigurationMemberAccessibility.NONE) {
             removeMethods(ConfigurationMemberDeclaration.PUBLIC, hasAllPublicConstructors, true);
+        }
+    }
+
+    private void intersectWith(ConfigurationType other) {
+        intersectFlags(other);
+        intersectFields(other);
+        intersectMethods(other);
+    }
+
+    private void intersectFlags(ConfigurationType other) {
+        setFlagsFromOther(other, (our, their) -> our && their, ConfigurationMemberAccessibility::remove);
+    }
+
+    private void intersectFields(ConfigurationType other) {
+        if (fields != null) {
+            if (other.fields != null) {
+                fields.keySet().retainAll(other.fields.keySet());
+                for (Map.Entry<String, FieldInfo> fieldEntry : other.fields.entrySet()) {
+                    fields.computeIfPresent(fieldEntry.getKey(), (key, value) -> value.newIntersectedWith(fieldEntry.getValue()));
+                }
+            } else {
+                fields = null;
+            }
+        }
+    }
+
+    private void intersectMethods(ConfigurationType other) {
+        if (methods != null) {
+            if (other.methods != null) {
+                methods.keySet().retainAll(other.methods.keySet());
+            } else {
+                methods = null;
+            }
         }
     }
 

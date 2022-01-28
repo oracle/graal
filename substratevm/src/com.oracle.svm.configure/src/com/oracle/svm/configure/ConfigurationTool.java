@@ -47,7 +47,7 @@ import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.ImageInfo;
 
-import com.oracle.svm.configure.config.ConfigurationSet;
+import com.oracle.svm.configure.config.ConfigurationFileCollection;
 import com.oracle.svm.configure.filters.FilterConfigurationParser;
 import com.oracle.svm.configure.filters.ModuleFilterTools;
 import com.oracle.svm.configure.filters.RuleNode;
@@ -148,14 +148,14 @@ public class ConfigurationTool {
         boolean builtinHeuristicFilter = true;
         List<URI> callerFilters = new ArrayList<>();
 
-        ConfigurationSet omittedInputSet = new ConfigurationSet();
-        ConfigurationSet inputSet = new ConfigurationSet();
-        ConfigurationSet outputSet = new ConfigurationSet();
+        ConfigurationFileCollection omittedInputSet = new ConfigurationFileCollection();
+        ConfigurationFileCollection inputSet = new ConfigurationFileCollection();
+        ConfigurationFileCollection outputSet = new ConfigurationFileCollection();
         while (argsIter.hasNext()) {
             String[] parts = argsIter.next().split("=", 2);
             String current = parts[0];
             String value = (parts.length > 1) ? parts[1] : null;
-            ConfigurationSet set = outputSet;
+            ConfigurationFileCollection set = outputSet;
             switch (current) {
                 case "--input-dir":
                     inputSet.addDirectory(requirePath(current, value));
@@ -271,10 +271,10 @@ public class ConfigurationTool {
         TraceProcessor p;
         TraceProcessor omittedInputTraceProcessor;
         try {
-            omittedInputTraceProcessor = new TraceProcessor(advisor, omittedInputSet.loadJniConfig(ConfigurationSet.FAIL_ON_EXCEPTION),
-                            omittedInputSet.loadReflectConfig(ConfigurationSet.FAIL_ON_EXCEPTION),
-                            omittedInputSet.loadProxyConfig(ConfigurationSet.FAIL_ON_EXCEPTION), omittedInputSet.loadResourceConfig(ConfigurationSet.FAIL_ON_EXCEPTION),
-                            omittedInputSet.loadSerializationConfig(ConfigurationSet.FAIL_ON_EXCEPTION), omittedInputSet.loadPredefinedClassesConfig(null, null, ConfigurationSet.FAIL_ON_EXCEPTION),
+            omittedInputTraceProcessor = new TraceProcessor(advisor, omittedInputSet.loadJniConfig(ConfigurationFileCollection.FAIL_ON_EXCEPTION),
+                            omittedInputSet.loadReflectConfig(ConfigurationFileCollection.FAIL_ON_EXCEPTION),
+                            omittedInputSet.loadProxyConfig(ConfigurationFileCollection.FAIL_ON_EXCEPTION), omittedInputSet.loadResourceConfig(ConfigurationFileCollection.FAIL_ON_EXCEPTION),
+                            omittedInputSet.loadSerializationConfig(ConfigurationFileCollection.FAIL_ON_EXCEPTION), omittedInputSet.loadPredefinedClassesConfig(null, null, ConfigurationFileCollection.FAIL_ON_EXCEPTION),
                             null);
             List<Path> predefinedClassDestDirs = new ArrayList<>();
             for (URI pathUri : outputSet.getPredefinedClassesConfigPaths()) {
@@ -283,10 +283,10 @@ public class ConfigurationTool {
                 predefinedClassDestDirs.add(subdir);
             }
             Predicate<String> shouldExcludeClassesWithHash = omittedInputTraceProcessor.getPredefinedClassesConfiguration()::containsClassWithHash;
-            p = new TraceProcessor(advisor, inputSet.loadJniConfig(ConfigurationSet.FAIL_ON_EXCEPTION), inputSet.loadReflectConfig(ConfigurationSet.FAIL_ON_EXCEPTION),
-                            inputSet.loadProxyConfig(ConfigurationSet.FAIL_ON_EXCEPTION), inputSet.loadResourceConfig(ConfigurationSet.FAIL_ON_EXCEPTION),
-                            inputSet.loadSerializationConfig(ConfigurationSet.FAIL_ON_EXCEPTION),
-                            inputSet.loadPredefinedClassesConfig(predefinedClassDestDirs.toArray(new Path[0]), shouldExcludeClassesWithHash, ConfigurationSet.FAIL_ON_EXCEPTION),
+            p = new TraceProcessor(advisor, inputSet.loadJniConfig(ConfigurationFileCollection.FAIL_ON_EXCEPTION), inputSet.loadReflectConfig(ConfigurationFileCollection.FAIL_ON_EXCEPTION),
+                            inputSet.loadProxyConfig(ConfigurationFileCollection.FAIL_ON_EXCEPTION), inputSet.loadResourceConfig(ConfigurationFileCollection.FAIL_ON_EXCEPTION),
+                            inputSet.loadSerializationConfig(ConfigurationFileCollection.FAIL_ON_EXCEPTION),
+                            inputSet.loadPredefinedClassesConfig(predefinedClassDestDirs.toArray(new Path[0]), shouldExcludeClassesWithHash, ConfigurationFileCollection.FAIL_ON_EXCEPTION),
                             omittedInputTraceProcessor);
         } catch (IOException e) {
             throw e;
@@ -337,9 +337,9 @@ public class ConfigurationTool {
         }
     }
 
-    private static void failIfAgentLockFilesPresent(ConfigurationSet... sets) {
+    private static void failIfAgentLockFilesPresent(ConfigurationFileCollection... sets) {
         Set<String> paths = null;
-        for (ConfigurationSet set : sets) {
+        for (ConfigurationFileCollection set : sets) {
             for (URI path : set.getDetectedAgentLockPaths()) {
                 if (paths == null) {
                     paths = new HashSet<>();

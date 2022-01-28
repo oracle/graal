@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.agent.predicatedconfig;
+package com.oracle.svm.agent.configwithorigins;
 
 import java.util.Objects;
 
@@ -43,7 +43,7 @@ public class MethodInfo {
     public String getJavaMethodNameAndSignature() {
         String[] parameterTypes = SignatureUtil.toParameterTypes(signature);
         StringBuilder sb = new StringBuilder(name);
-        sb.append(" (");
+        sb.append("(");
         boolean first = false;
         for (String parameterType : parameterTypes) {
             if (!first) {

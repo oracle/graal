@@ -22,18 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.agent.predicatedconfig;
+package com.oracle.svm.agent.configwithorigins;
 
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import com.oracle.svm.agent.tracing.ConfigurationResultWriter;
@@ -58,13 +57,13 @@ import com.oracle.svm.jni.nativeapi.JNIMethodId;
  * resulting from the trace events from that method. When writing configuration files, the call tree
  * is written node by node, once per configuration file.
  */
-public class ConfigurationWithOriginsResultWriter extends Tracer implements TracingResultWriter {
+public abstract class ConfigurationWithOriginsResultWriterBase extends Tracer implements TracingResultWriter {
 
-    private final AccessAdvisor advisor;
-    private final MethodCallNode rootNode;
-    private final MethodInfoRecordKeeper methodInfoRecordKeeper;
+    protected final AccessAdvisor advisor;
+    protected final MethodCallNode rootNode;
+    protected final MethodInfoRecordKeeper methodInfoRecordKeeper;
 
-    public ConfigurationWithOriginsResultWriter(AccessAdvisor advisor, MethodInfoRecordKeeper methodInfoRecordKeeper) {
+    public ConfigurationWithOriginsResultWriterBase(AccessAdvisor advisor, MethodInfoRecordKeeper methodInfoRecordKeeper) {
         this.advisor = advisor;
         this.rootNode = MethodCallNode.createRoot();
         this.methodInfoRecordKeeper = methodInfoRecordKeeper;
@@ -81,18 +80,21 @@ public class ConfigurationWithOriginsResultWriter extends Tracer implements Trac
         } else {
             assert entry.containsKey("stack_trace");
             JNIMethodId[] rawStackTrace = (JNIMethodId[]) entry.remove("stack_trace");
+            MethodInfo[] stackTrace = methodInfoRecordKeeper.getStackTraceInfo(rawStackTrace);
             Map<String, Object> transformedEntry = ConfigurationResultWriter.arraysToLists(entry);
 
-            if (rawStackTrace == null) {
+            if (stackTrace == null) {
                 rootNode.traceEntry(this::createNewTraceProcessor, transformedEntry);
             } else {
-                MethodInfo[] stackTrace = methodInfoRecordKeeper.getStackTraceInfo(rawStackTrace);
-                rootNode.dispatchTraceEntry(stackTrace, stackTrace.length - 1, transformedEntry, this::createNewTraceProcessor);
+                stackTrace = filterStackTrace(stackTrace);
+                if (stackTrace != null) {
+                    rootNode.dispatchTraceEntry(stackTrace, stackTrace.length - 1, transformedEntry, this::createNewTraceProcessor);
+                }
             }
         }
     }
 
-    private TraceProcessor createNewTraceProcessor() {
+    protected TraceProcessor createNewTraceProcessor() {
         TypeConfiguration jniConfig = new TypeConfiguration();
         TypeConfiguration reflectConfig = new TypeConfiguration();
         ProxyConfiguration proxyConfig = new ProxyConfiguration();
@@ -102,12 +104,12 @@ public class ConfigurationWithOriginsResultWriter extends Tracer implements Trac
         return new TraceProcessor(advisor, jniConfig, reflectConfig, proxyConfig, resourceConfig, serializationConfiguration, predefinedClassesConfiguration, null);
     }
 
-    private static final class MethodCallNode {
+    protected static final class MethodCallNode {
 
-        private final MethodInfo methodInfo;
-        private final MethodCallNode parent;
-        private final Map<MethodInfo, MethodCallNode> calledMethods;
-        private TraceProcessor processor;
+        public final MethodInfo methodInfo;
+        public final MethodCallNode parent;
+        public final Map<MethodInfo, MethodCallNode> calledMethods;
+        public TraceProcessor processor;
 
         private MethodCallNode(MethodInfo methodInfo, MethodCallNode parent) {
             this.methodInfo = methodInfo;
@@ -150,92 +152,7 @@ public class ConfigurationWithOriginsResultWriter extends Tracer implements Trac
             processor.processEntry(entry);
         }
 
-        public void writeJson(JsonWriter writer, ConfigurationFile configFile) throws IOException {
-            Set<MethodCallNode> includedNodes = new HashSet<>();
-
-            /*
-             * Recursively construct a set of included nodes. Included nodes are the ones that will
-             * eventually be printed. A node is considered included if it or its children have
-             * configuration.
-             */
-            visitPostOrder(node -> {
-                /* Nodes with configuration are always included */
-                if (node.hasConfig(configFile)) {
-                    includedNodes.add(node);
-                }
-                /* If a node is already included, also include its parent */
-                if (includedNodes.contains(node) && node.parent != null) {
-                    includedNodes.add(node.parent);
-                }
-            });
-
-            writeJson(writer, configFile, includedNodes);
-        }
-
-        private void writeJson(JsonWriter writer, ConfigurationFile configFile, Set<MethodCallNode> includedNodes) throws IOException {
-            if (isRoot()) {
-                writer.append("[").newline()
-                                .append("{").indent().newline()
-                                .quote("configuration-with-origins").append(": [");
-                printChildMethodJson(writer, configFile, includedNodes);
-                writer.newline()
-                                .append("]").unindent().newline();
-                if (hasConfig(configFile)) {
-                    writer.quote("configuration-without-origins").append(": ");
-                    writeConfigJson(writer, configFile);
-                    writer.unindent().newline();
-                }
-                writer.append("}").newline()
-                                .append("]").newline();
-            } else {
-                writer.append("{").indent().newline();
-
-                writer.quote("method").append(": ").quote(methodInfo.getJavaDeclaringClassName() + "#" + methodInfo.getJavaMethodNameAndSignature()).append(",").newline();
-
-                if (anyChildrenIncluded(includedNodes)) {
-                    writer.quote("methods").append(": [");
-                    printChildMethodJson(writer, configFile, includedNodes);
-                    writer.newline().append("]");
-                    if (hasConfig(configFile)) {
-                        writer.append(",").newline();
-                    }
-                }
-
-                if (hasConfig(configFile)) {
-                    writeConfigJson(writer, configFile);
-                }
-
-                writer.unindent().newline();
-                writer.append("}");
-            }
-        }
-
-        private void printChildMethodJson(JsonWriter writer, ConfigurationFile configFile, Set<MethodCallNode> includedNodes) throws IOException {
-            boolean first = true;
-            for (MethodCallNode methodCallNode : calledMethods.values()) {
-                if (!includedNodes.contains(methodCallNode)) {
-                    continue;
-                }
-                if (first) {
-                    first = false;
-                } else {
-                    writer.append(",");
-                }
-                writer.newline();
-                methodCallNode.writeJson(writer, configFile, includedNodes);
-            }
-        }
-
-        private boolean anyChildrenIncluded(Set<MethodCallNode> includedNodes) {
-            return calledMethods.values().stream().anyMatch(includedNodes::contains);
-        }
-
-        private void writeConfigJson(JsonWriter writer, ConfigurationFile configFile) throws IOException {
-            writer.quote("config").append(": ");
-            processor.getConfiguration(configFile).printJson(writer);
-        }
-
-        private void visitPostOrder(Consumer<MethodCallNode> methodCallNodeConsumer) {
+        public void visitPostOrder(Consumer<MethodCallNode> methodCallNodeConsumer) {
             for (MethodCallNode node : calledMethods.values()) {
                 node.visitPostOrder(methodCallNodeConsumer);
             }
@@ -267,23 +184,41 @@ public class ConfigurationWithOriginsResultWriter extends Tracer implements Trac
 
     @Override
     public boolean supportsOnUnloadTraceWriting() {
-        return true;
+        return false;
     }
 
-    public static final String CONFIG_WITH_ORIGINS_FILE_SUFFIX = "-origins.json";
+    protected abstract String getConfigFileSuffix();
 
-    @Override
-    public List<Path> writeToDirectory(Path directoryPath) throws IOException {
+    protected abstract void writeConfig(JsonWriter writer, ConfigurationFile configFile) throws IOException;
+
+    protected MethodInfo[] filterStackTrace(MethodInfo[] stackTrace) {
+        return stackTrace;
+    }
+
+    protected void beforeWritingConfig() {
+    }
+
+    protected static List<Path> writeToDirectory(Path directoryPath, ConfigurationWriter configWriter, Function<ConfigurationFile, String> configFileResolver) throws IOException {
         List<Path> writtenPaths = new ArrayList<>();
         for (ConfigurationFile configFile : ConfigurationFile.values()) {
             if (configFile.canBeGeneratedByAgent()) {
-                Path filePath = directoryPath.resolve(configFile.getFileName(CONFIG_WITH_ORIGINS_FILE_SUFFIX));
+                Path filePath = directoryPath.resolve(configFileResolver.apply(configFile));
                 try (JsonWriter writer = new JsonWriter(filePath)) {
-                    rootNode.writeJson(writer, configFile);
+                    configWriter.writeConfig(writer, configFile);
                 }
                 writtenPaths.add(filePath);
             }
         }
         return writtenPaths;
+    }
+
+    public List<Path> writeToDirectory(Path directoryPath) throws IOException {
+        beforeWritingConfig();
+        return writeToDirectory(directoryPath, this::writeConfig, configFile -> configFile.getFileName(getConfigFileSuffix()));
+    }
+
+    @FunctionalInterface
+    protected interface ConfigurationWriter {
+        void writeConfig(JsonWriter writer, ConfigurationFile file) throws IOException;
     }
 }

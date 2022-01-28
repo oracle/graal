@@ -63,7 +63,7 @@ public class TraceProcessor extends AbstractProcessor {
     public TypeConfiguration getJniConfiguration() {
         TypeConfiguration result = jniProcessor.getConfiguration();
         if (omittedConfigProcessor != null) {
-            result = TypeConfiguration.copyAndSubtract(result, omittedConfigProcessor.jniProcessor.getConfiguration());
+            result = result.copyAndSubtract(omittedConfigProcessor.jniProcessor.getConfiguration());
         }
         return result;
     }
@@ -71,7 +71,7 @@ public class TraceProcessor extends AbstractProcessor {
     public TypeConfiguration getReflectionConfiguration() {
         TypeConfiguration result = reflectionProcessor.getConfiguration();
         if (omittedConfigProcessor != null) {
-            result = TypeConfiguration.copyAndSubtract(result, omittedConfigProcessor.reflectionProcessor.getConfiguration());
+            result = result.copyAndSubtract(omittedConfigProcessor.reflectionProcessor.getConfiguration());
         }
         return result;
     }
@@ -79,8 +79,7 @@ public class TraceProcessor extends AbstractProcessor {
     public ProxyConfiguration getProxyConfiguration() {
         ProxyConfiguration result = reflectionProcessor.getProxyConfiguration();
         if (omittedConfigProcessor != null) {
-            result = new ProxyConfiguration(result);
-            result.removeAll(omittedConfigProcessor.reflectionProcessor.getProxyConfiguration());
+            result.copyAndSubtract(omittedConfigProcessor.reflectionProcessor.getProxyConfiguration());
         }
         return result;
     }
@@ -88,8 +87,7 @@ public class TraceProcessor extends AbstractProcessor {
     public ResourceConfiguration getResourceConfiguration() {
         ResourceConfiguration result = reflectionProcessor.getResourceConfiguration();
         if (omittedConfigProcessor != null) {
-            result = new ResourceConfiguration(result);
-            result.removeAll(omittedConfigProcessor.reflectionProcessor.getResourceConfiguration());
+            result.copyAndSubtract(omittedConfigProcessor.reflectionProcessor.getResourceConfiguration());
         }
         return result;
     }
@@ -97,8 +95,7 @@ public class TraceProcessor extends AbstractProcessor {
     public SerializationConfiguration getSerializationConfiguration() {
         SerializationConfiguration result = serializationProcessor.getSerializationConfiguration();
         if (omittedConfigProcessor != null) {
-            result = new SerializationConfiguration(result);
-            result.removeAll(omittedConfigProcessor.serializationProcessor.getSerializationConfiguration());
+            result.copyAndSubtract(omittedConfigProcessor.serializationProcessor.getSerializationConfiguration());
         }
         return result;
     }
@@ -107,7 +104,7 @@ public class TraceProcessor extends AbstractProcessor {
         return classLoadingProcessor.getPredefinedClassesConfiguration();
     }
 
-    public ConfigurationBase getConfiguration(ConfigurationFile configFile) {
+    public ConfigurationBase<?, ?> getConfiguration(ConfigurationFile configFile) {
         assert configFile.canBeGeneratedByAgent();
         switch (configFile) {
             case DYNAMIC_PROXY:

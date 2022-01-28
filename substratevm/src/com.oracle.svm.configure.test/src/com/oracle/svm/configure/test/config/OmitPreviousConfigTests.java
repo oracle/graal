@@ -43,7 +43,7 @@ import com.oracle.svm.configure.config.ConfigurationMemberInfo;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberAccessibility;
 import com.oracle.svm.configure.config.ConfigurationMemberInfo.ConfigurationMemberDeclaration;
 import com.oracle.svm.configure.config.ConfigurationMethod;
-import com.oracle.svm.configure.config.ConfigurationSet;
+import com.oracle.svm.configure.config.ConfigurationFileCollection;
 import com.oracle.svm.configure.config.ConfigurationType;
 import com.oracle.svm.configure.config.FieldInfo;
 import com.oracle.svm.configure.config.PredefinedClassesConfiguration;
@@ -62,8 +62,8 @@ public class OmitPreviousConfigTests {
 
     private static TraceProcessor loadTraceProcessorFromResourceDirectory(String resourceDirectory, TraceProcessor previous) {
         try {
-            ConfigurationSet configurationSet = new ConfigurationSet();
-            configurationSet.addDirectory(resourceFileName -> {
+            ConfigurationFileCollection configurationFileCollection = new ConfigurationFileCollection();
+            configurationFileCollection.addDirectory(resourceFileName -> {
                 try {
                     String resourceName = resourceDirectory + "/" + resourceFileName;
                     URL resourceURL = OmitPreviousConfigTests.class.getResource(resourceName);
@@ -85,9 +85,9 @@ public class OmitPreviousConfigTests {
             if (previous != null) {
                 shouldExcludeClassesWithHash = previous.getPredefinedClassesConfiguration()::containsClassWithHash;
             }
-            return new TraceProcessor(unusedAdvisor, configurationSet.loadJniConfig(handler), configurationSet.loadReflectConfig(handler), configurationSet.loadProxyConfig(handler),
-                            configurationSet.loadResourceConfig(handler), configurationSet.loadSerializationConfig(handler),
-                            configurationSet.loadPredefinedClassesConfig(null, shouldExcludeClassesWithHash, handler), previous);
+            return new TraceProcessor(unusedAdvisor, configurationFileCollection.loadJniConfig(handler), configurationFileCollection.loadReflectConfig(handler), configurationFileCollection.loadProxyConfig(handler),
+                            configurationFileCollection.loadResourceConfig(handler), configurationFileCollection.loadSerializationConfig(handler),
+                            configurationFileCollection.loadPredefinedClassesConfig(null, shouldExcludeClassesWithHash, handler), previous);
         } catch (Exception e) {
             throw VMError.shouldNotReachHere("Unexpected error while loading the configuration files.", e);
         }
@@ -297,7 +297,7 @@ class TypeMethodsWithFlagsTest {
     }
 
     void doTest() {
-        TypeConfiguration currentConfigWithoutPrevious = TypeConfiguration.copyAndSubtract(currentConfig, previousConfig);
+        TypeConfiguration currentConfigWithoutPrevious = currentConfig.copyAndSubtract(previousConfig);
 
         String name = getTypeName();
         ConfigurationType configurationType = currentConfigWithoutPrevious.get(ConfigurationCondition.alwaysTrue(), name);

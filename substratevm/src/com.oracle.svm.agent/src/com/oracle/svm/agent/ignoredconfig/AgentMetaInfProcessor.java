@@ -26,15 +26,15 @@ package com.oracle.svm.agent.ignoredconfig;
 
 import java.nio.file.Path;
 
-import com.oracle.svm.configure.config.ConfigurationSet;
+import com.oracle.svm.configure.config.ConfigurationFileCollection;
 import com.oracle.svm.driver.metainf.MetaInfFileType;
 import com.oracle.svm.driver.metainf.NativeImageMetaInfResourceProcessor;
 
 public class AgentMetaInfProcessor implements NativeImageMetaInfResourceProcessor {
 
-    private ConfigurationSet ignoredConfigSet;
+    private ConfigurationFileCollection ignoredConfigSet;
 
-    public AgentMetaInfProcessor(ConfigurationSet ignoredConfigSet) {
+    public AgentMetaInfProcessor(ConfigurationFileCollection ignoredConfigSet) {
         this.ignoredConfigSet = ignoredConfigSet;
     }
 

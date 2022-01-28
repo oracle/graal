@@ -22,9 +22,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.agent.predicatedconfig;
+package com.oracle.svm.agent.configwithorigins;
 
-import static com.oracle.svm.jvmtiagentbase.Support.check;
+import static com.oracle.svm.jvmtiagentbase.Support.checkPhase;
 import static org.graalvm.word.WordFactory.nullPointer;
 
 import java.util.Map;
@@ -57,11 +57,18 @@ public class MethodInfoRecordKeeper {
     }
 
     public MethodInfo[] getStackTraceInfo(JNIMethodId[] stackTrace) {
-        MethodInfo[] methodInfoTrace = new MethodInfo[stackTrace.length];
-        for (int i = 0; i < stackTrace.length; ++i) {
-            methodInfoTrace[i] = getMethodInfo(stackTrace[i].rawValue());
+        if (stackTrace == null) {
+            return null;
         }
-        return methodInfoTrace;
+        try {
+            MethodInfo[] methodInfoTrace = new MethodInfo[stackTrace.length];
+            for (int i = 0; i < stackTrace.length; ++i) {
+                methodInfoTrace[i] = getMethodInfo(stackTrace[i].rawValue());
+            }
+            return methodInfoTrace;
+        } catch (Support.WrongPhaseException e) {
+            return null;
+        }
     }
 
     /**
@@ -70,7 +77,7 @@ public class MethodInfoRecordKeeper {
      * @param rawJMethodIdValue Raw jMethodId value.
      * @return MethodInfo object that uniquely describes the given method.
      */
-    private MethodInfo getMethodInfo(long rawJMethodIdValue) {
+    private MethodInfo getMethodInfo(long rawJMethodIdValue) throws Support.WrongPhaseException {
         assert shouldTrackMethodInfo;
         if (jMethodIdToMethodInfoMap.containsKey(rawJMethodIdValue)) {
             return jMethodIdToMethodInfoMap.get(rawJMethodIdValue);
@@ -88,7 +95,7 @@ public class MethodInfoRecordKeeper {
      * @param rawJMethodIdValue Raw jMethodId value.
      * @return MethodInfo object that uniquely describes the given method.
      */
-    private MethodInfo findOrCreateMethodInfo(long rawJMethodIdValue) {
+    private MethodInfo findOrCreateMethodInfo(long rawJMethodIdValue) throws Support.WrongPhaseException {
         String declaringClassSignature = getMethodDeclaringClassSignature(rawJMethodIdValue);
         ClassInfo classInfo = findOrCreateClassInfo(declaringClassSignature);
         MethodInfo methodInfo = classInfo.findOrCreateMethodInfo(rawJMethodIdValue);
@@ -102,12 +109,12 @@ public class MethodInfoRecordKeeper {
         return javaString;
     }
 
-    private static String getMethodDeclaringClassSignature(long rawJMethodIdValue) {
+    private static String getMethodDeclaringClassSignature(long rawJMethodIdValue) throws Support.WrongPhaseException {
         JNIMethodId jMethodId = WordFactory.pointer(rawJMethodIdValue);
 
         JNIObjectHandle declaringClass = Support.getMethodDeclaringClass(jMethodId);
         CCharPointerPointer signaturePointer = StackValue.get(CCharPointerPointer.class);
-        check(Support.jvmtiFunctions().GetClassSignature().invoke(Support.jvmtiEnv(), declaringClass, signaturePointer, nullPointer()));
+        checkPhase(Support.jvmtiFunctions().GetClassSignature().invoke(Support.jvmtiEnv(), declaringClass, signaturePointer, nullPointer()));
         return getJavaStringAndFreeNativeString(signaturePointer.read());
     }
 
@@ -115,5 +122,4 @@ public class MethodInfoRecordKeeper {
         classSignatureToClassInfoMap.computeIfAbsent(classSignature, ClassInfo::new);
         return classSignatureToClassInfoMap.get(classSignature);
     }
-
 }
