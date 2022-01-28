@@ -256,14 +256,14 @@ public final class LSStackSlotAllocator extends AllocationPhase {
             active.clear();
         }
 
-        private static final Predicate<StackInterval> IS_REFERENCE_INTERVAL = new Predicate<StackInterval>() {
+        private static final Predicate<StackInterval> IS_REFERENCE_INTERVAL = new Predicate<>() {
             @Override
             public boolean test(StackInterval interval) {
                 return !((LIRKind) interval.kind()).isValue();
             }
         };
 
-        private static final Predicate<StackInterval> IS_PRIMITIVE_INTERVAL = new Predicate<StackInterval>() {
+        private static final Predicate<StackInterval> IS_PRIMITIVE_INTERVAL = new Predicate<>() {
             @Override
             public boolean test(StackInterval interval) {
                 return ((LIRKind) interval.kind()).isValue();

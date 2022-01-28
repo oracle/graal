@@ -1128,7 +1128,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
     public NodeIterable<Node> getSuccessorIterable(final Node node) {
         long mask = this.successorIteration;
-        return new NodeIterable<Node>() {
+        return new NodeIterable<>() {
 
             @Override
             public Iterator<Node> iterator() {
@@ -1162,7 +1162,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
     public NodeIterable<Node> getInputIterable(final Node node) {
         long mask = this.inputsIteration;
-        return new NodeIterable<Node>() {
+        return new NodeIterable<>() {
 
             @Override
             public Iterator<Node> iterator() {

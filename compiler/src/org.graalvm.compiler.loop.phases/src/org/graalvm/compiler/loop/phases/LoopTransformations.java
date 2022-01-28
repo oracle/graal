@@ -573,7 +573,7 @@ public abstract class LoopTransformations {
         } else {
             stateToUse = begin.stateAfter().duplicateWithVirtualState();
         }
-        stateToUse.applyToNonVirtual(new NodePositionClosure<Node>() {
+        stateToUse.applyToNonVirtual(new NodePositionClosure<>() {
             @Override
             public void apply(Node from, Position p) {
                 final ValueNode toProxy = (ValueNode) p.get(from);

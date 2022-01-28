@@ -963,10 +963,10 @@ public class GraphUtil {
      * @param start the node at which to start iterating
      */
     public static NodeIterable<FixedNode> predecessorIterable(final FixedNode start) {
-        return new NodeIterable<FixedNode>() {
+        return new NodeIterable<>() {
             @Override
             public Iterator<FixedNode> iterator() {
-                return new Iterator<FixedNode>() {
+                return new Iterator<>() {
                     public FixedNode current = start;
 
                     @Override

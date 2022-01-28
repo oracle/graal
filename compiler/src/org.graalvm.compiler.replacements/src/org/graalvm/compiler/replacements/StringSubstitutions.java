@@ -39,5 +39,13 @@ public class StringSubstitutions {
     /**
      * Will be intrinsified with an {@link InvocationPlugin} to a {@link LoadFieldNode}.
      */
-    public static native char[] getValue(String s);
+    public static native byte[] getValue(String s);
+
+    public static native byte getByte(byte[] value, int i);
+
+    public static native int getCoder(String s);
+
+    public static boolean isCompactString(String s) {
+        return getCoder(s) == 0;
+    }
 }

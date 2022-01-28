@@ -67,7 +67,6 @@ import org.graalvm.compiler.replacements.nodes.CountTrailingZerosNode;
 import org.graalvm.compiler.replacements.nodes.FusedMultiplyAddNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaKind;
@@ -86,8 +85,8 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             public void run() {
                 registerIntegerLongPlugins(invocationPlugins, JavaKind.Int, replacements);
                 registerIntegerLongPlugins(invocationPlugins, JavaKind.Long, replacements);
-                registerMathPlugins(invocationPlugins, registerForeignCallMath, useFMAIntrinsics);
-                if (JavaVersionUtil.JAVA_SPEC >= 9 && GraalOptions.EmitStringSubstitutions.getValue(options)) {
+                registerMathPlugins(invocationPlugins, registerForeignCallMath, useFMAIntrinsics, replacements);
+                if (GraalOptions.EmitStringSubstitutions.getValue(options)) {
                     registerStringLatin1Plugins(invocationPlugins, replacements);
                     registerStringUTF16Plugins(invocationPlugins, replacements);
                 }
@@ -122,8 +121,8 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
         });
     }
 
-    private static void registerMathPlugins(InvocationPlugins plugins, boolean registerForeignCallMath, boolean useFMAIntrinsics) {
-        Registration r = new Registration(plugins, Math.class);
+    private static void registerMathPlugins(InvocationPlugins plugins, boolean registerForeignCallMath, boolean useFMAIntrinsics, Replacements replacements) {
+        Registration r = new Registration(plugins, Math.class, replacements);
         if (registerForeignCallMath) {
             registerUnaryMath(r, "sin", SIN);
             registerUnaryMath(r, "cos", COS);
@@ -144,20 +143,16 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 }
             });
         }
-        if (useFMAIntrinsics && JavaVersionUtil.JAVA_SPEC > 8) {
-            registerFMA(r);
-        }
+        registerFMA(r, useFMAIntrinsics);
         registerIntegerAbs(r);
 
-        if (JavaVersionUtil.JAVA_SPEC >= 10) {
-            r.register2("multiplyHigh", Long.TYPE, Long.TYPE, new InvocationPlugin() {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
-                    b.push(JavaKind.Long, b.append(new IntegerMulHighNode(x, y)));
-                    return true;
-                }
-            });
-        }
+        r.register2("multiplyHigh", Long.TYPE, Long.TYPE, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
+                b.push(JavaKind.Long, b.append(new IntegerMulHighNode(x, y)));
+                return true;
+            }
+        });
         registerMinMax(r);
 
         r.register2("copySign", float.class, float.class, new InvocationPlugin() {
@@ -176,8 +171,8 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
         });
     }
 
-    private static void registerFMA(Registration r) {
-        r.register3("fma", Double.TYPE, Double.TYPE, Double.TYPE, new InvocationPlugin() {
+    private static void registerFMA(Registration r, boolean isEnabled) {
+        r.registerConditional3(isEnabled, "fma", Double.TYPE, Double.TYPE, Double.TYPE, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b,
                             ResolvedJavaMethod targetMethod,
@@ -189,7 +184,7 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 return true;
             }
         });
-        r.register3("fma", Float.TYPE, Float.TYPE, Float.TYPE, new InvocationPlugin() {
+        r.registerConditional3(isEnabled, "fma", Float.TYPE, Float.TYPE, Float.TYPE, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b,
                             ResolvedJavaMethod targetMethod,

@@ -67,13 +67,6 @@ public abstract class AbstractProcessor extends javax.annotation.processing.Abst
 
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-        // In JDK 8, each annotation processing round has its own Elements object
-        // so this cache must be cleared at the start of each round. As of JDK9,
-        // a single Elements is preserved across all annotation processing rounds.
-        // However, since both behaviors are compliant with the annotation processing
-        // specification, we unconditionally clear the cache to be safe.
-        types.clear();
-
         return doProcess(annotations, roundEnv);
     }
 

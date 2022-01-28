@@ -343,8 +343,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
             }
         }
         if (selected == null) {
-            // As of JDK 9, exactly one GC flag is guaranteed to be selected.
-            // On JDK 8, the default GC is Serial when no GC flag is true.
+            // Exactly one GC flag is guaranteed to be selected.
             selected = HotSpotGC.Serial;
         }
         return selected;

@@ -212,7 +212,7 @@ public class ReentrantBlockIteratorTest extends GraalCompilerTest {
         class VoidState {
         }
         final VoidState voidState = new VoidState();
-        BlockIteratorClosure<VoidState> closure = new BlockIteratorClosure<VoidState>() {
+        BlockIteratorClosure<VoidState> closure = new BlockIteratorClosure<>() {
 
             @Override
             protected VoidState getInitialState() {

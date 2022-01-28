@@ -33,7 +33,6 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.truffle.compiler.amd64.substitutions.TruffleAMD64InvocationPlugins;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -179,8 +178,6 @@ public class ArrayUtilsRegionEqualsWithMaskConstantTest extends GraalCompilerTes
     @Test
     public void testMixedConstantStrings() {
         Assume.assumeTrue("array region equals with mask is AMD64-exclusive at the moment", getArchitecture() instanceof AMD64);
-        Assume.assumeTrue("compact String test", JavaVersionUtil.JAVA_SPEC > 8);
-
         test("equalCompactWidePrefixStringSnippet");
         test("equalWideCompactPrefixStringSnippet");
         test("unequalCompactWidePrefixStringSnippet");
