@@ -176,11 +176,11 @@ final class SubstrateVirtualThread extends Thread {
     }
 
     private void mount() {
-        Thread carrier = JavaThreads.platformThread.get();
+        Thread carrier = PlatformThreads.currentThread.get();
         this.carrierThread = carrier; // can be a weaker write with release semantics
 
         if (JavaThreads.isInterrupted(this)) {
-            JavaThreads.platformSetInterrupt(carrier);
+            PlatformThreads.setInterrupt(carrier);
         } else if (JavaThreads.isInterrupted(carrier)) {
             Object token = switchToCarrierAndAcquireInterruptLock();
             try {
@@ -192,12 +192,12 @@ final class SubstrateVirtualThread extends Thread {
             }
         }
 
-        JavaThreads.setCurrentThread(carrier, this);
+        PlatformThreads.setCurrentThread(carrier, this);
     }
 
     private void unmount() {
         Thread carrier = this.carrierThread;
-        JavaThreads.setCurrentThread(carrier, carrier);
+        PlatformThreads.setCurrentThread(carrier, carrier);
 
         // break connection to carrier thread
         synchronized (interruptLock()) { // synchronize with interrupt
@@ -350,11 +350,11 @@ final class SubstrateVirtualThread extends Thread {
     private Future<?> scheduleUnpark(long nanos) {
         Thread carrier = this.carrierThread;
         // need to switch to carrier thread to avoid nested parking
-        JavaThreads.setCurrentThread(carrier, carrier);
+        PlatformThreads.setCurrentThread(carrier, carrier);
         try {
             return UNPARKER.schedule(this::unpark, nanos, NANOSECONDS);
         } finally {
-            JavaThreads.setCurrentThread(carrier, this);
+            PlatformThreads.setCurrentThread(carrier, this);
         }
     }
 
@@ -363,11 +363,11 @@ final class SubstrateVirtualThread extends Thread {
             Thread carrier = this.carrierThread;
 
             // need to switch to carrier thread to avoid nested parking
-            JavaThreads.setCurrentThread(carrier, carrier);
+            PlatformThreads.setCurrentThread(carrier, carrier);
             try {
                 future.cancel(false);
             } finally {
-                JavaThreads.setCurrentThread(carrier, this);
+                PlatformThreads.setCurrentThread(carrier, this);
             }
         }
     }
@@ -381,11 +381,11 @@ final class SubstrateVirtualThread extends Thread {
                     SubstrateVirtualThread vthread = (SubstrateVirtualThread) currentThread;
                     Thread carrier = vthread.carrierThread;
 
-                    JavaThreads.setCurrentThread(carrier, carrier);
+                    PlatformThreads.setCurrentThread(carrier, carrier);
                     try {
                         submitRunContinuation();
                     } finally {
-                        JavaThreads.setCurrentThread(carrier, vthread);
+                        PlatformThreads.setCurrentThread(carrier, vthread);
                     }
                 } else {
                     submitRunContinuation();
@@ -462,7 +462,7 @@ final class SubstrateVirtualThread extends Thread {
              * unparked, and both threads are stuck.
              */
             Thread carrier = vthread.carrierThread;
-            JavaThreads.setCurrentThread(carrier, carrier);
+            PlatformThreads.setCurrentThread(carrier, carrier);
             token = vthread;
         }
         MonitorSupport.singleton().monitorEnter(interruptLock());
@@ -474,7 +474,7 @@ final class SubstrateVirtualThread extends Thread {
         MonitorSupport.singleton().monitorExit(interruptLock());
         if (token != null) {
             SubstrateVirtualThread vthread = (SubstrateVirtualThread) token;
-            JavaThreads.setCurrentThread(vthread.carrierThread, vthread);
+            PlatformThreads.setCurrentThread(vthread.carrierThread, vthread);
         }
     }
 
@@ -490,14 +490,14 @@ final class SubstrateVirtualThread extends Thread {
                 }
                 Thread carrier = carrierThread;
                 if (carrier != null) {
-                    JavaThreads.platformSetInterrupt(carrier);
+                    PlatformThreads.setInterrupt(carrier);
                 }
             } finally {
                 releaseInterruptLockAndSwitchBack(token);
             }
         } else {
             JavaThreads.writeInterruptedFlag(this, true);
-            JavaThreads.platformSetInterrupt(carrierThread);
+            PlatformThreads.setInterrupt(carrierThread);
         }
         unpark();
     }

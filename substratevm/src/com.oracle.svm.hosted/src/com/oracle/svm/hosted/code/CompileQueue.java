@@ -1511,6 +1511,7 @@ public class CompileQueue {
             String className = method.getDeclaringClass().getName();
             if (className.contains("/svm/core/code/CodeInfoEncoder") ||
                             className.contains("com/oracle/svm/core/thread/JavaThreads") ||
+                            className.contains("com/oracle/svm/core/thread/PlatformThreads") ||
                             className.contains("com/oracle/svm/core/heap/") ||
                             className.contains("com/oracle/svm/core/genscavenge/") ||
                             className.contains("com/oracle/svm/core/thread/VMOperationControl") ||

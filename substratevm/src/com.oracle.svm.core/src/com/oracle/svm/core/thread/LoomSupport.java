@@ -63,7 +63,7 @@ public final class LoomSupport {
     public static int isPinned(Target_java_lang_Thread thread, Target_java_lang_ContinuationScope scope, boolean isCurrentThread) {
         Target_java_lang_Continuation cont = thread.getContinuation();
 
-        IsolateThread vmThread = isCurrentThread ? CurrentIsolate.getCurrentThread() : JavaThreads.getIsolateThread(SubstrateUtil.cast(thread, Thread.class));
+        IsolateThread vmThread = isCurrentThread ? CurrentIsolate.getCurrentThread() : PlatformThreads.getIsolateThread(SubstrateUtil.cast(thread, Thread.class));
 
         if (cont != null) {
             while (true) {

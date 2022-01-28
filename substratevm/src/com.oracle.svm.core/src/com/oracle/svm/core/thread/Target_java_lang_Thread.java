@@ -174,13 +174,13 @@ public final class Target_java_lang_Thread {
     @Substitute
     @TargetElement(onlyWith = NotLoomJDK.class) //
     static long nextThreadID() {
-        return JavaThreads.singleton().threadSeqNumber.incrementAndGet();
+        return JavaThreads.threadSeqNumber.incrementAndGet();
     }
 
     /** Replace "synchronized" modifier with delegation to an atomic increment. */
     @Substitute
     private static int nextThreadNum() {
-        return JavaThreads.singleton().threadInitNumber.incrementAndGet();
+        return JavaThreads.threadInitNumber.incrementAndGet();
     }
 
     @Alias
@@ -198,7 +198,7 @@ public final class Target_java_lang_Thread {
         this.threadData = new ThreadData();
 
         LoomSupport.CompatibilityUtil.initThreadFields(this,
-                        (withGroup != null) ? withGroup : JavaThreads.singleton().mainGroup,
+                        (withGroup != null) ? withGroup : PlatformThreads.singleton().mainGroup,
                         null, 0,
                         Thread.NORM_PRIORITY, asDaemon, ThreadStatus.RUNNABLE);
 
@@ -236,7 +236,7 @@ public final class Target_java_lang_Thread {
     @Substitute
     @TargetElement(onlyWith = ContinuationsNotSupported.class)
     static Thread currentThread() {
-        Thread thread = JavaThreads.platformThread.get();
+        Thread thread = PlatformThreads.currentThread.get();
         assert thread != null : "Thread has not been set yet";
         return thread;
     }
@@ -245,7 +245,7 @@ public final class Target_java_lang_Thread {
     @Substitute
     @TargetElement(onlyWith = LoomJDK.class)
     private static Thread currentThread0() {
-        Thread thread = JavaThreads.platformThread.get();
+        Thread thread = PlatformThreads.currentThread.get();
         assert thread != null : "Thread has not been set yet";
         return thread;
     }
@@ -258,7 +258,7 @@ public final class Target_java_lang_Thread {
     @Substitute
     @TargetElement(name = "currentThread", onlyWith = ContinuationsSupported.class)
     static Thread currentVThread() {
-        Thread thread = JavaThreads.platformThread.get();
+        Thread thread = PlatformThreads.currentThread.get();
         Target_java_lang_Thread tjlt = SubstrateUtil.cast(thread, Target_java_lang_Thread.class);
         return (tjlt.vthread != null) ? tjlt.vthread : thread;
     }
@@ -267,7 +267,7 @@ public final class Target_java_lang_Thread {
     @Substitute
     @TargetElement(onlyWith = LoomJDK.class)
     void setCurrentThread(Thread thread) {
-        JavaThreads.setCurrentThread(JavaThreads.fromTarget(this), thread);
+        PlatformThreads.setCurrentThread(JavaThreads.fromTarget(this), thread);
     }
 
     @Alias
@@ -335,20 +335,11 @@ public final class Target_java_lang_Thread {
             throw VMError.unsupportedFeature("Single-threaded VM cannot create new threads");
         }
 
-        /*
-         * The threadStatus must be set to RUNNABLE by the parent thread and before the child thread
-         * starts because we are creating child threads asynchronously (there is no coordination
-         * between parent and child threads).
-         *
-         * Otherwise, a call to Thread.join() in the parent thread could succeed even before the
-         * child thread starts, or it could hang in case that the child thread is already dead.
-         */
-        LoomSupport.CompatibilityUtil.setThreadStatus(this, ThreadStatus.RUNNABLE);
         wasStartedByCurrentIsolate = true;
         parentThreadId = Thread.currentThread().getId();
-        long stackSize = JavaThreads.getRequestedThreadSize(JavaThreads.fromTarget(this));
+        long stackSize = PlatformThreads.getRequestedStackSize(JavaThreads.fromTarget(this));
         try {
-            JavaThreads.singleton().startThread(JavaThreads.fromTarget(this), stackSize);
+            PlatformThreads.singleton().startThread(JavaThreads.fromTarget(this), stackSize);
         } catch (Throwable t) {
             // These should not be accessed if the thread could not start, but reset them anyway
             wasStartedByCurrentIsolate = false;
@@ -367,7 +358,7 @@ public final class Target_java_lang_Thread {
     @Substitute
     @SuppressWarnings({"static-method"})
     protected void setNativeName(String name) {
-        JavaThreads.singleton().setNativeName(JavaThreads.fromTarget(this), name);
+        PlatformThreads.singleton().setNativeName(JavaThreads.fromTarget(this), name);
     }
 
     @Substitute
@@ -397,8 +388,9 @@ public final class Target_java_lang_Thread {
     /**
      * Marks the thread as interrupted and wakes it up.
      *
-     * See {@link JavaThreads#platformOrCarrierPark()}, {@link JavaThreads#platformUnpark} and
-     * {@link JavaThreads#sleep} for vital aspects of the underlying mechanisms.
+     * See {@link PlatformThreads#parkCurrentPlatformOrCarrierThread()},
+     * {@link PlatformThreads#unpark} and {@link JavaThreads#sleep} for vital aspects of the
+     * underlying mechanisms.
      */
     @Substitute
     void interrupt0() {
@@ -417,18 +409,18 @@ public final class Target_java_lang_Thread {
         }
 
         Thread thread = JavaThreads.fromTarget(this);
-        JavaThreads.platformInterrupt(thread);
+        PlatformThreads.interrupt(thread);
         /*
          * This may unpark the thread unnecessarily (e.g., the interrupt above could have already
          * resumed the thread execution, so the thread could now be parked for some other reason).
          * However, this is not a correctness issue as the unpark will only be a spurious wakeup.
          */
-        JavaThreads.platformUnpark(thread);
+        PlatformThreads.unpark(thread);
         /*
          * Must be executed after setting interrupted to true, see
          * HeapImpl.waitForReferencePendingList().
          */
-        JavaThreads.wakeUpVMConditionWaiters(thread);
+        PlatformThreads.wakeUpVMConditionWaiters(thread);
     }
 
     @Substitute
@@ -479,20 +471,20 @@ public final class Target_java_lang_Thread {
     @Substitute
     @TargetElement(onlyWith = LoomJDK.class)
     private boolean isAlive0() {
-        return JavaThreads.platformIsAlive(JavaThreads.fromTarget(this));
+        return PlatformThreads.isAlive(JavaThreads.fromTarget(this));
     }
 
     @Substitute
     @TargetElement(onlyWith = NotLoomJDK.class)
     private static void yield() {
-        JavaThreads.singleton().yieldCurrent();
+        JavaThreads.yieldCurrent();
     }
 
     @Substitute
     @TargetElement(onlyWith = LoomJDK.class)
     private static void yield0() {
         // Loom virtual threads are handled in yield()
-        JavaThreads.singleton().yieldCurrent();
+        JavaThreads.yieldCurrent();
     }
 
     @Substitute
@@ -541,7 +533,7 @@ public final class Target_java_lang_Thread {
 
     @Substitute
     private static Map<Thread, StackTraceElement[]> getAllStackTraces() {
-        return JavaThreads.getAllStackTraces();
+        return PlatformThreads.getAllStackTraces();
     }
 
     /**
@@ -613,7 +605,7 @@ final class Target_java_lang_Thread_FieldHolder {
 final class Target_java_lang_Thread_ThreadIdentifiers {
     @Substitute//
     static long next() {
-        return JavaThreads.singleton().threadSeqNumber.incrementAndGet();
+        return JavaThreads.threadSeqNumber.incrementAndGet();
     }
 }
 

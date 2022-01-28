@@ -40,7 +40,7 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.jdk.RuntimeSupport;
-import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.windows.headers.WinBase;
 
@@ -76,7 +76,7 @@ class SignalDispatcher implements Runnable {
     /** A thread (in the image heap) to dispatch signals as they are raised. */
     private static final Thread signalDispatcherThread;
     static {
-        signalDispatcherThread = new Thread(JavaThreads.singleton().systemGroup,
+        signalDispatcherThread = new Thread(PlatformThreads.singleton().systemGroup,
                         new SignalDispatcher(), "Signal Dispatcher");
         signalDispatcherThread.setPriority(NEAR_MAX_PRIORITY);
         signalDispatcherThread.setDaemon(true);

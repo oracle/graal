@@ -45,11 +45,11 @@ final class Target_jdk_internal_misc_Unsafe_JavaThreads {
         /* Decide what kind of park I am doing. */
         if (!isAbsolute && time == 0L) {
             /* Park without deadline. */
-            JavaThreads.platformOrCarrierPark();
+            PlatformThreads.parkCurrentPlatformOrCarrierThread();
         } else {
             /* Park with deadline. */
             final long delayNanos = TimeUtils.delayNanos(isAbsolute, time);
-            JavaThreads.platformOrCarrierPark(delayNanos);
+            PlatformThreads.parkCurrentPlatformOrCarrierThread(delayNanos);
         }
         /*
          * Unsafe.park does not distinguish between timing out, being unparked, and being
@@ -75,7 +75,7 @@ final class Target_jdk_internal_misc_Unsafe_JavaThreads {
             }
             Thread thread = (Thread) threadObj;
             if (!VirtualThreads.isSupported() || !VirtualThreads.get().isVirtual(thread)) {
-                JavaThreads.platformUnpark(thread);
+                PlatformThreads.unpark(thread);
             }
         }
     }

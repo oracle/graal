@@ -188,7 +188,7 @@ public final class Continuation {
 
         @Override
         public void invoke() {
-            IsolateThread vmThread = JavaThreads.getIsolateThread(thread);
+            IsolateThread vmThread = PlatformThreads.getIsolateThread(thread);
             Pointer rootSP = cont.sp;
             CodePointer rootIP = cont.ip;
             preemptStatus = StoredContinuationImpl.allocateFromForeignStack(cont, rootSP, vmThread);

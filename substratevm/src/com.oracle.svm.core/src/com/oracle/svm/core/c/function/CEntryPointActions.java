@@ -31,7 +31,7 @@ import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.thread.PlatformThreads;
 
 /**
  * Advanced entry and leave actions for entry point methods annotated with {@link CEntryPoint}.
@@ -65,8 +65,8 @@ public final class CEntryPointActions {
      * @param ensureJavaThread when set to true, the method ensures that the
      *            {@link java.lang.Thread} object for the newly attached thread is created. If the
      *            parameter is set to false, a later call to one of the
-     *            {@link JavaThreads#ensurePlatformThread} methods early after the prologue must be
-     *            used to do the initialization manually.
+     *            {@link PlatformThreads#ensureCurrentAssigned} methods early after the prologue
+     *            must be used to do the initialization manually.
      * @return 0 on success, otherwise non-zero.
      */
     public static native int enterAttachThread(Isolate isolate, boolean ensureJavaThread);

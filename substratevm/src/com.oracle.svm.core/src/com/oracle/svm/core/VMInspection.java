@@ -46,8 +46,8 @@ import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.ThreadStackPrinter.StackFramePrintVisitor;
-import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.JavaVMOperation;
+import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.VMThreads;
 
 import sun.misc.Signal;
@@ -123,7 +123,7 @@ class DumpAllStacks implements SignalHandler {
     }
 
     private static void dumpStack(Log log, IsolateThread vmThread) {
-        Thread javaThread = JavaThreads.fromVMThread(vmThread);
+        Thread javaThread = PlatformThreads.fromVMThread(vmThread);
         if (javaThread != null) {
             log.character('"').string(javaThread.getName()).character('"');
             log.string(" #").signed(javaThread.getId());
