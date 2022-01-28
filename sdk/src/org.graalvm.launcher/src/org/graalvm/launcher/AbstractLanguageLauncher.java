@@ -147,6 +147,7 @@ public abstract class AbstractLanguageLauncher extends LanguageLauncherBase {
         if (isAOT()) {
             // enable signal handling for the launcher
             RuntimeOptions.set("EnableSignalHandling", true);
+            RuntimeOptions.set("InstallSegfaultHandler", true);
         }
 
         if (LAUNCHER_CTOR == null) {
