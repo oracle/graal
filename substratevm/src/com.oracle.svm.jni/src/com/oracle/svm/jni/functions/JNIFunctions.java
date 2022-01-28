@@ -76,6 +76,7 @@ import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
+import com.oracle.svm.core.thread.VirtualThreads;
 import com.oracle.svm.core.util.Utf8;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.jni.JNIObjectHandles;
@@ -1015,10 +1016,38 @@ public final class JNIFunctions {
         if (obj == null) {
             throw new NullPointerException();
         }
-        MonitorSupport.singleton().monitorEnter(obj);
-        assert Thread.holdsLock(obj);
-        JNIThreadOwnedMonitors.entered(obj);
-        return JNIErrors.JNI_OK();
+        boolean pinned = false;
+        if (VirtualThreads.isSupported() && VirtualThreads.get().isVirtual(Thread.currentThread())) {
+            // Acquiring monitors via JNI associates them with the carrier thread via
+            // JNIThreadOwnedMonitors, so we must pin the virtual thread
+            try {
+                VirtualThreads.get().pinCurrent();
+            } catch (IllegalStateException e) { // too many pins
+                throw new IllegalMonitorStateException();
+            }
+            pinned = true;
+        }
+        boolean acquired = false;
+        try {
+            MonitorSupport.singleton().monitorEnter(obj);
+            assert Thread.holdsLock(obj);
+            acquired = true;
+
+            JNIThreadOwnedMonitors.entered(obj);
+            return JNIErrors.JNI_OK();
+        } catch (Throwable t) {
+            try {
+                if (acquired) {
+                    MonitorSupport.singleton().monitorExit(obj);
+                }
+                if (pinned) {
+                    VirtualThreads.get().unpinCurrent();
+                }
+            } catch (Throwable u) {
+                throw VMError.shouldNotReachHere(u);
+            }
+            throw t;
+        }
     }
 
     /*
@@ -1036,6 +1065,13 @@ public final class JNIFunctions {
         }
         MonitorSupport.singleton().monitorExit(obj);
         JNIThreadOwnedMonitors.exited(obj);
+        if (VirtualThreads.isSupported() && VirtualThreads.get().isVirtual(Thread.currentThread())) {
+            try {
+                VirtualThreads.get().unpinCurrent();
+            } catch (IllegalStateException e) { // not pinned?
+                throw new IllegalMonitorStateException();
+            }
+        }
         return JNIErrors.JNI_OK();
     }
 
