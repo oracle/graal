@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -100,7 +100,9 @@ public final class VectorType extends AggregateType {
 
     @Override
     public long getSize(DataLayout targetDataLayout) throws TypeOverflowException {
-        return multiplyUnsignedExact(getElementType().getSize(targetDataLayout), Integer.toUnsignedLong(length));
+        long size = multiplyUnsignedExact(getElementType().getSize(targetDataLayout), Integer.toUnsignedLong(length));
+        long hiBitSize = Long.highestOneBit(size);
+        return hiBitSize == size ? hiBitSize : hiBitSize << 1;
     }
 
     @Override
