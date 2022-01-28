@@ -43,10 +43,9 @@ import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
 import jdk.vm.ci.hotspot.VMField;
 
 /**
- * This class documents unimplemented Graal intrinsics and categorizes them into 4 categories:
+ * This class documents unimplemented Graal intrinsics and categorizes them into 3 categories:
  * <ul>
  * <li>ignore: intrinsics that will never be implemented by Graal;</li>
- * <li>complexGuard: intrinsics guarded by complex condition in HotSpot;</li>
  * <li>downStream: intrinsics implemented in downstream;</li>
  * <li>toBeInvestigated: intrinsics that yet to be implemented or moved to ignore.</li>
  * </ul>
@@ -63,13 +62,6 @@ public final class UnimplementedGraalIntrinsics {
      * </ul>
      */
     public final Set<String> ignore = new TreeSet<>();
-
-    /**
-     * The HotSpot intrinsics whose {@link InvocationPlugin} registration is guarded by a condition
-     * too complex to duplicate here.
-     * </ul>
-     */
-    public final Set<String> complexGuard = new TreeSet<>();
 
     /**
      * The HotSpot intrinsics implemented in GraalVM enterprise edition.
@@ -160,13 +152,13 @@ public final class UnimplementedGraalIntrinsics {
                         "java/util/Arrays.copyOf([Ljava/lang/Object;ILjava/lang/Class;)[Ljava/lang/Object;",
                         "java/util/Arrays.copyOfRange([Ljava/lang/Object;IILjava/lang/Class;)[Ljava/lang/Object;");
 
-        add(complexGuard,
-                        "java/lang/Integer.bitCount(I)I",
-                        "java/lang/Integer.numberOfLeadingZeros(I)I",
-                        "java/lang/Integer.numberOfTrailingZeros(I)I",
-                        "java/lang/Long.bitCount(J)I",
-                        "java/lang/Long.numberOfLeadingZeros(J)I",
-                        "java/lang/Long.numberOfTrailingZeros(J)I");
+        if (arch instanceof AMD64) {
+            if (!((AMD64) arch).getFeatures().contains(AMD64.CPUFeature.POPCNT)) {
+                add(ignore,
+                                "java/lang/Integer.bitCount(I)I",
+                                "java/lang/Long.bitCount(J)I");
+            }
+        }
 
         // Relevant for Java flight recorder
         // [GR-10106] These JFR intrinsics are used for firing socket/file events via Java
@@ -514,14 +506,6 @@ public final class UnimplementedGraalIntrinsics {
      */
     public boolean isIgnored(String method) {
         return ignore.contains(method);
-    }
-
-    /**
-     * Test if the given intrinsic candidate is in the {@link #complexGuard} category -- its HotSpot
-     * intrinsic is guarded by complex condition and difficult to duplicate in Graal.
-     */
-    public boolean isComplexGuard(String method) {
-        return complexGuard.contains(method);
     }
 
     /**

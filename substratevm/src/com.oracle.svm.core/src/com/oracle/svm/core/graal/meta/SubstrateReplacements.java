@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -84,6 +84,7 @@ import org.graalvm.util.DirectAnnotationAccess;
 
 import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.TargetDescription;
@@ -160,7 +161,6 @@ public class SubstrateReplacements extends ReplacementsImpl {
         access.registerAsImmutable(snippetObjects);
         access.registerAsImmutable(snippetNodeClasses);
         access.registerAsImmutable(snippetStartOffsets, SubstrateReplacements::isImmutable);
-        access.registerAsImmutable(snippetInvocationPlugins, SubstrateReplacements::isImmutable);
     }
 
     /**
@@ -304,7 +304,7 @@ public class SubstrateReplacements extends ReplacementsImpl {
         Map<ResolvedJavaMethod, InvocationPlugin> result = new HashMap<>(builder.delayedInvocationPluginMethods.size());
         for (ResolvedJavaMethod method : builder.delayedInvocationPluginMethods) {
             ResolvedJavaMethod replacedMethod = (ResolvedJavaMethod) objectReplacer.apply(method);
-            InvocationPlugin plugin = plugins.getInvocationPlugins().lookupInvocation(replacedMethod);
+            InvocationPlugin plugin = plugins.getInvocationPlugins().lookupInvocation(replacedMethod, HostedOptionValues.singleton());
             assert plugin != null : "expected invocation plugin for " + replacedMethod;
             result.put(replacedMethod, plugin);
         }
@@ -328,13 +328,13 @@ public class SubstrateReplacements extends ReplacementsImpl {
     }
 
     @Override
-    protected MethodSubstitutionPlugin getMethodSubstitution(ResolvedJavaMethod method) {
+    protected MethodSubstitutionPlugin getMethodSubstitution(ResolvedJavaMethod method, OptionValues options) {
         // This override keeps graphBuilderPlugins from being reached during image generation.
         return null;
     }
 
     @Override
-    public boolean hasSubstitution(ResolvedJavaMethod method) {
+    public boolean hasSubstitution(ResolvedJavaMethod method, OptionValues options) {
         // This override keeps graphBuilderPlugins from being reached during image generation.
         return false;
     }

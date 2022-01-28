@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -180,7 +180,7 @@ public class ClassSubstitutionsTests extends GraalCompilerTest {
         try {
             Field f = Class.class.getDeclaredField("componentType");
             Registration r = new Registration(plugins, ClassSubstitutionsTests.class);
-            r.register1("readComponentType", Class.class, new InvocationPlugin() {
+            r.register(new InvocationPlugin("readComponentType", Class.class) {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode clazz) {
                     ResolvedJavaField field = b.getMetaAccess().lookupJavaField(f);

@@ -67,7 +67,7 @@ public class CountedLoopMaxTripCountPiTest extends GraalCompilerTest {
         super.registerInvocationPlugins(invocationPlugins);
         Registration r = new Registration(invocationPlugins, CountedLoopMaxTripCountPiTest.class);
 
-        r.register1("positivePi", int.class, new InvocationPlugin() {
+        r.register(new InvocationPlugin("positivePi", int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod method, Receiver receiver, ValueNode n) {
                 BeginNode begin = b.add(new BeginNode());

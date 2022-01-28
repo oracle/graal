@@ -204,7 +204,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
      */
     @Override
     public InlineInfo shouldInlineInvoke(GraphBuilderContext b, ResolvedJavaMethod method, ValueNode[] args) {
-        MethodSubstitutionPlugin msPlugin = getMethodSubstitution(method);
+        MethodSubstitutionPlugin msPlugin = getMethodSubstitution(method, b.getOptions());
         if (msPlugin != null) {
             if (b.parsingIntrinsic() || InlineDuringParsing.getValue(b.getOptions()) || InlineIntrinsicsDuringParsing.getValue(b.getOptions())) {
                 // Forced inlining of intrinsics
@@ -348,8 +348,8 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
     }
 
     @Override
-    public boolean hasSubstitution(ResolvedJavaMethod method) {
-        InvocationPlugin plugin = graphBuilderPlugins.getInvocationPlugins().lookupInvocation(method);
+    public boolean hasSubstitution(ResolvedJavaMethod method, OptionValues options) {
+        InvocationPlugin plugin = graphBuilderPlugins.getInvocationPlugins().lookupInvocation(method, options);
         return plugin != null;
     }
 
@@ -358,8 +358,8 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
         return defaultBytecodeProvider;
     }
 
-    protected MethodSubstitutionPlugin getMethodSubstitution(ResolvedJavaMethod method) {
-        InvocationPlugin plugin = graphBuilderPlugins.getInvocationPlugins().lookupInvocation(method);
+    protected MethodSubstitutionPlugin getMethodSubstitution(ResolvedJavaMethod method, OptionValues options) {
+        InvocationPlugin plugin = graphBuilderPlugins.getInvocationPlugins().lookupInvocation(method, options);
         if (plugin instanceof MethodSubstitutionPlugin) {
             MethodSubstitutionPlugin msPlugin = (MethodSubstitutionPlugin) plugin;
             return msPlugin;
@@ -375,7 +375,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
             return null;
         }
         StructuredGraph result;
-        InvocationPlugin plugin = graphBuilderPlugins.getInvocationPlugins().lookupInvocation(method);
+        InvocationPlugin plugin = graphBuilderPlugins.getInvocationPlugins().lookupInvocation(method, options);
         if (plugin != null) {
             MetaAccessProvider metaAccess = providers.getMetaAccess();
             if (plugin instanceof MethodSubstitutionPlugin) {
@@ -410,7 +410,7 @@ public class ReplacementsImpl implements Replacements, InlineInvokePlugin {
     @SuppressWarnings("try")
     @Override
     public StructuredGraph getIntrinsicGraph(ResolvedJavaMethod method, CompilationIdentifier compilationId, DebugContext debug, AllowAssumptions allowAssumptions, Cancellable cancellable) {
-        InvocationPlugin plugin = graphBuilderPlugins.getInvocationPlugins().lookupInvocation(method);
+        InvocationPlugin plugin = graphBuilderPlugins.getInvocationPlugins().lookupInvocation(method, debug.getOptions());
         if (plugin != null && !plugin.inlineOnly()) {
             assert !plugin.isDecorator() : "lookupInvocation shouldn't return decorator plugins";
             if (plugin instanceof MethodSubstitutionPlugin) {

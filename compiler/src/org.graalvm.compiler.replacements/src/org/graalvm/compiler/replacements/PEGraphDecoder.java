@@ -1106,7 +1106,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
     private InvocationPlugin getInvocationPlugin(ResolvedJavaMethod targetMethod) {
         Object invocationPlugin = invocationPluginCache.computeIfAbsent(targetMethod, method -> {
-            Object plugin = invocationPlugins.lookupInvocation(targetMethod);
+            Object plugin = invocationPlugins.lookupInvocation(targetMethod, options);
             if (plugin == null) {
                 plugin = CACHED_NULL_VALUE;
             }

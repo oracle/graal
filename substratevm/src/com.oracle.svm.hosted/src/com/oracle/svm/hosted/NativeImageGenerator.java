@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1103,14 +1103,14 @@ public class NativeImageGenerator {
         }
 
         @Override
-        protected void register(InvocationPlugin plugin, boolean isOptional, boolean allowOverwrite, Type declaringClass, String name, Type... argumentTypes) {
+        protected void register(Type declaringClass, InvocationPlugin plugin, boolean allowOverwrite) {
             Type targetClass;
             if (declaringClass instanceof Class) {
                 targetClass = annotationSubstitutionProcessor.getTargetClass((Class<?>) declaringClass);
             } else {
                 targetClass = declaringClass;
             }
-            super.register(plugin, isOptional, allowOverwrite, targetClass, name, argumentTypes);
+            super.register(targetClass, plugin, allowOverwrite);
         }
     }
 
@@ -1190,7 +1190,7 @@ public class NativeImageGenerator {
         Architecture architecture = ConfigurationValues.getTarget().arch;
         OptionValues options = aUniverse.hostVM().options();
         ImageSingletons.lookup(TargetGraphBuilderPlugins.class).register(plugins, replacements, architecture,
-                        /* registerForeignCallMath */ false, true, options);
+                        /* registerForeignCallMath */ false, options);
 
         /*
          * When the context is hosted, i.e., ahead-of-time compilation, and after the analysis we
