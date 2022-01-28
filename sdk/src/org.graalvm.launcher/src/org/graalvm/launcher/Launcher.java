@@ -111,7 +111,7 @@ public abstract class Launcher {
 
     protected String helpArg = null;
     protected boolean helpInternal;
-    protected boolean printed;
+    protected boolean helpPrinted;
 
     /**
      * Path to the desired log file, or {@code null} if no log redirection is required.
@@ -600,12 +600,12 @@ public abstract class Launcher {
             return false;
         }
         if ("".equals(helpArg)) {
-            printed = true;
+            helpPrinted = true;
             printDefaultHelp(OptionCategory.EXPERT);
         }
         maybePrintAdditionalHelp(OptionCategory.EXPERT);
         if (helpArgIs("all") || helpArgIs("vm")) {
-            printed = true;
+            helpPrinted = true;
             out.println("");
             if (nativeAccess == null) {
                 printJvmHelp();
@@ -613,7 +613,7 @@ public abstract class Launcher {
                 nativeAccess.printNativeHelp();
             }
         }
-        if (!printed) {
+        if (!helpPrinted) {
             printDefaultHelp(OptionCategory.USER);
         }
         out.println("");

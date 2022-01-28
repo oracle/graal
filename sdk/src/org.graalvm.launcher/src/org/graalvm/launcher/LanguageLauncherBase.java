@@ -307,19 +307,19 @@ public abstract class LanguageLauncherBase extends Launcher {
         }
         final boolean all = helpArgIs("all");
         if (all || helpArgIs("languages")) {
-            printed = printLanguageOptions(getTempEngine(), null);
+            helpPrinted = printLanguageOptions(getTempEngine(), null);
         }
         if (all || helpArgIs("tools")) {
-            printed = printInstrumentOptions(getTempEngine(), null);
+            helpPrinted = printInstrumentOptions(getTempEngine(), null);
         }
         if (all || helpArgIs("engine")) {
-            printed = printEngineOptions(getTempEngine());
+            helpPrinted = printEngineOptions(getTempEngine());
         }
-        if (printed) {
+        if (helpPrinted) {
             return;
         }
-        printed = printLanguageOptions(getTempEngine(), helpArg);
-        printed |= printInstrumentOptions(getTempEngine(), helpArg);
+        helpPrinted = printLanguageOptions(getTempEngine(), helpArg);
+        helpPrinted |= printInstrumentOptions(getTempEngine(), helpArg);
     }
 
     /**
@@ -398,7 +398,7 @@ public abstract class LanguageLauncherBase extends Launcher {
                 println("  " + instrument.getName() + website(instrument) + ":");
                 printCategory(options, OptionCategory.USER, "   User options:");
                 printCategory(options, OptionCategory.EXPERT, "   Expert options:");
-                printCategory(options, OptionCategory.INTERNAL, "   Internal (developer) options:");
+                printCategory(options, OptionCategory.INTERNAL, "   Internal options:");
             }
             return true;
         }
@@ -428,7 +428,7 @@ public abstract class LanguageLauncherBase extends Launcher {
                 println(title(language));
                 printCategory(options, OptionCategory.USER, "   User options:");
                 printCategory(options, OptionCategory.EXPERT, "   Expert options:");
-                printCategory(options, OptionCategory.INTERNAL, "   Internal (developer) options:");
+                printCategory(options, OptionCategory.INTERNAL, "   Internal options:");
             }
             return true;
         }
