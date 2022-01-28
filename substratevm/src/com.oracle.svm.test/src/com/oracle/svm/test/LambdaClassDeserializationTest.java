@@ -38,11 +38,7 @@ import java.util.function.Function;
 // By declaring and serializing lambda in one class and deserializing it in another, we can simulate situation where program only
 // deserializes lambda class
 public class LambdaClassDeserializationTest {
-    private static final ByteArrayOutputStream byteArrayOutputStream;
-
-    static {
-        byteArrayOutputStream = new ByteArrayOutputStream();
-    }
+    private ByteArrayOutputStream byteArrayOutputStream;
 
     private static class SerializeLambda {
         @SuppressWarnings("unchecked")
@@ -50,7 +46,7 @@ public class LambdaClassDeserializationTest {
             return (Function<Integer, String> & Serializable) (x) -> "Value of parameter is " + x;
         }
 
-        public static void serialize(Serializable serializableObject) throws IOException {
+        public static void serialize(ByteArrayOutputStream byteArrayOutputStream, Serializable serializableObject) throws IOException {
             ObjectOutputStream objectOutputStream = new ObjectOutputStream(byteArrayOutputStream);
             objectOutputStream.writeObject(serializableObject);
             objectOutputStream.close();
@@ -58,26 +54,26 @@ public class LambdaClassDeserializationTest {
     }
 
     private static class DeserializeLambda {
-        public static Object deserialize() throws IOException, ClassNotFoundException {
+        public static Object deserialize(ByteArrayOutputStream byteArrayOutputStream) throws IOException, ClassNotFoundException {
             ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(byteArrayOutputStream.toByteArray());
             ObjectInputStream objectInputStream = new ObjectInputStream(byteArrayInputStream);
-            @SuppressWarnings("unchecked")
-            Function<Integer, String> fn = (Function<Integer, String>) objectInputStream.readObject();
-            return fn;
+            return objectInputStream.readObject();
         }
     }
 
     @Test
     public void testLambdaLambdaDeserialization() throws Exception {
+        byteArrayOutputStream = new ByteArrayOutputStream();
+
         int n = 10;
 
         Function<Integer, String> lambda = SerializeLambda.createLambda();
         String originalLambdaString = lambda.apply(n);
 
-        SerializeLambda.serialize((Serializable) lambda);
+        SerializeLambda.serialize(byteArrayOutputStream, (Serializable) lambda);
 
         @SuppressWarnings("unchecked")
-        Function<Integer, String> deserializedFn = (Function<Integer, String>) DeserializeLambda.deserialize();
+        Function<Integer, String> deserializedFn = (Function<Integer, String>) DeserializeLambda.deserialize(byteArrayOutputStream);
 
         String deserializedLambdaString = deserializedFn.apply(n);
 

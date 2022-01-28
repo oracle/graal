@@ -10,22 +10,14 @@ Example:
       }
     ]
 
-When trying to deserialize lambda class, capturing class of that lambda needs to be specified in the separate section of
-the configuration file:
+For deserializing lambda classes, the capturing class of the lambda needs to be specified in a separate section of the configuration file, for example:
 
-Example:
-    
     [
       types: [
-        {
-          "name":"java.lang.Object"
-        }
+        {"name":"java.lang.Object"}
       ],
-
       lambdaCapturingTypes: [
-        {
-          "name":"java.util.Comparator"
-        }
+        {"name":"java.util.Comparator"}
       ]
     ]
 

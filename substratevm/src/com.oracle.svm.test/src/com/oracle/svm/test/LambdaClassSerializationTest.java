@@ -36,19 +36,15 @@ import java.io.Serializable;
 import java.util.function.Function;
 
 public class LambdaClassSerializationTest {
-    private static final ByteArrayOutputStream byteArrayOutputStream;
+    private ByteArrayOutputStream byteArrayOutputStream;
 
-    static {
-        byteArrayOutputStream = new ByteArrayOutputStream();
-    }
-
-    private static void serialize(Serializable serializableObject) throws IOException {
+    private static void serialize(ByteArrayOutputStream byteArrayOutputStream, Serializable serializableObject) throws IOException {
         ObjectOutputStream objectOutputStream = new ObjectOutputStream(byteArrayOutputStream);
         objectOutputStream.writeObject(serializableObject);
         objectOutputStream.close();
     }
 
-    private static Object deserialize() throws IOException, ClassNotFoundException {
+    private static Object deserialize(ByteArrayOutputStream byteArrayOutputStream) throws IOException, ClassNotFoundException {
         ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(byteArrayOutputStream.toByteArray());
         ObjectInputStream objectInputStream = new ObjectInputStream(byteArrayInputStream);
         return objectInputStream.readObject();
@@ -56,16 +52,18 @@ public class LambdaClassSerializationTest {
 
     @Test
     public void testLambdaClassSerialization() throws Exception {
+        byteArrayOutputStream = new ByteArrayOutputStream();
+
         int n = 10;
 
         @SuppressWarnings("unchecked")
         Function<Integer, String> function = (Function<Integer, String> & Serializable) (x) -> "Value of parameter is " + x;
         String originalLambdaString = function.apply(n);
 
-        serialize((Serializable) function);
+        serialize(byteArrayOutputStream, (Serializable) function);
 
         @SuppressWarnings("unchecked")
-        Function<Integer, String> deserializedFunction = (Function<Integer, String>) deserialize();
+        Function<Integer, String> deserializedFunction = (Function<Integer, String>) deserialize(byteArrayOutputStream);
 
         String deserializedLambdaString = deserializedFunction.apply(n);
 

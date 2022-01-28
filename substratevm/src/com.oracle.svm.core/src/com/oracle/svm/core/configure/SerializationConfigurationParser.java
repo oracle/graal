@@ -65,51 +65,40 @@ public class SerializationConfigurationParser extends ConfigurationParser {
     }
 
     private void parseOldConfiguration(List<Object> listOfSerializationConfigurationObjects) {
-        for (Object serializationKey : listOfSerializationConfigurationObjects) {
-            parseSerializationDescriptorObject(asMap(serializationKey, "second level of document must be serialization descriptor objects"), false);
-        }
+        parseSerializationTypes(asList(listOfSerializationConfigurationObjects, "second level of document must be serialization descriptor objects"), false);
     }
 
     private void parseNewConfiguration(Map<String, Object> listOfSerializationConfigurationObjects) {
         if (!listOfSerializationConfigurationObjects.containsKey(SERIALIZATION_TYPES_KEY) || !listOfSerializationConfigurationObjects.containsKey(LAMBDA_CAPTURING_SERIALIZATION_TYPES_KEY)) {
-            throw new JSONParserException("second level of document must be arrays of serialization lists.");
+            throw new JSONParserException("second level of document must be arrays of serialization descriptor objects");
         }
 
-        parseSerializationTypes(asList(listOfSerializationConfigurationObjects.get(SERIALIZATION_TYPES_KEY), "types must be an array of serialization lists"));
-        parseLambdaCapturingTypes(asList(listOfSerializationConfigurationObjects.get(LAMBDA_CAPTURING_SERIALIZATION_TYPES_KEY), "lambdaCapturingTypes must be an array of serialization lists"));
+        parseSerializationTypes(asList(listOfSerializationConfigurationObjects.get(SERIALIZATION_TYPES_KEY), "types must be an array of serialization descriptor objects"), false);
+        parseSerializationTypes(asList(listOfSerializationConfigurationObjects.get(LAMBDA_CAPTURING_SERIALIZATION_TYPES_KEY), "lambdaCapturingTypes must be an array of serialization descriptor objects"), true);
     }
 
-    private void parseSerializationTypes(List<Object> listOfSerializationTypes) {
+    private void parseSerializationTypes(List<Object> listOfSerializationTypes, boolean lambdaCapturingTypes) {
         for (Object serializationType : listOfSerializationTypes) {
-            parseSerializationDescriptorObject(asMap(serializationType, "third level of document must be serialization descriptor objects"), false);
-        }
-    }
-
-    private void parseLambdaCapturingTypes(List<Object> listOfLambdaCapturingTypes) {
-        for (Object lambdaCapturingType : listOfLambdaCapturingTypes) {
-            parseSerializationDescriptorObject(asMap(lambdaCapturingType, "third level of document must be serialization descriptor objects"), true);
+            parseSerializationDescriptorObject(asMap(serializationType, "third level of document must be serialization descriptor objects"), lambdaCapturingTypes);
         }
     }
 
     private void parseSerializationDescriptorObject(Map<String, Object> data, boolean lambdaCapturingType) {
-        checkAttributes(data, "serialization descriptor object", Collections.singleton(NAME_KEY), Arrays.asList(CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY, CONDITIONAL_KEY));
+        if (lambdaCapturingType) {
+            checkAttributes(data, "serialization descriptor object", Collections.singleton(NAME_KEY), Collections.singleton(CONDITIONAL_KEY));
+        } else {
+            checkAttributes(data, "serialization descriptor object", Collections.singleton(NAME_KEY), Arrays.asList(CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY, CONDITIONAL_KEY));
+        }
+
         ConfigurationCondition unresolvedCondition = parseCondition(data);
         String targetSerializationClass = asString(data.get(NAME_KEY));
-        Object optionalCustomCtorValue = data.get(CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY);
-        String customTargetConstructorClass = optionalCustomCtorValue != null ? asString(optionalCustomCtorValue) : null;
 
         if (lambdaCapturingType) {
-            registerLambdaCapturingClassForSerialization(unresolvedCondition, targetSerializationClass);
+            serializationSupport.registerLambdaCapturingClass(unresolvedCondition, targetSerializationClass);
         } else {
-            registerClassForSerialization(unresolvedCondition, targetSerializationClass, customTargetConstructorClass);
+            Object optionalCustomCtorValue = data.get(CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY);
+            String customTargetConstructorClass = optionalCustomCtorValue != null ? asString(optionalCustomCtorValue) : null;
+            serializationSupport.registerWithTargetConstructorClass(unresolvedCondition, targetSerializationClass, customTargetConstructorClass);
         }
-    }
-
-    private void registerClassForSerialization(ConfigurationCondition unresolvedCondition, String targetSerializationClass, String customTargetConstructorClass) {
-        serializationSupport.registerWithTargetConstructorClass(unresolvedCondition, targetSerializationClass, customTargetConstructorClass);
-    }
-
-    private void registerLambdaCapturingClassForSerialization(ConfigurationCondition unresolvedCondition, String targetSerializationClass) {
-        serializationSupport.registerLambdaCapturingClass(unresolvedCondition, targetSerializationClass);
     }
 }

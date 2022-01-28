@@ -83,7 +83,6 @@ public class SerializationSupport implements SerializationRegistry {
     }
 
     private final Constructor<?> stubConstructor;
-    private final Class<?> serializedLambdaClass;
 
     private static final class SerializationLookupKey {
         private final Class<?> declaringClass;
@@ -119,7 +118,6 @@ public class SerializationSupport implements SerializationRegistry {
     public SerializationSupport(Constructor<?> stubConstructor) {
         constructorAccessors = new ConcurrentHashMap<>();
         this.stubConstructor = stubConstructor;
-        this.serializedLambdaClass = SerializedLambda.class;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -133,7 +131,7 @@ public class SerializationSupport implements SerializationRegistry {
         Class<?> declaringClass = rawDeclaringClass;
 
         if (declaringClass.getName().contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING)) {
-            declaringClass = serializedLambdaClass;
+            declaringClass = SerializedLambda.class;
         }
 
         Class<?> targetConstructorClass = Modifier.isAbstract(declaringClass.getModifiers()) ? stubConstructor.getDeclaringClass() : rawTargetConstructorClass;

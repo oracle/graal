@@ -25,6 +25,7 @@
 package com.oracle.svm.configure.config;
 
 import java.io.IOException;
+import java.util.Comparator;
 import java.util.Objects;
 
 import com.oracle.svm.configure.json.JsonPrintable;
@@ -33,7 +34,7 @@ import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.core.configure.SerializationConfigurationParser;
 
-public class SerializationConfigurationLambdaCapturingType implements JsonPrintable, Comparable<SerializationConfigurationLambdaCapturingType> {
+public class SerializationConfigurationLambdaCapturingType implements JsonPrintable {
     private final ConfigurationCondition condition;
     private final String qualifiedJavaName;
 
@@ -73,12 +74,15 @@ public class SerializationConfigurationLambdaCapturingType implements JsonPrinta
         return Objects.hash(condition, qualifiedJavaName);
     }
 
-    @Override
-    public int compareTo(SerializationConfigurationLambdaCapturingType other) {
-        int compareName = qualifiedJavaName.compareTo(other.qualifiedJavaName);
-        if (compareName != 0) {
-            return compareName;
+    public static final class SerializationConfigurationLambdaCapturingTypesComparator implements Comparator<SerializationConfigurationLambdaCapturingType> {
+
+        @Override
+        public int compare(SerializationConfigurationLambdaCapturingType o1, SerializationConfigurationLambdaCapturingType o2) {
+            int compareName = o1.qualifiedJavaName.compareTo(o2.qualifiedJavaName);
+            if (compareName != 0) {
+                return compareName;
+            }
+            return o1.condition.compareTo(o2.condition);
         }
-        return condition.compareTo(other.condition);
     }
 }

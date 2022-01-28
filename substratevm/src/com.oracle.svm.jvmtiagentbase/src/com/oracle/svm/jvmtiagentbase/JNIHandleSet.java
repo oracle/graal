@@ -25,6 +25,7 @@
 package com.oracle.svm.jvmtiagentbase;
 
 import static com.oracle.svm.core.util.VMError.guarantee;
+import static com.oracle.svm.jni.JNIObjectHandles.newGlobalRef;
 import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
 
 import java.util.concurrent.locks.ReentrantLock;
@@ -59,8 +60,10 @@ public abstract class JNIHandleSet {
     private boolean destroyed = false;
 
     final JNIMethodId javaLangClassGetName;
+    final JNIObjectHandle javaIoSerializable;
 
     public JNIHandleSet(JNIEnvironment env) {
+        javaIoSerializable = newClassGlobalRef(env, "java/io/Serializable");
         JNIObjectHandle javaLangClass = findClass(env, "java/lang/Class");
         javaLangClassGetName = getMethodId(env, javaLangClass, "getName", "()Ljava/lang/String;", false);
     }

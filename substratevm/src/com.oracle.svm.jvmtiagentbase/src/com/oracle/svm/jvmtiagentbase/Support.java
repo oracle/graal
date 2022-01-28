@@ -159,8 +159,7 @@ public final class Support {
     }
 
     public static boolean isSerializable(JNIEnvironment env, JNIObjectHandle serializeTargetClass) {
-        JNIObjectHandle javaIoSerializable = jniFunctions().getFindClass().invoke(env, toCString("java/io/Serializable").get());
-        return jniFunctions().getIsAssignableFrom().invoke(env, serializeTargetClass, javaIoSerializable);
+        return jniFunctions().getIsAssignableFrom().invoke(env, serializeTargetClass, JvmtiAgentBase.singleton().handles().javaIoSerializable);
     }
 
     public static JNIObjectHandle getCallerClass(int depth) {

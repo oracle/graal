@@ -38,8 +38,10 @@ import java.io.ObjectOutputStream;
 import java.io.ObjectStreamClass;
 import java.io.ObjectStreamField;
 import java.io.Serializable;
+import java.lang.invoke.MethodHandle;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Collections;
@@ -49,7 +51,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.oracle.svm.hosted.phases.IntrinsifyMethodHandlesInvocationPlugin;
+import jdk.vm.ci.hotspot.HotSpotObjectConstant;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
+import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.replacements.MethodHandlePlugin;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -148,6 +156,7 @@ public class SerializationFeature implements Feature {
     private static GraphBuilderConfiguration buildLambdaParserConfig() {
         GraphBuilderConfiguration.Plugins plugins = new GraphBuilderConfiguration.Plugins(new InvocationPlugins());
         plugins.setClassInitializationPlugin(new NoClassInitializationPlugin());
+        plugins.prependNodePlugin(new MethodHandlePlugin(GraalAccess.getOriginalProviders().getConstantReflection().getMethodHandleAccess(), false));
         return GraphBuilderConfiguration.getDefault(plugins).withEagerResolving(true);
     }
 
@@ -164,78 +173,37 @@ public class SerializationFeature implements Feature {
         return graph;
     }
 
-    private static Class<?> getLambdaClassFromMemberField(Class<?> clazz, Object constantObject, String fieldName) {
-        try {
-            Field memberField = clazz.getDeclaredField(fieldName);
-            memberField.setAccessible(true);
-            Object object = memberField.get(constantObject);
-            Method getDeclaringClass = object.getClass().getDeclaredMethod("getDeclaringClass");
-            getDeclaringClass.setAccessible(true);
-            return (Class<?>) getDeclaringClass.invoke(object);
-        } catch (NoSuchFieldException | IllegalAccessException | NoSuchMethodException | InvocationTargetException exception) {
+    private static Class<?> getLambdaClassFromMemberField(Constant constant) {
+        ResolvedJavaType constantType = GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaType((JavaConstant) constant);
+
+        // If node does not contain Lambda
+        if (constantType == null) {
             return null;
         }
-    }
 
-    private static Class<?> getLambdaClassFromConstantObject(Class<?> clazz, Object constantObject) {
-        try {
-            Field instanceClassField = clazz.getDeclaredField("staticBase");
-            instanceClassField.setAccessible(true);
-            return (Class<?>) instanceClassField.get(constantObject);
-        } catch (IllegalAccessException | NoSuchFieldException ignored) {
+        ResolvedJavaField[] fields = constantType.getInstanceFields(true);
+        ResolvedJavaField targetField = null;
+        for (ResolvedJavaField field : fields) {
+            if (field.getName().equals("member")) {
+                targetField = field;
+                break;
+            }
+        }
+
+        // Constant node does not contain MethodHandle
+        if (targetField == null) {
             return null;
         }
+
+        HotSpotObjectConstant fieldValue = (HotSpotObjectConstant) GraalAccess.getOriginalProviders().getConstantReflection().readFieldValue(targetField, (JavaConstant) constant);
+        Member memberField = GraalAccess.getOriginalProviders().getSnippetReflection().asObject(Member.class, fieldValue);
+
+        return memberField.getDeclaringClass();
     }
 
-    /**
-     * It is not possible to avoid reflection when trying to get lambda class from
-     * {@link ConstantNode} instance. Lambda class is wrapped in the {@code ConstantNode#value}
-     * which is of type {@code DirectHotSpotObjectConstantImpl}. That class is protected and it is
-     * not visible in the {@link SerializationFeature}. The only way to access fields and methods of
-     * this class is through the reflection. There are 2 different ways of getting lambda from the
-     * {@code ConstantNode#value}:
-     *
-     * 1. For capturing classes from the JDK {@code ConstantNode#value} of type
-     * {@code DirectHotSpotObjectConstantImpl} has {@code DirectHotSpotObjectConstantImpl#object} of
-     * type {@code DirectMethodHandle$Constructor} on Java 17 and in previous versions. Lambda class
-     * can be extracted from {@code DirectMethodHandle$Constructor#initMethod} using the
-     * {@code MemberName#getDeclaringClass()} or from {@code DirectMethodHandle#member} using the
-     * {@code MemberName#getDeclaringClass()}. Since all of those classes are protected and are not
-     * in the same package as the {@link SerializationFeature}, the only way to get the lambda class
-     * is using the reflection.
-     *
-     * 2. For capturing classes that are user-defined classes, {@code ConstantNode#value} of type
-     * {@code DirectHotSpotObjectConstantImpl} has {@code DirectHotSpotObjectConstantImpl#object} of
-     * type {@code DirectMethodHandle$StaticAccessor} type. In that case, lambda class is stored in
-     * the {@code DirectMethodHandle$StaticAccessor#staticBase}. Since
-     * {@code DirectMethodHandle$StaticAccessor} is also protected class and cannot be imported in
-     * the {@link SerializationFeature}, it is not possible to get values from this field in any
-     * ways other than the reflection.
-     */
     private static Class<?> getLambdaClassFromConstantNode(ConstantNode constantNode) {
         Constant constant = constantNode.getValue();
-        Object constantObject;
-
-        try {
-            Field objectField = constant.getClass().getDeclaredField("object");
-            objectField.setAccessible(true);
-            constantObject = objectField.get(constant);
-        } catch (IllegalAccessException | NoSuchFieldException ignored) {
-            return null;
-        }
-
-        Class<?> clazz = constantObject.getClass();
-        Class<?> lambdaClass;
-
-        if (JavaVersionUtil.JAVA_SPEC >= 17) {
-            lambdaClass = getLambdaClassFromMemberField(clazz, constantObject, "initMethod");
-        } else {
-            lambdaClass = getLambdaClassFromMemberField(clazz, constantObject, "member");
-        }
-
-        if (lambdaClass == null) {
-            lambdaClass = getLambdaClassFromConstantObject(clazz, constantObject);
-        }
+        Class<?> lambdaClass = getLambdaClassFromMemberField(constant);
 
         if (lambdaClass == null) {
             return null;

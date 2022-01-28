@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.svm.configure.json.JsonPrintable;
 import org.graalvm.compiler.java.LambdaUtils;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
@@ -65,48 +66,32 @@ public class SerializationConfiguration implements ConfigurationBase, RuntimeSer
     @Override
     public void printJson(JsonWriter writer) throws IOException {
         writer.append('{').indent().newline();
-        printSerializationClasses(writer, "types");
+        List<SerializationConfigurationType> listOfCapturedClasses = new ArrayList<>(serializationTypes);
+        Collections.sort(listOfCapturedClasses);
+        printSerializationClasses(writer, "types", listOfCapturedClasses);
         writer.append(",").newline();
-        printSerializationClasses(writer, "lambdaCapturingTypes");
+        List<SerializationConfigurationLambdaCapturingType> listOfCapturingClasses = new ArrayList<>(lambdaSerializationCapturingTypes);
+        listOfCapturingClasses.sort(new SerializationConfigurationLambdaCapturingType.SerializationConfigurationLambdaCapturingTypesComparator());
+        printSerializationClasses(writer, "lambdaCapturingTypes", listOfCapturingClasses);
         writer.unindent().newline();
         writer.append('}');
     }
 
-    private void printSerializationClasses(JsonWriter writer, String types) throws IOException {
+    private void printSerializationClasses(JsonWriter writer, String types, List<? extends JsonPrintable> serializationConfigurationTypes) throws IOException {
         writer.quote(types).append(":");
         writer.append('[');
         writer.indent();
 
-        if (types.equals("types")) {
-            printSerializationTypes(writer);
-        } else {
-            printLambdaCapturingSerializationTypes(writer);
-        }
+        printSerializationTypes(serializationConfigurationTypes, writer);
 
         writer.unindent().newline();
         writer.append("]");
     }
 
-    private void printSerializationTypes(JsonWriter writer) throws IOException {
+    private void printSerializationTypes(List<? extends JsonPrintable> serializationConfigurationTypes, JsonWriter writer) throws IOException {
         String prefix = "";
 
-        List<SerializationConfigurationType> listOfCapturedClasses = new ArrayList<>(serializationTypes);
-        Collections.sort(listOfCapturedClasses);
-
-        for (SerializationConfigurationType type : listOfCapturedClasses) {
-            writer.append(prefix).newline();
-            type.printJson(writer);
-            prefix = ",";
-        }
-    }
-
-    private void printLambdaCapturingSerializationTypes(JsonWriter writer) throws IOException {
-        String prefix = "";
-
-        List<SerializationConfigurationLambdaCapturingType> listOfCapturingClasses = new ArrayList<>(lambdaSerializationCapturingTypes);
-        Collections.sort(listOfCapturingClasses);
-
-        for (SerializationConfigurationLambdaCapturingType type : listOfCapturingClasses) {
+        for (JsonPrintable type : serializationConfigurationTypes) {
             writer.append(prefix).newline();
             type.printJson(writer);
             prefix = ",";
