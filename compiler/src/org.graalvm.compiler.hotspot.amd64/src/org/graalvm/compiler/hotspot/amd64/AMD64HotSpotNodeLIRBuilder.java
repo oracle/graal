@@ -25,7 +25,6 @@
 package org.graalvm.compiler.hotspot.amd64;
 
 import static jdk.vm.ci.amd64.AMD64.rbp;
-import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.EXCEPTION_HANDLER_IN_CALLER;
 
 import org.graalvm.compiler.core.amd64.AMD64NodeLIRBuilder;
@@ -50,7 +49,6 @@ import org.graalvm.compiler.nodes.DirectCallTargetNode;
 import org.graalvm.compiler.nodes.FullInfopointNode;
 import org.graalvm.compiler.nodes.IndirectCallTargetNode;
 import org.graalvm.compiler.nodes.NodeView;
-import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.SafepointNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -71,8 +69,6 @@ import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
-import jdk.vm.ci.code.StackSlot;
-import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.hotspot.HotSpotCallingConventionType;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -103,19 +99,10 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
 
     @Override
     protected void emitPrologue(StructuredGraph graph) {
-
         CallingConvention incomingArguments = gen.getResult().getCallingConvention();
-
         Value[] params = new Value[incomingArguments.getArgumentCount() + 1];
-        for (int i = 0; i < params.length - 1; i++) {
-            params[i] = incomingArguments.getArgument(i);
-            if (isStackSlot(params[i])) {
-                StackSlot slot = ValueUtil.asStackSlot(params[i]);
-                if (slot.isInCallerFrame() && !gen.getResult().getLIR().hasArgInCallerFrame()) {
-                    gen.getResult().getLIR().setHasArgInCallerFrame();
-                }
-            }
-        }
+
+        prologAssignParams(incomingArguments, params);
         params[params.length - 1] = rbp.asValue(LIRKind.value(AMD64Kind.QWORD));
 
         gen.emitIncomingValues(params);
@@ -124,12 +111,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
 
         getGen().append(((HotSpotDebugInfoBuilder) getDebugInfoBuilder()).lockStack());
 
-        for (ParameterNode param : graph.getNodes(ParameterNode.TYPE)) {
-            Value paramValue = params[param.index()];
-            assert paramValue.getValueKind().equals(getLIRGeneratorTool().getLIRKind(param.stamp(NodeView.DEFAULT))) : paramValue.getValueKind() + " != " +
-                            getLIRGeneratorTool().getLIRKind(param.stamp(NodeView.DEFAULT)) + " for " + param.stamp(NodeView.DEFAULT);
-            setResult(param, gen.emitMove(paramValue));
-        }
+        prologSetParameterNodes(graph, params);
     }
 
     @Override
@@ -182,9 +164,7 @@ public class AMD64HotSpotNodeLIRBuilder extends AMD64NodeLIRBuilder implements H
         RegisterValue exceptionPcFixed = (RegisterValue) outgoingCc.getArgument(1);
         gen.emitMove(exceptionFixed, operand(exception));
         gen.emitMove(exceptionPcFixed, operand(exceptionPc));
-        Register thread = getGen().getProviders().getRegisters().getThreadRegister();
-        AMD64HotSpotJumpToExceptionHandlerInCallerOp op = new AMD64HotSpotJumpToExceptionHandlerInCallerOp(handler, exceptionFixed, exceptionPcFixed, getGen().config.threadIsMethodHandleReturnOffset,
-                        thread);
+        AMD64HotSpotJumpToExceptionHandlerInCallerOp op = new AMD64HotSpotJumpToExceptionHandlerInCallerOp(handler, exceptionFixed, exceptionPcFixed);
         append(op);
     }
 

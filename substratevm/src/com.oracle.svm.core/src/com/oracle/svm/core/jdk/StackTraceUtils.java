@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,9 @@
  */
 package com.oracle.svm.core.jdk;
 
+import java.security.AccessControlContext;
+import java.security.AccessController;
+import java.security.ProtectionDomain;
 import java.util.ArrayList;
 
 import org.graalvm.nativeimage.IsolateThread;
@@ -31,7 +34,10 @@ import org.graalvm.util.DirectAnnotationAccess;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.NeverInline;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackFrameVisitor;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.thread.JavaContinuations;
@@ -310,5 +316,67 @@ class GetLatestUserDefinedClassLoaderVisitor extends JavaStackFrameVisitor {
 
     private static boolean isExtensionOrPlatformLoader(ClassLoader classLoader) {
         return classLoader == Target_jdk_internal_loader_ClassLoaders.platformClassLoader();
+    }
+}
+
+/* Reimplementation of JVM_GetStackAccessControlContext from JDK15 */
+class StackAccessControlContextVisitor extends JavaStackFrameVisitor {
+    final ArrayList<ProtectionDomain> localArray;
+    boolean isPrivileged;
+    ProtectionDomain previousProtectionDomain;
+    AccessControlContext privilegedContext;
+
+    StackAccessControlContextVisitor() {
+        localArray = new ArrayList<>();
+        isPrivileged = false;
+        privilegedContext = null;
+    }
+
+    @Override
+    public boolean visitFrame(final FrameInfoQueryResult frameInfo) {
+        if (!StackTraceUtils.shouldShowFrame(frameInfo, true, false, false)) {
+            return true;
+        }
+
+        Class<?> clazz = frameInfo.getSourceClass();
+        String method = frameInfo.getSourceMethodName();
+
+        ProtectionDomain protectionDomain;
+        if (PrivilegedStack.length() > 0 && clazz.equals(AccessController.class) && method.equals("doPrivileged")) {
+            isPrivileged = true;
+            privilegedContext = PrivilegedStack.peekContext();
+            protectionDomain = PrivilegedStack.peekCaller().getProtectionDomain();
+        } else {
+            protectionDomain = clazz.getProtectionDomain();
+        }
+
+        if ((protectionDomain != null) && (previousProtectionDomain == null || !previousProtectionDomain.equals(protectionDomain))) {
+            localArray.add(protectionDomain);
+            previousProtectionDomain = protectionDomain;
+        }
+
+        return !isPrivileged;
+    }
+
+    @NeverInline("Starting a stack walk in the caller frame")
+    @SuppressWarnings({"deprecation"}) // deprecated starting JDK 17
+    public static AccessControlContext getFromStack() {
+        StackAccessControlContextVisitor visitor = new StackAccessControlContextVisitor();
+        JavaStackWalker.walkCurrentThread(KnownIntrinsics.readCallerStackPointer(), visitor);
+        Target_java_security_AccessControlContext wrapper;
+
+        if (visitor.localArray.isEmpty()) {
+            if (visitor.isPrivileged && visitor.privilegedContext == null) {
+                return null;
+            }
+            wrapper = new Target_java_security_AccessControlContext(null, visitor.privilegedContext);
+        } else {
+            ProtectionDomain[] context = visitor.localArray.toArray(new ProtectionDomain[visitor.localArray.size()]);
+            wrapper = new Target_java_security_AccessControlContext(context, visitor.privilegedContext);
+        }
+
+        wrapper.isPrivileged = visitor.isPrivileged;
+        wrapper.isAuthorized = true;
+        return SubstrateUtil.cast(wrapper, AccessControlContext.class);
     }
 }

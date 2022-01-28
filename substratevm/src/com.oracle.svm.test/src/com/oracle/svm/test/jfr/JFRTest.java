@@ -29,7 +29,7 @@ import static org.junit.Assume.assumeTrue;
 import org.graalvm.nativeimage.ImageInfo;
 import org.junit.BeforeClass;
 
-import com.oracle.svm.jfr.JfrEnabled;
+import com.oracle.svm.core.jfr.JfrEnabled;
 
 /** Base class for JFR unit tests. */
 public class JFRTest {

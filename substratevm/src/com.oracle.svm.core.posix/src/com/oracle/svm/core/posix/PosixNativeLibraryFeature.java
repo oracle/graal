@@ -36,6 +36,7 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -74,7 +75,7 @@ final class PosixNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
 
     @Override
     public boolean initializeBuiltinLibraries() {
-        if (isFirstIsolate()) { // raise process file descriptor limit to hard max if possible
+        if (Isolates.isCurrentFirst()) { // raise process fd limit to hard max if possible
             Resource.rlimit rlp = StackValue.get(Resource.rlimit.class);
             if (Resource.getrlimit(Resource.RLIMIT_NOFILE(), rlp) == 0) {
                 UnsignedWord newValue = rlp.rlim_max();
@@ -117,8 +118,8 @@ final class PosixNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
         Target_java_io_UnixFileSystem_JNI.initIDs();
     }
 
-    protected void loadNetLibrary() {
-        if (isFirstIsolate()) {
+    private static void loadNetLibrary() {
+        if (Isolates.isCurrentFirst()) {
             /*
              * NOTE: because the native OnLoad code probes java.net.preferIPv4Stack and stores its
              * value in process-wide shared native state, the property's value in the first launched

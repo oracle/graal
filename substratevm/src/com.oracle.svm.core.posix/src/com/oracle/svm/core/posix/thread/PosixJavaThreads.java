@@ -86,35 +86,42 @@ public final class PosixJavaThreads extends JavaThreads {
     }
 
     @Override
-    protected void doStartThread(Thread thread, long stackSize) {
+    protected boolean startOSThread(Thread thread, long stackSize) {
         pthread_attr_t attributes = StackValue.get(pthread_attr_t.class);
-        PosixUtils.checkStatusIs0(
-                        Pthread.pthread_attr_init(attributes),
-                        "PosixJavaThreads.start0: pthread_attr_init");
-        PosixUtils.checkStatusIs0(
-                        Pthread.pthread_attr_setdetachstate(attributes, Pthread.PTHREAD_CREATE_JOINABLE()),
-                        "PosixJavaThreads.start0: pthread_attr_setdetachstate");
-        UnsignedWord threadStackSize = WordFactory.unsigned(stackSize);
-        /* If there is a chosen stack size, use it as the stack size. */
-        if (threadStackSize.notEqual(WordFactory.zero())) {
-            /* Make sure the chosen stack size is large enough. */
-            threadStackSize = UnsignedUtils.max(threadStackSize, Pthread.PTHREAD_STACK_MIN());
-            /* Make sure the chosen stack size is a multiple of the system page size. */
-            threadStackSize = UnsignedUtils.roundUp(threadStackSize, WordFactory.unsigned(Unistd.getpagesize()));
-            PosixUtils.checkStatusIs0(
-                            Pthread.pthread_attr_setstacksize(attributes, threadStackSize),
-                            "PosixJavaThreads.start0: pthread_attr_setstacksize");
+        if (Pthread.pthread_attr_init(attributes) != 0) {
+            return false;
         }
+        try {
+            if (Pthread.pthread_attr_setdetachstate(attributes, Pthread.PTHREAD_CREATE_JOINABLE()) != 0) {
+                return false;
+            }
 
-        ThreadStartData startData = UnmanagedMemory.malloc(SizeOf.get(ThreadStartData.class));
-        prepareStartData(thread, startData);
+            UnsignedWord threadStackSize = WordFactory.unsigned(stackSize);
+            /* If there is a chosen stack size, use it as the stack size. */
+            if (threadStackSize.notEqual(WordFactory.zero())) {
+                /* Make sure the chosen stack size is large enough. */
+                threadStackSize = UnsignedUtils.max(threadStackSize, Pthread.PTHREAD_STACK_MIN());
+                /* Make sure the chosen stack size is a multiple of the system page size. */
+                threadStackSize = UnsignedUtils.roundUp(threadStackSize, WordFactory.unsigned(Unistd.getpagesize()));
 
-        Pthread.pthread_tPointer newThread = StackValue.get(Pthread.pthread_tPointer.class);
-        PosixUtils.checkStatusIs0(
-                        Pthread.pthread_create(newThread, attributes, PosixJavaThreads.pthreadStartRoutine.getFunctionPointer(), startData),
-                        "PosixJavaThreads.start0: pthread_create");
-        setPthreadIdentifier(thread, newThread.read());
-        Pthread.pthread_attr_destroy(attributes);
+                if (Pthread.pthread_attr_setstacksize(attributes, threadStackSize) != 0) {
+                    return false;
+                }
+            }
+
+            ThreadStartData startData = prepareStart(thread, SizeOf.get(ThreadStartData.class));
+
+            Pthread.pthread_tPointer newThread = StackValue.get(Pthread.pthread_tPointer.class);
+            if (Pthread.pthread_create(newThread, attributes, PosixJavaThreads.pthreadStartRoutine.getFunctionPointer(), startData) != 0) {
+                undoPrepareStartOnError(thread, startData);
+                return false;
+            }
+
+            setPthreadIdentifier(thread, newThread.read());
+            return true;
+        } finally {
+            Pthread.pthread_attr_destroy(attributes);
+        }
     }
 
     private static void setPthreadIdentifier(Thread thread, Pthread.pthread_t pthread) {
@@ -190,7 +197,7 @@ public final class PosixJavaThreads extends JavaThreads {
     @CEntryPointOptions(prologue = PthreadStartRoutinePrologue.class, epilogue = LeaveDetachThreadEpilogue.class, publishAs = Publish.NotPublished)
     static WordBase pthreadStartRoutine(ThreadStartData data) {
         ObjectHandle threadHandle = data.getThreadHandle();
-        UnmanagedMemory.free(data);
+        freeStartData(data);
 
         threadStartRoutine(threadHandle);
 
@@ -210,7 +217,7 @@ final class Target_java_lang_Thread {
     @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     boolean hasPthreadIdentifier;
 
-    /** Every thread started by {@link PosixJavaThreads#doStartThread} has an opaque pthread_t. */
+    /** Every thread started by {@link PosixJavaThreads#startOSThread} has an opaque pthread_t. */
     @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     Pthread.pthread_t pthreadIdentifier;
 }

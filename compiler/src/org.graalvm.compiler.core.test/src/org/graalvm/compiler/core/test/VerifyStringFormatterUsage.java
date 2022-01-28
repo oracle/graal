@@ -101,6 +101,13 @@ public abstract class VerifyStringFormatterUsage extends VerifyPhase<CoreProvide
                         int nonVarArgIdx = reportVarArgs ? argIdx - varArgsElementIndex : argIdx;
                         verifyFormatCall(callerGraph, verifiedCallee, stringType, m, bci, nonVarArgIdx, reportVarArgs ? varArgsElementIndex : -1);
 
+                    } else if (m.getName().equals("linkToTargetMethod") && m.getDeclaringClass().getName().equals("Ljava/lang/invoke/Invokers$Holder;")) {
+                        // This is the shape of an indy'fied string concatenation (JDK-8085796)
+                        int bci = invoke.bci();
+                        StackTraceElement e = callerGraph.method().asStackTraceElement(bci);
+                        throw new VerificationError(
+                                        "In %s: parameter %d of call to %s appears to be an indy'fied String concatenation expression.", e, argIdx, verifiedCallee.format("%H.%n(%p)"));
+
                     }
                 }
             }

@@ -516,7 +516,15 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
         CallingConvention incomingArguments = gen.getResult().getCallingConvention();
 
         Value[] params = new Value[incomingArguments.getArgumentCount()];
-        for (int i = 0; i < params.length; i++) {
+        prologAssignParams(incomingArguments, params);
+
+        gen.emitIncomingValues(params);
+
+        prologSetParameterNodes(graph, params);
+    }
+
+    protected final void prologAssignParams(CallingConvention incomingArguments, Value[] params) {
+        for (int i = 0; i < incomingArguments.getArgumentCount(); i++) {
             params[i] = incomingArguments.getArgument(i);
             if (ValueUtil.isStackSlot(params[i])) {
                 StackSlot slot = ValueUtil.asStackSlot(params[i]);
@@ -525,9 +533,9 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
                 }
             }
         }
+    }
 
-        gen.emitIncomingValues(params);
-
+    protected void prologSetParameterNodes(StructuredGraph graph, Value[] params) {
         for (ParameterNode param : graph.getNodes(ParameterNode.TYPE)) {
             Value paramValue = params[param.index()];
             assert paramValue.getValueKind().equals(getLIRGeneratorTool().getLIRKind(param.stamp(NodeView.DEFAULT))) : paramValue + " " +

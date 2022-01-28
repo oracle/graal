@@ -28,7 +28,6 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.channels.WritableByteChannel;
 import java.nio.charset.Charset;
@@ -88,13 +87,6 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
     final int versionMajor;
     final int versionMinor;
     private boolean printing;
-
-    /**
-     * See {@code org.graalvm.compiler.serviceprovider.BufferUtil}.
-     */
-    private static Buffer asBaseBuffer(Buffer obj) {
-        return obj;
-    }
 
     GraphProtocol(WritableByteChannel channel, int major, int minor, boolean embedded) throws IOException {
         if (major > MAJOR_VERSION || (major == MAJOR_VERSION && minor > MINOR_VERSION)) {
@@ -351,7 +343,7 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
     }
 
     private void flush() throws IOException {
-        asBaseBuffer(buffer).flip();
+        buffer.flip();
         /*
          * Try not to let interrupted threads abort the write. There's still a race here but an
          * interrupt that's been pending for a long time shouldn't stop this writing.
@@ -434,12 +426,12 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
         while (b.position() < limit) {
             int toWrite = Math.min(limit - b.position(), buffer.capacity());
             ensureAvailable(toWrite);
-            asBaseBuffer(b).limit(b.position() + toWrite);
+            b.limit(b.position() + toWrite);
             try {
                 buffer.put(b);
                 written += toWrite;
             } finally {
-                asBaseBuffer(b).limit(limit);
+                b.limit(limit);
             }
         }
         return written;
@@ -453,7 +445,7 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
             int sizeInBytes = b.length * 4;
             ensureAvailable(sizeInBytes);
             buffer.asIntBuffer().put(b);
-            asBaseBuffer(buffer).position(buffer.position() + sizeInBytes);
+            buffer.position(buffer.position() + sizeInBytes);
         }
     }
 
@@ -465,7 +457,7 @@ abstract class GraphProtocol<Graph, Node, NodeClass, Edges, Block, ResolvedJavaM
             int sizeInBytes = b.length * 8;
             ensureAvailable(sizeInBytes);
             buffer.asDoubleBuffer().put(b);
-            asBaseBuffer(buffer).position(buffer.position() + sizeInBytes);
+            buffer.position(buffer.position() + sizeInBytes);
         }
     }
 

@@ -25,6 +25,7 @@
 package com.oracle.svm.graal.isolated;
 
 import java.lang.reflect.Array;
+import java.nio.ByteBuffer;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableMapCursor;
@@ -39,6 +40,7 @@ import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Isolates;
 import org.graalvm.nativeimage.Isolates.CreateIsolateParameters;
 import org.graalvm.nativeimage.PinnedObject;
+import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.PointerBase;
@@ -67,15 +69,30 @@ public final class IsolatedGraalUtils {
         // Compilation isolates never need a dedicated reference handler thread.
         builder.appendArgument(getOptionString(SubstrateOptions.ConcealedOptions.UseReferenceHandlerThread, false));
         CreateIsolateParameters params = builder.build();
-        return (CompilerIsolateThread) Isolates.createIsolate(params);
+        CompilerIsolateThread isolate = (CompilerIsolateThread) Isolates.createIsolate(params);
+        initializeCompilationIsolate(isolate);
+        return isolate;
+    }
+
+    private static void initializeCompilationIsolate(CompilerIsolateThread isolate) {
+        byte[] encodedOptions = encodeRuntimeOptionValues();
+        try (PinnedObject pin = PinnedObject.create(encodedOptions)) {
+            initializeCompilationIsolate0(isolate, pin.addressOfArrayElement(0), encodedOptions.length);
+        }
+    }
+
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
+    private static void initializeCompilationIsolate0(
+                    @SuppressWarnings("unused") @CEntryPoint.IsolateThreadContext CompilerIsolateThread isolate, PointerBase runtimeOptions, int runtimeOptionsLength) {
+        applyClientRuntimeOptionValues(runtimeOptions, runtimeOptionsLength);
+        VMRuntime.initialize();
     }
 
     public static InstalledCode compileInNewIsolateAndInstall(SubstrateMethod method) {
         CompilerIsolateThread context = createCompilationIsolate();
         IsolatedCompileClient.set(new IsolatedCompileClient(context));
-        byte[] encodedOptions = encodeRuntimeOptionValues();
-        ClientHandle<SubstrateInstalledCode> installedCodeHandle = compileInNewIsolateAndInstall0(context, (ClientIsolateThread) CurrentIsolate.getCurrentThread(),
-                        ImageHeapObjects.ref(method), IsolatedCompileClient.get().hand(encodedOptions), getNullableArrayLength(encodedOptions));
+        ClientHandle<SubstrateInstalledCode> installedCodeHandle = compileInNewIsolateAndInstall0(context, (ClientIsolateThread) CurrentIsolate.getCurrentThread(), ImageHeapObjects.ref(method));
         Isolates.tearDownIsolate(context);
         InstalledCode installedCode = (InstalledCode) IsolatedCompileClient.get().unhand(installedCodeHandle);
         IsolatedCompileClient.set(null);
@@ -84,13 +101,10 @@ public final class IsolatedGraalUtils {
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
     @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
-    private static ClientHandle<SubstrateInstalledCode> compileInNewIsolateAndInstall0(@SuppressWarnings("unused") @CEntryPoint.IsolateThreadContext CompilerIsolateThread isolate,
-                    ClientIsolateThread clientIsolate, ImageHeapRef<SubstrateMethod> methodRef, ClientHandle<byte[]> encodedOptions, int encodedOptionsLength) {
+    private static ClientHandle<SubstrateInstalledCode> compileInNewIsolateAndInstall0(
+                    @SuppressWarnings("unused") @CEntryPoint.IsolateThreadContext CompilerIsolateThread isolate, ClientIsolateThread clientIsolate, ImageHeapRef<SubstrateMethod> methodRef) {
 
         IsolatedCompileContext.set(new IsolatedCompileContext(clientIsolate));
-
-        applyClientRuntimeOptionValues(encodedOptions, encodedOptionsLength);
-        assert SubstrateOptions.shouldCompileInIsolates();
 
         SubstrateMethod method = ImageHeapObjects.deref(methodRef);
         DebugContext debug = new Builder(RuntimeOptionValues.singleton(), new GraalDebugHandlersFactory(GraalSupport.getRuntimeConfig().getSnippetReflection())).build();
@@ -107,9 +121,7 @@ public final class IsolatedGraalUtils {
         if (SubstrateOptions.shouldCompileInIsolates()) {
             CompilerIsolateThread context = createCompilationIsolate();
             IsolatedCompileClient.set(new IsolatedCompileClient(context));
-            byte[] encodedOptions = encodeRuntimeOptionValues();
-            compileInNewIsolate0(context, (ClientIsolateThread) CurrentIsolate.getCurrentThread(), ImageHeapObjects.ref(method),
-                            IsolatedCompileClient.get().hand(encodedOptions), getNullableArrayLength(encodedOptions));
+            compileInNewIsolate0(context, (ClientIsolateThread) CurrentIsolate.getCurrentThread(), ImageHeapObjects.ref(method));
             Isolates.tearDownIsolate(context);
             IsolatedCompileClient.set(null);
         } else {
@@ -121,14 +133,10 @@ public final class IsolatedGraalUtils {
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
     @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
-    private static void compileInNewIsolate0(@SuppressWarnings("unused") @CEntryPoint.IsolateThreadContext CompilerIsolateThread isolate, ClientIsolateThread clientIsolate,
-                    ImageHeapRef<SubstrateMethod> methodRef, ClientHandle<byte[]> encodedOptions, int encodedOptionsLength) {
+    private static void compileInNewIsolate0(
+                    @SuppressWarnings("unused") @CEntryPoint.IsolateThreadContext CompilerIsolateThread isolate, ClientIsolateThread clientIsolate, ImageHeapRef<SubstrateMethod> methodRef) {
 
         IsolatedCompileContext.set(new IsolatedCompileContext(clientIsolate));
-
-        applyClientRuntimeOptionValues(encodedOptions, encodedOptionsLength);
-        assert SubstrateOptions.shouldCompileInIsolates();
-
         try (DebugContext debug = new Builder(RuntimeOptionValues.singleton(), new GraalDebugHandlersFactory(GraalSupport.getRuntimeConfig().getSnippetReflection())).build()) {
             SubstrateGraalUtils.doCompile(debug, GraalSupport.getRuntimeConfig(), GraalSupport.getSuites(), GraalSupport.getLIRSuites(), ImageHeapObjects.deref(methodRef));
         }
@@ -136,7 +144,7 @@ public final class IsolatedGraalUtils {
     }
 
     public static byte[] encodeRuntimeOptionValues() {
-        /** Copy all options that are relevant for the compilation isolate. */
+        /* Copy all options that are relevant for the compilation isolate. */
         EconomicMap<OptionKey<?>, Object> result = EconomicMap.create();
         UnmodifiableMapCursor<OptionKey<?>, Object> cur = RuntimeOptionValues.singleton().getMap().getEntries();
         while (cur.advance()) {
@@ -171,23 +179,17 @@ public final class IsolatedGraalUtils {
         return (array != null) ? Array.getLength(array) : -1;
     }
 
-    public static void applyClientRuntimeOptionValues(ClientHandle<byte[]> encodedOptionsHandle, int encodedOptionsLength) {
-        if (!encodedOptionsHandle.equal(IsolatedHandles.nullHandle())) {
-            byte[] encodedOptions = new byte[encodedOptionsLength];
-            try (PinnedObject pin = PinnedObject.create(encodedOptions)) {
-                copyOptions(IsolatedCompileContext.get().getClient(), encodedOptionsHandle, pin.addressOfArrayElement(0));
-            }
-            EconomicMap<OptionKey<?>, Object> options = OptionValuesEncoder.decode(encodedOptions);
-            options.replaceAll((k, v) -> OptionsParser.parseOptionValue(k.getDescriptor(), v));
-            RuntimeOptionValues.singleton().update(options);
+    public static void applyClientRuntimeOptionValues(PointerBase encodedOptionsPtr, int encodedOptionsLength) {
+        if (encodedOptionsPtr.isNull()) {
+            return;
         }
-    }
+        byte[] encodedOptions = new byte[encodedOptionsLength];
+        ByteBuffer buffer = CTypeConversion.asByteBuffer(encodedOptionsPtr, encodedOptionsLength);
+        buffer.get(encodedOptions);
 
-    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
-    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
-    private static void copyOptions(@SuppressWarnings("unused") @CEntryPoint.IsolateThreadContext ClientIsolateThread isolate, ClientHandle<byte[]> encodedOptionsHandle, PointerBase buffer) {
-        byte[] encodedOptions = IsolatedCompileClient.get().unhand(encodedOptionsHandle);
-        CTypeConversion.asByteBuffer(buffer, encodedOptions.length).put(encodedOptions);
+        EconomicMap<OptionKey<?>, Object> options = OptionValuesEncoder.decode(encodedOptions);
+        options.replaceAll((k, v) -> OptionsParser.parseOptionValue(k.getDescriptor(), v));
+        RuntimeOptionValues.singleton().update(options);
     }
 
     private static String getOptionString(RuntimeOptionKey<Boolean> option, boolean value) {

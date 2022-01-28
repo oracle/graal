@@ -28,7 +28,7 @@ package org.graalvm.compiler.replacements;
 import static org.graalvm.compiler.api.directives.GraalDirectives.LIKELY_PROBABILITY;
 import static org.graalvm.compiler.api.directives.GraalDirectives.UNLIKELY_PROBABILITY;
 import static org.graalvm.compiler.api.directives.GraalDirectives.injectBranchProbability;
-import static org.graalvm.compiler.replacements.JDK9StringSubstitutions.getByte;
+import static org.graalvm.compiler.replacements.StringSubstitutions.getByte;
 import static org.graalvm.compiler.replacements.ReplacementsUtil.byteArrayBaseOffset;
 import static org.graalvm.compiler.replacements.ReplacementsUtil.charArrayIndexScale;
 
@@ -44,8 +44,6 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
  * Substitutions for {@code java.lang.StringUTF16} methods.
- *
- * Since JDK 9.
  */
 @ClassSubstitution(className = "java.lang.StringUTF16", optional = true)
 public class StringUTF16Substitutions {

@@ -117,7 +117,7 @@ public final class GCImpl implements GC {
     @Platforms(Platform.HOSTED_ONLY.class)
     GCImpl() {
         this.policy = CollectionPolicy.getInitialPolicy();
-        RuntimeSupport.getRuntimeSupport().addShutdownHook(this::printGCSummary);
+        RuntimeSupport.getRuntimeSupport().addShutdownHook(isFirstIsolate -> printGCSummary());
     }
 
     @Override

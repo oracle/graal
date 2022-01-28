@@ -152,7 +152,7 @@ public class DebugOptions {
     public static final OptionKey<Boolean> PrintUnmodifiedGraphs = new OptionKey<>(true);
 
     @Option(help = "Setting to true sets PrintGraph=file, setting to false sets PrintGraph=network", type = OptionType.Debug)
-    public static final OptionKey<Boolean> PrintGraphFile = new OptionKey<Boolean>(true) {
+    public static final OptionKey<Boolean> PrintGraphFile = new OptionKey<>(true) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
             PrintGraphTarget v = PrintGraph.getValueOrDefault(values);

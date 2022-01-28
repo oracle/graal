@@ -124,7 +124,7 @@ public class OptionsVerifierTest {
         }
 
         OptionsVerifier(Class<?> cls, OptionDescriptor desc) {
-            super(Opcodes.ASM5);
+            super(Opcodes.ASM7);
             this.cls = cls;
             this.option = desc;
         }
