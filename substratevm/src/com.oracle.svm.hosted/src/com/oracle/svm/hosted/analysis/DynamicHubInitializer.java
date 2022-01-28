@@ -26,6 +26,7 @@ package com.oracle.svm.hosted.analysis;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedType;
+import java.lang.reflect.Field;
 import java.lang.reflect.MalformedParameterizedTypeException;
 import java.lang.reflect.Type;
 import java.lang.reflect.TypeVariable;
@@ -34,8 +35,10 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
+import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -44,6 +47,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.GenericInfo;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
@@ -60,6 +64,14 @@ public class DynamicHubInitializer {
     private final Map<AnnotatedInterfacesEncodingKey, AnnotatedType[]> annotatedInterfacesMap;
     private final Map<InterfacesEncodingKey, DynamicHub[]> interfacesEncodings;
 
+    private final Field dynamicHubArrayHubField;
+    private final Field dynamicHubEnclosingClassField;
+    private final Field dynamicHubInterfacesEncodingField;
+    private final Field dynamicHubAnnotationsEncodingField;
+    private final Field dynamicHubAnnotationsEnumConstantsReferenceField;
+    private final Field dynamicHubAnnotatedSuperInfoField;
+    private final Field dynamicHubGenericInfoField;
+
     public DynamicHubInitializer(AnalysisMetaAccess metaAccess, UnsupportedFeatures unsupportedFeatures, ConstantReflectionProvider constantReflection) {
         this.metaAccess = metaAccess;
         this.hostVM = (SVMHost) metaAccess.getUniverse().hostVM();
@@ -69,27 +81,41 @@ public class DynamicHubInitializer {
         this.genericInterfacesMap = new ConcurrentHashMap<>();
         this.annotatedInterfacesMap = new ConcurrentHashMap<>();
         this.interfacesEncodings = new ConcurrentHashMap<>();
+
+        dynamicHubArrayHubField = ReflectionUtil.lookupField(DynamicHub.class, "arrayHub");
+        dynamicHubEnclosingClassField = ReflectionUtil.lookupField(DynamicHub.class, "enclosingClass");
+        dynamicHubInterfacesEncodingField = ReflectionUtil.lookupField(DynamicHub.class, "interfacesEncoding");
+        dynamicHubAnnotationsEncodingField = ReflectionUtil.lookupField(DynamicHub.class, "annotationsEncoding");
+        dynamicHubAnnotationsEnumConstantsReferenceField = ReflectionUtil.lookupField(DynamicHub.class, "enumConstantsReference");
+        dynamicHubAnnotatedSuperInfoField = ReflectionUtil.lookupField(DynamicHub.class, "annotatedSuperInfo");
+        dynamicHubGenericInfoField = ReflectionUtil.lookupField(DynamicHub.class, "genericInfo");
     }
 
-    public void initializeMetaData(AnalysisType type) {
+    public void initializeMetaData(ImageHeapScanner heapScanner, AnalysisType type) {
         assert type.isReachable() : "Type " + type.toJavaName(true) + " is not marked as reachable.";
+
+        Class<?> javaClass = type.getJavaClass();
+        heapScanner.rescanObject(javaClass.getPackage());
+
         DynamicHub hub = hostVM.dynamicHub(type);
         if (hub.getGenericInfo() == null) {
-            fillGenericInfo(type, hub);
+            fillGenericInfo(heapScanner, type, hub);
         }
         if (hub.getAnnotatedSuperInfo() == null) {
-            fillAnnotatedSuperInfo(type, hub);
+            fillAnnotatedSuperInfo(heapScanner, type, hub);
         }
 
         if (type.getJavaKind() == JavaKind.Object) {
             if (type.isArray()) {
                 hub.getComponentHub().setArrayHub(hub);
+                heapScanner.rescanField(hub.getComponentHub(), dynamicHubArrayHubField);
             }
 
             try {
                 AnalysisType enclosingType = type.getEnclosingType();
                 if (enclosingType != null) {
                     hub.setEnclosingClass(hostVM.dynamicHub(enclosingType));
+                    heapScanner.rescanField(hub, dynamicHubEnclosingClassField);
                 }
             } catch (UnsupportedFeatureException ex) {
                 unsupportedFeatures.addMessage(type.toJavaName(true), null, ex.getMessage(), null, ex);
@@ -97,6 +123,7 @@ public class DynamicHubInitializer {
 
             if (hub.getInterfacesEncoding() == null) {
                 fillInterfaces(type, hub);
+                heapScanner.rescanField(hub, dynamicHubInterfacesEncodingField);
             }
 
             /*
@@ -112,7 +139,10 @@ public class DynamicHubInitializer {
                  */
                 Annotation[] annotations = type.getWrappedWithoutResolve().getAnnotations();
                 Annotation[] declared = type.getWrappedWithoutResolve().getDeclaredAnnotations();
-                hub.setAnnotationsEncoding(AnnotationsProcessor.encodeAnnotations(metaAccess, annotations, declared, hub.getAnnotationsEncoding()));
+                Object annotationsEncoding = AnnotationsProcessor.encodeAnnotations(metaAccess, annotations, declared, hub.getAnnotationsEncoding());
+                if (hub.setAnnotationsEncoding(annotationsEncoding)) {
+                    heapScanner.rescanField(hub, dynamicHubAnnotationsEncodingField);
+                }
             } catch (ArrayStoreException e) {
                 /* If we hit JDK-7183985 just encode the exception. */
                 hub.setAnnotationsEncoding(e);
@@ -123,7 +153,7 @@ public class DynamicHubInitializer {
              */
             if (type.isEnum() && hub.shouldInitEnumConstants()) {
                 if (hostVM.getClassInitializationSupport().shouldInitializeAtRuntime(type)) {
-                    hub.initEnumConstantsAtRuntime(type.getJavaClass());
+                    hub.initEnumConstantsAtRuntime(javaClass);
                 } else {
                     /*
                      * We want to retrieve the enum constant array that is maintained as a private
@@ -157,15 +187,17 @@ public class DynamicHubInitializer {
                          * arrays with the same content in the image heap, but it is better than
                          * failing image generation.
                          */
-                        enumConstants = (Enum<?>[]) type.getJavaClass().getEnumConstants();
+                        enumConstants = (Enum<?>[]) javaClass.getEnumConstants();
                     } else {
                         enumConstants = (Enum<?>[]) SubstrateObjectConstant.asObject(constantReflection.readFieldValue(found, null));
                         assert enumConstants != null;
                     }
                     hub.initEnumConstants(enumConstants);
                 }
+                heapScanner.rescanField(hub, dynamicHubAnnotationsEnumConstantsReferenceField);
             }
         }
+        heapScanner.rescanObject(hub, OtherReason.HUB);
     }
 
     static class GenericInterfacesEncodingKey {
@@ -246,7 +278,7 @@ public class DynamicHubInitializer {
         }
     }
 
-    private void fillGenericInfo(AnalysisType type, DynamicHub hub) {
+    private void fillGenericInfo(ImageHeapScanner heapScanner, AnalysisType type, DynamicHub hub) {
         Class<?> javaClass = type.getJavaClass();
 
         TypeVariable<?>[] typeParameters = javaClass.getTypeParameters();
@@ -289,9 +321,10 @@ public class DynamicHubInitializer {
             genericSuperClass = null;
         }
         hub.setGenericInfo(GenericInfo.factory(typeParameters, cachedGenericInterfaces, genericSuperClass));
+        heapScanner.rescanField(hub, dynamicHubGenericInfoField);
     }
 
-    private void fillAnnotatedSuperInfo(AnalysisType type, DynamicHub hub) {
+    private void fillAnnotatedSuperInfo(ImageHeapScanner heapScanner, AnalysisType type, DynamicHub hub) {
         Class<?> javaClass = type.getJavaClass();
 
         AnnotatedType annotatedSuperclass;
@@ -324,6 +357,7 @@ public class DynamicHubInitializer {
         AnnotatedType[] cachedAnnotatedInterfaces = annotatedInterfacesMap.computeIfAbsent(
                         new AnnotatedInterfacesEncodingKey(annotatedInterfaces), k -> annotatedInterfaces);
         hub.setAnnotatedSuperInfo(AnnotatedSuperInfo.factory(annotatedSuperclass, cachedAnnotatedInterfaces));
+        heapScanner.rescanField(hub, dynamicHubAnnotatedSuperInfoField);
     }
 
     private boolean isTypeAllowed(Type t) {

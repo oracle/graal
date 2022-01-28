@@ -31,9 +31,14 @@ import static jdk.vm.ci.meta.Value.ILLEGAL;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32;
 import static org.graalvm.compiler.hotspot.HotSpotBackend.UPDATE_BYTES_CRC32C;
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.JUMP_ADDRESS;
+import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.COMPUTES_REGISTERS_KILLED;
 import static org.graalvm.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_ALL_CALLER_SAVE_REGISTERS;
+import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Reexecutability.REEXECUTABLE;
+import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.LEAF;
 
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
+import org.graalvm.compiler.hotspot.ArrayIndexOfStub;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotBackend;
 import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkageImpl;
@@ -41,6 +46,7 @@ import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.replacements.ArrayIndexOf;
 import org.graalvm.compiler.word.WordTypes;
 
 import jdk.vm.ci.code.CallingConvention;
@@ -83,6 +89,10 @@ public class AArch64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsP
         }
         if (config.useCRC32CIntrinsics) {
             registerForeignCall(UPDATE_BYTES_CRC32C, config.updateBytesCRC32C, NativeCall);
+        }
+
+        for (ForeignCallDescriptor descriptor : ArrayIndexOf.STUBS_AARCH64) {
+            link(new ArrayIndexOfStub(options, providers, registerStubCall(descriptor.getSignature(), LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
         }
 
         super.initialize(providers, options);

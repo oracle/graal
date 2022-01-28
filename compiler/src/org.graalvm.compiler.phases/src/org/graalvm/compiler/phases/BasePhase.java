@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -132,7 +132,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         }
     }
 
-    private static final ClassValue<BasePhaseStatistics> statisticsClassValue = new ClassValue<BasePhaseStatistics>() {
+    private static final ClassValue<BasePhaseStatistics> statisticsClassValue = new ClassValue<>() {
         @Override
         protected BasePhaseStatistics computeValue(Class<?> c) {
             return new BasePhaseStatistics(c);

@@ -145,7 +145,7 @@ public final class SubstrateTruffleRuntime extends GraalTruffleRuntime {
             Deoptimizer.Options.TraceDeoptimization.update(true);
         }
         installDefaultListeners();
-        RuntimeSupport.getRuntimeSupport().addTearDownHook(this::teardown);
+        RuntimeSupport.getRuntimeSupport().addTearDownHook(isFirstIsolate -> teardown());
     }
 
     private void teardown() {

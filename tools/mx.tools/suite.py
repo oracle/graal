@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -60,16 +60,18 @@ suite = {
             "dependencies" : [
                 "truffle:TRUFFLE_API",
                 "TRUFFLE_PROFILER",
-                "NanoHTTPD",
-                "NanoHTTPD-WebSocket",
                 "truffle:TruffleJSON",
                 "TruffleJWS",
+            ],
+            "requires" : [
+                "java.logging",
+                "jdk.unsupported", # sun.misc.Unsafe
             ],
             "exports" : [
               "<package-info>", # exports all packages containing package-info.java
               "com.oracle.truffle.tools.chromeinspector.instrument to org.graalvm.truffle"
             ],
-            "javaCompliance" : "8+",
+            "javaCompliance" : "11+",
             "checkstyleVersion" : "8.8",
             "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
@@ -84,7 +86,7 @@ suite = {
                 "truffle:TRUFFLE_SL",
                 "mx:JUNIT",
             ],
-            "javaCompliance" : "8+",
+            "javaCompliance" : "11+",
             "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "workingSets" : "Tools",
@@ -98,7 +100,7 @@ suite = {
             "exports" : [
               "<package-info>", # exports all packages containing package-info.java
             ],
-            "javaCompliance" : "8+",
+            "javaCompliance" : "11+",
             "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "workingSets" : "Tools",
@@ -109,10 +111,13 @@ suite = {
             "dependencies" : [
                 "org.graalvm.tools.insight",
             ],
+            "requires" : [
+                "jdk.unsupported", # sun.misc.Unsafe
+            ],
             "exports" : [
               "<package-info>", # exports all packages containing package-info.java
             ],
-            "javaCompliance" : "8+",
+            "javaCompliance" : "11+",
             "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "workingSets" : "Tools",
@@ -126,7 +131,7 @@ suite = {
             "exports" : [
               "<package-info>", # exports all packages containing package-info.java
             ],
-            "javaCompliance" : "8+",
+            "javaCompliance" : "11+",
             "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "workingSets" : "Tools",
@@ -142,7 +147,7 @@ suite = {
             ],
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
-            "javaCompliance" : "8+",
+            "javaCompliance" : "11+",
             "workingSets" : "Tools",
         },
         "com.oracle.truffle.tools.profiler" : {
@@ -151,14 +156,15 @@ suite = {
             "dependencies" : [
                 "truffle:TRUFFLE_API",
                 "truffle:TruffleJSON",
-                ],
+            ],
+            "requires" : ["java.logging"],
             "exports" : [
               "<package-info>", # exports all packages containing package-info.java
               "com.oracle.truffle.tools.profiler.impl to org.graalvm.truffle",
             ],
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
-            "javaCompliance" : "8+",
+            "javaCompliance" : "11+",
             "workingSets" : "Tools",
         },
         "com.oracle.truffle.tools.profiler.test" : {
@@ -171,7 +177,7 @@ suite = {
             ],
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
-            "javaCompliance" : "8+",
+            "javaCompliance" : "11+",
             "workingSets" : "Tools",
         },
         "com.oracle.truffle.tools.coverage" : {
@@ -187,7 +193,7 @@ suite = {
             ],
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
-            "javaCompliance" : "8+",
+            "javaCompliance" : "11+",
             "workingSets" : "Tools",
         },
         "com.oracle.truffle.tools.coverage.test" : {
@@ -200,7 +206,7 @@ suite = {
             ],
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
-            "javaCompliance" : "8+",
+            "javaCompliance" : "11+",
             "workingSets" : "Tools",
         },
         "com.oracle.truffle.tools.dap" : {
@@ -210,13 +216,14 @@ suite = {
                 "truffle:TRUFFLE_API",
                 "truffle:TruffleJSON",
             ],
+            "requires" : ["java.logging"],
             "exports" : [
               "<package-info>", # exports all packages containing package-info.java
               "com.oracle.truffle.tools.dap.instrument to org.graalvm.truffle"
             ],
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
-            "javaCompliance" : "8+",
+            "javaCompliance" : "11+",
             "workingSets" : "Tools",
         },
         "com.oracle.truffle.tools.dap.test" : {
@@ -227,9 +234,10 @@ suite = {
                 "truffle:TRUFFLE_TEST",
                 "mx:JUNIT"
             ],
+            "requires" : ["java.logging"],
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
-            "javaCompliance" : "8+",
+            "javaCompliance" : "11+",
             "workingSets" : "Tools",
         },
         "com.oracle.truffle.tools.warmup" : {
@@ -245,7 +253,7 @@ suite = {
             ],
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
-            "javaCompliance" : "8+",
+            "javaCompliance" : "11+",
             "workingSets" : "Tools",
         },
         "com.oracle.truffle.tools.warmup.test" : {
@@ -258,7 +266,7 @@ suite = {
             ],
             "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "checkstyle" : "com.oracle.truffle.tools.chromeinspector",
-            "javaCompliance" : "8+",
+            "javaCompliance" : "11+",
             "workingSets" : "Tools",
         },
         "org.graalvm.tools.api.lsp": {
@@ -267,8 +275,11 @@ suite = {
             "dependencies": [
                 "truffle:TRUFFLE_API",
             ],
+            "requires" : [
+                "jdk.unsupported", # sun.misc.Unsafe
+            ],
             "checkstyle": "com.oracle.truffle.tools.chromeinspector",
-            "javaCompliance": "8+",
+            "javaCompliance": "11+",
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "workingSets": "Tools",
         },
@@ -279,8 +290,11 @@ suite = {
                 "org.graalvm.tools.api.lsp",
                 "truffle:TruffleJSON"
             ],
+            "requires" : [
+                "java.logging",
+            ],
             "checkstyle": "com.oracle.truffle.tools.chromeinspector",
-            "javaCompliance": "8+",
+            "javaCompliance": "11+",
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "workingSets": "Tools",
         },
@@ -293,26 +307,18 @@ suite = {
                 "mx:JUNIT"
             ],
             "checkstyle": "com.oracle.truffle.tools.chromeinspector",
-            "javaCompliance": "8+",
+            "javaCompliance": "11+",
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR"],
             "workingSets": "Tools",
         },
     },
 
     "libraries": {
-        "NanoHTTPD" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/nanohttpd-2.3.2-efb2ebf85a2b06f7c508aba9eaad5377e3a01e81.jar"],
-            "sha1" : "7d28e2828bfe2ac04dcb8779aded934ac7dc1e52",
-        },
-        "NanoHTTPD-WebSocket" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/nanohttpd-websocket-2.3.2-efb2ebf85a2b06f7c508aba9eaad5377e3a01e81.jar"],
-            "sha1" : "a8f5b9e7387e00a57d31be320a8246a7c8128aa4",
-        },
         "TruffleJWS" : {
-          "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejws-1.5.1.jar"],
-          "sha1" : "5576fc4a93fe0fc01d236e92803543906d690c5f",
-          "sourceUrls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejws-1.5.1-src.jar"],
-          "sourceSha1" : "298db2b3c573f9e76a5a7a60a49c7ceb5ddd35f7",
+          "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejws-1.5.2.jar"],
+          "sha1" : "9a0b23fb70ec828405ade9252c2e1e946a2eb455",
+          "sourceUrls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejws-1.5.2-src.jar"],
+          "sourceSha1" : "4b6f04d25ae52ace16f8ff9e7561f965e04f5848",
         },
         "VISUALVM_COMMON" : {
             "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-1072.tar.gz"],

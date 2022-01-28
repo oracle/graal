@@ -363,7 +363,7 @@ public class NativeImageClassLoaderSupportJDK11OrLater extends AbstractNativeIma
 
     private static UserError.UserException userErrorAddExportsAndOpensAndReads(OptionKey<?> option, String origin, String value, String detailMessage) {
         Objects.requireNonNull(detailMessage, "missing detailMessage");
-        return UserError.abort("Invalid option %s provided by %s." + detailMessage, SubstrateOptionsParser.commandArgument(option, value), origin);
+        return UserError.abort("Invalid option %s provided by %s.%s", SubstrateOptionsParser.commandArgument(option, value), origin, detailMessage);
     }
 
     @Override

@@ -1057,7 +1057,7 @@ public final class Deoptimizer {
     }
 
     private static void printDeoptimizedFrame(Log log, Pointer sp, DeoptimizedFrame deoptimizedFrame, FrameInfoQueryResult sourceFrameInfo, boolean printOnlyTopFrames) {
-        log.string("[Deoptimization of frame").newline();
+        log.string("[Deoptimization of frame (timestamp ").unsigned(System.currentTimeMillis()).string(")").newline();
 
         SubstrateInstalledCode installedCode = deoptimizedFrame.getSourceInstalledCode();
         if (installedCode != null) {

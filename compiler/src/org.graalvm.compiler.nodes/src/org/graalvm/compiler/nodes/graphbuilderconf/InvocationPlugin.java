@@ -145,6 +145,54 @@ public interface InvocationPlugin extends GraphBuilderPlugin {
     }
 
     /**
+     * @see #execute
+     */
+    default boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg1, ValueNode arg2, ValueNode arg3, ValueNode arg4, ValueNode arg5,
+                    ValueNode arg6, ValueNode arg7, ValueNode arg8) {
+        return defaultHandler(b, targetMethod, receiver, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
+    }
+
+    /**
+     * @see #execute
+     */
+    default boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg1, ValueNode arg2, ValueNode arg3, ValueNode arg4, ValueNode arg5,
+                    ValueNode arg6, ValueNode arg7, ValueNode arg8, ValueNode arg9) {
+        return defaultHandler(b, targetMethod, receiver, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
+    }
+
+    /**
+     * @see #execute
+     */
+    default boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg1, ValueNode arg2, ValueNode arg3, ValueNode arg4, ValueNode arg5,
+                    ValueNode arg6, ValueNode arg7, ValueNode arg8, ValueNode arg9, ValueNode arg10) {
+        return defaultHandler(b, targetMethod, receiver, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10);
+    }
+
+    /**
+     * @see #execute
+     */
+    default boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg1, ValueNode arg2, ValueNode arg3, ValueNode arg4, ValueNode arg5,
+                    ValueNode arg6, ValueNode arg7, ValueNode arg8, ValueNode arg9, ValueNode arg10, ValueNode arg11) {
+        return defaultHandler(b, targetMethod, receiver, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11);
+    }
+
+    /**
+     * @see #execute
+     */
+    default boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg1, ValueNode arg2, ValueNode arg3, ValueNode arg4, ValueNode arg5,
+                    ValueNode arg6, ValueNode arg7, ValueNode arg8, ValueNode arg9, ValueNode arg10, ValueNode arg11, ValueNode arg12) {
+        return defaultHandler(b, targetMethod, receiver, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12);
+    }
+
+    /**
+     * @see #execute
+     */
+    default boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode arg1, ValueNode arg2, ValueNode arg3, ValueNode arg4, ValueNode arg5,
+                    ValueNode arg6, ValueNode arg7, ValueNode arg8, ValueNode arg9, ValueNode arg10, ValueNode arg11, ValueNode arg12, ValueNode arg13) {
+        return defaultHandler(b, targetMethod, receiver, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13);
+    }
+
+    /**
      * Executes this plugin against a set of invocation arguments.
      *
      * The default implementation in {@link InvocationPlugin} dispatches to the {@code apply(...)}
@@ -161,49 +209,72 @@ public interface InvocationPlugin extends GraphBuilderPlugin {
      *         {@linkplain InvocationPlugin#isDecorator() decorator}.
      */
     default boolean execute(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode[] argsIncludingReceiver) {
+        int n = argsIncludingReceiver.length;
+        ValueNode[] a = argsIncludingReceiver;
         if (receiver != null) {
             assert !targetMethod.isStatic();
-            assert argsIncludingReceiver.length > 0;
-            if (argsIncludingReceiver.length == 1) {
+            assert n > 0;
+            if (n == 1) {
                 return apply(b, targetMethod, receiver);
-            } else if (argsIncludingReceiver.length == 2) {
-                return apply(b, targetMethod, receiver, argsIncludingReceiver[1]);
-            } else if (argsIncludingReceiver.length == 3) {
-                return apply(b, targetMethod, receiver, argsIncludingReceiver[1], argsIncludingReceiver[2]);
-            } else if (argsIncludingReceiver.length == 4) {
-                return apply(b, targetMethod, receiver, argsIncludingReceiver[1], argsIncludingReceiver[2], argsIncludingReceiver[3]);
-            } else if (argsIncludingReceiver.length == 5) {
-                return apply(b, targetMethod, receiver, argsIncludingReceiver[1], argsIncludingReceiver[2], argsIncludingReceiver[3], argsIncludingReceiver[4]);
-            } else if (argsIncludingReceiver.length == 6) {
-                return apply(b, targetMethod, receiver, argsIncludingReceiver[1], argsIncludingReceiver[2], argsIncludingReceiver[3], argsIncludingReceiver[4], argsIncludingReceiver[5]);
-            } else if (argsIncludingReceiver.length == 7) {
-                return apply(b, targetMethod, receiver, argsIncludingReceiver[1], argsIncludingReceiver[2], argsIncludingReceiver[3], argsIncludingReceiver[4], argsIncludingReceiver[5],
-                                argsIncludingReceiver[6]);
+            } else if (n == 2) {
+                return apply(b, targetMethod, receiver, a[1]);
+            } else if (n == 3) {
+                return apply(b, targetMethod, receiver, a[1], a[2]);
+            } else if (n == 4) {
+                return apply(b, targetMethod, receiver, a[1], a[2], a[3]);
+            } else if (n == 5) {
+                return apply(b, targetMethod, receiver, a[1], a[2], a[3], a[4]);
+            } else if (n == 6) {
+                return apply(b, targetMethod, receiver, a[1], a[2], a[3], a[4], a[5]);
+            } else if (n == 7) {
+                return apply(b, targetMethod, receiver, a[1], a[2], a[3], a[4], a[5], a[6]);
+            } else if (n == 8) {
+                return apply(b, targetMethod, receiver, a[1], a[2], a[3], a[4], a[5], a[6], a[7]);
+            } else if (n == 9) {
+                return apply(b, targetMethod, receiver, a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8]);
+            } else if (n == 10) {
+                return apply(b, targetMethod, receiver, a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9]);
+            } else if (n == 11) {
+                return apply(b, targetMethod, receiver, a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9], a[10]);
+            } else if (n == 12) {
+                return apply(b, targetMethod, receiver, a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9], a[10], a[11]);
+            } else if (n == 13) {
+                return apply(b, targetMethod, receiver, a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9], a[10], a[11], a[12]);
             } else {
-                return defaultHandler(b, targetMethod, receiver, argsIncludingReceiver);
+                return defaultHandler(b, targetMethod, receiver, a);
             }
         } else {
             assert targetMethod.isStatic();
-            if (argsIncludingReceiver.length == 0) {
+            if (n == 0) {
                 return apply(b, targetMethod, null);
-            } else if (argsIncludingReceiver.length == 1) {
-                return apply(b, targetMethod, null, argsIncludingReceiver[0]);
-            } else if (argsIncludingReceiver.length == 2) {
-                return apply(b, targetMethod, null, argsIncludingReceiver[0], argsIncludingReceiver[1]);
-            } else if (argsIncludingReceiver.length == 3) {
-                return apply(b, targetMethod, null, argsIncludingReceiver[0], argsIncludingReceiver[1], argsIncludingReceiver[2]);
-            } else if (argsIncludingReceiver.length == 4) {
-                return apply(b, targetMethod, null, argsIncludingReceiver[0], argsIncludingReceiver[1], argsIncludingReceiver[2], argsIncludingReceiver[3]);
-            } else if (argsIncludingReceiver.length == 5) {
-                return apply(b, targetMethod, null, argsIncludingReceiver[0], argsIncludingReceiver[1], argsIncludingReceiver[2], argsIncludingReceiver[3], argsIncludingReceiver[4]);
-            } else if (argsIncludingReceiver.length == 6) {
-                return apply(b, targetMethod, null, argsIncludingReceiver[0], argsIncludingReceiver[1], argsIncludingReceiver[2], argsIncludingReceiver[3], argsIncludingReceiver[4],
-                                argsIncludingReceiver[5]);
-            } else if (argsIncludingReceiver.length == 7) {
-                return apply(b, targetMethod, null, argsIncludingReceiver[0], argsIncludingReceiver[1], argsIncludingReceiver[2], argsIncludingReceiver[3], argsIncludingReceiver[4],
-                                argsIncludingReceiver[5], argsIncludingReceiver[6]);
+            } else if (n == 1) {
+                return apply(b, targetMethod, null, a[0]);
+            } else if (n == 2) {
+                return apply(b, targetMethod, null, a[0], a[1]);
+            } else if (n == 3) {
+                return apply(b, targetMethod, null, a[0], a[1], a[2]);
+            } else if (n == 4) {
+                return apply(b, targetMethod, null, a[0], a[1], a[2], a[3]);
+            } else if (n == 5) {
+                return apply(b, targetMethod, null, a[0], a[1], a[2], a[3], a[4]);
+            } else if (n == 6) {
+                return apply(b, targetMethod, null, a[0], a[1], a[2], a[3], a[4], a[5]);
+            } else if (n == 7) {
+                return apply(b, targetMethod, null, a[0], a[1], a[2], a[3], a[4], a[5], a[6]);
+            } else if (n == 8) {
+                return apply(b, targetMethod, null, a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7]);
+            } else if (n == 9) {
+                return apply(b, targetMethod, null, a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8]);
+            } else if (n == 10) {
+                return apply(b, targetMethod, null, a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9]);
+            } else if (n == 11) {
+                return apply(b, targetMethod, null, a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9], a[10]);
+            } else if (n == 12) {
+                return apply(b, targetMethod, null, a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9], a[10], a[11]);
+            } else if (n == 13) {
+                return apply(b, targetMethod, null, a[0], a[1], a[2], a[3], a[4], a[5], a[6], a[7], a[8], a[9], a[10], a[11], a[12]);
             } else {
-                return defaultHandler(b, targetMethod, receiver, argsIncludingReceiver);
+                return defaultHandler(b, targetMethod, receiver, a);
             }
 
         }

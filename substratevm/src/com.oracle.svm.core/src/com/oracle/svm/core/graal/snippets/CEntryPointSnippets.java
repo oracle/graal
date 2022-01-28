@@ -259,9 +259,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         int state = unsafe.getInt(initStateAddr);
         if (state != FirstIsolateInitStates.SUCCESSFUL) {
             firstIsolate = unsafe.compareAndSwapInt(null, initStateAddr, FirstIsolateInitStates.UNINITIALIZED, FirstIsolateInitStates.IN_PROGRESS);
-            if (firstIsolate) {
-                PlatformNativeLibrarySupport.singleton().setIsFirstIsolate();
-            } else {
+            if (!firstIsolate) {
                 while (state == FirstIsolateInitStates.IN_PROGRESS) { // spin-wait for first isolate
                     PauseNode.pause();
                     state = unsafe.getIntVolatile(null, initStateAddr);
@@ -271,6 +269,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                 }
             }
         }
+        Isolates.setCurrentIsFirstIsolate(firstIsolate);
 
         /*
          * The VM operation thread must be started early as no VM operations can be scheduled before

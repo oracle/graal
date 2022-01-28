@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted;
 
+import java.lang.reflect.Field;
 import java.security.CodeSource;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -33,14 +34,24 @@ import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.ProtectionDomainSupport;
+import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.util.ReflectionUtil;
 
 @AutomaticFeature
 final class ProtectionDomainFeature implements Feature {
 
+    private Field executableURLSupplierField;
+
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ImageSingletons.add(ProtectionDomainSupport.class, new ProtectionDomainSupport());
+    }
+
+    @Override
+    public void duringSetup(DuringSetupAccess a) {
+        DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
+        executableURLSupplierField = access.findField(ProtectionDomainSupport.class, "executableURLSupplier");
     }
 
     @Override
@@ -60,9 +71,11 @@ final class ProtectionDomainFeature implements Feature {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     void enableCodeSource(DuringAnalysisAccess a) {
+        DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
         ProtectionDomainSupport.enableCodeSource();
-        if (a != null) {
-            a.requireAnalysisIteration();
+        if (access != null) {
+            access.rescanField(ImageSingletons.lookup(ProtectionDomainSupport.class), executableURLSupplierField);
+            access.requireAnalysisIteration();
         }
     }
 }

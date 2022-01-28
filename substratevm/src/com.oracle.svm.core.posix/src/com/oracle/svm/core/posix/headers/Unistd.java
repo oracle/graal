@@ -62,6 +62,9 @@ public class Unistd {
     @CFunction
     public static native int execv(CCharPointer path, CCharPointerPointer argv);
 
+    @CFunction
+    public static native int execve(CCharPointer path, CCharPointerPointer argv, CCharPointerPointer envp);
+
     @CConstant
     public static native int _SC_CLK_TCK();
 

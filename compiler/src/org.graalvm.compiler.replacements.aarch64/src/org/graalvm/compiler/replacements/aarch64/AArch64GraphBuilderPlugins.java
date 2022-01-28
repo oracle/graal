@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.replacements.aarch64;
 
-import static org.graalvm.compiler.replacements.ArrayIndexOf.STUB_INDEX_OF_1_CHAR_COMPACT;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.COS;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.EXP;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.LOG;
@@ -56,7 +55,7 @@ import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess;
 import org.graalvm.compiler.nodes.memory.address.IndexAddressNode;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.replacements.ArrayIndexOfDispatchNode;
+import org.graalvm.compiler.replacements.ArrayIndexOfNode;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.StringLatin1IndexOfCharPlugin;
 import org.graalvm.compiler.replacements.StringLatin1Substitutions;
 import org.graalvm.compiler.replacements.StringUTF16Substitutions;
@@ -68,7 +67,6 @@ import org.graalvm.compiler.replacements.nodes.CountTrailingZerosNode;
 import org.graalvm.compiler.replacements.nodes.FusedMultiplyAddNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaKind;
@@ -87,8 +85,8 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             public void run() {
                 registerIntegerLongPlugins(invocationPlugins, JavaKind.Int, replacements);
                 registerIntegerLongPlugins(invocationPlugins, JavaKind.Long, replacements);
-                registerMathPlugins(invocationPlugins, registerForeignCallMath, useFMAIntrinsics);
-                if (JavaVersionUtil.JAVA_SPEC >= 9 && GraalOptions.EmitStringSubstitutions.getValue(options)) {
+                registerMathPlugins(invocationPlugins, registerForeignCallMath, useFMAIntrinsics, replacements);
+                if (GraalOptions.EmitStringSubstitutions.getValue(options)) {
                     registerStringLatin1Plugins(invocationPlugins, replacements);
                     registerStringUTF16Plugins(invocationPlugins, replacements);
                 }
@@ -123,8 +121,8 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
         });
     }
 
-    private static void registerMathPlugins(InvocationPlugins plugins, boolean registerForeignCallMath, boolean useFMAIntrinsics) {
-        Registration r = new Registration(plugins, Math.class);
+    private static void registerMathPlugins(InvocationPlugins plugins, boolean registerForeignCallMath, boolean useFMAIntrinsics, Replacements replacements) {
+        Registration r = new Registration(plugins, Math.class, replacements);
         if (registerForeignCallMath) {
             registerUnaryMath(r, "sin", SIN);
             registerUnaryMath(r, "cos", COS);
@@ -145,20 +143,16 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 }
             });
         }
-        if (useFMAIntrinsics && JavaVersionUtil.JAVA_SPEC > 8) {
-            registerFMA(r);
-        }
+        registerFMA(r, useFMAIntrinsics);
         registerIntegerAbs(r);
 
-        if (JavaVersionUtil.JAVA_SPEC >= 10) {
-            r.register2("multiplyHigh", Long.TYPE, Long.TYPE, new InvocationPlugin() {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
-                    b.push(JavaKind.Long, b.append(new IntegerMulHighNode(x, y)));
-                    return true;
-                }
-            });
-        }
+        r.register2("multiplyHigh", Long.TYPE, Long.TYPE, new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
+                b.push(JavaKind.Long, b.append(new IntegerMulHighNode(x, y)));
+                return true;
+            }
+        });
         registerMinMax(r);
 
         r.register2("copySign", float.class, float.class, new InvocationPlugin() {
@@ -177,8 +171,8 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
         });
     }
 
-    private static void registerFMA(Registration r) {
-        r.register3("fma", Double.TYPE, Double.TYPE, Double.TYPE, new InvocationPlugin() {
+    private static void registerFMA(Registration r, boolean isEnabled) {
+        r.registerConditional3(isEnabled, "fma", Double.TYPE, Double.TYPE, Double.TYPE, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b,
                             ResolvedJavaMethod targetMethod,
@@ -190,7 +184,7 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 return true;
             }
         });
-        r.register3("fma", Float.TYPE, Float.TYPE, Float.TYPE, new InvocationPlugin() {
+        r.registerConditional3(isEnabled, "fma", Float.TYPE, Float.TYPE, Float.TYPE, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b,
                             ResolvedJavaMethod targetMethod,
@@ -313,8 +307,7 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode ch, ValueNode fromIndex, ValueNode max) {
                 ZeroExtendNode toChar = b.add(new ZeroExtendNode(b.add(new NarrowNode(ch, JavaKind.Char.getBitCount())), JavaKind.Int.getBitCount()));
-                b.addPush(JavaKind.Int, new ArrayIndexOfDispatchNode(STUB_INDEX_OF_1_CHAR_COMPACT, JavaKind.Byte, JavaKind.Char, false, value, max, fromIndex,
-                                toChar));
+                b.addPush(JavaKind.Int, new ArrayIndexOfNode(JavaKind.Byte, JavaKind.Char, false, false, value, ConstantNode.forLong(0), max, fromIndex, toChar));
                 return true;
             }
         });

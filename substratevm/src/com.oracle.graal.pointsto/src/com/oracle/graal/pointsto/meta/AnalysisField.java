@@ -243,6 +243,7 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
         notifyUpdateAccessInfo();
         if (firstAttempt) {
             getUniverse().onFieldAccessed(this);
+            getUniverse().getHeapScanner().onFieldRead(this);
         }
         return firstAttempt;
     }
@@ -255,6 +256,7 @@ public class AnalysisField implements ResolvedJavaField, OriginalFieldProvider {
         }
         if (firstAttempt) {
             getUniverse().onFieldAccessed(this);
+            getUniverse().getHeapScanner().onFieldRead(this);
         }
         return firstAttempt;
     }

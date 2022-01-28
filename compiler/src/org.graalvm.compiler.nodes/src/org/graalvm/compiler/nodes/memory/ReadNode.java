@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,9 +29,9 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 import static org.graalvm.compiler.nodes.NamedLocationIdentity.ARRAY_LENGTH_LOCATION;
 
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
-import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugCloseable;
@@ -42,6 +42,7 @@ import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.CanonicalizableLocation;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.FieldLocationIdentity;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -57,6 +58,7 @@ import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
+import org.graalvm.compiler.nodes.util.ConstantFoldUtil;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.word.LocationIdentity;
 
@@ -64,6 +66,7 @@ import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
  * Reads an {@linkplain FixedAccessNode accessed} value.
@@ -150,11 +153,22 @@ public class ReadNode extends FloatableAccessNode implements LIRLowerableAccess,
             if (metaAccess != null && object.isConstant() && !object.isNullConstant() && offset.isConstant()) {
                 long displacement = offset.asJavaConstant().asLong();
                 int stableDimension = ((ConstantNode) object).getStableDimension();
+
                 if (locationIdentity.isImmutable() || stableDimension > 0) {
                     Constant constant = resultStamp.readConstant(constantReflection.getMemoryAccessProvider(), object.asConstant(), displacement, accessStamp);
                     boolean isDefaultStable = locationIdentity.isImmutable() || ((ConstantNode) object).isDefaultStable();
                     if (constant != null && (isDefaultStable || !constant.isDefaultForKind())) {
                         return ConstantNode.forConstant(resultStamp, constant, Math.max(stableDimension - 1, 0), isDefaultStable, metaAccess);
+                    }
+                }
+                if (locationIdentity instanceof FieldLocationIdentity && !locationIdentity.isImmutable()) {
+                    // Use ConstantFoldUtil as that properly handles final Java fields which are
+                    // normally not considered immutable.
+                    ResolvedJavaField field = ((FieldLocationIdentity) locationIdentity).getField();
+                    ConstantNode constantNode = ConstantFoldUtil.tryConstantFold(tool, field, object.asJavaConstant(), displacement, resultStamp,
+                                    accessStamp, read.getOptions());
+                    if (constantNode != null) {
+                        return constantNode;
                     }
                 }
             }

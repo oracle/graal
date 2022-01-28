@@ -381,7 +381,7 @@ public abstract class LibraryFactory<T extends Library> {
          * initialized before any of the export subclasses. So this method must be invoked before
          * any instantiation of a library export.
          */
-        UNSAFE.ensureClassInitialized(libraryClass);
+        Lazy.UNSAFE.ensureClassInitialized(libraryClass);
     }
 
     /**
@@ -752,22 +752,36 @@ public abstract class LibraryFactory<T extends Library> {
         return (LibraryFactory<T>) lib;
     }
 
-    private static final sun.misc.Unsafe UNSAFE;
+    /**
+     * Annotation processors running in the Eclipse JDT compiler that resolve {@link LibraryFactory}
+     * also try to eagerly resolve the type of all its fields. If {@code jdk.unsupported} is not in
+     * the module graph of the JDT compile environment, this can result in the Truffle annotation
+     * processor failing with an internal error that includes the follow message:
+     *
+     * <pre>
+     *   The type sun.misc.Unsafe cannot be resolved. It is indirectly referenced from required .class files
+     * </pre>
+     *
+     * Putting the Unsafe field in an inner class works around this (over)eager resolution by JDT.
+     */
+    static class Lazy {
+        private static final sun.misc.Unsafe UNSAFE;
 
-    static {
-        Unsafe unsafe;
-        try {
-            unsafe = Unsafe.getUnsafe();
-        } catch (SecurityException e) {
+        static {
+            Unsafe unsafe;
             try {
-                Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
-                theUnsafeInstance.setAccessible(true);
-                unsafe = (Unsafe) theUnsafeInstance.get(Unsafe.class);
-            } catch (Exception e2) {
-                throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e2);
+                unsafe = Unsafe.getUnsafe();
+            } catch (SecurityException e) {
+                try {
+                    Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
+                    theUnsafeInstance.setAccessible(true);
+                    unsafe = (Unsafe) theUnsafeInstance.get(Unsafe.class);
+                } catch (Exception e2) {
+                    throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e2);
+                }
             }
+            UNSAFE = unsafe;
         }
-        UNSAFE = unsafe;
     }
 
     static LibraryFactory<?> loadGeneratedClass(Class<?> libraryClass) {

@@ -893,7 +893,7 @@ public class Graph {
      */
     public NodeIterable<Node> getNewNodes(Mark mark) {
         final int index = mark == null ? 0 : mark.getValue();
-        return new NodeIterable<Node>() {
+        return new NodeIterable<>() {
 
             @Override
             public Iterator<Node> iterator() {
@@ -908,7 +908,7 @@ public class Graph {
      * @return an {@link Iterable} providing all the live nodes.
      */
     public NodeIterable<Node> getNodes() {
-        return new NodeIterable<Node>() {
+        return new NodeIterable<>() {
 
             @Override
             public Iterator<Node> iterator() {
@@ -997,7 +997,7 @@ public class Graph {
      * @return an {@link Iterable} providing all the matching nodes
      */
     public <T extends Node & IterableNodeType> NodeIterable<T> getNodes(final NodeClass<T> nodeClass) {
-        return new NodeIterable<T>() {
+        return new NodeIterable<>() {
 
             @Override
             public Iterator<T> iterator() {

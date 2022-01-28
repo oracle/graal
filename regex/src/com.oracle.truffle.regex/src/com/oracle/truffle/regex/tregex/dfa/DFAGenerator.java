@@ -556,7 +556,7 @@ public final class DFAGenerator implements JsonConvertible {
     private void optimizeDFA() {
         RegexProperties props = nfa.getAst().getProperties();
 
-        doSimpleCG = (isForward() || !nfa.getAst().getRoot().hasLoops()) &&
+        doSimpleCG = (isForward() || !nfa.getAst().getProperties().hasQuantifiers() && !nfa.getAst().getProperties().hasEmptyCaptureGroups()) &&
                         !isBooleanMatch() &&
                         executorProps.isAllowSimpleCG() &&
                         !hasAmbiguousStates &&

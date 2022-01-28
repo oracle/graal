@@ -24,6 +24,16 @@
  */
 package com.oracle.svm.core.thread;
 
+import java.lang.reflect.Field;
+
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
+import org.graalvm.nativeimage.CurrentIsolate;
+import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.c.function.CodePointer;
+import org.graalvm.word.Pointer;
+
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.NeverInline;
@@ -33,11 +43,9 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.util.VMError;
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.nativeimage.CurrentIsolate;
-import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.nativeimage.c.function.CodePointer;
-import org.graalvm.word.Pointer;
+import com.oracle.svm.util.ReflectionUtil;
+
+import sun.misc.Unsafe;
 
 public class JavaContinuations {
     public static final int YIELDING = -2;
@@ -158,7 +166,11 @@ public class JavaContinuations {
         return thread.cont;
     }
 
-    public static class LoomCompatibilityUtil {
+    public static final class LoomCompatibilityUtil {
+        private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
+        private static final Field FIELDHOLDER_STATUS_FIELD = (ImageInfo.inImageCode() && useLoom()) ? ReflectionUtil.lookupField(Target_java_lang_Thread_FieldHolder.class, "threadStatus") : null;
+        private static final Field THREAD_STATUS_FIELD = (ImageInfo.inImageCode() && useLoom()) ? null : ReflectionUtil.lookupField(Target_java_lang_Thread.class, "threadStatus");
+
         static long getStackSize(Target_java_lang_Thread tjlt) {
             return useLoom() ? tjlt.holder.stackSize : tjlt.stackSize;
         }
@@ -172,6 +184,14 @@ public class JavaContinuations {
                 tjlt.holder.threadStatus = threadStatus;
             } else {
                 tjlt.threadStatus = threadStatus;
+            }
+        }
+
+        static boolean compareAndSetThreadStatus(Target_java_lang_Thread tjlt, int expectedStatus, int newStatus) {
+            if (useLoom()) {
+                return UNSAFE.compareAndSwapInt(tjlt.holder, UNSAFE.objectFieldOffset(FIELDHOLDER_STATUS_FIELD), expectedStatus, newStatus);
+            } else {
+                return UNSAFE.compareAndSwapInt(tjlt, UNSAFE.objectFieldOffset(THREAD_STATUS_FIELD), expectedStatus, newStatus);
             }
         }
 
@@ -239,6 +259,9 @@ public class JavaContinuations {
             JavaContinuations.LoomCompatibilityUtil.setStackSize(tjlt, stackSize);
 
             JavaContinuations.LoomCompatibilityUtil.setThreadStatus(tjlt, threadStatus);
+        }
+
+        private LoomCompatibilityUtil() {
         }
     }
 }

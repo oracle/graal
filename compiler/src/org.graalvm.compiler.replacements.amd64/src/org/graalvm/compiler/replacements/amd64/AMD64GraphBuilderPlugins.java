@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.replacements.amd64;
 
-import static org.graalvm.compiler.replacements.ArrayIndexOf.STUB_INDEX_OF_1_CHAR_COMPACT;
-import static org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.STRING_VALUE_FIELD;
 import static org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation.POW;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.COS;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.EXP;
@@ -36,7 +34,6 @@ import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.Una
 
 import java.util.Arrays;
 
-import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -54,7 +51,6 @@ import org.graalvm.compiler.nodes.extended.JavaReadNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
@@ -62,7 +58,7 @@ import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess;
 import org.graalvm.compiler.nodes.memory.address.IndexAddressNode;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.replacements.ArrayIndexOfDispatchNode;
+import org.graalvm.compiler.replacements.ArrayIndexOfNode;
 import org.graalvm.compiler.replacements.InvocationPluginHelper;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins;
 import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.StringLatin1IndexOfCharPlugin;
@@ -78,13 +74,11 @@ import org.graalvm.compiler.replacements.nodes.CountTrailingZerosNode;
 import org.graalvm.compiler.replacements.nodes.FusedMultiplyAddNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
@@ -102,12 +96,8 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 registerIntegerLongPlugins(invocationPlugins, JavaKind.Int, arch, replacements);
                 registerIntegerLongPlugins(invocationPlugins, JavaKind.Long, arch, replacements);
                 if (GraalOptions.EmitStringSubstitutions.getValue(options)) {
-                    if (JavaVersionUtil.JAVA_SPEC <= 8) {
-                        registerStringPlugins(invocationPlugins, replacements);
-                    } else {
-                        registerStringLatin1Plugins(invocationPlugins, replacements);
-                        registerStringUTF16Plugins(invocationPlugins, replacements);
-                    }
+                    registerStringLatin1Plugins(invocationPlugins, replacements);
+                    registerStringUTF16Plugins(invocationPlugins, replacements);
                 }
                 registerMathPlugins(invocationPlugins, useFMAIntrinsics, arch, replacements);
                 registerArraysEqualsPlugins(invocationPlugins, replacements);
@@ -116,18 +106,16 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
     }
 
     private static void registerThreadPlugins(InvocationPlugins plugins, AMD64 arch) {
-        if (JavaVersionUtil.JAVA_SPEC > 8) {
-            // Pause instruction introduced with SSE2
-            assert (arch.getFeatures().contains(AMD64.CPUFeature.SSE2));
-            Registration r = new Registration(plugins, Thread.class);
-            r.register0("onSpinWait", new InvocationPlugin() {
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                    b.append(new PauseNode());
-                    return true;
-                }
-            });
-        }
+        // Pause instruction introduced with SSE2
+        assert (arch.getFeatures().contains(AMD64.CPUFeature.SSE2));
+        Registration r = new Registration(plugins, Thread.class);
+        r.register0("onSpinWait", new InvocationPlugin() {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                b.append(new PauseNode());
+                return true;
+            }
+        });
     }
 
     private static void registerIntegerLongPlugins(InvocationPlugins plugins, JavaKind kind, AMD64 arch, Replacements replacements) {
@@ -169,9 +157,7 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
         registerUnaryMath(r, "cos", COS);
         registerUnaryMath(r, "tan", TAN);
 
-        if (JavaVersionUtil.JAVA_SPEC > 8) {
-            registerFMA(r, useFMAIntrinsics && arch.getFeatures().contains(CPUFeature.FMA));
-        }
+        registerFMA(r, useFMAIntrinsics && arch.getFeatures().contains(CPUFeature.FMA));
 
         if (arch.getFeatures().contains(CPUFeature.AVX)) {
             registerMinMax(r);
@@ -264,44 +250,6 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 @Override
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
                     b.push(kind, b.append(MinNode.create(x, y, NodeView.DEFAULT)));
-                    return true;
-                }
-            });
-        }
-    }
-
-    private static void registerStringPlugins(InvocationPlugins plugins, Replacements replacements) {
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            Registration r;
-            r = new Registration(plugins, String.class, replacements);
-            r.setAllowOverwrite(true);
-            r.registerMethodSubstitution(AMD64StringSubstitutions.class, "indexOf", char[].class, int.class,
-                            int.class, char[].class, int.class, int.class, int.class);
-            r.registerMethodSubstitution(AMD64StringSubstitutions.class, "indexOf", Receiver.class, int.class, int.class);
-            r.register2("compareTo", Receiver.class, String.class, new InvocationPlugin() {
-                @SuppressWarnings("try")
-                @Override
-                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode otherString) {
-                    // @formatter:off
-                    //     public static int compareTo(String receiver, String anotherString) {
-                    //        if (receiver == anotherString) {
-                    //            return 0;
-                    //        }
-                    //        char[] value = StringSubstitutions.getValue(receiver);
-                    //        char[] other = StringSubstitutions.getValue(anotherString);
-                    //        return ArrayCompareToNode.compareTo(value, other, value.length << 1, other.length << 1, JavaKind.Char, JavaKind.Char);
-                    //    }
-                    // @formatter:on
-                    try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                        ResolvedJavaField field = b.getMetaAccess().lookupJavaField(STRING_VALUE_FIELD);
-                        ValueNode receiverString = receiver.get();
-                        helper.emitReturnIf(receiverString, Condition.EQ, otherString, ConstantNode.forInt(0), GraalDirectives.UNLIKELY_PROBABILITY);
-                        ValueNode receiverValue = b.nullCheckedValue(helper.loadField(receiverString, field));
-                        ValueNode otherValue = b.nullCheckedValue(helper.loadField(otherString, field));
-
-                        helper.emitFinalReturn(JavaKind.Int, new ArrayCompareToNode(receiverValue, otherValue, helper.shl(helper.arraylength(receiverValue), 1),
-                                        helper.shl(helper.arraylength(otherValue), 1), JavaKind.Char, JavaKind.Char));
-                    }
                     return true;
                 }
             });
@@ -514,8 +462,7 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode ch, ValueNode fromIndex, ValueNode max) {
                 ZeroExtendNode toChar = b.add(new ZeroExtendNode(b.add(new NarrowNode(ch, JavaKind.Char.getBitCount())), JavaKind.Int.getBitCount()));
-                b.addPush(JavaKind.Int, new ArrayIndexOfDispatchNode(STUB_INDEX_OF_1_CHAR_COMPACT, JavaKind.Byte, JavaKind.Char, false, value, max, fromIndex,
-                                toChar));
+                b.addPush(JavaKind.Int, new ArrayIndexOfNode(JavaKind.Byte, JavaKind.Char, false, false, value, ConstantNode.forLong(0), max, fromIndex, toChar));
                 return true;
             }
         });
