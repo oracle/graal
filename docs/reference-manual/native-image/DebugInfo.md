@@ -473,17 +473,15 @@ Another is to configure extra source search paths.
 
 ### Configuring Source Paths in GNU Debugger
 
-By default, GDB will employ the three local directory roots `sources/{jdk,graal,src}` to locate the source files for your app classes, GraalVM
-classes, and JDK runtime classes.
+By default, GDB will employ the local directory root `sources` to locate the source files for your app classes, GraalVM classes, and JDK runtime classes.
 If the sources cache is not located in the directory in which you run GDB, you can configure the required paths using the following command:
 
 ```
-(gdb) set directories /path/to/sources/jdk:/path/to/sources/graal:/path/to/sources/src
+(gdb) set directories /path/to/sources/
 ```
 
-The `/path/to/sources/jdk` directory should contain source files for all JDK runtime classes referenced from debug records.
+The argument to the set directories command should identify the location of the sources cache as an absolute path or a relative path from the working directory of the `gdb` session.
 
-The `/path/to/sources/graal` directory should contain source files for all GraalVM classes referenced from debug records.
 Note that the current implementation does not yet find some sources for the GraalVM JIT compiler in the _org.graalvm.compiler*_ package subspace.
 
 You can supplement the files cached in `sources` by unzipping application source JAR files or copying application source trees into the cache.
