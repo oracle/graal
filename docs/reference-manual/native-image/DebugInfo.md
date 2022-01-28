@@ -391,7 +391,7 @@ $8 = (java.math.BigInteger[][] *) 0xa6fd98
 $9 = (java.math.BigInteger[][] **) 0xa6fbd8
 ```
 
-The `gdb` dereferences through symbolic names for static fields to access the primitive value or object stored in the field.
+The debugger dereferences through symbolic names for static fields to access the primitive value or object stored in the field.
 
 ```
 (gdb) p *'java.math.BigInteger'::powerCache
@@ -443,13 +443,13 @@ It identifies which strategy to use based on the package name of the class.
 So, for example, packages starting with `java.*` or `jdk.*` are JDK classes; packages starting with `org.graal.*` or `com.oracle.svm.*` are GraalVM classes; any other packages are regarded as application classes.
 
 Sources for JDK runtime classes are retrieved from the _src.zip_ found in the JDK release used to run the native image generation process.
-Retrieved files are cached under subdirectory _sources/jdk_, using the module name (for JDK11) and package name of the associated class to define the directory hierarchy in which the source is located.
+Retrieved files are cached under subdirectory _sources_, using the module name (for JDK11) and package name of the associated class to define the directory hierarchy in which the source is located.
 
-For example, on Linux the source for `class java.util.HashMap` will be cached in file _sources/jdk/java.base/java/util/HashMap.java_.
+For example, on Linux the source for `class java.util.HashMap` will be cached in file _sources/java.base/java/util/HashMap.java_.
 Debug info records for this class and its methods will identify this source file using the relative directory path _java.base/java/util_ and file name _HashMap.java_. On Windows things will be the same modulo use of `\` rather than `/` as the file separator.
 
 Sources for GraalVM classes are retrieved from zip files or source directories derived from entries in the classpath.
-Retrieved files are cached under subdirectory _sources/graal_, using the package name of the associated class to define the directory hierarchy in which the source is located (e.g., class `com.oracle.svm.core.VM` has its source file cached at `sources/graal/com/oracle/svm/core/VM.java`).
+Retrieved files are cached under subdirectory _sources_, using the package name of the associated class to define the directory hierarchy in which the source is located (e.g., class `com.oracle.svm.core.VM` has its source file cached at `sources/com/oracle/svm/core/VM.java`).
 
 The lookup scheme for cached GraalVM sources varies depending upon what is found in each classpath entry.
 Given a JAR file entry like _/path/to/foo.jar_, the corresponding file _/path/to/foo.src.zip_ is considered as a candidate zip file system from which source files may be extracted.
@@ -457,7 +457,7 @@ When the entry specifies a dir like _/path/to/bar_ then directories _/path/to/ba
 Candidates are skipped when the zip file or source directory does not exist, or it does not contain at least one subdirectory hierarchy that matches one of the the expected GraalVM package hierarchies.
 
 Sources for application classes are retrieved from source JAR files or source directories derived from entries in the classpath.
-Retrieved files are cached under subdirectory _sources/src_, using the package name of the associated class to define the directory hierarchy in which the source is located (e.g., class `org.my.foo.Foo` has its source file cached as `sources/src/org/my/foo/Foo.java`).
+Retrieved files are cached under subdirectory _sources_, using the package name of the associated class to define the directory hierarchy in which the source is located (e.g., class `org.my.foo.Foo` has its source file cached as `sources/org/my/foo/Foo.java`).
 
 The lookup scheme for cached application sources varies depending upon what is found in each classpath entry.
 Given a JAR file entry like _/path/to/foo.jar_, the corresponding JAR _/path/to/foo-sources.jar_ is considered as a candidate zip file system from which source files may
@@ -486,10 +486,8 @@ The `/path/to/sources/jdk` directory should contain source files for all JDK run
 The `/path/to/sources/graal` directory should contain source files for all GraalVM classes referenced from debug records.
 Note that the current implementation does not yet find some sources for the GraalVM JIT compiler in the _org.graalvm.compiler*_ package subspace.
 
-The `/path/to/sources/src` directory should contain source files for all application classes referenced from debug records, assuming they can be located using the lookup strategy described above.
-
-You can supplement the files cached in `sources/src` by unzipping application source JAR files or copying application source trees into the cache.
-You will need to ensure that any new subdirectory you add to `sources/src` corresponds to the top level package for the classes whose sources are being included.
+You can supplement the files cached in `sources` by unzipping application source JAR files or copying application source trees into the cache.
+You will need to ensure that any new subdirectory you add to `sources` corresponds to the top level package for the classes whose sources are being included.
 
 You can also add extra directories to the search path using the `set directories` command:
 ```shell
@@ -545,21 +543,20 @@ Windows support is still under development.
 
 ## Debugging with Isolates
 
-Note that it is currently recommended to disable use of Isolates by passing flag `-H:-SpawnIsolates` on the command line when debug info
-generation is enabled.
-Enabling of Isolates affects the way ordinary object pointers (oops) are encoded.
-In turn, that means the debug info generator has to provide gdb with information about how to translate an encoded oop to the address in memory, where the object data is
-stored.
-This sometimes requires care when asking gdb to process encoded oops vs decoded raw addresses.
+Enabling the use of Isolates, by passing command line option `-H:-SpawnIsolates` to the `native-image` builder, affects the way ordinary object pointers (oops) are encoded.
+In turn, that means the debug info generator has to provide `gdb` with information about how to translate an encoded oop to the address in memory, where the object data is stored.
+This sometimes requires care when asking `gdb` to process encoded oops vs decoded raw addresses.
 
 When isolates are disabled, oops are essentially raw addresses pointing directly at the object contents.
 This is generally the same whether the oop is embedded in a static/instance field or is referenced from a local or parameter variable located in a register or saved to the stack.
 It is not quite that simple because the bottom 3 bits of some oops may be used to hold "tags" that record certain transient properties of an object.
-However, the debuginfo provided to gdb means that it will remove these tag bits before dereferencing the oop as an address.
+However, the debuginfo provided to `gdb` means that it will remove these tag bits before dereferencing the oop as an address.
 
 By contrast, when isolates are enabled, oops references stored in static or instance fields are actually relative addresses, offsets from a dedicated heap base register (r14 on x86_64, r29 on AArch64), rather than direct addresses (in a few special cases the offset may also have some low tag bits set).
 When an 'indirect' oop of this kind gets loaded during execution, it is almost always immediately converted to a 'raw' address by adding the offset to the heap base register value.
 So, oops which occur as the value of local or parameter vars are actually raw addresses.
+
+> Note that on some operating systems enabling Isolates causes problems with printing of objects when using a `gdb` release version 10 or earlier. It is currently recommended to disable use of Isolates, by passing command line option `-H:-SpawnIsolates`, when generating debug info if your operating system includes one of these earlier releases. Alternatively, you may be able to upgrade your debugger to a later version.
 
 The DWARF info encoded into the image, when isolates are enabled, tells `gdb` to rebase indirect oops whenever it tries to dereference them to access underlying object data.
 This is normally automatic and transparent, but it is visible in the underlying type model that `gdb` displays when you ask for the type of objects.
@@ -612,7 +609,7 @@ type = class _z_.java.math.BigInteger[] : public java.math.BigInteger[] {
 } *[0]
 ```
 
-The `gdb` still knows how to dereference these oops:
+The debugger still knows how to dereference these oops:
 
 ```
 (gdb) p $1->hub
