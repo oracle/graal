@@ -39,7 +39,7 @@ import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.core.configure.ConditionalElement;
 import com.oracle.svm.core.util.VMError;
 
-public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration, TypeConfiguration.TypeConfigurationFilterPredicate> {
+public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration, TypeConfiguration.Predicate> {
 
     private final ConcurrentMap<ConditionalElement<String>, ConfigurationType> types = new ConcurrentHashMap<>();
 
@@ -86,7 +86,7 @@ public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration
     }
 
     @Override
-    protected void filter(TypeConfigurationFilterPredicate predicate) {
+    protected void removeIf(Predicate predicate) {
         types.entrySet().removeIf(entry -> predicate.testIncludedType(entry.getKey(), entry.getValue()));
     }
 
@@ -159,7 +159,7 @@ public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration
         return Objects.hash(types);
     }
 
-    public interface TypeConfigurationFilterPredicate {
+    public interface Predicate {
 
         boolean testIncludedType(ConditionalElement<String> conditionalElement, ConfigurationType type);
 

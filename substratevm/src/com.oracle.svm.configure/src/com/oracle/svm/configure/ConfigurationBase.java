@@ -28,7 +28,7 @@ import java.util.function.Consumer;
 
 import com.oracle.svm.configure.json.JsonPrintable;
 
-public abstract class ConfigurationBase<T extends ConfigurationBase<T, U>, U> implements JsonPrintable {
+public abstract class ConfigurationBase<T extends ConfigurationBase<T, P>, P> implements JsonPrintable {
 
     public abstract boolean isEmpty();
 
@@ -40,7 +40,7 @@ public abstract class ConfigurationBase<T extends ConfigurationBase<T, U>, U> im
 
     protected abstract void intersect(T other);
 
-    protected abstract void filter(U predicate);
+    protected abstract void removeIf(P predicate);
 
     protected T copyAnd(Consumer<T> consumer) {
         T copy = copy();
@@ -60,7 +60,7 @@ public abstract class ConfigurationBase<T extends ConfigurationBase<T, U>, U> im
         return copyAnd(copy -> copy.intersect(other));
     }
 
-    public T copyAndFilter(U predicate) {
-        return copyAnd(copy -> copy.filter(predicate));
+    public T copyAndFilter(P predicate) {
+        return copyAnd(copy -> copy.removeIf(predicate));
     }
 }

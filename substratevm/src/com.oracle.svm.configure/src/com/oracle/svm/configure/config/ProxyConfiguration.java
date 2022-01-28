@@ -37,7 +37,7 @@ import com.oracle.svm.configure.ConfigurationBase;
 import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.core.configure.ConditionalElement;
 
-public final class ProxyConfiguration extends ConfigurationBase<ProxyConfiguration, ProxyConfiguration.ProxyConfigurationFilterPredicate> {
+public final class ProxyConfiguration extends ConfigurationBase<ProxyConfiguration, ProxyConfiguration.Predicate> {
     private final Set<ConditionalElement<List<String>>> interfaceLists = ConcurrentHashMap.newKeySet();
 
     public ProxyConfiguration() {
@@ -67,7 +67,7 @@ public final class ProxyConfiguration extends ConfigurationBase<ProxyConfigurati
     }
 
     @Override
-    protected void filter(ProxyConfigurationFilterPredicate predicate) {
+    protected void removeIf(Predicate predicate) {
         interfaceLists.removeIf(predicate::testProxyInterfaceList);
     }
 
@@ -136,7 +136,7 @@ public final class ProxyConfiguration extends ConfigurationBase<ProxyConfigurati
         return l1.size() - l2.size();
     }
 
-    public interface ProxyConfigurationFilterPredicate {
+    public interface Predicate {
 
         boolean testProxyInterfaceList(ConditionalElement<List<String>> conditionalElement);
 

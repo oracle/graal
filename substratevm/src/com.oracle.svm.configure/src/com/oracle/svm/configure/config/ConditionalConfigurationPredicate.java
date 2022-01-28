@@ -6,13 +6,12 @@ import java.util.regex.Pattern;
 
 import com.oracle.svm.core.configure.ConditionalElement;
 
-public class ConditionalConfigurationFilter
-                implements TypeConfiguration.TypeConfigurationFilterPredicate, ProxyConfiguration.ProxyConfigurationFilterPredicate, ResourceConfiguration.ResourceConfigurationFilterPredicate,
-                SerializationConfiguration.SerializationConfigurationFilter, PredefinedClassesConfiguration.PredefinedClassFilterPredicate {
+public class ConditionalConfigurationPredicate implements TypeConfiguration.Predicate, ProxyConfiguration.Predicate,
+                ResourceConfiguration.Predicate, SerializationConfiguration.Predicate, PredefinedClassesConfiguration.Predicate {
 
     private final Set<Pattern> classNamePatterns;
 
-    public ConditionalConfigurationFilter(Set<Pattern> classNamePatterns) {
+    public ConditionalConfigurationPredicate(Set<Pattern> classNamePatterns) {
         this.classNamePatterns = classNamePatterns;
     }
 

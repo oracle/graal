@@ -33,7 +33,6 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.function.Predicate;
 
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
@@ -43,12 +42,12 @@ import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.PredefinedClassesConfigurationParser;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 
-public final class PredefinedClassesConfiguration extends ConfigurationBase<PredefinedClassesConfiguration, PredefinedClassesConfiguration.PredefinedClassFilterPredicate> {
+public final class PredefinedClassesConfiguration extends ConfigurationBase<PredefinedClassesConfiguration, PredefinedClassesConfiguration.Predicate> {
     private final Path[] classDestinationDirs;
     private final ConcurrentMap<String, ConfigurationPredefinedClass> classes = new ConcurrentHashMap<>();
-    private final Predicate<String> shouldExcludeClassWithHash;
+    private final java.util.function.Predicate<String> shouldExcludeClassWithHash;
 
-    public PredefinedClassesConfiguration(Path[] classDestinationDirs, Predicate<String> shouldExcludeClassWithHash) {
+    public PredefinedClassesConfiguration(Path[] classDestinationDirs, java.util.function.Predicate<String> shouldExcludeClassWithHash) {
         this.classDestinationDirs = classDestinationDirs;
         this.shouldExcludeClassWithHash = shouldExcludeClassWithHash;
     }
@@ -80,7 +79,7 @@ public final class PredefinedClassesConfiguration extends ConfigurationBase<Pred
     }
 
     @Override
-    protected void filter(PredefinedClassFilterPredicate predicate) {
+    protected void removeIf(Predicate predicate) {
         classes.values().removeIf(predicate::testPredefinedClass);
     }
 
@@ -175,7 +174,7 @@ public final class PredefinedClassesConfiguration extends ConfigurationBase<Pred
         return classes.containsKey(hash);
     }
 
-    public interface PredefinedClassFilterPredicate {
+    public interface Predicate {
 
         boolean testPredefinedClass(ConfigurationPredefinedClass clazz);
 

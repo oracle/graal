@@ -68,7 +68,7 @@ import com.oracle.svm.agent.tracing.ConfigurationResultWriter;
 import com.oracle.svm.agent.tracing.TraceFileWriter;
 import com.oracle.svm.agent.tracing.core.Tracer;
 import com.oracle.svm.agent.tracing.core.TracingResultWriter;
-import com.oracle.svm.configure.config.ConditionalConfigurationFilter;
+import com.oracle.svm.configure.config.ConditionalConfigurationPredicate;
 import com.oracle.svm.configure.config.ConfigurationFileCollection;
 import com.oracle.svm.configure.filters.FilterConfigurationParser;
 import com.oracle.svm.configure.filters.RuleNode;
@@ -309,7 +309,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                     tracer = writer;
                     tracingResultWriter = writer;
                 } else if (!predefinedConfigurationPackages.isEmpty()) {
-                    ConditionalConfigurationFilter filter = new ConditionalConfigurationFilter(classNamePatterns);
+                    ConditionalConfigurationPredicate filter = new ConditionalConfigurationPredicate(classNamePatterns);
                     ConditionalConfigurationWriter writer = new ConditionalConfigurationWriter(advisor, recordKeeper, predefinedConfigurationPackages, filter);
                     tracer = writer;
                     tracingResultWriter = writer;

@@ -25,7 +25,6 @@
 package com.oracle.svm.configure.config;
 
 import java.nio.file.Path;
-import java.util.function.BiFunction;
 
 
 import com.oracle.svm.configure.ConfigurationBase;
@@ -34,6 +33,11 @@ import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.util.VMError;
 
 public class ConfigurationSet {
+    @FunctionalInterface
+    private interface Mutator {
+        <T extends ConfigurationBase<T, ?>> T apply(T first, T other);
+    }
+
     private final TypeConfiguration reflectionConfiguration;
     private final TypeConfiguration jniConfiguration;
     private final ResourceConfiguration resourceConfiguration;
@@ -67,33 +71,29 @@ public class ConfigurationSet {
                         new PredefinedClassesConfiguration(new Path[0], hash -> false));
     }
 
-    @SuppressWarnings("rawtypes")
-    private ConfigurationSet mutate(ConfigurationSet other, BiFunction<ConfigurationBase, ConfigurationBase, ConfigurationBase> mutator) {
-        TypeConfiguration reflectionConfiguration = (TypeConfiguration) mutator.apply(this.reflectionConfiguration, other.reflectionConfiguration);
-        TypeConfiguration jniConfiguration = (TypeConfiguration) mutator.apply(this.jniConfiguration, other.jniConfiguration);
-        ResourceConfiguration resourceConfiguration = (ResourceConfiguration) mutator.apply(this.resourceConfiguration, other.resourceConfiguration);
-        ProxyConfiguration proxyConfiguration = (ProxyConfiguration) mutator.apply(this.proxyConfiguration, other.proxyConfiguration);
-        SerializationConfiguration serializationConfiguration = (SerializationConfiguration) mutator.apply(this.serializationConfiguration, other.serializationConfiguration);
-        PredefinedClassesConfiguration predefinedClassesConfiguration = (PredefinedClassesConfiguration) mutator.apply(this.predefinedClassesConfiguration, other.predefinedClassesConfiguration);
+    private ConfigurationSet mutate(ConfigurationSet other, Mutator mutator) {
+        TypeConfiguration reflectionConfiguration = mutator.apply(this.reflectionConfiguration, other.reflectionConfiguration);
+        TypeConfiguration jniConfiguration = mutator.apply(this.jniConfiguration, other.jniConfiguration);
+        ResourceConfiguration resourceConfiguration = mutator.apply(this.resourceConfiguration, other.resourceConfiguration);
+        ProxyConfiguration proxyConfiguration = mutator.apply(this.proxyConfiguration, other.proxyConfiguration);
+        SerializationConfiguration serializationConfiguration = mutator.apply(this.serializationConfiguration, other.serializationConfiguration);
+        PredefinedClassesConfiguration predefinedClassesConfiguration = mutator.apply(this.predefinedClassesConfiguration, other.predefinedClassesConfiguration);
         return new ConfigurationSet(reflectionConfiguration, jniConfiguration, resourceConfiguration, proxyConfiguration, serializationConfiguration, predefinedClassesConfiguration);
     }
 
-    @SuppressWarnings("unchecked")
     public ConfigurationSet merge(ConfigurationSet other) {
         return mutate(other, ConfigurationBase::copyAndMerge);
     }
 
-    @SuppressWarnings("unchecked")
     public ConfigurationSet subtract(ConfigurationSet other) {
         return mutate(other, ConfigurationBase::copyAndSubtract);
     }
 
-    @SuppressWarnings("unchecked")
     public ConfigurationSet intersectWith(ConfigurationSet other) {
         return mutate(other, ConfigurationBase::copyAndIntersect);
     }
 
-    public ConfigurationSet filter(ConditionalConfigurationFilter filter) {
+    public ConfigurationSet filter(ConditionalConfigurationPredicate filter) {
         TypeConfiguration reflectionConfiguration = this.reflectionConfiguration.copyAndFilter(filter);
         TypeConfiguration jniConfiguration = this.jniConfiguration.copyAndFilter(filter);
         ResourceConfiguration resourceConfiguration = this.resourceConfiguration.copyAndFilter(filter);

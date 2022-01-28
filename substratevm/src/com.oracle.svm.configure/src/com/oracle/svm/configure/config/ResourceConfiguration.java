@@ -43,7 +43,7 @@ import com.oracle.svm.configure.json.JsonWriter;
 import com.oracle.svm.core.configure.ConditionalElement;
 import com.oracle.svm.core.configure.ResourcesRegistry;
 
-public final class ResourceConfiguration extends ConfigurationBase<ResourceConfiguration, ResourceConfiguration.ResourceConfigurationFilterPredicate> {
+public final class ResourceConfiguration extends ConfigurationBase<ResourceConfiguration, ResourceConfiguration.Predicate> {
 
     private static final String PROPERTY_BUNDLE = "java.util.PropertyResourceBundle";
 
@@ -141,7 +141,7 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
     }
 
     @Override
-    protected void filter(ResourceConfigurationFilterPredicate predicate) {
+    protected void removeIf(Predicate predicate) {
         addedResources.entrySet().removeIf(entry -> predicate.testIncludedResource(entry.getKey(), entry.getValue()));
         bundles.entrySet().removeIf(entry -> predicate.testIncludedBundle(entry.getKey(), entry.getValue()));
     }
@@ -266,7 +266,7 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
         w.unindent().newline().append('}');
     }
 
-    public interface ResourceConfigurationFilterPredicate {
+    public interface Predicate {
         boolean testIncludedResource(ConditionalElement<String> condition, Pattern pattern);
 
         boolean testIncludedBundle(ConditionalElement<String> condition, BundleConfiguration bundleConfiguration);

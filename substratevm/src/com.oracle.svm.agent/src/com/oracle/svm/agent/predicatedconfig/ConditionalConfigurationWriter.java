@@ -41,7 +41,7 @@ import com.oracle.svm.agent.configwithorigins.ConfigurationWithOriginsResultWrit
 import com.oracle.svm.agent.configwithorigins.ConfigurationWithOriginsResultWriterBase;
 import com.oracle.svm.agent.configwithorigins.MethodInfo;
 import com.oracle.svm.agent.configwithorigins.MethodInfoRecordKeeper;
-import com.oracle.svm.configure.config.ConditionalConfigurationFilter;
+import com.oracle.svm.configure.config.ConditionalConfigurationPredicate;
 import com.oracle.svm.configure.config.ConfigurationSet;
 import com.oracle.svm.configure.config.PredefinedClassesConfiguration;
 import com.oracle.svm.configure.config.ProxyConfiguration;
@@ -61,9 +61,9 @@ import com.oracle.svm.core.configure.ConfigurationFile;
 public class ConditionalConfigurationWriter extends ConfigurationWithOriginsResultWriterBase {
     private final Set<String> applicationPackagePrefixes;
     private ConfigurationSet configurationContainer = new ConfigurationSet();
-    private final ConditionalConfigurationFilter filter;
+    private final ConditionalConfigurationPredicate filter;
 
-    public ConditionalConfigurationWriter(AccessAdvisor advisor, MethodInfoRecordKeeper methodInfoRecordKeeper, Set<String> applicationPackagePrefixes, ConditionalConfigurationFilter filter) {
+    public ConditionalConfigurationWriter(AccessAdvisor advisor, MethodInfoRecordKeeper methodInfoRecordKeeper, Set<String> applicationPackagePrefixes, ConditionalConfigurationPredicate filter) {
         super(advisor, methodInfoRecordKeeper);
         this.applicationPackagePrefixes = applicationPackagePrefixes;
         this.filter = filter;
