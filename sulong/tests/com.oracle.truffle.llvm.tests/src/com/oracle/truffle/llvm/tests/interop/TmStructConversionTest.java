@@ -30,11 +30,6 @@
 
 package com.oracle.truffle.llvm.tests.interop;
 
-import org.graalvm.polyglot.Value;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -46,6 +41,12 @@ import java.time.ZoneId;
 
 import com.oracle.truffle.llvm.tests.interop.TimeConversionTest.TimeLibrary;
 import com.oracle.truffle.tck.TruffleRunner;
+
+import org.graalvm.polyglot.Value;
+import org.junit.BeforeClass;
+import org.junit.Ignore;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 
 @RunWith(TruffleRunner.class)
 public class TmStructConversionTest extends InteropTestBase {
@@ -63,6 +64,10 @@ public class TmStructConversionTest extends InteropTestBase {
 
         String printDateTime(Object v) {
             return lib.getMember("printDateTime").execute(v).asString();
+        }
+
+        String recastPolyglotValue(Object v) {
+            return lib.invokeMember("recastPolyglotValue", v).asString();
         }
 
         String printDateTimeCast(Object v) {
@@ -134,6 +139,14 @@ public class TmStructConversionTest extends InteropTestBase {
         String s = tmStructLibrary.printDateTime(ctime);
         assertEquals("time: 09:14:55", s);
         s = tmStructLibrary.printDateTimeCast(ctime);
+        assertEquals("time: 09:14:55", s);
+    }
+
+    @Ignore
+    @Test
+    public void recastPolyglotValueTest() {
+        Value ctime = timeLibrary.getTime();
+        String s = tmStructLibrary.recastPolyglotValue(ctime);
         assertEquals("time: 09:14:55", s);
     }
 

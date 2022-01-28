@@ -60,3 +60,12 @@ polyglot_value printDateTimeCast(struct tm *t) {
     snprintf(str, 64, "time: %02d:%02d:%02d", t->tm_hour, t->tm_min, t->tm_sec);
     return polyglot_from_string(str, "UTF8");
 }
+
+polyglot_value recastPolyglotValue(polyglot_value v) {
+    time_t seconds = polyglot_instant_as_time(v);
+    struct polyglot_instant inst = { seconds };
+    struct tm *t = polyglot_as_tm(polyglot_from_typed(&inst, polyglot_instant_typeid()));
+    char str[64];
+    snprintf(str, 64, "time: %02d:%02d:%02d", t->tm_hour, t->tm_min, t->tm_sec);
+    return polyglot_from_string(str, "UTF8");
+}
