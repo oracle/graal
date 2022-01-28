@@ -78,13 +78,14 @@ class SubstrateSegfaultHandlerFeature implements Feature {
     }
 }
 
-final class SubstrateSegfaultHandlerStartupHook implements Runnable {
-
+final class SubstrateSegfaultHandlerStartupHook implements RuntimeSupport.Hook {
     @Override
-    public void run() {
-        Boolean optionValue = SubstrateSegfaultHandler.Options.InstallSegfaultHandler.getValue();
-        if (optionValue == Boolean.TRUE || (optionValue == null && ImageInfo.isExecutable())) {
-            ImageSingletons.lookup(SubstrateSegfaultHandler.class).install();
+    public void execute(boolean isFirstIsolate) {
+        if (isFirstIsolate) {
+            Boolean optionValue = SubstrateSegfaultHandler.Options.InstallSegfaultHandler.getValue();
+            if (optionValue == Boolean.TRUE || (optionValue == null && ImageInfo.isExecutable())) {
+                ImageSingletons.lookup(SubstrateSegfaultHandler.class).install();
+            }
         }
     }
 }
@@ -144,8 +145,7 @@ public abstract class SubstrateSegfaultHandler {
              * overflow.
              */
             isolate = VMThreads.IsolateTL.get();
-            return Isolates.checkSanity(isolate) == CEntryPointErrors.NO_ERROR &&
-                            (!SubstrateOptions.SpawnIsolates.getValue() || isolate.equal(KnownIntrinsics.heapBase()));
+            return Isolates.checkSanity(isolate) == CEntryPointErrors.NO_ERROR && (!SubstrateOptions.SpawnIsolates.getValue() || isolate.equal(KnownIntrinsics.heapBase()));
         }
         return false;
     }

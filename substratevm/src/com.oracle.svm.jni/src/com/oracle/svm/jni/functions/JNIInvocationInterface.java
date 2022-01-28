@@ -224,9 +224,9 @@ final class JNIInvocationInterface {
                 long javavmId = IsolateUtil.getIsolateID();
                 javavmIdPointer.write(WordFactory.pointer(javavmId));
             }
-            RuntimeSupport.getRuntimeSupport().addTearDownHook(new Runnable() {
+            RuntimeSupport.getRuntimeSupport().addTearDownHook(new RuntimeSupport.Hook() {
                 @Override
-                public void run() {
+                public void execute(boolean isFirstIsolate) {
                     JNIJavaVMList.removeJavaVM(javavm);
                 }
             });

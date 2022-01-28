@@ -80,6 +80,7 @@ import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SharedRuntimeMethod;
+import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.graal.meta.SubstrateMethod;
@@ -330,9 +331,9 @@ public class GraalSupport {
         return graph;
     }
 
-    public static class GraalShutdownHook implements Runnable {
+    public static class GraalShutdownHook implements RuntimeSupport.Hook {
         @Override
-        public void run() {
+        public void execute(boolean isFirstIsolate) {
             GraalSupport graalSupport = GraalSupport.get();
             graalSupport.metricValues.print(RuntimeOptionValues.singleton());
             graalSupport.outputDirectory.close();
