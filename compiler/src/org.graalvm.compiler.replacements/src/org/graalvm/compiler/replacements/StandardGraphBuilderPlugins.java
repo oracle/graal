@@ -291,7 +291,7 @@ public class StandardGraphBuilderPlugins {
             }
         });
 
-        Registration sr = new Registration(plugins, JDK9StringSubstitutions.class);
+        Registration sr = new Registration(plugins, StringSubstitutions.class);
         sr.register(new InlineOnlyInvocationPlugin("getValue", String.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
