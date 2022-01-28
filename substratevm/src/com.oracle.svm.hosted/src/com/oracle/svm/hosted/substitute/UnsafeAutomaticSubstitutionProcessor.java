@@ -886,6 +886,13 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             reportConflictingSubstitution(field, kind, conflictingSubstitution);
             return false;
         } else {
+            ComputedValueField computedValueField = substitutionSupplier.get();
+            Field targetField = computedValueField.getTargetField();
+            if (targetField != null && annotationSubstitutions.isDeleted(targetField)) {
+                String conflictingSubstitution = "The target field of " + field.format("%H.%n") + " is marked as deleted. ";
+                reportSkippedSubstitution(field, kind, conflictingSubstitution);
+                return false;
+            }
             Optional<ResolvedJavaField> annotationSubstitution = annotationSubstitutions.findSubstitution(field);
             if (annotationSubstitution.isPresent()) {
                 /* An annotation substitutions detected. */
@@ -907,7 +914,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
                          * AnalysisUniverse.lookupAllowUnresolved(JavaField), the alias field is
                          * forwarded to the the automatic substitution.
                          */
-                        addSubstitutionField(computedSubstitutionField, substitutionSupplier.get());
+                        addSubstitutionField(computedSubstitutionField, computedValueField);
                         reportOvewrittenSubstitution(substitutionField, kind, computedSubstitutionField.getAnnotated(), computedSubstitutionField.getRecomputeValueKind());
                         return true;
                     } else {
@@ -923,7 +930,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
                 }
             } else {
                 /* No other substitutions detected. */
-                addSubstitutionField(field, substitutionSupplier.get());
+                addSubstitutionField(field, computedValueField);
                 return true;
             }
         }
@@ -984,6 +991,18 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             String msg = "Warning: The " + substitutionKindStr + " substitution for " + fieldStr + " could not be recomputed automatically because a conflicting substitution was detected. ";
             msg += "Conflicting substitution: " + conflictingSubstitution;
             msg += "Add a " + substitutionKindStr + " manual substitution for " + fieldStr + ". ";
+
+            System.out.println(msg);
+        }
+    }
+
+    private static void reportSkippedSubstitution(ResolvedJavaField field, Kind substitutionKind, String conflictingSubstitution) {
+        if (Options.UnsafeAutomaticSubstitutionsLogLevel.getValue() >= BASIC_LEVEL) {
+            String fieldStr = field.format("%H.%n");
+            String substitutionKindStr = RecomputeFieldValue.class.getSimpleName() + "." + substitutionKind;
+
+            String msg = "Warning: The " + substitutionKindStr + " substitution for " + fieldStr + " could not be recomputed automatically because a conflicting substitution was detected. ";
+            msg += "Conflicting substitution: " + conflictingSubstitution;
 
             System.out.println(msg);
         }
