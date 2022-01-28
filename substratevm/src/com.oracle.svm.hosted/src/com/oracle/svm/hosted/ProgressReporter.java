@@ -65,6 +65,7 @@ import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.reflect.MethodMetadataDecoder;
 import com.oracle.svm.core.util.VMError;
@@ -489,6 +490,9 @@ public class ProgressReporter {
             long remainingBytes = byteArraySize;
             classNameToSize.put(BREAKDOWN_BYTE_ARRAY_PREFIX + "java.lang.String", stringByteLength);
             remainingBytes -= stringByteLength;
+            long codeInfoSize = CodeInfoTable.getImageCodeCache().getTotalByteArraySize();
+            classNameToSize.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linePrinter.asDocLink("code metadata", "#glossary-code-metadata"), codeInfoSize);
+            remainingBytes -= codeInfoSize;
             long metadataByteLength = ImageSingletons.lookup(MethodMetadataDecoder.class).getMetadataByteLength();
             if (metadataByteLength > 0) {
                 classNameToSize.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linePrinter.asDocLink("method metadata", "#glossary-method-metadata"), metadataByteLength);
