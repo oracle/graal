@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -164,6 +164,10 @@ public final class LoadModulesNode extends LLVMRootNode {
             FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
             int stackId = builder.addSlot(FrameSlotKind.Object, null, null);
             assert stackId == LLVMStack.STACK_ID;
+            int uniquesRegionId = builder.addSlot(FrameSlotKind.Object, null, null);
+            assert uniquesRegionId == LLVMStack.UNIQUES_REGION_ID;
+            int basePointerId = builder.addSlot(FrameSlotKind.Long, null, null);
+            assert basePointerId == LLVMStack.BASE_POINTER_ID;
             return new LoadModulesNode(soName, parserResult, isInternalSulongLibrary, builder.build(), lazyParsing, libraryDependencies, source, language);
         } catch (Type.TypeOverflowException e) {
             throw new LLVMUnsupportedException(null, LLVMUnsupportedException.UnsupportedReason.UNSUPPORTED_VALUE_RANGE, e);

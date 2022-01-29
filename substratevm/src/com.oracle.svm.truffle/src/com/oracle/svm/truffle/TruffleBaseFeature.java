@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,6 +50,8 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInlineOnlyInvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.phases.util.Providers;
@@ -259,7 +261,7 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
          * that we get exact types for fields that store profiles.
          */
         Registration r = new Registration(plugins.getInvocationPlugins(), Profile.class);
-        r.register0("isProfilingEnabled", new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("isProfilingEnabled") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(profilingEnabled));
@@ -508,16 +510,10 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
             if (reason == ParsingReason.PointsToAnalysis) {
                 InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins.getInvocationPlugins(),
                                 StaticShape.Builder.class);
-                r.register3("build", InvocationPlugin.Receiver.class, Class.class, Class.class, new InvocationPlugin() {
-                    @Override
-                    public boolean inlineOnly() {
-                        // Use the plugin only during parsing.
-                        return true;
-                    }
-
+                r.register(new RequiredInlineOnlyInvocationPlugin("build", InvocationPlugin.Receiver.class, Class.class, Class.class) {
                     @Override
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod,
-                                    InvocationPlugin.Receiver receiver, ValueNode arg1, ValueNode arg2) {
+                                    Receiver receiver, ValueNode arg1, ValueNode arg2) {
                         Class<?> superClass = getArgumentClass(b, targetMethod, 1, arg1);
                         Class<?> factoryInterface = getArgumentClass(b, targetMethod, 2, arg2);
                         generate(superClass, factoryInterface, beforeAnalysisAccess);

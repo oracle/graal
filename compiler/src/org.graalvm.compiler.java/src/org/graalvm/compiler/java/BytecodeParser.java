@@ -2191,7 +2191,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
     protected boolean tryInvocationPlugin(InvokeKind invokeKind, ValueNode[] args, ResolvedJavaMethod targetMethod, JavaKind resultType) {
         InvocationPlugins plugins = graphBuilderConfig.getPlugins().getInvocationPlugins();
-        InvocationPlugin plugin = plugins.lookupInvocation(targetMethod, true);
+        InvocationPlugin plugin = plugins.lookupInvocation(targetMethod, true, options);
         if (plugin != null) {
 
             if (intrinsicContext != null && intrinsicContext.isCallToOriginal(targetMethod)) {

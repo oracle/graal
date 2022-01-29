@@ -1125,7 +1125,7 @@ public class SymbolicSnippetEncoder {
                 return false;
             }
 
-            InvocationPlugin plugin = graphBuilderConfig.getPlugins().getInvocationPlugins().lookupInvocation(targetMethod);
+            InvocationPlugin plugin = graphBuilderConfig.getPlugins().getInvocationPlugins().lookupInvocation(targetMethod, options);
             if (plugin != null && conditionalPlugins.contains(plugin)) {
                 // Because supporting arbitrary plugins in the context of encoded graphs is complex
                 // we disallow it. This limitation can be worked around through the use of method

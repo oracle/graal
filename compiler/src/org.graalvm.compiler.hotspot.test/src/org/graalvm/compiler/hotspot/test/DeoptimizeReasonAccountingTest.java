@@ -81,7 +81,7 @@ public class DeoptimizeReasonAccountingTest extends GraalCompilerTest {
     @Override
     protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
         Registration r = new Registration(invocationPlugins, DeoptimizeReasonAccountingTest.class);
-        r.register0("getReason", new InvocationPlugin() {
+        r.register(new InvocationPlugin("getReason") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 SnippetReflectionProvider snippetReflection = getSnippetReflection();

@@ -90,7 +90,7 @@ public class MethodHandlePlugin implements NodePlugin {
                     inlineEverything = args.length != argumentsList.size();
                 }
                 ResolvedJavaMethod targetMethod = callTarget.targetMethod();
-                if (inlineEverything && !targetMethod.hasBytecodes() && !b.getReplacements().hasSubstitution(targetMethod)) {
+                if (inlineEverything && !targetMethod.hasBytecodes() && !b.getReplacements().hasSubstitution(targetMethod, b.getOptions())) {
                     // we need to force-inline but we can not, leave the invoke as-is
                     return false;
                 }

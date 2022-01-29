@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,32 +22,42 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.nodes.graphbuilderconf;
 
-import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.extended.ForeignCallNode;
+/* global insight */
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
+var sum = 0;
+var max = 0;
+var stop = false;
 
-import java.lang.reflect.Type;
-
-/**
- * {@link InvocationPlugin} for converting a method call directly to a foreign call.
- */
-public final class ForeignCallPlugin extends InvocationPlugin {
-    private final ForeignCallDescriptor descriptor;
-
-    public ForeignCallPlugin(ForeignCallDescriptor descriptor, String name, Type... argumentTypes) {
-        super(name, argumentTypes);
-        this.descriptor = descriptor;
+insight.on('enter', (ctx, frame) => {
+    if (!stop) {
+        ctx.iterateFrames((at, vars) => {
+            if (at.name == 'Primes.next') {
+                if (vars["this"].natural.x > 100) {
+                    stop = true;
+                }
+            }
+        });
+        if (stop) {
+            return;
+        }
+        let n = frame.number;
+        sum += n;
+        if (n > max) {
+            max = n;
+        }
     }
+}, {
+  roots: true,
+  rootNameFilter: (name) => name === 'Filter'
+});
 
-    @Override
-    public boolean execute(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode[] args) {
-        ForeignCallNode foreignCall = new ForeignCallNode(descriptor, args);
-        foreignCall.setBci(b.bci());
-        b.addPush(targetMethod.getSignature().getReturnKind(), foreignCall);
-        return true;
-    }
-}
+insight.on('return', (ctx, frame) => {
+    log(`Hundred thousand prime numbers from 2 to ${max} has sum ${sum}`);
+    sum = 0;
+    max = 0;
+    stop = false;
+}, {
+    roots: true,
+    rootNameFilter: (name) => name === 'measure'
+});

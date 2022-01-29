@@ -219,7 +219,7 @@ public class CheckIndexTest extends MethodSubstitutionTest {
         super.registerInvocationPlugins(invocationPlugins);
 
         // Cut off the Objects.requireNonNull exception path: might generate an unwanted invoke.
-        final InvocationPlugin requireNonNullPlugin = new InvocationPlugin() {
+        final InvocationPlugin requireNonNullPlugin = new InvocationPlugin("requireNonNull", Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode obj) {
                 b.addPush(JavaKind.Object, b.addNonNullCast(obj));
@@ -227,7 +227,7 @@ public class CheckIndexTest extends MethodSubstitutionTest {
             }
         };
         final Registration objects = new Registration(invocationPlugins, Objects.class);
-        objects.register1("requireNonNull", Object.class, requireNonNullPlugin);
+        objects.register(requireNonNullPlugin);
     }
 
     @Override

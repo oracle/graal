@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,32 +22,14 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.nodes.graphbuilderconf;
+package com.oracle.svm.core.jdk;
 
-import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.extended.ForeignCallNode;
+import java.util.function.BooleanSupplier;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
-
-import java.lang.reflect.Type;
-
-/**
- * {@link InvocationPlugin} for converting a method call directly to a foreign call.
- */
-public final class ForeignCallPlugin extends InvocationPlugin {
-    private final ForeignCallDescriptor descriptor;
-
-    public ForeignCallPlugin(ForeignCallDescriptor descriptor, String name, Type... argumentTypes) {
-        super(name, argumentTypes);
-        this.descriptor = descriptor;
-    }
-
+@Deprecated(since = "22.1.0", forRemoval = true)
+public class JDK11OrLater implements BooleanSupplier {
     @Override
-    public boolean execute(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode[] args) {
-        ForeignCallNode foreignCall = new ForeignCallNode(descriptor, args);
-        foreignCall.setBci(b.bci());
-        b.addPush(targetMethod.getSignature().getReturnKind(), foreignCall);
+    public boolean getAsBoolean() {
         return true;
     }
 }
