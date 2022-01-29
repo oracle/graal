@@ -177,7 +177,6 @@ public class SerializationFeature implements Feature {
     private static Class<?> getLambdaClassFromMemberField(Constant constant) {
         ResolvedJavaType constantType = GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaType((JavaConstant) constant);
 
-        // If node does not contain Lambda
         if (constantType == null) {
             return null;
         }
@@ -191,7 +190,6 @@ public class SerializationFeature implements Feature {
             }
         }
 
-        // Constant node does not contain MethodHandle
         if (targetField == null) {
             return null;
         }
