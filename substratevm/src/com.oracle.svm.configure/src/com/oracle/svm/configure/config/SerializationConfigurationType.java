@@ -59,7 +59,7 @@ public class SerializationConfigurationType implements JsonPrintable, Comparable
         if (qualifiedCustomTargetConstructorJavaName != null) {
             writer.append(',').newline();
             writer.quote(SerializationConfigurationParser.CUSTOM_TARGET_CONSTRUCTOR_CLASS_KEY).append(':')
-                    .quote(qualifiedCustomTargetConstructorJavaName);
+                            .quote(qualifiedCustomTargetConstructorJavaName);
         }
         writer.unindent().newline().append('}');
     }
@@ -74,8 +74,8 @@ public class SerializationConfigurationType implements JsonPrintable, Comparable
         }
         SerializationConfigurationType that = (SerializationConfigurationType) o;
         return condition.equals(that.condition) &&
-                qualifiedJavaName.equals(that.qualifiedJavaName) &&
-                Objects.equals(qualifiedCustomTargetConstructorJavaName, that.qualifiedCustomTargetConstructorJavaName);
+                        qualifiedJavaName.equals(that.qualifiedJavaName) &&
+                        Objects.equals(qualifiedCustomTargetConstructorJavaName, that.qualifiedCustomTargetConstructorJavaName);
     }
 
     @Override
