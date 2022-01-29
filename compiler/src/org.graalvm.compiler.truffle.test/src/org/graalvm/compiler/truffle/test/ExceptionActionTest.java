@@ -28,18 +28,13 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
 import java.util.function.Consumer;
-import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.logging.FileHandler;
 import java.util.logging.SimpleFormatter;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
-import org.graalvm.compiler.core.GraalCompilerOptions;
-import org.graalvm.compiler.test.SubprocessUtil;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
@@ -77,7 +72,7 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
             Assert.assertFalse(hasExit(log));
             Assert.assertFalse(hasOptFailedException(log));
         };
-        executeForked(verifier);
+        executeInSubProcess(verifier);
     }
 
     @Test
@@ -87,7 +82,7 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
             Assert.assertFalse(hasExit(log));
             Assert.assertFalse(hasOptFailedException(log));
         };
-        executeForked(verifier,
+        executeInSubProcess(verifier,
                         "engine.CompilationFailureAction", "Silent");
     }
 
@@ -98,7 +93,7 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
             Assert.assertFalse(hasExit(log));
             Assert.assertFalse(hasOptFailedException(log));
         };
-        executeForked(verifier,
+        executeInSubProcess(verifier,
                         "engine.CompilationExceptionsArePrinted", "false",
                         "engine.CompilationFailureAction", "Print");
     }
@@ -110,7 +105,7 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
             Assert.assertFalse(hasExit(log));
             Assert.assertFalse(hasOptFailedException(log));
         };
-        executeForked(verifier,
+        executeInSubProcess(verifier,
                         "engine.CompilationExceptionsArePrinted", "true",
                         "engine.CompilationFailureAction", "Silent");
     }
@@ -122,7 +117,7 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
             Assert.assertTrue(hasExit(log));
             Assert.assertFalse(hasOptFailedException(log));
         };
-        executeForked(verifier, "engine.CompilationFailureAction", "ExitVM");
+        executeInSubProcess(verifier, "engine.CompilationFailureAction", "ExitVM");
     }
 
     @Test
@@ -132,7 +127,7 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
             Assert.assertTrue(hasExit(log));
             Assert.assertFalse(hasOptFailedException(log));
         };
-        executeForked(verifier, "engine.CompilationExceptionsAreFatal", "true");
+        executeInSubProcess(verifier, "engine.CompilationExceptionsAreFatal", "true");
     }
 
     @Test
@@ -142,7 +137,7 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
             Assert.assertFalse(hasExit(log));
             Assert.assertTrue(hasOptFailedException(log));
         };
-        executeForked(verifier, "engine.CompilationFailureAction", "Throw");
+        executeInSubProcess(verifier, "engine.CompilationFailureAction", "Throw");
     }
 
     @Test
@@ -152,7 +147,7 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
             Assert.assertFalse(hasExit(log));
             Assert.assertTrue(hasOptFailedException(log));
         };
-        executeForked(verifier, "engine.CompilationExceptionsAreThrown", "true");
+        executeInSubProcess(verifier, "engine.CompilationExceptionsAreThrown", "true");
     }
 
     @Test
@@ -162,7 +157,7 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
             Assert.assertFalse(hasExit(log));
             Assert.assertFalse(hasOptFailedException(log));
         };
-        executeForked(verifier, ExceptionActionTest::createConstantNode,
+        executeInSubProcess(verifier, ExceptionActionTest::createConstantNode,
                         new String[]{"-Dgraal.CrashAt=org.graalvm.compiler.truffle.runtime.OptimizedCallTarget.profiledPERoot:Bailout"},
                         "engine.PerformanceWarningsAreFatal", "all");
     }
@@ -174,48 +169,42 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
             Assert.assertFalse(hasExit(log));
             Assert.assertFalse(hasOptFailedException(log));
         };
-        executeForked(verifier, ExceptionActionTest::createConstantNode,
+        executeInSubProcess(verifier, ExceptionActionTest::createConstantNode,
                         new String[]{"-Dgraal.CrashAt=org.graalvm.compiler.truffle.runtime.OptimizedCallTarget.profiledPERoot:Bailout"},
                         "engine.TraceCompilationDetails", "true");
     }
 
-    private void executeForked(Consumer<? super Path> verifier, String... contextOptions) throws IOException, InterruptedException {
-        executeForked(verifier, ExceptionActionTest::createPermanentBailoutNode, new String[0], contextOptions);
+    private void executeInSubProcess(Consumer<? super Path> verifier, String... contextOptions) throws IOException, InterruptedException {
+        executeInSubProcess(verifier, ExceptionActionTest::createPermanentBailoutNode, new String[0], contextOptions);
     }
 
-    private void executeForked(Consumer<? super Path> verifier, Supplier<RootNode> rootNodeFactory, String[] additionalVmOptions, String... contextOptions) throws IOException, InterruptedException {
-        if (!isConfigured()) {
-            Path log = File.createTempFile("compiler", ".log").toPath();
-            String testName = getTestName();
-            execute(testName, log, additionalVmOptions);
-            verifier.accept(log);
-        } else {
-            setupContext(contextOptions);
-            OptimizedCallTarget target = (OptimizedCallTarget) rootNodeFactory.get().getCallTarget();
-            try {
-                target.call();
-            } catch (RuntimeException e) {
-                OptimizationFailedException optFailedException = isOptimizationFailed(e);
-                if (optFailedException != null) {
-                    TruffleCompilerRuntime.getRuntime().log(target, optFailedException.getClass().getName());
+    private void executeInSubProcess(Consumer<? super Path> verifier, Supplier<RootNode> rootNodeFactory, String[] additionalVmOptions, String... contextOptions)
+                    throws IOException, InterruptedException {
+        Path log = SubprocessTestUtils.isSubprocess() ? null : File.createTempFile("compiler", ".log").toPath();
+        try {
+            String[] useVMOptions = Arrays.copyOf(additionalVmOptions, additionalVmOptions.length + 2);
+            useVMOptions[useVMOptions.length - 2] = String.format("-D%s=%s", LOG_FILE_PROPERTY, log);
+            useVMOptions[useVMOptions.length - 1] = "-Dgraal.Dump=Truffle:0"; // Prevent graal graph
+                                                                              // dumping for
+                                                                              // ExceptionAction#Diagnose
+            SubprocessTestUtils.executeInSubprocess(ExceptionActionTest.class, () -> {
+                setupContext(contextOptions);
+                OptimizedCallTarget target = (OptimizedCallTarget) rootNodeFactory.get().getCallTarget();
+                try {
+                    target.call();
+                } catch (RuntimeException e) {
+                    OptimizationFailedException optFailedException = isOptimizationFailed(e);
+                    if (optFailedException != null) {
+                        TruffleCompilerRuntime.getRuntime().log(target, optFailedException.getClass().getName());
+                    }
                 }
+            }, false, useVMOptions);
+        } finally {
+            if (log != null) {
+                verifier.accept(log);
+                Files.deleteIfExists(log);
             }
         }
-    }
-
-    private static String getTestName() {
-        boolean inExecuteForked = false;
-        StackTraceElement[] stack = Thread.currentThread().getStackTrace();
-        if (stack != null) {
-            for (StackTraceElement frame : stack) {
-                if ("executeForked".equals(frame.getMethodName())) {
-                    inExecuteForked = true;
-                } else if (inExecuteForked) {
-                    return frame.getMethodName();
-                }
-            }
-        }
-        throw new IllegalStateException("Failed to find test name");
     }
 
     private static OptimizationFailedException isOptimizationFailed(Throwable t) {
@@ -242,43 +231,6 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
         } catch (IOException ioe) {
             throw new AssertionError("Cannot write log file.", ioe);
         }
-    }
-
-    private static boolean isConfigured() {
-        return System.getProperty(LOG_FILE_PROPERTY) != null;
-    }
-
-    private static void execute(String testName, Path logFile, String... additionalVmOptions) throws IOException, InterruptedException {
-        SubprocessUtil.java(
-                        configure(getVmArgs(), logFile, additionalVmOptions),
-                        "com.oracle.mxtool.junit.MxJUnitWrapper",
-                        String.format("%s#%s", ExceptionActionTest.class.getName(), testName));
-    }
-
-    private static List<String> configure(List<String> vmArgs, Path logFile, String... additionalVmOptions) {
-        List<String> newVmArgs = new ArrayList<>();
-        newVmArgs.addAll(vmArgs.stream().filter(new Predicate<String>() {
-            @Override
-            public boolean test(String vmArg) {
-                // Filter out the LogFile option to prevent overriding of the unit tests log file by
-                // a sub-process.
-                return !vmArg.contains(GraalCompilerOptions.CompilationFailureAction.getName()) &&
-                                !vmArg.contains(GraalCompilerOptions.CompilationBailoutAsFailure.getName()) &&
-                                !vmArg.contains(GraalCompilerOptions.CrashAt.getName()) &
-                                                !vmArg.contains("LogFile");
-            }
-        }).collect(Collectors.toList()));
-        for (String additionalVmOption : additionalVmOptions) {
-            newVmArgs.add(1, additionalVmOption);
-        }
-        newVmArgs.add(1, String.format("-D%s=%s", LOG_FILE_PROPERTY, logFile.toAbsolutePath().toString()));
-        return newVmArgs;
-    }
-
-    private static List<String> getVmArgs() {
-        List<String> vmArgs = SubprocessUtil.getVMCommandLine(true);
-        vmArgs.add(SubprocessUtil.PACKAGE_OPENING_OPTIONS);
-        return vmArgs;
     }
 
     private static boolean hasExit(Path logFile) {
