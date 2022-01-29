@@ -403,7 +403,7 @@ public class LoopFragmentInside extends LoopFragment {
         FrameState exitState = exit.stateAfter();
         FrameState duplicate = exitState.duplicateWithVirtualState();
         graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After duplicating state %s for new exit %s", exitState, lex);
-        duplicate.applyToNonVirtual(new NodePositionClosure<Node>() {
+        duplicate.applyToNonVirtual(new NodePositionClosure<>() {
             @Override
             public void apply(Node from, Position p) {
                 ValueNode to = (ValueNode) p.get(from);
@@ -778,7 +778,7 @@ public class LoopFragmentInside extends LoopFragment {
                 ValueNode initializer = firstPhi;
                 if (duplicateState != null) {
                     // fix the merge's state after
-                    duplicateState.applyToNonVirtual(new NodePositionClosure<Node>() {
+                    duplicateState.applyToNonVirtual(new NodePositionClosure<>() {
                         @Override
                         public void apply(Node from, Position p) {
                             if (p.get(from) == phi) {

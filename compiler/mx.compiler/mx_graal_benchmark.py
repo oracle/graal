@@ -483,7 +483,10 @@ class JMHRunnerGraalCoreBenchmarkSuite(mx_benchmark.JMHRunnerBenchmarkSuite, JMH
         return "graal-compiler"
 
     def extraVmArgs(self):
-        return ['-XX:-UseJVMCIClassLoader'] + super(JMHRunnerGraalCoreBenchmarkSuite, self).extraVmArgs()
+        if mx_compiler.isJDK8:
+            return ['-XX:-UseJVMCIClassLoader'] + super(JMHRunnerGraalCoreBenchmarkSuite, self).extraVmArgs()
+        else:
+            return super(JMHRunnerGraalCoreBenchmarkSuite, self).extraVmArgs()
 
 
 mx_benchmark.add_bm_suite(JMHRunnerGraalCoreBenchmarkSuite())
@@ -549,15 +552,12 @@ class JMHDistWhiteboxBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite, JMHNativ
 
 
     def extraVmArgs(self):
-        if mx_compiler.isJDK8:
-            extra = ['-XX:-UseJVMCIClassLoader']
-        else:
-            # This is required to use jdk.internal.module.Modules for doing arbitrary exports
-            extra = ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED',
-                     '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.services=ALL-UNNAMED',
-                     '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.runtime=ALL-UNNAMED',
-                     '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED',
-                     '--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.graph=ALL-UNNAMED']
+        # This is required to use jdk.internal.module.Modules for doing arbitrary exports
+        extra = ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED',
+                 '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.services=ALL-UNNAMED',
+                 '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.runtime=ALL-UNNAMED',
+                 '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED',
+                 '--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.graph=ALL-UNNAMED']
         return extra + super(JMHDistWhiteboxBenchmarkSuite, self).extraVmArgs()
 
     def getJMHEntry(self, bmSuiteArgs):

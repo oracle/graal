@@ -75,6 +75,7 @@ import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
 import com.oracle.svm.hosted.ConfigurationTypeResolver;
 import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
@@ -258,6 +259,8 @@ public class SerializationFeature implements Feature {
         }
 
         serializationBuilder.flushConditionalConfiguration(access);
+        /* Ensure SharedSecrets.javaObjectInputStreamAccess is initialized before scanning. */
+        ((BeforeAnalysisAccessImpl) access).ensureInitialized("java.io.ObjectInputStream");
     }
 
     @Override
@@ -422,7 +425,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         try {
             for (Object o : (Object[]) getDataLayoutMethod.invoke(osc)) {
                 ObjectStreamClass desc = (ObjectStreamClass) descField.get(o);
-                if (!desc.equals(osc) && !desc.equals(clazz)) {
+                if (!desc.equals(osc)) {
                     registerIncludingAssociatedClasses(condition, desc.forClass(), alreadyVisited);
                 }
             }

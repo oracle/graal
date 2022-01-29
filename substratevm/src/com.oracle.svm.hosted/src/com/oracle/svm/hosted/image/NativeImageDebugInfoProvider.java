@@ -119,8 +119,8 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         this.pointerSize = ConfigurationValues.getTarget().wordSize;
         this.referenceAlignment = getObjectLayout().getAlignment();
         /* Offsets need to be adjusted relative to the heap base plus partition-specific offset. */
-        primitiveStartOffset = (int) primitiveFields.getOffset();
-        referenceStartOffset = (int) objectFields.getOffset();
+        primitiveStartOffset = (int) primitiveFields.getAddress();
+        referenceStartOffset = (int) objectFields.getAddress();
     }
 
     @Override
@@ -1228,7 +1228,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
         @SuppressWarnings("try")
         @Override
         public void debugContext(Consumer<DebugContext> action) {
-            try (DebugContext.Scope s = debugContext.scope("DebugCodeInfo", provenance)) {
+            try (DebugContext.Scope s = debugContext.scope("DebugDataInfo", provenance)) {
                 action.accept(debugContext);
             } catch (Throwable e) {
                 throw debugContext.handle(e);

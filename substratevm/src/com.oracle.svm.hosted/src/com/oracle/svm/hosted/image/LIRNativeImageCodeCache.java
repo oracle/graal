@@ -41,7 +41,6 @@ import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
-import org.graalvm.compiler.serviceprovider.BufferUtil;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -231,7 +230,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
             HostedMethod method = entry.getKey();
             CompilationResult compilation = entry.getValue();
 
-            BufferUtil.asBaseBuffer(bufferBytes).position(startPos + method.getCodeAddressOffset());
+            bufferBytes.position(startPos + method.getCodeAddressOffset());
             int codeSize = compilation.getTargetCodeSize();
             bufferBytes.put(compilation.getTargetCode(), 0, codeSize);
 
@@ -239,7 +238,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                 bufferBytes.put(CODE_FILLER_BYTE);
             }
         }
-        BufferUtil.asBaseBuffer(bufferBytes).position(startPos);
+        bufferBytes.position(startPos);
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -58,8 +58,6 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.Objects;
-import java.util.zip.GZIPInputStream;
-import java.util.zip.GZIPOutputStream;
 
 /**
  * Wraps an exception thrown by a JNI call into HotSpot. If the exception propagates up to an native
@@ -396,7 +394,7 @@ public final class JNIExceptionWrapper extends RuntimeException {
      */
     private static StackTraceElement[] getJNIExceptionStackTrace(JNIEnv env, JObject throwableHandle) {
         byte[] serializedStackTrace = JNIUtil.createArray(env, (JByteArray) callGetStackTrace(env, throwableHandle));
-        try (DataInputStream in = new DataInputStream(new GZIPInputStream(new ByteArrayInputStream(serializedStackTrace)))) {
+        try (DataInputStream in = new DataInputStream(new ByteArrayInputStream(serializedStackTrace))) {
             int len = in.readInt();
             StackTraceElement[] res = new StackTraceElement[len];
             for (int i = 0; i < len; i++) {
@@ -427,7 +425,7 @@ public final class JNIExceptionWrapper extends RuntimeException {
 
     private static JThrowable updateStackTrace(JNIEnv env, JThrowable throwableHandle, StackTraceElement[] mergedStackTrace) {
         ByteArrayOutputStream bout = new ByteArrayOutputStream();
-        try (DataOutputStream out = new DataOutputStream(new GZIPOutputStream(bout))) {
+        try (DataOutputStream out = new DataOutputStream(bout)) {
             out.writeInt(mergedStackTrace.length);
             for (int i = 0; i < mergedStackTrace.length; i++) {
                 StackTraceElement stackTraceElement = mergedStackTrace[i];

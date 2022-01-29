@@ -70,6 +70,12 @@ import jdk.vm.ci.meta.PlatformKind;
 public abstract class AMD64BaseAssembler extends Assembler {
 
     private final SIMDEncoder simdEncoder;
+    /**
+     * If {@code true}, always encode non-zero address displacements in 4 bytes, even if they would
+     * fit in one byte. The encoding of zero displacements should not be changed because we don't
+     * want to change the size of safepoint poll instructions.
+     */
+    protected boolean force4ByteNonZeroDisplacements = false;
 
     /**
      * Constructs an assembler for the AMD64 architecture.
@@ -255,6 +261,10 @@ public abstract class AMD64BaseAssembler extends Assembler {
         public String toString() {
             return getClass().getSimpleName() + " instruction [" + instructionPosition + ", " + nextInstructionPosition + "[ operand at " + operandPosition + " size " + operandSize;
         }
+    }
+
+    public void setForce4ByteNonZeroDisplacements(boolean force4ByteNonZeroDisplacements) {
+        this.force4ByteNonZeroDisplacements = force4ByteNonZeroDisplacements;
     }
 
     protected void annotatePatchingImmediate(int operandOffset, int operandSize) {
@@ -621,12 +631,12 @@ public abstract class AMD64BaseAssembler extends Assembler {
             // [00 reg 101] disp32
             assert index.equals(Register.None) : "cannot use RIP relative addressing with index register";
             emitByte(0x05 | regenc);
-            if (codePatchingAnnotationConsumer != null && addr.instructionStartPosition >= 0) {
+            if (codePatchingAnnotationConsumer != null && addr.isPlaceholder()) {
                 codePatchingAnnotationConsumer.accept(new OperandDataAnnotation(addr.instructionStartPosition, position(), 4, position() + 4 + additionalInstructionSize));
             }
             emitDisplacementInt(disp, dispAnnotation);
         } else if (base.isValid()) {
-            boolean overriddenForce4Byte = force4Byte || dispAnnotation != null;
+            boolean overriddenForce4Byte = force4Byte || dispAnnotation != null || (force4ByteNonZeroDisplacements && disp != 0);
             int baseenc = base.isValid() ? encode(base) : 0;
 
             if (index.isValid()) {

@@ -10,6 +10,7 @@ CLSS public java.lang.Object
 cons public init()
 meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException
 meth protected void finalize() throws java.lang.Throwable
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="9")
 meth public boolean equals(java.lang.Object)
 meth public final java.lang.Class<?> getClass()
 meth public final void notify()
@@ -88,6 +89,7 @@ supr java.lang.Object
 CLSS public abstract interface org.graalvm.collections.MapCursor<%0 extends java.lang.Object, %1 extends java.lang.Object>
 intf org.graalvm.collections.UnmodifiableMapCursor<{org.graalvm.collections.MapCursor%0},{org.graalvm.collections.MapCursor%1}>
 meth public abstract void remove()
+meth public {org.graalvm.collections.MapCursor%1} setValue({org.graalvm.collections.MapCursor%1})
 
 CLSS public final org.graalvm.collections.Pair<%0 extends java.lang.Object, %1 extends java.lang.Object>
 meth public boolean equals(java.lang.Object)

@@ -236,7 +236,7 @@ public abstract class NFATraversalRegexASTVisitor {
             }
             RegexASTNode target = pathGetNode(curPath.peek());
             visit(target);
-            if (target.isMatchFound() && !dollarsOnPath() && lookAroundsOnPath.isEmpty() && !hasQuantifierGuards() && !caretsOnPath()) {
+            if (target.isMatchFound() && forward && !dollarsOnPath() && lookAroundsOnPath.isEmpty() && !hasQuantifierGuards() && !caretsOnPath()) {
                 /*
                  * Transitions after an unconditional final state transition will never be taken, so
                  * it is safe to prune them.

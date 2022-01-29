@@ -73,7 +73,7 @@ clojure -Sdeps '{:paths ["."]}' -M --main generate-case-fold-table > dat/case-fo
 
 ./generate_ruby_case_folding.py > ../src/com/oracle/truffle/regex/tregex/parser/flavors/RubyCaseFoldingData.java
 
-./generate_name_alias_table.py > ../src/com/oracle/truffle/regex/charset/UnicodeCharacterAliases.java
+./generate_name_alias_table.py > ../src/com/oracle/truffle/regex/chardata/UnicodeCharacterAliases.java
 
 rm -r ./dat
 

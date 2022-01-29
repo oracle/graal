@@ -126,7 +126,7 @@ public class TTY {
         out = p == null ? System.out : p.getStream();
     }
 
-    private static final ThreadLocal<LogStream> log = new ThreadLocal<LogStream>() {
+    private static final ThreadLocal<LogStream> log = new ThreadLocal<>() {
 
         @Override
         protected LogStream initialValue() {

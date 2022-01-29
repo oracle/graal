@@ -30,7 +30,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
@@ -70,12 +69,11 @@ public final class WindowsJavaThreads extends JavaThreads {
     }
 
     @Override
-    protected void doStartThread(Thread thread, long stackSize) {
+    protected boolean startOSThread(Thread thread, long stackSize) {
         int threadStackSize = (int) stackSize;
         int initFlag = Process.CREATE_SUSPENDED();
 
-        WindowsThreadStartData startData = UnmanagedMemory.malloc(SizeOf.get(WindowsThreadStartData.class));
-        prepareStartData(thread, startData);
+        WindowsThreadStartData startData = prepareStart(thread, SizeOf.get(WindowsThreadStartData.class));
 
         // If caller specified a stack size, don't commit it all at once.
         if (threadStackSize != 0) {
@@ -83,13 +81,17 @@ public final class WindowsJavaThreads extends JavaThreads {
         }
 
         CIntPointer osThreadID = StackValue.get(CIntPointer.class);
-        WinBase.HANDLE osThreadHandle = Process._beginthreadex(WordFactory.nullPointer(), threadStackSize, WindowsJavaThreads.osThreadStartRoutine.getFunctionPointer(), startData, initFlag,
-                        osThreadID);
-        VMError.guarantee(osThreadHandle.rawValue() != 0, "Could not create thread");
+        WinBase.HANDLE osThreadHandle = Process._beginthreadex(WordFactory.nullPointer(), threadStackSize,
+                        WindowsJavaThreads.osThreadStartRoutine.getFunctionPointer(), startData, initFlag, osThreadID);
+        if (osThreadHandle.isNull()) {
+            undoPrepareStartOnError(thread, startData);
+            return false;
+        }
         startData.setOSThreadHandle(osThreadHandle);
 
         // Start the thread running
         Process.ResumeThread(osThreadHandle);
+        return true;
     }
 
     /**
@@ -135,7 +137,7 @@ public final class WindowsJavaThreads extends JavaThreads {
     static WordBase osThreadStartRoutine(WindowsThreadStartData data) {
         ObjectHandle threadHandle = data.getThreadHandle();
         WinBase.HANDLE osThreadHandle = data.getOSThreadHandle();
-        UnmanagedMemory.free(data);
+        freeStartData(data);
 
         try {
             threadStartRoutine(threadHandle);

@@ -60,7 +60,7 @@ public final class JNI {
     public static final int JNI_ENOMEM = -4; /* not enough memory */
     public static final int JNI_EEXIST = -5; /* VM already created */
     public static final int JNI_EINVAL = -6; /* invalid arguments */
-    public static final int JNI_VERSION_1_8 = 0x00010008;
+    public static final int JNI_VERSION_10 = 0x000a0000;
 
     private JNI() {
         throw new IllegalStateException("No instance allowed");

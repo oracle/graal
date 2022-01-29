@@ -43,7 +43,7 @@ final class HotSpotFastThreadLocal extends GraalFastThreadLocal {
      */
     private static final int DEBUG_STEPPING_DETECTION_THRESHOLD = 10;
 
-    private static final ThreadLocal<MutableInt> fallbackThreadLocal = new ThreadLocal<MutableInt>() {
+    private static final ThreadLocal<MutableInt> fallbackThreadLocal = new ThreadLocal<>() {
         @Override
         protected MutableInt initialValue() {
             return new MutableInt();

@@ -47,7 +47,7 @@ public interface DebugInfoProvider {
     int oopCompressShift();
 
     /**
-     * Mask delecting low order bits used for tagging oops.
+     * Mask selecting low order bits used for tagging oops.
      */
     int oopTagsMask();
 

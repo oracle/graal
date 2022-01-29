@@ -38,7 +38,6 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.serviceprovider.BufferUtil;
 
 import jdk.vm.ci.code.site.DataSectionReference;
 import jdk.vm.ci.meta.SerializableConstant;
@@ -381,11 +380,11 @@ public final class DataSection implements Iterable<Data> {
         assert buffer.remaining() >= sectionSize;
         int start = buffer.position();
         for (Data d : dataItems) {
-            BufferUtil.asBaseBuffer(buffer).position(start + d.ref.getOffset());
+            buffer.position(start + d.ref.getOffset());
             onEmit.accept(d.ref, d.getSize());
             d.emit(buffer, patch);
         }
-        BufferUtil.asBaseBuffer(buffer).position(start + sectionSize);
+        buffer.position(start + sectionSize);
     }
 
     public Data findData(DataSectionReference ref) {

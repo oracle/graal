@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -193,6 +193,9 @@ public class AMD64NodeMatchRules extends NodeMatchRules {
         double trueLabelProbability = x.probability(x.trueSuccessor());
         AMD64Kind kind = getMemoryKind(access);
         OperandSize size = kind == AMD64Kind.QWORD ? QWORD : DWORD;
+        if (kind.getVectorLength() > 1) {
+            return null;
+        }
         if (value.isJavaConstant()) {
             JavaConstant constant = value.asJavaConstant();
             if (kind == AMD64Kind.QWORD && !NumUtil.isInt(constant.asLong())) {

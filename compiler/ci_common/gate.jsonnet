@@ -50,7 +50,7 @@
   test:: s.base(),
 
   coverage:: s.base("build,coverage", ["--jacoco-omit-excluded", "--jacocout", "html"]) + {
-    run: [
+    run+: [
       ["mx", "coverage-upload"],
       # GR-18258 ["mx", "sonarqube-upload", "-Dsonar.host.url=$SONAR_HOST_URL", "-Dsonar.projectKey=com.oracle.graal.compiler."jvm-config.default, "-Dsonar.projectName=GraalVM - Compiler ("jvm-config.default")", "--exclude-generated", "--skip-coverage"]
     ]
@@ -125,7 +125,7 @@
   builds: [
     # Darwin AMD64
     {name: "gate-compiler-test-labsjdk-17-darwin-amd64"} +              s.test +           c.labsjdk17 +      c.darwin_amd64 + t("1:00:00") + s.save_as_json,
-    {name: "weekly-compiler-test-test-labsjdk-11-darwin-amd64"} +       s.test +           c.labsjdk11 +      c.darwin_amd64 + s.weekly,
+    {name: "weekly-compiler-test-labsjdk-11-darwin-amd64"} +            s.test +           c.labsjdk11 +      c.darwin_amd64 + s.weekly,
 
     # Windows AMD64
     {name: "gate-compiler-test-labsjdk-11-windows-amd64"} +             s.test +           c.labsjdk11 +      c.windows_amd64  + t("55:00") + c.devkits["windows-jdk11"] + s.save_as_json,
@@ -141,7 +141,6 @@
     {name: "gate-compiler-benchmarktest-labsjdk-11-linux-amd64"} +      s.benchmark +      c.labsjdk11 +      c.linux_amd64,
     {name: "gate-compiler-benchmarktest-labsjdk-17-linux-amd64"} +      s.benchmark +      c.labsjdk17 +      c.linux_amd64,
     {name: "gate-compiler-style-linux-amd64"} +                         s.style +          c.labsjdk17 +      c.linux_amd64 + t("45:00"),
-    {name: "gate-compiler-test-labsjdk-11-linux-amd64-avx3"} +          s.test +           c.labsjdk11 +      c.linux_amd64 + t("45:00") + s.x82_avx3 + s.save_as_json,
     {name: "gate-compiler-test-truffle-xcomp-labsjdk-17-linux-amd64"} + s.truffle_xcomp +  c.labsjdk17 +      c.linux_amd64 + t("1:00:00") + s.save_as_json,
     {name: "weekly-compiler-test-labsjdk-17-linux-amd64-vector16"} +    s.test_vec16 +     c.labsjdk17 +      c.linux_amd64 + s.weekly,
     {name: "weekly-compiler-test-labsjdk-17-linux-amd64-avx0"} +        s.test_avx0 +      c.labsjdk17 +      c.linux_amd64 + s.weekly,

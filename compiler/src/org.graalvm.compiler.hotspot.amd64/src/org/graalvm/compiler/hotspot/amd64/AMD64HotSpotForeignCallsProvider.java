@@ -47,12 +47,16 @@ import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.Una
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.TAN;
 
 import org.graalvm.compiler.core.common.LIRKind;
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
+import org.graalvm.compiler.hotspot.ArrayIndexOfStub;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotForeignCallLinkageImpl;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
+import org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor;
 import org.graalvm.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.replacements.ArrayIndexOf;
 import org.graalvm.compiler.word.WordTypes;
 
 import jdk.vm.ci.code.CallingConvention;
@@ -97,28 +101,25 @@ public class AMD64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
             registerForeignCall(UPDATE_BYTES_CRC32C, config.updateBytesCRC32C, NativeCall);
         }
 
-        link(new AMD64ArrayEqualsStub(AMD64ArrayEqualsStub.STUB_BOOLEAN_ARRAY_EQUALS, options, providers,
-                        registerStubCall(AMD64ArrayEqualsStub.STUB_BOOLEAN_ARRAY_EQUALS, COMPUTES_REGISTERS_KILLED)));
-        link(new AMD64ArrayEqualsStub(AMD64ArrayEqualsStub.STUB_BYTE_ARRAY_EQUALS, options, providers,
-                        registerStubCall(AMD64ArrayEqualsStub.STUB_BYTE_ARRAY_EQUALS, COMPUTES_REGISTERS_KILLED)));
-        link(new AMD64ArrayEqualsStub(AMD64ArrayEqualsStub.STUB_CHAR_ARRAY_EQUALS, options, providers,
-                        registerStubCall(AMD64ArrayEqualsStub.STUB_CHAR_ARRAY_EQUALS, COMPUTES_REGISTERS_KILLED)));
-        link(new AMD64ArrayEqualsStub(AMD64ArrayEqualsStub.STUB_SHORT_ARRAY_EQUALS, options, providers,
-                        registerStubCall(AMD64ArrayEqualsStub.STUB_SHORT_ARRAY_EQUALS, COMPUTES_REGISTERS_KILLED)));
-        link(new AMD64ArrayEqualsStub(AMD64ArrayEqualsStub.STUB_INT_ARRAY_EQUALS, options, providers,
-                        registerStubCall(AMD64ArrayEqualsStub.STUB_INT_ARRAY_EQUALS, COMPUTES_REGISTERS_KILLED)));
-        link(new AMD64ArrayEqualsStub(AMD64ArrayEqualsStub.STUB_LONG_ARRAY_EQUALS, options, providers,
-                        registerStubCall(AMD64ArrayEqualsStub.STUB_LONG_ARRAY_EQUALS, COMPUTES_REGISTERS_KILLED)));
-        link(new AMD64ArrayEqualsStub(AMD64ArrayEqualsStub.STUB_FLOAT_ARRAY_EQUALS, options, providers,
-                        registerStubCall(AMD64ArrayEqualsStub.STUB_FLOAT_ARRAY_EQUALS, COMPUTES_REGISTERS_KILLED)));
-        link(new AMD64ArrayEqualsStub(AMD64ArrayEqualsStub.STUB_DOUBLE_ARRAY_EQUALS, options, providers,
-                        registerStubCall(AMD64ArrayEqualsStub.STUB_DOUBLE_ARRAY_EQUALS, COMPUTES_REGISTERS_KILLED)));
-        link(new AMD64ArrayEqualsStub(AMD64ArrayEqualsStub.STUB_BYTE_ARRAY_EQUALS_DIRECT, options, providers,
-                        registerStubCall(AMD64ArrayEqualsStub.STUB_BYTE_ARRAY_EQUALS_DIRECT, COMPUTES_REGISTERS_KILLED)));
-        link(new AMD64ArrayEqualsStub(AMD64ArrayEqualsStub.STUB_CHAR_ARRAY_EQUALS_DIRECT, options, providers,
-                        registerStubCall(AMD64ArrayEqualsStub.STUB_CHAR_ARRAY_EQUALS_DIRECT, COMPUTES_REGISTERS_KILLED)));
-        link(new AMD64ArrayEqualsStub(AMD64ArrayEqualsStub.STUB_CHAR_ARRAY_EQUALS_BYTE_ARRAY, options, providers,
-                        registerStubCall(AMD64ArrayEqualsStub.STUB_CHAR_ARRAY_EQUALS_BYTE_ARRAY, COMPUTES_REGISTERS_KILLED)));
+        for (ForeignCallDescriptor descriptor : ArrayIndexOf.STUBS_AMD64) {
+            link(new ArrayIndexOfStub(options, providers, registerStubCall(descriptor.getSignature(), LEAF, REEXECUTABLE, COMPUTES_REGISTERS_KILLED, NO_LOCATIONS)));
+        }
+
+        for (HotSpotForeignCallDescriptor stub : AMD64CalcStringAttributesStub.STUBS) {
+            link(new AMD64CalcStringAttributesStub(stub, options, providers, registerStubCall(stub, COMPUTES_REGISTERS_KILLED)));
+        }
+        for (HotSpotForeignCallDescriptor stub : AMD64ArrayCopyWithConversionsStub.STUBS) {
+            link(new AMD64ArrayCopyWithConversionsStub(stub, options, providers, registerStubCall(stub, COMPUTES_REGISTERS_KILLED)));
+        }
+        for (HotSpotForeignCallDescriptor stub : AMD64ArrayEqualsStub.STUBS) {
+            link(new AMD64ArrayEqualsStub(stub, options, providers, registerStubCall(stub, COMPUTES_REGISTERS_KILLED)));
+        }
+        for (HotSpotForeignCallDescriptor stub : AMD64ArrayEqualsWithMaskStub.STUBS) {
+            link(new AMD64ArrayEqualsWithMaskStub(stub, options, providers, registerStubCall(stub, COMPUTES_REGISTERS_KILLED)));
+        }
+        for (HotSpotForeignCallDescriptor stub : AMD64ArrayRegionCompareToStub.STUBS) {
+            link(new AMD64ArrayRegionCompareToStub(stub, options, providers, registerStubCall(stub, COMPUTES_REGISTERS_KILLED)));
+        }
 
         link(new AMD64ArrayCompareToStub(AMD64ArrayCompareToStub.STUB_BYTE_ARRAY_COMPARE_TO_BYTE_ARRAY, options, providers,
                         registerStubCall(AMD64ArrayCompareToStub.STUB_BYTE_ARRAY_COMPARE_TO_BYTE_ARRAY, COMPUTES_REGISTERS_KILLED)));

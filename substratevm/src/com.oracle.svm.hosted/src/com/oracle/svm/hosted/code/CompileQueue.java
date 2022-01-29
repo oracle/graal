@@ -96,6 +96,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
 import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
@@ -114,7 +115,6 @@ import org.graalvm.compiler.phases.tiers.MidTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.GraphOrder;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.nodes.MacroInvokable;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.graalvm.compiler.virtual.phases.ea.ReadEliminationPhase;
@@ -1554,7 +1554,7 @@ public class CompileQueue {
                 if (((StateSplit) node).hasSideEffect() && ((StateSplit) node).stateAfter() != null) {
                     testNode.setStateAfter(((StateSplit) node).stateAfter().duplicateWithVirtualState());
                 } else {
-                    testNode.setStateAfter(SnippetTemplate.findLastFrameState((FixedNode) node).duplicateWithVirtualState());
+                    testNode.setStateAfter(GraphUtil.findLastFrameState((FixedNode) node).duplicateWithVirtualState());
                 }
             }
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,17 +47,12 @@ import java.util.regex.Pattern;
  */
 public final class JVMCIVersionCheck {
 
-    private static final Version JVMCI_MIN_VERSION = new Version3(20, 2, 1);
+    private static final Version JVMCI_MIN_VERSION = new Version(20, 2, 1);
 
-    public interface Version {
-        boolean isLessThan(Version other);
-
-        default boolean isGreaterThan(Version other) {
-            if (!isLessThan(other)) {
-                return !equals(other);
-            }
-            return false;
-        }
+    public static class Version {
+        private final int major;
+        private final int minor;
+        private final int build;
 
         static Version parse(String vmVersion, Map<String, String> props) {
             Matcher m = Pattern.compile(".*-jvmci-(\\d+)\\.(\\d+)-b(\\d+).*").matcher(vmVersion);
@@ -74,98 +69,36 @@ public final class JVMCIVersionCheck {
                             throw new UncheckedIOException(e);
                         }
                     }
-                    return new Version3(major, minor, build);
-                } catch (NumberFormatException e) {
-                    // ignore
-                }
-            }
-            m = Pattern.compile(".*-jvmci-(\\d+)(?:\\.|-b)(\\d+).*").matcher(vmVersion);
-            if (m.matches()) {
-                try {
-                    int major = Integer.parseInt(m.group(1));
-                    int minor = Integer.parseInt(m.group(2));
-                    return new Version2(major, minor);
+                    return new Version(major, minor, build);
                 } catch (NumberFormatException e) {
                     // ignore
                 }
             }
             return null;
         }
-    }
 
-    public static class Version2 implements Version {
-        private final int major;
-        private final int minor;
-
-        public Version2(int major, int minor) {
-            this.major = major;
-            this.minor = minor;
-        }
-
-        @Override
-        public boolean isLessThan(Version other) {
-            if (other.getClass() == Version3.class) {
-                return true;
-            }
-            Version2 o = (Version2) other;
-            if (this.major < o.major) {
-                return true;
-            }
-            if (this.major == o.major && this.minor < o.minor) {
-                return true;
-            }
-            return false;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj instanceof Version2) {
-                Version2 that = (Version2) obj;
-                return this.major == that.major && this.minor == that.minor;
-            }
-            return false;
-        }
-
-        @Override
-        public int hashCode() {
-            return this.major ^ this.minor;
-        }
-
-        @Override
-        public String toString() {
-            if (major >= 19) {
-                return String.format("%d-b%02d", major, minor);
-            } else {
-                return String.format("%d.%d", major, minor);
-            }
-        }
-    }
-
-    public static class Version3 implements Version {
-        private final int major;
-        private final int minor;
-        private final int build;
-
-        public Version3(int major, int minor, int build) {
+        public Version(int major, int minor, int build) {
             this.major = major;
             this.minor = minor;
             this.build = build;
         }
 
-        @Override
-        public boolean isLessThan(Version other) {
-            if (other.getClass() == Version2.class) {
-                return false;
+        boolean isGreaterThan(Version other) {
+            if (!isLessThan(other)) {
+                return !equals(other);
             }
-            Version3 o = (Version3) other;
-            if (this.major < o.major) {
+            return false;
+        }
+
+        public boolean isLessThan(Version other) {
+            if (this.major < other.major) {
                 return true;
             }
-            if (this.major == o.major) {
-                if (this.minor < o.minor) {
+            if (this.major == other.major) {
+                if (this.minor < other.minor) {
                     return true;
                 }
-                if (this.minor == o.minor && this.build < o.build) {
+                if (this.minor == other.minor && this.build < other.build) {
                     return true;
                 }
             }
@@ -174,8 +107,8 @@ public final class JVMCIVersionCheck {
 
         @Override
         public boolean equals(Object obj) {
-            if (obj instanceof Version3) {
-                Version3 that = (Version3) obj;
+            if (obj instanceof Version) {
+                Version that = (Version) obj;
                 return this.major == that.major && this.minor == that.minor && this.build == that.build;
             }
             return false;
@@ -192,8 +125,7 @@ public final class JVMCIVersionCheck {
         }
     }
 
-    public static final String JVMCI8_RELEASES_URL = "https://github.com/graalvm/graal-jvmci-8/releases";
-    public static final String JVMCI11_RELEASES_URL = "https://github.com/graalvm/labs-openjdk-11/releases";
+    public static final String OPEN_LABSJDK_RELEASE_URL_PATTERN = "https://github.com/graalvm/labs-openjdk-*/releases";
 
     private void failVersionCheck(boolean exit, String reason, Object... args) {
         Formatter errorMessage = new Formatter().format(reason, args);
@@ -203,14 +135,10 @@ public final class JVMCIVersionCheck {
         errorMessage.format("this error or to \"warn\" to emit a warning and continue execution.%n");
         errorMessage.format("Currently used Java home directory is %s.%n", javaHome);
         errorMessage.format("Currently used VM configuration is: %s%n", vmName);
-        if (javaSpecVersion.compareTo("1.9") < 0) {
-            errorMessage.format("Download the latest JVMCI JDK 8 from " + JVMCI8_RELEASES_URL);
+        if (javaSpecVersion.compareTo("11") == 0 && vmVersion.contains("-jvmci-")) {
+            errorMessage.format("Download the latest Labs OpenJDK from " + OPEN_LABSJDK_RELEASE_URL_PATTERN);
         } else {
-            if (javaSpecVersion.compareTo("11") == 0 && vmVersion.contains("-jvmci-")) {
-                errorMessage.format("Download the latest Labs OpenJDK 11 from " + JVMCI11_RELEASES_URL);
-            } else {
-                errorMessage.format("Download JDK 11 or later.");
-            }
+            errorMessage.format("Download JDK 11 or later.");
         }
         String value = System.getenv("JVMCI_VERSION_CHECK");
         if ("warn".equals(value)) {
@@ -252,18 +180,8 @@ public final class JVMCIVersionCheck {
     }
 
     private void run(boolean exitOnFailure, Version minVersion) {
-        if (javaSpecVersion.compareTo("1.9") < 0) {
-            Version v = Version.parse(vmVersion, props);
-            if (v != null) {
-                if (v.isLessThan(minVersion)) {
-                    failVersionCheck(exitOnFailure, "The VM does not support the minimum JVMCI API version required by Graal: %s < %s.%n", v, minVersion);
-                }
-                return;
-            }
-            failVersionCheck(exitOnFailure, "The VM does not support the minimum JVMCI API version required by Graal.%n" +
-                            "Cannot read JVMCI version from java.vm.version property: %s.%n", vmVersion);
-        } else if (javaSpecVersion.compareTo("11") < 0) {
-            failVersionCheck(exitOnFailure, "Graal is not compatible with the JVMCI API in JDK 9 and 10.%n");
+        if (javaSpecVersion.compareTo("11") < 0) {
+            failVersionCheck(exitOnFailure, "Graal requires JDK 11 or later.%n");
         } else {
             if (vmVersion.contains("SNAPSHOT")) {
                 return;

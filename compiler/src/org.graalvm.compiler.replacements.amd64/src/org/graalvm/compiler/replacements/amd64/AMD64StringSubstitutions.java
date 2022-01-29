@@ -35,10 +35,7 @@ import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
 import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.replacements.ArrayIndexOf;
-import org.graalvm.compiler.replacements.StringSubstitutions;
 import org.graalvm.compiler.replacements.nodes.ArrayRegionEqualsNode;
-import org.graalvm.compiler.word.Word;
-import org.graalvm.word.Pointer;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -78,11 +75,11 @@ public class AMD64StringSubstitutions {
         }
 
         if (injectBranchProbability(UNLIKELY_PROBABILITY, targetCount == 1)) {
-            return ArrayIndexOf.indexOf1Char(source, sourceCount, totalOffset, target[targetOffset]);
+            return ArrayIndexOf.indexOfC1S2(source, sourceCount, totalOffset, target[targetOffset]);
         } else {
             int haystackLength = sourceCount - (targetCount - 2);
             while (injectBranchProbability(LIKELY_PROBABILITY, totalOffset < haystackLength)) {
-                int indexOfResult = ArrayIndexOf.indexOfTwoConsecutiveChars(source, haystackLength, totalOffset, target[targetOffset], target[targetOffset + 1]);
+                int indexOfResult = ArrayIndexOf.indexOfTwoConsecutiveCS2(source, haystackLength, totalOffset, target[targetOffset], target[targetOffset + 1]);
                 if (injectBranchProbability(UNLIKELY_PROBABILITY, indexOfResult < 0)) {
                     return -1;
                 }
@@ -90,36 +87,15 @@ public class AMD64StringSubstitutions {
                 if (injectBranchProbability(UNLIKELY_PROBABILITY, targetCount == 2)) {
                     return totalOffset;
                 } else {
-                    Pointer cmpSourcePointer = Word.objectToTrackedPointer(source).add(charArrayBaseOffset(INJECTED)).add(totalOffset * charArrayIndexScale(INJECTED));
-                    Pointer targetPointer = Word.objectToTrackedPointer(target).add(charArrayBaseOffset(INJECTED)).add(targetOffset * charArrayIndexScale(INJECTED));
-                    if (injectBranchProbability(UNLIKELY_PROBABILITY, ArrayRegionEqualsNode.regionEquals(cmpSourcePointer, targetPointer, targetCount, JavaKind.Char))) {
+                    long srcOffset = charArrayBaseOffset(INJECTED) + ((long) totalOffset * charArrayIndexScale(INJECTED));
+                    long tgtOffset = charArrayBaseOffset(INJECTED) + ((long) targetOffset * charArrayIndexScale(INJECTED));
+                    if (injectBranchProbability(UNLIKELY_PROBABILITY, ArrayRegionEqualsNode.regionEquals(source, srcOffset, target, tgtOffset, targetCount, JavaKind.Char))) {
                         return totalOffset;
                     }
                 }
                 totalOffset++;
             }
             return -1;
-        }
-    }
-
-    // Only exists in JDK <= 8
-    @MethodSubstitution(isStatic = false, optional = true)
-    public static int indexOf(String source, int ch, int origFromIndex) {
-        int fromIndex = origFromIndex;
-        char[] sourceArray = StringSubstitutions.getValue(source);
-        final int sourceCount = sourceArray.length;
-        if (injectBranchProbability(UNLIKELY_PROBABILITY, fromIndex >= sourceCount)) {
-            // Note: fromIndex might be near -1>>>1.
-            return -1;
-        }
-        if (injectBranchProbability(UNLIKELY_PROBABILITY, fromIndex < 0)) {
-            fromIndex = 0;
-        }
-
-        if (injectBranchProbability(LIKELY_PROBABILITY, ch < Character.MIN_SUPPLEMENTARY_CODE_POINT)) {
-            return ArrayIndexOf.indexOf1Char(sourceArray, sourceCount, fromIndex, (char) ch);
-        } else {
-            return indexOf(source, ch, origFromIndex);
         }
     }
 }

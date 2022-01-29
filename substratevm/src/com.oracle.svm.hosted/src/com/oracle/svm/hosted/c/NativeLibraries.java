@@ -343,9 +343,9 @@ public final class NativeLibraries {
                 if (Platform.includedIn(Platform.LINUX.class)) {
                     libCMessage = " (target libc: " + LibCBase.singleton().getName() + ")";
                 }
-                String jdkDownloadURL = JVMCIVersionCheck.JVMCI11_RELEASES_URL;
+                String jdkDownloadURL = JVMCIVersionCheck.OPEN_LABSJDK_RELEASE_URL_PATTERN;
                 UserError.guarantee(!Platform.includedIn(InternalPlatform.PLATFORM_JNI.class),
-                                "Building images for %s%s requires static JDK libraries.%nUse the JDK from %s%n%s",
+                                "Building images for %s%s requires static JDK libraries.%nUse most recent JDK from %s%n%s",
                                 ImageSingletons.lookup(Platform.class).getClass().getName(),
                                 libCMessage,
                                 jdkDownloadURL,
