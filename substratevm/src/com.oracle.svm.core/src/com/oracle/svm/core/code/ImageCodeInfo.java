@@ -109,6 +109,10 @@ public class ImageCodeInfo {
         return hostedImageCodeInfo;
     }
 
+    public long getTotalByteArraySize() {
+        return codeInfoIndex.length + codeInfoEncodings.length + referenceMapEncoding.length + frameInfoEncodings.length;
+    }
+
     /**
      * Pure-hosted {@link CodeInfo} to collect and persist image code metadata in
      * {@link ImageCodeInfo} and provide accesses during image generation.
