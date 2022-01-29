@@ -88,7 +88,7 @@ public class SerializationConfiguration implements ConfigurationBase, RuntimeSer
         writer.append("]");
     }
 
-    private void printSerializationTypes(List<? extends JsonPrintable> serializationConfigurationTypes, JsonWriter writer) throws IOException {
+    private static void printSerializationTypes(List<? extends JsonPrintable> serializationConfigurationTypes, JsonWriter writer) throws IOException {
         String prefix = "";
 
         for (JsonPrintable type : serializationConfigurationTypes) {
