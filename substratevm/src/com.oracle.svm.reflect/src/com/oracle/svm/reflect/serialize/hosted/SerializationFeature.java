@@ -196,7 +196,6 @@ public class SerializationFeature implements Feature {
 
         HotSpotObjectConstant fieldValue = (HotSpotObjectConstant) GraalAccess.getOriginalProviders().getConstantReflection().readFieldValue(targetField, (JavaConstant) constant);
         Member memberField = GraalAccess.getOriginalProviders().getSnippetReflection().asObject(Member.class, fieldValue);
-
         return memberField.getDeclaringClass();
     }
 
