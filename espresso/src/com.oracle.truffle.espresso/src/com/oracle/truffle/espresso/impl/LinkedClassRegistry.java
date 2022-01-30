@@ -26,6 +26,7 @@ package com.oracle.truffle.espresso.impl;
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
 import com.oracle.truffle.espresso.classfile.LinkedClassfileParser;
 import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -105,6 +106,112 @@ public abstract class LinkedClassRegistry {
         this.modules = new ModuleTable(rwLock);
     }
 
+    ParserKlass loadParserKlass(ParsingEnv env, Symbol<Type> type, ClassRegistry.ClassDefinitionInfo info) {
+        if (Types.isArray(type)) {
+            // TODO
+            throw EspressoError.shouldNotReachHere("...");
+        }
+
+        ParserKlass parserKlass;
+        synchronized (type) {
+            if (!performChecksPriorToLoading(type)) {
+                return null;
+            }
+            byte[] bytes = getClassfileBytes(type);
+            parserKlass = createParserKlass(env, bytes, type, info);
+        }
+
+        return parserKlass;
+    }
+
+    public ParserKlass createParserKlass(ParsingEnv env, byte[] bytes, Symbol<Type> typeOrNull, ClassRegistry.ClassDefinitionInfo info) {
+        // TODO (ivan-ristovic): Consult cache first
+        ParserKlass parserKlass = LinkedClassfileParser.parse(env, new ClassfileStream(bytes, null), getClassLoader(), typeOrNull, info);
+        // May throw guest ClassFormatError, NoClassDefFoundError.
+        if (!loaderIsBootOrPlatform(getClassLoader(), env.getMeta()) && parserKlass.getName().toString().startsWith("java/")) {
+            throw env.getMeta().throwExceptionWithMessage(env.getMeta().java_lang_SecurityException, "Define class in prohibited package name: " + parserKlass.getName());
+        }
+        return parserKlass;
+    }
+
+    LinkedKlass loadLinkedKlass(ParsingEnv env, Symbol<Type> type, ClassRegistry.ClassDefinitionInfo info) {
+        ParserKlass parserKlass = loadParserKlass(env, type, info);
+        return parserKlass != null ? createLinkedKlass(env, parserKlass, info) : null;
+    }
+
+    private LinkedKlass loadLinkedKlassRecursively(ParsingEnv env, Symbol<Type> type, ClassRegistry.ClassDefinitionInfo info, boolean notInterface) {
+        Meta meta = env.getMeta();
+        LinkedKlass linkedKlass;
+        try {
+            linkedKlass = loadLinkedKlass(env, type, info);
+        } catch (EspressoException e) {
+            if (meta.java_lang_ClassNotFoundException.isAssignableFrom(e.getExceptionObject().getKlass())) {
+                // NoClassDefFoundError has no <init>(Throwable cause). Set cause manually.
+                StaticObject ncdfe = Meta.initException(meta.java_lang_NoClassDefFoundError);
+                meta.java_lang_Throwable_cause.set(ncdfe, e.getExceptionObject());
+                throw meta.throwException(ncdfe);
+            }
+            throw e;
+        }
+        if (notInterface == Modifier.isInterface(linkedKlass.getFlags())) {
+            throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "Super interface of " + type + " is in fact not an interface.");
+        }
+        return linkedKlass;
+    }
+
+    LinkedKlass createLinkedKlass(ParsingEnv env, ParserKlass parserKlass, ClassRegistry.ClassDefinitionInfo info) {
+        Symbol<Type> type = parserKlass.getType();
+        Symbol<Type> superKlassType = parserKlass.getSuperKlass();
+        EspressoThreadLocalState threadLocalState = env.getLanguage().getThreadLocalState();
+        ClassRegistry.TypeStack chain = threadLocalState.getTypeStack();
+
+        Meta meta = env.getMeta();
+        LinkedKlass superKlass = null;
+        LinkedKlass[] superInterfaces = null;
+        LinkedKlass[] linkedInterfaces = null;
+
+        chain.push(type);
+
+        try {
+            if (superKlassType != null) {
+                if (chain.contains(superKlassType)) {
+                    throw meta.throwException(meta.java_lang_ClassCircularityError);
+                }
+                superKlass = loadLinkedKlassRecursively(env, superKlassType, info, true);
+            }
+
+            final Symbol<Type>[] superInterfacesTypes = parserKlass.getSuperInterfaces();
+
+            linkedInterfaces = superInterfacesTypes.length == 0
+                    ? LinkedKlass.EMPTY_ARRAY
+                    : new LinkedKlass[superInterfacesTypes.length];
+
+            superInterfaces = superInterfacesTypes.length == 0
+                    ? LinkedKlass.EMPTY_ARRAY
+                    : new LinkedKlass[superInterfacesTypes.length];
+
+            for (int i = 0; i < superInterfacesTypes.length; ++i) {
+                if (chain.contains(superInterfacesTypes[i])) {
+                    throw meta.throwException(meta.java_lang_ClassCircularityError);
+                }
+                LinkedKlass interf = loadLinkedKlassRecursively(env, superInterfacesTypes[i], info, false);
+                superInterfaces[i] = interf;
+                linkedInterfaces[i] = interf;
+            }
+        } finally {
+            chain.pop();
+        }
+
+        if (env.getJavaVersion().java16OrLater() && superKlass != null) {
+            if (Modifier.isFinal(superKlass.getFlags())) {
+                throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "class " + type + " is a subclass of final class " + superKlassType);
+            }
+        }
+
+        // TODO consult cache
+        return LinkedKlass.create(env, parserKlass, superKlass, linkedInterfaces);
+    }
+
     /**
      * Queries a registry to load a Klass for us.
      *
@@ -114,7 +221,7 @@ public abstract class LinkedClassRegistry {
      * @return The Klass corresponding to given type
      */
     @SuppressWarnings("try")
-    Klass loadKlass(ParsingEnv env, Symbol<Symbol.Type> type, StaticObject protectionDomain) {
+    Klass loadKlass(ParsingEnv env, Symbol<Type> type, StaticObject protectionDomain) {
         if (Types.isArray(type)) {
             Klass elemental = loadKlass(env, env.getTypes().getElementalType(type), protectionDomain);
             if (elemental == null) {
@@ -150,134 +257,19 @@ public abstract class LinkedClassRegistry {
         return entry.klass();
     }
 
-    // TODO Symbol.Type
-    ParserKlass loadParserKlass(ParsingEnv env, Symbol<Symbol.Type> type, ClassRegistry.ClassDefinitionInfo info) {
-        if (Types.isArray(type)) {
-            // TODO
-            throw EspressoError.shouldNotReachHere("...");
-        }
-
-        ParserKlass parserKlass;
-        synchronized (type) {
-            if (!performChecksPriorToLoading(type)) {
-                return null;
-            }
-            byte[] bytes = getClassfileBytes(type);
-            parserKlass = parseClassfile(env, bytes, type, info);   // TODO: info?
-        }
-
-        return parserKlass;
-    }
-
-    LinkedKlass loadLinkedKlass(ParsingEnv env, Symbol<Symbol.Type> type, ClassRegistry.ClassDefinitionInfo info) {
-        ParserKlass parserKlass = loadParserKlass(env, type, info);
-        if (parserKlass == null) {
+    private Klass loadKlassImpl(ParsingEnv env, Symbol<Type> type, ClassRegistry.ClassDefinitionInfo info) {
+        if (!performChecksPriorToLoading(type)) {
             return null;
         }
-
-        Symbol<Symbol.Type> superKlassType = parserKlass.getSuperKlass();
-        EspressoThreadLocalState threadLocalState = env.getLanguage().getThreadLocalState();
-        ClassRegistry.TypeStack chain = threadLocalState.getTypeStack();
-
-        Meta meta = env.getMeta();
-        LinkedKlass superKlass = null;
-        LinkedKlass[] superInterfaces = null;
-        LinkedKlass[] linkedInterfaces = null;
-
-        chain.push(type);
-
-        try {
-            if (superKlassType != null) {
-                if (chain.contains(superKlassType)) {
-                    throw meta.throwException(meta.java_lang_ClassCircularityError);
-                }
-                superKlass = loadLinkedKlassRecursively(env, superKlassType, info, true);
-            }
-
-            final Symbol<Symbol.Type>[] superInterfacesTypes = parserKlass.getSuperInterfaces();
-
-            linkedInterfaces = superInterfacesTypes.length == 0
-                    ? LinkedKlass.EMPTY_ARRAY
-                    : new LinkedKlass[superInterfacesTypes.length];
-
-            superInterfaces = superInterfacesTypes.length == 0
-                    ? LinkedKlass.EMPTY_ARRAY
-                    : new LinkedKlass[superInterfacesTypes.length];
-
-            for (int i = 0; i < superInterfacesTypes.length; ++i) {
-                if (chain.contains(superInterfacesTypes[i])) {
-                    throw meta.throwException(meta.java_lang_ClassCircularityError);
-                }
-                LinkedKlass interf = loadLinkedKlassRecursively(env, superInterfacesTypes[i], info, false);
-                superInterfaces[i] = interf;
-                linkedInterfaces[i] = interf;
-            }
-        } finally {
-            chain.pop();
-        }
-
-        if (env.getJavaVersion().java16OrLater() && superKlass != null) {
-            if (Modifier.isFinal(superKlass.getFlags())) {
-                throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "class " + type + " is a subclass of final class " + superKlassType);
-            }
-        }
-
-        return LinkedKlass.create(env, parserKlass, superKlass, linkedInterfaces);
-    }
-
-    public final ObjectKlass defineKlass(ParsingEnv env, Symbol<Symbol.Type> typeOrNull, final byte[] bytes) {
-        return defineKlass(env, typeOrNull, bytes, ClassRegistry.ClassDefinitionInfo.EMPTY);
-    }
-
-    @SuppressWarnings("try")
-    public ObjectKlass defineKlass(ParsingEnv env, Symbol<Symbol.Type> typeOrNull, final byte[] bytes, ClassRegistry.ClassDefinitionInfo info) {
-        Meta meta = env.getMeta();
-        ParserKlass parserKlass;
-        try (DebugCloseable parse = KLASS_PARSE.scope(env.getTimers())) {
-            parserKlass = parseClassfile(env, bytes, typeOrNull, info);
-        }
-        Symbol<Symbol.Type> type = typeOrNull == null ? parserKlass.getType() : typeOrNull;
-
-        if (info.addedToRegistry()) {
-            Klass maybeLoaded = findLoadedKlass(env, type);
-            if (maybeLoaded != null) {
-                throw meta.throwExceptionWithMessage(meta.java_lang_LinkageError, "Class " + type + " already defined");
-            }
-        }
-
-        Symbol<Symbol.Type> superKlassType = parserKlass.getSuperKlass();
-
-        ObjectKlass klass = createKlass(env, parserKlass, type, superKlassType, info);
-        if (info.addedToRegistry()) {
-            registerKlass(klass, type);
-        } else if (info.isStrongHidden()) {
-            registerStrongHiddenClass(klass);
-        }
+        byte[] bytes = getClassfileBytes(type);
+        ObjectKlass klass = defineKlass(env, type, bytes, info);
+        afterLoading(klass);
         return klass;
     }
 
-    private void registerKlass(ObjectKlass klass, Symbol<Symbol.Type> type) {
-        ClassRegistries.RegistryEntry entry = new ClassRegistries.RegistryEntry(klass);
-        ClassRegistries.RegistryEntry previous = classes.putIfAbsent(type, entry);
-
-        EspressoError.guarantee(previous == null, "Class " + type + " is already defined");
-
-        // TODO
-        //getRegistries().recordConstraint(type, klass, getClassLoader());
-        //getRegistries().onKlassDefined(klass);
-        if (defineKlassListener != null) {
-            defineKlassListener.onKlassDefined(klass);
-        }
-    }
-
-    public static boolean loaderIsBootOrPlatform(StaticObject loader, Meta meta) {
-        return StaticObject.isNull(loader) ||
-                (meta.getJavaVersion().java9OrLater() && meta.jdk_internal_loader_ClassLoaders$PlatformClassLoader.isAssignableFrom(loader.getKlass()));
-    }
-
-    public Klass findLoadedKlass(ParsingEnv env, Symbol<Symbol.Type> type) {
+    public Klass findLoadedKlass(ParsingEnv env, Symbol<Type> type) {
         if (Types.isArray(type)) {
-            Symbol<Symbol.Type> elemental = env.getTypes().getElementalType(type);
+            Symbol<Type> elemental = env.getTypes().getElementalType(type);
             Klass elementalKlass = findLoadedKlass(env, elemental);
             if (elementalKlass == null) {
                 return null;
@@ -291,47 +283,60 @@ public abstract class LinkedClassRegistry {
         return entry.klass();
     }
 
+    public final ObjectKlass defineKlass(ParsingEnv env, Symbol<Type> typeOrNull, final byte[] bytes) {
+        return defineKlass(env, typeOrNull, bytes, ClassRegistry.ClassDefinitionInfo.EMPTY);
+    }
+
     @SuppressWarnings("try")
-    private ObjectKlass createKlass(ParsingEnv env, ParserKlass parserKlass, Symbol<Symbol.Type> type, Symbol<Symbol.Type> superKlassType, ClassRegistry.ClassDefinitionInfo info) {
+    public ObjectKlass defineKlass(ParsingEnv env, Symbol<Type> typeOrNull, final byte[] bytes, ClassRegistry.ClassDefinitionInfo info) {
+        Meta meta = env.getMeta();
+        ParserKlass parserKlass;
+        try (DebugCloseable parse = KLASS_PARSE.scope(env.getTimers())) {
+            parserKlass = createParserKlass(env, bytes, typeOrNull, info);
+        }
+        Symbol<Type> type = typeOrNull == null ? parserKlass.getType() : typeOrNull;
+
+        if (info.addedToRegistry()) {
+            Klass maybeLoaded = findLoadedKlass(env, type);
+            if (maybeLoaded != null) {
+                throw meta.throwExceptionWithMessage(meta.java_lang_LinkageError, "Class " + type + " already defined");
+            }
+        }
+
+        LinkedKlass linkedKlass = createLinkedKlass(env, parserKlass, info);
+        ObjectKlass klass = createKlass(env, linkedKlass, info);
+        if (info.addedToRegistry()) {
+            registerKlass(klass, type);
+        } else if (info.isStrongHidden()) {
+            registerStrongHiddenClass(klass);
+        }
+        return klass;
+    }
+
+    @SuppressWarnings("try")
+    private ObjectKlass createKlass(ParsingEnv env, LinkedKlass linkedKlass, ClassRegistry.ClassDefinitionInfo info) {
+        Symbol<Type> type = linkedKlass.getType();
+        Symbol<Type> superKlassType = null;
         Meta meta = env.getMeta();
 
         EspressoThreadLocalState threadLocalState = env.getLanguage().getThreadLocalState();
         ClassRegistry.TypeStack chain = threadLocalState.getTypeStack();
 
         ObjectKlass superKlass = null;
-        ObjectKlass[] superInterfaces = null;
-        LinkedKlass[] linkedInterfaces = null;
+        if (linkedKlass.getSuperKlass() != null) {
+            superKlassType = linkedKlass.getSuperKlass().getType();
+            superKlass = loadKlassRecursively(env, linkedKlass.getSuperKlass().getType(), true);
+        }
 
-        chain.push(type);
+        LinkedKlass[] linkedInterfaces = linkedKlass.getInterfaces();
+        ObjectKlass[] superInterfaces = linkedInterfaces.length == 0
+                ? ObjectKlass.EMPTY_ARRAY
+                : new ObjectKlass[linkedInterfaces.length];
 
-        try {
-            if (superKlassType != null) {
-                if (chain.contains(superKlassType)) {
-                    throw meta.throwException(meta.java_lang_ClassCircularityError);
-                }
-                superKlass = loadKlassRecursively(env, superKlassType, true);
-            }
-
-            final Symbol<Symbol.Type>[] superInterfacesTypes = parserKlass.getSuperInterfaces();
-
-            linkedInterfaces = superInterfacesTypes.length == 0
-                    ? LinkedKlass.EMPTY_ARRAY
-                    : new LinkedKlass[superInterfacesTypes.length];
-
-            superInterfaces = superInterfacesTypes.length == 0
-                    ? ObjectKlass.EMPTY_ARRAY
-                    : new ObjectKlass[superInterfacesTypes.length];
-
-            for (int i = 0; i < superInterfacesTypes.length; ++i) {
-                if (chain.contains(superInterfacesTypes[i])) {
-                    throw meta.throwException(meta.java_lang_ClassCircularityError);
-                }
-                ObjectKlass interf = loadKlassRecursively(env, superInterfacesTypes[i], false);
-                superInterfaces[i] = interf;
-                linkedInterfaces[i] = interf.getLinkedKlass();
-            }
-        } finally {
-            chain.pop();
+        for (int i = 0; i < linkedInterfaces.length; ++i) {
+            ObjectKlass interf = loadKlassRecursively(env, linkedInterfaces[i].getType(), false);
+            superInterfaces[i] = interf;
+            linkedInterfaces[i] = interf.getLinkedKlass();
         }
 
         if (env.getJavaVersion().java16OrLater() && superKlass != null) {
@@ -343,8 +348,6 @@ public abstract class LinkedClassRegistry {
         ObjectKlass klass;
 
         try (DebugCloseable define = KLASS_DEFINE.scope(env.getTimers())) {
-            // TODO (ivan-ristovic): Consult cache first
-            LinkedKlass linkedKlass = loadLinkedKlass(env, type, info);
             klass = new ObjectKlass(meta.getContext(), linkedKlass, superKlass, superInterfaces, getClassLoader(), info);
         }
 
@@ -371,7 +374,7 @@ public abstract class LinkedClassRegistry {
         return klass;
     }
 
-    private ObjectKlass loadKlassRecursively(ParsingEnv env, Symbol<Symbol.Type> type, boolean notInterface) {
+    private ObjectKlass loadKlassRecursively(ParsingEnv env, Symbol<Type> type, boolean notInterface) {
         Meta meta = env.getMeta();
         Klass klass;
         try {
@@ -391,49 +394,28 @@ public abstract class LinkedClassRegistry {
         return (ObjectKlass) klass;
     }
 
-    private LinkedKlass loadLinkedKlassRecursively(ParsingEnv env, Symbol<Symbol.Type> type, ClassRegistry.ClassDefinitionInfo info, boolean notInterface) {
-        Meta meta = env.getMeta();
-        LinkedKlass linkedKlass;
-        try {
-            linkedKlass = loadLinkedKlass(env, type, info);
-        } catch (EspressoException e) {
-            if (meta.java_lang_ClassNotFoundException.isAssignableFrom(e.getExceptionObject().getKlass())) {
-                // NoClassDefFoundError has no <init>(Throwable cause). Set cause manually.
-                StaticObject ncdfe = Meta.initException(meta.java_lang_NoClassDefFoundError);
-                meta.java_lang_Throwable_cause.set(ncdfe, e.getExceptionObject());
-                throw meta.throwException(ncdfe);
-            }
-            throw e;
+    private void registerKlass(ObjectKlass klass, Symbol<Type> type) {
+        ClassRegistries.RegistryEntry entry = new ClassRegistries.RegistryEntry(klass);
+        ClassRegistries.RegistryEntry previous = classes.putIfAbsent(type, entry);
+
+        EspressoError.guarantee(previous == null, "Class " + type + " is already defined");
+
+        // TODO
+        //getRegistries().recordConstraint(type, klass, getClassLoader());
+        //getRegistries().onKlassDefined(klass);
+        if (defineKlassListener != null) {
+            defineKlassListener.onKlassDefined(klass);
         }
-        if (notInterface == Modifier.isInterface(linkedKlass.getFlags())) {
-            throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "Super interface of " + type + " is in fact not an interface.");
-        }
-        return linkedKlass;
     }
 
-    public ParserKlass parseClassfile(ParsingEnv env, byte[] bytes, Symbol<Symbol.Type> typeOrNull, ClassRegistry.ClassDefinitionInfo info) {
-        // TODO (ivan-ristovic): Consult cache first
-        ParserKlass parserKlass = LinkedClassfileParser.parse(env, new ClassfileStream(bytes, null), getClassLoader(), typeOrNull, info);
-        // May throw guest ClassFormatError, NoClassDefFoundError.
-        if (!loaderIsBootOrPlatform(getClassLoader(), env.getMeta()) && parserKlass.getName().toString().startsWith("java/")) {
-            throw env.getMeta().throwExceptionWithMessage(env.getMeta().java_lang_SecurityException, "Define class in prohibited package name: " + parserKlass.getName());
-        }
-        return parserKlass;
+    public static boolean loaderIsBootOrPlatform(StaticObject loader, Meta meta) {
+        return StaticObject.isNull(loader) ||
+                (meta.getJavaVersion().java9OrLater() && meta.jdk_internal_loader_ClassLoaders$PlatformClassLoader.isAssignableFrom(loader.getKlass()));
     }
 
-    private Klass loadKlassImpl(ParsingEnv env, Symbol<Symbol.Type> type, ClassRegistry.ClassDefinitionInfo info) {
-        if (!performChecksPriorToLoading(type)) {
-            return null;
-        }
-        byte[] bytes = getClassfileBytes(type);
-        ObjectKlass klass = defineKlass(env, type, bytes, info);
-        afterLoading(klass);
-        return klass;
-    }
+    protected abstract boolean performChecksPriorToLoading(Symbol<Type> type);
 
-    protected abstract boolean performChecksPriorToLoading(Symbol<Symbol.Type> type);
-
-    protected abstract byte[] getClassfileBytes(Symbol<Symbol.Type> type);
+    protected abstract byte[] getClassfileBytes(Symbol<Type> type);
 
     protected abstract void afterLoading(Klass klass);
 

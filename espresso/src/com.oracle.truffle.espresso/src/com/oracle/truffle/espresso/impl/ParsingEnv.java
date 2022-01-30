@@ -32,7 +32,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.perf.TimerCollection;
 import com.oracle.truffle.espresso.runtime.JavaVersion;
 
-// TODO (ivan-ristovic): Use an interface
+// TODO (ivan-ristovic): Remove
 public final class ParsingEnv {
     private final EspressoLanguage language;
     private TimerCollection timers;
@@ -43,7 +43,6 @@ public final class ParsingEnv {
     private boolean verifyNeeded;
     private boolean extensionFieldUsed;
 
-    // TODO (ivan-ristovic): Do proper construction
     public ParsingEnv(EspressoLanguage language) {
         this.language = language;
     }
