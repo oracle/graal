@@ -34,7 +34,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.java.BytecodeExceptionNodeSourceCollection;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
@@ -123,7 +122,8 @@ public class ImageBuildStatistics {
                          * This node source position is coming from a virtual call.
                          */
                     } else {
-                        throw GraalError.shouldNotReachHere("Found new node " + nodeSourcePosition + " after bytecode parsing in graph for " + method.format("%h.%n(%p)"));
+//                        throw GraalError.shouldNotReachHere("Found new node " + nodeSourcePosition + " after bytecode parsing in graph for " + method.format("%h.%n(%p)"));
+                        System.out.println("Found new node " + nodeSourcePosition + " after bytecode parsing in graph for " + method.format("%H.%n(%p)"));
                     }
                 }
             }
