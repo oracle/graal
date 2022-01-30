@@ -473,23 +473,22 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitStrategySwitch(SwitchStrategy strategy, Variable key, LabelRef[] keyTargets, LabelRef defaultTarget) {
+    public void emitStrategySwitch(SwitchStrategy strategy, AllocatableValue key, LabelRef[] keyTargets, LabelRef defaultTarget) {
         append(createStrategySwitchOp(strategy, keyTargets, defaultTarget, key, AArch64LIRGenerator::toIntConditionFlag));
     }
 
-    protected StrategySwitchOp createStrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Variable key,
-                    Function<Condition, ConditionFlag> converter) {
+    protected StrategySwitchOp createStrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, AllocatableValue key, Function<Condition, ConditionFlag> converter) {
         return new StrategySwitchOp(strategy, keyTargets, defaultTarget, key, converter);
     }
 
     @Override
-    protected void emitRangeTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value key) {
-        append(new RangeTableSwitchOp(lowKey, defaultTarget, targets, asAllocatable(key)));
+    protected void emitRangeTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, AllocatableValue key) {
+        append(new RangeTableSwitchOp(lowKey, defaultTarget, targets, key));
     }
 
     @Override
-    protected void emitHashTableSwitch(JavaConstant[] keys, LabelRef defaultTarget, LabelRef[] targets, Value value, Value hash) {
-        append(new HashTableSwitchOp(keys, defaultTarget, targets, asAllocatable(value), asAllocatable(hash)));
+    protected void emitHashTableSwitch(JavaConstant[] keys, LabelRef defaultTarget, LabelRef[] targets, AllocatableValue value, Value hash) {
+        append(new HashTableSwitchOp(keys, defaultTarget, targets, value, asAllocatable(hash)));
     }
 
     @Override
