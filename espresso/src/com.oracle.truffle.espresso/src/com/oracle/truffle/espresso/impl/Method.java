@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -307,9 +307,17 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
      * Ensure any callTarget is called immediately before a BCI is advanced, or it could violate the
      * specs on class init.
      */
-
     public CallTarget getCallTarget() {
         return getMethodVersion().getCallTarget();
+    }
+
+    /**
+     * Exposed to Interop API, to ensure that VM calls to guest classes properly initialize guest
+     * classes prior to the calls.
+     */
+    public CallTarget getCallTargetForceInit() {
+        getDeclaringKlass().safeInitialize();
+        return getCallTarget();
     }
 
     /**
@@ -446,7 +454,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         final Object[] filteredArgs;
         if (isStatic()) {
-            // clinit done when obtaining call target
+            getDeclaringKlass().safeInitialize();
             filteredArgs = new Object[args.length];
             for (int i = 0; i < filteredArgs.length; ++i) {
                 filteredArgs[i] = getMeta().toGuestBoxed(args[i]);
@@ -458,7 +466,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
                 filteredArgs[i] = getMeta().toGuestBoxed(args[i - 1]);
             }
         }
-        getDeclaringKlass().safeInitialize();
         return getMeta().toHostBoxed(getCallTarget().call(filteredArgs));
     }
 
@@ -480,7 +487,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             Object[] fullArgs = new Object[args.length + 1];
             System.arraycopy(args, 0, fullArgs, 1, args.length);
             fullArgs[0] = self;
-            getDeclaringKlass().safeInitialize();
             return getCallTarget().call(fullArgs);
         }
     }
