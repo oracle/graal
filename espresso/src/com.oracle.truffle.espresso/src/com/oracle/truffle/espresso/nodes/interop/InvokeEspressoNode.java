@@ -136,7 +136,10 @@ public abstract class InvokeEspressoNode extends Node {
             return indirectCallNode.call(method.getCallTarget(), argumentsWithReceiver);
         }
 
-        return indirectCallNode.call(method.getMethod().getCallTargetForceInit(), /* static => no receiver */ convertedArguments);
+        return indirectCallNode.call(method.getMethod().getCallTargetForceInit(), /*
+                                                                                   * static => no
+                                                                                   * receiver
+                                                                                   */ convertedArguments);
     }
 
     private static void checkValidInvoke(Method method, Object receiver) {
