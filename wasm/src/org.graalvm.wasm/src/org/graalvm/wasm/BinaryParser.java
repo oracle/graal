@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -405,7 +405,7 @@ public class BinaryParser extends BinaryStreamParser {
 
     private CodeEntry readFunction(int functionIndex, byte[] locals, byte returnType, int returnTypeLength, int endOffset) {
         final ParserState state = new ParserState();
-        final ArrayList<CallNode> children = new ArrayList<>();
+        final ArrayList<CallNode> callNodes = new ArrayList<>();
         int startOffset = offset;
         state.enterBlock(returnType);
         int opcode;
@@ -495,8 +495,8 @@ public class BinaryParser extends BinaryStreamParser {
                     if (function.returnTypeLength() == 1) {
                         state.push(function.returnType());
                     }
-                    state.addCall(children.size());
-                    children.add(new CallNode(callFunctionIndex));
+                    state.addCall(callNodes.size());
+                    callNodes.add(new CallNode(callFunctionIndex));
                     break;
                 }
                 case Instructions.CALL_INDIRECT: {
@@ -520,8 +520,8 @@ public class BinaryParser extends BinaryStreamParser {
                     if (returnLength == 1) {
                         state.push(module.functionTypeReturnType(expectedFunctionTypeIndex));
                     }
-                    state.addIndirectCall(children.size());
-                    children.add(new CallNode());
+                    state.addIndirectCall(callNodes.size());
+                    callNodes.add(new CallNode());
                     final int tableIndex = read1();
                     assertIntEqual(tableIndex, CallIndirect.ZERO_TABLE, "CALL_INDIRECT: Instruction must end with 0x00", Failure.ZERO_FLAG_EXPECTED);
                     break;
@@ -649,7 +649,7 @@ public class BinaryParser extends BinaryStreamParser {
         }
         assertIntEqual(state.valueStackSize(), returnTypeLength,
                         "Stack size must match the return type length at the function end", Failure.TYPE_MISMATCH);
-        return new CodeEntry(functionIndex, state.maxStackSize(), locals, state.extraData(), children, startOffset, endOffset, returnType);
+        return new CodeEntry(functionIndex, state.maxStackSize(), locals, state.extraData(), callNodes, startOffset, endOffset, returnType);
     }
 
     private void readNumericInstructions(ParserState state, int opcode) {

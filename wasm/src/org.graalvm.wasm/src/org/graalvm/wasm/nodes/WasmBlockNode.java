@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,33 @@ package org.graalvm.wasm.nodes;
 
 import static org.graalvm.wasm.BinaryStreamParser.length;
 import static org.graalvm.wasm.BinaryStreamParser.value;
+import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_BYTECODE_INDEX;
+import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_EXTRA_INDEX;
+import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_IF_BYTECODE_INDEX;
+import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_IF_CONDITION_PROFILE;
+import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_IF_EXTRA_INDEX;
+import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_IF_LENGTH;
+import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_IF_STACK_INFO;
+import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_STACK_INFO;
+import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_TABLE_ENTRY_BYTECODE_INDEX;
+import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_TABLE_ENTRY_EXTRA_INDEX;
+import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_TABLE_ENTRY_LENGTH;
+import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_TABLE_ENTRY_OFFSET;
+import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_TABLE_ENTRY_STACK_INFO;
+import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_TABLE_SIZE;
+import static org.graalvm.wasm.constants.ExtraDataOffsets.CALL_NODE_INDEX;
+import static org.graalvm.wasm.constants.ExtraDataOffsets.CALL_INDIRECT_NODE_INDEX;
+import static org.graalvm.wasm.constants.ExtraDataOffsets.CALL_INDIRECT_CONDITION_PROFILE;
+import static org.graalvm.wasm.constants.ExtraDataOffsets.CALL_INDIRECT_LENGTH;
+import static org.graalvm.wasm.constants.ExtraDataOffsets.CALL_LENGTH;
+import static org.graalvm.wasm.constants.ExtraDataOffsets.ELSE_BYTECODE_INDEX;
+import static org.graalvm.wasm.constants.ExtraDataOffsets.ELSE_EXTRA_INDEX;
+import static org.graalvm.wasm.constants.ExtraDataOffsets.IF_BYTECODE_INDEX;
+import static org.graalvm.wasm.constants.ExtraDataOffsets.IF_CONDITION_PROFILE;
+import static org.graalvm.wasm.constants.ExtraDataOffsets.IF_EXTRA_INDEX;
+import static org.graalvm.wasm.constants.ExtraDataOffsets.IF_LENGTH;
+import static org.graalvm.wasm.constants.ExtraDataOffsets.STACK_INFO_RETURN_LENGTH_SHIFT;
+import static org.graalvm.wasm.constants.ExtraDataOffsets.STACK_INFO_STACK_SIZE_MASK;
 import static org.graalvm.wasm.constants.Instructions.BLOCK;
 import static org.graalvm.wasm.constants.Instructions.BR;
 import static org.graalvm.wasm.constants.Instructions.BR_IF;
@@ -251,7 +278,6 @@ import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.parser.validation.ExtraDataList;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -275,7 +301,7 @@ public final class WasmBlockNode extends Node {
     @CompilationFinal private final int endOffset;
     @CompilationFinal private final byte returnTypeId;
     @CompilationFinal private final int returnLength;
-    @Children private Node[] children;
+    @Children private Node[] callNodes;
 
     private static final float MIN_FLOAT_TRUNCATABLE_TO_INT = Integer.MIN_VALUE;
     private static final float MAX_FLOAT_TRUNCATABLE_TO_INT = 2147483520f;
@@ -307,8 +333,8 @@ public final class WasmBlockNode extends Node {
     }
 
     @SuppressWarnings("hiding")
-    public void initialize(Node[] children) {
-        this.children = children;
+    public void initializeCallNodes(Node[] callNodes) {
+        this.callNodes = callNodes;
     }
 
     public int startOffset() {
@@ -336,10 +362,10 @@ public final class WasmBlockNode extends Node {
         int stackPointer = numLocals;
         WasmMemory memory = wasmInstance.memory();
         check(data.length, (1 << 31) - 1);
-        // TODO: open issue about invalid frame state after PR
+        // TODO: Open issue about invalid frame state after PR
         // check(extraData.length, (1 << 31) - 1);
         int opcode = UNREACHABLE;
-        byteCodeLoop: while (offset < offsetLimit) {
+        loop: while (offset < offsetLimit) {
             byte byteOpcode = BinaryStreamParser.rawPeek1(data, offset);
             opcode = byteOpcode & 0xFF;
             offset++;
@@ -353,87 +379,95 @@ public final class WasmBlockNode extends Node {
                     break;
                 case BLOCK:
                 case LOOP: {
-                    offset++; // return type;
+                    // Skip return type.
+                    offset++;
                     break;
                 }
                 case IF: {
                     stackPointer--;
 
-                    if (WasmCodeEntry.profileCondition(extraData, extraOffset + ExtraDataList.IF_CONDITION_PROFILE, popBoolean(frame, stackPointer))) {
-                        offset++; // skip return type
-                        extraOffset += ExtraDataList.IF_LENGTH;
+                    if (WasmCodeEntry.profileCondition(extraData, extraOffset + IF_CONDITION_PROFILE, popBoolean(frame, stackPointer))) {
+                        // Skip return type.
+                        offset++;
+                        // Jump to first extra data entry in the then branch.
+                        extraOffset += IF_LENGTH;
                     } else {
-                        offset = extraData[extraOffset + ExtraDataList.IF_TARGET_OFFSET];
-                        extraOffset = extraData[extraOffset + ExtraDataList.IF_EXTRA_TARGET_OFFSET];
+                        // Jump to the else branch.
+                        offset = extraData[extraOffset + IF_BYTECODE_INDEX];
+                        extraOffset = extraData[extraOffset + IF_EXTRA_INDEX];
                     }
                     break;
                 }
                 case ELSE:
-                    offset = extraData[extraOffset + ExtraDataList.ELSE_TARGET_OFFSET];
-                    extraOffset = extraData[extraOffset + ExtraDataList.ELSE_EXTRA_TARGET_OFFSET];
+                    // The then branch was executed at this state. Jump to end of if statement.
+                    offset = extraData[extraOffset + ELSE_BYTECODE_INDEX];
+                    extraOffset = extraData[extraOffset + ELSE_EXTRA_INDEX];
                     break;
                 case END:
                     break;
                 case BR: {
-                    // Reset the stack pointer to the target block stack pointer.
-                    final int stackInfo = extraData[extraOffset + ExtraDataList.UNCONDITIONAL_BRANCH_STACK_INFO];
-                    final int continuationStackPointer = numLocals + (stackInfo & ExtraDataList.STACK_INFO_STACK_SIZE_MASK);
-                    final int targetBlockReturnLength = (stackInfo >> ExtraDataList.STACK_INFO_RETURN_LENGTH_SHIFT);
+                    final int targetStackInfo = extraData[extraOffset + BR_STACK_INFO];
+                    final int targetStackPointer = numLocals + (targetStackInfo & STACK_INFO_STACK_SIZE_MASK);
+                    final int targetReturnLength = (targetStackInfo >> STACK_INFO_RETURN_LENGTH_SHIFT);
 
-                    // Populate the stack with the return values of the current block (the one
-                    // we are escaping from).
-                    unwindStack(frame, stackPointer, continuationStackPointer, targetBlockReturnLength);
+                    unwindStack(frame, stackPointer, targetStackPointer, targetReturnLength);
 
-                    offset = extraData[extraOffset + ExtraDataList.UNCONDITIONAL_BRANCH_TARGET_OFFSET];
-                    extraOffset = extraData[extraOffset + ExtraDataList.UNCONDITIONAL_BRANCH_EXTRA_TARGET_OFFSET];
-                    stackPointer = continuationStackPointer + targetBlockReturnLength;
+                    // Jump to target block.
+                    offset = extraData[extraOffset + BR_BYTECODE_INDEX];
+                    extraOffset = extraData[extraOffset + BR_EXTRA_INDEX];
+                    stackPointer = targetStackPointer + targetReturnLength;
                     break;
                 }
                 case BR_IF: {
                     stackPointer--;
-                    if (WasmCodeEntry.profileCondition(extraData, extraOffset + ExtraDataList.CONDITIONAL_BRANCH_CONDITION_PROFILE, popBoolean(frame, stackPointer))) {
-                        // Populate the stack with the return values of the current block (the
-                        // one we are escaping from).
-                        final int stackInfo = extraData[extraOffset + ExtraDataList.CONDITIONAL_BRANCH_STACK_INFO];
-                        final int continuationStackPointer = numLocals + (stackInfo & ExtraDataList.STACK_INFO_STACK_SIZE_MASK);
-                        final int targetBlockReturnLength = (stackInfo >> ExtraDataList.STACK_INFO_RETURN_LENGTH_SHIFT);
+                    if (WasmCodeEntry.profileCondition(extraData, extraOffset + BR_IF_CONDITION_PROFILE, popBoolean(frame, stackPointer))) {
+                        final int stackInfo = extraData[extraOffset + BR_IF_STACK_INFO];
+                        final int targetStackPointer = numLocals + (stackInfo & STACK_INFO_STACK_SIZE_MASK);
+                        final int targetReturnValueCount = (stackInfo >> STACK_INFO_RETURN_LENGTH_SHIFT);
 
-                        unwindStack(frame, stackPointer, continuationStackPointer, targetBlockReturnLength);
-                        offset = extraData[extraOffset + ExtraDataList.CONDITIONAL_BRANCH_TARGET_OFFSET];
-                        extraOffset = extraData[extraOffset + ExtraDataList.CONDITIONAL_BRANCH_EXTRA_TARGET_OFFSET];
-                        stackPointer = continuationStackPointer + targetBlockReturnLength;
+                        unwindStack(frame, stackPointer, targetStackPointer, targetReturnValueCount);
+
+                        // Jump to target block.
+                        offset = extraData[extraOffset + BR_IF_BYTECODE_INDEX];
+                        extraOffset = extraData[extraOffset + BR_IF_EXTRA_INDEX];
+                        stackPointer = targetStackPointer + targetReturnValueCount;
                     } else {
-                        offset++; // condition
-                        extraOffset += ExtraDataList.CONDITIONAL_BRANCH_LENGTH;
+                        // Skip condition.
+                        offset++;
+                        // Jump to next extra data entry after the branch.
+                        extraOffset += BR_IF_LENGTH;
                     }
                     break;
                 }
                 case BR_TABLE: {
                     stackPointer--;
                     int index = popInt(frame, stackPointer);
-                    final int size = extraData[extraOffset + ExtraDataList.BRANCH_TABLE_SIZE];
+                    final int size = extraData[extraOffset + BR_TABLE_SIZE];
                     if (index < 0 || index >= size) {
+                        // If unsigned index is larger or equal to the table size use the
+                        // default (last) index.
                         index = size - 1;
                     }
 
                     // This loop is implemented to create a separate path for every index. This
-                    // loop is unrolled. This guarantees that all values inside the if statement are
-                    // treated as compile time constants.
+                    // guarantees that all values inside the if statement are treated as compile
+                    // time constants, since the loop is unrolled.
                     for (int i = 0; i < size; ++i) {
                         if (i == index) {
-                            final int indexLocation = extraOffset + ExtraDataList.BRANCH_TABLE_ENTRY_OFFSET + i * ExtraDataList.BRANCH_TABLE_ENTRY_LENGTH;
-                            final int stackInfo = extraData[indexLocation + ExtraDataList.UNCONDITIONAL_BRANCH_STACK_INFO];
-                            final int returnTypeLength = (stackInfo >> ExtraDataList.STACK_INFO_RETURN_LENGTH_SHIFT);
-                            final int continuationStackPointer = numLocals + (stackInfo & ExtraDataList.STACK_INFO_STACK_SIZE_MASK);
+                            final int indexLocation = extraOffset + BR_TABLE_ENTRY_OFFSET + (i * BR_TABLE_ENTRY_LENGTH);
 
-                            // Populate the stack with the return values of the current block
-                            // (the one we are escaping from).
-                            unwindStack(frame, stackPointer, continuationStackPointer, returnTypeLength);
-                            offset = extraData[indexLocation + ExtraDataList.UNCONDITIONAL_BRANCH_TARGET_OFFSET];
-                            extraOffset = extraData[indexLocation + ExtraDataList.UNCONDITIONAL_BRANCH_EXTRA_TARGET_OFFSET];
-                            stackPointer = continuationStackPointer + returnTypeLength;
+                            final int stackInfo = extraData[indexLocation + BR_TABLE_ENTRY_STACK_INFO];
+                            final int targetStackPointer = numLocals + (stackInfo & STACK_INFO_STACK_SIZE_MASK);
+                            final int targetReturnLength = (stackInfo >> STACK_INFO_RETURN_LENGTH_SHIFT);
+
+                            unwindStack(frame, stackPointer, targetStackPointer, targetReturnLength);
+
+                            // Jump to branch target.
+                            offset = extraData[indexLocation + BR_TABLE_ENTRY_BYTECODE_INDEX];
+                            extraOffset = extraData[indexLocation + BR_TABLE_ENTRY_EXTRA_INDEX];
+                            stackPointer = targetStackPointer + targetReturnLength;
                             // Break out of the switch case. Keyword break would break inner loop.
-                            continue byteCodeLoop;
+                            continue loop;
                         }
                     }
                     errorBranch();
@@ -445,7 +479,7 @@ public final class WasmBlockNode extends Node {
                     // the current frame.
                     unwindStack(frame, stackPointer, numLocals, returnLength);
                     offset = offsetLimit;
-                    break;
+                    return;
                 }
                 case CALL: {
                     // region Load LEB128 Unsigned32 -> functionIndex
@@ -463,10 +497,10 @@ public final class WasmBlockNode extends Node {
                     Object[] args = createArgumentsForCall(frame, function.typeIndex(), numArgs, stackPointer);
                     stackPointer -= args.length;
 
-                    int childOffset = extraData[extraOffset + ExtraDataList.DIRECT_CALL_CHILD_OFFSET];
-                    extraOffset += ExtraDataList.DIRECT_CALL_LENGTH;
+                    int callNodeIndex = extraData[extraOffset + CALL_NODE_INDEX];
+                    extraOffset += CALL_LENGTH;
 
-                    Object result = executeDirectCall(childOffset, function, args);
+                    Object result = executeDirectCall(callNodeIndex, function, args);
 
                     // At the moment, WebAssembly functions may return up to one value.
                     // As per the WebAssembly specification,
@@ -550,7 +584,7 @@ public final class WasmBlockNode extends Node {
                     offset += 1;
 
                     // Validate that the function type matches the expected type.
-                    boolean functionFromCurrentContext = WasmCodeEntry.profileCondition(extraData, extraOffset + ExtraDataList.INDIRECT_CALL_CONDITION_OFFSET, functionInstanceContext == context);
+                    boolean functionFromCurrentContext = WasmCodeEntry.profileCondition(extraData, extraOffset + CALL_INDIRECT_CONDITION_PROFILE, functionInstanceContext == context);
                     if (functionFromCurrentContext) {
                         // We can do a quick equivalence-class check.
                         if (expectedTypeEquivalenceClass != function.typeEquivalenceClass()) {
@@ -585,12 +619,12 @@ public final class WasmBlockNode extends Node {
                         prev = null;
                     }
 
-                    int childOffset = extraData[extraOffset + ExtraDataList.INDIRECT_CALL_CHILD_OFFSET];
-                    extraOffset += ExtraDataList.INDIRECT_CALL_LENGTH;
+                    int callNodeIndex = extraData[extraOffset + CALL_INDIRECT_NODE_INDEX];
+                    extraOffset += CALL_INDIRECT_LENGTH;
 
                     final Object result;
                     try {
-                        result = executeIndirectCallNode(childOffset, target, args);
+                        result = executeIndirectCallNode(callNodeIndex, target, args);
                     } finally {
                         if (enterContext) {
                             truffleContext.leave(this, prev);
@@ -1352,10 +1386,10 @@ public final class WasmBlockNode extends Node {
     }
 
     @BytecodeInterpreterSwitchBoundary
-    private Object executeDirectCall(int childrenOffset, WasmFunction function, Object[] args) {
+    private Object executeDirectCall(int callNodeIndex, WasmFunction function, Object[] args) {
         final boolean imported = function.isImported();
         CompilerAsserts.partialEvaluationConstant(imported);
-        DirectCallNode callNode = (DirectCallNode) children[childrenOffset];
+        DirectCallNode callNode = (DirectCallNode) callNodes[callNodeIndex];
         assert assertDirectCall(function, callNode);
         if (imported) {
             WasmFunctionInstance functionInstance = instance.functionInstance(function.index());
@@ -1384,8 +1418,8 @@ public final class WasmBlockNode extends Node {
     }
 
     @BytecodeInterpreterSwitchBoundary
-    private Object executeIndirectCallNode(int childrenOffset, CallTarget target, Object[] args) {
-        WasmIndirectCallNode callNode = (WasmIndirectCallNode) children[childrenOffset];
+    private Object executeIndirectCallNode(int callNodeIndex, CallTarget target, Object[] args) {
+        WasmIndirectCallNode callNode = (WasmIndirectCallNode) callNodes[callNodeIndex];
         return callNode.execute(target, args);
     }
 
@@ -2958,10 +2992,10 @@ public final class WasmBlockNode extends Node {
     }
 
     @TruffleBoundary
-    public void resolveCallNode(int childOffset) {
-        final WasmFunction function = ((WasmCallStubNode) children[childOffset]).function();
+    public void resolveCallNode(int callNodeIndex) {
+        final WasmFunction function = ((WasmCallStubNode) callNodes[callNodeIndex]).function();
         final CallTarget target = instance.target(function.index());
-        children[childOffset] = DirectCallNode.create(target);
+        callNodes[callNodeIndex] = DirectCallNode.create(target);
     }
 
     @ExplodeLoop
@@ -2994,14 +3028,23 @@ public final class WasmBlockNode extends Node {
         return args;
     }
 
+    /**
+     * Populates the stack with the return values of the current block (the one we are escaping
+     * from). Reset the stack pointer to the target block stack pointer.
+     * 
+     * @param frame The current frame.
+     * @param stackPointer The current stack pointer.
+     * @param targetStackPointer The stack pointer of the target block.
+     * @param targetReturnLength The return value count of the target block.
+     */
     @ExplodeLoop
-    private static void unwindStack(VirtualFrame frame, int stackPointer, int continuationStackPointer, int returnLength) {
+    private static void unwindStack(VirtualFrame frame, int stackPointer, int targetStackPointer, int targetReturnLength) {
         CompilerAsserts.partialEvaluationConstant(stackPointer);
-        CompilerAsserts.partialEvaluationConstant(returnLength);
-        for (int i = 0; i < returnLength; ++i) {
-            WasmFrame.copy(frame, stackPointer + i - 1, continuationStackPointer + i);
+        CompilerAsserts.partialEvaluationConstant(targetReturnLength);
+        for (int i = 0; i < targetReturnLength; ++i) {
+            WasmFrame.copy(frame, stackPointer + i - 1, targetStackPointer + i);
         }
-        for (int i = continuationStackPointer + returnLength; i < stackPointer; ++i) {
+        for (int i = targetStackPointer + targetReturnLength; i < stackPointer; ++i) {
             drop(frame, i);
         }
     }

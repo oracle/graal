@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -161,10 +161,10 @@ public class WasmInstantiator {
     private WasmBlockNode instantiateBlockNode(WasmInstance instance, WasmCodeEntry codeEntry, CodeEntry entry) {
         int returnLength = entry.getReturnTypeId() == WasmType.VOID_TYPE ? 0 : 1;
         final WasmBlockNode currentBlock = new WasmBlockNode(instance, codeEntry, entry.getStartOffset(), entry.getEndOffset(), entry.getReturnTypeId(), returnLength);
-        List<CallNode> childNodes = entry.getCallNodes();
-        Node[] children = new Node[childNodes.size()];
+        List<CallNode> childNodeList = entry.getCallNodes();
+        Node[] callNodes = new Node[childNodeList.size()];
         int childIndex = 0;
-        for (CallNode callNode : childNodes) {
+        for (CallNode callNode : childNodeList) {
             Node child;
             if (callNode.isIndirectCall()) {
                 child = WasmIndirectCallNode.create();
@@ -181,9 +181,9 @@ public class WasmInstantiator {
                 final int stubIndex = childIndex;
                 instance.module().addLinkAction((context, inst) -> context.linker().resolveCallsite(inst, currentBlock, stubIndex, function));
             }
-            children[childIndex++] = child;
+            callNodes[childIndex++] = child;
         }
-        currentBlock.initialize(children);
+        currentBlock.initializeCallNodes(callNodes);
         return currentBlock;
     }
 }
