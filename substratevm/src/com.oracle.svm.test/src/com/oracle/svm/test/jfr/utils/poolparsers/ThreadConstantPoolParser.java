@@ -43,7 +43,7 @@ public class ThreadConstantPoolParser extends ConstantPoolParser {
             Assert.assertTrue("OSThreadId is not correct!", input.readLong() >= 0); // OSThreadId.
             input.readUTF(); // JavaThreadName.
             Assert.assertTrue("JavaThreadId is not correct!", input.readLong() >= 0); // JavaThreadId.
-            addExpectedId(JfrTypes.ThreadGroup.getId(), input.readLong()); // ThreadGroupId.
+            addExpectedId(JfrTypes.ThreadGroup, input.readLong()); // ThreadGroupId.
         }
     }
 }

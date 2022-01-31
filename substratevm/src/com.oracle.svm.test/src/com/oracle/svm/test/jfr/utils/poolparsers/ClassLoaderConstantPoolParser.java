@@ -38,8 +38,8 @@ public class ClassLoaderConstantPoolParser extends ConstantPoolParser {
         int numberOfClassLoaders = input.readInt();
         for (int i = 0; i < numberOfClassLoaders; i++) {
             addFoundId(input.readLong()); // ClassLoaderId.
-            addExpectedId(JfrTypes.Class.getId(), input.readLong()); // ClassId.
-            addExpectedId(JfrTypes.Symbol.getId(), input.readLong()); // ClassLoaderName.
+            addExpectedId(JfrTypes.Class, input.readLong()); // ClassId.
+            addExpectedId(JfrTypes.Symbol, input.readLong()); // ClassLoaderName.
         }
     }
 }

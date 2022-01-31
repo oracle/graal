@@ -38,8 +38,8 @@ public class PackageConstantPoolParser extends ConstantPoolParser {
         int numberOfPackages = input.readInt();
         for (int i = 0; i < numberOfPackages; i++) {
             addFoundId(input.readLong()); // PackageId.
-            addExpectedId(JfrTypes.Symbol.getId(), input.readLong()); // PackageName.
-            addExpectedId(JfrTypes.Module.getId(), input.readLong()); // ModuleId.
+            addExpectedId(JfrTypes.Symbol, input.readLong()); // PackageName.
+            addExpectedId(JfrTypes.Module, input.readLong()); // ModuleId.
             input.readBoolean(); // IsExported.
         }
     }

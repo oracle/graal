@@ -38,10 +38,10 @@ public class ModuleConstantPoolParser extends ConstantPoolParser {
         int numberOfModules = input.readInt();
         for (int i = 0; i < numberOfModules; i++) {
             addFoundId(input.readLong()); // ModuleId.
-            addExpectedId(JfrTypes.Symbol.getId(), input.readLong()); // ModuleName.
-            addExpectedId(JfrTypes.Symbol.getId(), input.readLong()); // Version.
-            addExpectedId(JfrTypes.Symbol.getId(), input.readLong()); // Location.
-            addExpectedId(JfrTypes.ClassLoader.getId(), input.readLong()); // ClassLoaderId.
+            addExpectedId(JfrTypes.Symbol, input.readLong()); // ModuleName.
+            addExpectedId(JfrTypes.Symbol, input.readLong()); // Version.
+            addExpectedId(JfrTypes.Symbol, input.readLong()); // Location.
+            addExpectedId(JfrTypes.ClassLoader, input.readLong()); // ClassLoaderId.
         }
     }
 }

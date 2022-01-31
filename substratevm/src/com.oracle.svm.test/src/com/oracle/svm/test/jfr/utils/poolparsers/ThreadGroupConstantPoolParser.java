@@ -38,7 +38,7 @@ public class ThreadGroupConstantPoolParser extends ConstantPoolParser {
         int numberOfThreadGroups = input.readInt();
         for (int i = 0; i < numberOfThreadGroups; i++) {
             addFoundId(input.readLong()); // ThreadGroupId.
-            addExpectedId(JfrTypes.ThreadGroup.getId(), input.readLong()); // ParentThreadGroupId.
+            addExpectedId(JfrTypes.ThreadGroup, input.readLong()); // ParentThreadGroupId.
             input.readUTF(); // ThreadGroupName.
         }
     }

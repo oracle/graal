@@ -33,6 +33,7 @@ import java.io.IOException;
 import java.util.HashMap;
 
 import com.oracle.svm.core.jfr.JfrChunkWriter;
+import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.JfrTypes;
 
 import com.oracle.svm.test.jfr.utils.poolparsers.ClassConstantPoolParser;
@@ -41,7 +42,6 @@ import com.oracle.svm.test.jfr.utils.poolparsers.ConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.FrameTypeConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.MethodConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.ModuleConstantPoolParser;
-import com.oracle.svm.test.jfr.utils.poolparsers.NotFoundConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.PackageConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.StacktraceConstantPoolParser;
 import com.oracle.svm.test.jfr.utils.poolparsers.SymbolConstantPoolParser;
@@ -53,12 +53,10 @@ import org.junit.Assert;
 
 public class JFRFileParser {
 
-    private static final NotFoundConstantPoolParser notFoundConstantPoolParser;
     private static final HashMap<Long, ConstantPoolParser> supportedConstantPools;
 
     static {
         supportedConstantPools = new HashMap<>();
-        notFoundConstantPoolParser = new NotFoundConstantPoolParser();
 
         supportedConstantPools.put(JfrTypes.Class.getId(), new ClassConstantPoolParser());
         supportedConstantPools.put(JfrTypes.ClassLoader.getId(), new ClassLoaderConstantPoolParser());
@@ -90,14 +88,16 @@ public class JFRFileParser {
         long constantPoolPosition = input.readRawLong();
         assertTrue("Constant pool positions is invalid!", constantPoolPosition > 0);
         long metadataPosition = input.readRawLong();
-        assertTrue("Metadata positions is equals to null!", metadataPosition > 0);
+        assertTrue("Metadata positions is null!", metadataPosition != 0);
 
-        assertTrue("Starting time is invalid!", input.readRawLong() > 0); // Starting time.
+        long startingTime = input.readRawLong();
+        assertTrue("Starting time is invalid!", startingTime > 0); // Starting time.
+        Assert.assertTrue("Starting time is bigger than current time!", startingTime < JfrTicks.currentTimeNanos());
         input.readRawLong(); // Duration.
         assertTrue("Chunk start tick is invalid!", input.readRawLong() > 0); // ChunkStartTick.
         assertTrue("Tick frequency is invalid!", input.readRawLong() > 0); // Tick frequency.
         int shouldUseCompressedInt = input.readRawInt();
-        assertTrue("Compressed int can be either 0 or 1!", shouldUseCompressedInt == 0 || shouldUseCompressedInt == 1); // ChunkWriteTick.
+        assertTrue("Compressed int must be either 0 or 1!", shouldUseCompressedInt == 0 || shouldUseCompressedInt == 1); // ChunkWriteTick.
 
         return new Positions(constantPoolPosition, metadataPosition);
     }
@@ -116,12 +116,12 @@ public class JFRFileParser {
         MetadataDescriptor.read(input);
     }
 
-    private static long parseConstantPoolsHeader(RecordingInput input, long constantPoolPosition) throws IOException {
+    private static long parseConstantPoolHeader(RecordingInput input, long constantPoolPosition) throws IOException {
         input.position(constantPoolPosition); // Seek to starting position of constant pools.
-        assertTrue("Constant pool size is invalid!", input.readInt() > 0); // Size of constant
-                                                                           // pools.
-        assertEquals(JfrChunkWriter.CONSTANT_POOL_TYPE_ID, input.readLong()); // Constant pools
-                                                                              // region ID.
+        // Size of constant pools.
+        assertTrue("Constant pool size is invalid!", input.readInt() > 0);
+        // Constant pools region ID.
+        assertEquals(JfrChunkWriter.CONSTANT_POOL_TYPE_ID, input.readLong());
         assertTrue("Constant pool timestamp is invalid!", input.readLong() > 0); // Timestamp.
         input.readLong(); // Duration.
         long deltaNext = input.readLong(); // Offset to a next constant pools region.
@@ -131,29 +131,30 @@ public class JFRFileParser {
 
     private static void compareFoundAndExceptedIds() {
         for (ConstantPoolParser parser : supportedConstantPools.values()) {
-            Assert.assertTrue("Number of expected IDs are not equals to the number of found during parsing " +
-                            "of " + parser + " constant pool!", parser.compare());
+            parser.compareFoundAndExceptedIds();
         }
     }
 
-    private static void parseConstantPools(RecordingInput input, long constantPoolPosition) throws IOException {
-        long deltaNext = parseConstantPoolsHeader(input, constantPoolPosition);
-        long numberOfCPs = input.readInt();
-        for (int i = 0; i < numberOfCPs; i++) {
-            supportedConstantPools.getOrDefault(input.readLong(), notFoundConstantPoolParser).parse(input);
-        }
-
-        compareFoundAndExceptedIds();
-
-        if (deltaNext != 0) {
-            parseConstantPools(input, constantPoolPosition + deltaNext);
-        }
+    private static void verifyConstantPools(RecordingInput input, long constantPoolPosition) throws IOException {
+        long deltaNext;
+        long currentConstantPoolPosition = constantPoolPosition;
+        do {
+            deltaNext = parseConstantPoolHeader(input, currentConstantPoolPosition);
+            long numberOfCPs = input.readInt();
+            for (int i = 0; i < numberOfCPs; i++) {
+                ConstantPoolParser constantPoolParser = supportedConstantPools.get(input.readLong());
+                Assert.assertNotNull("Unknown constant pool!", constantPoolParser);
+                constantPoolParser.parse(input);
+            }
+            compareFoundAndExceptedIds();
+            currentConstantPoolPosition += deltaNext;
+        } while (deltaNext != 0);
     }
 
     public static void parse(Recording recording) throws IOException {
         RecordingInput input = new RecordingInput(recording.getDestination().toFile());
         Positions positions = parserFileHeader(input);
-        parseConstantPools(input, positions.getConstantPoolPosition());
+        verifyConstantPools(input, positions.getConstantPoolPosition());
         parseMetadata(input, positions.getMetadataPosition());
     }
 

@@ -39,9 +39,9 @@ public class MethodConstantPoolParser extends ConstantPoolParser {
         int numberOfMethods = input.readInt();
         for (int i = 0; i < numberOfMethods; i++) {
             addFoundId(input.readLong()); // MethodId.
-            addExpectedId(JfrTypes.Class.getId(), input.readLong()); // ClassId.
-            addExpectedId(JfrTypes.Symbol.getId(), input.readLong()); // MethodName.
-            addExpectedId(JfrTypes.Symbol.getId(), input.readLong()); // Descriptor.
+            addExpectedId(JfrTypes.Class, input.readLong()); // ClassId.
+            addExpectedId(JfrTypes.Symbol, input.readLong()); // MethodName.
+            addExpectedId(JfrTypes.Symbol, input.readLong()); // Descriptor.
             Assert.assertTrue("Modifier value is not correct!", input.readInt() >= 0); // Modifier.
             input.readBoolean(); // Hidden.
         }

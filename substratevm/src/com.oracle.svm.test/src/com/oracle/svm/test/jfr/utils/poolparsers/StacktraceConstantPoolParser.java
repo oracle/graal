@@ -41,10 +41,10 @@ public class StacktraceConstantPoolParser extends ConstantPoolParser {
             input.readBoolean(); // IsTruncated.
             int stackTraceSize = input.readInt(); // StackFrameSize.
             for (int j = 0; j < stackTraceSize; j++) {
-                addExpectedId(JfrTypes.Method.getId(), input.readLong()); // MethodId.
+                addExpectedId(JfrTypes.Method, input.readLong()); // MethodId.
                 input.readInt(); // LineNumber.
                 input.readInt(); // Bci.
-                addExpectedId(JfrTypes.FrameType.getId(), input.readLong()); // FrameTypeId.
+                addExpectedId(JfrTypes.FrameType, input.readLong()); // FrameTypeId.
             }
         }
     }
