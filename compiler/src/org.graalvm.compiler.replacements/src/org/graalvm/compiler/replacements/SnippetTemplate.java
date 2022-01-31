@@ -2099,7 +2099,7 @@ public class SnippetTemplate {
                 WithExceptionNode fallbackInvokeNode = (WithExceptionNode) duplicates.get(fallbackInvoke);
                 MacroWithExceptionNode macroNode = (MacroWithExceptionNode) replacee;
                 // create fallback invoke
-                InvokeWithExceptionNode invoke = macroNode.createInvoke(returnValue, true);
+                InvokeWithExceptionNode invoke = macroNode.createInvoke(returnValue);
                 // replace placeholder
                 replaceeGraph.replaceWithExceptionSplit(fallbackInvokeNode, invoke);
                 // register the invoke as the replacement for the fallback invoke

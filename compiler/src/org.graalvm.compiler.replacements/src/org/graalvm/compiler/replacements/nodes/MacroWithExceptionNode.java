@@ -133,7 +133,9 @@ public abstract class MacroWithExceptionNode extends WithExceptionNode implement
     @SuppressWarnings("try")
     public Invoke replaceWithInvoke() {
         try (DebugCloseable context = withNodeSourcePosition()) {
-            InvokeWithExceptionNode invoke = createInvoke(this, true);
+            InvokeWithExceptionNode invoke = createInvoke(this);
+            graph().replaceWithExceptionSplit(this, invoke);
+            assert invoke.verify();
             return invoke;
         }
     }
@@ -145,9 +147,8 @@ public abstract class MacroWithExceptionNode extends WithExceptionNode implement
      * @param oldResult represents the result of this node in the {@link #stateAfter()}. Usually, it
      *            is {@code this}, but if this node has already been replaced it might be a
      *            different one.
-     * @param verifyStamp
      */
-    public InvokeWithExceptionNode createInvoke(Node oldResult, boolean verifyStamp) {
+    public InvokeWithExceptionNode createInvoke(Node oldResult) {
         MethodCallTargetNode callTarget = graph().add(new MethodCallTargetNode(invokeKind, targetMethod, getArguments().toArray(new ValueNode[arguments.size()]), returnStamp, null));
         InvokeWithExceptionNode invoke = graph().add(new InvokeWithExceptionNode(callTarget, null, bci));
         if (stateAfter() != null) {
@@ -156,11 +157,7 @@ public abstract class MacroWithExceptionNode extends WithExceptionNode implement
                 invoke.stateAfter().replaceFirstInput(oldResult, invoke);
             }
         }
-        graph().replaceWithExceptionSplit(this, invoke);
-        if (verifyStamp) {
-            verifyStamp();
-        }
-        assert invoke.verify();
+        verifyStamp();
         return invoke;
     }
 

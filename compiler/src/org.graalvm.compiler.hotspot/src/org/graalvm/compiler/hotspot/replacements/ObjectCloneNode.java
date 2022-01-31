@@ -35,7 +35,7 @@ import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.hotspot.meta.HotSpotLoweringProvider;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.Invoke;
+import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.ReturnNode;
@@ -89,7 +89,8 @@ public final class ObjectCloneNode extends BasicObjectCloneNode {
         if (replacementGraph != null) {
             // Replace this node with an invoke but disable verification of the stamp since the
             // invoke only exists for the purpose of performing the inling.
-            Invoke invoke = createInvoke(false);
+            InvokeNode invoke = createInvoke(false);
+            graph().replaceFixedWithFixed(this, invoke);
 
             // Pull out the receiver null check so that a replaced
             // receiver can be lowered if necessary

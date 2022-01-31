@@ -205,7 +205,10 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
     @SuppressWarnings("try")
     public Invoke replaceWithInvoke() {
         try (DebugCloseable context = withNodeSourcePosition()) {
-            return createInvoke(true);
+            InvokeNode invoke = createInvoke(true);
+            graph().replaceFixedWithFixed(this, invoke);
+            assert invoke.verify();
+            return invoke;
         }
     }
 
@@ -227,11 +230,9 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
                 invoke.stateAfter().replaceFirstInput(this, invoke);
             }
         }
-        graph().replaceFixedWithFixed(this, invoke);
         if (verifyStamp) {
             verifyStamp();
         }
-        assert invoke.verify();
         return invoke;
     }
 }

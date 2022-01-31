@@ -32,7 +32,6 @@ import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.Invokable;
 import org.graalvm.compiler.nodes.Invoke;
-import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -51,12 +50,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  * Macro invokable nodes can be used to temporarily replace an invoke. They can, for example, be
  * used to implement constant folding for known JDK functions like {@link Class#isInterface()}.<br/>
  * <br/>
- * During lowering, multiple sources are queried in order to look for a replacement:
- * <ul>
- * <li>If {@link #getLoweredSnippetGraph(LoweringTool)} returns a non-null result, this graph is
- * used as a replacement.</li>
- * <li>Otherwise, the macro node is replaced with an {@link InvokeNode}.</li>
- * </ul>
+ * During lowering subclasses may lower the node as appropriate. Otherwise, the macro node is
+ * replaced with an {@link Invoke}.
  */
 public interface MacroInvokable extends Invokable, Lowerable, StateSplit, SingleMemoryKill {
 
