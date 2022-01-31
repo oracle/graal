@@ -74,7 +74,7 @@ final class Target_jdk_internal_misc_Unsafe_JavaThreads {
                 throw new IllegalArgumentException("Unsafe.unpark(!(thread instanceof Thread))");
             }
             Thread thread = (Thread) threadObj;
-            if (!VirtualThreads.isSupported() || !VirtualThreads.get().isVirtual(thread)) {
+            if (!VirtualThreads.isSupported() || !VirtualThreads.singleton().isVirtual(thread)) {
                 PlatformThreads.unpark(thread);
             }
         }

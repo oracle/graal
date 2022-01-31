@@ -32,7 +32,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 /** Operations on virtual threads. */
 public interface VirtualThreads {
     @Fold
-    static VirtualThreads get() {
+    static VirtualThreads singleton() {
         ContinuationsFeature.abortIfUnsupported();
         return ImageSingletons.lookup(VirtualThreads.class);
     }

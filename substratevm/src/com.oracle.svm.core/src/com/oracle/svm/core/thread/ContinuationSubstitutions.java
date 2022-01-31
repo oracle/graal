@@ -45,8 +45,8 @@ final class Target_java_util_concurrent_locks_LockSupport {
     @Substitute
     static void unpark(Thread thread) {
         if (thread != null) {
-            if (VirtualThreads.get().isVirtual(thread)) {
-                VirtualThreads.get().unpark(thread);
+            if (VirtualThreads.singleton().isVirtual(thread)) {
+                VirtualThreads.singleton().unpark(thread);
             } else {
                 U.unpark(thread);
             }
@@ -58,8 +58,8 @@ final class Target_java_util_concurrent_locks_LockSupport {
         Thread t = Thread.currentThread();
         setBlocker(t, blocker);
         try {
-            if (VirtualThreads.get().isVirtual(t)) {
-                VirtualThreads.get().park();
+            if (VirtualThreads.singleton().isVirtual(t)) {
+                VirtualThreads.singleton().park();
             } else {
                 U.park(false, 0L);
             }
@@ -74,8 +74,8 @@ final class Target_java_util_concurrent_locks_LockSupport {
             Thread t = Thread.currentThread();
             setBlocker(t, blocker);
             try {
-                if (VirtualThreads.get().isVirtual(t)) {
-                    VirtualThreads.get().parkNanos(nanos);
+                if (VirtualThreads.singleton().isVirtual(t)) {
+                    VirtualThreads.singleton().parkNanos(nanos);
                 } else {
                     U.park(false, nanos);
                 }
@@ -90,8 +90,8 @@ final class Target_java_util_concurrent_locks_LockSupport {
         Thread t = Thread.currentThread();
         setBlocker(t, blocker);
         try {
-            if (VirtualThreads.get().isVirtual(t)) {
-                VirtualThreads.get().parkUntil(deadline);
+            if (VirtualThreads.singleton().isVirtual(t)) {
+                VirtualThreads.singleton().parkUntil(deadline);
             } else {
                 U.park(true, deadline);
             }
@@ -102,8 +102,8 @@ final class Target_java_util_concurrent_locks_LockSupport {
 
     @Substitute
     static void park() {
-        if (VirtualThreads.get().isVirtual(Thread.currentThread())) {
-            VirtualThreads.get().park();
+        if (VirtualThreads.singleton().isVirtual(Thread.currentThread())) {
+            VirtualThreads.singleton().park();
         } else {
             U.park(false, 0L);
         }
@@ -112,8 +112,8 @@ final class Target_java_util_concurrent_locks_LockSupport {
     @Substitute
     public static void parkNanos(long nanos) {
         if (nanos > 0) {
-            if (VirtualThreads.get().isVirtual(Thread.currentThread())) {
-                VirtualThreads.get().parkNanos(nanos);
+            if (VirtualThreads.singleton().isVirtual(Thread.currentThread())) {
+                VirtualThreads.singleton().parkNanos(nanos);
                 ((SubstrateVirtualThread) Thread.currentThread()).parkNanos(nanos);
             } else {
                 U.park(false, nanos);
@@ -123,8 +123,8 @@ final class Target_java_util_concurrent_locks_LockSupport {
 
     @Substitute
     public static void parkUntil(long deadline) {
-        if (VirtualThreads.get().isVirtual(Thread.currentThread())) {
-            VirtualThreads.get().parkUntil(deadline);
+        if (VirtualThreads.singleton().isVirtual(Thread.currentThread())) {
+            VirtualThreads.singleton().parkUntil(deadline);
         } else {
             U.park(true, deadline);
         }
@@ -147,12 +147,12 @@ final class NativeThreadSetUsedAccessors {
 
     static void set(Target_sun_nio_ch_NativeThreadSet that, int value) {
         // Note that the accessing method holds a lock that prevents concurrent updates
-        if (VirtualThreads.get().isVirtual(Thread.currentThread())) {
+        if (VirtualThreads.singleton().isVirtual(Thread.currentThread())) {
             int diff = value - that.injectedUsed;
             if (diff == 1) {
-                VirtualThreads.get().pinCurrent();
+                VirtualThreads.singleton().pinCurrent();
             } else if (diff == -1) {
-                VirtualThreads.get().unpinCurrent();
+                VirtualThreads.singleton().unpinCurrent();
             } else {
                 assert value == 0 : "must only be incremented or decremented by 1 (or initialized to 0)";
             }

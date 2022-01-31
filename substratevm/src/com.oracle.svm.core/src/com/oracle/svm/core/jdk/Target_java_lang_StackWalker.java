@@ -146,7 +146,7 @@ final class Target_java_lang_StackWalker {
             JavaStackWalk walk = StackValue.get(JavaStackWalk.class);
             Pointer sp = KnownIntrinsics.readCallerStackPointer();
 
-            if (LoomSupport.isEnabled() && (this.contScope != null || VirtualThreads.get().isVirtual(thread))) {
+            if (LoomSupport.isEnabled() && (this.contScope != null || VirtualThreads.singleton().isVirtual(thread))) {
                 // has a delimitation scope
                 Target_java_lang_ContinuationScope delimitationScope = this.contScope != null ? this.contScope : Target_java_lang_VirtualThread.continuationScope();
                 Target_java_lang_Continuation topContinuation = Target_java_lang_Continuation.getCurrentContinuation(delimitationScope);

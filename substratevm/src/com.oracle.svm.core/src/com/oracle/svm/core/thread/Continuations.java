@@ -28,7 +28,7 @@ import java.util.concurrent.ThreadFactory;
 
 public final class Continuations {
     public static ThreadFactory virtualThreadFactory() {
-        return VirtualThreads.get().createFactory();
+        return VirtualThreads.singleton().createFactory();
     }
 
     private Continuations() {

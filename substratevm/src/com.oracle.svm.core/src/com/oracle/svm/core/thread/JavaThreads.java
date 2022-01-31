@@ -123,7 +123,7 @@ public class JavaThreads {
 
     static boolean getAndClearInterrupt(Thread thread) {
         if (supportsVirtual() && isVirtual(thread)) {
-            return VirtualThreads.get().getAndClearInterrupt(thread);
+            return VirtualThreads.singleton().getAndClearInterrupt(thread);
         }
         return getAndClearInterruptedFlag(thread);
     }
@@ -162,7 +162,7 @@ public class JavaThreads {
     }
 
     static boolean isVirtual(Thread thread) {
-        return supportsVirtual() && VirtualThreads.get().isVirtual(thread);
+        return supportsVirtual() && VirtualThreads.singleton().isVirtual(thread);
     }
 
     private static boolean isVirtualDisallowLoom(Thread thread) {
@@ -183,7 +183,7 @@ public class JavaThreads {
             throw new IllegalArgumentException("timeout value is negative");
         }
         if (supportsVirtual() && isVirtual(thread)) {
-            VirtualThreads.get().join(thread, millis);
+            VirtualThreads.singleton().join(thread, millis);
         } else {
             PlatformThreads.join(thread, millis);
         }
@@ -191,7 +191,7 @@ public class JavaThreads {
 
     static void yieldCurrent() {
         if (supportsVirtual() && isVirtualDisallowLoom(Thread.currentThread())) {
-            VirtualThreads.get().yield();
+            VirtualThreads.singleton().yield();
         } else {
             PlatformThreads.singleton().yieldCurrent();
         }
@@ -281,7 +281,7 @@ public class JavaThreads {
         }
         LoomSupport.CompatibilityUtil.initThreadFields(tjlt, group, target, stackSize, priority, daemon, ThreadStatus.NEW);
 
-        if (!LoomSupport.isEnabled() && !(VirtualThreads.isSupported() && VirtualThreads.get().isVirtual(fromTarget(tjlt)))) {
+        if (!LoomSupport.isEnabled() && !(VirtualThreads.isSupported() && VirtualThreads.singleton().isVirtual(fromTarget(tjlt)))) {
             JavaThreads.toTarget(group).addUnstarted();
         }
 
@@ -295,7 +295,7 @@ public class JavaThreads {
 
     static void sleep(long millis) throws InterruptedException {
         if (supportsVirtual() && isVirtualDisallowLoom(Thread.currentThread())) {
-            VirtualThreads.get().sleepMillis(millis);
+            VirtualThreads.singleton().sleepMillis(millis);
         } else {
             PlatformThreads.sleep(millis);
         }
@@ -303,7 +303,7 @@ public class JavaThreads {
 
     static boolean isAlive(Thread thread) {
         if (supportsVirtual() && isVirtualDisallowLoom(thread)) {
-            return VirtualThreads.get().isAlive(thread);
+            return VirtualThreads.singleton().isAlive(thread);
         }
         return PlatformThreads.isAlive(thread);
     }

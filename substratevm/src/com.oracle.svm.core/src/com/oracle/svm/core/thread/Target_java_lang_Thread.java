@@ -518,7 +518,7 @@ public final class Target_java_lang_Thread {
 
     @Substitute
     private StackTraceElement[] getStackTrace() {
-        if (LoomSupport.isEnabled() && VirtualThreads.get().isVirtual(JavaThreads.fromTarget(this))) {
+        if (LoomSupport.isEnabled() && VirtualThreads.singleton().isVirtual(JavaThreads.fromTarget(this))) {
             return asyncGetStackTrace();
         }
         return JavaThreads.getStackTrace(JavaThreads.fromTarget(this));

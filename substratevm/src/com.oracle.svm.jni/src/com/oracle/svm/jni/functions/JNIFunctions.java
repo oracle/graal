@@ -1017,11 +1017,11 @@ public final class JNIFunctions {
             throw new NullPointerException();
         }
         boolean pinned = false;
-        if (VirtualThreads.isSupported() && VirtualThreads.get().isVirtual(Thread.currentThread())) {
+        if (VirtualThreads.isSupported() && VirtualThreads.singleton().isVirtual(Thread.currentThread())) {
             // Acquiring monitors via JNI associates them with the carrier thread via
             // JNIThreadOwnedMonitors, so we must pin the virtual thread
             try {
-                VirtualThreads.get().pinCurrent();
+                VirtualThreads.singleton().pinCurrent();
             } catch (IllegalStateException e) { // too many pins
                 throw new IllegalMonitorStateException();
             }
@@ -1041,7 +1041,7 @@ public final class JNIFunctions {
                     MonitorSupport.singleton().monitorExit(obj);
                 }
                 if (pinned) {
-                    VirtualThreads.get().unpinCurrent();
+                    VirtualThreads.singleton().unpinCurrent();
                 }
             } catch (Throwable u) {
                 throw VMError.shouldNotReachHere(u);
@@ -1065,9 +1065,9 @@ public final class JNIFunctions {
         }
         MonitorSupport.singleton().monitorExit(obj);
         JNIThreadOwnedMonitors.exited(obj);
-        if (VirtualThreads.isSupported() && VirtualThreads.get().isVirtual(Thread.currentThread())) {
+        if (VirtualThreads.isSupported() && VirtualThreads.singleton().isVirtual(Thread.currentThread())) {
             try {
-                VirtualThreads.get().unpinCurrent();
+                VirtualThreads.singleton().unpinCurrent();
             } catch (IllegalStateException e) { // not pinned?
                 throw new IllegalMonitorStateException();
             }
