@@ -407,8 +407,10 @@ public final class DynamicHub implements JavaKind.FormatWithToString, AnnotatedE
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void setAnnotationsEncoding(Object annotationsEncoding) {
+    public boolean setAnnotationsEncoding(Object annotationsEncoding) {
+        boolean result = this.annotationsEncoding != annotationsEncoding;
         this.annotationsEncoding = annotationsEncoding;
+        return result;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

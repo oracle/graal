@@ -4,6 +4,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 
 ## Version 22.1.0
 * (GR-35898) Improved handling of static synchronized methods: the lock is no longer stored in the secondary monitor map, but in the mutable DynamicHubCompanion object.
+* Remove support for JDK8. As a result, `JDK8OrEarlier` and `JDK11OrLater` have been deprecated and will be removed in a future release.
 
 ## Version 22.0.0
 * (GR-33930) Decouple HostedOptionParser setup from classpath/modulepath scanning (use ServiceLoader for collecting options).

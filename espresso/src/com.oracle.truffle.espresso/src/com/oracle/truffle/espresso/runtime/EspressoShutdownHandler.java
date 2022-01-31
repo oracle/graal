@@ -24,6 +24,7 @@
 package com.oracle.truffle.espresso.runtime;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.threads.EspressoThreadRegistry;
@@ -152,7 +153,7 @@ class EspressoShutdownHandler implements ContextAccess {
         waitForClose();
         try {
             getMeta().java_lang_Shutdown_shutdown.invokeDirect(null);
-        } catch (EspressoException | EspressoExitException e) {
+        } catch (AbstractTruffleException e) {
             /* Suppress guest exception so as not to bypass teardown */
         }
         if (isClosing()) {

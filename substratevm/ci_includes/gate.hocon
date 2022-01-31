@@ -69,6 +69,7 @@ builds += [
   }
   ${labsjdk-ce-17} ${svm-common-gate} ${svm-common-windows-jdk17} ${svmUnittest} {
     name: "gate-svm-windows-basics"
+    timelimit: "1:30:00"
     run: [
       ${svm-cmd-gate} ["build,helloworld,test,svmjunit"]
     ]

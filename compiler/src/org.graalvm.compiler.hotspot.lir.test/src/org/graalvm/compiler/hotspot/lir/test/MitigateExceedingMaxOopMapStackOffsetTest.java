@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -115,14 +115,13 @@ public class MitigateExceedingMaxOopMapStackOffsetTest extends LIRTest {
 
     @Override
     protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
-        InvocationPlugin safepointPlugin = new InvocationPlugin() {
+        conf.getPlugins().getInvocationPlugins().register(getClass(), new InvocationPlugin("safepoint") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.add(new SafepointNode());
                 return true;
             }
-        };
-        conf.getPlugins().getInvocationPlugins().register(safepointPlugin, getClass(), "safepoint");
+        });
         return super.editGraphBuilderConfiguration(conf);
     }
 

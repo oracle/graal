@@ -31,6 +31,7 @@ local jdks = common_json.jdks;
   },
 
   vm_common_windows_jdk8:: vm_common.svm_common_windows_openjdk8,
+  vm_common_windows_jdk11:: vm_common.svm_common_windows_jdk11,
 
   vm_linux_amd64_java_11:: self.vm_java_11 + {
     downloads+: {
@@ -62,10 +63,9 @@ local jdks = common_json.jdks;
     ],
   },
 
-  maven_base_8_11:: {
+  maven_base_11:: {
     downloads+: {
-      JAVA_HOME: jdks.openjdk8,
-      EXTRA_JAVA_HOMES: jdks['labsjdk-ce-11'],
+      JAVA_HOME: jdks['labsjdk-ce-11'],
     },
     mx_cmd_base:: ['mx', '--dynamicimports', '/tools,/compiler,/graal-js,/espresso', '--disable-installables=true'],
     build:: self.mx_cmd_base + ['build'],
@@ -154,20 +154,20 @@ local jdks = common_json.jdks;
       ],
       name: 'gate-vm-build-without-vcs',
     },
-    vm_common.linux_deploy + vm_common.gate_vm_linux_amd64 + self.maven_base_8_11 + vm_common.sulong_linux + {
+    vm_common.linux_deploy + vm_common.gate_vm_linux_amd64 + self.maven_base_11 + vm_common.sulong_linux + {
       run: [
-        $.maven_base_8_11.build,
-        $.maven_base_8_11.deploy + ['--dry-run', 'lafo-maven'],
+        $.maven_base_11.build,
+        $.maven_base_11.deploy + ['--dry-run', 'lafo-maven'],
       ],
       name: 'gate-vm-maven-dry-run-linux-amd64',
     },
-    vm_common.linux_deploy + vm_common.gate_vm_linux_amd64 + self.maven_base_8_11 + vm_common.sulong_linux + {
+    vm_common.linux_deploy + vm_common.gate_vm_linux_amd64 + self.maven_base_11 + vm_common.sulong_linux + {
       downloads+: {
         OPEN_JDK_11: common_json.jdks.openjdk11,
       },
       run: [
-        $.maven_base_8_11.build,
-        $.maven_base_8_11.deploy + ['--version-string', 'GATE'],
+        $.maven_base_11.build,
+        $.maven_base_11.deploy + ['--version-string', 'GATE'],
         ['set-export', 'JAVA_HOME', '$OPEN_JDK_11'],
         ['git', 'clone', '--depth', '1', ['mx', 'urlrewrite', 'https://github.com/graalvm/graal-js-jdk11-maven-demo.git'], 'graal-js-jdk11-maven-demo'],
         ['cd', 'graal-js-jdk11-maven-demo'],
@@ -176,10 +176,10 @@ local jdks = common_json.jdks;
       ],
       name: 'gate-vm-js-on-jdk11-maven-linux-amd64',
     },
-    vm_common.linux_deploy + vm_common.deploy_vm_linux_amd64 + self.maven_base_8_11 + vm_common.sulong_linux + {
+    vm_common.linux_deploy + vm_common.deploy_vm_linux_amd64 + self.maven_base_11 + vm_common.sulong_linux + {
       run: [
-        $.maven_base_8_11.build,
-        $.maven_base_8_11.deploy + ['lafo-maven'],
+        $.maven_base_11.build,
+        $.maven_base_11.deploy + ['lafo-maven'],
       ],
       name: 'deploy-vm-maven-linux-amd64',
       timelimit: '45:00',
@@ -212,17 +212,17 @@ local jdks = common_json.jdks;
       ],
       name: 'deploy-vm-maven-darwin-amd64',
     },
-    self.vm_common_windows_jdk8 + vm_common.gate_vm_windows + self.maven_base_8_native + {
+    self.vm_common_windows_jdk11 + vm_common.gate_vm_windows + self.maven_base_11_native + {
       run: [
-        $.maven_base_8_native.build,
-        $.maven_base_8_native.deploy + ['--dry-run', 'lafo-maven'],
+        $.maven_base_11_native.build,
+        $.maven_base_11_native.deploy + ['--dry-run', 'lafo-maven'],
       ],
       name: 'gate-vm-maven-dry-run-windows-amd64',
     },
-    self.vm_common_windows_jdk8 + vm_common.deploy_daily_vm_windows + self.maven_base_8_native + {
+    self.vm_common_windows_jdk11 + vm_common.deploy_daily_vm_windows + self.maven_base_11_native + {
       run: [
-        $.maven_base_8_native.build,
-        $.maven_base_8_native.deploy + ['lafo-maven'],
+        $.maven_base_11_native.build,
+        $.maven_base_11_native.deploy + ['lafo-maven'],
       ],
       name: 'deploy-vm-maven-windows-amd64',
     },

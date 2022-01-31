@@ -32,6 +32,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -126,8 +127,13 @@ public class TypeInitializerGraph {
     }
 
     private boolean updateTypeInitializerSafety() {
+        Set<AnalysisType> unsafeOrProcessedTypes = types.entrySet().stream()
+                        .filter(t -> t.getValue() == Safety.UNSAFE)
+                        .map(Map.Entry::getKey)
+                        .collect(Collectors.toSet());
+
         return types.keySet().stream()
-                        .map(t -> tryPromoteToUnsafe(t, methodSafety))
+                        .map(t -> tryPromoteToUnsafe(t, unsafeOrProcessedTypes))
                         .reduce(false, (lhs, rhs) -> lhs || rhs);
     }
 
@@ -182,16 +188,18 @@ public class TypeInitializerGraph {
      *
      * @return if pomotion to unsafe happened
      */
-    private boolean tryPromoteToUnsafe(AnalysisType type, Map<AnalysisMethod, Safety> safeMethods) {
-        if (types.get(type) == Safety.UNSAFE) {
+    private boolean tryPromoteToUnsafe(AnalysisType type, Set<AnalysisType> unsafeOrProcessed) {
+        if (unsafeOrProcessed.contains(type)) {
             return false;
-        } else if (type.getClassInitializer() != null && safeMethods.get(type.getClassInitializer()) == Safety.UNSAFE ||
-                        dependencies.get(type).stream().anyMatch(t -> types.get(t) == Safety.UNSAFE) ||
-                        dependencies.get(type).stream().anyMatch(t -> tryPromoteToUnsafe(t, safeMethods))) {
-            setUnsafe(type);
-            return true;
         } else {
-            return false;
+            unsafeOrProcessed.add(type);
+            if ((type.getClassInitializer() != null && methodSafety.get(type.getClassInitializer()) == Safety.UNSAFE) ||
+                            dependencies.get(type).stream().anyMatch(t -> types.get(t) == Safety.UNSAFE || tryPromoteToUnsafe(t, unsafeOrProcessed))) {
+                setUnsafe(type);
+                return true;
+            } else {
+                return false;
+            }
         }
     }
 

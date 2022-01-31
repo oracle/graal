@@ -340,7 +340,7 @@ public final class Target_sun_reflect_NativeMethodAccessorImpl {
         try {
             result = method.invokeDirect(receiver, adjustedArgs);
         } catch (EspressoException e) {
-            throw meta.throwExceptionWithCause(meta.java_lang_reflect_InvocationTargetException, e.getExceptionObject());
+            throw meta.throwExceptionWithCause(meta.java_lang_reflect_InvocationTargetException, e.getGuestException());
         }
 
         if (reflectedMethod.getReturnKind() == JavaKind.Void) {

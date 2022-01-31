@@ -34,7 +34,6 @@ import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.nodes.AllocaNode;
 import org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.Word;
 
 import jdk.vm.ci.code.Register;
@@ -48,8 +47,6 @@ public class NegativeArraySizeExceptionStub extends CreateExceptionStub {
         super("createNegativeArraySizeException", options, providers, linkage);
     }
 
-    private static final boolean PRINT_LENGTH_IN_EXCEPTION = JavaVersionUtil.JAVA_SPEC >= 11;
-
     @Override
     protected Object getConstantParameterValue(int index, String name) {
         switch (index) {
@@ -59,7 +56,7 @@ public class NegativeArraySizeExceptionStub extends CreateExceptionStub {
                 // required bytes for maximum length + nullbyte
                 return OutOfBoundsExceptionStub.MAX_INT_STRING_SIZE + 1;
             case 3:
-                return PRINT_LENGTH_IN_EXCEPTION;
+                return true;
             default:
                 throw GraalError.shouldNotReachHere("unknown parameter " + name + " at index " + index);
         }

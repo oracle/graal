@@ -27,8 +27,16 @@ package com.oracle.svm.jni.nativeapi;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
+
 @CContext(JNIHeaderDirectives.class)
-public class JNIVersion {
+public final class JNIVersion {
+    @Uninterruptible(reason = "Called from uninterruptible code.")
+    public static boolean isSupported(int version) {
+        return version == JNI_VERSION_10() || version == JNI_VERSION_9() || version == JNI_VERSION_1_8() || version == JNI_VERSION_1_6() ||
+                        version == JNI_VERSION_1_4() || version == JNI_VERSION_1_2() || version == JNI_VERSION_1_1();
+    }
+
     // Checkstyle: stop
 
     @CConstant
@@ -46,5 +54,14 @@ public class JNIVersion {
     @CConstant
     public static native int JNI_VERSION_1_8();
 
+    @CConstant
+    public static native int JNI_VERSION_9();
+
+    @CConstant
+    public static native int JNI_VERSION_10();
+
     // Checkstyle: resume
+
+    private JNIVersion() {
+    }
 }

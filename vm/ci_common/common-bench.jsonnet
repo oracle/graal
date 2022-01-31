@@ -86,14 +86,17 @@ local vm_common = import '../ci_common/common.jsonnet';
 
   vm_bench_polybench_linux_allocated_bytes: self.vm_bench_polybench_linux_common + vm.vm_java_17 + {
     run+: [
-      # The polybench allocated bytes metric does not run on native.
       # We run the interprer benchmarks in both interprer and standard mode to compare allocation with and without compilation.
       $.vm_polybench_linux_commands.interpreter_bench_cmd + ['-w', '40', '-i', '10', '--polybench-vm-config=jvm-interpreter', '--metric=allocated-bytes'],
       $.vm_bench_common.upload,
       $.vm_polybench_linux_commands.interpreter_bench_cmd + ['-w', '40', '-i', '10', '--polybench-vm-config=jvm-standard', '--metric=allocated-bytes'],
       $.vm_bench_common.upload,
+      $.vm_polybench_linux_commands.interpreter_bench_cmd + ['-w', '40', '-i', '10', '--polybench-vm-config=native-interpreter', '--metric=allocated-bytes'],
+      $.vm_bench_common.upload,
+      $.vm_polybench_linux_commands.interpreter_bench_cmd + ['-w', '40', '-i', '10', '--polybench-vm-config=native-standard', '--metric=allocated-bytes'],
+      $.vm_bench_common.upload,
     ],
-    timelimit: '2:00:00',
+    timelimit: '4:00:00',
   },
 
   vm_gate_polybench_linux: self.vm_bench_polybench_linux_common + vm.vm_java_17 + {

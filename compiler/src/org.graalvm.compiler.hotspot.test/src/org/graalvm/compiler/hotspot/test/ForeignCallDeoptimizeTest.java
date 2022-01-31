@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,7 +43,7 @@ public class ForeignCallDeoptimizeTest extends GraalCompilerTest {
 
     @Override
     protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
-        invocationPlugins.register(new InvocationPlugin() {
+        invocationPlugins.register(ForeignCallDeoptimizeTest.class, new InvocationPlugin("testCallInt", int.class) {
 
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
@@ -51,7 +51,7 @@ public class ForeignCallDeoptimizeTest extends GraalCompilerTest {
                 b.addPush(JavaKind.Int, node);
                 return true;
             }
-        }, ForeignCallDeoptimizeTest.class, "testCallInt", int.class);
+        });
         super.registerInvocationPlugins(invocationPlugins);
     }
 

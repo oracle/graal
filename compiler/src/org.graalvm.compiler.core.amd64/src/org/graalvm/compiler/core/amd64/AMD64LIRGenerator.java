@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@ import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.DWOR
 import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.PD;
 import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.PS;
 import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.QWORD;
+import static org.graalvm.compiler.asm.amd64.AMD64MacroAssembler.ExtendMode.ZERO_EXTEND;
 import static org.graalvm.compiler.lir.LIRValueUtil.asConstant;
 import static org.graalvm.compiler.lir.LIRValueUtil.asConstantValue;
 import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
@@ -67,13 +68,16 @@ import org.graalvm.compiler.lir.Variable;
 import org.graalvm.compiler.lir.amd64.AMD64AddressValue;
 import org.graalvm.compiler.lir.amd64.AMD64ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.lir.amd64.AMD64ArrayCompareToOp;
+import org.graalvm.compiler.lir.amd64.AMD64ArrayCopyWithConversionsOp;
 import org.graalvm.compiler.lir.amd64.AMD64ArrayEqualsOp;
 import org.graalvm.compiler.lir.amd64.AMD64ArrayIndexOfOp;
+import org.graalvm.compiler.lir.amd64.AMD64ArrayRegionCompareToOp;
 import org.graalvm.compiler.lir.amd64.AMD64Binary;
 import org.graalvm.compiler.lir.amd64.AMD64BinaryConsumer;
 import org.graalvm.compiler.lir.amd64.AMD64ByteSwapOp;
 import org.graalvm.compiler.lir.amd64.AMD64CacheWritebackOp;
 import org.graalvm.compiler.lir.amd64.AMD64CacheWritebackPostSyncOp;
+import org.graalvm.compiler.lir.amd64.AMD64CalcStringAttributesOp;
 import org.graalvm.compiler.lir.amd64.AMD64Call;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.BranchOp;
@@ -86,9 +90,9 @@ import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.FloatBranchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.FloatCondMoveOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.FloatCondSetOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.HashTableSwitchOp;
+import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.RangeTableSwitchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.ReturnOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.StrategySwitchOp;
-import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.RangeTableSwitchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.TestBranchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.TestByteBranchOp;
 import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.TestConstBranchOp;
@@ -312,13 +316,13 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         }
 
         if (LIRValueUtil.isVariable(right)) {
-            emitRawCompareBranch(OperandSize.get(cmpKind), load(right), loadNonInlinableConstant(left), cond.mirror(), trueLabel, falseLabel, trueLabelProbability);
+            emitRawCompareBranch(OperandSize.get(cmpKind), asAllocatable(right), loadNonInlinableConstant(left), cond.mirror(), trueLabel, falseLabel, trueLabelProbability);
         } else {
-            emitRawCompareBranch(OperandSize.get(cmpKind), load(left), loadNonInlinableConstant(right), cond, trueLabel, falseLabel, trueLabelProbability);
+            emitRawCompareBranch(OperandSize.get(cmpKind), asAllocatable(left), loadNonInlinableConstant(right), cond, trueLabel, falseLabel, trueLabelProbability);
         }
     }
 
-    private void emitRawCompareBranch(OperandSize size, Variable left, Value right, Condition cond, LabelRef trueLabel, LabelRef falseLabel, double trueLabelProbability) {
+    private void emitRawCompareBranch(OperandSize size, AllocatableValue left, Value right, Condition cond, LabelRef trueLabel, LabelRef falseLabel, double trueLabelProbability) {
         if (isConstantValue(right)) {
             Constant c = LIRValueUtil.asConstant(right);
             if (JavaConstant.isNull(c)) {
@@ -479,9 +483,9 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                 append(new CondSetOp(result, condition.negate()));
             }
         } else if (isFloatComparison) {
-            append(new FloatCondMoveOp(result, condition, unorderedIsTrue, load(trueValue), load(falseValue), isSelfEqualsCheck));
+            append(new FloatCondMoveOp(result, condition, unorderedIsTrue, asAllocatable(trueValue), asAllocatable(falseValue), isSelfEqualsCheck));
         } else {
-            append(new CondMoveOp(result, condition, load(trueValue), loadNonInlinableConstant(falseValue)));
+            append(new CondMoveOp(result, condition, asAllocatable(trueValue), loadNonInlinableConstant(falseValue)));
         }
         return result;
     }
@@ -489,7 +493,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public Variable emitIntegerTestMove(Value left, Value right, Value trueValue, Value falseValue) {
         emitIntegerTest(left, right);
-        return emitCondMoveOp(Condition.EQ, load(trueValue), loadNonInlinableConstant(falseValue), false, false);
+        return emitCondMoveOp(Condition.EQ, asAllocatable(trueValue), loadNonInlinableConstant(falseValue), false, false);
     }
 
     protected static AVXSize getRegisterSize(Value a) {
@@ -539,7 +543,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     private void emitRawCompare(PlatformKind cmpKind, Value left, Value right) {
-        ((AMD64ArithmeticLIRGeneratorTool) arithmeticLIRGen).emitCompareOp((AMD64Kind) cmpKind, load(left), loadNonInlinableConstant(right));
+        ((AMD64ArithmeticLIRGeneratorTool) arithmeticLIRGen).emitCompareOp((AMD64Kind) cmpKind, asAllocatable(left), loadNonInlinableConstant(right));
     }
 
     @Override
@@ -584,16 +588,54 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitArrayEquals(JavaKind kind, int array1BaseOffset, int array2BaseOffset, Value array1, Value array2, Value length, boolean directPointers) {
+    public Variable emitArrayRegionCompareTo(JavaKind strideA, JavaKind strideB, Value arrayA, Value offsetA, Value arrayB, Value offsetB, Value length) {
         Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
-        append(new AMD64ArrayEqualsOp(this, kind, kind, array1BaseOffset, array2BaseOffset, result, array1, array2, length, directPointers, getMaxVectorSize()));
+        append(AMD64ArrayRegionCompareToOp.movParamsAndCreate(this, strideA, strideB, result, arrayA, offsetA, arrayB, offsetB, length, getMaxVectorSize(), ZERO_EXTEND));
         return result;
     }
 
     @Override
-    public Variable emitArrayEquals(JavaKind kind1, JavaKind kind2, int array1BaseOffset, int array2BaseOffset, Value array1, Value array2, Value length, boolean directPointers) {
+    public Variable emitArrayEquals(JavaKind kind, int array1BaseOffset, int array2BaseOffset, Value array1, Value array2, Value length) {
         Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
-        append(new AMD64ArrayEqualsOp(this, kind1, kind2, array1BaseOffset, array2BaseOffset, result, array1, array2, length, directPointers, getMaxVectorSize()));
+        append(AMD64ArrayEqualsOp.movParamsAndCreate(this, kind, kind, kind, array1BaseOffset, array2BaseOffset, 0, result, array1, null, array2, null, null, length, getMaxVectorSize(), ZERO_EXTEND));
+        return result;
+    }
+
+    @Override
+    public Variable emitArrayEquals(JavaKind kind, int array1BaseOffset, int array2BaseOffset, Value array1, Value offset1, Value array2, Value offset2, Value length) {
+        Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
+        append(AMD64ArrayEqualsOp.movParamsAndCreate(this, kind, kind, kind, array1BaseOffset, array2BaseOffset, 0, result, array1, offset1, array2, offset2, null, length, getMaxVectorSize(),
+                        ZERO_EXTEND));
+        return result;
+    }
+
+    @Override
+    public Variable emitArrayEquals(JavaKind kind1, JavaKind kind2, int array1BaseOffset, int array2BaseOffset, Value array1, Value offset1, Value array2, Value offset2, Value length) {
+        Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
+        append(AMD64ArrayEqualsOp.movParamsAndCreate(this, kind1, kind2, kind2, array1BaseOffset, array2BaseOffset, 0, result, array1, offset1, array2, offset2, null, length, getMaxVectorSize(),
+                        ZERO_EXTEND));
+        return result;
+    }
+
+    @Override
+    public Variable emitArrayEquals(JavaKind kind1, JavaKind kind2, JavaKind kindMask, int array1BaseOffset, int array2BaseOffset, int maskBaseOffset,
+                    Value array1, Value offset1, Value array2, Value offset2, Value mask, Value length) {
+        Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
+        append(AMD64ArrayEqualsOp.movParamsAndCreate(this, kind1, kind2, kindMask, array1BaseOffset, array2BaseOffset, maskBaseOffset, result, array1, offset1, array2, offset2, mask, length,
+                        getMaxVectorSize(), ZERO_EXTEND));
+        return result;
+    }
+
+    @Override
+    public void emitArrayCopyWithConversion(JavaKind strideSrc, JavaKind strideDst, Value arraySrc, Value offsetSrc, Value arrayDst, Value offsetDst, Value length) {
+        append(AMD64ArrayCopyWithConversionsOp.movParamsAndCreate(this, strideSrc, strideDst, arraySrc, offsetSrc, arrayDst, offsetDst, length, getMaxVectorSize(), ZERO_EXTEND));
+    }
+
+    @Override
+    public Variable emitCalcStringAttributes(Object opObj, Value array, Value offset, Value length, boolean isValid) {
+        AMD64CalcStringAttributesOp.Op op = (AMD64CalcStringAttributesOp.Op) opObj;
+        Variable result = newVariable(LIRKind.value(op == AMD64CalcStringAttributesOp.Op.UTF_8 || op == AMD64CalcStringAttributesOp.Op.UTF_16 ? AMD64Kind.QWORD : AMD64Kind.DWORD));
+        append(AMD64CalcStringAttributesOp.movParamsAndCreate(this, op, array, offset, length, result, getMaxVectorSize(), isValid));
         return result;
     }
 
@@ -613,10 +655,11 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitArrayIndexOf(int arrayBaseOffset, JavaKind valueKind, boolean findTwoConsecutive, Value arrayPointer, Value arrayLength, Value fromIndex, Value... searchValues) {
+    public Variable emitArrayIndexOf(int arrayBaseOffset, JavaKind valueKind, boolean findTwoConsecutive, boolean withMask, Value arrayPointer, Value arrayOffset, Value arrayLength, Value fromIndex,
+                    Value... searchValues) {
         Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
-        append(new AMD64ArrayIndexOfOp(arrayBaseOffset, valueKind, findTwoConsecutive, getMaxVectorSize(), this, result,
-                        asAllocatable(arrayPointer), asAllocatable(arrayLength), asAllocatable(fromIndex), searchValues));
+        append(AMD64ArrayIndexOfOp.movParamsAndCreate(arrayBaseOffset, valueKind, findTwoConsecutive, withMask, getMaxVectorSize(), this, result, arrayPointer, arrayOffset, arrayLength, fromIndex,
+                        searchValues));
         return result;
     }
 
@@ -663,29 +706,29 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         append(new ReturnOp(operand));
     }
 
-    protected StrategySwitchOp createStrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Variable key, AllocatableValue temp) {
+    protected StrategySwitchOp createStrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, AllocatableValue key, AllocatableValue temp) {
         return new StrategySwitchOp(strategy, keyTargets, defaultTarget, key, temp);
     }
 
     @Override
-    public void emitStrategySwitch(SwitchStrategy strategy, Variable key, LabelRef[] keyTargets, LabelRef defaultTarget) {
+    public void emitStrategySwitch(SwitchStrategy strategy, AllocatableValue key, LabelRef[] keyTargets, LabelRef defaultTarget) {
         // a temp is needed for loading object constants
         boolean needsTemp = !LIRKind.isValue(key);
         append(createStrategySwitchOp(strategy, keyTargets, defaultTarget, key, needsTemp ? newVariable(key.getValueKind()) : Value.ILLEGAL));
     }
 
     @Override
-    protected void emitRangeTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value key) {
+    protected void emitRangeTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, AllocatableValue key) {
         Variable scratch = newVariable(LIRKind.value(target().arch.getWordKind()));
         Variable idxScratch = newVariable(key.getValueKind());
         append(new RangeTableSwitchOp(lowKey, defaultTarget, targets, key, scratch, idxScratch));
     }
 
     @Override
-    protected void emitHashTableSwitch(JavaConstant[] keys, LabelRef defaultTarget, LabelRef[] targets, Value value, Value hash) {
+    protected void emitHashTableSwitch(JavaConstant[] keys, LabelRef defaultTarget, LabelRef[] targets, AllocatableValue value, Value hash) {
         Variable scratch = newVariable(LIRKind.value(target().arch.getWordKind()));
         Variable entryScratch = newVariable(LIRKind.value(target().arch.getWordKind()));
-        append(new HashTableSwitchOp(keys, defaultTarget, targets, value, hash, scratch, entryScratch));
+        append(new HashTableSwitchOp(keys, defaultTarget, targets, value, asAllocatable(hash), scratch, entryScratch));
     }
 
     @Override

@@ -522,7 +522,7 @@ public final class JDWPContextImpl implements JDWPContext {
     public Object getGuestException(Throwable exception) {
         if (exception instanceof EspressoException) {
             EspressoException ex = (EspressoException) exception;
-            return ex.getExceptionObject();
+            return ex.getGuestException();
         } else {
             throw new RuntimeException("unknown exception type: " + exception.getClass(), exception);
         }

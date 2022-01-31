@@ -79,9 +79,12 @@ public class VMInspection implements Feature {
     }
 }
 
-final class VMInspectionStartupHook implements Runnable {
+final class VMInspectionStartupHook implements RuntimeSupport.Hook {
     @Override
-    public void run() {
+    public void execute(boolean isFirstIsolate) {
+        if (!isFirstIsolate) {
+            return;
+        }
         DumpAllStacks.install();
         if (VMInspectionOptions.AllowVMInspection.getValue() && !Platform.includedIn(WINDOWS.class)) {
             /* We have enough signals to enable the rest. */

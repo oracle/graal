@@ -70,6 +70,7 @@ import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.FeatureAccessImpl;
 import com.oracle.svm.hosted.annotation.AnnotationSubstitutionType;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
@@ -105,6 +106,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private final Map<Class<?>, Set<Member>> annotationMembers = new HashMap<>();
 
     private final ReflectionDataAccessors accessors;
+
+    private static Field dynamicHubReflectionDataField;
 
     public ReflectionDataBuilder(FeatureAccessImpl access) {
         arrayReflectionData = getArrayReflectionData();
@@ -194,6 +197,10 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         if (sealed) {
             throw UserError.abort("Too late to add classes, methods, and fields for reflective access. Registration must happen in a Feature before the analysis has finished.");
         }
+    }
+
+    protected void duringSetup(DuringSetupAccessImpl access) {
+        dynamicHubReflectionDataField = access.findField(DynamicHub.class, "rd");
     }
 
     protected void duringAnalysis(DuringAnalysisAccess a) {
@@ -558,6 +565,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                             buildRecordComponents(clazz, access));
         }
         hub.setReflectionData(reflectionData);
+        access.rescanField(hub, dynamicHubReflectionDataField);
 
         if (type.isAnnotation()) {
             /*
@@ -624,6 +632,11 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         if (!modifiedClasses.isEmpty()) {
             throw UserError.abort("Registration of classes, methods, and fields for reflective access during analysis must set DuringAnalysisAccess.requireAnalysisIteration().");
         }
+    }
+
+    @Override
+    public boolean requiresProcessing() {
+        return !modifiedClasses.isEmpty();
     }
 
     private static Constructor<?> nullaryConstructor(Object constructors, Set<?> reflectionMethods, DuringAnalysisAccessImpl access) {

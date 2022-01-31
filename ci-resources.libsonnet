@@ -5,6 +5,7 @@
     benchmarking_config_repo: "<benchmarking_config_repo>",
 
     notify_nexus_deploy: ["<notify_nexus_deploy>"],
-    notify_releaser_service: ["<notify_releaser_service>"]
+    notify_releaser_service: ["<notify_releaser_service>"],
+    nexus_base_url: "<nexus_base_url>"
   }
 }

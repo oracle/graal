@@ -128,6 +128,7 @@ import com.oracle.svm.util.ReflectionUtil;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.DebugInfo;
+import jdk.vm.ci.code.MemoryBarriers;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
@@ -797,7 +798,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     }
 
     @Override
-    public Variable load(Value value) {
+    public AllocatableValue addressAsAllocatableInteger(Value value) {
         LLVMValueRef load = builder.buildPtrToInt(getVal(value));
         return new LLVMVariable(load);
     }
@@ -1744,17 +1745,38 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
 
         @Override
         public Variable emitOrderedLoad(LIRKind kind, Value address, LIRFrameState state, MemoryOrderMode memoryOrder) {
-            emitMembar(memoryOrder.preReadFences);
+            assert memoryOrder == MemoryOrderMode.OPAQUE || memoryOrder == MemoryOrderMode.ACQUIRE || memoryOrder == MemoryOrderMode.VOLATILE;
             Variable var = emitLoad(kind, address, state);
-            emitMembar(memoryOrder.postReadFences);
+            if (memoryOrder == MemoryOrderMode.ACQUIRE || memoryOrder == MemoryOrderMode.VOLATILE) {
+                /*
+                 * Ensure subsequent memory operations cannot execute before this load. Additional
+                 * volatile ordering requirements are enforced at stores.
+                 */
+                emitMembar(MemoryBarriers.LOAD_LOAD | MemoryBarriers.LOAD_STORE);
+            }
             return var;
         }
 
         @Override
         public void emitOrderedStore(ValueKind<?> kind, Value address, Value input, LIRFrameState state, MemoryOrderMode memoryOrder) {
-            emitMembar(memoryOrder.preWriteFences);
-            emitStore(kind, address, input, state);
-            emitMembar(memoryOrder.postWriteFences);
+            switch (memoryOrder) {
+                case OPAQUE:
+                    emitStore(kind, address, input, state);
+                    break;
+                case RELEASE:
+                    emitMembar(MemoryBarriers.LOAD_STORE | MemoryBarriers.STORE_STORE);
+                    emitStore(kind, address, input, state);
+                    break;
+                case VOLATILE:
+                    emitMembar(MemoryBarriers.LOAD_STORE | MemoryBarriers.STORE_STORE);
+                    emitStore(kind, address, input, state);
+                    // Guarantee subsequent volatile loads cannot be executed before this
+                    // instruction
+                    emitMembar(MemoryBarriers.STORE_LOAD);
+                    break;
+                default:
+                    throw GraalError.shouldNotReachHere();
+            }
         }
     }
 

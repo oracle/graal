@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -108,7 +108,7 @@ public class TStringWriteByteTest extends TStringTestBase {
         });
     }
 
-    private void checkNotifyExternal(MutableTruffleString string, TruffleString.Encoding encoding, Runnable mutate) {
+    private static void checkNotifyExternal(MutableTruffleString string, TruffleString.Encoding encoding, Runnable mutate) {
         TruffleString.CodeRange codeRangeBeforeMutate = string.getCodeRangeUncached(encoding);
         mutate.run();
         TruffleString.CodeRange codeRangeAfterMutate = string.getCodeRangeUncached(encoding);

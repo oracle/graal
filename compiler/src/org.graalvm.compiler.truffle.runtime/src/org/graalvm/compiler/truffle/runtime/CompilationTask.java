@@ -41,7 +41,7 @@ import com.oracle.truffle.api.Truffle;
 
 public final class CompilationTask implements TruffleCompilationTask, Callable<Void>, Comparable<CompilationTask> {
 
-    private static final Consumer<CompilationTask> COMPILATION_ACTION = new Consumer<CompilationTask>() {
+    private static final Consumer<CompilationTask> COMPILATION_ACTION = new Consumer<>() {
         @Override
         public void accept(CompilationTask task) {
             OptimizedCallTarget callTarget = task.targetRef.get();

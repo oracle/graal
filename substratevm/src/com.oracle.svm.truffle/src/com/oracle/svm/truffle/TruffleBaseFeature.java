@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -50,6 +50,8 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInlineOnlyInvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.phases.util.Providers;
@@ -152,6 +154,10 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
     private boolean profilingEnabled;
     private boolean needsAllEncodings;
 
+    private Field layoutInfoMapField;
+    private Field layoutMapField;
+    private Field libraryFactoryCacheField;
+
     private static void initializeTruffleReflectively(ClassLoader imageClassLoader) {
         invokeStaticMethod("com.oracle.truffle.api.impl.Accessor", "getTVMCI", Collections.emptyList());
         invokeStaticMethod("com.oracle.truffle.polyglot.LanguageCache", "initializeNativeImageState",
@@ -206,6 +212,9 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
         invokeStaticMethod("com.oracle.truffle.api.library.LibraryFactory", "reinitializeNativeImageState",
                         Collections.emptyList());
 
+        // pre-initialize TruffleLogger$LoggerCache.INSTANCE
+        invokeStaticMethod("com.oracle.truffle.api.TruffleLogger$LoggerCache", "getInstance", Collections.emptyList());
+
         profilingEnabled = false;
     }
 
@@ -252,7 +261,7 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
          * that we get exact types for fields that store profiles.
          */
         Registration r = new Registration(plugins.getInvocationPlugins(), Profile.class);
-        r.register0("isProfilingEnabled", new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("isProfilingEnabled") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(profilingEnabled));
@@ -287,6 +296,10 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
                         .getProviderObjectReplacements(metaAccess);
         graalObjectReplacer = new GraalObjectReplacer(config.getUniverse(), metaAccess, providerReplacements);
         access.registerObjectReplacer(this::replaceNodeFieldAccessor);
+
+        layoutInfoMapField = config.findField("com.oracle.truffle.object.DefaultLayout$LayoutInfo", "LAYOUT_INFO_MAP");
+        layoutMapField = config.findField("com.oracle.truffle.object.DefaultLayout", "LAYOUT_MAP");
+        libraryFactoryCacheField = config.findField("com.oracle.truffle.api.library.LibraryFactory$ResolvedDispatch", "CACHE");
     }
 
     @SuppressWarnings("deprecation")
@@ -347,25 +360,30 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
     }
 
     @Override
-    public void duringAnalysis(DuringAnalysisAccess access) {
-        StaticObjectSupport.duringAnalysis(access);
+    public void duringAnalysis(DuringAnalysisAccess a) {
+        DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
+
+        StaticObjectSupport.duringAnalysis(a);
 
         for (Class<?> clazz : access.reachableSubtypes(com.oracle.truffle.api.nodes.Node.class)) {
             registerUnsafeAccess(access, clazz.asSubclass(com.oracle.truffle.api.nodes.Node.class));
 
-            AnalysisType type = ((DuringAnalysisAccessImpl) access).getMetaAccess().lookupJavaType(clazz);
+            AnalysisType type = access.getMetaAccess().lookupJavaType(clazz);
             if (type.isInstantiated()) {
                 graalObjectReplacer.createType(type);
             }
         }
 
-        for (AnalysisType type : ((DuringAnalysisAccessImpl) access).getBigBang().getUniverse().getTypes()) {
-            if (!access.isReachable(type.getJavaClass())) {
+        for (AnalysisType type : access.getBigBang().getUniverse().getTypes()) {
+            if (!a.isReachable(type.getJavaClass())) {
                 continue;
             }
             initializeTruffleLibrariesAtBuildTime(type);
             initializeDynamicObjectLayouts(type);
         }
+        access.rescanRoot(layoutInfoMapField);
+        access.rescanRoot(layoutMapField);
+        access.rescanRoot(libraryFactoryCacheField);
     }
 
     @Override
@@ -428,7 +446,9 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
     private static void initializeTruffleLibrariesAtBuildTime(AnalysisType type) {
         if (type.isAnnotationPresent(GenerateLibrary.class)) {
             /* Eagerly resolve library type. */
-            LibraryFactory.resolve(type.getJavaClass().asSubclass(Library.class));
+            LibraryFactory<? extends Library> factory = LibraryFactory.resolve(type.getJavaClass().asSubclass(Library.class));
+            /* Trigger computation of uncachedDispatch. */
+            factory.getUncached();
         }
         if (type.getDeclaredAnnotationsByType(ExportLibrary.class).length != 0) {
             /* Eagerly resolve receiver type. */
@@ -490,16 +510,10 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
             if (reason == ParsingReason.PointsToAnalysis) {
                 InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins.getInvocationPlugins(),
                                 StaticShape.Builder.class);
-                r.register3("build", InvocationPlugin.Receiver.class, Class.class, Class.class, new InvocationPlugin() {
-                    @Override
-                    public boolean inlineOnly() {
-                        // Use the plugin only during parsing.
-                        return true;
-                    }
-
+                r.register(new RequiredInlineOnlyInvocationPlugin("build", InvocationPlugin.Receiver.class, Class.class, Class.class) {
                     @Override
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod,
-                                    InvocationPlugin.Receiver receiver, ValueNode arg1, ValueNode arg2) {
+                                    Receiver receiver, ValueNode arg1, ValueNode arg2) {
                         Class<?> superClass = getArgumentClass(b, targetMethod, 1, arg1);
                         Class<?> factoryInterface = getArgumentClass(b, targetMethod, 2, arg2);
                         generate(superClass, factoryInterface, beforeAnalysisAccess);

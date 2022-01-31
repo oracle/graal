@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -80,7 +80,6 @@ import java.util.function.Supplier;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.home.HomeFinder;
@@ -118,6 +117,7 @@ import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.ThreadsListener;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -2059,7 +2059,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
     /**
      * Use to leave contexts from paths either compiled or not. If always compiled use
-     * {@link #leaveCached(PolyglotContextImpl, PolyglotContextImpl)}.
+     * {@link #leaveCached(Object[], PolyglotContextImpl)}.
      */
     void leave(Object[] prev, PolyglotContextImpl context) {
         if (CompilerDirectives.isPartialEvaluationConstant(this)) {
@@ -2076,7 +2076,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
     /**
      * Only use to leave contexts from paths that are *always* compiled otherwise use
-     * {@link #leave(PolyglotContextImpl, PolyglotContextImpl)}.
+     * {@link #leave(Object[], PolyglotContextImpl)}.
      */
     void leaveCached(Object[] prev, PolyglotContextImpl context) {
         assert context.state.isClosed() ||

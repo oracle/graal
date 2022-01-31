@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -144,6 +144,7 @@ import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.code.MemoryBarriers;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.TargetDescription;
@@ -587,12 +588,12 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                 return getLIRGen().emitMove(lop.getRemainder());
             case SINGLE: {
                 Variable result = getLIRGen().newVariable(LIRKind.combine(a, b));
-                getLIRGen().append(new FPDivRemOp(FREM, result, getLIRGen().load(a), getLIRGen().load(b)));
+                getLIRGen().append(new FPDivRemOp(FREM, result, getLIRGen().asAllocatable(a), getLIRGen().asAllocatable(b)));
                 return result;
             }
             case DOUBLE: {
                 Variable result = getLIRGen().newVariable(LIRKind.combine(a, b));
-                getLIRGen().append(new FPDivRemOp(DREM, result, getLIRGen().load(a), getLIRGen().load(b)));
+                getLIRGen().append(new FPDivRemOp(DREM, result, getLIRGen().asAllocatable(a), getLIRGen().asAllocatable(b)));
                 return result;
             }
             default:
@@ -1214,18 +1215,24 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     @Override
     public Variable emitOrderedLoad(LIRKind kind, Value address, LIRFrameState state, MemoryOrderMode memoryOrder) {
         assert memoryOrder == MemoryOrderMode.OPAQUE || memoryOrder == MemoryOrderMode.ACQUIRE || memoryOrder == MemoryOrderMode.VOLATILE;
-        getLIRGen().emitMembar(memoryOrder.preReadFences);
-        Variable var = emitLoad(kind, address, state);
-        getLIRGen().emitMembar(memoryOrder.postReadFences);
-        return var;
+        /*
+         * AMD64's consistency model does not require any fences for loads. Volatile store->load
+         * ordering requirements are enforced at the stores.
+         */
+        return emitLoad(kind, address, state);
     }
 
     @Override
     public void emitOrderedStore(ValueKind<?> kind, Value address, Value input, LIRFrameState state, MemoryOrderMode memoryOrder) {
         assert memoryOrder == MemoryOrderMode.OPAQUE || memoryOrder == MemoryOrderMode.RELEASE || memoryOrder == MemoryOrderMode.VOLATILE;
-        getLIRGen().emitMembar(memoryOrder.preWriteFences);
         emitStore(kind, address, input, state);
-        getLIRGen().emitMembar(memoryOrder.postWriteFences);
+        /*
+         * Need a fence after volatile stores to ensure a volatile load cannot execute before this
+         * operation.
+         */
+        if (memoryOrder == MemoryOrderMode.VOLATILE) {
+            getLIRGen().emitMembar(MemoryBarriers.STORE_LOAD);
+        }
     }
 
     protected void emitStoreConst(AMD64Kind kind, AMD64AddressValue address, ConstantValue value, LIRFrameState state) {
@@ -1339,7 +1346,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     }
 
     @Override
-    public void emitCompareOp(AMD64Kind cmpKind, Variable left, Value right) {
+    public void emitCompareOp(AMD64Kind cmpKind, AllocatableValue left, Value right) {
         OperandSize size;
         switch (cmpKind) {
             case BYTE:

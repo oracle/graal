@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -114,7 +114,7 @@ public class PointerTrackingTest extends ReplacementsTest implements Snippets {
     @Override
     protected void registerInvocationPlugins(InvocationPlugins invocationPlugins) {
         Registration r = new Registration(invocationPlugins, PointerTrackingTest.class);
-        r.register1("getTrackedPointer", Object.class, new InvocationPlugin() {
+        r.register(new InvocationPlugin("getTrackedPointer", Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
                 WordCastNode objectToTracked = b.add(WordCastNode.objectToTrackedPointer(arg, getReplacements().getWordKind()));
@@ -122,7 +122,7 @@ public class PointerTrackingTest extends ReplacementsTest implements Snippets {
                 return true;
             }
         });
-        r.register1("getUntrackedPointer", Object.class, new InvocationPlugin() {
+        r.register(new InvocationPlugin("getUntrackedPointer", Object.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
                 WordCastNode objectToTracked = b.add(WordCastNode.objectToUntrackedPointer(arg, getReplacements().getWordKind()));

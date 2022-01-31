@@ -24,12 +24,6 @@
  */
 package com.oracle.svm.jni.functions;
 
-import static com.oracle.svm.jni.nativeapi.JNIVersion.JNI_VERSION_1_1;
-import static com.oracle.svm.jni.nativeapi.JNIVersion.JNI_VERSION_1_2;
-import static com.oracle.svm.jni.nativeapi.JNIVersion.JNI_VERSION_1_4;
-import static com.oracle.svm.jni.nativeapi.JNIVersion.JNI_VERSION_1_6;
-import static com.oracle.svm.jni.nativeapi.JNIVersion.JNI_VERSION_1_8;
-
 import java.util.ArrayList;
 
 import org.graalvm.compiler.serviceprovider.IsolateUtil;
@@ -230,9 +224,9 @@ final class JNIInvocationInterface {
                 long javavmId = IsolateUtil.getIsolateID();
                 javavmIdPointer.write(WordFactory.pointer(javavmId));
             }
-            RuntimeSupport.getRuntimeSupport().addTearDownHook(new Runnable() {
+            RuntimeSupport.getRuntimeSupport().addTearDownHook(new RuntimeSupport.Hook() {
                 @Override
-                public void run() {
+                public void execute(boolean isFirstIsolate) {
                     JNIJavaVMList.removeJavaVM(javavm);
                 }
             });
@@ -249,15 +243,14 @@ final class JNIInvocationInterface {
         @Uninterruptible(reason = "No Java context")
         static int JNI_GetDefaultJavaVMInitArgs(JNIJavaVMInitArgs vmArgs) {
             int version = vmArgs.getVersion();
-            if (version == JNI_VERSION_1_8() || version == JNI_VERSION_1_6() || version == JNI_VERSION_1_4() || version == JNI_VERSION_1_2()) {
+            if (JNIVersion.isSupported(vmArgs.getVersion()) && version != JNIVersion.JNI_VERSION_1_1()) {
                 return JNIErrors.JNI_OK();
             }
-            if (version == JNI_VERSION_1_1()) {
-                vmArgs.setVersion(JNI_VERSION_1_2());
+            if (version == JNIVersion.JNI_VERSION_1_1()) {
+                vmArgs.setVersion(JNIVersion.JNI_VERSION_1_2());
             }
             return JNIErrors.JNI_ERR();
         }
-
     }
 
     /*
@@ -330,7 +323,7 @@ final class JNIInvocationInterface {
                 if (vm.isNull() || env.isNull()) {
                     return JNIErrors.JNI_ERR();
                 }
-                if (version != JNI_VERSION_1_8() && version != JNI_VERSION_1_6() && version != JNI_VERSION_1_4() && version != JNI_VERSION_1_2() && version != JNI_VERSION_1_1()) {
+                if (!JNIVersion.isSupported(version)) {
                     env.write(WordFactory.nullPointer());
                     return JNIErrors.JNI_EVERSION();
                 }

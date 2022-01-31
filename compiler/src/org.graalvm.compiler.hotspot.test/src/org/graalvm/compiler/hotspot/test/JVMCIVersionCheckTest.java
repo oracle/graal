@@ -32,8 +32,6 @@ import java.util.Random;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.hotspot.JVMCIVersionCheck;
 import org.graalvm.compiler.hotspot.JVMCIVersionCheck.Version;
-import org.graalvm.compiler.hotspot.JVMCIVersionCheck.Version2;
-import org.graalvm.compiler.hotspot.JVMCIVersionCheck.Version3;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -61,23 +59,21 @@ public class JVMCIVersionCheckTest extends GraalCompilerTest {
                     int minBuild = random.nextInt(100);
                     int build = random.nextInt(100);
 
-                    for (Version version : new Version[]{new Version2(major, minor), new Version3(major, minor, build)}) {
-                        for (Version minVersion : new Version[]{new Version2(minMajor, minMinor), new Version3(minMajor, minMinor, minBuild)}) {
-                            String javaVmVersion = String.format("prefix-jvmci-%s-suffix", version);
-                            if (!version.isLessThan(minVersion)) {
-                                try {
-                                    JVMCIVersionCheck.check(props, minVersion, "1.8", javaVmVersion, false);
-                                } catch (InternalError e) {
-                                    throw new AssertionError("Failed " + JVMCIVersionCheckTest.class.getSimpleName() + " with -Dtest.seed=" + seed, e);
-                                }
-                            } else {
-                                try {
-                                    JVMCIVersionCheck.check(props, minVersion, "1.8", javaVmVersion, false);
-                                    Assert.fail("expected to fail checking " + javaVmVersion + " against " + minVersion + " (-Dtest.seed=" + seed + ")");
-                                } catch (InternalError e) {
-                                    // pass
-                                }
-                            }
+                    Version version = new Version(major, minor, build);
+                    Version minVersion = new Version(minMajor, minMinor, minBuild);
+                    String javaVmVersion = String.format("prefix-jvmci-%s-suffix", version);
+                    if (!version.isLessThan(minVersion)) {
+                        try {
+                            JVMCIVersionCheck.check(props, minVersion, "11", javaVmVersion, false);
+                        } catch (InternalError e) {
+                            throw new AssertionError("Failed " + JVMCIVersionCheckTest.class.getSimpleName() + " with -Dtest.seed=" + seed, e);
+                        }
+                    } else {
+                        try {
+                            JVMCIVersionCheck.check(props, minVersion, "11", javaVmVersion, false);
+                            Assert.fail("expected to fail checking " + javaVmVersion + " against " + minVersion + " (-Dtest.seed=" + seed + ")");
+                        } catch (InternalError e) {
+                            // pass
                         }
                     }
                 }
@@ -85,16 +81,14 @@ public class JVMCIVersionCheckTest extends GraalCompilerTest {
         }
 
         // Test handling of version components bigger than Integer.MAX_VALUE
-        for (String sep : new String[]{".", "-b"}) {
-            for (String version : new String[]{"0" + sep + Long.MAX_VALUE, Long.MAX_VALUE + sep + 0}) {
-                String javaVmVersion = String.format("prefix-jvmci-%s-suffix", version);
-                try {
-                    Version2 minVersion = new Version2(0, 59);
-                    JVMCIVersionCheck.check(props, minVersion, "1.8", javaVmVersion, false);
-                    Assert.fail("expected to fail checking " + javaVmVersion + " against " + minVersion);
-                } catch (InternalError e) {
-                    // pass
-                }
+        for (String version : new String[]{"20.0." + Long.MAX_VALUE, "20." + Long.MAX_VALUE + ".0", Long.MAX_VALUE + ".0.0"}) {
+            String javaVmVersion = String.format("prefix-jvmci-%s-suffix", version);
+            try {
+                Version minVersion = new Version(20, 0, 1);
+                JVMCIVersionCheck.check(props, minVersion, "1.8", javaVmVersion, false);
+                Assert.fail("expected to fail checking " + javaVmVersion + " against " + minVersion);
+            } catch (InternalError e) {
+                // pass
             }
         }
     }
