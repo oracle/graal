@@ -317,6 +317,7 @@ def test():
                 r"%s_z_\.java\.lang\.String \*name;"%(spaces_pattern),
                 r"",
                 r"%spublic:"%(spaces_pattern),
+                r"%svoid NamedGreeter\(java\.lang\.String \*\);"%(spaces_pattern),
                 r"%svoid greet\(void\);"%(spaces_pattern),
                 r"}"]
     else:
@@ -325,6 +326,7 @@ def test():
                 r"%sjava\.lang\.String \*name;"%(spaces_pattern),
                 r"",
                 r"%spublic:"%(spaces_pattern),
+                r"%svoid NamedGreeter\(java\.lang\.String \*\);"%(spaces_pattern),
                 r"%svoid greet\(void\);"%(spaces_pattern),
                 r"}"]
 
@@ -334,6 +336,7 @@ def test():
     exec_string = execute("ptype 'hello.Hello$Greeter'")
     rexp = [r"type = class hello\.Hello\$Greeter : public java\.lang\.Object {",
             r"%spublic:"%(spaces_pattern),
+            r"%svoid Greeter\(void\);"%(spaces_pattern),
             r"%sstatic hello\.Hello\$Greeter \* greeter\(java\.lang\.String\[\] \*\);"%(spaces_pattern),
             r"}"]
 
@@ -344,9 +347,6 @@ def test():
     rexp = [r"type = class java\.lang\.Object : public _objhdr {",
             r"%spublic:"%(spaces_pattern),
             r"%svoid Object\(void\);"%(spaces_pattern),
-            r"%sprotected:"%(spaces_pattern),
-            r"%sjava\.lang\.Object \* clone\(void\);"%(spaces_pattern),
-            r"%spublic:"%(spaces_pattern),
             r"%sboolean equals\(java\.lang\.Object \*\);"%(spaces_pattern),
             r"%sjava\.lang\.Class \* getClass\(void\);"%(spaces_pattern),
             r"%sint hashCode\(void\);"%(spaces_pattern),
@@ -517,9 +517,16 @@ def test():
 
     # list inlineIs and inlineA and check that the listing maps to the inlined code instead of the actual code,
     # although not ideal this is how GDB treats inlined code in C/C++ as well
-    rexp = [r"130%snoInlineTest\(\);"%spaces_pattern]
+    rexp = [r'file: "hello/Hello\.java", line number: 125, symbol: "hello\.Hello::inlineIs"',
+            r"125%sinlineA\(\);"%spaces_pattern,
+            r'file: "hello/Hello\.java", line number: 126, symbol: "hello\.Hello::inlineIs"',
+            r"126%s}"%spaces_pattern]
     checker = Checker('list inlineIs', rexp)
     checker.check(execute("list inlineIs"))
+    rexp = [r'file: "hello/Hello\.java", line number: 130, symbol: "hello\.Hello::inlineA"',
+            r"130%snoInlineTest\(\);"%spaces_pattern,
+            r'file: "hello/Hello\.java", line number: 131, symbol: "hello\.Hello::inlineA"',
+            r"131%s}"%spaces_pattern]
     checker = Checker('list inlineA', rexp)
     checker.check(execute("list inlineA"))
 
