@@ -24,20 +24,18 @@
  */
 package com.oracle.svm.jvmtiagentbase;
 
-import static com.oracle.svm.core.util.VMError.guarantee;
-import static com.oracle.svm.jni.JNIObjectHandles.newGlobalRef;
-import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
-
-import java.util.concurrent.locks.ReentrantLock;
-
-import org.graalvm.nativeimage.c.type.CTypeConversion;
-import org.graalvm.word.WordFactory;
-
 import com.oracle.svm.jni.JNIObjectHandles;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIFieldId;
 import com.oracle.svm.jni.nativeapi.JNIMethodId;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
+import org.graalvm.nativeimage.c.type.CTypeConversion;
+import org.graalvm.word.WordFactory;
+
+import java.util.concurrent.locks.ReentrantLock;
+
+import static com.oracle.svm.core.util.VMError.guarantee;
+import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
 
 /**
  * Helps with creation and management of JNI handles for JVMTI agents.
