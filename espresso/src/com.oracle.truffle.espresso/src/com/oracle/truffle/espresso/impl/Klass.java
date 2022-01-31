@@ -367,6 +367,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
             if (init != null) {
                 Method initMethod = init.getMethod();
                 assert !initMethod.isStatic() && initMethod.isPublic() && initMethod.getName().toString().equals(INIT_NAME) && initMethod.getParameterCount() == arguments.length;
+                initMethod.getDeclaringKlass().safeInitialize();
                 StaticObject newObject = StaticObject.createNew(objectKlass);
                 invoke.execute(initMethod, newObject, arguments);
                 return newObject;
