@@ -77,7 +77,7 @@ public class SerializationConfiguration implements ConfigurationBase, RuntimeSer
         writer.append('}');
     }
 
-    private void printSerializationClasses(JsonWriter writer, String types, List<? extends JsonPrintable> serializationConfigurationTypes) throws IOException {
+    private static void printSerializationClasses(JsonWriter writer, String types, List<? extends JsonPrintable> serializationConfigurationTypes) throws IOException {
         writer.quote(types).append(":");
         writer.append('[');
         writer.indent();
