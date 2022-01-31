@@ -91,7 +91,11 @@ public final class AMD64FloatConvertNode extends UnaryArithmeticNode<FloatConver
         // The semantics of the x64 CVTTSS2SI instruction allow returning 0x8000000 in the special
         // cases.
         Stamp foldedStamp = super.foldStamp(newStamp);
-        return foldedStamp.meet(createInexactCaseStamp());
+        if (foldedStamp instanceof IntegerStamp) {
+            return foldedStamp.meet(createInexactCaseStamp());
+        } else {
+            return foldedStamp.unrestricted();
+        }
     }
 
     private Stamp createInexactCaseStamp() {
