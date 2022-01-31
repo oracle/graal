@@ -316,13 +316,13 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         }
 
         if (LIRValueUtil.isVariable(right)) {
-            emitRawCompareBranch(OperandSize.get(cmpKind), load(right), loadNonInlinableConstant(left), cond.mirror(), trueLabel, falseLabel, trueLabelProbability);
+            emitRawCompareBranch(OperandSize.get(cmpKind), asAllocatable(right), loadNonInlinableConstant(left), cond.mirror(), trueLabel, falseLabel, trueLabelProbability);
         } else {
-            emitRawCompareBranch(OperandSize.get(cmpKind), load(left), loadNonInlinableConstant(right), cond, trueLabel, falseLabel, trueLabelProbability);
+            emitRawCompareBranch(OperandSize.get(cmpKind), asAllocatable(left), loadNonInlinableConstant(right), cond, trueLabel, falseLabel, trueLabelProbability);
         }
     }
 
-    private void emitRawCompareBranch(OperandSize size, Variable left, Value right, Condition cond, LabelRef trueLabel, LabelRef falseLabel, double trueLabelProbability) {
+    private void emitRawCompareBranch(OperandSize size, AllocatableValue left, Value right, Condition cond, LabelRef trueLabel, LabelRef falseLabel, double trueLabelProbability) {
         if (isConstantValue(right)) {
             Constant c = LIRValueUtil.asConstant(right);
             if (JavaConstant.isNull(c)) {
@@ -483,9 +483,9 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
                 append(new CondSetOp(result, condition.negate()));
             }
         } else if (isFloatComparison) {
-            append(new FloatCondMoveOp(result, condition, unorderedIsTrue, load(trueValue), load(falseValue), isSelfEqualsCheck));
+            append(new FloatCondMoveOp(result, condition, unorderedIsTrue, asAllocatable(trueValue), asAllocatable(falseValue), isSelfEqualsCheck));
         } else {
-            append(new CondMoveOp(result, condition, load(trueValue), loadNonInlinableConstant(falseValue)));
+            append(new CondMoveOp(result, condition, asAllocatable(trueValue), loadNonInlinableConstant(falseValue)));
         }
         return result;
     }
@@ -493,7 +493,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public Variable emitIntegerTestMove(Value left, Value right, Value trueValue, Value falseValue) {
         emitIntegerTest(left, right);
-        return emitCondMoveOp(Condition.EQ, load(trueValue), loadNonInlinableConstant(falseValue), false, false);
+        return emitCondMoveOp(Condition.EQ, asAllocatable(trueValue), loadNonInlinableConstant(falseValue), false, false);
     }
 
     protected static AVXSize getRegisterSize(Value a) {
@@ -543,7 +543,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     private void emitRawCompare(PlatformKind cmpKind, Value left, Value right) {
-        ((AMD64ArithmeticLIRGeneratorTool) arithmeticLIRGen).emitCompareOp((AMD64Kind) cmpKind, load(left), loadNonInlinableConstant(right));
+        ((AMD64ArithmeticLIRGeneratorTool) arithmeticLIRGen).emitCompareOp((AMD64Kind) cmpKind, asAllocatable(left), loadNonInlinableConstant(right));
     }
 
     @Override
@@ -706,29 +706,29 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         append(new ReturnOp(operand));
     }
 
-    protected StrategySwitchOp createStrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Variable key, AllocatableValue temp) {
+    protected StrategySwitchOp createStrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, AllocatableValue key, AllocatableValue temp) {
         return new StrategySwitchOp(strategy, keyTargets, defaultTarget, key, temp);
     }
 
     @Override
-    public void emitStrategySwitch(SwitchStrategy strategy, Variable key, LabelRef[] keyTargets, LabelRef defaultTarget) {
+    public void emitStrategySwitch(SwitchStrategy strategy, AllocatableValue key, LabelRef[] keyTargets, LabelRef defaultTarget) {
         // a temp is needed for loading object constants
         boolean needsTemp = !LIRKind.isValue(key);
         append(createStrategySwitchOp(strategy, keyTargets, defaultTarget, key, needsTemp ? newVariable(key.getValueKind()) : Value.ILLEGAL));
     }
 
     @Override
-    protected void emitRangeTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value key) {
+    protected void emitRangeTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, AllocatableValue key) {
         Variable scratch = newVariable(LIRKind.value(target().arch.getWordKind()));
         Variable idxScratch = newVariable(key.getValueKind());
         append(new RangeTableSwitchOp(lowKey, defaultTarget, targets, key, scratch, idxScratch));
     }
 
     @Override
-    protected void emitHashTableSwitch(JavaConstant[] keys, LabelRef defaultTarget, LabelRef[] targets, Value value, Value hash) {
+    protected void emitHashTableSwitch(JavaConstant[] keys, LabelRef defaultTarget, LabelRef[] targets, AllocatableValue value, Value hash) {
         Variable scratch = newVariable(LIRKind.value(target().arch.getWordKind()));
         Variable entryScratch = newVariable(LIRKind.value(target().arch.getWordKind()));
-        append(new HashTableSwitchOp(keys, defaultTarget, targets, value, hash, scratch, entryScratch));
+        append(new HashTableSwitchOp(keys, defaultTarget, targets, value, asAllocatable(hash), scratch, entryScratch));
     }
 
     @Override

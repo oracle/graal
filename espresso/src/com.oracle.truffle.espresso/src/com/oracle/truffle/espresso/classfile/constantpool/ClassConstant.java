@@ -136,7 +136,7 @@ public interface ClassConstant extends PoolConstant {
             } catch (EspressoException e) {
                 CompilerDirectives.transferToInterpreter();
                 Meta meta = pool.getContext().getMeta();
-                if (meta.java_lang_ClassNotFoundException.isAssignableFrom(e.getExceptionObject().getKlass())) {
+                if (meta.java_lang_ClassNotFoundException.isAssignableFrom(e.getGuestException().getKlass())) {
                     throw meta.throwExceptionWithMessage(meta.java_lang_NoClassDefFoundError, meta.toGuestString(klassName));
                 }
                 throw e;

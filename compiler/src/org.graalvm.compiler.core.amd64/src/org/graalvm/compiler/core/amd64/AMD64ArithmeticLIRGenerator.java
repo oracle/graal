@@ -588,12 +588,12 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
                 return getLIRGen().emitMove(lop.getRemainder());
             case SINGLE: {
                 Variable result = getLIRGen().newVariable(LIRKind.combine(a, b));
-                getLIRGen().append(new FPDivRemOp(FREM, result, getLIRGen().load(a), getLIRGen().load(b)));
+                getLIRGen().append(new FPDivRemOp(FREM, result, getLIRGen().asAllocatable(a), getLIRGen().asAllocatable(b)));
                 return result;
             }
             case DOUBLE: {
                 Variable result = getLIRGen().newVariable(LIRKind.combine(a, b));
-                getLIRGen().append(new FPDivRemOp(DREM, result, getLIRGen().load(a), getLIRGen().load(b)));
+                getLIRGen().append(new FPDivRemOp(DREM, result, getLIRGen().asAllocatable(a), getLIRGen().asAllocatable(b)));
                 return result;
             }
             default:
@@ -1346,7 +1346,7 @@ public class AMD64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implemen
     }
 
     @Override
-    public void emitCompareOp(AMD64Kind cmpKind, Variable left, Value right) {
+    public void emitCompareOp(AMD64Kind cmpKind, AllocatableValue left, Value right) {
         OperandSize size;
         switch (cmpKind) {
             case BYTE:

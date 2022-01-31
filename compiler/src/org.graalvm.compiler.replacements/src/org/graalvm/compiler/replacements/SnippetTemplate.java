@@ -2441,7 +2441,7 @@ public class SnippetTemplate {
     }
 
     private static void propagateValInState(FrameState newState, Node replacee, Node replacement) {
-        newState.applyToNonVirtual(new NodePositionClosure<Node>() {
+        newState.applyToNonVirtual(new NodePositionClosure<>() {
             @Override
             public void apply(Node from, Position p) {
                 if (p.get(from) == replacee) {
@@ -2464,7 +2464,7 @@ public class SnippetTemplate {
         assert exceptionState.rethrowException();
         assert exceptionState.stackSize() == 1;
         FrameState newExceptionState = exceptionState.duplicate();
-        newExceptionState.applyToNonVirtual(new NodePositionClosure<Node>() {
+        newExceptionState.applyToNonVirtual(new NodePositionClosure<>() {
             @Override
             public void apply(Node from, Position p) {
                 if (p.get(from) == exceptionObject) {

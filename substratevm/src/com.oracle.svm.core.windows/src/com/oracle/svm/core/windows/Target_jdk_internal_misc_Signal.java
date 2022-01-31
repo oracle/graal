@@ -32,13 +32,13 @@ import java.util.Hashtable;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.Jvm;
-import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.util.VMError;
@@ -62,7 +62,7 @@ final class Target_jdk_internal_misc_Signal {
         if (!SubstrateOptions.EnableSignalAPI.getValue()) {
             throw new IllegalArgumentException("Installing signal handlers is not enabled");
         }
-        if (!PlatformNativeLibrarySupport.singleton().isFirstIsolate()) {
+        if (!Isolates.isCurrentFirst()) {
             throw new IllegalArgumentException("Only the first isolate can install signal handlers, as signal handling is global for the process.");
         }
         SignalDispatcher.ensureInitialized();
@@ -119,7 +119,7 @@ class SignalDispatcher implements Runnable {
                 VMError.shouldNotReachHere("Native state initialization for jdk.internal.misc.Signal failed with error code: 0x" +
                                 Integer.toUnsignedString(WinBase.GetLastError(), 16).toUpperCase());
             }
-            RuntimeSupport.getRuntimeSupport().addTearDownHook(SignalDispatcher::osTerminateSignalThread);
+            RuntimeSupport.getRuntimeSupport().addTearDownHook(isFirstIsolate -> osTerminateSignalThread());
             signalDispatcherThread.start();
         }
     }

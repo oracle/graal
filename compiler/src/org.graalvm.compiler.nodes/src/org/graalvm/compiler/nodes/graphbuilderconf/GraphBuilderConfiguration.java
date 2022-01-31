@@ -49,7 +49,7 @@ public final class GraphBuilderConfiguration {
          * {@linkplain #getInvocationPlugins() invocation plugins} in this object.
          */
         public Plugins(Plugins copyFrom, InvocationPlugins invocationPlugins) {
-            this.invocationPlugins = invocationPlugins != null ? invocationPlugins : new InvocationPlugins(copyFrom.invocationPlugins);
+            this.invocationPlugins = invocationPlugins != null ? invocationPlugins : new InvocationPlugins(null, copyFrom.invocationPlugins);
             this.nodePlugins = copyFrom.nodePlugins;
             this.parameterPlugins = copyFrom.parameterPlugins;
             this.typePlugins = copyFrom.typePlugins;

@@ -264,7 +264,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
         try {
             for (Object o : (Object[]) getDataLayoutMethod.invoke(osc)) {
                 ObjectStreamClass desc = (ObjectStreamClass) descField.get(o);
-                if (!desc.equals(osc) && !desc.equals(clazz)) {
+                if (!desc.equals(osc)) {
                     registerIncludingAssociatedClasses(condition, desc.forClass(), alreadyVisited);
                 }
             }

@@ -182,7 +182,13 @@ public interface LIRGeneratorTool extends DiagnosticLIRGeneratorTool, ValueKindF
      */
     AllocatableValue asAllocatable(Value value);
 
-    Variable load(Value value);
+    /**
+     * Returns an {@link AllocatableValue} of the address {@code value} with an integer
+     * representation.
+     */
+    default AllocatableValue addressAsAllocatableInteger(Value value) {
+        return asAllocatable(value);
+    }
 
     <I extends LIRInstruction> I append(I op);
 

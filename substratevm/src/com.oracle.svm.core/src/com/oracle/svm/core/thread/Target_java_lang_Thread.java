@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -136,7 +136,7 @@ public final class Target_java_lang_Thread {
      * inherit a (more or less random) access control context.
      */
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    private AccessControlContext inheritedAccessControlContext;
+    public AccessControlContext inheritedAccessControlContext;
 
     @Alias @TargetElement(onlyWith = NotLoomJDK.class) //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadStatusRecomputation.class) //
@@ -294,8 +294,8 @@ public final class Target_java_lang_Thread {
         this.blockerLock = new Object();
         /* Injected Target_java_lang_Thread instance field initialization. */
         this.threadData = new ThreadData();
-        /* Initialize the rest of the Thread object, ignoring `acc` and `inheritThreadLocals`. */
-        JavaThreads.initializeNewThread(this, g, target, name, stackSize);
+        /* Initialize the rest of the Thread object, ignoring `inheritThreadLocals`. */
+        JavaThreads.initializeNewThread(this, g, target, name, stackSize, acc);
     }
 
     @Substitute
@@ -315,8 +315,8 @@ public final class Target_java_lang_Thread {
 
         checkCharacteristics(characteristics);
 
-        /* Initialize the rest of the Thread object, ignoring `acc` and `characteristics`. */
-        JavaThreads.initializeNewThread(this, g, target, name, stackSize);
+        /* Initialize the rest of the Thread object, ignoring `characteristics`. */
+        JavaThreads.initializeNewThread(this, g, target, name, stackSize, acc);
     }
 
     /**
@@ -341,19 +341,24 @@ public final class Target_java_lang_Thread {
             throw VMError.unsupportedFeature("Single-threaded VM cannot create new threads");
         }
 
-        /*
-         * The threadStatus must be set to RUNNABLE by the parent thread and before the child thread
-         * starts because we are creating child threads asynchronously (there is no coordination
-         * between parent and child threads).
-         *
-         * Otherwise, a call to Thread.join() in the parent thread could succeed even before the
-         * child thread starts, or it could hang in case that the child thread is already dead.
-         */
-        JavaContinuations.LoomCompatibilityUtil.setThreadStatus(this, ThreadStatus.RUNNABLE);
         wasStartedByCurrentIsolate = true;
         parentThreadId = Thread.currentThread().getId();
         long stackSize = JavaThreads.getRequestedThreadSize(JavaThreads.fromTarget(this));
-        JavaThreads.singleton().startThread(JavaThreads.fromTarget(this), stackSize);
+        try {
+            JavaThreads.singleton().startThread(JavaThreads.fromTarget(this), stackSize);
+        } catch (Throwable t) {
+            // These should not be accessed if the thread could not start, but reset them anyway
+            wasStartedByCurrentIsolate = false;
+            parentThreadId = 0;
+
+            throw t;
+        }
+        /*
+         * The threadStatus must be RUNNABLE before returning so the caller can safely use
+         * Thread.join() on the launched thread, but the thread could also already have changed its
+         * state itself. Atomically switch from NEW to RUNNABLE if it has not.
+         */
+        JavaContinuations.LoomCompatibilityUtil.compareAndSetThreadStatus(this, ThreadStatus.NEW, ThreadStatus.RUNNABLE);
     }
 
     @Substitute
@@ -589,7 +594,7 @@ final class Target_java_lang_Thread_FieldHolder {
     @Alias //
     boolean daemon;
     @Alias //
-    int threadStatus;
+    volatile int threadStatus;
 
     Target_java_lang_Thread_FieldHolder(
                     ThreadGroup group,

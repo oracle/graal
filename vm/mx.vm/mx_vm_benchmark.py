@@ -847,8 +847,9 @@ class AgentScriptJsBenchmarkSuite(mx_benchmark.VmBenchmarkSuite, mx_benchmark.Av
         super(AgentScriptJsBenchmarkSuite, self).__init__()
         self._benchmarks = {
             'plain' : [],
-            'triple' : ['--insight=sieve-filter1.js', '--experimental-options'],
-            'single' : ['--insight=sieve-filter2.js', '--experimental-options'],
+            'triple' : ['--insight=sieve-filter1.js'],
+            'single' : ['--insight=sieve-filter2.js'],
+            'iterate' : ['--insight=sieve-filter3.js'],
         }
 
     def group(self):

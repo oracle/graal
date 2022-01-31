@@ -165,7 +165,7 @@ public final class Block extends AbstractBlockBase<Block> {
     }
 
     public Iterable<FixedNode> getNodes() {
-        return new Iterable<FixedNode>() {
+        return new Iterable<>() {
 
             @Override
             public Iterator<FixedNode> iterator() {

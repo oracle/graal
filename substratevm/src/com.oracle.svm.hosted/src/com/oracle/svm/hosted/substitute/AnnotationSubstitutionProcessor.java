@@ -47,6 +47,7 @@ import java.util.function.Predicate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.util.GuardedAnnotationAccess;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
@@ -151,8 +152,19 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         return field;
     }
 
+    public boolean isDeleted(Field field) {
+        return isDeleted(metaAccess.lookupJavaField(field));
+    }
+
     public boolean isDeleted(ResolvedJavaField field) {
-        return deleteAnnotations.get(field) != null;
+        if (deleteAnnotations.get(field) != null) {
+            return true;
+        }
+        ResolvedJavaField substitutionField = fieldSubstitutions.get(field);
+        if (substitutionField != null) {
+            return GuardedAnnotationAccess.isAnnotationPresent(substitutionField, Delete.class);
+        }
+        return false;
     }
 
     public boolean isDeleted(Class<?> clazz) {
@@ -249,6 +261,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                         targetFieldDeclaringType.registerAsReachable();
                         AnalysisField targetField = bb.getMetaAccess().lookupJavaField(cvField.getTargetField());
                         targetField.registerAsAccessed();
+                        assert !GuardedAnnotationAccess.isAnnotationPresent(targetField, Delete.class);
                         targetField.registerAsUnsafeAccessed();
                         break;
                 }

@@ -35,7 +35,6 @@ import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.nodes.AllocaNode;
 import org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.Word;
 
 import jdk.vm.ci.code.Register;
@@ -48,8 +47,6 @@ public class OutOfBoundsExceptionStub extends CreateExceptionStub {
         super("createOutOfBoundsException", options, providers, linkage);
     }
 
-    // JDK-8201593: Print array length in ArrayIndexOutOfBoundsException.
-    private static final boolean PRINT_LENGTH_IN_EXCEPTION = JavaVersionUtil.JAVA_SPEC >= 11;
     static final int MAX_INT_STRING_SIZE = Integer.toString(Integer.MIN_VALUE).length();
     private static final String STR_INDEX = "Index ";
     private static final String STR_OUTOFBOUNDSFORLENGTH = " out of bounds for length ";
@@ -61,15 +58,11 @@ public class OutOfBoundsExceptionStub extends CreateExceptionStub {
                 return providers.getRegisters().getThreadRegister();
             case 3:
                 int bytes;
-                if (PRINT_LENGTH_IN_EXCEPTION) {
-                    bytes = STR_INDEX.length() + STR_OUTOFBOUNDSFORLENGTH.length() + 2 * MAX_INT_STRING_SIZE;
-                } else {
-                    bytes = MAX_INT_STRING_SIZE;
-                }
+                bytes = STR_INDEX.length() + STR_OUTOFBOUNDSFORLENGTH.length() + 2 * MAX_INT_STRING_SIZE;
                 // required bytes for maximum length + nullbyte
                 return bytes + 1;
             case 4:
-                return PRINT_LENGTH_IN_EXCEPTION;
+                return true;
             default:
                 throw GraalError.shouldNotReachHere("unknown parameter " + name + " at index " + index);
         }

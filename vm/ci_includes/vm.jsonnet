@@ -31,6 +31,7 @@ local jdks = common_json.jdks;
   },
 
   vm_common_windows_jdk8:: vm_common.svm_common_windows_openjdk8,
+  vm_common_windows_jdk11:: vm_common.svm_common_windows_jdk11,
 
   vm_linux_amd64_java_11:: self.vm_java_11 + {
     downloads+: {
@@ -211,17 +212,17 @@ local jdks = common_json.jdks;
       ],
       name: 'deploy-vm-maven-darwin-amd64',
     },
-    self.vm_common_windows_jdk8 + vm_common.gate_vm_windows + self.maven_base_8_native + {
+    self.vm_common_windows_jdk11 + vm_common.gate_vm_windows + self.maven_base_11_native + {
       run: [
-        $.maven_base_8_native.build,
-        $.maven_base_8_native.deploy + ['--dry-run', 'lafo-maven'],
+        $.maven_base_11_native.build,
+        $.maven_base_11_native.deploy + ['--dry-run', 'lafo-maven'],
       ],
       name: 'gate-vm-maven-dry-run-windows-amd64',
     },
-    self.vm_common_windows_jdk8 + vm_common.deploy_daily_vm_windows + self.maven_base_8_native + {
+    self.vm_common_windows_jdk11 + vm_common.deploy_daily_vm_windows + self.maven_base_11_native + {
       run: [
-        $.maven_base_8_native.build,
-        $.maven_base_8_native.deploy + ['lafo-maven'],
+        $.maven_base_11_native.build,
+        $.maven_base_11_native.deploy + ['lafo-maven'],
       ],
       name: 'deploy-vm-maven-windows-amd64',
     },

@@ -85,7 +85,7 @@ public class NodeLimitTest extends PartialEvaluationTest {
             }
 
             private Function<Integer, Integer> getF() {
-                return new Function<Integer, Integer>() {
+                return new Function<>() {
                     @Override
                     public Integer apply(Integer integer) {
                         return integer < 500 ? getF().apply(integer + 1) : 0;

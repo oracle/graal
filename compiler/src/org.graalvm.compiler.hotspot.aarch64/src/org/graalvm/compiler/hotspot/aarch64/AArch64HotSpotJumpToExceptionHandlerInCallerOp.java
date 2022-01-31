@@ -24,22 +24,15 @@
  */
 package org.graalvm.compiler.hotspot.aarch64;
 
-import static jdk.vm.ci.aarch64.AArch64.sp;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.vm.ci.hotspot.aarch64.AArch64HotSpotRegisterConfig.fp;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
-import org.graalvm.compiler.asm.Label;
-import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
-import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
-import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 
 /**
@@ -54,36 +47,17 @@ public class AArch64HotSpotJumpToExceptionHandlerInCallerOp extends AArch64HotSp
     @Use(REG) private AllocatableValue handlerInCallerPc;
     @Use(REG) private AllocatableValue exception;
     @Use(REG) private AllocatableValue exceptionPc;
-    private final Register thread;
-    private final int isMethodHandleReturnOffset;
 
-    public AArch64HotSpotJumpToExceptionHandlerInCallerOp(AllocatableValue handlerInCallerPc, AllocatableValue exception, AllocatableValue exceptionPc, int isMethodHandleReturnOffset,
-                    Register thread, GraalHotSpotVMConfig config) {
+    public AArch64HotSpotJumpToExceptionHandlerInCallerOp(AllocatableValue handlerInCallerPc, AllocatableValue exception, AllocatableValue exceptionPc, GraalHotSpotVMConfig config) {
         super(TYPE, config);
         this.handlerInCallerPc = handlerInCallerPc;
         this.exception = exception;
         this.exceptionPc = exceptionPc;
-        this.isMethodHandleReturnOffset = isMethodHandleReturnOffset;
-        this.thread = thread;
     }
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
         leaveFrame(crb, masm, /* emitSafepoint */false, false);
-
-        if (JavaVersionUtil.JAVA_SPEC < 8) {
-            // Restore sp from fp if the exception PC is a method handle call site.
-            try (ScratchRegister sc = masm.getScratchRegister()) {
-                Register scratch = sc.getRegister();
-                AArch64Address address = masm.makeAddress(32, thread, isMethodHandleReturnOffset, scratch);
-                masm.ldr(32, scratch, address);
-                Label noRestore = new Label();
-                masm.cbz(32, scratch, noRestore);
-                masm.mov(64, sp, fp);
-                masm.bind(noRestore);
-            }
-        }
-
         masm.jmp(asRegister(handlerInCallerPc));
     }
 }

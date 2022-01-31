@@ -30,7 +30,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.junit.Assume;
 import org.junit.Test;
 import org.objectweb.asm.ClassWriter;
@@ -170,7 +169,6 @@ public class DynamicConstantTest extends CustomizedBytecodePatternTest {
     }
 
     public DynamicConstantTest() {
-        Assume.assumeTrue("ConstantDynamic was introduced in JDK 11", JavaVersionUtil.JAVA_SPEC >= 11);
         Class<?>[] types = {
                         boolean.class,
                         byte.class,

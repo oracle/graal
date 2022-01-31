@@ -54,7 +54,7 @@ public class NativeSecureRandomFilesCloser implements Feature {
 
     private void registerShutdownHook(DuringAnalysisAccess a) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
-        Runnable hook = PosixSunSecuritySubstitutions.getShutdownHook();
+        RuntimeSupport.Hook hook = PosixSunSecuritySubstitutions.getTearDownHook();
         RuntimeSupport.getRuntimeSupport().addTearDownHook(hook);
         access.rescanObject(hook);
     }

@@ -161,7 +161,7 @@ final class Util_jdk_internal_misc_Signal {
                     dispatchThread.setName("Signal Dispatcher");
                     dispatchThread.setDaemon(true);
                     dispatchThread.start();
-                    RuntimeSupport.getRuntimeSupport().addTearDownHook(() -> DispatchThread.interrupt(dispatchThread));
+                    RuntimeSupport.getRuntimeSupport().addTearDownHook(isFirstIsolate -> DispatchThread.interrupt(dispatchThread));
 
                     /* Initialization is complete. */
                     initialized = true;
@@ -372,8 +372,7 @@ class IgnoreSIGPIPEFeature implements Feature {
     }
 }
 
-final class IgnoreSIGPIPEStartupHook implements Runnable {
-
+final class IgnoreSIGPIPEStartupHook implements RuntimeSupport.Hook {
     /**
      * Ignore SIGPIPE. Reading from a closed pipe, instead of delivering a process-wide signal whose
      * default action is to terminate the process, will instead return an error code from the
@@ -384,9 +383,11 @@ final class IgnoreSIGPIPEStartupHook implements Runnable {
      * calling process is ignoring this signal, then write(2) fails with the error EPIPE.
      */
     @Override
-    public void run() {
-        final SignalDispatcher signalResult = PosixUtils.installSignalHandler(Signal.SignalEnum.SIGPIPE.getCValue(), Signal.SIG_IGN());
-        VMError.guarantee(signalResult != Signal.SIG_ERR(), "IgnoreSIGPIPEFeature.run: Could not ignore SIGPIPE");
+    public void execute(boolean isFirstIsolate) {
+        if (isFirstIsolate) {
+            final SignalDispatcher signalResult = PosixUtils.installSignalHandler(Signal.SignalEnum.SIGPIPE.getCValue(), Signal.SIG_IGN());
+            VMError.guarantee(signalResult != Signal.SIG_ERR(), "IgnoreSIGPIPEFeature.run: Could not ignore SIGPIPE");
+        }
     }
 }
 

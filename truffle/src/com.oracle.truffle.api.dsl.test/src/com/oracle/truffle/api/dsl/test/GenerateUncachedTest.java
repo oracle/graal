@@ -209,7 +209,7 @@ public class GenerateUncachedTest {
         Uncached5Node.testAssumption.invalidate();
         assertEquals("s2", node.execute(42));
         Uncached5Node.testAssumption = null;
-        assertEquals("s1", node.execute(42));
+        assertEquals("s2", node.execute(42));
     }
 
     @TypeSystem

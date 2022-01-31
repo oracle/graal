@@ -176,7 +176,7 @@ public interface Replacements extends GeneratedPluginInjectionProvider {
      *
      * @return true iff there may be a substitution graph available for {@code method}
      */
-    boolean hasSubstitution(ResolvedJavaMethod method);
+    boolean hasSubstitution(ResolvedJavaMethod method, OptionValues options);
 
     /**
      * Gets the provider for accessing the bytecode of a substitution method if no other provider is

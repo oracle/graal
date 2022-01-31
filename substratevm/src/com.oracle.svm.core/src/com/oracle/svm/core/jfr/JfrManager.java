@@ -42,10 +42,11 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.util.UserError.UserException;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.jfr.events.EndChunkNativePeriodicEvents;
 import com.oracle.svm.core.jfr.events.EveryChunkNativePeriodicEvents;
+import com.oracle.svm.core.util.UserError.UserException;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.jfr.FlightRecorder;
 import jdk.jfr.Recording;
@@ -76,8 +77,8 @@ public class JfrManager {
         return ImageSingletons.lookup(JfrManager.class);
     }
 
-    public Runnable startupHook() {
-        return () -> {
+    public RuntimeSupport.Hook startupHook() {
+        return isFirstIsolate -> {
             parseFlightRecorderLogging(SubstrateOptions.FlightRecorderLogging.getValue());
             if (SubstrateOptions.FlightRecorder.getValue()) {
                 periodicEventSetup();
@@ -86,8 +87,8 @@ public class JfrManager {
         };
     }
 
-    public Runnable shutdownHook() {
-        return () -> {
+    public RuntimeSupport.Hook shutdownHook() {
+        return isFirstIsolate -> {
             if (SubstrateOptions.FlightRecorder.getValue()) {
                 // Everything should already have been torn down by JVM.destroyJFR(), which is
                 // called in a shutdown hook. So in this method we should only unregister periodic

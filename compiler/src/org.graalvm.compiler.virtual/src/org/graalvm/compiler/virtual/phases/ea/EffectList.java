@@ -135,7 +135,7 @@ public class EffectList implements Iterable<EffectList.Effect> {
 
     @Override
     public Iterator<Effect> iterator() {
-        return new Iterator<Effect>() {
+        return new Iterator<>() {
 
             int index;
             final int listSize = EffectList.this.size;

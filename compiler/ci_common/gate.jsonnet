@@ -50,7 +50,7 @@
   test:: s.base(),
 
   coverage:: s.base("build,coverage", ["--jacoco-omit-excluded", "--jacocout", "html"]) + {
-    run: [
+    run+: [
       ["mx", "coverage-upload"],
       # GR-18258 ["mx", "sonarqube-upload", "-Dsonar.host.url=$SONAR_HOST_URL", "-Dsonar.projectKey=com.oracle.graal.compiler."jvm-config.default, "-Dsonar.projectName=GraalVM - Compiler ("jvm-config.default")", "--exclude-generated", "--skip-coverage"]
     ]
@@ -125,7 +125,7 @@
   builds: [
     # Darwin AMD64
     {name: "gate-compiler-test-labsjdk-17-darwin-amd64"} +              s.test +           c.labsjdk17 +      c.darwin_amd64 + t("1:00:00") + s.save_as_json,
-    {name: "weekly-compiler-test-test-labsjdk-11-darwin-amd64"} +       s.test +           c.labsjdk11 +      c.darwin_amd64 + s.weekly,
+    {name: "weekly-compiler-test-labsjdk-11-darwin-amd64"} +            s.test +           c.labsjdk11 +      c.darwin_amd64 + s.weekly,
 
     # Windows AMD64
     {name: "gate-compiler-test-labsjdk-11-windows-amd64"} +             s.test +           c.labsjdk11 +      c.windows_amd64  + t("55:00") + c.devkits["windows-jdk11"] + s.save_as_json,
