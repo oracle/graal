@@ -40,9 +40,9 @@ public class SerializationConfigurationType implements JsonPrintable, Comparable
     private final String qualifiedCustomTargetConstructorJavaName;
 
     public SerializationConfigurationType(ConfigurationCondition condition, String qualifiedJavaName, String qualifiedCustomTargetConstructorJavaName) {
-        assert qualifiedJavaName.indexOf('/') == -1 : "Requires qualified Java name, not internal representation";
+        assert qualifiedJavaName.indexOf('/') == -1 : "Requires qualified Java name, not the internal representation";
         assert !qualifiedJavaName.startsWith("[") : "Requires Java source array syntax, for example java.lang.String[]";
-        assert qualifiedCustomTargetConstructorJavaName == null || qualifiedCustomTargetConstructorJavaName.indexOf('/') == -1 : "Requires qualified Java name, not internal representation";
+        assert qualifiedCustomTargetConstructorJavaName == null || qualifiedCustomTargetConstructorJavaName.indexOf('/') == -1 : "Requires qualified Java name, not the internal representation";
         assert qualifiedCustomTargetConstructorJavaName == null || !qualifiedCustomTargetConstructorJavaName.startsWith("[") : "Requires Java source array syntax, for example java.lang.String[]";
         Objects.requireNonNull(condition);
         this.condition = condition;

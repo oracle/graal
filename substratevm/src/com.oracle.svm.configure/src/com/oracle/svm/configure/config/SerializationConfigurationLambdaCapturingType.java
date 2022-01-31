@@ -39,8 +39,7 @@ public class SerializationConfigurationLambdaCapturingType implements JsonPrinta
     private final String qualifiedJavaName;
 
     public SerializationConfigurationLambdaCapturingType(ConfigurationCondition condition, String qualifiedJavaName) {
-        assert qualifiedJavaName.indexOf('/') == -1 : "Requires qualified Java name, not internal representation";
-        assert !qualifiedJavaName.startsWith("[") : "Requires Java source array syntax, for example java.lang.String[]";
+        assert qualifiedJavaName.indexOf('/') == -1 : "Requires qualified Java name, not the internal representation";
         Objects.requireNonNull(condition);
         this.condition = condition;
         Objects.requireNonNull(qualifiedJavaName);

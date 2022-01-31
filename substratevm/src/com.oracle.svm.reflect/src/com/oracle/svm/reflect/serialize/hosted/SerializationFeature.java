@@ -134,10 +134,9 @@ public class SerializationFeature implements Feature {
     }
 
     @SuppressWarnings("try")
-    private static StructuredGraph createMethodGraph(ResolvedJavaMethod method, DebugContext debug) {
+    private static StructuredGraph createMethodGraph(ResolvedJavaMethod method, GraphBuilderPhase lambdaParserPhase, DebugContext debug) {
         StructuredGraph graph = new StructuredGraph.Builder(debug.getOptions(), debug).method(method).build();
         try (DebugContext.Scope ignored = debug.scope("ParsingToMaterializeLambdas")) {
-            GraphBuilderPhase lambdaParserPhase = new GraphBuilderPhase(buildLambdaParserConfig());
             HighTierContext context = new HighTierContext(GraalAccess.getOriginalProviders(), null, OptimisticOptimizations.NONE);
             lambdaParserPhase.apply(graph, context);
         } catch (Throwable e) {
@@ -201,7 +200,8 @@ public class SerializationFeature implements Feature {
 
     @SuppressWarnings("try")
     private static void registerLambdasFromMethod(ResolvedJavaMethod method, DebugContext debug) {
-        StructuredGraph graph = createMethodGraph(method, debug);
+        GraphBuilderPhase lambdaParserPhase = new GraphBuilderPhase(buildLambdaParserConfig());
+        StructuredGraph graph = createMethodGraph(method, lambdaParserPhase, debug);
         registerLambdasFromConstantNodesInGraph(graph);
     }
 
