@@ -9,12 +9,12 @@ You can install Oracle GraalVM Enterprise Edition on the Windows operating syste
 Follow these steps:
 
 1. Navigate to [Oracle GraalVM Downloads](https://www.oracle.com/downloads/graalvm-downloads.html).
-2. Select the preferable GraalVM Enterprise version in the Release Version dropdown, **8**, **11**, or **17** for the Java version, and **Windows** for the operating system.
+2. Select the preferable GraalVM Enterprise version in the Release Version dropdown, **11** or **17** for the Java version, and **Windows** for the operating system.
 3. Click on the **GraalVM Enterprise Core** download link. Before you download a file, you must accept the [Oracle License Agreement](https://www.oracle.com/downloads/licenses/graalvm-otn-license.html) in the popup window.
 4. When the download button becomes active, press it to start downloading graalvm-ee-java<version>-windows-amd64-<version>.zip.
 5. Change the directory to the location where you want to install GraalVM Enterprise, then move the _.zip_ archive to it.
 6. Unzip the archive to your file system.
-7. There can be multiple JDKs installed on the machine. The next step is to configure the runtime environment. Setting environment variables via the command line will work the same way for Windows 7, 8 and 10.
+7. There can be multiple JDKs installed on the machine. The next step is to configure the runtime environment. Setting environment variables via the command line work the same way for Windows 8 and 10.
   - Point the `PATH` environment variable to the GraalVM Enterprise `bin` directory:
   ```shell
   setx /M PATH "C:\Progra~1\Java\<graalvm>\bin;%PATH%"

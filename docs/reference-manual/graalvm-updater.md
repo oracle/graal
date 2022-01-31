@@ -30,15 +30,14 @@ The source code of GraalVM Updater is located in the `<graalvm>/lib/installer` f
 The following GraalVM language runtimes and utilities are available for installation.
 
 Tools/Utilities:
-
 * [Native Image](native-image/README.md) -- a technology to compile an application ahead-of-time into a native executable
 * [LLVM toolchain](llvm/README.md) --  a set of tools and APIs for compiling native programs to bitcode that can be executed on GraalVM
 
 Runtimes:
 * [Java on Truffle](java-on-truffle/README.md) -- a Java Virtual Machine implementation based on a Truffle interpreter for GraalVM
-* [Node.js](js/README.md) -- Node.js 14.16.1 compatible
+* [Node.js](js/README.md) -- Node.js 14.18.1 compatible
 * [Python](python/README.md) -- Python 3.8.5-compatible
-* [Ruby](ruby/README.md) -- Ruby 2.7.3-compatible
+* [Ruby](ruby/README.md) -- Ruby 3.0.2-compatible
 * [R](r/README.md) -- GNU R 4.0.3-compatible
 * [Wasm](wasm/README.md) -- WebAssembly (Wasm)
 
@@ -176,13 +175,15 @@ The downgrades to an older version, and from GraalVM Enterprise to Community Edi
 
 The installation command of GraalVM Updater accepts multiple options and parameters, and allows this syntax:
 ```shell
-gu install [-0cCfFiLnorsuvyxY] param [param ...]
+gu install [-0CcDfiLMnosruvyxY] param [param ...]
 ```
+
 The following options are currently supported:
 * `-0, --dry-run`: dry run, do not change anything
 * `-c, --catalog`: treat parameters as component IDs from the GraalVM components catalog. This is the default
 * `-C, --custom-catalog <url>`: use a specific catalog URL to locate components
 * `-L, --local-file`: treat parameters as local filenames of packaged components
+* `-M`: force `gu` to ignore dependencies of installed components
 * `-f, --force`: force overwrite, bypass version checks
 * `-i, --fail-existing`: fail on an existing component
 * `-n, --no-progress`: do not display the downloading progress
@@ -204,7 +205,7 @@ missing resources or libraries.
 
 To rebuild and refresh the native binaries, use the following command:
 ```shell
-gu rebuild-images [--verbose] polyglot|libpolyglot|js|llvm|python|ruby [custom native-image args]
+gu rebuild-images [--verbose] polyglot|libpolyglot|js|llvm|python|ruby|R... [custom native-image args]...
 ```
 
 ## GraalVM Updater Commands Overview
@@ -214,14 +215,13 @@ Command-line help is available by running `gu` or `gu -h`.  Run `gu <command> -
 GraalVM Updater usage options:
 * `gu info [-cClLnprstuvV] <param>`: print the information about specific component (from file, URL, or catalog)
 * `gu available [-aClvV] <expr>`: list components available in the catalog
-* `gu install [-0cCDfFiLnorsuvyxY] <param>`: install a component package
+* `gu install [--0CcDfiLMnosruvyxY] <param>`: install a component package
 * `gu list [-clv] <expression>`: list installed components or components from catalog
-* `gu remove [-0Dfxv] <id>`: uninstall a component
-* `gu update [-cCnLsux] [<ver>] [<param>]`: upgrade to the recent GraalVM version
-* `gu rebuild-images`: rebuild native images. Use `-h` for detailed usage
-* `gu upgrade`: install the most recent available version of GraalVM
+* `gu remove [-0DfMxv] <id>`: uninstall a component
+* `gu upgrade [-cCnLsuxSd] [<ver>] [<cmp>]`: upgrade to the recent GraalVM version
 * `gu upgrade --edition ee`: upgrade from GraalVM Community Edition to the most recent available version of GraalVM Enterprise Edition
-
+* `gu rebuild-images`: rebuild the native launchers. Use `-h` for detailed usage
+*
 GraalVM Updater common options:
 * `-A, --auto-yes`: say YES or ACCEPT to a question
 * `-c, --catalog`: treat parameters as component IDs from the catalog of GraalVM components. This is the default
