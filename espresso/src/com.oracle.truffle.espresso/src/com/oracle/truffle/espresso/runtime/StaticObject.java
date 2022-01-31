@@ -183,7 +183,9 @@ public class StaticObject implements TruffleObject, Cloneable {
         assert foreignObject != null;
         StaticObject newObj = lang.getForeignShape().getFactory().create(klass, true);
         EspressoLanguage.getForeignProperty().setObject(newObj, foreignObject);
-        assert klass == null || klass.isInitializedOrInitializing();
+        if (klass != null) {
+            klass.safeInitialize();
+        }
         return trackAllocation(klass, newObj);
     }
 
