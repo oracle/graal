@@ -3452,6 +3452,10 @@ def _with_polyglot_launcher_project():
     return 'poly' in [c.short_name for c in registered_graalvm_components()]
 
 
+def _with_native_image_inspect_project():
+    return 'nii' in [c.short_name for c in registered_graalvm_components()]
+
+
 def _force_bash_launchers(launcher):
     """
     :type launcher: str | mx_sdk.AbstractNativeImageConfig
