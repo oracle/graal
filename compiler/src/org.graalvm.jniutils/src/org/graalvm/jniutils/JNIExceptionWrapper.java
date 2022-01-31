@@ -63,6 +63,7 @@ import java.util.Objects;
  * Wraps an exception thrown by a JNI call into HotSpot. If the exception propagates up to an native
  * image entry point, the exception is re-thrown in HotSpot.
  */
+@SuppressWarnings("serial")
 public final class JNIExceptionWrapper extends RuntimeException {
 
     private static final String HS_ENTRYPOINTS_CLASS = "org.graalvm.jniutils.JNIExceptionWrapperEntryPoints";
