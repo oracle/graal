@@ -218,6 +218,15 @@ public final class ReferenceInternals {
 
     @SuppressFBWarnings(value = "WA_NOT_IN_LOOP", justification = "Wait for progress, not necessarily completion.")
     public static boolean waitForReferenceProcessing() throws InterruptedException {
+        if (ReferenceHandler.isExecutedManually()) {
+            /*
+             * When the reference handling is executed manually, then we don't know when pending
+             * references will be processed. So, we must not block when there are pending references
+             * as this could cause deadlocks.
+             */
+            return false;
+        }
+
         synchronized (processPendingLock) {
             if (processPendingActive || Heap.getHeap().hasReferencePendingList()) {
                 processPendingLock.wait(); // Wait for progress, not necessarily completion
