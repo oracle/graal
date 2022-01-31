@@ -407,7 +407,7 @@ suite = {
         "GRAAL_NATIVEBRIDGE_PROCESSOR",
       ],
       "checkstyle" : "org.graalvm.compiler.graph",
-      "javaCompliance" : "8,11+",
+      "javaCompliance" : "11+",
       "workingSets" : "Graal,Test",
       "jacoco" : "exclude",
       "testProject" : True,
