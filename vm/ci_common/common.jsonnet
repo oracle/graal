@@ -416,6 +416,7 @@ local devkits = common_json.devkits;
       libgraal_build(['-J-ea', '-ea', '-Ob']),
       ['mx', '--env', vm.libgraal_env, 'gate', '--task', 'LibGraal Truffle'],
     ],
+    timelimit: '1:00:00',
   },
 
   # for cases where a maven package is not easily accessible
