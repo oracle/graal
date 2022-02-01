@@ -33,6 +33,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
 import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.interop.ToEspressoNode;
@@ -402,17 +403,22 @@ public final class Target_java_lang_System {
 
     public static EspressoException throwNullPointerEx(Meta meta, SubstitutionProfiler profiler) {
         profiler.profile(NULLPOINTER_PROFILE);
-        throw meta.throwNullPointerException();
+        throw throwException(meta, meta.java_lang_NullPointerException);
     }
 
     private static EspressoException throwOutOfBoundsEx(Meta meta, SubstitutionProfiler profiler) {
         profiler.profile(INDEXOUTOFBOUNDS_PROFILE);
-        throw meta.throwException(meta.java_lang_ArrayIndexOutOfBoundsException);
+        throw throwException(meta, meta.java_lang_ArrayIndexOutOfBoundsException);
     }
 
     private static EspressoException throwArrayStoreEx(Meta meta, SubstitutionProfiler profiler) {
         profiler.profile(ARRAYSTORE_PROFILE);
-        throw meta.throwException(meta.java_lang_ArrayStoreException);
+        throw throwException(meta, meta.java_lang_ArrayStoreException);
+    }
+
+    @TruffleBoundary
+    private static EspressoException throwException(Meta meta, ObjectKlass exceptionKlass) {
+        throw meta.throwException(exceptionKlass);
     }
 
     @TruffleBoundary
