@@ -70,7 +70,7 @@ public class SVMImageHeapVerifier extends HeapSnapshotVerifier {
 
     @Override
     protected void scanTypes(ObjectScanner objectScanner) {
-        SVMHost svmHost = (SVMHost) bb.getHostVM();
+        SVMHost svmHost = svmHost();
         /* First make sure that all DynamicHub fields are initialized and scanned. */
         bb.getUniverse().getTypes().stream().filter(AnalysisType::isReachable).forEach(((NativeImagePointsToAnalysis) bb)::initializeMetaData);
         /* Then verify the snapshots of reachable types, i.e., compare them with hosted values. */
@@ -84,7 +84,11 @@ public class SVMImageHeapVerifier extends HeapSnapshotVerifier {
 
     @Override
     protected boolean initializationInfoComputed(AnalysisType type) {
-        DynamicHub hub = ((SVMHost) bb.getHostVM()).dynamicHub(type);
+        DynamicHub hub = svmHost().dynamicHub(type);
         return hub.getClassInitializationInfo() != null;
+    }
+
+    private SVMHost svmHost() {
+        return (SVMHost) bb.getHostVM();
     }
 }
