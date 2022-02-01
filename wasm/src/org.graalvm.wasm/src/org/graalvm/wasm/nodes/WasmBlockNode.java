@@ -45,7 +45,7 @@ import static org.graalvm.wasm.BinaryStreamParser.value;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_BYTECODE_INDEX;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_EXTRA_INDEX;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_IF_BYTECODE_INDEX;
-import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_IF_CONDITION_PROFILE;
+import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_IF_PROFILE;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_IF_EXTRA_INDEX;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_IF_LENGTH;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_IF_STACK_INFO;
@@ -54,6 +54,7 @@ import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_TABLE_ENTRY_BYTECOD
 import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_TABLE_ENTRY_EXTRA_INDEX;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_TABLE_ENTRY_LENGTH;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_TABLE_ENTRY_OFFSET;
+import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_TABLE_ENTRY_PROFILE;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_TABLE_ENTRY_STACK_INFO;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_TABLE_SIZE;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.CALL_NODE_INDEX;
@@ -64,7 +65,7 @@ import static org.graalvm.wasm.constants.ExtraDataOffsets.CALL_LENGTH;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.ELSE_BYTECODE_INDEX;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.ELSE_EXTRA_INDEX;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.IF_BYTECODE_INDEX;
-import static org.graalvm.wasm.constants.ExtraDataOffsets.IF_CONDITION_PROFILE;
+import static org.graalvm.wasm.constants.ExtraDataOffsets.IF_PROFILE;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.IF_EXTRA_INDEX;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.IF_LENGTH;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.STACK_INFO_RETURN_LENGTH_SHIFT;
@@ -265,6 +266,8 @@ import static org.graalvm.wasm.nodes.WasmFrame.pushFloat;
 import static org.graalvm.wasm.nodes.WasmFrame.pushInt;
 import static org.graalvm.wasm.nodes.WasmFrame.pushLong;
 
+import com.oracle.truffle.api.nodes.BytecodeOSRNode;
+import com.oracle.truffle.api.nodes.LoopNode;
 import org.graalvm.wasm.BinaryStreamParser;
 import org.graalvm.wasm.SymbolTable;
 import org.graalvm.wasm.WasmCodeEntry;
@@ -293,16 +296,7 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 
-public final class WasmBlockNode extends Node {
-
-    @CompilationFinal private final WasmInstance instance;
-    @CompilationFinal private final WasmCodeEntry codeEntry;
-    @CompilationFinal private final int startOffset;
-    @CompilationFinal private final int endOffset;
-    @CompilationFinal private final byte returnTypeId;
-    @CompilationFinal private final int returnLength;
-    @Children private Node[] callNodes;
-
+public final class WasmBlockNode extends Node implements BytecodeOSRNode {
     private static final float MIN_FLOAT_TRUNCATABLE_TO_INT = Integer.MIN_VALUE;
     private static final float MAX_FLOAT_TRUNCATABLE_TO_INT = 2147483520f;
     private static final float MIN_FLOAT_TRUNCATABLE_TO_U_INT = -0.99999994f;
@@ -323,13 +317,31 @@ public final class WasmBlockNode extends Node {
     private static final double MIN_DOUBLE_TRUNCATABLE_TO_U_LONG = MIN_DOUBLE_TRUNCATABLE_TO_U_INT;
     private static final double MAX_DOUBLE_TRUNCATABLE_TO_U_LONG = 18446744073709550000.0;
 
-    public WasmBlockNode(WasmInstance instance, WasmCodeEntry codeEntry, int startOffset, int endOffset, byte returnTypeId, int returnLength) {
+    private static final byte[] RETURN_VALUE = new byte[0];
+
+    private static final int REPORT_LOOP_STRIDE = 1 << 8;
+
+    static {
+        assert Integer.bitCount(REPORT_LOOP_STRIDE) == 1 : "must be a power of 2";
+    }
+
+    @CompilationFinal private final WasmInstance instance;
+    @CompilationFinal private final WasmCodeEntry codeEntry;
+    @CompilationFinal private final int functionStartOffset;
+    @CompilationFinal private final int functionEndOffset;
+    @CompilationFinal private final byte returnTypeId;
+    @CompilationFinal private final int functionReturnLength;
+    @Children private Node[] callNodes;
+
+    @CompilationFinal private Object osrMetadata;
+
+    public WasmBlockNode(WasmInstance instance, WasmCodeEntry codeEntry, int functionStartOffset, int functionEndOffset, byte returnTypeId, int functionReturnLength) {
         this.instance = instance;
         this.codeEntry = codeEntry;
-        this.startOffset = startOffset;
-        this.endOffset = endOffset;
+        this.functionStartOffset = functionStartOffset;
+        this.functionEndOffset = functionEndOffset;
         this.returnTypeId = returnTypeId;
-        this.returnLength = returnLength;
+        this.functionReturnLength = functionReturnLength;
     }
 
     @SuppressWarnings("hiding")
@@ -338,34 +350,72 @@ public final class WasmBlockNode extends Node {
     }
 
     public int startOffset() {
-        return startOffset;
+        return functionStartOffset;
     }
 
     private void errorBranch() {
         codeEntry.errorBranch();
     }
 
+    // region OSR support
+    private static final class WasmOSRInterpreterState {
+        final int extraOffset;
+        final int stackPointer;
+
+        WasmOSRInterpreterState(int extraOffset, int stackPointer) {
+            this.extraOffset = extraOffset;
+            this.stackPointer = stackPointer;
+        }
+    }
+
+    @Override
+    public Object executeOSR(VirtualFrame osrFrame, int target, Object interpreterState) {
+        WasmOSRInterpreterState state = (WasmOSRInterpreterState) interpreterState;
+        WasmContext context = WasmContext.get(this);
+        return executeBodyFromBCI(context, osrFrame, target, state.extraOffset, state.stackPointer);
+    }
+
+    @Override
+    public Object getOSRMetadata() {
+        return osrMetadata;
+    }
+
+    @Override
+    public void setOSRMetadata(Object osrMetadata) {
+        this.osrMetadata = osrMetadata;
+    }
+
+    // endregion OSR support
+
+    public void execute(WasmContext context, VirtualFrame frame) {
+        executeBodyFromBCI(context, frame, functionStartOffset, 0, codeEntry.numLocals());
+    }
+
     @BytecodeInterpreterSwitch
     @BytecodeInterpreterSwitchBoundary
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
     @SuppressWarnings("UnusedAssignment")
-    public void execute(WasmContext context, VirtualFrame frame) {
+    public Object executeBodyFromBCI(WasmContext context, VirtualFrame frame, int startOffset, int startExtraOffset, int startStackPointer) {
         final WasmCodeEntry wasmCodeEntry = codeEntry;
-        final WasmInstance wasmInstance = instance;
         final int numLocals = wasmCodeEntry.numLocals();
         final byte[] data = wasmCodeEntry.data();
         final int[] extraData = wasmCodeEntry.extraData();
-        final int offsetLimit = endOffset;
-        final int returnLength = this.returnLength;
+
+        // This has to be an integer array because of MERGE_EXPLODE. An integer value would prevent
+        // ExplodeLoop from merging branches since the state would be different for every iteration.
+        final int[] loopCount = new int[1];
+
         int offset = startOffset;
-        int extraOffset = 0;
-        int stackPointer = numLocals;
-        WasmMemory memory = wasmInstance.memory();
+        int extraOffset = startExtraOffset;
+        int stackPointer = startStackPointer;
+
+        final WasmMemory memory = instance.memory();
+
         check(data.length, (1 << 31) - 1);
-        // TODO: Open issue about invalid frame state after PR
-        // check(extraData.length, (1 << 31) - 1);
+        check(extraData.length, (1 << 31) - 1);
+
         int opcode = UNREACHABLE;
-        loop: while (offset < offsetLimit) {
+        while (offset < functionEndOffset) {
             byte byteOpcode = BinaryStreamParser.rawPeek1(data, offset);
             opcode = byteOpcode & 0xFF;
             offset++;
@@ -378,15 +428,29 @@ public final class WasmBlockNode extends Node {
                 case NOP:
                     break;
                 case BLOCK:
-                case LOOP: {
                     // Skip return type.
                     offset++;
                     break;
-                }
+                case LOOP:
+                    // Skip return type.
+                    offset++;
+                    if (CompilerDirectives.hasNextTier() && ++loopCount[0] >= REPORT_LOOP_STRIDE) {
+                        LoopNode.reportLoopCount(this, REPORT_LOOP_STRIDE);
+                        loopCount[0] = 0;
+                    }
+                    if (CompilerDirectives.inInterpreter() && BytecodeOSRNode.pollOSRBackEdge(this)) {
+                        Object result = BytecodeOSRNode.tryOSR(this, offset, new WasmOSRInterpreterState(extraOffset, stackPointer), null, frame);
+                        if (result != null) {
+                            if (loopCount[0] > 0) {
+                                LoopNode.reportLoopCount(this, loopCount[0]);
+                            }
+                            return result;
+                        }
+                    }
+                    break;
                 case IF: {
                     stackPointer--;
-
-                    if (WasmCodeEntry.profileCondition(extraData, extraOffset + IF_CONDITION_PROFILE, popBoolean(frame, stackPointer))) {
+                    if (WasmCodeEntry.profileCondition(extraData, extraOffset + IF_PROFILE, popBoolean(frame, stackPointer))) {
                         // Skip return type.
                         offset++;
                         // Jump to first extra data entry in the then branch.
@@ -399,7 +463,7 @@ public final class WasmBlockNode extends Node {
                     break;
                 }
                 case ELSE:
-                    // The then branch was executed at this state. Jump to end of if statement.
+                    // The then branch was executed at this point. Jump to end of if statement.
                     offset = extraData[extraOffset + ELSE_BYTECODE_INDEX];
                     extraOffset = extraData[extraOffset + ELSE_EXTRA_INDEX];
                     break;
@@ -420,7 +484,7 @@ public final class WasmBlockNode extends Node {
                 }
                 case BR_IF: {
                     stackPointer--;
-                    if (WasmCodeEntry.profileCondition(extraData, extraOffset + BR_IF_CONDITION_PROFILE, popBoolean(frame, stackPointer))) {
+                    if (WasmCodeEntry.profileCondition(extraData, extraOffset + BR_IF_PROFILE, popBoolean(frame, stackPointer))) {
                         final int stackInfo = extraData[extraOffset + BR_IF_STACK_INFO];
                         final int targetStackPointer = numLocals + (stackInfo & STACK_INFO_STACK_SIZE_MASK);
                         final int targetReturnValueCount = (stackInfo >> STACK_INFO_RETURN_LENGTH_SHIFT);
@@ -452,9 +516,16 @@ public final class WasmBlockNode extends Node {
                     // This loop is implemented to create a separate path for every index. This
                     // guarantees that all values inside the if statement are treated as compile
                     // time constants, since the loop is unrolled.
-                    for (int i = 0; i < size; ++i) {
-                        if (i == index) {
-                            final int indexLocation = extraOffset + BR_TABLE_ENTRY_OFFSET + (i * BR_TABLE_ENTRY_LENGTH);
+                    // TODO:
+                    // if (CompilerDirectives.inInterpreter()) {
+                    // jumps without loop, direct jump
+                    // Find benchmark that uses branch tables intensively
+                    //
+                    // }
+                    final int lookupOffset = extraOffset + BR_TABLE_ENTRY_OFFSET;
+                    for (int i = 0; i < size; i++) {
+                        if (WasmCodeEntry.profileCondition(extraData, lookupOffset + (i * BR_TABLE_ENTRY_LENGTH) + BR_TABLE_ENTRY_PROFILE, i == index)) {
+                            final int indexLocation = lookupOffset + (i * BR_TABLE_ENTRY_LENGTH);
 
                             final int stackInfo = extraData[indexLocation + BR_TABLE_ENTRY_STACK_INFO];
                             final int targetStackPointer = numLocals + (stackInfo & STACK_INFO_STACK_SIZE_MASK);
@@ -466,20 +537,19 @@ public final class WasmBlockNode extends Node {
                             offset = extraData[indexLocation + BR_TABLE_ENTRY_BYTECODE_INDEX];
                             extraOffset = extraData[indexLocation + BR_TABLE_ENTRY_EXTRA_INDEX];
                             stackPointer = targetStackPointer + targetReturnLength;
-                            // Break out of the switch case. Keyword break would break inner loop.
-                            continue loop;
                         }
                     }
-                    errorBranch();
-                    throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, this, "Should not reach here");
+                    break;
                 }
                 case RETURN: {
                     // A return statement causes the termination of the current function, i.e.
                     // causes the execution to resume after the instruction that invoked
                     // the current frame.
-                    unwindStack(frame, stackPointer, numLocals, returnLength);
-                    offset = offsetLimit;
-                    return;
+                    if (loopCount[0] > 0) {
+                        LoopNode.reportLoopCount(this, loopCount[0]);
+                    }
+                    unwindStack(frame, stackPointer, numLocals, functionReturnLength);
+                    return RETURN_VALUE;
                 }
                 case CALL: {
                     // region Load LEB128 Unsigned32 -> functionIndex
@@ -489,7 +559,7 @@ public final class WasmBlockNode extends Node {
                     offset += offsetDelta;
                     // endregion
 
-                    WasmFunction function = wasmInstance.symbolTable().function(functionIndex);
+                    WasmFunction function = instance.symbolTable().function(functionIndex);
                     byte returnType = function.returnType();
                     CompilerAsserts.partialEvaluationConstant(returnType);
                     int numArgs = function.numArguments();
@@ -540,8 +610,8 @@ public final class WasmBlockNode extends Node {
                 case CALL_INDIRECT: {
                     // Extract the function object.
                     stackPointer--;
-                    final SymbolTable symtab = wasmInstance.symbolTable();
-                    final WasmTable table = wasmInstance.table();
+                    final SymbolTable symtab = instance.symbolTable();
+                    final WasmTable table = instance.table();
                     final Object[] elements = table.elements();
                     final int elementIndex = popInt(frame, stackPointer);
                     if (elementIndex < 0 || elementIndex >= elements.length) {
@@ -603,7 +673,7 @@ public final class WasmBlockNode extends Node {
                     }
 
                     // Invoke the resolved function.
-                    int numArgs = wasmInstance.symbolTable().functionTypeArgumentCount(expectedFunctionTypeIndex);
+                    int numArgs = instance.symbolTable().functionTypeArgumentCount(expectedFunctionTypeIndex);
                     Object[] args = createArgumentsForCall(frame, expectedFunctionTypeIndex, numArgs, stackPointer);
                     stackPointer -= args.length;
 
@@ -634,7 +704,7 @@ public final class WasmBlockNode extends Node {
                     // At the moment, WebAssembly functions may return up to one value.
                     // As per the WebAssembly specification, this restriction may be lifted in
                     // the future.
-                    byte returnType = wasmInstance.symbolTable().functionTypeReturnType(expectedFunctionTypeIndex);
+                    byte returnType = instance.symbolTable().functionTypeReturnType(expectedFunctionTypeIndex);
                     CompilerAsserts.partialEvaluationConstant(returnType);
                     switch (returnType) {
                         case WasmType.I32_TYPE: {
@@ -1368,6 +1438,7 @@ public final class WasmBlockNode extends Node {
                     throw CompilerDirectives.shouldNotReachHere();
             }
         }
+        return RETURN_VALUE;
     }
 
     @TruffleBoundary

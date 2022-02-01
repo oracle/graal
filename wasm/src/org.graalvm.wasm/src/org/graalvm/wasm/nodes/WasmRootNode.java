@@ -157,13 +157,13 @@ public class WasmRootNode extends RootNode {
     }
 
     protected final void errorBranch() {
-        codeEntry().errorBranch();
+        codeEntry.errorBranch();
     }
 
     @ExplodeLoop
     private void moveArgumentsToLocals(VirtualFrame frame) {
         Object[] args = frame.getArguments();
-        int numArgs = instance.symbolTable().function(codeEntry().functionIndex()).numArguments();
+        int numArgs = instance.symbolTable().function(codeEntry.functionIndex()).numArguments();
         assert args.length == numArgs : "Expected number of arguments " + numArgs + ", actual " + args.length;
         for (int i = 0; i != numArgs; ++i) {
             final Object arg = args[i];
@@ -187,7 +187,7 @@ public class WasmRootNode extends RootNode {
 
     @ExplodeLoop
     private void initializeLocals(VirtualFrame frame) {
-        int numArgs = instance.symbolTable().function(codeEntry().functionIndex()).numArguments();
+        int numArgs = instance.symbolTable().function(codeEntry.functionIndex()).numArguments();
         for (int i = numArgs; i != codeEntry.numLocals(); ++i) {
             byte type = codeEntry.localType(i);
             switch (type) {
@@ -205,10 +205,6 @@ public class WasmRootNode extends RootNode {
                     break;
             }
         }
-    }
-
-    public final WasmCodeEntry codeEntry() {
-        return codeEntry;
     }
 
     @Override

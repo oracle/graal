@@ -158,7 +158,7 @@ public class WasmInstantiator {
         rootNode.setBody(bodyBlock);
     }
 
-    private WasmBlockNode instantiateBlockNode(WasmInstance instance, WasmCodeEntry codeEntry, CodeEntry entry) {
+    private static WasmBlockNode instantiateBlockNode(WasmInstance instance, WasmCodeEntry codeEntry, CodeEntry entry) {
         int returnLength = entry.getReturnTypeId() == WasmType.VOID_TYPE ? 0 : 1;
         final WasmBlockNode currentBlock = new WasmBlockNode(instance, codeEntry, entry.getStartOffset(), entry.getEndOffset(), entry.getReturnTypeId(), returnLength);
         List<CallNode> childNodeList = entry.getCallNodes();

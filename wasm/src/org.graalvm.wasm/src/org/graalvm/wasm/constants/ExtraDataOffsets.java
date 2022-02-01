@@ -62,7 +62,7 @@ public class ExtraDataOffsets {
      */
     public static final int IF_BYTECODE_INDEX = 0;
     public static final int IF_EXTRA_INDEX = 1;
-    public static final int IF_CONDITION_PROFILE = 2;
+    public static final int IF_PROFILE = 2;
     public static final int IF_LENGTH = 3;
 
     /**
@@ -112,7 +112,7 @@ public class ExtraDataOffsets {
     public static final int BR_IF_BYTECODE_INDEX = 0;
     public static final int BR_IF_EXTRA_INDEX = 1;
     public static final int BR_IF_STACK_INFO = 2;
-    public static final int BR_IF_CONDITION_PROFILE = 3;
+    public static final int BR_IF_PROFILE = 3;
     public static final int BR_IF_LENGTH = 4;
 
     /**
@@ -175,7 +175,8 @@ public class ExtraDataOffsets {
     public static final int BR_TABLE_ENTRY_BYTECODE_INDEX = 0;
     public static final int BR_TABLE_ENTRY_EXTRA_INDEX = 1;
     public static final int BR_TABLE_ENTRY_STACK_INFO = 2;
-    public static final int BR_TABLE_ENTRY_LENGTH = 3;
+    public static final int BR_TABLE_ENTRY_PROFILE = 3;
+    public static final int BR_TABLE_ENTRY_LENGTH = 4;
 
     /**
      * Call_indirect:

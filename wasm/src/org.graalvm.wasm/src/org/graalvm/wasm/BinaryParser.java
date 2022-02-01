@@ -423,8 +423,10 @@ public class BinaryParser extends BinaryStreamParser {
                     break;
                 }
                 case Instructions.LOOP: {
+                    // Jumps are targeting the loop instruction for OSR.
+                    final int loopOffset = offset - 1;
                     final byte loopReturnType = readBlockType();
-                    state.enterLoop(loopReturnType, offset);
+                    state.enterLoop(loopReturnType, loopOffset);
                     break;
                 }
                 case Instructions.IF: {

@@ -244,7 +244,7 @@ public class ParserState {
         }
     }
 
-    private byte[] getReturnTypeArray(byte returnType) {
+    private static byte[] getReturnTypeArray(byte returnType) {
         byte[] out = EMPTY_ARRAY;
         if (returnType != WasmType.VOID_TYPE) {
             out = new byte[]{returnType};
