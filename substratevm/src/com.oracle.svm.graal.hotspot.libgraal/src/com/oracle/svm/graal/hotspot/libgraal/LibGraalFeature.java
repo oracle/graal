@@ -111,6 +111,7 @@ import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
@@ -736,6 +737,19 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotTTYStreamProvider {
     @Substitute
     private static Pointer getBarrierPointer() {
         return LibGraalEntryPoints.LOG_FILE_BARRIER.get();
+    }
+}
+
+@TargetClass(className = "org.graalvm.compiler.serviceprovider.GraalServices", onlyWith = LibGraalFeature.IsEnabled.class)
+final class Target_org_graalvm_compiler_serviceprovider_GraalServices {
+
+    @Substitute
+    public static long getGlobalTimeStamp() {
+        Pointer timestamp = LibGraalEntryPoints.GLOBAL_TIMESTAMP.get();
+        if (timestamp.readLong(0) == 0) {
+            timestamp.compareAndSwapLong(0, 0, System.currentTimeMillis(), LocationIdentity.ANY_LOCATION);
+        }
+        return timestamp.readLong(0);
     }
 }
 
