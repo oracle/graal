@@ -815,7 +815,7 @@ public class NativeImageGenerator {
                     ImageSingletons.add(ImageBuildStatistics.class, new ImageBuildStatistics());
                 }
 
-                if (SubstrateOptions.useEconomyConfig()) {
+                if (SubstrateOptions.useEconomyCompilerConfig()) {
                     HostedConfiguration.setInstanceIfEmpty(new EconomyHostedConfiguration());
                     GraalConfiguration.setHostedInstanceIfEmpty(new EconomyGraalConfiguration());
                 }
@@ -1328,7 +1328,7 @@ public class NativeImageGenerator {
         PhaseSuite<MidTierContext> midTier = suites.getMidTier();
         PhaseSuite<LowTierContext> lowTier = suites.getLowTier();
 
-        final boolean economy = firstTier || SubstrateOptions.useEconomyConfig();
+        final boolean economy = firstTier || SubstrateOptions.useEconomyCompilerConfig();
 
         ListIterator<BasePhase<? super HighTierContext>> position;
         if (hosted) {

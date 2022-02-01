@@ -170,11 +170,13 @@ public class SubstrateOptions {
         }
     }
 
+    @Fold
     public static Integer optimizationLevel() {
         return parseOptimizationLevel(Optimize.getValue());
     }
 
-    public static boolean useEconomyConfig() {
+    @Fold
+    public static boolean useEconomyCompilerConfig() {
         return Optimize.getValue().equals("b");
     }
 
