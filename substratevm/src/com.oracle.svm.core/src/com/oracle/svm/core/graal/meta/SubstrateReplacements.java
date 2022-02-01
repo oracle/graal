@@ -109,7 +109,6 @@ public class SubstrateReplacements extends ReplacementsImpl {
         protected final GraphMakerFactory graphMakerFactory;
         protected final Map<ResolvedJavaMethod, StructuredGraph> graphs;
         protected Map<ResolvedJavaMethod, Runnable> deferred;
-        protected boolean processing;
         protected final Set<ResolvedJavaMethod> delayedInvocationPluginMethods;
 
         protected Builder(GraphMakerFactory graphMakerFactory) {
@@ -260,6 +259,7 @@ public class SubstrateReplacements extends ReplacementsImpl {
         assert builder.deferred.get(method) == null : "snippet registered twice: " + method.getName();
 
         Runnable run = new Runnable() {
+            @Override
             public void run() {
                 try (DebugContext debug = openSnippetDebugContext("Snippet_", method, options)) {
                     Object[] args = prepareConstantArguments(receiver);
@@ -279,9 +279,6 @@ public class SubstrateReplacements extends ReplacementsImpl {
             }
         };
         builder.deferred.put(method, run);
-        if (builder.processing) {
-            System.err.println(Thread.currentThread() + " " + method);
-        }
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
