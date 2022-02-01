@@ -28,10 +28,12 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createIntrinsicInlineInfo;
 import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collection;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -108,13 +110,15 @@ public class SubstrateReplacements extends ReplacementsImpl {
     protected static class Builder {
         protected final GraphMakerFactory graphMakerFactory;
         protected final Map<ResolvedJavaMethod, StructuredGraph> graphs;
-        protected Map<ResolvedJavaMethod, Runnable> deferred;
+        protected final Deque<Runnable> deferred;
+        protected final HashSet<ResolvedJavaMethod> registered;
         protected final Set<ResolvedJavaMethod> delayedInvocationPluginMethods;
 
         protected Builder(GraphMakerFactory graphMakerFactory) {
             this.graphMakerFactory = graphMakerFactory;
             this.graphs = new HashMap<>();
-            this.deferred = new HashMap<>();
+            this.deferred = new ArrayDeque<>();
+            this.registered = new HashSet<>();
             this.delayedInvocationPluginMethods = new HashSet<>();
         }
     }
@@ -256,8 +260,9 @@ public class SubstrateReplacements extends ReplacementsImpl {
         assert DirectAnnotationAccess.isAnnotationPresent(method, Snippet.class) : "Snippet must be annotated with @" + Snippet.class.getSimpleName() + " " + method;
         assert method.hasBytecodes() : "Snippet must not be abstract or native";
         assert builder.graphs.get(method) == null : "snippet registered twice: " + method.getName();
-        assert builder.deferred.get(method) == null : "snippet registered twice: " + method.getName();
+        assert builder.registered.add(method) : "snippet registered twice: " + method.getName();
 
+        // Defer the processing until encodeSnippets
         Runnable run = new Runnable() {
             @Override
             public void run() {
@@ -278,7 +283,7 @@ public class SubstrateReplacements extends ReplacementsImpl {
                 }
             }
         };
-        builder.deferred.put(method, run);
+        builder.deferred.add(run);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -289,13 +294,8 @@ public class SubstrateReplacements extends ReplacementsImpl {
     @Platforms(Platform.HOSTED_ONLY.class)
     public void encodeSnippets() {
         GraphEncoder encoder = new GraphEncoder(ConfigurationValues.getTarget().arch);
-        Map<ResolvedJavaMethod, Runnable> deferred = builder.deferred;
-        builder.deferred = new HashMap<>();
-        for (Runnable run : deferred.values()) {
-            run.run();
-        }
-        for (Runnable run : builder.deferred.values()) {
-            run.run();
+        while (!builder.deferred.isEmpty()) {
+            builder.deferred.pop().run();
         }
         for (StructuredGraph graph : builder.graphs.values()) {
             encoder.prepare(graph);

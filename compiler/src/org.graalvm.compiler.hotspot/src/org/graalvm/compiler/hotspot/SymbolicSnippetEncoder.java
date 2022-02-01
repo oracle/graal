@@ -154,12 +154,6 @@ public class SymbolicSnippetEncoder {
 
     private final HotSpotReplacementsImpl originalReplacements;
 
-    /**
-     * The current count of graphs encoded. Used to detect when new graphs have been enqueued for
-     * encoding.
-     */
-    private int encodedGraphs = 0;
-
     abstract static class GraphKey {
         final ResolvedJavaMethod method;
         final ResolvedJavaMethod original;
@@ -272,12 +266,7 @@ public class SymbolicSnippetEncoder {
         }
     }
 
-    private final EconomicMap<GraphKey, BiFunction<OptionValues, HotSpotSnippetReplacementsImpl, Void>> pendingSnippetGraphs = EconomicMap.create();
-
-    /**
-     * All the graphs parsed so far.
-     */
-    private final EconomicMap<GraphKey, StructuredGraph> preparedSnippetGraphs = EconomicMap.create();
+    private final EconomicMap<GraphKey, BiFunction<OptionValues, HotSpotSnippetReplacementsImpl, StructuredGraph>> pendingSnippetGraphs = EconomicMap.create();
 
     private final EconomicMap<String, SnippetParameterInfo> snippetParameterInfos = EconomicMap.create();
 
@@ -482,10 +471,10 @@ public class SymbolicSnippetEncoder {
     }
 
     /**
-     * If there are new graphs waiting to be encoded, reencode all the graphs and return the result.
+     * Encode all pending graphs and return the result.
      */
     @SuppressWarnings("try")
-    private synchronized EncodedSnippets maybeEncodeSnippets(OptionValues options) {
+    private synchronized EncodedSnippets encodeSnippets(OptionValues options) {
         GraphBuilderConfiguration.Plugins plugins = originalReplacements.getGraphBuilderPlugins();
         InvocationPlugins invocationPlugins = plugins.getInvocationPlugins();
         GraphBuilderConfiguration.Plugins copy = new GraphBuilderConfiguration.Plugins(plugins, invocationPlugins);
@@ -496,26 +485,22 @@ public class SymbolicSnippetEncoder {
         copy.appendInlineInvokePlugin(new SnippetInlineInvokePlugin());
         copy.appendNodePlugin(new SnippetCounterPlugin(snippetReplacements));
 
-        if (!pendingSnippetGraphs.isEmpty()) {
-            for (BiFunction<OptionValues, HotSpotSnippetReplacementsImpl, Void> function : pendingSnippetGraphs.getValues()) {
-                function.apply(options, snippetReplacements);
-            }
+        EconomicMap<GraphKey, StructuredGraph> preparedSnippetGraphs = EconomicMap.create();
+        MapCursor<GraphKey, BiFunction<OptionValues, HotSpotSnippetReplacementsImpl, StructuredGraph>> cursor = pendingSnippetGraphs.getEntries();
+        while (cursor.advance()) {
+            GraphKey key = cursor.getKey();
+            preparedSnippetGraphs.put(key, cursor.getValue().apply(options, snippetReplacements));
         }
-        EconomicMap<GraphKey, StructuredGraph> graphs = this.preparedSnippetGraphs;
-        if (encodedGraphs != graphs.size()) {
-            DebugContext debug = snippetReplacements.openSnippetDebugContext("SnippetEncoder", null, options);
-            try (DebugContext.Scope scope = debug.scope("SnippetSupportEncode")) {
-                encodedGraphs = graphs.size();
-                for (StructuredGraph graph : graphs.getValues()) {
-                    for (Node node : graph.getNodes()) {
-                        node.setNodeSourcePosition(null);
-                    }
-                }
-                return encodeSnippets(debug);
-            }
-        }
-        return null;
 
+        DebugContext debug = snippetReplacements.openSnippetDebugContext("SnippetEncoder", null, options);
+        try (DebugContext.Scope scope = debug.scope("SnippetSupportEncode")) {
+            for (StructuredGraph graph : preparedSnippetGraphs.getValues()) {
+                for (Node node : graph.getNodes()) {
+                    node.setNodeSourcePosition(null);
+                }
+            }
+            return encodeSnippets(debug, preparedSnippetGraphs);
+        }
     }
 
     synchronized void registerSnippet(ResolvedJavaMethod method, ResolvedJavaMethod original, Object receiver, boolean trackNodeSourcePosition) {
@@ -553,13 +538,12 @@ public class SymbolicSnippetEncoder {
                     }
                 }
             }
-            pendingSnippetGraphs.put(key, new BiFunction<OptionValues, HotSpotSnippetReplacementsImpl, Void>() {
+            pendingSnippetGraphs.put(key, new BiFunction<>() {
                 @Override
-                public Void apply(OptionValues cmopileOptions, HotSpotSnippetReplacementsImpl snippetReplacements) {
+                public StructuredGraph apply(OptionValues cmopileOptions, HotSpotSnippetReplacementsImpl snippetReplacements) {
                     StructuredGraph snippet = buildGraph(method, original, null, receiver, SnippetParameterInfo.getNonNullParameters(info), true, trackNodeSourcePosition, INLINE_AFTER_PARSING,
                                     cmopileOptions, snippetReplacements);
-                    preparedSnippetGraphs.put(key, snippet);
-                    return null;
+                    return snippet;
                 }
             });
         }
@@ -605,7 +589,7 @@ public class SymbolicSnippetEncoder {
         }
     }
 
-    private synchronized EncodedSnippets encodeSnippets(DebugContext debug) {
+    private synchronized EncodedSnippets encodeSnippets(DebugContext debug, EconomicMap<GraphKey, StructuredGraph> preparedSnippetGraphs) {
         GraphEncoder encoder = new GraphEncoder(HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getTarget().arch, debug);
         for (StructuredGraph graph : preparedSnippetGraphs.getValues()) {
             graph.resetDebug(debug);
@@ -647,7 +631,7 @@ public class SymbolicSnippetEncoder {
      */
     @SuppressWarnings("try")
     public synchronized boolean encode(OptionValues options) {
-        EncodedSnippets encodedSnippets = maybeEncodeSnippets(options);
+        EncodedSnippets encodedSnippets = encodeSnippets(options);
         if (encodedSnippets != null) {
             HotSpotReplacementsImpl.setEncodedSnippets(encodedSnippets);
             return true;
