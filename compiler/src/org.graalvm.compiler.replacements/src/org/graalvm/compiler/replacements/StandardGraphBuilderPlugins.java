@@ -27,6 +27,8 @@ package org.graalvm.compiler.replacements;
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationAction.None;
 import static jdk.vm.ci.meta.DeoptimizationReason.TransferToInterpreter;
+import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CharsetName.ASCII;
+import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CharsetName.ISO_8859_1;
 import static org.graalvm.compiler.nodes.NamedLocationIdentity.OFF_HEAP_LOCATION;
 
 import java.lang.reflect.Array;
@@ -36,8 +38,11 @@ import java.util.Arrays;
 import java.util.Objects;
 import java.util.function.BiFunction;
 
+import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.calc.Condition.CanonicalizedCondition;
@@ -58,6 +63,7 @@ import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool.RoundingMode;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.BreakpointNode;
+import org.graalvm.compiler.nodes.ComputeObjectAddressNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
 import org.graalvm.compiler.nodes.EndNode;
@@ -75,8 +81,10 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.calc.AbsNode;
+import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
 import org.graalvm.compiler.nodes.calc.ConditionalNode;
+import org.graalvm.compiler.nodes.calc.EncodeArrayNode;
 import org.graalvm.compiler.nodes.calc.FloatEqualsNode;
 import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
@@ -143,6 +151,7 @@ import org.graalvm.compiler.nodes.java.NewArrayNode;
 import org.graalvm.compiler.nodes.java.RegisterFinalizerNode;
 import org.graalvm.compiler.nodes.java.UnsafeCompareAndExchangeNode;
 import org.graalvm.compiler.nodes.java.UnsafeCompareAndSwapNode;
+import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess;
 import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.address.IndexAddressNode;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
@@ -151,6 +160,7 @@ import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.ConstantReflectionUtil;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.EnsureVirtualizedNode;
+import org.graalvm.compiler.replacements.nodes.ArrayCompareToNode;
 import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
 import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
 import org.graalvm.compiler.replacements.nodes.ProfileBooleanNode;
@@ -171,6 +181,7 @@ import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerSubExactOverflo
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerSubExactSplitNode;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.code.BytecodePosition;
@@ -196,13 +207,19 @@ public class StandardGraphBuilderPlugins {
                     boolean allowDeoptimization,
                     boolean explicitUnsafeNullChecks,
                     boolean arrayEqualsSubstitution,
-                    LoweringProvider lowerer) {
+                    LoweringProvider lowerer,
+                    OptionValues options) {
         registerObjectPlugins(plugins);
         registerClassPlugins(plugins);
         registerMathPlugins(plugins, allowDeoptimization, replacements, lowerer);
         registerStrictMathPlugins(plugins);
         registerUnsignedMathPlugins(plugins);
         registerStringPlugins(plugins, replacements, snippetReflection, arrayEqualsSubstitution);
+        if (GraalOptions.EmitStringSubstitutions.getValue(options)) {
+            registerStringLatin1Plugins(plugins, replacements);
+            registerStringUTF16Plugins(plugins, replacements);
+        }
+        registerStringCodingPlugins(plugins, replacements);
         registerCharacterPlugins(plugins);
         registerCharacterDataLatin1Plugins(plugins);
         registerShortPlugins(plugins);
@@ -305,6 +322,58 @@ public class StandardGraphBuilderPlugins {
         });
     }
 
+    private static void registerStringLatin1Plugins(InvocationPlugins plugins, Replacements replacements) {
+        Registration r = new Registration(plugins, "java.lang.StringLatin1", replacements);
+        r.setAllowOverwrite(true);
+        r.register(new ArrayCompareToPlugin(JavaKind.Byte, JavaKind.Byte, "compareTo", byte[].class, byte[].class));
+        r.register(new ArrayCompareToPlugin(JavaKind.Byte, JavaKind.Char, "compareToUTF16", byte[].class, byte[].class));
+        r.register(new StringInflateInvocationPlugin(JavaKind.Byte, JavaKind.Byte, "inflate", byte[].class, int.class, byte[].class, int.class, int.class));
+        r.register(new StringInflateInvocationPlugin(JavaKind.Byte, JavaKind.Char, "inflate", byte[].class, int.class, char[].class, int.class, int.class));
+        r.register(new SnippetSubstitutionInvocationPlugin<>(StringLatin1Snippets.Templates.class,
+                        "indexOf", byte[].class, int.class, byte[].class, int.class, int.class) {
+            @Override
+            public SnippetTemplate.SnippetInfo getSnippet(StringLatin1Snippets.Templates templates) {
+                return templates.indexOf;
+            }
+        });
+        r.register(new StringLatin1IndexOfCharPlugin());
+    }
+
+    private static void registerStringUTF16Plugins(InvocationPlugins plugins, Replacements replacements) {
+        Registration r = new Registration(plugins, "java.lang.StringUTF16", replacements);
+        r.setAllowOverwrite(true);
+        r.register(new ArrayCompareToPlugin(JavaKind.Char, JavaKind.Char, "compareTo", byte[].class, byte[].class));
+        r.register(new ArrayCompareToPlugin(JavaKind.Char, JavaKind.Byte, true, "compareToLatin1", byte[].class, byte[].class));
+        r.register(new StringCompressInvocationPlugin(JavaKind.Byte, JavaKind.Byte, "compress", byte[].class, int.class, byte[].class, int.class, int.class));
+        r.register(new StringCompressInvocationPlugin(JavaKind.Char, JavaKind.Byte, "compress", char[].class, int.class, byte[].class, int.class, int.class));
+
+        r.register(new SnippetSubstitutionInvocationPlugin<>(StringUTF16Snippets.Templates.class,
+                        "indexOfUnsafe", byte[].class, int.class, byte[].class, int.class, int.class) {
+            @Override
+            public SnippetTemplate.SnippetInfo getSnippet(StringUTF16Snippets.Templates templates) {
+                return templates.indexOfUnsafe;
+            }
+        });
+        r.register(new InvocationPlugin("indexOfCharUnsafe", byte[].class, int.class, int.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode ch, ValueNode fromIndex, ValueNode max) {
+                ZeroExtendNode toChar = b.add(new ZeroExtendNode(b.add(new NarrowNode(ch, JavaKind.Char.getBitCount())), JavaKind.Int.getBitCount()));
+                b.addPush(JavaKind.Int, new ArrayIndexOfNode(JavaKind.Byte, JavaKind.Char, false, false, value, ConstantNode.forLong(0), max, fromIndex, toChar));
+                return true;
+            }
+        });
+        Registration r2 = new Registration(plugins, StringUTF16Snippets.class, replacements);
+        r2.register(new InvocationPlugin("getChar", byte[].class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg1, ValueNode arg2) {
+                b.addPush(JavaKind.Char, new JavaReadNode(JavaKind.Char,
+                                new IndexAddressNode(arg1, new LeftShiftNode(arg2, ConstantNode.forInt(1)), JavaKind.Byte),
+                                NamedLocationIdentity.getArrayLocation(JavaKind.Byte), OnHeapMemoryAccess.BarrierType.NONE, false));
+                return true;
+            }
+        });
+    }
+
     public static class ArrayEqualsInvocationPlugin extends InvocationPlugin {
         private final JavaKind kind;
 
@@ -331,6 +400,42 @@ public class StandardGraphBuilderPlugins {
                 ValueNode arg2Length = b.add(new ArrayLengthNode(nonNullArg2));
                 helper.emitReturnIfNot(IntegerEqualsNode.create(arg1Length, arg2Length, NodeView.DEFAULT), b.add(ConstantNode.forBoolean(false)), BranchProbabilityNode.FAST_PATH_PROBABILITY);
                 helper.emitFinalReturn(JavaKind.Boolean, b.append(new ArrayEqualsNode(nonNullArg1, nonNullArg2, arg1Length, kind)));
+            }
+            return true;
+        }
+    }
+
+    public static final class ArrayCompareToPlugin extends InvocationPlugin {
+        private final JavaKind valueKind;
+        private final JavaKind otherKind;
+        private final boolean swapped;
+
+        public ArrayCompareToPlugin(JavaKind valueKind, JavaKind otherKind, boolean swapped, String name, Type... argumentTypes) {
+            super(name, argumentTypes);
+            this.valueKind = valueKind;
+            this.otherKind = otherKind;
+            this.swapped = swapped;
+        }
+
+        public ArrayCompareToPlugin(JavaKind valueKind, JavaKind otherKind, String name, Type... argumentTypes) {
+            this(valueKind, otherKind, false, name, argumentTypes);
+        }
+
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode other) {
+            ValueNode nonNullValue = b.nullCheckedValue(value);
+            ValueNode nonNullOther = b.nullCheckedValue(other);
+
+            ValueNode valueLength = b.add(new ArrayLengthNode(nonNullValue));
+            ValueNode otherLength = b.add(new ArrayLengthNode(nonNullOther));
+            if (swapped) {
+                /*
+                 * Swapping array arguments because intrinsic expects order to be byte[]/char[] but
+                 * kind arguments stay in original order.
+                 */
+                b.addPush(JavaKind.Int, new ArrayCompareToNode(nonNullOther, nonNullValue, otherLength, valueLength, valueKind, otherKind));
+            } else {
+                b.addPush(JavaKind.Int, new ArrayCompareToNode(nonNullValue, nonNullOther, valueLength, otherLength, valueKind, otherKind));
             }
             return true;
         }
@@ -388,6 +493,73 @@ public class StandardGraphBuilderPlugins {
         }
     }
 
+    public static final class StringInflateInvocationPlugin extends InvocationPlugin {
+        private final JavaKind srcKind;
+        private final JavaKind destKind;
+
+        public StringInflateInvocationPlugin(JavaKind srcKind, JavaKind destKind, String name, Type... argumentTypes) {
+            super(name, argumentTypes);
+            this.srcKind = srcKind;
+            this.destKind = destKind;
+        }
+
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode src, ValueNode srcIndex, ValueNode dest, ValueNode destIndex, ValueNode len) {
+            try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                helper.intrinsicRangeCheck(len, Condition.LT, ConstantNode.forInt(0));
+
+                helper.intrinsicRangeCheck(srcIndex, Condition.LT, ConstantNode.forInt(0));
+                ValueNode srcLength = helper.length(b.nullCheckedValue(src));
+                helper.intrinsicRangeCheck(helper.add(srcIndex, len), Condition.GT, srcLength);
+
+                final boolean isDestByte = destKind == JavaKind.Byte;
+                ValueNode scaledOrDestIndex = isDestByte ? helper.scale(destIndex, JavaKind.Char) : destIndex;
+                helper.intrinsicRangeCheck(scaledOrDestIndex, Condition.LT, ConstantNode.forInt(0));
+                ValueNode end = helper.add(scaledOrDestIndex, isDestByte ? helper.scale(len, JavaKind.Char) : len);
+
+                ValueNode destLength = helper.length(b.nullCheckedValue(dest));
+                helper.intrinsicRangeCheck(end, Condition.GT, destLength);
+
+                ValueNode srcPointer = helper.arrayElementPointer(src, srcKind, srcIndex);
+                ValueNode destPointer = helper.arrayElementPointer(dest, destKind, scaledOrDestIndex);
+                b.add(new StringLatin1InflateNode(srcPointer, destPointer, len, destKind));
+            }
+            return true;
+        }
+    }
+
+    public static final class StringCompressInvocationPlugin extends InvocationPlugin {
+        private final JavaKind srcKind;
+        private final JavaKind destKind;
+
+        public StringCompressInvocationPlugin(JavaKind srcKind, JavaKind destKind, String name, Type... argumentTypes) {
+            super(name, argumentTypes);
+            this.srcKind = srcKind;
+            this.destKind = destKind;
+        }
+
+        @Override
+        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode src, ValueNode srcIndex, ValueNode dest, ValueNode destIndex, ValueNode len) {
+            try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                final boolean isSrcByte = srcKind == JavaKind.Byte;
+
+                helper.intrinsicRangeCheck(len, Condition.LT, ConstantNode.forInt(0));
+                ValueNode scaledOrSrcIndex = isSrcByte ? helper.scale(srcIndex, JavaKind.Char) : srcIndex;
+                helper.intrinsicRangeCheck(scaledOrSrcIndex, Condition.LT, ConstantNode.forInt(0));
+                ValueNode end = helper.add(scaledOrSrcIndex, isSrcByte ? helper.scale(len, JavaKind.Char) : len);
+                ValueNode srcLength = helper.length(b.nullCheckedValue(src));
+                helper.intrinsicRangeCheck(end, Condition.GT, srcLength);
+                helper.intrinsicRangeCheck(destIndex, Condition.LT, ConstantNode.forInt(0));
+                ValueNode destLength = helper.length(b.nullCheckedValue(dest));
+                helper.intrinsicRangeCheck(helper.add(destIndex, len), Condition.GT, destLength);
+                ValueNode srcPointer = helper.arrayElementPointer(src, srcKind, scaledOrSrcIndex);
+                ValueNode destPointer = helper.arrayElementPointer(dest, destKind, destIndex);
+                b.addPush(JavaKind.Int, new StringUTF16CompressNode(srcPointer, destPointer, len, srcKind));
+            }
+            return true;
+        }
+    }
+
     private static void registerArraysPlugins(InvocationPlugins plugins, Replacements replacements) {
         Registration r = new Registration(plugins, Arrays.class, replacements);
         r.register(new ArrayEqualsInvocationPlugin(JavaKind.Boolean, boolean[].class, boolean[].class));
@@ -430,6 +602,66 @@ public class StandardGraphBuilderPlugins {
                 }
                 b.addPush(JavaKind.Int, new ArrayLengthNode(array));
                 return true;
+            }
+        });
+    }
+
+    private static void registerStringCodingPlugins(InvocationPlugins plugins, Replacements replacements) {
+        Registration r = new Registration(plugins, "java.lang.StringCoding", replacements);
+        r.register(new InvocationPlugin("implEncodeISOArray", byte[].class, int.class, byte[].class, int.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode sa, ValueNode sp,
+                            ValueNode da, ValueNode dp, ValueNode len) {
+                MetaAccessProvider metaAccess = b.getMetaAccess();
+                int byteArrayBaseOffset = metaAccess.getArrayBaseOffset(JavaKind.Byte);
+
+                ValueNode srcOffset = AddNode.create(ConstantNode.forInt(byteArrayBaseOffset), new LeftShiftNode(sp, ConstantNode.forInt(2)), NodeView.DEFAULT);
+                ValueNode dstOffset = AddNode.create(ConstantNode.forInt(byteArrayBaseOffset), dp, NodeView.DEFAULT);
+
+                ComputeObjectAddressNode src = b.add(new ComputeObjectAddressNode(sa, srcOffset));
+                ComputeObjectAddressNode dst = b.add(new ComputeObjectAddressNode(da, dstOffset));
+
+                b.addPush(JavaKind.Int, new EncodeArrayNode(src, dst, len, ISO_8859_1));
+                return true;
+            }
+        });
+        r.register(new InvocationPlugin("implEncodeAsciiArray", char[].class, int.class, byte[].class, int.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode sa, ValueNode sp,
+                            ValueNode da, ValueNode dp, ValueNode len) {
+                MetaAccessProvider metaAccess = b.getMetaAccess();
+                int charArrayBaseOffset = metaAccess.getArrayBaseOffset(JavaKind.Char);
+                int byteArrayBaseOffset = metaAccess.getArrayBaseOffset(JavaKind.Byte);
+
+                int charElementShift = CodeUtil.log2(metaAccess.getArrayIndexScale(JavaKind.Char));
+
+                ValueNode srcOffset = AddNode.create(ConstantNode.forInt(charArrayBaseOffset), new LeftShiftNode(sp, ConstantNode.forInt(charElementShift)), NodeView.DEFAULT);
+                ValueNode dstOffset = AddNode.create(ConstantNode.forInt(byteArrayBaseOffset), dp, NodeView.DEFAULT);
+
+                ComputeObjectAddressNode src = b.add(new ComputeObjectAddressNode(sa, srcOffset));
+                ComputeObjectAddressNode dst = b.add(new ComputeObjectAddressNode(da, dstOffset));
+
+                b.addPush(JavaKind.Int, new EncodeArrayNode(src, dst, len, ASCII));
+                return true;
+            }
+
+            @Override
+            public boolean isOptional() {
+                return JavaVersionUtil.JAVA_SPEC < 18;
+            }
+        });
+
+        r = new Registration(plugins, "sun.nio.cs.ISO_8859_1$Encoder", replacements);
+        r.register(new InvocationPlugin("implEncodeISOArray", char[].class, int.class, byte[].class, int.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode sa, ValueNode sp,
+                            ValueNode da, ValueNode dp, ValueNode len) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    ValueNode src = helper.arrayElementPointer(sa, JavaKind.Char, sp);
+                    ValueNode dst = helper.arrayElementPointer(da, JavaKind.Byte, dp);
+                    b.addPush(JavaKind.Int, new EncodeArrayNode(src, dst, len, ISO_8859_1));
+                    return true;
+                }
             }
         });
     }

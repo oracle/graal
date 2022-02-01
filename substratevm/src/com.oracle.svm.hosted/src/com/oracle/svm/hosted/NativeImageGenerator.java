@@ -1200,11 +1200,11 @@ public class NativeImageGenerator {
         }
 
         final boolean arrayEqualsSubstitution = !SubstrateOptions.useLLVMBackend();
+        OptionValues options = aUniverse.hostVM().options();
         registerInvocationPlugins(providers.getSnippetReflection(), plugins.getInvocationPlugins(), replacements,
-                        reason == ParsingReason.JITCompilation, true, arrayEqualsSubstitution, providers.getLowerer());
+                        reason == ParsingReason.JITCompilation, true, arrayEqualsSubstitution, providers.getLowerer(), options);
 
         Architecture architecture = ConfigurationValues.getTarget().arch;
-        OptionValues options = aUniverse.hostVM().options();
         ImageSingletons.lookup(TargetGraphBuilderPlugins.class).register(plugins, replacements, architecture,
                         /* registerForeignCallMath */ false, options);
 

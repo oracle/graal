@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.replacements.aarch64;
 
-import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CharsetName.ASCII;
-import static org.graalvm.compiler.lir.gen.LIRGeneratorTool.CharsetName.ISO_8859_1;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.COS;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.EXP;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.LOG;
@@ -33,64 +31,38 @@ import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.Una
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.SIN;
 import static org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation.TAN;
 
-import java.lang.reflect.Type;
-
-import org.graalvm.compiler.core.common.GraalOptions;
-import org.graalvm.compiler.nodes.ComputeObjectAddressNode;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.CopySignNode;
-import org.graalvm.compiler.nodes.calc.EncodeArrayNode;
-import org.graalvm.compiler.nodes.calc.LeftShiftNode;
 import org.graalvm.compiler.nodes.calc.MaxNode;
 import org.graalvm.compiler.nodes.calc.MinNode;
-import org.graalvm.compiler.nodes.calc.NarrowNode;
-import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
-import org.graalvm.compiler.nodes.extended.JavaReadNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.InlineOnlyInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
-import org.graalvm.compiler.nodes.java.ArrayLengthNode;
-import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess;
-import org.graalvm.compiler.nodes.memory.address.IndexAddressNode;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.replacements.ArrayIndexOfNode;
-import org.graalvm.compiler.replacements.InvocationPluginHelper;
-import org.graalvm.compiler.replacements.SnippetSubstitutionInvocationPlugin;
-import org.graalvm.compiler.replacements.SnippetTemplate;
-import org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.StringLatin1IndexOfCharPlugin;
-import org.graalvm.compiler.replacements.StringLatin1Snippets;
-import org.graalvm.compiler.replacements.StringUTF16Snippets;
 import org.graalvm.compiler.replacements.TargetGraphBuilderPlugins;
-import org.graalvm.compiler.replacements.nodes.ArrayCompareToNode;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.CountLeadingZerosNode;
 import org.graalvm.compiler.replacements.nodes.CountTrailingZerosNode;
 import org.graalvm.compiler.replacements.nodes.FusedMultiplyAddNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import jdk.vm.ci.code.Architecture;
-import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
     @Override
     public void register(Plugins plugins, Replacements replacements, Architecture arch, boolean registerForeignCallMath, OptionValues options) {
-        register(plugins, replacements, registerForeignCallMath, options);
+        register(plugins, replacements, registerForeignCallMath);
     }
 
-    public static void register(Plugins plugins, Replacements replacements, boolean registerForeignCallMath, OptionValues options) {
+    public static void register(Plugins plugins, Replacements replacements, boolean registerForeignCallMath) {
         InvocationPlugins invocationPlugins = plugins.getInvocationPlugins();
         invocationPlugins.defer(new Runnable() {
             @Override
@@ -98,11 +70,6 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 registerIntegerLongPlugins(invocationPlugins, JavaKind.Int, replacements);
                 registerIntegerLongPlugins(invocationPlugins, JavaKind.Long, replacements);
                 registerMathPlugins(invocationPlugins, registerForeignCallMath);
-                if (GraalOptions.EmitStringSubstitutions.getValue(options)) {
-                    registerStringLatin1Plugins(invocationPlugins, replacements);
-                    registerStringUTF16Plugins(invocationPlugins, replacements);
-                }
-                registerStringCodingPlugins(invocationPlugins, replacements);
             }
         });
     }
@@ -224,149 +191,6 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
                 b.push(JavaKind.Double, b.append(UnaryMathIntrinsicNode.create(value, operation)));
                 return true;
-            }
-        });
-    }
-
-    private static final class ArrayCompareToPlugin extends InvocationPlugin {
-        private final JavaKind valueKind;
-        private final JavaKind otherKind;
-        private final boolean swapped;
-
-        private ArrayCompareToPlugin(JavaKind valueKind, JavaKind otherKind, boolean swapped, String name, Type... argumentTypes) {
-            super(name, argumentTypes);
-            this.valueKind = valueKind;
-            this.otherKind = otherKind;
-            this.swapped = swapped;
-        }
-
-        private ArrayCompareToPlugin(JavaKind valueKind, JavaKind otherKind, String name, Type... argumentTypes) {
-            this(valueKind, otherKind, false, name, argumentTypes);
-        }
-
-        @Override
-        public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode other) {
-            ValueNode nonNullValue = b.nullCheckedValue(value);
-            ValueNode nonNullOther = b.nullCheckedValue(other);
-
-            ValueNode valueLength = b.add(new ArrayLengthNode(nonNullValue));
-            ValueNode otherLength = b.add(new ArrayLengthNode(nonNullOther));
-            if (swapped) {
-                /*
-                 * Swapping array arguments because intrinsic expects order to be byte[]/char[] but
-                 * kind arguments stay in original order.
-                 */
-                b.addPush(JavaKind.Int, new ArrayCompareToNode(nonNullOther, nonNullValue, otherLength, valueLength, valueKind, otherKind));
-            } else {
-                b.addPush(JavaKind.Int, new ArrayCompareToNode(nonNullValue, nonNullOther, valueLength, otherLength, valueKind, otherKind));
-            }
-            return true;
-        }
-    }
-
-    private static void registerStringLatin1Plugins(InvocationPlugins plugins, Replacements replacements) {
-        Registration r = new Registration(plugins, "java.lang.StringLatin1", replacements);
-        r.setAllowOverwrite(true);
-        r.register(new ArrayCompareToPlugin(JavaKind.Byte, JavaKind.Byte, "compareTo", byte[].class, byte[].class));
-        r.register(new ArrayCompareToPlugin(JavaKind.Byte, JavaKind.Char, "compareToUTF16", byte[].class, byte[].class));
-        r.register(new SnippetSubstitutionInvocationPlugin<>(StringLatin1Snippets.Templates.class,
-                        "indexOf", byte[].class, int.class, byte[].class, int.class, int.class) {
-            @Override
-            public SnippetTemplate.SnippetInfo getSnippet(StringLatin1Snippets.Templates templates) {
-                return templates.indexOf;
-            }
-        });
-        r.register(new StringLatin1IndexOfCharPlugin());
-    }
-
-    private static void registerStringUTF16Plugins(InvocationPlugins plugins, Replacements replacements) {
-        Registration r = new Registration(plugins, "java.lang.StringUTF16", replacements);
-        r.setAllowOverwrite(true);
-        r.register(new ArrayCompareToPlugin(JavaKind.Char, JavaKind.Char, "compareTo", byte[].class, byte[].class));
-        r.register(new ArrayCompareToPlugin(JavaKind.Char, JavaKind.Byte, true, "compareToLatin1", byte[].class, byte[].class));
-        r.register(new SnippetSubstitutionInvocationPlugin<>(StringUTF16Snippets.Templates.class,
-                        "indexOfUnsafe", byte[].class, int.class, byte[].class, int.class, int.class) {
-            @Override
-            public SnippetTemplate.SnippetInfo getSnippet(StringUTF16Snippets.Templates templates) {
-                return templates.indexOfUnsafe;
-            }
-        });
-        r.register(new InvocationPlugin("indexOfCharUnsafe", byte[].class, int.class, int.class, int.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode ch, ValueNode fromIndex, ValueNode max) {
-                ZeroExtendNode toChar = b.add(new ZeroExtendNode(b.add(new NarrowNode(ch, JavaKind.Char.getBitCount())), JavaKind.Int.getBitCount()));
-                b.addPush(JavaKind.Int, new ArrayIndexOfNode(JavaKind.Byte, JavaKind.Char, false, false, value, ConstantNode.forLong(0), max, fromIndex, toChar));
-                return true;
-            }
-        });
-        Registration r2 = new Registration(plugins, StringUTF16Snippets.class, replacements);
-        r2.register(new InvocationPlugin("getChar", byte[].class, int.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg1, ValueNode arg2) {
-                b.addPush(JavaKind.Char, new JavaReadNode(JavaKind.Char,
-                                new IndexAddressNode(arg1, new LeftShiftNode(arg2, ConstantNode.forInt(1)), JavaKind.Byte),
-                                NamedLocationIdentity.getArrayLocation(JavaKind.Byte), OnHeapMemoryAccess.BarrierType.NONE, false));
-                return true;
-            }
-        });
-    }
-
-    private static void registerStringCodingPlugins(InvocationPlugins plugins, Replacements replacements) {
-        Registration r = new Registration(plugins, "java.lang.StringCoding", replacements);
-        r.register(new InvocationPlugin("implEncodeISOArray", byte[].class, int.class, byte[].class, int.class, int.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode sa, ValueNode sp,
-                            ValueNode da, ValueNode dp, ValueNode len) {
-                MetaAccessProvider metaAccess = b.getMetaAccess();
-                int byteArrayBaseOffset = metaAccess.getArrayBaseOffset(JavaKind.Byte);
-
-                ValueNode srcOffset = AddNode.create(ConstantNode.forInt(byteArrayBaseOffset), new LeftShiftNode(sp, ConstantNode.forInt(2)), NodeView.DEFAULT);
-                ValueNode dstOffset = AddNode.create(ConstantNode.forInt(byteArrayBaseOffset), dp, NodeView.DEFAULT);
-
-                ComputeObjectAddressNode src = b.add(new ComputeObjectAddressNode(sa, srcOffset));
-                ComputeObjectAddressNode dst = b.add(new ComputeObjectAddressNode(da, dstOffset));
-
-                b.addPush(JavaKind.Int, new EncodeArrayNode(src, dst, len, ISO_8859_1));
-                return true;
-            }
-        });
-        r.register(new InvocationPlugin("implEncodeAsciiArray", char[].class, int.class, byte[].class, int.class, int.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode sa, ValueNode sp,
-                            ValueNode da, ValueNode dp, ValueNode len) {
-                MetaAccessProvider metaAccess = b.getMetaAccess();
-                int charArrayBaseOffset = metaAccess.getArrayBaseOffset(JavaKind.Char);
-                int byteArrayBaseOffset = metaAccess.getArrayBaseOffset(JavaKind.Byte);
-
-                int charElementShift = CodeUtil.log2(metaAccess.getArrayIndexScale(JavaKind.Char));
-
-                ValueNode srcOffset = AddNode.create(ConstantNode.forInt(charArrayBaseOffset), new LeftShiftNode(sp, ConstantNode.forInt(charElementShift)), NodeView.DEFAULT);
-                ValueNode dstOffset = AddNode.create(ConstantNode.forInt(byteArrayBaseOffset), dp, NodeView.DEFAULT);
-
-                ComputeObjectAddressNode src = b.add(new ComputeObjectAddressNode(sa, srcOffset));
-                ComputeObjectAddressNode dst = b.add(new ComputeObjectAddressNode(da, dstOffset));
-
-                b.addPush(JavaKind.Int, new EncodeArrayNode(src, dst, len, ASCII));
-                return true;
-            }
-
-            @Override
-            public boolean isOptional() {
-                return JavaVersionUtil.JAVA_SPEC < 18;
-            }
-        });
-
-        r = new Registration(plugins, "sun.nio.cs.ISO_8859_1$Encoder", replacements);
-        r.register(new InvocationPlugin("implEncodeISOArray", char[].class, int.class, byte[].class, int.class, int.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode sa, ValueNode sp,
-                            ValueNode da, ValueNode dp, ValueNode len) {
-                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                    ValueNode src = helper.arrayElementPointer(sa, JavaKind.Char, sp);
-                    ValueNode dst = helper.arrayElementPointer(da, JavaKind.Byte, dp);
-                    b.addPush(JavaKind.Int, new EncodeArrayNode(src, dst, len, ISO_8859_1));
-                    return true;
-                }
             }
         });
     }

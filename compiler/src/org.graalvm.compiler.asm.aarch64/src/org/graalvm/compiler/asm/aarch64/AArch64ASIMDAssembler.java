@@ -3025,6 +3025,33 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
+     * C7.2.391 Unsigned shift left long (immediate).<br>
+     * <p>
+     * From the manual: "This instruction reads each vector element in the upper half of the source
+     * SIMD&FP register, shifts the unsigned integer value left by the specified number of bits ...
+     * The destination vector elements are twice as long as the source vector elements."
+     *
+     * @param srcESize source element size. Cannot be ElementSize.DoubleWord. The destination
+     *            element size will be twice this width.
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     * @param shiftAmt shift left amount.
+     */
+    public void ushll2VVI(ElementSize srcESize, Register dst, Register src, int shiftAmt) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src.getRegisterCategory().equals(SIMD);
+        assert srcESize != ElementSize.DoubleWord;
+
+        /* Accepted shift range */
+        assert shiftAmt >= 0 && shiftAmt < srcESize.nbits;
+
+        /* shift = imm7 - srcESize.nbits */
+        int imm7 = srcESize.nbits + shiftAmt;
+
+        shiftByImmEncoding(ASIMDInstruction.USHLL, true, imm7, dst, src);
+    }
+
+    /**
      * C7.2.392 unsigned shift right (immediate) scalar.<br>
      *
      * <code>for i in 0..n-1 do dst[i] = src[i] >>> imm</code>
@@ -3126,7 +3153,8 @@ public abstract class AArch64ASIMDAssembler {
      * C7.2.402 Extract narrow.<br>
      * <p>
      * From the manual: "This instruction reads each vector element from the source SIMD&FP
-     * register, narrows each value to half the original width, and writes the register..."
+     * register, narrows each value to half the original width, and writes into the lower half of
+     * the destination register..."
      *
      * @param dstESize destination element size. Cannot be ElementSize.DoubleWord. The source
      *            element size is twice this width.
@@ -3139,6 +3167,26 @@ public abstract class AArch64ASIMDAssembler {
         assert dstESize != ElementSize.DoubleWord;
 
         twoRegMiscEncoding(ASIMDInstruction.XTN, false, elemSizeXX(dstESize), dst, src);
+    }
+
+    /**
+     * C7.2.402 Extract narrow.<br>
+     * <p>
+     * From the manual: "This instruction reads each vector element from the source SIMD&FP
+     * register, narrows each value to half the original width, and writes into the upper half of
+     * the destination register..."
+     *
+     * @param dstESize destination element size. Cannot be ElementSize.DoubleWord. The source
+     *            element size is twice this width.
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     */
+    public void xtn2VV(ElementSize dstESize, Register dst, Register src) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src.getRegisterCategory().equals(SIMD);
+        assert dstESize != ElementSize.DoubleWord;
+
+        twoRegMiscEncoding(ASIMDInstruction.XTN, true, elemSizeXX(dstESize), dst, src);
     }
 
     /**
