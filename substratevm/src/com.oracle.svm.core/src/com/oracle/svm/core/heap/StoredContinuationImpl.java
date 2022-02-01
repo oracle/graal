@@ -52,6 +52,7 @@ import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.thread.Continuation;
 import com.oracle.svm.core.thread.Safepoint;
+import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -66,7 +67,7 @@ import jdk.vm.ci.meta.JavaKind;
  *
  * <pre>
  *      +-0x0-|-0x4-|-0x8-|-0xa-+
- * 0x00 | hub | (1) | -  (2)  - | instance header: 1) number of stored frame; 2) size in bytes as long
+ * 0x00 | hub | (1) | (2) | (3) | instance header: 1) identity hash code; 2) size in words; 3) number of stored frames
  *      +-----------------------+
  * 0x10 | -  (1)  - | (2) | (3) | 8-byte shared header for all frames: 1) nonmovable address of reference map, which should be same for all frames.
  *      : more per-frame headers: 8-byte per-frame header: 2) size of frame in bytes; 3) reference map index of frame
@@ -74,12 +75,12 @@ import jdk.vm.ci.meta.JavaKind;
  * </pre>
  */
 public final class StoredContinuationImpl {
-    private static final int FRAME_COUNT_OFFSET_TO_PAYLOAD = -12;
+    private static final int FRAME_COUNT_OFFSET_TO_PAYLOAD = -4;
     private static final int SIZE_OFFSET_TO_PAYLOAD = -8;
 
-    private static final int VALID_OFFSET_START = FRAME_COUNT_OFFSET_TO_PAYLOAD;
+    private static final int VALID_OFFSET_START = SIZE_OFFSET_TO_PAYLOAD;
 
-    private static final int PAYLOAD_OFFSET = 16;
+    public static final int PAYLOAD_OFFSET = 16;
 
     private static final int SHARED_REFERENCE_MAP_ENCODING_OFFSET = 0;
     private static final int SHARED_REFERENCE_MAP_ENCODING_SIZE = 8;
@@ -92,17 +93,16 @@ public final class StoredContinuationImpl {
     private static final int HEADER_SIZE = PAYLOAD_OFFSET;
 
     @Uninterruptible(reason = "in allocation of StoredContinuation instance")
-    public static void initializeNewlyAllocated(Object obj, long size) {
+    public static void initializeNewlyAllocated(Object obj) {
         Pointer p = Word.objectToUntrackedPointer(obj).add(PAYLOAD_OFFSET);
-        p.writeLong(SIZE_OFFSET_TO_PAYLOAD, size - HEADER_SIZE, LocationIdentity.init());
         // Keep GC from taking a closer look until frames are initialized
         p.writeInt(FRAME_COUNT_OFFSET_TO_PAYLOAD, 0, LocationIdentity.init());
     }
 
     /* All method calls in this function except `allocate` should be `@Uninterruptible` */
-    private static StoredContinuation allocate(long payloadSize) {
+    private static StoredContinuation allocate(int payloadSize) {
         assert payloadSize % 8 == 0;
-        StoredContinuation f = NewStoredContinuationNode.allocate(payloadSize + HEADER_SIZE);
+        StoredContinuation f = NewStoredContinuationNode.allocate(payloadSize);
         assert readPayloadSize(f) == payloadSize;
         return f;
     }
@@ -158,19 +158,19 @@ public final class StoredContinuationImpl {
 
     // size of payload
     @Uninterruptible(reason = "read StoredContinuation")
-    private static long readPayloadSize(StoredContinuation f) {
-        return readPayloadLong(f, SIZE_OFFSET_TO_PAYLOAD);
+    private static int readPayloadSize(StoredContinuation f) {
+        return readPayloadInt(f, SIZE_OFFSET_TO_PAYLOAD);
     }
 
     // size of raw frame
     @Uninterruptible(reason = "read StoredContinuation")
-    public static long readAllFrameSize(StoredContinuation f) {
+    public static int readAllFrameSize(StoredContinuation f) {
         return readPayloadSize(f) - readFrameMetaSize(f);
     }
 
     // size of object
     @Uninterruptible(reason = "read StoredContinuation")
-    public static long readSize(StoredContinuation f) {
+    public static int readSize(StoredContinuation f) {
         return readPayloadSize(f) + HEADER_SIZE;
     }
 
@@ -215,7 +215,7 @@ public final class StoredContinuationImpl {
 
     /** A non-uninterruptible function to allocate temporary buffer. */
     public static byte[] allocateBuf(StoredContinuation f) {
-        return new byte[TypeConversion.asU4(readAllFrameSize(f))];
+        return new byte[readAllFrameSize(f)];
     }
 
     @Uninterruptible(reason = "access stack")
@@ -260,7 +260,7 @@ public final class StoredContinuationImpl {
         VMError.guarantee(resultLeafSP.isNonNull());
 
         int frameCount = visitor.frameSizeReferenceMapIndex.size();
-        long payloadSize = SHARED_REFERENCE_MAP_ENCODING_SIZE + FRAME_META_SIZE * frameCount + rootSp.subtract(resultLeafSP).rawValue();
+        int payloadSize = SHARED_REFERENCE_MAP_ENCODING_SIZE + FRAME_META_SIZE * frameCount + UnsignedUtils.safeToInt(rootSp.subtract(resultLeafSP));
 
         cont.stored = allocate(payloadSize);
         /*
@@ -271,7 +271,7 @@ public final class StoredContinuationImpl {
 
         writePayloadLong(cont.stored, SHARED_REFERENCE_MAP_ENCODING_OFFSET, visitor.referenceMapEncoding.rawValue());
 
-        long allFrameSize = 0;
+        int allFrameSize = 0;
         for (int i = 0; i < frameCount; i++) {
             Pair<Integer, Integer> frameSizeRefMapInxPair = visitor.frameSizeReferenceMapIndex.get(i);
             writePayloadInt(cont.stored, FRAME_META_START_OFFSET + i * FRAME_META_SIZE + SIZE_OFFSET_IN_FRAME_META,
@@ -286,7 +286,7 @@ public final class StoredContinuationImpl {
     }
 
     @Uninterruptible(reason = "Prevent modifications to the stack while copying.")
-    private static void copyUninterruptibly(Continuation cont, Pointer sp, long size, int frameCount) {
+    private static void copyUninterruptibly(Continuation cont, Pointer sp, int size, int frameCount) {
         payloadLocation(cont.stored).writeInt(FRAME_COUNT_OFFSET_TO_PAYLOAD, frameCount);
 
         VMError.guarantee(size == readAllFrameSize(cont.stored));
@@ -306,7 +306,7 @@ public final class StoredContinuationImpl {
         assert payloadStart.subtract(baseAddress).equal(StoredContinuationImpl.HEADER_SIZE) : "base address not pointing to frame instance";
 
         int frameCount = StoredContinuationImpl.readFrameCount(f);
-        long size = StoredContinuationImpl.readPayloadSize(f);
+        int size = StoredContinuationImpl.readPayloadSize(f);
 
         Pointer curFrame = StoredContinuationImpl.payloadFrameStart(f);
         int frameIndex = 0;
@@ -326,7 +326,7 @@ public final class StoredContinuationImpl {
 
         assert frameIndex == frameCount;
         // NOTE: frameCount can be 0 if the object has just been allocated but not filled yet
-        assert frameCount == 0 || curFrame.subtract(payloadStart).rawValue() == size;
+        assert frameCount == 0 || curFrame.subtract(payloadStart).equal(size);
 
         return true;
     }

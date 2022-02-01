@@ -34,7 +34,6 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import org.graalvm.compiler.core.common.util.TypeConversion;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
@@ -287,7 +286,7 @@ final class Target_java_lang_StackWalker {
             curStoredContinuation = continuation.internal.stored;
             VMError.guarantee(curStoredContinuation != null);
             sp = StoredContinuationImpl.payloadFrameStart(curStoredContinuation);
-            endSp = sp.add(TypeConversion.asU4(StoredContinuationImpl.readAllFrameSize(curStoredContinuation)));
+            endSp = sp.add(StoredContinuationImpl.readAllFrameSize(curStoredContinuation));
             ip = LoomSupport.getIP(continuation);
             curFrameIndex = 0;
             curFrameCount = StoredContinuationImpl.readFrameCount(curStoredContinuation);

@@ -24,18 +24,21 @@
  */
 package com.oracle.svm.core.genscavenge.graal;
 
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
+import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
+
 import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.SnippetAnchorNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.replacements.ReplacementsUtil;
 import org.graalvm.compiler.replacements.SnippetCounter;
 import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
@@ -52,12 +55,16 @@ import com.oracle.svm.core.genscavenge.ThreadLocalAllocation.Descriptor;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatArrayNode;
 import com.oracle.svm.core.genscavenge.graal.nodes.FormatObjectNode;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
+import com.oracle.svm.core.graal.nodes.NewStoredContinuationNode;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
 import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.StoredContinuation;
+import com.oracle.svm.core.heap.StoredContinuationImpl;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.meta.SharedType;
+import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.thread.Continuation;
@@ -81,18 +88,13 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
     }
 
     @Snippet
-    public Object formatObjectSnippet(Word memory, DynamicHub hub, UnsignedWord size, boolean rememberedSet, FillContent fillContents,
-                    boolean emitMemoryBarrier, @ConstantParameter AllocationSnippetCounters snippetCounters) {
+    public Object formatObjectSnippet(Word memory, DynamicHub hub, boolean rememberedSet, FillContent fillContents, boolean emitMemoryBarrier,
+                    @ConstantParameter AllocationSnippetCounters snippetCounters) {
         DynamicHub hubNonNull = (DynamicHub) PiNode.piCastNonNull(hub, SnippetAnchorNode.anchor());
+        int layoutEncoding = hubNonNull.getLayoutEncoding();
+        UnsignedWord size = LayoutEncoding.getInstanceSize(layoutEncoding);
         Word objectHeader = encodeAsObjectHeader(hubNonNull, rememberedSet, false);
-        Object obj = formatObject(objectHeader, WordFactory.nullPointer(), size, memory, fillContents, false, false, snippetCounters);
-        if (Continuation.isSupported() && hub == DynamicHub.fromClass(StoredContinuation.class)) {
-            finishFormatStoredContinuation(obj, size.rawValue());
-        } else {
-            ReplacementsUtil.dynamicAssert(size.equal(LayoutEncoding.getInstanceSize(hubNonNull.getLayoutEncoding())), "unexpected size");
-        }
-        emitMemoryBarrierIf(emitMemoryBarrier);
-        return obj;
+        return formatObject(objectHeader, WordFactory.nullPointer(), size, memory, fillContents, emitMemoryBarrier, false, snippetCounters);
     }
 
     @Snippet
@@ -102,12 +104,31 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
         int layoutEncoding = hubNonNull.getLayoutEncoding();
         UnsignedWord size = LayoutEncoding.getArraySize(layoutEncoding, length);
         Word objectHeader = encodeAsObjectHeader(hubNonNull, rememberedSet, unaligned);
-        return formatArray(objectHeader, WordFactory.nullPointer(), size, length, memory, fillContents, fillStartOffset,
-                        emitMemoryBarrier, false, supportsBulkZeroing, supportsOptimizedFilling, snippetCounters);
+        Object obj = formatArray(objectHeader, WordFactory.nullPointer(), size, length, memory, fillContents, fillStartOffset,
+                        false, false, supportsBulkZeroing, supportsOptimizedFilling, snippetCounters);
+        if (probability(SLOW_PATH_PROBABILITY, Continuation.isSupported() && hub == DynamicHub.fromClass(StoredContinuation.class))) {
+            finishFormatStoredContinuation(obj);
+        }
+        emitMemoryBarrierIf(emitMemoryBarrier);
+        return obj;
     }
 
     private static Word encodeAsObjectHeader(DynamicHub hub, boolean rememberedSet, boolean unaligned) {
         return ObjectHeaderImpl.encodeAsObjectHeader(hub, rememberedSet, unaligned);
+    }
+
+    @Snippet
+    public Object allocateStoredContinuationInstance(@Snippet.NonNullParameter DynamicHub hub, int size, @ConstantParameter AllocationProfilingData profilingData) {
+        int baseOffset = StoredContinuationImpl.PAYLOAD_OFFSET;
+        Object result = allocateArrayImpl(encodeAsTLABObjectHeader(hub), WordFactory.nullPointer(), size, baseOffset, 0,
+                        FillContent.WITH_GARBAGE_IF_ASSERTIONS_ENABLED, baseOffset, false, false, false, false, profilingData);
+        finishFormatStoredContinuation(result);
+        emitMemoryBarrierIf(true);
+        return PiNode.piCastToSnippetReplaceeStamp(result);
+    }
+
+    private static void finishFormatStoredContinuation(Object obj) {
+        StoredContinuationImpl.initializeNewlyAllocated(obj);
     }
 
     @Override
@@ -158,12 +179,14 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
     public static class Templates extends SubstrateAllocationSnippets.Templates {
         private final SnippetInfo formatObject;
         private final SnippetInfo formatArray;
+        private final SnippetInfo allocateStoredContinuationInstance;
 
         Templates(SubstrateAllocationSnippets receiver, OptionValues options, SnippetCounter.Group.Factory groupFactory, Providers providers) {
             super(receiver, options, groupFactory, providers);
 
             formatObject = snippet(GenScavengeAllocationSnippets.class, "formatObjectSnippet", null, receiver);
             formatArray = snippet(GenScavengeAllocationSnippets.class, "formatArraySnippet", null, receiver);
+            allocateStoredContinuationInstance = snippet(GenScavengeAllocationSnippets.class, "allocateStoredContinuationInstance", null, receiver, ALLOCATION_LOCATIONS);
         }
 
         @Override
@@ -175,6 +198,9 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
 
             FormatArrayLowering formatArrayLowering = new FormatArrayLowering();
             lowerings.put(FormatArrayNode.class, formatArrayLowering);
+
+            NewStoredContinuationLowering newStoredContinuationLowering = new NewStoredContinuationLowering();
+            lowerings.put(NewStoredContinuationNode.class, newStoredContinuationLowering);
         }
 
         private class FormatObjectLowering implements NodeLoweringProvider<FormatObjectNode> {
@@ -187,7 +213,6 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
                 Arguments args = new Arguments(formatObject, graph.getGuardsStage(), tool.getLoweringStage());
                 args.add("memory", node.getMemory());
                 args.add("hub", node.getHub());
-                args.add("size", node.getSize());
                 args.add("rememberedSet", node.getRememberedSet());
                 args.add("fillContents", node.getFillContents());
                 args.add("emitMemoryBarrier", node.getEmitMemoryBarrier());
@@ -215,6 +240,29 @@ final class GenScavengeAllocationSnippets extends SubstrateAllocationSnippets {
                 args.addConst("supportsBulkZeroing", tool.getLowerer().supportsBulkZeroing());
                 args.addConst("supportsOptimizedFilling", tool.getLowerer().supportsOptimizedFilling(graph.getOptions()));
                 args.addConst("snippetCounters", snippetCounters);
+                template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+            }
+        }
+
+        private class NewStoredContinuationLowering implements NodeLoweringProvider<NewStoredContinuationNode> {
+            @Override
+            public void lower(NewStoredContinuationNode node, LoweringTool tool) {
+                StructuredGraph graph = node.graph();
+
+                if (graph.getGuardsStage() != StructuredGraph.GuardsStage.AFTER_FSA) {
+                    return;
+                }
+
+                DynamicHub hub = ((SharedType) tool.getMetaAccess().lookupJavaType(StoredContinuation.class)).getHub();
+                assert hub.isStoredContinuationClass();
+
+                ConstantNode hubConstant = ConstantNode.forConstant(SubstrateObjectConstant.forObject(hub), providers.getMetaAccess(), graph);
+
+                Arguments args = new Arguments(allocateStoredContinuationInstance, graph.getGuardsStage(), tool.getLoweringStage());
+                args.add("hub", hubConstant);
+                args.add("size", node.getSize());
+                args.addConst("profilingData", getProfilingData(node, null));
+
                 template(node, args).instantiate(providers.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
             }
         }
