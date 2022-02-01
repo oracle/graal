@@ -32,6 +32,7 @@ import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -63,6 +64,7 @@ public final class HeapDump {
     private static final int HEAP_ROOT_THREAD_OBJECT = 0x08;
     private static final int HEAP_CLASS_DUMP = 0x20;
     private static final int HEAP_INSTANCE_DUMP = 0x21;
+    private static final int HEAP_OBJECT_ARRAY_DUMP = 0x22;
     private static final int HEAP_PRIMITIVE_ARRAY_DUMP = 0x23;
 
     // types used in heap dump
@@ -103,6 +105,7 @@ public final class HeapDump {
     private final ClassInstance typeObject;
     private final ClassInstance typeString;
     private final ClassInstance typeThread;
+    private ClassInstance typeObjectArray;
 
     HeapDump() {
         this.builder = null;
@@ -119,6 +122,7 @@ public final class HeapDump {
         newClass("char[]").dumpClass();
         this.typeString = newClass("java.lang.String").field("value", char[].class).field("hash", Integer.TYPE).dumpClass();
         this.typeThread = newClass("java.lang.Thread").field("daemon", Boolean.TYPE).field("name", String.class).field("priority", Integer.TYPE).dumpClass();
+        this.typeObjectArray = newClass("[java.lang.Object").dumpClass();
     }
 
     /**
@@ -171,10 +175,10 @@ public final class HeapDump {
          * Generates heap dump.
          * <p>
          * {@codesnippet org.graalvm.tools.insight.test.heap.HeapDumpTest#generateSampleHeapDump}
-         * 
+         *
          * @param generator callback that performs the heap generating operations
          * @throws IOException when an I/O error occurs
-         * 
+         *
          * @see HeapDump#newHeapBuilder(java.io.OutputStream)
          * @since 21.1
          */
@@ -188,11 +192,11 @@ public final class HeapDump {
          * {@code timeStamp} are not going to be decreasing.
          * <p>
          * {@codesnippet org.graalvm.tools.insight.test.heap.HeapDumpTest#generateSampleHeapDump}
-         * 
+         *
          * @param timeStamp time when the heap dump is supposed to be taken in milliseconds
          * @param generator callback that performs the heap generating operations
          * @throws IOException when an I/O error occurs
-         * 
+         *
          * @see HeapDump#newHeapBuilder(java.io.OutputStream)
          * @since 21.1
          */
@@ -419,6 +423,22 @@ public final class HeapDump {
     public InstanceBuilder newInstance(ClassInstance clazz) {
         try {
             return new InstanceBuilder(clazz, builder.objectCounter.next());
+        } catch (IOException ex) {
+            throw new UncheckedIOException(ex);
+        }
+    }
+
+    /**
+     * Starts building an object array.
+     *
+     * @param len the size of the array
+     * @return new array builder
+     *
+     * @since 21.3.2
+     */
+    public ArrayBuilder newArray(int len) {
+        try {
+            return new ArrayBuilder(this.typeObjectArray, len, builder.objectCounter.next());
         } catch (IOException ex) {
             throw new UncheckedIOException(ex);
         }
@@ -930,6 +950,83 @@ public final class HeapDump {
                 } else {
                     builder.ids.writeID(heap, ref == null ? 0 : ((Number) ref).intValue());
                 }
+            }
+        }
+    }
+
+    /**
+     * Fills data for new array to put into the {@link HeapDump}.
+     *
+     * @since 21.3.2
+     * @see HeapDump#newArray(int)
+     */
+    public final class ArrayBuilder {
+        private final ClassInstance clazz;
+        private final ObjectInstance instanceId;
+        private final List<ObjectInstance> elements;
+
+        private ArrayBuilder(ClassInstance clazz, int length, int instanceId) {
+            this.clazz = clazz;
+            this.elements = Arrays.asList(new ObjectInstance[length]);
+            this.instanceId = new ObjectInstance(instanceId);
+        }
+
+        /**
+         * Puts reference to another object into the array.
+         *
+         * @param index zero based index into the array
+         * @param value reference to object in the {@link HeapDump}
+         * @return {@code this} builder
+         * @throws IllegalArgumentException if the field doesn't exist or its type isn't correct
+         *
+         * @since 21.3.2
+         */
+        public ArrayBuilder put(int index, ObjectInstance value) {
+            elements.set(index, value);
+            return this;
+        }
+
+        /**
+         * Dumps the gathered field values into the {@link HeapDump}.
+         *
+         * @return object representing the written instance
+         * @throws UncheckedIOException when an I/O error occurs
+         *
+         * @see #put(java.lang.String, org.graalvm.tools.insight.heap.HeapDump.ObjectInstance)
+         * @since 21.3.2
+         */
+        public ObjectInstance dumpInstance() throws UncheckedIOException {
+            try {
+                dumpArray(HeapDump.this, elements);
+                return instanceId;
+            } catch (IOException ex) {
+                throw new UncheckedIOException(ex);
+            }
+        }
+
+        /**
+         * The ID assigned to the instance. Allows one to obtain ID of an instance before it is
+         * dumped into the {@link HeapDump}.
+         * <p>
+         * {@codesnippet org.graalvm.tools.insight.test.heap.HeapDumpTest#cyclic}
+         *
+         * @return object reference for the instance that's going to be built when
+         *         {@link #dumpInstance()} method is invoked
+         *
+         * @since 21.3.2
+         */
+        public ObjectInstance id() {
+            return instanceId;
+        }
+
+        private void dumpArray(HeapDump thiz, List<ObjectInstance> elements) throws IOException {
+            heap.writeByte(HEAP_OBJECT_ARRAY_DUMP);
+            builder.ids.writeID(heap, instanceId.id(thiz));
+            builder.writeDefaultStackTraceSerialNumber(heap);
+            heap.writeInt(elements.size());
+            builder.ids.writeID(heap, clazz.id(thiz));
+            for (ObjectInstance ref : elements) {
+                builder.ids.writeID(heap, ref == null ? 0 : ref.id(thiz));
             }
         }
     }
