@@ -149,14 +149,33 @@ public final class ExampleJNIConfig {
         return builder.build();
     }
 
-    private static native long attachThread(long isolate);
-    private static native int detachThread(long isolateThread);
+    private static native long attachIsolateThread(long isolate);
+    private static native int detachIsolateThread(long isolateThread);
     private static native int tearDownIsolate(long isolateThread);
     private static native long releaseHandle(long isolateThread, long handle);
+
+    @CEntryPoint(name = "Java_ExampleJNIConfig_attachIsolateThread", builtin = CEntryPoint.Builtin.ATTACH_THREAD, include = Enabled.class)
+    static native IsolateThread attachIsolateThread(JNIEnv jniEnv, JClass clazz, Isolate isolate);
+
+    @CEntryPoint(name = "Java_ExampleJNIConfig_detachIsolateThread", builtin = CEntryPoint.Builtin.DETACH_THREAD, include = Enabled.class)
+    static native int detachIsolateThread(JNIEnv jniEnv, JClass clazz, IsolateThread isolateThread);
+
+    @CEntryPoint(name = "Java_ExampleJNIConfig_tearDownIsolate", builtin = CEntryPoint.Builtin.TEAR_DOWN_ISOLATE , include = Enabled.class)
+    static native int tearDownIsolate(JNIEnv jniEnv, JClass clazz, IsolateThread isolateThread);
+
+    @CEntryPoint(name = "Java_ExampleJNIConfig_releaseHandle", include = Enabled.class)
+    static long releaseHandle(JNIEnv jniEnv, JClass clazz, @CEntryPoint.IsolateThreadContext long isolateId, long objectHandle) {
+        try {
+            NativeObjectHandles.remove(objectHandle);
+            return 0;
+        } catch (Throwable t) {
+            return -1;
+        }
+    }
 }
 ```
 
-Both `@GenerateHotSpotToNativeBridge` and `@GenerateNativeToHotSpotBridge` require `jniConfig` attribute set to a class having an accessible static method `getInstance` returning `JNIConfig` instance. The `attachThread`, `detachThread` and `tearDownIsolate` native methods correspond to [CEntryPoint.Builtin](https://www.graalvm.org/truffle/javadoc/org/graalvm/nativeimage/c/function/CEntryPoint.Builtin.html)s. The `releaseHandle` native method is executed when `NativeObject` for passed handle becomes weakly reachable and the corresponding object in the native image heap should be freed.
+Both `@GenerateHotSpotToNativeBridge` and `@GenerateNativeToHotSpotBridge` require `jniConfig` attribute set to a class having an accessible static method `getInstance` returning `JNIConfig` instance. The `attachIsolateThread`, `detachIsolateThread` and `tearDownIsolate` native methods correspond to [CEntryPoint.Builtin](https://www.graalvm.org/truffle/javadoc/org/graalvm/nativeimage/c/function/CEntryPoint.Builtin.html)s. The `releaseHandle` native method is executed when `NativeObject` for passed handle becomes weakly reachable and the corresponding object in the native image heap should be freed.
 
 ### Custom Marshallers
 
