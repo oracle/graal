@@ -93,7 +93,7 @@ public final class ClassRedefinition {
         missingFieldAssumption = Truffle.getRuntime().createAssumption();
     }
 
-    enum ClassChange {
+    public enum ClassChange {
         // currently supported
         NO_CHANGE,
         CONSTANT_POOL_CHANGE,
@@ -745,6 +745,9 @@ public final class ClassRedefinition {
             classRegistry.onClassRenamed(oldKlass);
 
             InterpreterToVM.setFieldObject(StaticObject.NULL, oldKlass.mirror(), context.getMeta().java_lang_Class_name);
+        }
+        if (packet.classChange == ClassChange.CLASS_HIERARCHY_CHANGED) {
+            oldKlass.removeAsSubType();
         }
         oldKlass.redefineClass(packet, invalidatedClasses, ids);
         redefinedClasses.add(oldKlass);

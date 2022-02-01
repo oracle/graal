@@ -33,6 +33,7 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -76,6 +77,7 @@ import com.oracle.truffle.espresso.jdwp.impl.JDWP;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.redefinition.ChangePacket;
+import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.redefinition.DetectedChange;
 import com.oracle.truffle.espresso.runtime.Attribute;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -207,6 +209,32 @@ public final class ObjectKlass extends Klass {
             }
             synchronized (subTypes) {
                 subTypes.add(new WeakReference<>(objectKlass));
+            }
+        }
+    }
+
+    public void removeAsSubType() {
+        getSuperKlass().removeSubType(this);
+        for (ObjectKlass superInterface : getSuperInterfaces()) {
+            superInterface.removeSubType(this);
+        }
+    }
+
+    private void removeSubType(ObjectKlass klass) {
+        assert subTypes != null;
+        synchronized (subTypes) {
+            boolean removed = false;
+            Iterator<WeakReference<ObjectKlass>> it = subTypes.iterator();
+            while (it.hasNext()) {
+                WeakReference<ObjectKlass> next = it.next();
+                if (next.get() == klass) {
+                    it.remove();
+                    removed = true;
+                    break;
+                }
+            }
+            if (!removed) {
+                throw EspressoError.shouldNotReachHere();
             }
         }
     }
@@ -1624,11 +1652,15 @@ public final class ObjectKlass extends Klass {
                 vtable = VirtualTable.create(superKlass, methods, this, mirandaMethods, true);
                 itable = InterfaceTables.fixTables(this, vtable, mirandaMethods, methods, methodCR.tables, iKlassTable);
             }
-            if (superKlass != null) {
-                superKlass.addSubType(getKlass());
-            }
-            for (ObjectKlass superInterface : superInterfaces) {
-                superInterface.addSubType(getKlass());
+
+            // only update subtype lists if class hierarchy changed
+            if (packet.classChange == ClassRedefinition.ClassChange.CLASS_HIERARCHY_CHANGED) {
+                if (superKlass != null) {
+                    superKlass.addSubType(getKlass());
+                }
+                for (ObjectKlass superInterface : superInterfaces) {
+                    superInterface.addSubType(getKlass());
+                }
             }
 
             // changed methods
