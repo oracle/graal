@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,16 +22,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core;
+package com.oracle.svm.core.amd64;
 
-import java.util.EnumSet;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature;
 
-import jdk.vm.ci.code.Architecture;
+import com.oracle.svm.core.CPUFeatureAccess;
+import com.oracle.svm.core.annotate.AutomaticFeature;
 
-public interface CPUFeatureAccess {
-    void verifyHostSupportsArchitecture(Architecture imageArchitecture);
+@AutomaticFeature
+@Platforms(Platform.AMD64.class)
+public class AMD64CPUFeatureAccessFeature implements Feature {
+    @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        ImageSingletons.add(CPUFeatureAccess.class, createAMD64CPUFeatureAccessSingleton());
+    }
 
-    void enableFeatures(Architecture architecture);
-
-    EnumSet<?> determineHostCPUFeatures();
+    protected AMD64CPUFeatureAccess createAMD64CPUFeatureAccessSingleton() {
+        return new AMD64CPUFeatureAccess();
+    }
 }

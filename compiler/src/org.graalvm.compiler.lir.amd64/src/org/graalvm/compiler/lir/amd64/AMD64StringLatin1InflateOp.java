@@ -56,7 +56,7 @@ public final class AMD64StringLatin1InflateOp extends AMD64LIRInstruction {
     public static final LIRInstructionClass<AMD64StringLatin1InflateOp> TYPE = LIRInstructionClass.create(AMD64StringLatin1InflateOp.class);
 
     private final int useAVX3Threshold;
-    private final int maxVectorSize;
+    private final boolean useAVX512ForStringInflateCompress;
 
     @Use({REG}) private Value rsrc;
     @Use({REG}) private Value rdst;
@@ -74,7 +74,6 @@ public final class AMD64StringLatin1InflateOp extends AMD64LIRInstruction {
 
         assert CodeUtil.isPowerOf2(useAVX3Threshold) : "AVX3Threshold must be power of 2";
         this.useAVX3Threshold = useAVX3Threshold;
-        this.maxVectorSize = maxVectorSize;
 
         assert asRegister(src).equals(rsi);
         assert asRegister(dst).equals(rdi);
@@ -84,7 +83,9 @@ public final class AMD64StringLatin1InflateOp extends AMD64LIRInstruction {
         rdstTemp = rdst = dst;
         rlenTemp = rlen = len;
 
-        vtmp1 = useAVX512ForStringInflateCompress(tool.target(), maxVectorSize)
+        this.useAVX512ForStringInflateCompress = useAVX512ForStringInflateCompress(tool.target(), maxVectorSize);
+
+        vtmp1 = useAVX512ForStringInflateCompress
                         ? tool.newVariable(LIRKind.value(AMD64Kind.V512_BYTE))
                         : tool.newVariable(LIRKind.value(AMD64Kind.V128_BYTE));
         rtmp2 = tool.newVariable(LIRKind.value(AMD64Kind.DWORD));
@@ -134,7 +135,7 @@ public final class AMD64StringLatin1InflateOp extends AMD64LIRInstruction {
         assert len.number != tmp2.number;
 
         masm.movl(tmp2, len);
-        if (useAVX512ForStringInflateCompress(masm.target, maxVectorSize)) {
+        if (useAVX512ForStringInflateCompress) {
             Label labelCopy32Loop = new Label();
             Label labelCopyTail = new Label();
             Register tmp3Aliased = len;
