@@ -458,9 +458,9 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                         debug.log(DebugContext.VERBOSE_LEVEL, "Canonicalizer: customSimplification simplifying %s", node);
                         COUNTER_CUSTOM_SIMPLIFICATION_CONSIDERED_NODES.increment(debug);
 
-                        int modCount = node.graph().getModificationCount();
+                        int modCount = node.graph().getEdgeModificationCount();
                         customSimplification.simplify(node, tool);
-                        if (node.isDeleted() || modCount != node.graph().getModificationCount()) {
+                        if (node.isDeleted() || modCount != node.graph().getEdgeModificationCount()) {
                             debug.log("Canonicalizer: customSimplification simplified %s", node);
                             return true;
                         }
@@ -469,9 +469,9 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                         debug.log(DebugContext.VERBOSE_LEVEL, "Canonicalizer: simplifying %s", node);
                         COUNTER_SIMPLIFICATION_CONSIDERED_NODES.increment(debug);
 
-                        int modCount = node.graph().getModificationCount();
+                        int modCount = node.graph().getEdgeModificationCount();
                         ((Simplifiable) node).simplify(tool);
-                        if (node.isDeleted() || modCount != node.graph().getModificationCount()) {
+                        if (node.isDeleted() || modCount != node.graph().getEdgeModificationCount()) {
                             debug.log("Canonicalizer: simplified %s", node);
                             return true;
                         }

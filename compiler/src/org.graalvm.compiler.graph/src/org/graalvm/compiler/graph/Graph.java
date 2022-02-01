@@ -103,10 +103,12 @@ public class Graph {
     int nodesSize;
 
     /**
-     * The modification count driven by the {@link NodeEventListener} machinery. This means it only
-     * captures adding or deleting nodes, or changing the inputs of nodes.
+     * The modification count driven by the {@link NodeEventListener} machinery. Only changes to
+     * edges are tracked since that captures meaningful changes to the graph. Adding or deleting
+     * nodes without changes edges can't have a material effect on the graph. Changes to other
+     * internal state of the nodes isn't captured by this count.
      */
-    int modificationCount;
+    int edgeModificationCount;
 
     /**
      * Records the modification count for nodes. This is only used in assertions.
@@ -273,7 +275,7 @@ public class Graph {
      * {@link Graph} class.
      */
     @SuppressWarnings("all")
-    public static boolean isModificationCountsEnabled() {
+    public static boolean isNodeModificationCountsEnabled() {
         boolean enabled = false;
         assert enabled = true;
         return enabled;
@@ -296,7 +298,7 @@ public class Graph {
         assert debug != null;
         this.debug = debug;
 
-        if (isModificationCountsEnabled()) {
+        if (isNodeModificationCountsEnabled()) {
             nodeModCounts = new int[INITIAL_NODES_SIZE];
             nodeUsageModCounts = new int[INITIAL_NODES_SIZE];
         }
@@ -353,8 +355,8 @@ public class Graph {
         }
     }
 
-    public int getModificationCount() {
-        return modificationCount;
+    public int getEdgeModificationCount() {
+        return edgeModificationCount;
     }
 
     /**
@@ -977,7 +979,7 @@ public class Graph {
                 nextId++;
             }
         }
-        if (isModificationCountsEnabled()) {
+        if (isNodeModificationCountsEnabled()) {
             // This will cause any current iteration to fail with an assertion
             Arrays.fill(nodeModCounts, 0);
             Arrays.fill(nodeUsageModCounts, 0);
@@ -1122,7 +1124,6 @@ public class Graph {
         if (nodeEventListener != null) {
             nodeEventListener.event(NodeEvent.NODE_ADDED, node);
         }
-        modificationCount++;
         afterRegister(node);
     }
 
@@ -1186,8 +1187,6 @@ public class Graph {
         if (nodeEventListener != null) {
             nodeEventListener.event(NodeEvent.NODE_REMOVED, node);
         }
-        modificationCount++;
-
         // nodes aren't removed from the type cache here - they will be removed during iteration
     }
 
