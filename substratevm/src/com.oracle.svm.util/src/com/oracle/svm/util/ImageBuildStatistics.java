@@ -122,7 +122,8 @@ public class ImageBuildStatistics {
                          * This node source position is coming from a virtual call.
                          */
                     } else {
-                        // throw GraalError.shouldNotReachHere("Found new node " + nodeSourcePosition + " after bytecode
+                        // throw GraalError.shouldNotReachHere("Found new node " +
+                        // nodeSourcePosition + " after bytecode
                         // parsing in graph for " + method.format("%h.%n(%p)"));
                         System.out.println("Found new node " + nodeSourcePosition + " after bytecode parsing in graph for " + method.format("%H.%n(%p)"));
                     }
