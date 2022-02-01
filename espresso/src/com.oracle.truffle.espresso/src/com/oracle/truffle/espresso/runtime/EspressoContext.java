@@ -291,8 +291,9 @@ public final class EspressoContext {
         this.EnableManagement = env.getOptions().get(EspressoOptions.EnableManagement);
         this.EnableAgents = getEnv().getOptions().get(EspressoOptions.EnableAgents);
         this.TrivialMethodSize = getEnv().getOptions().get(EspressoOptions.TrivialMethodSize);
-        this.UseHostFinalReference = getEnv().getOptions().get(EspressoOptions.UseHostFinalReference);
-        if (this.UseHostFinalReference && !FinalizationSupport.canUseHostFinalReference()) {
+        boolean useHostFinalReferenceOption = getEnv().getOptions().get(EspressoOptions.UseHostFinalReference);
+        this.UseHostFinalReference = useHostFinalReferenceOption && FinalizationSupport.canUseHostFinalReference();
+        if (useHostFinalReferenceOption && !FinalizationSupport.canUseHostFinalReference()) {
             getLogger().warning("--java.UseHostFinalReference is set to 'true' but Espresso cannot access the host java.lang.ref.FinalReference class.\n" +
                             "Ensure that host system properties '-Despresso.finalization.InjectClasses=true' and '-Despresso.finalization.UnsafeOverride=true' are set.\n" +
                             "Espresso's guest FinalReference(s) will fallback to WeakReference semantics.");
