@@ -2364,7 +2364,7 @@ class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDis
             if _skip_libraries(library_config):
                 name += '_S' + basename(library_config.destination).upper()
         if other_involved_components:
-            extra_installable_qualifiers += [component.short_name for component in other_involved_components]
+            extra_installable_qualifiers += [c.short_name for c in other_involved_components]
         if extra_installable_qualifiers:
             name += '_' + '_'.join(sorted(q.upper() for q in extra_installable_qualifiers))
         name += '_JAVA{}'.format(_src_jdk_version)
