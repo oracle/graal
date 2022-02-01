@@ -47,7 +47,7 @@ public class LegacyTruffleExceptionPartialEvaluationTest extends PartialEvaluati
         assertPartialEvalEquals(LegacyTruffleExceptionPartialEvaluationTest::constant42, createCallerChain(4, 4, nodeFactory));
     }
 
-    @SuppressWarnings("deprecation")
+    @SuppressWarnings({"deprecation", "serial"})
     private static final class TestTruffleException extends RuntimeException implements com.oracle.truffle.api.TruffleException {
 
         private static final long serialVersionUID = -6105288741119318027L;
