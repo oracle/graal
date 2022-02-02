@@ -991,9 +991,9 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
                 '-H:-DeleteLocalSymbols',
 
 
-                # No VM-internal threads may be spawned for libgraal and the reference handler is executed manually.
+                # No VM-internal threads may be spawned for libgraal and the reference handling is executed manually.
                 '-H:-AllowVMInternalThreads',
-                '-R:ReferenceHandlerMode=0',
+                '-R:-AutomaticReferenceHandling',
             ],
         ),
     ],

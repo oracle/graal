@@ -572,28 +572,12 @@ public class SubstrateOptions {
         public static final HostedOptionKey<Boolean> UseDedicatedVMOperationThread = new HostedOptionKey<>(false);
 
         /** Use {@link ReferenceHandler#useDedicatedThread()} instead. */
-        @Option(help = "Determines how reference handling is done. " +
-                        "0 - reference handling can only be executed manually, " +
-                        "1 - reference handling is done in a dedicated reference handler thread, " +
-                        "2 - (deprecated) reference handling is done in regular Java threads.", type = OptionType.Expert) //
-        public static final RuntimeOptionKey<Integer> ReferenceHandlerMode = new ImmutableRuntimeOptionKey<>(null) {
-            @Override
-            public Integer getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
-                if (!values.containsKey(this)) {
-                    if (AllowVMInternalThreads.getValueOrDefault(values)) {
-                        return com.oracle.svm.core.heap.ReferenceHandlerMode.UseDedicatedThread;
-                    } else {
-                        return com.oracle.svm.core.heap.ReferenceHandlerMode.UseRegularJavaThreads;
-                    }
-                }
-                return super.getValueOrDefault(values);
-            }
+        @Option(help = "Populate reference queues in a separate thread rather than after a garbage collection.", type = OptionType.Expert) //
+        public static final RuntimeOptionKey<Boolean> UseReferenceHandlerThread = new ImmutableRuntimeOptionKey<>(true);
 
-            @Override
-            public Integer getValue(OptionValues values) {
-                return getValueOrDefault(values.getMap());
-            }
-        };
+        /** Use {@link ReferenceHandler#isExecutedManually()} instead. */
+        @Option(help = "Determines if the reference handling is executed automatically or manually.", type = OptionType.Expert) //
+        public static final RuntimeOptionKey<Boolean> AutomaticReferenceHandling = new ImmutableRuntimeOptionKey<>(true);
     }
 
     @Option(help = "Overwrites the available number of processors provided by the OS. Any value <= 0 means using the processor count from the OS.")//

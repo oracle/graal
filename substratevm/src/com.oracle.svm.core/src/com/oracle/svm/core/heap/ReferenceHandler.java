@@ -35,20 +35,23 @@ import com.oracle.svm.core.util.VMError;
 public final class ReferenceHandler {
     public static boolean useDedicatedThread() {
         if (ReferenceHandlerThread.isSupported()) {
-            int optionIndex = IsolateArgumentParser.getOptionIndex(SubstrateOptions.ConcealedOptions.ReferenceHandlerMode);
-            return IsolateArgumentParser.getIntOptionValue(optionIndex) == ReferenceHandlerMode.UseDedicatedThread;
+            int useReferenceHandlerThread = IsolateArgumentParser.getOptionIndex(SubstrateOptions.ConcealedOptions.UseReferenceHandlerThread);
+            int automaticReferenceHandling = IsolateArgumentParser.getOptionIndex(SubstrateOptions.ConcealedOptions.AutomaticReferenceHandling);
+            return IsolateArgumentParser.getBooleanOptionValue(useReferenceHandlerThread) && IsolateArgumentParser.getBooleanOptionValue(automaticReferenceHandling);
         }
         return false;
     }
 
     public static boolean useRegularJavaThread() {
-        int optionIndex = IsolateArgumentParser.getOptionIndex(SubstrateOptions.ConcealedOptions.ReferenceHandlerMode);
-        return IsolateArgumentParser.getIntOptionValue(optionIndex) == ReferenceHandlerMode.UseRegularJavaThreads;
+        int useReferenceHandlerThread = IsolateArgumentParser.getOptionIndex(SubstrateOptions.ConcealedOptions.UseReferenceHandlerThread);
+        int automaticReferenceHandling = IsolateArgumentParser.getOptionIndex(SubstrateOptions.ConcealedOptions.AutomaticReferenceHandling);
+        return (!ReferenceHandlerThread.isSupported() || !IsolateArgumentParser.getBooleanOptionValue(useReferenceHandlerThread)) &&
+                        IsolateArgumentParser.getBooleanOptionValue(automaticReferenceHandling);
     }
 
     public static boolean isExecutedManually() {
-        int optionIndex = IsolateArgumentParser.getOptionIndex(SubstrateOptions.ConcealedOptions.ReferenceHandlerMode);
-        return IsolateArgumentParser.getIntOptionValue(optionIndex) == ReferenceHandlerMode.ExecuteManually;
+        int automaticReferenceHandling = IsolateArgumentParser.getOptionIndex(SubstrateOptions.ConcealedOptions.AutomaticReferenceHandling);
+        return !IsolateArgumentParser.getBooleanOptionValue(automaticReferenceHandling);
     }
 
     public static void processPendingReferencesInRegularThread() {
