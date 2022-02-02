@@ -55,7 +55,7 @@ import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 
-import com.oracle.truffle.espresso.impl.ParsingEnv;
+import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
 import com.oracle.truffle.espresso.runtime.JavaVersion;
 import org.graalvm.collections.EconomicMap;
 
@@ -161,7 +161,7 @@ public final class LinkedClassfileParser {
 
     private final Symbol<Type> requestedClassType;
 
-    private final ParsingEnv env;
+    private final ClassLoadingEnv env;
 
     private final ClassfileStream stream;
 
@@ -180,7 +180,7 @@ public final class LinkedClassfileParser {
 
     private ConstantPool pool;
 
-    private LinkedClassfileParser(ParsingEnv env, ClassfileStream stream, StaticObject loader, Symbol<Type> requestedClassType, ClassRegistry.ClassDefinitionInfo info) {
+    private LinkedClassfileParser(ClassLoadingEnv env, ClassfileStream stream, StaticObject loader, Symbol<Type> requestedClassType, ClassRegistry.ClassDefinitionInfo info) {
         this.env = env;
         this.requestedClassType = requestedClassType;
         this.classfile = null;
@@ -190,7 +190,7 @@ public final class LinkedClassfileParser {
     }
 
     // Note: only used for reading the class name from class bytes
-    private LinkedClassfileParser(ParsingEnv env, ClassfileStream stream) {
+    private LinkedClassfileParser(ClassLoadingEnv env, ClassfileStream stream) {
         this(env, stream, null, null, ClassRegistry.ClassDefinitionInfo.EMPTY);
     }
 
@@ -223,11 +223,11 @@ public final class LinkedClassfileParser {
         }
     }
 
-    public static ParserKlass parse(ParsingEnv env, ClassfileStream stream, StaticObject loader, Symbol<Type> requestedClassName) {
+    public static ParserKlass parse(ClassLoadingEnv env, ClassfileStream stream, StaticObject loader, Symbol<Type> requestedClassName) {
         return parse(env, stream, loader, requestedClassName, ClassRegistry.ClassDefinitionInfo.EMPTY);
     }
 
-    public static ParserKlass parse(ParsingEnv env, ClassfileStream stream, StaticObject loader, Symbol<Type> requestedClassType, ClassRegistry.ClassDefinitionInfo info) {
+    public static ParserKlass parse(ClassLoadingEnv env, ClassfileStream stream, StaticObject loader, Symbol<Type> requestedClassType, ClassRegistry.ClassDefinitionInfo info) {
         return new LinkedClassfileParser(env, stream, loader, requestedClassType, info).parseClass();
     }
 
@@ -455,7 +455,7 @@ public final class LinkedClassfileParser {
         return new ParserKlass(pool, classDefinitionInfo.patchFlags(classFlags), thisKlassName, thisKlassType, superKlass, superInterfaces, methods, fields, attributes, thisKlassIndex);
     }
 
-    public static Symbol<Symbol.Name> getClassName(ParsingEnv env, byte[] bytes) {
+    public static Symbol<Symbol.Name> getClassName(ClassLoadingEnv env, byte[] bytes) {
         return new LinkedClassfileParser(env, new ClassfileStream(bytes, null)).getClassName();
     }
 
@@ -1305,7 +1305,7 @@ public final class LinkedClassfileParser {
     }
 
     private StackMapTableAttribute parseStackMapTableAttribute(Symbol<Name> attributeName, int attributeSize) {
-        if (env.isVerifyNeeded()) {
+        if (env.needsVerify(loader)) {
             return new StackMapTableAttribute(attributeName, stream.readByteArray(attributeSize));
         }
         stream.skip(attributeSize);

@@ -113,7 +113,7 @@ public final class LinkedKlass {
                 fieldLayout.fieldTableLength);
     }
 
-    public static LinkedKlass create(ParsingEnv env, ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces) {
+    public static LinkedKlass create(ClassLoadingEnv env, ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces) {
         LinkedKlassFieldLayout fieldLayout = new LinkedKlassFieldLayout(env, parserKlass, superKlass);
         return new LinkedKlass(
                 parserKlass,

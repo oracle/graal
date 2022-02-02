@@ -66,7 +66,7 @@ import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.ModifiedUTF8;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.meta.EspressoError;
-import com.oracle.truffle.espresso.impl.ParsingEnv;
+import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.perf.DebugCounter;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -614,14 +614,14 @@ public abstract class ConstantPool {
     /**
      * Creates a constant pool from a class file.
      */
-    public static ConstantPool parse(ParsingEnv env, ClassfileStream stream, LinkedClassfileParser parser, int majorVersion, int minorVersion) {
+    public static ConstantPool parse(ClassLoadingEnv env, ClassfileStream stream, LinkedClassfileParser parser, int majorVersion, int minorVersion) {
         return parse(env, stream, parser, null, majorVersion, minorVersion);
     }
 
     /**
      * Creates a constant pool from a class file.
      */
-    public static ConstantPool parse(ParsingEnv env, ClassfileStream stream, LinkedClassfileParser parser, StaticObject[] patches, int majorVersion, int minorVersion) {
+    public static ConstantPool parse(ClassLoadingEnv env, ClassfileStream stream, LinkedClassfileParser parser, StaticObject[] patches, int majorVersion, int minorVersion) {
         final int length = stream.readU2();
         if (length < 1) {
             throw stream.classFormatError("Invalid constant pool size (" + length + ")");
@@ -695,7 +695,7 @@ public abstract class ConstantPool {
                 }
                 case INTEGER: {
                     if (existsAt(patches, i)) {
-                        entries[i] = IntegerConstant.create(env.getMeta().unboxInteger(patches[i]));
+                        entries[i] = IntegerConstant.create(env.unboxInteger(patches[i]));
                         stream.readS4();
                         break;
                     }
@@ -704,7 +704,7 @@ public abstract class ConstantPool {
                 }
                 case FLOAT: {
                     if (existsAt(patches, i)) {
-                        entries[i] = FloatConstant.create(env.getMeta().unboxFloat(patches[i]));
+                        entries[i] = FloatConstant.create(env.unboxFloat(patches[i]));
                         stream.readFloat();
                         break;
                     }
@@ -713,7 +713,7 @@ public abstract class ConstantPool {
                 }
                 case LONG: {
                     if (existsAt(patches, i)) {
-                        entries[i] = LongConstant.create(env.getMeta().unboxLong(patches[i]));
+                        entries[i] = LongConstant.create(env.unboxLong(patches[i]));
                         stream.readS8();
                     } else {
                         entries[i] = LongConstant.create(stream.readS8());
@@ -728,7 +728,7 @@ public abstract class ConstantPool {
                 }
                 case DOUBLE: {
                     if (existsAt(patches, i)) {
-                        entries[i] = DoubleConstant.create(env.getMeta().unboxDouble(patches[i]));
+                        entries[i] = DoubleConstant.create(env.unboxDouble(patches[i]));
                         stream.readDouble();
                     } else {
                         entries[i] = DoubleConstant.create(stream.readDouble());

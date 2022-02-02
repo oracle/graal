@@ -90,7 +90,7 @@ final class LinkedKlassFieldLayout {
         fieldTableLength = nextInstanceFieldSlot;
     }
 
-    LinkedKlassFieldLayout(ParsingEnv env, ParserKlass parserKlass, LinkedKlass superKlass) {
+    LinkedKlassFieldLayout(ClassLoadingEnv env, ParserKlass parserKlass, LinkedKlass superKlass) {
         StaticShape.Builder instanceBuilder = StaticShape.newBuilder(env.getLanguage());
         StaticShape.Builder staticBuilder = StaticShape.newBuilder(env.getLanguage());
 
