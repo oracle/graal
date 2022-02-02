@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2022, Oracle and/or its affiliates.
+# Copyright (c) 2022, 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -27,34 +27,11 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
+#!/bin/sh
 
-.PHONY: default
+cat << EOF
+  ret void
+}
 
-ifndef LLIRTESTGEN_CMD
-  $(error LLIRTESTGEN_CMD not set)
-endif
-OUTPUT_DIR=gen
-TIMESTAMP=timestamp
-SCRIPTS_DIR=scripts
-SCRIPTS=$(SCRIPTS_DIR)/gep-vector.sh $(SCRIPTS_DIR)/gep-vector-header.sh $(SCRIPTS_DIR)/gep-vector-footer.sh $(SCRIPTS_DIR)/gep-vector-test.sh
-
-default: $(TIMESTAMP)
-
-$(TIMESTAMP): $(LLIR_TEST_GEN_JAR) $(SCRIPTS_DIR) $(SCRIPTS)
-	@mkdir -p $(OUTPUT_DIR)
-	$(QUIETLY) touch $@
-	$(QUIETLY) $(LLIRTESTGEN_CMD) $(OUTPUT_DIR)
-	cd $(SCRIPTS_DIR); ./gep-vector.sh > ../$(OUTPUT_DIR)/gep-vector.ll
-
-
-$(SCRIPTS_DIR):
-	@mkdir -p $(SCRIPTS_DIR)
-
-$(SCRIPTS_DIR)/gep-vector.sh: gep-vector.sh
-$(SCRIPTS_DIR)/gep-vector-header.sh: gep-vector-header.sh
-$(SCRIPTS_DIR)/gep-vector-footer.sh: gep-vector-footer.sh
-$(SCRIPTS_DIR)/gep-vector-test.sh: gep-vector-test.sh
-
-$(SCRIPTS_DIR)/%:
-	@mkdir -p scripts
-	cp -f $< $@
+declare dso_local noundef i32 @printf(i8* nocapture noundef readonly, ...) local_unnamed_addr #1
+EOF
