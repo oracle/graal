@@ -181,4 +181,8 @@ public final class Target_java_lang_ref_Reference {
 
     }
 
+    @Substitution(isTrivial = true)
+    public static void reachabilityFence(@JavaType(Object.class) StaticObject ref) {
+        Reference.reachabilityFence(ref);
+    }
 }
