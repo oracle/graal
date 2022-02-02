@@ -462,7 +462,7 @@ public abstract class VMThreads {
         cleanupExitedOsThreads();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code, but still safe at this point.", calleeMustBe = false, mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code, but still safe at this point.", calleeMustBe = false)
     private static void cleanupBeforeDetach(IsolateThread thread) {
         PlatformThreads.cleanupBeforeDetach(thread);
     }
