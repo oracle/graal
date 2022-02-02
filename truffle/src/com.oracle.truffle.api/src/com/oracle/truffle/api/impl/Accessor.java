@@ -589,7 +589,7 @@ public abstract class Accessor {
                         Function<StackTraceElement, T> hostFrameConvertor,
                         Function<G, T> guestFrameConvertor);
 
-        public abstract Object createHostAdapterClass(Object polyglotLanguageContext, Class<?>[] types, Object classOverrides);
+        public abstract Object createHostAdapterClass(Object polyglotLanguageContext, Object[] types, Object classOverrides);
 
         public abstract OptionValues getEngineOptionValues(Object polyglotEngine);
 

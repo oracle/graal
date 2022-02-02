@@ -40,6 +40,13 @@ public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
         super(policies);
     }
 
+    /**
+     * Determine if the given loop can be peeled.
+     */
+    public static boolean canPeel(LoopEx loop) {
+        return loop.canDuplicateLoop() && loop.loopBegin().getLoopEndCount() > 0;
+    }
+
     @Override
     @SuppressWarnings("try")
     protected void run(StructuredGraph graph, CoreProviders context) {
@@ -48,7 +55,7 @@ public class LoopPeelingPhase extends LoopPhase<LoopPolicies> {
             LoopsData data = context.getLoopsDataProvider().getLoopsData(graph);
             try (DebugContext.Scope s = debug.scope("peeling", data.getCFG())) {
                 for (LoopEx loop : data.outerFirst()) {
-                    if (loop.canDuplicateLoop() && loop.loopBegin().getLoopEndCount() > 0) {
+                    if (canPeel(loop)) {
                         if (LoopPolicies.Options.PeelALot.getValue(graph.getOptions()) || getPolicies().shouldPeel(loop, data.getCFG(), context)) {
                             debug.log("Peeling %s", loop);
                             PEELED.increment(debug);

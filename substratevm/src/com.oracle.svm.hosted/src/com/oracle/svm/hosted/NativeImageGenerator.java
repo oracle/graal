@@ -173,6 +173,7 @@ import com.oracle.svm.core.c.libc.NoLibC;
 import com.oracle.svm.core.c.libc.TemporaryBuildDirectoryProvider;
 import com.oracle.svm.core.c.struct.OffsetOf;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.cpufeature.RuntimeCPUFeatureCheck;
 import com.oracle.svm.core.graal.GraalConfiguration;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.code.SubstratePlatformConfigurationProvider;
@@ -427,10 +428,19 @@ public class NativeImageGenerator {
             }
             // GR-33542 RTM is only intermittently detected and is not used by Graal
             features.remove(AMD64.CPUFeature.RTM);
+            // set up the runtime checked cpu features
+            EnumSet<AMD64.CPUFeature> runtimeCheckedFeatures = features.clone();
+            if (NativeImageOptions.RuntimeCheckedCPUFeatures.hasBeenSet()) {
+                runtimeCheckedFeatures.addAll(parseCSVtoEnum(AMD64.CPUFeature.class, NativeImageOptions.RuntimeCheckedCPUFeatures.getValue().values(), AMD64.CPUFeature.values()));
+            } else {
+                for (Enum<?> feature : RuntimeCPUFeatureCheck.getSupportedFeatures(GraalAccess.getOriginalTarget().arch)) {
+                    runtimeCheckedFeatures.add((AMD64.CPUFeature) feature);
+                }
+            }
             architecture = new AMD64(features, AMD64CPUFeatureAccess.allAMD64Flags());
             assert architecture instanceof AMD64 : "using AMD64 platform with a different architecture";
             int deoptScratchSpace = 2 * 8; // Space for two 64-bit registers: rax and xmm0
-            return new SubstrateTargetDescription(architecture, true, 16, 0, deoptScratchSpace);
+            return new SubstrateTargetDescription(architecture, true, 16, 0, deoptScratchSpace, runtimeCheckedFeatures);
         } else if (includedIn(platform, Platform.AARCH64.class)) {
             Architecture architecture;
             if (NativeImageOptions.NativeArchitecture.getValue()) {
@@ -452,8 +462,10 @@ public class NativeImageGenerator {
                 architecture = new AArch64(features, AArch64CPUFeatureAccess.enabledAArch64Flags());
             }
             assert architecture instanceof AArch64 : "using AArch64 platform with a different architecture";
+            // runtime checked features are the same as static features on AArch64 for now
+            EnumSet<AArch64.CPUFeature> runtimeCheckedFeatures = ((AArch64) architecture).getFeatures().clone();
             int deoptScratchSpace = 2 * 8; // Space for two 64-bit registers: r0 and v0.
-            return new SubstrateTargetDescription(architecture, true, 16, 0, deoptScratchSpace);
+            return new SubstrateTargetDescription(architecture, true, 16, 0, deoptScratchSpace, runtimeCheckedFeatures);
         } else {
             throw UserError.abort("Architecture specified by platform is not supported: %s", platform.getClass().getTypeName());
         }
@@ -1471,17 +1483,17 @@ public class NativeImageGenerator {
         if (SubstrateOptions.VerifyNamingConventions.getValue()) {
             for (AnalysisMethod method : aUniverse.getMethods()) {
                 if ((method.isInvoked() || method.isReachable()) && method.getAnnotation(Fold.class) == null) {
-                    checkName(method.format("%H.%n(%p)"), method);
+                    checkName(method.format("%H.%n(%p)"), method, bb);
                 }
             }
             for (AnalysisField field : aUniverse.getFields()) {
                 if (field.isAccessed()) {
-                    checkName(field.format("%H.%n"), null);
+                    checkName(field.format("%H.%n"), null, bb);
                 }
             }
             for (AnalysisType type : aUniverse.getTypes()) {
                 if (type.isReachable()) {
-                    checkName(type.toJavaName(true), null);
+                    checkName(type.toJavaName(true), null, bb);
                 }
             }
         }
@@ -1509,7 +1521,7 @@ public class NativeImageGenerator {
         // the unsupported features are reported after checkUniverse is invoked
     }
 
-    private void checkName(String name, AnalysisMethod method) {
+    public static void checkName(String name, AnalysisMethod method, BigBang bb) {
         /*
          * We do not want any parts of the native image generator in the generated image. Therefore,
          * no element whose name contains "hosted" must be seen as reachable by the static analysis.
@@ -1517,10 +1529,19 @@ public class NativeImageGenerator {
          * they are JDK internal types.
          */
         String lname = name.toLowerCase();
+        String message = null;
         if (lname.contains("hosted")) {
-            bb.getUnsupportedFeatures().addMessage(name, method, "Hosted element used at run time: " + name);
-        } else if (SubstrateUtil.isBuildingLibgraal() && (!name.startsWith("jdk.internal")) && (lname.contains("hotspot"))) {
-            bb.getUnsupportedFeatures().addMessage(name, method, "HotSpot element used at run time: " + name);
+            message = "Hosted element used at run time: " + name;
+        } else if (!name.startsWith("jdk.internal") && lname.contains("hotspot")) {
+            message = "HotSpot element used at run time: " + name;
+        }
+
+        if (message != null) {
+            if (bb != null) {
+                bb.getUnsupportedFeatures().addMessage(name, method, message);
+            } else {
+                throw new UnsupportedFeatureException(message);
+            }
         }
     }
 

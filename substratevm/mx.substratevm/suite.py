@@ -674,7 +674,8 @@ suite = {
                     "sun.security.jca",
                 ],
             },
-            "checkstyle": "com.oracle.svm.core",
+            "checkstyle": "com.oracle.svm.test",
+            "checkstyleVersion" : "8.36.1",
             "workingSets": "SVM",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
@@ -691,7 +692,7 @@ suite = {
                 "sdk:GRAAL_SDK",
                 "com.oracle.svm.configure",
             ],
-            "checkstyle": "com.oracle.svm.core",
+            "checkstyle": "com.oracle.svm.test",
             "workingSets": "SVM",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
@@ -814,7 +815,7 @@ suite = {
                 "sdk:GRAAL_SDK",
                 "com.oracle.svm.graal",
             ],
-            "checkstyle": "com.oracle.svm.core",
+            "checkstyle": "com.oracle.svm.test",
             "workingSets": "SVM",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",

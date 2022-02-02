@@ -610,7 +610,12 @@ public class LoopFragmentInside extends LoopFragment {
             ValueNode first;
             if (loopBegin.loopEnds().count() == 1) {
                 ValueNode b = phi.valueAt(loopBegin.loopEnds().first()); // back edge value
-                first = peel.prim(b); // corresponding value in the peel
+                if (b == null) {
+                    assert phi instanceof GuardPhiNode;
+                    first = null;
+                } else {
+                    first = peel.prim(b); // corresponding value in the peel
+                }
             } else {
                 first = peel.mergedInitializers.get(phi);
             }

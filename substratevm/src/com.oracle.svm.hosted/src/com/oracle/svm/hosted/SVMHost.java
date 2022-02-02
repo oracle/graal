@@ -185,6 +185,10 @@ public class SVMHost implements HostVM {
 
     @Override
     public void checkForbidden(AnalysisType type, AnalysisType.UsageKind kind) {
+        if (SubstrateOptions.VerifyNamingConventions.getValue()) {
+            NativeImageGenerator.checkName(type.getWrapped().toJavaName(), null, null);
+        }
+
         if (forbiddenTypes == null) {
             return;
         }

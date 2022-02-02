@@ -131,6 +131,7 @@ import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.InstructionType.
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
+import java.util.EnumSet;
 
 import org.graalvm.compiler.asm.Assembler;
 import org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode;
@@ -144,6 +145,9 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.TargetDescription;
 
 public abstract class AArch64Assembler extends Assembler {
+
+    private final EnumSet<CPUFeature> features;
+    private final EnumSet<Flag> flags;
 
     public static class LogicalBitmaskImmediateEncoding {
 
@@ -815,14 +819,24 @@ public abstract class AArch64Assembler extends Assembler {
 
     public AArch64Assembler(TargetDescription target) {
         super(target);
+        this.features = ((AArch64) target.arch).getFeatures().clone();
+        this.flags = ((AArch64) target.arch).getFlags();
+    }
+
+    public final EnumSet<CPUFeature> getFeatures() {
+        return features;
+    }
+
+    public final EnumSet<Flag> getFlags() {
+        return flags;
     }
 
     public boolean supports(CPUFeature feature) {
-        return ((AArch64) target.arch).getFeatures().contains(feature);
+        return getFeatures().contains(feature);
     }
 
     public boolean isFlagSet(Flag flag) {
-        return ((AArch64) target.arch).getFlags().contains(flag);
+        return getFlags().contains(flag);
     }
 
     /* Conditional Branch (5.2.1) */

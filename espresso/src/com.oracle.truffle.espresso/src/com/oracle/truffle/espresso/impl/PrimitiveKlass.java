@@ -52,7 +52,7 @@ public final class PrimitiveKlass extends Klass {
      * @param primitiveKind the kind to create the type for
      */
     public PrimitiveKlass(EspressoContext context, JavaKind primitiveKind) {
-        super(context, primitiveKind.getPrimitiveBinaryName(), primitiveKind.getType(), null, ObjectKlass.EMPTY_ARRAY,
+        super(context, primitiveKind.getPrimitiveBinaryName(), primitiveKind.getType(),
                         Modifier.ABSTRACT | Modifier.FINAL | Modifier.PUBLIC);
         assert primitiveKind.isPrimitive() : primitiveKind + " not a primitive kind";
         this.primitiveKind = primitiveKind;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,24 +22,28 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package org.graalvm.compiler.nodes.test;
 
-package com.oracle.svm.driver.jdk11;
+import org.graalvm.compiler.api.directives.GraalDirectives;
+import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.junit.Test;
 
-import java.lang.module.ModuleDescriptor;
-import java.lang.module.ModuleFinder;
-import java.lang.module.ModuleReference;
-import java.nio.file.Path;
-import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
+public class CompareZeroExtendWithConstantTest extends GraalCompilerTest {
 
-@SuppressWarnings("unused")
-public class ModuleAccess {
-    public static List<String> getModuleNames(Path[] modulePathEntries) {
-        Set<ModuleReference> moduleReferences = ModuleFinder.of(modulePathEntries).findAll();
-        return moduleReferences.stream()
-                        .map(ModuleReference::descriptor)
-                        .map(ModuleDescriptor::name)
-                        .collect(Collectors.toList());
+    public static byte[] a = {};
+
+    public static void snippet() {
+        for (byte b : a) {
+            char c = (char) b;
+            GraalDirectives.blackhole(c);
+            if ((short) c != -19704) {
+                GraalDirectives.controlFlowAnchor();
+            }
+        }
+    }
+
+    @Test
+    public void testSnippet() {
+        test("snippet");
     }
 }

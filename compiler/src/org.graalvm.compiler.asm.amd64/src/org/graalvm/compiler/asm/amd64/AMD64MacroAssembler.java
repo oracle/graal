@@ -421,7 +421,7 @@ public class AMD64MacroAssembler extends AMD64Assembler {
     private void emitAlignmentForDirectCall(boolean align) {
         if (align) {
             // make sure that the 4-byte call displacement will be 4-byte aligned
-            int displacementPos = position() + target.arch.getMachineCodeCallDisplacementOffset();
+            int displacementPos = position() + getMachineCodeCallDisplacementOffset();
             if (displacementPos % 4 != 0) {
                 nop(4 - displacementPos % 4);
             }

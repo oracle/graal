@@ -41,6 +41,7 @@ import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGenerator;
 
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -142,7 +143,7 @@ public class AArch64AtomicMove {
                     throw GraalError.shouldNotReachHere();
             }
 
-            if (AArch64LIRFlags.useLSE(masm.target.arch)) {
+            if (AArch64LIRFlags.useLSE(masm)) {
                 masm.mov(Math.max(memAccessSize, 32), result, expected);
                 masm.cas(memAccessSize, result, newVal, address, acquire, release);
                 if (setConditionFlags) {
@@ -197,7 +198,7 @@ public class AArch64AtomicMove {
      * constant within the load-store conditional implementation.
      */
     public static AArch64LIRInstruction createAtomicReadAndAdd(LIRGenerator gen, AArch64Kind kind, AllocatableValue result, AllocatableValue address, Value delta) {
-        if (AArch64LIRFlags.useLSE(gen.target().arch)) {
+        if (AArch64LIRFlags.useLSE((AArch64) gen.target().arch)) {
             return new AtomicReadAndAddLSEOp(kind, result, address, gen.asAllocatable(delta));
         } else {
             return new AtomicReadAndAddOp(kind, result, address, delta);
@@ -358,7 +359,7 @@ public class AArch64AtomicMove {
             Register value = asRegister(newValue);
             Register result = asRegister(resultValue);
 
-            if (AArch64LIRFlags.useLSE(masm.target.arch)) {
+            if (AArch64LIRFlags.useLSE(masm)) {
                 masm.swp(memAccessSize, value, result, address, true, true);
             } else {
                 try (ScratchRegister scratchRegister = masm.getScratchRegister()) {
