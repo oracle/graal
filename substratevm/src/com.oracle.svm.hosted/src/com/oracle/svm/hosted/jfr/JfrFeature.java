@@ -30,6 +30,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
+import com.oracle.svm.core.jfr.JfrMetadataTypeLibrary;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
@@ -172,6 +173,7 @@ public class JfrFeature implements Feature {
         // Initialize some parts of JFR/JFC at image build time.
         List<Configuration> knownConfigurations = JFC.getConfigurations();
         JVM.getJVM().createNativeJFR();
+        JfrMetadataTypeLibrary.initialize();
 
         ImageSingletons.add(JfrManager.class, new JfrManager(hostedEnabled));
         ImageSingletons.add(SubstrateJVM.class, new SubstrateJVM(knownConfigurations));

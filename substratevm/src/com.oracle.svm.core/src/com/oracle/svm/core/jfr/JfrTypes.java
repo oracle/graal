@@ -24,15 +24,6 @@
  */
 package com.oracle.svm.core.jfr;
 
-import org.graalvm.compiler.options.OptionsParser;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-
-import com.oracle.svm.core.util.VMError;
-
-import jdk.jfr.internal.Type;
-import jdk.jfr.internal.TypeLibrary;
-
 /**
  * Maps JFR types against their IDs in the JDK.
  */
@@ -53,42 +44,10 @@ public enum JfrTypes {
     private final long id;
 
     JfrTypes(String name) {
-        this.id = getTypeId(name);
+        this.id = JfrMetadataTypeLibrary.lookup(name);
     }
 
     public long getId() {
         return id;
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    private static String getMostSimilarType(String missingTypeName) {
-        float threshold = OptionsParser.FUZZY_MATCH_THRESHOLD;
-        String mostSimilar = null;
-        for (Type type : TypeLibrary.getInstance().getTypes()) {
-            float similarity = OptionsParser.stringSimilarity(type.getName(), missingTypeName);
-            if (similarity > threshold) {
-                threshold = similarity;
-                mostSimilar = type.getName();
-            }
-        }
-        return mostSimilar;
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    private static long getTypeId(String typeName) {
-        for (Type type : TypeLibrary.getInstance().getTypes()) {
-            if (typeName.equals(type.getName())) {
-                return type.getId();
-            }
-        }
-
-        String exceptionMessage = "Type " + typeName + " is not found!";
-        String mostSimilarType = getMostSimilarType(typeName);
-        if (mostSimilarType != null) {
-            exceptionMessage += " The most similar type is " + mostSimilarType;
-        }
-        exceptionMessage += " Take a look at 'metadata.xml' to see all available types.";
-
-        throw VMError.shouldNotReachHere(exceptionMessage);
     }
 }
