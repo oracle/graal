@@ -159,9 +159,9 @@ public final class Resources {
         return singleton().resources.get(Pair.create(moduleName, resourceName));
     }
 
-    private static URL createURL(String resourceName, int index) {
+    private static URL createURL(String moduleName, String resourceName, int index) {
         try {
-            return new URL(JavaNetSubstitutions.RESOURCE_PROTOCOL, null, -1, resourceName,
+            return new URL(JavaNetSubstitutions.RESOURCE_PROTOCOL, moduleName, -1, resourceName,
                             new URLStreamHandler() {
                                 @Override
                                 protected URLConnection openConnection(URL url) {
@@ -222,7 +222,7 @@ public final class Resources {
         int numberOfResources = entry.getData().size();
         List<URL> resourcesURLs = new ArrayList<>(numberOfResources);
         for (int index = 0; index < numberOfResources; index++) {
-            resourcesURLs.add(createURL(canonicalResourceName, index));
+            resourcesURLs.add(createURL(moduleName, canonicalResourceName, index));
         }
         return Collections.enumeration(resourcesURLs);
     }

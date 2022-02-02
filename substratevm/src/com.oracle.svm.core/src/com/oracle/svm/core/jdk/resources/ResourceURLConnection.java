@@ -63,7 +63,9 @@ public class ResourceURLConnection extends URLConnection {
         connected = true;
 
         String resourceName = resolveName(url.getPath());
-        ResourceStorageEntry entry = Resources.get(Resources.toCanonicalForm(resourceName));
+        String hostName = url.getHost();
+        String hostNameOrNull = hostName != null && !hostName.isEmpty() ? hostName : null;
+        ResourceStorageEntry entry = Resources.get(hostNameOrNull, Resources.toCanonicalForm(resourceName));
         if (entry != null) {
             List<byte[]> bytes = entry.getData();
             if (index < bytes.size()) {
