@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.runtime.interop.access;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -68,7 +69,6 @@ import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceStructLikeType;
 import com.oracle.truffle.llvm.runtime.debug.type.LLVMSourceType;
 import com.oracle.truffle.llvm.runtime.interop.convert.ForeignToLLVM.ForeignToLLVMType;
 import com.oracle.truffle.llvm.runtime.library.internal.LLVMAsForeignLibrary;
-import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.types.Type;
 
@@ -351,9 +351,6 @@ public abstract class LLVMInteropType implements TruffleObject {
         protected String toString(EconomicSet<LLVMInteropType> visited) {
             return name;
         }
-
-        public abstract Object interopConvert(InteropLibrary interopLibrary, LLVMNativePointer receiver)
-                        throws UnsupportedMessageException;
     }
 
     public static class Instant extends SpecialStruct {
@@ -361,12 +358,6 @@ public abstract class LLVMInteropType implements TruffleObject {
             super("Instant", struct, new SpecialStructAccessor[]{
                             accessorForField(struct, "seconds", (foreign, interop) -> interop.asInstant(foreign).getEpochSecond())
             });
-        }
-
-        @Override
-        public Object interopConvert(InteropLibrary interopLibrary, LLVMNativePointer receiver)
-                        throws UnsupportedMessageException {
-            return interopLibrary.asInstant(receiver);
         }
     }
 
@@ -386,19 +377,22 @@ public abstract class LLVMInteropType implements TruffleObject {
                             accessorForField(struct, "tm_year",
                                             (foreign, interop) -> interop.asDate(foreign).getYear() - 1900),
                             accessorForField(struct, "tm_wday",
-                                            (foreign, interop) -> interop.asDate(foreign).getDayOfWeek().ordinal() % 7),
+                                            (foreign, interop) -> getWDay(interop.asDate(foreign))),
                             accessorForField(struct, "tm_yday",
-                                            (foreign, interop) -> interop.asDate(foreign).getDayOfYear() - 1),
+                                            (foreign, interop) -> getYDay(interop.asDate(foreign))),
                             // accessorForField(struct, "tm_isdst", (foreign, interop) -> 0)
             });
         }
 
-        @Override
-        public Object interopConvert(InteropLibrary interopLibrary, LLVMNativePointer receiver)
-                        throws UnsupportedMessageException {
-            return null;
+        @TruffleBoundary
+        static int getWDay(LocalDate date) {
+            return date.getDayOfWeek().ordinal() % 7;
         }
 
+        @TruffleBoundary
+        static int getYDay(LocalDate date) {
+            return date.getDayOfYear() - 1;
+        }
     }
 
     public static final class ClazzInheritance implements Comparable<ClazzInheritance> {
