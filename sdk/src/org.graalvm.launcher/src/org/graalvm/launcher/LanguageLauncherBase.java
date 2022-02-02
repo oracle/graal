@@ -256,7 +256,13 @@ public abstract class LanguageLauncherBase extends Launcher {
         printInstalledLanguages();
         println("");
         printInstalledTools();
+        println("");
+        println("Use --help:[id] for component options.");
     }
+
+    private static final String ID_HEADER = "[id]";
+    private static final String NAME_HEADER = "[name]";
+    private static final String WEBSITE_HEADER = "[website]";
 
     private void printInstalledLanguages() {
         List<Language> languages = sortedLanguages(getTempEngine());
@@ -264,16 +270,15 @@ public abstract class LanguageLauncherBase extends Launcher {
             return;
         }
         println("Languages:");
-        int maxId = 1;
-        int maxWebsite = 1;
-        int maxName = 1;
+        int maxId = ID_HEADER.length();
+        int maxName = NAME_HEADER.length();
         for (Language language : languages) {
             maxId = Math.max(maxId, language.getId().length());
-            maxWebsite = max(maxWebsite, language.getWebsite().length());
             maxName = max(maxName, language.getName().length());
         }
+        printInstalled(maxId, maxName, ID_HEADER, NAME_HEADER, WEBSITE_HEADER);
         for (Language language : languages) {
-            printInstalled(maxId, maxWebsite, maxName, language.getId(), language.getName(), language.getWebsite());
+            printInstalled(maxId, maxName, language.getId(), language.getName(), language.getWebsite());
         }
     }
 
@@ -283,21 +288,20 @@ public abstract class LanguageLauncherBase extends Launcher {
             return;
         }
         println("Tools:");
-        int maxId = 1;
-        int maxWebsite = 1;
-        int maxName = 1;
+        int maxId = ID_HEADER.length();
+        int maxName = NAME_HEADER.length();
         for (Instrument instrument : instruments) {
             maxId = max(maxId, instrument.getId().length());
-            maxWebsite = max(maxWebsite, instrument.getWebsite().length());
             maxName = max(maxName, instrument.getName().length());
         }
+        printInstalled(maxId, maxName, ID_HEADER, NAME_HEADER, WEBSITE_HEADER);
         for (Instrument instrument : instruments) {
-            printInstalled(maxId, maxWebsite, maxName, instrument.getId(), instrument.getName(), instrument.getWebsite());
+            printInstalled(maxId, maxName, instrument.getId(), instrument.getName(), instrument.getWebsite());
         }
     }
 
-    private void printInstalled(int maxId, int maxWebsite, int maxName, String id, String name, String website) {
-        println(String.format("  %-" + maxId + "s %-" + maxName + "s %-" + maxWebsite + "s Use --help:%s for all options.", id, name, website, id));
+    private void printInstalled(int maxId, int maxName, String id, String name, String website) {
+        println(String.format("  %-" + maxId + "s %-" + maxName + "s %s", id, name, website, id));
     }
 
     @Override
