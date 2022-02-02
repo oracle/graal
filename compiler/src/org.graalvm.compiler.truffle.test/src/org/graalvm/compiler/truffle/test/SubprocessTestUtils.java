@@ -27,6 +27,7 @@ package org.graalvm.compiler.truffle.test;
 import org.graalvm.compiler.core.GraalCompilerOptions;
 import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.test.SubprocessUtil;
+import org.graalvm.compiler.test.SubprocessUtil.Subprocess;
 import org.graalvm.compiler.truffle.options.PolyglotCompilerOptions;
 import org.junit.Assert;
 import org.junit.Test;
@@ -61,16 +62,6 @@ final class SubprocessTestUtils {
 
     private static final String CONFIGURED_PROPERTY = SubprocessTestUtils.class.getSimpleName() + ".configured";
 
-    private static final String[] VM_ARGS_TO_REMOVE = {
-                    graalOption(GraalCompilerOptions.CompilationFailureAction.getName()),
-                    graalOption(GraalCompilerOptions.CompilationBailoutAsFailure.getName()),
-                    graalOption(GraalCompilerOptions.CrashAt.getName()),
-                    graalOption(DebugOptions.DumpOnError.getName()),
-                    // Filter out the LogFile option to prevent overriding of the unit tests log
-                    // file by a sub-process.
-                    graalOption("LogFile"), // HotSpotTTYStreamProvider.Options#LogFile
-    };
-
     private SubprocessTestUtils() {
     }
 
@@ -80,10 +71,12 @@ final class SubprocessTestUtils {
      * @param testClass the test enclosing class.
      * @param action the test to execute.
      * @param additionalVmOptions additional vm option prepended to java arguments.
+     * @return {@link Subprocess} if it's called by a test that is not executing in a sub-process.
+     *         Returns {@code null} for a caller run in a sub-process.
      * @see SubprocessTestUtils
      */
-    static void executeInSubprocess(Class<?> testClass, Runnable action, String... additionalVmOptions) throws IOException, InterruptedException {
-        executeInSubprocess(testClass, action, true, additionalVmOptions);
+    static Subprocess executeInSubprocess(Class<?> testClass, Runnable action, String... additionalVmOptions) throws IOException, InterruptedException {
+        return executeInSubprocess(testClass, action, true, additionalVmOptions);
     }
 
     /**
@@ -94,13 +87,16 @@ final class SubprocessTestUtils {
      * @param failOnNonZeroExitCode if {@code true}, the test fails if the sub-process ends with a
      *            non-zero return value.
      * @param additionalVmOptions additional vm option prepended to java arguments.
+     * @return {@link Subprocess} if it's called by a test that is not executing in a sub-process.
+     *         Returns {@code null} for a caller run in a sub-process.
      * @see SubprocessTestUtils
      */
-    static void executeInSubprocess(Class<?> testClass, Runnable action, boolean failOnNonZeroExitCode, String... additionalVmOptions) throws IOException, InterruptedException {
+    static Subprocess executeInSubprocess(Class<?> testClass, Runnable action, boolean failOnNonZeroExitCode, String... additionalVmOptions) throws IOException, InterruptedException {
         if (isSubprocess()) {
             action.run();
+            return null;
         } else {
-            execute(findTestMethod(testClass), failOnNonZeroExitCode, additionalVmOptions);
+            return execute(findTestMethod(testClass), failOnNonZeroExitCode, additionalVmOptions);
         }
     }
 
@@ -131,7 +127,7 @@ final class SubprocessTestUtils {
         throw new IllegalStateException("Failed to find current test method in class " + testClass);
     }
 
-    private static void execute(Method testMethod, boolean failOnNonZeroExitCode, String... additionalVmOptions) throws IOException, InterruptedException {
+    private static Subprocess execute(Method testMethod, boolean failOnNonZeroExitCode, String... additionalVmOptions) throws IOException, InterruptedException {
         String enclosingElement = testMethod.getDeclaringClass().getName();
         String testName = testMethod.getName();
         SubprocessUtil.Subprocess subprocess = SubprocessUtil.java(
@@ -141,12 +137,13 @@ final class SubprocessTestUtils {
         if (failOnNonZeroExitCode && subprocess.exitCode != 0) {
             Assert.fail(String.join("\n", subprocess.output));
         }
+        return subprocess;
     }
 
     private static List<String> configure(List<String> vmArgs, String... additionalVmOptions) {
         List<String> newVmArgs = new ArrayList<>();
         newVmArgs.addAll(vmArgs.stream().filter(vmArg -> {
-            for (String toRemove : VM_ARGS_TO_REMOVE) {
+            for (String toRemove : getForbiddenVmOptions()) {
                 if (vmArg.startsWith(toRemove)) {
                     return false;
                 }
@@ -164,6 +161,18 @@ final class SubprocessTestUtils {
         List<String> vmArgs = SubprocessUtil.getVMCommandLine(true);
         vmArgs.add(SubprocessUtil.PACKAGE_OPENING_OPTIONS);
         return vmArgs;
+    }
+
+    private static String[] getForbiddenVmOptions() {
+        return new String[]{
+                        graalOption(GraalCompilerOptions.CompilationFailureAction.getName()),
+                        graalOption(GraalCompilerOptions.CompilationBailoutAsFailure.getName()),
+                        graalOption(GraalCompilerOptions.CrashAt.getName()),
+                        graalOption(DebugOptions.DumpOnError.getName()),
+                        // Filter out the LogFile option to prevent overriding of the unit tests log
+                        // file by a sub-process.
+                        graalOption("LogFile"), // HotSpotTTYStreamProvider.Options#LogFile
+        };
     }
 
     private static String graalOption(String optionName) {

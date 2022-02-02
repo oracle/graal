@@ -29,12 +29,13 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
-import java.util.function.Consumer;
+import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 import java.util.logging.FileHandler;
 import java.util.logging.SimpleFormatter;
 import java.util.regex.Pattern;
 
+import org.graalvm.compiler.test.SubprocessUtil;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
@@ -67,20 +68,20 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
 
     @Test
     public void testDefault() throws Exception {
-        Consumer<Path> verifier = (log) -> {
-            Assert.assertFalse(hasBailout(log));
-            Assert.assertFalse(hasExit(log));
-            Assert.assertFalse(hasOptFailedException(log));
+        BiConsumer<String, String> verifier = (log, output) -> {
+            Assert.assertFalse(formatMessage("Unexpected bailout.", log, output), hasBailout(log));
+            Assert.assertFalse(formatMessage("Unexpected exit.", log, output), hasExit(log));
+            Assert.assertFalse(formatMessage("Unexpected OptimizationFailedException.", log, output), hasOptFailedException(log));
         };
         executeInSubProcess(verifier);
     }
 
     @Test
     public void testPermanentBailoutSilent() throws Exception {
-        Consumer<Path> verifier = (log) -> {
-            Assert.assertFalse(hasBailout(log));
-            Assert.assertFalse(hasExit(log));
-            Assert.assertFalse(hasOptFailedException(log));
+        BiConsumer<String, String> verifier = (log, output) -> {
+            Assert.assertFalse(formatMessage("Unexpected bailout.", log, output), hasBailout(log));
+            Assert.assertFalse(formatMessage("Unexpected exit.", log, output), hasExit(log));
+            Assert.assertFalse(formatMessage("Unexpected OptimizationFailedException.", log, output), hasOptFailedException(log));
         };
         executeInSubProcess(verifier,
                         "engine.CompilationFailureAction", "Silent");
@@ -88,10 +89,10 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
 
     @Test
     public void testPermanentBailoutPrint() throws Exception {
-        Consumer<Path> verifier = (log) -> {
-            Assert.assertTrue(hasBailout(log));
-            Assert.assertFalse(hasExit(log));
-            Assert.assertFalse(hasOptFailedException(log));
+        BiConsumer<String, String> verifier = (log, output) -> {
+            Assert.assertTrue(formatMessage("Expected bailout.", log, output), hasBailout(log));
+            Assert.assertFalse(formatMessage("Unexpected exit.", log, output), hasExit(log));
+            Assert.assertFalse(formatMessage("Unexpected OptimizationFailedException.", log, output), hasOptFailedException(log));
         };
         executeInSubProcess(verifier,
                         "engine.CompilationExceptionsArePrinted", "false",
@@ -100,10 +101,10 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
 
     @Test
     public void testPermanentBailoutExceptionsArePrinted() throws Exception {
-        Consumer<Path> verifier = (log) -> {
-            Assert.assertTrue(hasBailout(log));
-            Assert.assertFalse(hasExit(log));
-            Assert.assertFalse(hasOptFailedException(log));
+        BiConsumer<String, String> verifier = (log, output) -> {
+            Assert.assertTrue(formatMessage("Expected bailout.", log, output), hasBailout(log));
+            Assert.assertFalse(formatMessage("Unexpected exit.", log, output), hasExit(log));
+            Assert.assertFalse(formatMessage("Unexpected OptimizationFailedException.", log, output), hasOptFailedException(log));
         };
         executeInSubProcess(verifier,
                         "engine.CompilationExceptionsArePrinted", "true",
@@ -112,50 +113,50 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
 
     @Test
     public void testPermanentBailoutExitVM() throws Exception {
-        Consumer<Path> verifier = (log) -> {
-            Assert.assertTrue(hasBailout(log));
-            Assert.assertTrue(hasExit(log));
-            Assert.assertFalse(hasOptFailedException(log));
+        BiConsumer<String, String> verifier = (log, output) -> {
+            Assert.assertTrue(formatMessage("Expected bailout.", log, output), hasBailout(log));
+            Assert.assertTrue(formatMessage("Expected exit.", log, output), hasExit(log));
+            Assert.assertFalse(formatMessage("Unexpected OptimizationFailedException.", log, output), hasOptFailedException(log));
         };
         executeInSubProcess(verifier, "engine.CompilationFailureAction", "ExitVM");
     }
 
     @Test
     public void testPermanentBailoutExceptionsAreFatal() throws Exception {
-        Consumer<Path> verifier = (log) -> {
-            Assert.assertTrue(hasBailout(log));
-            Assert.assertTrue(hasExit(log));
-            Assert.assertFalse(hasOptFailedException(log));
+        BiConsumer<String, String> verifier = (log, output) -> {
+            Assert.assertTrue(formatMessage("Expected bailout.", log, output), hasBailout(log));
+            Assert.assertTrue(formatMessage("Expected exit.", log, output), hasExit(log));
+            Assert.assertFalse(formatMessage("Unexpected OptimizationFailedException.", log, output), hasOptFailedException(log));
         };
         executeInSubProcess(verifier, "engine.CompilationExceptionsAreFatal", "true");
     }
 
     @Test
     public void testPermanentBailoutThrow() throws Exception {
-        Consumer<Path> verifier = (log) -> {
-            Assert.assertFalse(hasBailout(log));
-            Assert.assertFalse(hasExit(log));
-            Assert.assertTrue(hasOptFailedException(log));
+        BiConsumer<String, String> verifier = (log, output) -> {
+            Assert.assertFalse(formatMessage("Unexpected bailout.", log, output), hasBailout(log));
+            Assert.assertFalse(formatMessage("Unexpected exit.", log, output), hasExit(log));
+            Assert.assertTrue(formatMessage("Expected OptimizationFailedException.", log, output), hasOptFailedException(log));
         };
         executeInSubProcess(verifier, "engine.CompilationFailureAction", "Throw");
     }
 
     @Test
     public void testPermanentBailoutCompilationExceptionsAreThrown() throws Exception {
-        Consumer<Path> verifier = (log) -> {
-            Assert.assertFalse(hasBailout(log));
-            Assert.assertFalse(hasExit(log));
-            Assert.assertTrue(hasOptFailedException(log));
+        BiConsumer<String, String> verifier = (log, output) -> {
+            Assert.assertFalse(formatMessage("Unexpected bailout.", log, output), hasBailout(log));
+            Assert.assertFalse(formatMessage("Unexpected exit.", log, output), hasExit(log));
+            Assert.assertTrue(formatMessage("Expected OptimizationFailedException.", log, output), hasOptFailedException(log));
         };
         executeInSubProcess(verifier, "engine.CompilationExceptionsAreThrown", "true");
     }
 
     @Test
     public void testNonPermanentBailout() throws Exception {
-        Consumer<Path> verifier = (log) -> {
-            Assert.assertFalse(hasBailout(log));
-            Assert.assertFalse(hasExit(log));
-            Assert.assertFalse(hasOptFailedException(log));
+        BiConsumer<String, String> verifier = (log, output) -> {
+            Assert.assertFalse(formatMessage("Unexpected bailout.", log, output), hasBailout(log));
+            Assert.assertFalse(formatMessage("Unexpected exit.", log, output), hasExit(log));
+            Assert.assertFalse(formatMessage("Unexpected OptimizationFailedException.", log, output), hasOptFailedException(log));
         };
         executeInSubProcess(verifier, ExceptionActionTest::createConstantNode,
                         new String[]{"-Dgraal.CrashAt=org.graalvm.compiler.truffle.runtime.OptimizedCallTarget.profiledPERoot:Bailout"},
@@ -164,30 +165,31 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
 
     @Test
     public void testNonPermanentBailoutTraceCompilationDetails() throws Exception {
-        Consumer<Path> verifier = (log) -> {
-            Assert.assertTrue(hasBailout(log));
-            Assert.assertFalse(hasExit(log));
-            Assert.assertFalse(hasOptFailedException(log));
+        BiConsumer<String, String> verifier = (log, output) -> {
+            Assert.assertTrue(formatMessage("Expected bailout.", log, output), hasBailout(log));
+            Assert.assertFalse(formatMessage("Unexpected exit.", log, output), hasExit(log));
+            Assert.assertFalse(formatMessage("Unexpected OptimizationFailedException.", log, output), hasOptFailedException(log));
         };
         executeInSubProcess(verifier, ExceptionActionTest::createConstantNode,
                         new String[]{"-Dgraal.CrashAt=org.graalvm.compiler.truffle.runtime.OptimizedCallTarget.profiledPERoot:Bailout"},
                         "engine.TraceCompilationDetails", "true");
     }
 
-    private void executeInSubProcess(Consumer<? super Path> verifier, String... contextOptions) throws IOException, InterruptedException {
+    private void executeInSubProcess(BiConsumer<String, String> verifier, String... contextOptions) throws IOException, InterruptedException {
         executeInSubProcess(verifier, ExceptionActionTest::createPermanentBailoutNode, new String[0], contextOptions);
     }
 
-    private void executeInSubProcess(Consumer<? super Path> verifier, Supplier<RootNode> rootNodeFactory, String[] additionalVmOptions, String... contextOptions)
+    private void executeInSubProcess(BiConsumer<String, String> verifier, Supplier<RootNode> rootNodeFactory, String[] additionalVmOptions, String... contextOptions)
                     throws IOException, InterruptedException {
         Path log = SubprocessTestUtils.isSubprocess() ? null : File.createTempFile("compiler", ".log").toPath();
+        SubprocessUtil.Subprocess subprocess = null;
+        boolean success = false;
         try {
             String[] useVMOptions = Arrays.copyOf(additionalVmOptions, additionalVmOptions.length + 2);
             useVMOptions[useVMOptions.length - 2] = String.format("-D%s=%s", LOG_FILE_PROPERTY, log);
-            useVMOptions[useVMOptions.length - 1] = "-Dgraal.Dump=Truffle:0"; // Prevent graal graph
-                                                                              // dumping for
-                                                                              // ExceptionAction#Diagnose
-            SubprocessTestUtils.executeInSubprocess(ExceptionActionTest.class, () -> {
+            // Prevent graal graph dumping for ExceptionAction#Diagnose
+            useVMOptions[useVMOptions.length - 1] = "-Dgraal.Dump=Truffle:0";
+            subprocess = SubprocessTestUtils.executeInSubprocess(ExceptionActionTest.class, () -> {
                 setupContext(contextOptions);
                 OptimizedCallTarget target = (OptimizedCallTarget) rootNodeFactory.get().getCallTarget();
                 try {
@@ -199,9 +201,14 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
                     }
                 }
             }, false, useVMOptions);
+            success = true;
         } finally {
             if (log != null) {
-                verifier.accept(log);
+                if (success) {
+                    String logContent = String.join("\n", Files.readAllLines(log));
+                    String output = String.join("\n", subprocess.output);
+                    verifier.accept(logContent, output);
+                }
                 Files.deleteIfExists(log);
             }
         }
@@ -233,34 +240,24 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
         }
     }
 
-    private static boolean hasExit(Path logFile) {
-        return contains(logFile, Pattern.compile(".*Exiting VM.*"));
+    private static boolean hasExit(String content) {
+        return contains(content, "^.*Exiting VM.*$");
     }
 
-    private static boolean hasBailout(Path logFile) {
-        return contains(logFile, Pattern.compile("[\\w.]*BailoutException.*")) || contains(logFile, Pattern.compile(".*Non permanent bailout.*"));
+    private static boolean hasBailout(String content) {
+        return contains(content, "^[\\w.]*BailoutException.*$") || contains(content, "^.*Non permanent bailout.*$");
     }
 
-    private static boolean hasOptFailedException(Path logFile) {
-        return contains(logFile, Pattern.compile(".*OptimizationFailedException.*"));
+    private static boolean hasOptFailedException(String content) {
+        return contains(content, "^.*OptimizationFailedException.*$");
     }
 
-    private static boolean contains(Path logFile, Pattern pattern) {
-        try {
-            for (String line : Files.readAllLines(logFile)) {
-                if (pattern.matcher(line).matches()) {
-                    return true;
-                }
-            }
-            return false;
-        } catch (IOException ioe) {
-            throw sthrow(ioe, RuntimeException.class);
-        }
+    private static boolean contains(String content, String pattern) {
+        return Pattern.compile(pattern, Pattern.MULTILINE).matcher(content).find();
     }
 
-    @SuppressWarnings({"unchecked", "unused"})
-    private static <T extends Throwable> T sthrow(Throwable t, Class<T> type) throws T {
-        throw (T) t;
+    private static String formatMessage(String message, String log, String output) {
+        return String.format("%s%nLog content:%n%s%nSubprocess output:%n%s", message, log, output);
     }
 
     private static RootNode createPermanentBailoutNode() {
