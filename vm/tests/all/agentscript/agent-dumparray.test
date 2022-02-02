@@ -1,6 +1,6 @@
-> export CP=${JAVA_HOME}/lib/visualvm/visualvm/modules/org-graalvm-visualvm-lib-jfluid.jar:${JAVA_HOME}/lib/visualvm/visualvm/modules/org-graalvm-visualvm-lib-profiler-oql.jar:.
+> export CP=${JAVA_HOME}/lib/visualvm/visualvm/modules/org-graalvm-visualvm-lib-jfluid-heap.jar:${JAVA_HOME}/lib/visualvm/visualvm/modules/org-graalvm-visualvm-lib-profiler-oql.jar:.
 >[0] javac -cp $CP HeapQuery.java
-> export TMP_DIR=/tmp
+#> export TMP_DIR=/tmp
 >[??] rm -rf ${TMP_DIR}/array.hprof*
 >[7?] js --insight=sieveArrayInsight.js --heap.dump=${TMP_DIR}/array.hprof sieveArray.js
 # a JavaScript heap has been generated

@@ -303,7 +303,7 @@ final class HeapGenerator {
         }
     }
 
-    private int findArrayLength(InteropLibrary iop, Object obj) {
+    private static int findArrayLength(InteropLibrary iop, Object obj) {
         if (!iop.hasArrayElements(obj)) {
             return -1;
         }

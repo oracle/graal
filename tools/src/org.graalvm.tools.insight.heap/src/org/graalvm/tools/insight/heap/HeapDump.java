@@ -122,7 +122,7 @@ public final class HeapDump {
         newClass("char[]").dumpClass();
         this.typeString = newClass("java.lang.String").field("value", char[].class).field("hash", Integer.TYPE).dumpClass();
         this.typeThread = newClass("java.lang.Thread").field("daemon", Boolean.TYPE).field("name", String.class).field("priority", Integer.TYPE).dumpClass();
-        this.typeObjectArray = newClass("[java.lang.Object").dumpClass();
+        this.typeObjectArray = newClass("[Ljava/lang/Object;").dumpClass();
     }
 
     /**
@@ -977,7 +977,6 @@ public final class HeapDump {
          * @param index zero based index into the array
          * @param value reference to object in the {@link HeapDump}
          * @return {@code this} builder
-         * @throws IllegalArgumentException if the field doesn't exist or its type isn't correct
          *
          * @since 21.3.2
          */
@@ -987,17 +986,17 @@ public final class HeapDump {
         }
 
         /**
-         * Dumps the gathered field values into the {@link HeapDump}.
+         * Dumps the gathered array values into the {@link HeapDump}.
          *
          * @return object representing the written instance
          * @throws UncheckedIOException when an I/O error occurs
          *
-         * @see #put(java.lang.String, org.graalvm.tools.insight.heap.HeapDump.ObjectInstance)
+         * @see #put(int, org.graalvm.tools.insight.heap.HeapDump.ObjectInstance)
          * @since 21.3.2
          */
         public ObjectInstance dumpInstance() throws UncheckedIOException {
             try {
-                dumpArray(HeapDump.this, elements);
+                dumpArray(HeapDump.this);
                 return instanceId;
             } catch (IOException ex) {
                 throw new UncheckedIOException(ex);
@@ -1019,7 +1018,7 @@ public final class HeapDump {
             return instanceId;
         }
 
-        private void dumpArray(HeapDump thiz, List<ObjectInstance> elements) throws IOException {
+        private void dumpArray(HeapDump thiz) throws IOException {
             heap.writeByte(HEAP_OBJECT_ARRAY_DUMP);
             builder.ids.writeID(heap, instanceId.id(thiz));
             builder.writeDefaultStackTraceSerialNumber(heap);
