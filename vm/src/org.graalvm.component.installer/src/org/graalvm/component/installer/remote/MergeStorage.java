@@ -164,7 +164,7 @@ public class MergeStorage extends AbstractCatalogStorage implements ComponentCat
             }
             for (ComponentInfo ci : newInfos) {
                 ci.setPriority(getChannelPriority(swch));
-                channelMap.put(ci, swch);
+                channelMap.putIfAbsent(ci, swch);
             }
             cis.addAll(newInfos);
             if (!acceptAllSources) {

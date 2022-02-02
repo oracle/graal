@@ -71,9 +71,9 @@ public class CommonConstants {
 
     public static final String PATH_JRE_BIN = "bin/"; // NOI18N
 
-    public static final String PATH_USER_GRAALVM = ".graalvm"; // NOI18N
+    public static final String PATH_USER_GU = ".gu"; // NOI18N
 
-    public static final String PATH_USER_CREDENTIALS = "credentials"; // NOI18N
+    public static final String PATH_GDS_CONFIG = "config"; // NOI18N
 
     /**
      * System property to specify catalog URL.

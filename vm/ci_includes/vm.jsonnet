@@ -51,7 +51,8 @@ local jdks = common_json.jdks;
     short_name:: 'ce',
     setup+: [
       ['set-export', 'VM_ENV', 'ce'],
-      ['set-export', 'RELEASE_CATALOG', 'https://www.graalvm.org/component-catalog/v2/graal-updater-component-catalog-java${BASE_JDK_SHORT_VERSION}.properties|{ee=GraalVM Enterprise Edition}gds://oca.opensource.oracle.com/gds/meta-data.json'],
+      ['set-export', 'RELEASE_CATALOG', 'https://www.graalvm.org/component-catalog/v2/graal-updater-component-catalog-java${BASE_JDK_SHORT_VERSION}.properties|{ee=GraalVM Enterprise Edition}rest://gds.oracle.com/api/20220101/|gds://oca.opensource.oracle.com/gds/meta-data.json'],
+      ['set-export', 'RELEASE_PRODUCT_ID', 'D53FAE8052773FFAE0530F15000AA6C6'],
       ['set-export', 'SNAPSHOT_CATALOG', ['mx', 'urlrewrite', 'http://www.graalvm.org/catalog/ce/java${BASE_JDK_SHORT_VERSION}']],
       ['cd', 'vm'],
     ],

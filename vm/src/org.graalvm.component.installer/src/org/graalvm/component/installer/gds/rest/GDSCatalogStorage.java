@@ -30,7 +30,6 @@ import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.ComponentRegistry;
 import org.graalvm.component.installer.persist.AbstractCatalogStorage;
-import org.graalvm.component.installer.persist.MetadataLoader;
 import org.graalvm.component.installer.remote.FileDownloader;
 import java.io.IOException;
 import java.net.URL;
@@ -67,12 +66,7 @@ class GDSCatalogStorage extends AbstractCatalogStorage implements DownloadInterc
         return dn;
     }
 
-    @Override
-    public MetadataLoader interceptMetadataLoader(ComponentInfo info, MetadataLoader delegate) {
-        return DownloadInterceptor.super.interceptMetadataLoader(info, delegate);
-    }
-
-    private static Map<String, Set<ComponentInfo>> buildComponentsMap(Collection<ComponentInfo> artifacts) {
+    private Map<String, Set<ComponentInfo>> buildComponentsMap(Collection<ComponentInfo> artifacts) {
         Map<String, Set<ComponentInfo>> comps = new HashMap<>();
         for (ComponentInfo info : artifacts) {
             comps.computeIfAbsent(info.getId(), i -> new HashSet<>()).add(info);
