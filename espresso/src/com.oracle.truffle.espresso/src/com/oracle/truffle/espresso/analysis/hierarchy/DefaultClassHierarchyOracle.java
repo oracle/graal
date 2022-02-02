@@ -36,7 +36,7 @@ public class DefaultClassHierarchyOracle implements ClassHierarchyOracle {
     @Override
     public ClassHierarchyAssumption createAssumptionForNewKlass(ObjectKlass.KlassVersion newKlass) {
         if (newKlass.isConcrete()) {
-            addImplementorToAncestors(newKlass.getKlass());
+            addImplementorToAncestors(newKlass);
         }
         if (newKlass.isFinalFlagSet()) {
             return ClassHierarchyAssumptionImpl.AlwaysValid;
@@ -66,7 +66,7 @@ public class DefaultClassHierarchyOracle implements ClassHierarchyOracle {
      * Recursively adds {@code implementor} as an implementor of {@code superInterface} and its
      * parent interfaces.
      */
-    private void addImplementor(ObjectKlass superInterface, ObjectKlass implementor) {
+    private void addImplementor(ObjectKlass superInterface, ObjectKlass.KlassVersion implementor) {
         superInterface.getNoConcreteSubclassesAssumption(ClassHierarchyAccessor.accessor).getAssumption().invalidate();
         superInterface.getImplementor(ClassHierarchyAccessor.accessor).addImplementor(implementor);
         for (ObjectKlass ancestorInterface : superInterface.getSuperInterfaces()) {
@@ -74,7 +74,7 @@ public class DefaultClassHierarchyOracle implements ClassHierarchyOracle {
         }
     }
 
-    private void addImplementorToAncestors(ObjectKlass newKlass) {
+    private void addImplementorToAncestors(ObjectKlass.KlassVersion newKlass) {
         for (ObjectKlass superInterface : newKlass.getSuperInterfaces()) {
             addImplementor(superInterface, newKlass);
         }

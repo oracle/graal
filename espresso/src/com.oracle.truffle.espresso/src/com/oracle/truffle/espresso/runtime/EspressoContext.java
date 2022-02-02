@@ -169,6 +169,7 @@ public final class EspressoContext {
     private final boolean shouldReportVMEvents;
     private final VMEventListenerImpl eventListener;
     private ClassRedefinition classRedefinition;
+    private final Assumption anyHierarchyChanges = Truffle.getRuntime().createAssumption();
     // endregion JDWP
 
     private Map<Class<? extends InternalRedefinitionPlugin>, InternalRedefinitionPlugin> redefinitionPlugins;
@@ -1065,6 +1066,14 @@ public final class EspressoContext {
 
     public ClassRedefinition getClassRedefinition() {
         return classRedefinition;
+    }
+
+    public boolean anyHierarchyChanged() {
+        return !anyHierarchyChanges.isValid();
+    }
+
+    public void markChangedHierarchy() {
+        anyHierarchyChanges.invalidate();
     }
 
     public ClassHierarchyOracle getClassHierarchyOracle() {

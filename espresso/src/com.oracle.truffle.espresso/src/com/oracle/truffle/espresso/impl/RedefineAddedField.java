@@ -140,11 +140,19 @@ public final class RedefineAddedField extends Field {
             return getCompatibleField().getObject(obj, forceVolatile);
         } else {
             FieldStorageObject storageObject = getStorageObject(obj);
+            StaticObject result;
             if (forceVolatile) {
-                return (StaticObject) linkedField.getObjectVolatile(storageObject);
+                result = (StaticObject) linkedField.getObjectVolatile(storageObject);
             } else {
-                return (StaticObject) linkedField.getObject(storageObject);
+                result = (StaticObject) linkedField.getObject(storageObject);
             }
+            if (result == StaticObject.NULL) {
+                return result;
+            }
+            if (getDeclaringKlass().getContext().anyHierarchyChanged()) {
+                return checkGetValueValidity(result);
+            }
+            return result;
         }
     }
 
@@ -153,6 +161,9 @@ public final class RedefineAddedField extends Field {
         if (hasCompatibleField()) {
             getCompatibleField().setObject(obj, value, forceVolatile);
         } else {
+            if (getDeclaringKlass().getContext().anyHierarchyChanged()) {
+                checkSetValueValifity(value);
+            }
             FieldStorageObject storageObject = getStorageObject(obj);
             if (forceVolatile) {
                 linkedField.setObjectVolatile(storageObject, value);
