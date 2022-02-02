@@ -591,7 +591,7 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
 
     def postprocessRunArgs(self, benchname, runArgs):
         parser = argparse.ArgumentParser(add_help=False)
-        parser.add_argument("-n", default=None)
+        parser.add_argument("-n", "--iterations", default=None)
         parser.add_argument("-s", "--size", default=None)
         args, remaining = parser.parse_known_args(runArgs)
 
@@ -606,10 +606,10 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
 
         otherArgs = ["-s", self.workloadSize()] + remaining
 
-        if args.n:
-            if args.n.isdigit():
-                return ["-n", args.n] + otherArgs
-            if args.n == "-1":
+        if args.iterations:
+            if args.iterations.isdigit():
+                return ["-n", args.iterations] + otherArgs
+            if args.iterations == "-1":
                 return None
         else:
             iterations = self.daCapoIterations()[benchname]
@@ -635,10 +635,10 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
 
     def repairDatapoints(self, benchmarks, bmSuiteArgs, partialResults):
         parser = argparse.ArgumentParser(add_help=False)
-        parser.add_argument("-n", default=None)
+        parser.add_argument("-n", "--iterations", default=None)
         args, _ = parser.parse_known_args(self.runArgs(bmSuiteArgs))
-        if args.n and args.n.isdigit():
-            iterations = int(args.n)
+        if args.iterations and args.iterations.isdigit():
+            iterations = int(args.iterations)
         else:
             iterations = self.daCapoIterations()[benchmarks[0]]
             iterations = iterations + self.getExtraIterationCount(iterations)
