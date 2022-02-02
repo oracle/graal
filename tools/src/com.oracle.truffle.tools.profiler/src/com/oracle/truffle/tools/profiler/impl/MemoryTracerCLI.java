@@ -24,14 +24,6 @@
  */
 package com.oracle.truffle.tools.profiler.impl;
 
-import com.oracle.truffle.api.Option;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.tools.profiler.MemoryTracer;
-import com.oracle.truffle.tools.profiler.ProfilerNode;
-import org.graalvm.options.OptionCategory;
-import org.graalvm.options.OptionKey;
-import org.graalvm.options.OptionType;
-
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -44,13 +36,27 @@ import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+import org.graalvm.options.OptionCategory;
+import org.graalvm.options.OptionKey;
+import org.graalvm.options.OptionType;
+
+import com.oracle.truffle.api.Option;
+import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.tools.profiler.MemoryTracer;
+import com.oracle.truffle.tools.profiler.ProfilerNode;
+
 @Option.Group(MemoryTracerInstrument.ID)
 class MemoryTracerCLI extends ProfilerCLI {
 
     enum Output {
         TYPE_HISTOGRAM,
         LOCATION_HISTOGRAM,
-        CALLTREE
+        CALLTREE;
+
+        @Override
+        public String toString() {
+            return this.name().toLowerCase();
+        }
     }
 
     static final OptionType<Output> CLI_OUTPUT_TYPE = new OptionType<>("Format",
@@ -78,33 +84,38 @@ class MemoryTracerCLI extends ProfilerCLI {
                         }
                     });
 
-    @Option(name = "", help = "Enable the Memory Tracer (default:false).", category = OptionCategory.USER) static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
+    @Option(name = "", help = "Enable the Memory Tracer (default: false).", category = OptionCategory.USER) //
+    static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
 
-    @Option(name = "Output", help = "Print a 'typehistogram', 'histogram' or 'calltree' as output (default:histogram).", category = OptionCategory.USER) static final OptionKey<Output> OUTPUT = new OptionKey<>(
-                    Output.LOCATION_HISTOGRAM, CLI_OUTPUT_TYPE);
+    @Option(name = "Output", help = "Print a 'typehistogram', 'histogram' or 'calltree' as output. (default: histogram)", usageSyntax = "typehistogram|histogram|calltree", category = OptionCategory.USER) //
+    static final OptionKey<Output> OUTPUT = new OptionKey<>(Output.LOCATION_HISTOGRAM, CLI_OUTPUT_TYPE);
 
-    @Option(name = "StackLimit", help = "Maximum number of maximum stack elements.", category = OptionCategory.USER) static final OptionKey<Integer> STACK_LIMIT = new OptionKey<>(10000);
+    @Option(name = "StackLimit", help = "Maximum number of maximum stack elements. (default: 10000)", usageSyntax = "[1, inf)", category = OptionCategory.USER) //
+    static final OptionKey<Integer> STACK_LIMIT = new OptionKey<>(10000);
 
-    @Option(name = "TraceRoots", help = "Capture roots when tracing (default:true).", category = OptionCategory.USER) static final OptionKey<Boolean> TRACE_ROOTS = new OptionKey<>(true);
+    @Option(name = "TraceRoots", help = "Capture roots when tracing. (default: true)", usageSyntax = "true|false", category = OptionCategory.USER) //
+    static final OptionKey<Boolean> TRACE_ROOTS = new OptionKey<>(true);
 
-    @Option(name = "TraceStatements", help = "Capture statements when tracing (default:false).", category = OptionCategory.USER) static final OptionKey<Boolean> TRACE_STATEMENTS = new OptionKey<>(
-                    false);
+    @Option(name = "TraceStatements", help = "Capture statements when tracing (default: false).", category = OptionCategory.USER) //
+    static final OptionKey<Boolean> TRACE_STATEMENTS = new OptionKey<>(false);
 
-    @Option(name = "TraceCalls", help = "Capture calls when tracing (default:false).", category = OptionCategory.USER) static final OptionKey<Boolean> TRACE_CALLS = new OptionKey<>(false);
+    @Option(name = "TraceCalls", help = "Capture calls when tracing. (default: false)", category = OptionCategory.USER) //
+    static final OptionKey<Boolean> TRACE_CALLS = new OptionKey<>(false);
 
-    @Option(name = "TraceInternal", help = "Capture internal elements (default:false).", category = OptionCategory.INTERNAL) static final OptionKey<Boolean> TRACE_INTERNAL = new OptionKey<>(false);
+    @Option(name = "TraceInternal", help = "Capture internal elements. (default: false)", category = OptionCategory.INTERNAL) //
+    static final OptionKey<Boolean> TRACE_INTERNAL = new OptionKey<>(false);
 
-    @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (eg. Math.*, default:*).", category = OptionCategory.USER) static final OptionKey<Object[]> FILTER_ROOT = new OptionKey<>(
-                    new Object[0], WILDCARD_FILTER_TYPE);
+    @Option(name = "FilterRootName", help = "Wildcard filter for program roots. (eg. Math.*) (default: no filter).", usageSyntax = "<filter>", category = OptionCategory.USER) //
+    static final OptionKey<WildcardFilter> FILTER_ROOT = new OptionKey<>(WildcardFilter.DEFAULT, WildcardFilter.WILDCARD_FILTER_TYPE);
 
-    @Option(name = "FilterFile", help = "Wildcard filter for source file paths. (eg. *program*.sl, default:*).", category = OptionCategory.USER) static final OptionKey<Object[]> FILTER_FILE = new OptionKey<>(
-                    new Object[0], WILDCARD_FILTER_TYPE);
+    @Option(name = "FilterFile", help = "Wildcard filter for source file paths. (eg. *program*.sl) (default: no filter).", usageSyntax = "<filter>", category = OptionCategory.USER) //
+    static final OptionKey<WildcardFilter> FILTER_FILE = new OptionKey<>(WildcardFilter.DEFAULT, WildcardFilter.WILDCARD_FILTER_TYPE);
 
-    @Option(name = "FilterMimeType", help = "Only profile languages with mime-type. (eg. +, default:no filter).", category = OptionCategory.USER) static final OptionKey<String> FILTER_MIME_TYPE = new OptionKey<>(
-                    "");
+    @Option(name = "FilterMimeType", help = "Only profile languages with mime-type. (eg. application/javascript). (default: no filter)", usageSyntax = "<mime-type>", category = OptionCategory.USER) //
+    static final OptionKey<String> FILTER_MIME_TYPE = new OptionKey<>("");
 
-    @Option(name = "FilterLanguage", help = "Only profile languages with given ID. (eg. js, default:no filter).", category = OptionCategory.USER) static final OptionKey<String> FILTER_LANGUAGE = new OptionKey<>(
-                    "");
+    @Option(name = "FilterLanguage", help = "Only profile languages with given ID. (eg. js) (default: no filter).", usageSyntax = "<languageId>", category = OptionCategory.USER)//
+    static final OptionKey<String> FILTER_LANGUAGE = new OptionKey<>("");
 
     static void handleOutput(TruffleInstrument.Env env, MemoryTracer tracer) {
         PrintStream out = new PrintStream(env.out());

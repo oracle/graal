@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,8 +56,9 @@ public final class OptionDescriptor {
     private final OptionStability stability;
     private final boolean deprecated;
     private final String deprecationMessage;
+    private final String usageSyntax;
 
-    OptionDescriptor(OptionKey<?> key, String name, String help, OptionCategory category, OptionStability stability, boolean deprecated, String deprecationMessage) {
+    OptionDescriptor(OptionKey<?> key, String name, String help, OptionCategory category, OptionStability stability, boolean deprecated, String deprecationMessage, String usageSyntax) {
         this.key = key;
         this.name = name;
         this.help = help;
@@ -65,6 +66,7 @@ public final class OptionDescriptor {
         this.stability = stability;
         this.deprecated = deprecated;
         this.deprecationMessage = deprecationMessage;
+        this.usageSyntax = usageSyntax;
     }
 
     /**
@@ -96,7 +98,7 @@ public final class OptionDescriptor {
     }
 
     /**
-     * Returns the deprecation reason and the recommended fix.
+     * Returns the deprecation reason and the recommended fix. For newlines, use <code>%n</code>.
      *
      * @since 20.1.0
      */
@@ -133,12 +135,22 @@ public final class OptionDescriptor {
     }
 
     /**
-     * Returns a human-readable description on how to use the option.
+     * Returns a human-readable description on how to use the option. For newlines, use
+     * <code>%n</code>.
      *
      * @since 19.0
      */
     public String getHelp() {
         return help;
+    }
+
+    /**
+     * Specifies a human-readable syntax describing the accepted values for this option.
+     *
+     * @since 22.1
+     */
+    public String getUsageSyntax() {
+        return usageSyntax;
     }
 
     /**
@@ -148,7 +160,7 @@ public final class OptionDescriptor {
      */
     @Override
     public String toString() {
-        return "OptionDescriptor [key=" + key + ", help=" + help + ", category=" + category + ", deprecated=" + deprecated + ", optionMap=" + isOptionMap() + "]";
+        return "OptionDescriptor [key=" + key + ", help=" + help + ", usageSyntax=" + usageSyntax + ", category=" + category + ", deprecated=" + deprecated + ", optionMap=" + isOptionMap() + "]";
     }
 
     /**
@@ -202,7 +214,7 @@ public final class OptionDescriptor {
         return EMPTY.new Builder(key, name);
     }
 
-    private static final OptionDescriptor EMPTY = new OptionDescriptor(null, null, null, null, null, false, null);
+    private static final OptionDescriptor EMPTY = new OptionDescriptor(null, null, null, null, null, false, null, "");
 
     /**
      * Represents an option descriptor builder.
@@ -218,6 +230,7 @@ public final class OptionDescriptor {
         private OptionCategory category = OptionCategory.INTERNAL;
         private OptionStability stability = OptionStability.EXPERIMENTAL;
         private String help = "";
+        private String usageSyntax = "";
 
         Builder(OptionKey<?> key, String name) {
             this.key = key;
@@ -271,6 +284,17 @@ public final class OptionDescriptor {
         }
 
         /**
+         * Specifies a human-readable syntax describing the accepted values for this option.
+         * 
+         * @since 22.1
+         */
+        public Builder usageSyntax(@SuppressWarnings("hiding") String usageSyntax) {
+            Objects.requireNonNull(usageSyntax);
+            this.usageSyntax = usageSyntax;
+            return this;
+        }
+
+        /**
          * Specifies a human-readable deprecation reason and the recommended fix.
          *
          * @since 20.1.0
@@ -287,7 +311,7 @@ public final class OptionDescriptor {
          * @since 19.0
          */
         public OptionDescriptor build() {
-            return new OptionDescriptor(key, name, help, category, stability, deprecated, deprecationMessage);
+            return new OptionDescriptor(key, name, help, category, stability, deprecated, deprecationMessage, usageSyntax);
         }
     }
 

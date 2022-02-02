@@ -31,7 +31,6 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 
 /**
  * INVOKESTATIC bytecode.
@@ -59,9 +58,9 @@ public abstract class InvokeStatic extends Node {
     @Specialization
     Object callWithClassInitCheck(Object[] args,
                     @Cached InitCheck initCheck,
-                    @Cached("create(staticMethod)") WithoutClassInitCheck invokeVirtual) {
+                    @Cached("create(staticMethod)") WithoutClassInitCheck invokeStatic) {
         initCheck.execute(staticMethod.getDeclaringKlass());
-        return invokeVirtual.execute(args);
+        return invokeStatic.execute(args);
     }
 
     @ImportStatic(InvokeStatic.class)
@@ -80,11 +79,10 @@ public abstract class InvokeStatic extends Node {
         public abstract Object execute(Object[] args);
 
         @SuppressWarnings("unused")
-        @Specialization(assumptions = "resolvedMethod.getAssumption()")
+        @Specialization(assumptions = "resolvedMethod.getRedefineAssumption()")
         Object callDirect(Object[] args,
                         @Cached("methodLookup(staticMethod)") Method.MethodVersion resolvedMethod,
-                        @Cached("create(resolvedMethod.getCallTargetNoInit())") DirectCallNode directCallNode) {
-            assert resolvedMethod.getMethod().getDeclaringKlass().isInitializedOrInitializing();
+                        @Cached("create(resolvedMethod.getCallTarget())") DirectCallNode directCallNode) {
             return directCallNode.call(args);
         }
 
@@ -92,7 +90,6 @@ public abstract class InvokeStatic extends Node {
         Object callIndirect(Object[] args,
                         @Cached IndirectCallNode indirectCallNode) {
             Method.MethodVersion target = methodLookup(staticMethod);
-            assert target.getMethod().getDeclaringKlass().isInitializedOrInitializing() : target.getMethod().getDeclaringKlass();
             return indirectCallNode.call(target.getCallTarget(), args);
         }
     }
@@ -104,7 +101,7 @@ public abstract class InvokeStatic extends Node {
              * Accept a slow path once the method has been removed put method behind a boundary to
              * avoid a deopt loop.
              */
-            return ClassRedefinition.handleRemovedMethod(staticMethod, staticMethod.getDeclaringKlass(), null).getMethodVersion();
+            return staticMethod.getContext().getClassRedefinition().handleRemovedMethod(staticMethod, staticMethod.getDeclaringKlass()).getMethodVersion();
         }
         return staticMethod.getMethodVersion();
     }
@@ -144,7 +141,6 @@ public abstract class InvokeStatic extends Node {
             Object callIndirect(Method staticMethod, Object[] args,
                             @Cached IndirectCallNode indirectCallNode) {
                 Method.MethodVersion target = methodLookup(staticMethod);
-                assert target.getMethod().getDeclaringKlass().isInitializedOrInitializing() : target.getMethod().getDeclaringKlass();
                 return indirectCallNode.call(target.getCallTarget(), args);
             }
         }

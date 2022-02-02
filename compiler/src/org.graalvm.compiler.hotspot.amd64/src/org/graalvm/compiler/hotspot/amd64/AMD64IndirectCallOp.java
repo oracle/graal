@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -66,12 +66,9 @@ final class AMD64IndirectCallOp extends IndirectCallOp {
     @Override
     @SuppressWarnings("try")
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        try (CompilationResultBuilder.CallContext callContext = crb.openCallContext(false)) {
-            crb.recordMark(HotSpotMarkId.INLINE_INVOKE);
-            Register callReg = asRegister(targetAddress);
-            assert !callReg.equals(METHOD);
-            AMD64Call.indirectCall(crb, masm, callReg, callTarget, state);
-        }
+        Register callReg = asRegister(targetAddress);
+        assert !callReg.equals(METHOD);
+        crb.recordMark(AMD64Call.indirectCall(crb, masm, callReg, callTarget, state), HotSpotMarkId.INLINE_INVOKE);
     }
 
     @Override

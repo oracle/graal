@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -91,13 +91,13 @@ public class AgnosticInliningPhaseTest extends PartialEvaluationTest {
         return request.graph;
     }
 
-    protected final OptimizedCallTarget createDummyNode() {
-        return (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
+    protected static final OptimizedCallTarget createDummyNode() {
+        return (OptimizedCallTarget) new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
                 return null;
             }
-        });
+        }.getCallTarget();
     }
 
     protected class CallsInnerNodeTwice extends RootNode {

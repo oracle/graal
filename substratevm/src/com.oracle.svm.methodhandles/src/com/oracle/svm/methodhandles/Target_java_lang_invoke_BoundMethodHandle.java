@@ -37,7 +37,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.invoke.MethodHandleUtils.MethodHandlesSupported;
 
 /**
  * In the JDK implementation of method handles, each bound method handle is an instance of a
@@ -56,7 +55,7 @@ import com.oracle.svm.core.invoke.MethodHandleUtils.MethodHandlesSupported;
  * implementation of the methods that every species must provide, namely the make method (factory)
  * and the copyWith and copyWithExtend* methods (copy constructors).
  */
-@TargetClass(className = "java.lang.invoke.BoundMethodHandle", onlyWith = MethodHandlesSupported.class)
+@TargetClass(className = "java.lang.invoke.BoundMethodHandle")
 final class Target_java_lang_invoke_BoundMethodHandle {
     @Alias static Target_java_lang_invoke_BoundMethodHandle_Specializer SPECIALIZER;
 
@@ -72,7 +71,7 @@ final class Target_java_lang_invoke_BoundMethodHandle {
  * We hijack the species with no bound parameters for our implementation since it already inherits
  * from BoundMethodHandle and doesn't contain any superfluous members.
  */
-@TargetClass(className = "java.lang.invoke.SimpleMethodHandle", onlyWith = MethodHandlesSupported.class)
+@TargetClass(className = "java.lang.invoke.SimpleMethodHandle")
 final class Target_java_lang_invoke_SimpleMethodHandle {
     /*
      * Since we represent all the bound method handle species with the basic one, the species data
@@ -129,7 +128,7 @@ final class Target_java_lang_invoke_SimpleMethodHandle {
 }
 
 /* Hardcoded species, needs a special case to avoid initialization */
-@TargetClass(className = "java.lang.invoke.BoundMethodHandle", innerClass = "Species_L", onlyWith = MethodHandlesSupported.class)
+@TargetClass(className = "java.lang.invoke.BoundMethodHandle", innerClass = "Species_L")
 final class Target_java_lang_invoke_BoundMethodHandle_Species_L {
     @Substitute
     static Target_java_lang_invoke_BoundMethodHandle make(MethodType mt, Target_java_lang_invoke_LambdaForm lf, Object argL0) {
@@ -137,11 +136,13 @@ final class Target_java_lang_invoke_BoundMethodHandle_Species_L {
     }
 }
 
-@TargetClass(className = "java.lang.invoke.BoundMethodHandle", innerClass = "SpeciesData", onlyWith = MethodHandlesSupported.class)
+@TargetClass(className = "java.lang.invoke.BoundMethodHandle", innerClass = "SpeciesData")
 final class Target_java_lang_invoke_BoundMethodHandle_SpeciesData {
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = RecomputeFieldValue.NewEmptyArrayTransformer.class) //
+    private Target_java_lang_invoke_BoundMethodHandle_SpeciesData[] extensions;
 }
 
-@TargetClass(className = "java.lang.invoke.BoundMethodHandle", innerClass = "Specializer", onlyWith = MethodHandlesSupported.class)
+@TargetClass(className = "java.lang.invoke.BoundMethodHandle", innerClass = "Specializer")
 final class Target_java_lang_invoke_BoundMethodHandle_Specializer {
 }
 

@@ -30,7 +30,6 @@ import java.util.List;
 
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.test.TruffleReturnBoxedParameterTestFactory.IntNodeFactory;
 import org.junit.Test;
@@ -142,7 +141,7 @@ public class TruffleReturnBoxedParameterTest extends PartialEvaluationTest {
     @Test
     public void testBox() throws Throwable {
         TestRootNode<IntNode> node = createRoot(IntNodeFactory.getInstance());
-        OptimizedCallTarget callTarget = (OptimizedCallTarget) GraalTruffleRuntime.getRuntime().createCallTarget(node);
+        OptimizedCallTarget callTarget = (OptimizedCallTarget) node.getCallTarget();
         StructuredGraph g = partialEval(callTarget, new Object[]{1});
         compile(callTarget, g);
         // no box foreign call to allocation snippet after box optimization

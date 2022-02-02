@@ -47,59 +47,71 @@ public class LoopPartialUnrollPhase extends LoopPhase<LoopPolicies> {
         this.canonicalizer = canonicalizer;
     }
 
+    @SuppressWarnings("try")
+    private void unroll(StructuredGraph graph, CoreProviders context) {
+        EconomicSetNodeEventListener listener = new EconomicSetNodeEventListener();
+        boolean changed = true;
+        EconomicMap<LoopBeginNode, OpaqueNode> opaqueUnrolledStrides = null;
+        boolean prePostInserted = false;
+        while (changed) {
+            changed = false;
+            try (Graph.NodeEventScope nes = graph.trackNodeEvents(listener)) {
+                LoopsData dataCounted = context.getLoopsDataProvider().getLoopsData(graph);
+                dataCounted.detectedCountedLoops();
+                Graph.Mark mark = graph.getMark();
+                for (LoopEx loop : dataCounted.countedLoops()) {
+                    if (!LoopTransformations.isUnrollableLoop(loop)) {
+                        continue;
+                    }
+                    if (getPolicies().shouldPartiallyUnroll(loop, context)) {
+                        if (loop.loopBegin().isSimpleLoop()) {
+                            // First perform the pre/post transformation and do the partial
+                            // unroll when we come around again.
+                            LoopTransformations.insertPrePostLoops(loop);
+                            prePostInserted = true;
+                            changed = true;
+                        } else if (prePostInserted) {
+                            if (opaqueUnrolledStrides == null) {
+                                opaqueUnrolledStrides = EconomicMap.create(Equivalence.IDENTITY);
+                            }
+                            LoopTransformations.partialUnroll(loop, opaqueUnrolledStrides);
+                            changed = true;
+                        }
+                    }
+                }
+                dataCounted.deleteUnusedNodes();
+
+                if (!listener.getNodes().isEmpty()) {
+                    canonicalizer.applyIncremental(graph, context, listener.getNodes());
+                    listener.getNodes().clear();
+                }
+
+                assert !prePostInserted || checkCounted(graph, context.getLoopsDataProvider(), mark);
+            }
+        }
+        if (opaqueUnrolledStrides != null) {
+            try (Graph.NodeEventScope nes = graph.trackNodeEvents(listener)) {
+                for (OpaqueNode opaque : opaqueUnrolledStrides.getValues()) {
+                    opaque.remove();
+                }
+                if (!listener.getNodes().isEmpty()) {
+                    canonicalizer.applyIncremental(graph, context, listener.getNodes());
+                }
+            }
+        }
+    }
+
     @Override
     @SuppressWarnings("try")
     protected void run(StructuredGraph graph, CoreProviders context) {
+        EconomicSetNodeEventListener listener = new EconomicSetNodeEventListener();
         if (graph.hasLoops()) {
-            EconomicSetNodeEventListener listener = new EconomicSetNodeEventListener();
-            boolean changed = true;
-            EconomicMap<LoopBeginNode, OpaqueNode> opaqueUnrolledStrides = null;
-            boolean prePostInserted = false;
-            while (changed) {
-                changed = false;
-                try (Graph.NodeEventScope nes = graph.trackNodeEvents(listener)) {
-                    LoopsData dataCounted = context.getLoopsDataProvider().getLoopsData(graph);
-                    dataCounted.detectedCountedLoops();
-                    Graph.Mark mark = graph.getMark();
-                    for (LoopEx loop : dataCounted.countedLoops()) {
-                        if (!LoopTransformations.isUnrollableLoop(loop)) {
-                            continue;
-                        }
-                        if (getPolicies().shouldPartiallyUnroll(loop, context)) {
-                            if (loop.loopBegin().isSimpleLoop()) {
-                                // First perform the pre/post transformation and do the partial
-                                // unroll when we come around again.
-                                LoopTransformations.insertPrePostLoops(loop);
-                                prePostInserted = true;
-                                changed = true;
-                            } else if (prePostInserted) {
-                                if (opaqueUnrolledStrides == null) {
-                                    opaqueUnrolledStrides = EconomicMap.create(Equivalence.IDENTITY);
-                                }
-                                LoopTransformations.partialUnroll(loop, opaqueUnrolledStrides);
-                                changed = true;
-                            }
-                        }
-                    }
-                    dataCounted.deleteUnusedNodes();
-
-                    if (!listener.getNodes().isEmpty()) {
-                        canonicalizer.applyIncremental(graph, context, listener.getNodes());
-                        listener.getNodes().clear();
-                    }
-
-                    assert !prePostInserted || checkCounted(graph, context.getLoopsDataProvider(), mark);
-                }
+            try (Graph.NodeEventScope nes = graph.trackNodeEvents(listener)) {
+                unroll(graph, context);
             }
-            if (opaqueUnrolledStrides != null) {
-                try (Graph.NodeEventScope nes = graph.trackNodeEvents(listener)) {
-                    for (OpaqueNode opaque : opaqueUnrolledStrides.getValues()) {
-                        opaque.remove();
-                    }
-                    if (!listener.getNodes().isEmpty()) {
-                        canonicalizer.applyIncremental(graph, context, listener.getNodes());
-                    }
-                }
+            if (!listener.getNodes().isEmpty()) {
+                // run a regular canonicalization with simplification after the entire unrolling
+                canonicalizer.applyIncremental(graph, context, listener.getNodes());
             }
         }
     }

@@ -59,7 +59,7 @@ public final class EventFdReadwrite {
     }
 
     /** Size of this structure, in bytes. */
-    public static int BYTES = 16;
+    public static final int BYTES = 16;
 
     /** Reads the number of bytes available for reading or writing. */
     public static long readNbytes(Node node, WasmMemory memory, int address) {

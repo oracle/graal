@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,7 +40,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
  * {@link System#identityHashCode(Object)}.
  */
 @NodeInfo
-public abstract class PureFunctionMacroNode extends MacroStateSplitNode implements Canonicalizable {
+public abstract class PureFunctionMacroNode extends MacroNode implements Canonicalizable {
 
     public static final NodeClass<PureFunctionMacroNode> TYPE = NodeClass.create(PureFunctionMacroNode.class);
 

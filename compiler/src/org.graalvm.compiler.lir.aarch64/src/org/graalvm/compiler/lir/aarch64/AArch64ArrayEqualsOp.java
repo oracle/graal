@@ -26,6 +26,7 @@ package org.graalvm.compiler.lir.aarch64;
 
 import static jdk.vm.ci.aarch64.AArch64.zr;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
 import org.graalvm.compiler.asm.Label;
@@ -58,14 +59,17 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
 
     @Def({REG}) protected Value resultValue;
     @Alive({REG}) protected Value array1Value;
+    @Alive({REG, ILLEGAL}) protected Value offset1Value;
     @Alive({REG}) protected Value array2Value;
+    @Alive({REG, ILLEGAL}) protected Value offset2Value;
     @Alive({REG}) protected Value lengthValue;
     @Temp({REG}) protected Value temp1;
     @Temp({REG}) protected Value temp2;
     @Temp({REG}) protected Value temp3;
     @Temp({REG}) protected Value temp4;
 
-    public AArch64ArrayEqualsOp(LIRGeneratorTool tool, JavaKind kind, int array1BaseOffset, int array2BaseOffset, Value result, Value array1, Value array2, Value length, boolean directPointers) {
+    public AArch64ArrayEqualsOp(LIRGeneratorTool tool, JavaKind kind, int array1BaseOffset, int array2BaseOffset, Value result, Value array1, Value offset1, Value array2, Value offset2,
+                    Value length) {
         super(TYPE);
 
         assert !kind.isNumericFloat() : "Float arrays comparison (bitwise_equal || both_NaN) isn't supported";
@@ -76,13 +80,15 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
          * primitive arrays, this will mean the same array base offset as well; but if we compare a
          * regular array with a hybrid object, they may have two different offsets.
          */
-        this.array1BaseOffset = directPointers ? 0 : array1BaseOffset;
-        this.array2BaseOffset = directPointers ? 0 : array2BaseOffset;
+        this.array1BaseOffset = array1BaseOffset;
+        this.array2BaseOffset = array2BaseOffset;
         this.arrayIndexScale = tool.getProviders().getMetaAccess().getArrayIndexScale(kind);
 
         this.resultValue = result;
         this.array1Value = array1;
+        this.offset1Value = offset1 == null ? Value.ILLEGAL : offset1;
         this.array2Value = array2;
+        this.offset2Value = offset2 == null ? Value.ILLEGAL : offset2;
         this.lengthValue = length;
 
         // Allocate some temporaries.
@@ -105,7 +111,15 @@ public final class AArch64ArrayEqualsOp extends AArch64LIRInstruction {
             Register rscratch1 = sc1.getRegister();
             // Load array base addresses.
             masm.add(64, array1, asRegister(array1Value), array1BaseOffset);
+            if (!offset1Value.equals(Value.ILLEGAL)) {
+                // optional offset parameter is present, add to base pointer
+                masm.add(64, array1, asRegister(array1Value), asRegister(offset1Value));
+            }
             masm.add(64, array2, asRegister(array2Value), array2BaseOffset);
+            if (!offset2Value.equals(Value.ILLEGAL)) {
+                // optional offset parameter is present, add to base pointer
+                masm.add(64, array2, asRegister(array2Value), asRegister(offset2Value));
+            }
 
             // Get array length in bytes.
             masm.mov(rscratch1, arrayIndexScale);

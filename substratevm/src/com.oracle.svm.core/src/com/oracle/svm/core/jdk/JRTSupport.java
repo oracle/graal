@@ -79,7 +79,7 @@ public final class JRTSupport {
 
 // region Enable jimage/jrtfs
 
-@TargetClass(className = "jdk.internal.jimage.ImageReader", innerClass = "SharedImageReader", onlyWith = {JDK11OrLater.class, JRTEnabled.class})
+@TargetClass(className = "jdk.internal.jimage.ImageReader", innerClass = "SharedImageReader", onlyWith = JRTEnabled.class)
 final class Target_jdk_internal_jimage_ImageReader_SharedImageReader_JRTEnabled {
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = HashMap.class, isFinal = true) //
@@ -88,7 +88,7 @@ final class Target_jdk_internal_jimage_ImageReader_SharedImageReader_JRTEnabled 
     // Checkstyle: resume
 }
 
-@TargetClass(className = "jdk.internal.module.SystemModuleFinders", innerClass = "SystemImage", onlyWith = {JDK11OrLater.class, JRTEnabled.class})
+@TargetClass(className = "jdk.internal.module.SystemModuleFinders", innerClass = "SystemImage", onlyWith = JRTEnabled.class)
 final class Target_jdk_internal_module_SystemModuleFinders_SystemImage_JRTEnabled {
 
     @Alias //
@@ -99,24 +99,22 @@ final class Target_jdk_internal_module_SystemModuleFinders_SystemImage_JRTEnable
     static Object reader() {
         Target_jdk_internal_jimage_ImageReader_JRTEnabled localRef = READER;
         if (localRef == null) {
-            /* Checkstyle: allow synchronization. */
             synchronized (Target_jdk_internal_module_SystemModuleFinders_SystemImage_JRTEnabled.class) {
                 localRef = READER;
                 if (localRef == null) {
                     READER = localRef = Target_jdk_internal_jimage_ImageReaderFactory_JRTEnabled.getImageReader();
                 }
             }
-            /* Checkstyle: disallow synchronization. */
         }
         return localRef;
     }
 }
 
-@TargetClass(className = "jdk.internal.jimage.ImageReader", onlyWith = {JDK11OrLater.class, JRTEnabled.class})
+@TargetClass(className = "jdk.internal.jimage.ImageReader", onlyWith = JRTEnabled.class)
 final class Target_jdk_internal_jimage_ImageReader_JRTEnabled {
 }
 
-@TargetClass(className = "jdk.internal.jimage.ImageReaderFactory", onlyWith = {JDK11OrLater.class, JRTEnabled.class})
+@TargetClass(className = "jdk.internal.jimage.ImageReaderFactory", onlyWith = JRTEnabled.class)
 final class Target_jdk_internal_jimage_ImageReaderFactory_JRTEnabled {
     @Alias
     static native Target_jdk_internal_jimage_ImageReader_JRTEnabled getImageReader();
@@ -134,13 +132,15 @@ final class Target_jdk_internal_jimage_ImageReaderFactory_JRTEnabled {
  * This class holds a reference to the jdk.internal.jimage.ImageReader. We don't support JIMAGE so
  * we just cut away the reader code.
  */
-@TargetClass(className = "jdk.internal.module.SystemModuleFinders", innerClass = "SystemImage", onlyWith = {JDK11OrLater.class, JRTDisabled.class})
+@TargetClass(className = "jdk.internal.module.SystemModuleFinders", innerClass = "SystemImage", onlyWith = JRTDisabled.class)
 final class Target_jdk_internal_module_SystemModuleFinders_SystemImage_JRTDisabled {
-    @Delete
-    static native Object reader();
+    @Substitute
+    static Object reader() {
+        throw VMError.unsupportedFeature("JRT file system is disabled");
+    }
 }
 
-@TargetClass(className = "sun.net.www.protocol.jrt.Handler", onlyWith = {JDK11OrLater.class, JRTDisabled.class})
+@TargetClass(className = "sun.net.www.protocol.jrt.Handler", onlyWith = JRTDisabled.class)
 final class Target_sun_net_www_protocol_jrt_Handler_JRTDisabled {
     @Substitute
     @SuppressWarnings({"unused", "static-method"})
@@ -149,7 +149,7 @@ final class Target_sun_net_www_protocol_jrt_Handler_JRTDisabled {
     }
 }
 
-@TargetClass(className = "jdk.internal.jrtfs.JrtFileSystemProvider", onlyWith = {JDK11OrLater.class, JRTDisabled.class})
+@TargetClass(className = "jdk.internal.jrtfs.JrtFileSystemProvider", onlyWith = JRTDisabled.class)
 @Delete
 final class Target_jdk_internal_jrtfs_JrtFileSystemProvider_JRTDisabled {
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -73,6 +73,8 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.Value;
+
+import java.util.BitSet;
 
 public class StubAVXTest extends LIRTest {
 
@@ -192,12 +194,12 @@ public class StubAVXTest extends LIRTest {
         }
 
         @Override
-        protected StructuredGraph buildInitialGraph(DebugContext debug, CompilationIdentifier compilationId, Object[] args) {
+        protected StructuredGraph buildInitialGraph(DebugContext debug, CompilationIdentifier compilationId, Object[] args, BitSet nonNullParameters) {
             // Build the snippet graph directly since snippet registration is closed at this point.
             ReplacementsImpl d = (ReplacementsImpl) providers.getReplacements();
             MetaAccessProvider metaAccess = d.getProviders().getMetaAccess();
             BytecodeProvider bytecodes = new ClassfileBytecodeProvider(metaAccess, d.snippetReflection, ClassLoader.getSystemClassLoader());
-            return d.makeGraph(debug, bytecodes, method, args, null, false, null);
+            return d.makeGraph(debug, bytecodes, method, args, nonNullParameters, null, false, null);
         }
     }
 
@@ -212,7 +214,7 @@ public class StubAVXTest extends LIRTest {
     protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
         InvocationPlugins invocationPlugins = conf.getPlugins().getInvocationPlugins();
         InvocationPlugins.Registration r = new InvocationPlugins.Registration(invocationPlugins, TestStub.class);
-        r.register0("testStub", new InvocationPlugin() {
+        r.register(new InvocationPlugin("testStub") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver) {
                 b.add(new ForeignCallNode(getProviders().getForeignCalls(), TEST_STUB));

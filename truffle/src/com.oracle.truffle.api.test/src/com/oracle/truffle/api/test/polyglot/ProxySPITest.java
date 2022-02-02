@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.api.test.polyglot;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -55,6 +56,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.PolyglotAccess;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.Proxy;
 import org.graalvm.polyglot.proxy.ProxyArray;
@@ -69,8 +73,10 @@ import org.graalvm.polyglot.proxy.ProxyTime;
 import org.graalvm.polyglot.proxy.ProxyTimeZone;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -78,6 +84,8 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 /**
  * Testing the behavior of proxies towards languages.
@@ -103,6 +111,15 @@ public class ProxySPITest extends AbstractPolyglotTest {
             return lastFunction;
         }
 
+    }
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
+
+    public ProxySPITest() {
+        needsLanguageEnv = true;
     }
 
     @Before
@@ -280,6 +297,72 @@ public class ProxySPITest extends AbstractPolyglotTest {
 
         INTEROP.removeMember(proxyInner, "a");
         assertEmpty(INTEROP.getMembers(proxyInner));
+    }
+
+    /*
+     * Test for GR27558.
+     */
+    @Test
+    public void testProxyObjectAndHostAccess() {
+        setupEnv(Context.newBuilder(ProxyLanguage.ID).allowPolyglotAccess(PolyglotAccess.ALL).allowHostAccess(HostAccess.NONE).build(), new ProxyLanguage() {
+            @Override
+            protected CallTarget parse(ParsingRequest request) throws Exception {
+                String bindingMemberName = request.getSource().getCharacters().toString();
+                InteropLibrary interopLibrary = InteropLibrary.getUncached();
+                Object memberKeys = interopLibrary.getMembers(interopLibrary.readMember(languageEnv.getPolyglotBindings(), bindingMemberName));
+                return RootNode.createConstantNode(memberKeys).getCallTarget();
+            }
+        });
+
+        class MemberKeysProxy implements ProxyObject {
+            private Object memberKeys;
+
+            MemberKeysProxy(Object memberKeys) {
+                this.memberKeys = memberKeys;
+            }
+
+            @Override
+            public Object getMemberKeys() {
+                return memberKeys;
+            }
+
+            @Override
+            public boolean hasMember(String key) {
+                return true;
+            }
+
+            @Override
+            public Object getMember(String key) {
+                return null;
+            }
+
+            @Override
+            public void putMember(String key, Value value) {
+            }
+        }
+
+        context.initialize(ProxyLanguage.ID);
+
+        Object[] memberKeys = new Object[]{"one", "two"};
+        context.getPolyglotBindings().putMember("proxyArray", new MemberKeysProxy(memberKeys));
+        context.getPolyglotBindings().putMember("proxyList", new MemberKeysProxy(Arrays.asList(memberKeys)));
+        context.getPolyglotBindings().putMember("proxyProxyArray", new MemberKeysProxy(ProxyArray.fromArray(memberKeys)));
+        try {
+            context.eval(ProxyLanguage.ID, "proxyArray");
+            fail();
+        } catch (PolyglotException e) {
+            assertTrue(e.getMessage().contains("allowArrayAccess in HostAccess is false."));
+        }
+        try {
+            context.eval(ProxyLanguage.ID, "proxyList");
+            fail();
+        } catch (PolyglotException e) {
+            assertTrue(e.getMessage().contains("allowListAccess in HostAccess is false."));
+        }
+        Value proxyArrayMembers = context.eval(ProxyLanguage.ID, "proxyProxyArray");
+        assertTrue(proxyArrayMembers.hasArrayElements());
+        assertEquals(2, proxyArrayMembers.getArraySize());
+        assertEquals("two", proxyArrayMembers.getArrayElement(1).asString());
     }
 
     @Test

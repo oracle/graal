@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,39 +25,11 @@
 package org.graalvm.compiler.replacements.arraycopy;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
-import org.graalvm.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.JavaKind;
 
 public interface ArrayCopyLookup {
-
-    /**
-     * Signature of an unsafe {@link System#arraycopy} stub.
-     *
-     * The signature is equivalent to {@link sun.misc.Unsafe#copyMemory(long, long, long)}. For the
-     * semantics refer to {@link sun.misc.Unsafe#copyMemory(Object, long, Object, long, long)}.
-     *
-     * @see sun.misc.Unsafe#copyMemory
-     */
-    ForeignCallSignature UNSAFE_ARRAYCOPY = new ForeignCallSignature("unsafe_arraycopy", void.class, Word.class, Word.class, Word.class);
-
-    /**
-     * Signature of a generic {@link System#arraycopy} stub.
-     *
-     * Instead of throwing an {@link ArrayStoreException}, the stub is expected to return the number
-     * of copied elements xor'd with {@code -1}. A return value of {@code 0} indicates that the
-     * operation was successful.
-     */
-    ForeignCallSignature GENERIC_ARRAYCOPY = new ForeignCallSignature("generic_arraycopy", int.class, Word.class, int.class, Word.class, int.class, int.class);
-
-    /**
-     * Looks up the call descriptor for a fast checkcast {@link System#arraycopy} stub.
-     *
-     * @see CheckcastArrayCopyCallNode
-     */
-    ForeignCallDescriptor lookupCheckcastArraycopyDescriptor(boolean uninit);
 
     /**
      * Looks up the call descriptor for a specialized {@link System#arraycopy} stub.

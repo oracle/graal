@@ -62,6 +62,7 @@ import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.option.HostedOptionParser;
 
 public abstract class AbstractNativeImageClassLoaderSupport {
 
@@ -109,7 +110,31 @@ public abstract class AbstractNativeImageClassLoaderSupport {
 
     protected abstract Optional<? extends Object> findModule(String moduleName);
 
-    protected abstract void processAddExportsAndAddOpens(OptionValues parsedHostedOptions);
+    private HostedOptionParser hostedOptionParser;
+    private OptionValues parsedHostedOptions;
+    private List<String> remainingArguments;
+
+    public void setupHostedOptionParser(List<String> arguments) {
+        hostedOptionParser = new HostedOptionParser(getClassLoader());
+        remainingArguments = Collections.unmodifiableList((hostedOptionParser.parse(arguments)));
+        parsedHostedOptions = new OptionValues(hostedOptionParser.getHostedValues());
+    }
+
+    public HostedOptionParser getHostedOptionParser() {
+        return hostedOptionParser;
+    }
+
+    public List<String> getRemainingArguments() {
+        return remainingArguments;
+    }
+
+    public OptionValues getParsedHostedOptions() {
+        return parsedHostedOptions;
+    }
+
+    protected abstract void processClassLoaderOptions();
+
+    public abstract void propagateQualifiedExports(String fromTargetModule, String toTargetModule);
 
     protected abstract void initAllClasses(ForkJoinPool executor, ImageClassLoader imageClassLoader);
 
@@ -211,7 +236,7 @@ public abstract class AbstractNativeImageClassLoaderSupport {
         protected static final String CLASS_EXTENSION = ".class";
 
         private void loadClassesFromPath(Path root, Set<Path> excludes) {
-            FileVisitor<Path> visitor = new SimpleFileVisitor<Path>() {
+            FileVisitor<Path> visitor = new SimpleFileVisitor<>() {
                 private final char fileSystemSeparatorChar = root.getFileSystem().getSeparator().charAt(0);
 
                 @Override

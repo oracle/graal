@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.staticobject.test;
 
 import com.oracle.truffle.api.staticobject.StaticShape;
+import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -72,7 +73,12 @@ public class ClassLoaderTest extends StaticObjectModelTest {
     public void testClassLoader() {
         try (TestEnvironment te = new TestEnvironment(config)) {
             // Callable.class is loaded by the system class loader
-            StaticShape.newBuilder(te.testLanguage).build(Object.class, Callable.class);
+            try {
+                StaticShape.newBuilder(te.testLanguage).build(Object.class, Callable.class);
+            } catch (IllegalArgumentException e) {
+                Assert.assertTrue(e.getMessage().matches(
+                                "The class loader of factory interface 'java.util.concurrent.Callable' \\(cl: '.*'\\) must have visibility of 'com.oracle.truffle.api.staticobject.StaticShape' \\(cl: '.*'\\)"));
+            }
             // CustomStaticObjectFactory.class is loaded by the application class loader
             StaticShape.newBuilder(te.testLanguage).build(CustomStaticObject.class, CustomStaticObjectFactory.class);
         }

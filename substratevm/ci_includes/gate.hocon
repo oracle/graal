@@ -17,57 +17,61 @@ gate-svm-js: {
   ]
 }
 
+svmUnittest : {
+  environment: {
+      "MX_TEST_RESULTS_PATTERN": "es-XXX.json",
+      "MX_TEST_RESULT_TAGS": "native-image"
+  }
+}
+
 builds += [
-  ${oraclejdk8} ${svm-common-linux-gate} ${gate-svm-js} ${svm-capabilities-base} {
+  ${labsjdk-ce-17} ${svm-common-linux-gate} ${gate-svm-js} ${svm-capabilities-base} {
     name: "gate-svm-js"
     timelimit: "35:00"
   }
-  ${oraclejdk8} ${svm-common-darwin-gate} ${gate-svm-js} {
+  ${labsjdk-ce-17} ${svm-common-darwin-gate} ${gate-svm-js} {
     name: "gate-svm-darwin-js"
   }
-  ${labsjdk-ee-11} ${svm-common-linux-gate} ${linux-deploy} {
-    name: "gate-svm-build-ee-11"
+  ${labsjdk-ce-11} ${svm-common-linux-gate} ${linux-deploy} ${svmUnittest} {
+    name: "gate-svm-build-ce-11"
     downloads: {
-      "MUSL_LIBS": {
-        "name": "musl-libs",
+      "MUSL_TOOLCHAIN": {
+        "name": "musl-toolchain",
         "version": "1.0",
         "platformspecific": true
       }
     }
     environment : {
-      MAVEN_REPO_LOCAL : "$BUILD_DIR/.m2"
-      PATH : "$MUSL_LIBS/bin:$PATH"
+      # Note that we must add the toolchain to the end of the PATH so that the system gcc still remains the first choice
+      # for building the rest of GraalVM. The musl toolchain also provides a gcc executable that would shadow the system one
+      # if it were added at the start of the PATH.
+      PATH : "$PATH:$MUSL_TOOLCHAIN/bin"
     }
     run: [
-      ["$MUSL_LIBS/fix_paths.sh"]
-      ${svm-cmd-gate} ["build,helloworld,test,maven,nativeimagehelp,muslcbuild"]
+      ${svm-cmd-gate} ["build,helloworld,test,nativeimagehelp,muslcbuild"]
     ]
   }
-  ${labsjdk-ee-11} ${svm-common-linux-gate} ${linux-deploy} {
+  ${labsjdk-ce-11} ${svm-common-linux-gate} ${linux-deploy} ${svmUnittest} {
     name: "gate-svm-modules-basic"
     run: [
       ${svm-cmd-gate} ["build,hellomodule,test"]
     ]
   }
-  ${oraclejdk8} ${svm-common-linux-gate} ${eclipse} ${jdt} ${linux-deploy} {
+  ${labsjdk-ce-17} ${svm-common-linux-gate} ${eclipse} ${jdt} ${linux-deploy} ${svmUnittest} {
     name: "gate-svm-style-fullbuild"
     timelimit: "45:00"
     environment : {
-      MAVEN_REPO_LOCAL : "$BUILD_DIR/.m2"
       MX_BUILD_EXPLODED : "true" # test native-image MX_BUILD_EXPLODED compatibility
     }
     run: [
-      ${svm-cmd-gate} ["style,fullbuild,helloworld,test,svmjunit,maven"]
+      ${svm-cmd-gate} ["style,fullbuild,helloworld,test,svmjunit"]
     ]
   }
-  ${oraclejdk8} ${svm-common-gate} ${svm-common-windows-oraclejdk8} {
+  ${labsjdk-ce-17} ${svm-common-gate} ${svm-common-windows-jdk17} ${svmUnittest} {
     name: "gate-svm-windows-basics"
-    environment: {
-      PATH : "$MVN_HOME;$PATH"  # workaround until GR-10735 is resolved
-      MAVEN_REPO_LOCAL : "$BUILD_DIR\.m2"
-    }
+    timelimit: "1:30:00"
     run: [
-      ${svm-cmd-gate} ["build,helloworld,test,svmjunit,maven"]
+      ${svm-cmd-gate} ["build,helloworld,test,svmjunit"]
     ]
   }
 ]

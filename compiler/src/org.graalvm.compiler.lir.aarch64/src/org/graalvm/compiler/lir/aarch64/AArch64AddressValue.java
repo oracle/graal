@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -88,7 +88,7 @@ public final class AArch64AddressValue extends CompositeValue {
      * Will fail if displacement cannot be represented directly as an immediate address.
      */
     public static AArch64AddressValue makeAddress(ValueKind<?> kind, int bitMemoryTransferSize, AllocatableValue base, int displacement) {
-        assert bitMemoryTransferSize == 8 || bitMemoryTransferSize == 16 || bitMemoryTransferSize == 32 || bitMemoryTransferSize == 64 || bitMemoryTransferSize == 128;
+        assert displacement == 0 || bitMemoryTransferSize == 8 || bitMemoryTransferSize == 16 || bitMemoryTransferSize == 32 || bitMemoryTransferSize == 64 || bitMemoryTransferSize == 128;
 
         if (displacement == 0) {
             return new AArch64AddressValue(kind, bitMemoryTransferSize, base, Value.ILLEGAL, 0, 1, AddressingMode.BASE_REGISTER_ONLY);

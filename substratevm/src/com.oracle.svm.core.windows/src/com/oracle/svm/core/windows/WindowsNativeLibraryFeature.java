@@ -36,6 +36,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -68,7 +69,6 @@ class WindowsNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
     public boolean initializeBuiltinLibraries() {
         try {
             loadJavaLibrary();
-            loadZipLibrary();
             loadNetLibrary();
         } catch (UnsatisfiedLinkError e) {
             Log.log().string("System.loadLibrary failed, " + e).newline();
@@ -88,8 +88,8 @@ class WindowsNativeLibrarySupport extends JNIPlatformNativeLibrarySupport {
         WindowsUtils.setHandle(FileDescriptor.err, FileAPI.GetStdHandle(FileAPI.STD_ERROR_HANDLE()));
     }
 
-    protected void loadNetLibrary() {
-        if (isFirstIsolate()) {
+    private static void loadNetLibrary() {
+        if (Isolates.isCurrentFirst()) {
             WinSock.init();
             System.loadLibrary("net");
             /*

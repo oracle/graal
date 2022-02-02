@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.api.frame;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+
 /** @since 0.8 or earlier */
 public enum FrameSlotKind {
     /** @since 0.8 or earlier */
@@ -67,4 +69,17 @@ public enum FrameSlotKind {
         this.tag = (byte) ordinal();
     }
 
+    @CompilationFinal(dimensions = 1) private static final FrameSlotKind[] VALUES = values();
+
+    /**
+     * Converts from the numeric representation used in the implementation of {@link Frame} to the
+     * {@link FrameSlotKind}.
+     *
+     * @param tag the numeric (byte) representation of the kind
+     * @return the FrameSlotKind
+     * @since 22.0
+     */
+    public static FrameSlotKind fromTag(byte tag) {
+        return VALUES[tag];
+    }
 }

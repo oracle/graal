@@ -32,7 +32,7 @@ import java.lang.reflect.Type;
 
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
-import com.oracle.svm.hosted.c.GraalAccess;
+import com.oracle.graal.pointsto.util.GraalAccess;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantPool;
@@ -245,10 +245,5 @@ public abstract class CustomSubstitutionMethod implements ResolvedJavaMethod, Gr
     @Override
     public Executable getJavaMethod() {
         return OriginalMethodProvider.getJavaMethod(GraalAccess.getOriginalSnippetReflection(), original);
-    }
-
-    @Override
-    public boolean hasJavaMethod() {
-        return OriginalMethodProvider.hasJavaMethod(GraalAccess.getOriginalSnippetReflection(), original);
     }
 }

@@ -106,10 +106,12 @@ public final class InnerClassRedefiner {
                     }
                 } else {
                     // pure named class
-                    HotSwapClassInfo classInfo = ClassInfo.create(redefineInfo, context);
                     it.remove();
-                    handled.put(klassName, classInfo);
-                    hotswapState.put(klassName, classInfo);
+                    if (redefineInfo.getKlass() != null) {
+                        HotSwapClassInfo classInfo = ClassInfo.create(redefineInfo, context);
+                        handled.put(klassName, classInfo);
+                        hotswapState.put(klassName, classInfo);
+                    }
                 }
             }
             previousHandledSize = handledSize;

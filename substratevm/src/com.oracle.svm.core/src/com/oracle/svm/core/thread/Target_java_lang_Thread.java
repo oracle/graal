@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,7 @@ import org.graalvm.nativeimage.IsolateThread;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -42,12 +43,9 @@ import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jdk.JDK11OrEarlier;
-import com.oracle.svm.core.jdk.JDK11OrLater;
-import com.oracle.svm.core.jdk.JDK14OrLater;
-import com.oracle.svm.core.jdk.JDK8OrEarlier;
+import com.oracle.svm.core.jdk.JDK17OrLater;
 import com.oracle.svm.core.jdk.LoomJDK;
 import com.oracle.svm.core.jdk.NotLoomJDK;
-import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.util.VMError;
 
@@ -55,6 +53,12 @@ import com.oracle.svm.core.util.VMError;
 @SuppressWarnings({"unused"})
 public final class Target_java_lang_Thread {
 
+    // Checkstyle: stop
+    @Alias //
+    static StackTraceElement[] EMPTY_STACK_TRACE;
+    // Checkstyle: resume
+
+    /** This field is initialized when the thread actually starts executing. */
     @Inject //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     IsolateThread isolateThread;
@@ -64,31 +68,26 @@ public final class Target_java_lang_Thread {
      *
      * After JDK 11, a field with same name has been introduced and the logic to set / reset it has
      * moved into Java code. So this injected field and the substitutions that maintain it are no
-     * longer necessary. See {@link #interruptedJDK14OrLater}.
+     * longer necessary. See {@link #interruptedJDK17OrLater}.
      */
     @Inject //
     @TargetElement(onlyWith = JDK11OrEarlier.class) //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    volatile boolean interrupted;
+    volatile boolean interruptedJDK11OrEarlier;
 
     @Alias //
-    @TargetElement(name = "interrupted", onlyWith = JDK14OrLater.class) //
+    @TargetElement(name = "interrupted", onlyWith = JDK17OrLater.class) //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    volatile boolean interruptedJDK14OrLater;
+    volatile boolean interruptedJDK17OrLater;
 
     @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     boolean wasStartedByCurrentIsolate;
 
-    /**
-     * Every thread has a {@link ParkEvent} for {@link sun.misc.Unsafe#park} and
-     * {@link sun.misc.Unsafe#unpark}. Lazily initialized.
-     */
-    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = AtomicReference.class)//
-    AtomicReference<ParkEvent> unsafeParkEvent;
+    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    long parentThreadId;
 
-    /** Every thread has a {@link ParkEvent} for {@link Thread#sleep}. Lazily initialized. */
-    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = AtomicReference.class)//
-    AtomicReference<ParkEvent> sleepParkEvent;
+    @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = ThreadData.class)//
+    UnacquiredThreadData threadData;
 
     @Alias//
     ClassLoader contextClassLoader;
@@ -137,7 +136,7 @@ public final class Target_java_lang_Thread {
      * inherit a (more or less random) access control context.
      */
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    private AccessControlContext inheritedAccessControlContext;
+    public AccessControlContext inheritedAccessControlContext;
 
     @Alias @TargetElement(onlyWith = NotLoomJDK.class) //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadStatusRecomputation.class) //
@@ -186,9 +185,7 @@ public final class Target_java_lang_Thread {
          * Raw creation of a thread without calling init(). Used to create a Thread object for an
          * already running thread.
          */
-
-        this.unsafeParkEvent = new AtomicReference<>();
-        this.sleepParkEvent = new AtomicReference<>();
+        this.threadData = new ThreadData();
 
         JavaContinuations.LoomCompatibilityUtil.initThreadFields(this,
                         (withGroup != null) ? withGroup : JavaThreads.singleton().mainGroup,
@@ -211,6 +208,14 @@ public final class Target_java_lang_Thread {
         return tid;
     }
 
+    @AnnotateOriginal
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public native String getName();
+
+    @AnnotateOriginal
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public native ThreadGroup getThreadGroup();
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Substitute
     public boolean isDaemon() {
@@ -221,14 +226,18 @@ public final class Target_java_lang_Thread {
     @Substitute
     @TargetElement(onlyWith = NotLoomJDK.class)
     static Thread currentThread() {
-        return JavaThreads.currentThread.get();
+        Thread thread = JavaThreads.currentThread.get();
+        assert thread != null : "Thread has not been set yet";
+        return thread;
     }
 
     @Uninterruptible(reason = "called from uninterruptible code", mayBeInlined = true)
     @Substitute
     @TargetElement(onlyWith = LoomJDK.class)
     private static Thread currentThread0() {
-        return JavaThreads.currentThread.get();
+        Thread thread = JavaThreads.currentThread.get();
+        assert thread != null : "Thread has not been set yet";
+        return thread;
     }
 
     @Inject @TargetElement(onlyWith = LoomJDK.class)//
@@ -267,23 +276,13 @@ public final class Target_java_lang_Thread {
         }
     }
 
-    @Substitute
-    @TargetElement(onlyWith = JDK8OrEarlier.class)
-    private void init(ThreadGroup groupArg, Runnable targetArg, String nameArg, long stackSizeArg) {
-        /* Injected Target_java_lang_Thread instance field initialization. */
-        this.unsafeParkEvent = new AtomicReference<>();
-        this.sleepParkEvent = new AtomicReference<>();
-        /* Initialize the rest of the Thread object. */
-        JavaThreads.initializeNewThread(this, groupArg, targetArg, nameArg, stackSizeArg);
-    }
-
     @Alias
     @TargetElement(onlyWith = LoomJDK.class)
     private static native void checkCharacteristics(int characteristics);
 
     @Substitute
     @SuppressWarnings({"unused"})
-    @TargetElement(onlyWith = {JDK11OrLater.class, NotLoomJDK.class})
+    @TargetElement(onlyWith = NotLoomJDK.class)
     private Target_java_lang_Thread(
                     ThreadGroup g,
                     Runnable target,
@@ -294,10 +293,9 @@ public final class Target_java_lang_Thread {
         /* Non-0 instance field initialization. */
         this.blockerLock = new Object();
         /* Injected Target_java_lang_Thread instance field initialization. */
-        this.unsafeParkEvent = new AtomicReference<>();
-        this.sleepParkEvent = new AtomicReference<>();
-        /* Initialize the rest of the Thread object, ignoring `acc` and `inheritThreadLocals`. */
-        JavaThreads.initializeNewThread(this, g, target, name, stackSize);
+        this.threadData = new ThreadData();
+        /* Initialize the rest of the Thread object, ignoring `inheritThreadLocals`. */
+        JavaThreads.initializeNewThread(this, g, target, name, stackSize, acc);
     }
 
     @Substitute
@@ -313,13 +311,12 @@ public final class Target_java_lang_Thread {
         /* Non-0 instance field initialization. */
         this.interruptLock = new Object();
         /* Injected Target_java_lang_Thread instance field initialization. */
-        this.unsafeParkEvent = new AtomicReference<>();
-        this.sleepParkEvent = new AtomicReference<>();
+        this.threadData = new ThreadData();
 
         checkCharacteristics(characteristics);
 
-        /* Initialize the rest of the Thread object, ignoring `acc` and `characteristics`. */
-        JavaThreads.initializeNewThread(this, g, target, name, stackSize);
+        /* Initialize the rest of the Thread object, ignoring `characteristics`. */
+        JavaThreads.initializeNewThread(this, g, target, name, stackSize, acc);
     }
 
     /**
@@ -344,18 +341,24 @@ public final class Target_java_lang_Thread {
             throw VMError.unsupportedFeature("Single-threaded VM cannot create new threads");
         }
 
-        /*
-         * The threadStatus must be set to RUNNABLE by the parent thread and before the child thread
-         * starts because we are creating child threads asynchronously (there is no coordination
-         * between parent and child threads).
-         *
-         * Otherwise, a call to Thread.join() in the parent thread could succeed even before the
-         * child thread starts, or it could hang in case that the child thread is already dead.
-         */
-        JavaContinuations.LoomCompatibilityUtil.setThreadStatus(this, ThreadStatus.RUNNABLE);
         wasStartedByCurrentIsolate = true;
+        parentThreadId = Thread.currentThread().getId();
         long stackSize = JavaThreads.getRequestedThreadSize(JavaThreads.fromTarget(this));
-        JavaThreads.singleton().startThread(JavaThreads.fromTarget(this), stackSize);
+        try {
+            JavaThreads.singleton().startThread(JavaThreads.fromTarget(this), stackSize);
+        } catch (Throwable t) {
+            // These should not be accessed if the thread could not start, but reset them anyway
+            wasStartedByCurrentIsolate = false;
+            parentThreadId = 0;
+
+            throw t;
+        }
+        /*
+         * The threadStatus must be RUNNABLE before returning so the caller can safely use
+         * Thread.join() on the launched thread, but the thread could also already have changed its
+         * state itself. Atomically switch from NEW to RUNNABLE if it has not.
+         */
+        JavaContinuations.LoomCompatibilityUtil.compareAndSetThreadStatus(this, ThreadStatus.NEW, ThreadStatus.RUNNABLE);
     }
 
     @Substitute
@@ -379,7 +382,7 @@ public final class Target_java_lang_Thread {
     @Substitute
     @TargetElement(onlyWith = JDK11OrEarlier.class)
     private boolean isInterrupted(boolean clearInterrupted) {
-        final boolean result = interrupted;
+        final boolean result = interruptedJDK11OrEarlier;
         if (result && clearInterrupted) {
             /*
              * As we don't use a lock, it is possible to observe any kinds of races with other
@@ -389,7 +392,7 @@ public final class Target_java_lang_Thread {
              * isInterrupted as clearInterrupted may only be true if this method is being executed
              * by the current thread.
              */
-            interrupted = false;
+            interruptedJDK11OrEarlier = false;
         }
         return result;
     }
@@ -403,7 +406,7 @@ public final class Target_java_lang_Thread {
     @Substitute
     void interrupt0() {
         if (JavaVersionUtil.JAVA_SPEC <= 11) {
-            interrupted = true;
+            interruptedJDK11OrEarlier = true;
         } else {
             /*
              * After JDK 11, the interrupted flag is maintained by the JDK in Java code, i.e.,
@@ -418,9 +421,16 @@ public final class Target_java_lang_Thread {
 
         Thread thread = JavaThreads.fromTarget(this);
         JavaThreads.interrupt(thread);
+        /*
+         * This may unpark the thread unnecessarily (e.g., the interrupt above could have already
+         * resumed the thread execution, so the thread could now be parked for some other reason).
+         * However, this is not a correctness issue as the unpark will only be a spurious wakeup.
+         */
         JavaThreads.unpark(thread);
-        // Must be executed after setting interrupted to true, see
-        // HeapImpl.waitForReferencePendingList()
+        /*
+         * Must be executed after setting interrupted to true, see
+         * HeapImpl.waitForReferencePendingList().
+         */
         JavaThreads.wakeUpVMConditionWaiters(thread);
     }
 
@@ -537,7 +547,7 @@ public final class Target_java_lang_Thread {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK14OrLater.class)
+    @TargetElement(onlyWith = JDK17OrLater.class)
     private static void clearInterruptEvent() {
         /*
          * In the JDK, this is a no-op except on Windows. The JDK resets the interrupt event used by
@@ -584,7 +594,7 @@ final class Target_java_lang_Thread_FieldHolder {
     @Alias //
     boolean daemon;
     @Alias //
-    int threadStatus;
+    volatile int threadStatus;
 
     Target_java_lang_Thread_FieldHolder(
                     ThreadGroup group,

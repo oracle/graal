@@ -91,7 +91,7 @@ public class AMD64HotSpotBackendFactory extends HotSpotBackendFactory {
                         replacements,
                         options,
                         target);
-        AMD64GraphBuilderPlugins.register(plugins, replacements, (AMD64) target.arch, config.useFMAIntrinsics, options);
+        AMD64GraphBuilderPlugins.register(plugins, replacements, (AMD64) target.arch, options);
         return plugins;
     }
 
@@ -118,7 +118,7 @@ public class AMD64HotSpotBackendFactory extends HotSpotBackendFactory {
     protected HotSpotSuitesProvider createSuites(GraalHotSpotVMConfig config, HotSpotGraalRuntimeProvider runtime, CompilerConfiguration compilerConfiguration, Plugins plugins,
                     HotSpotRegistersProvider registers, HotSpotReplacementsImpl replacements, OptionValues options) {
         return new AddressLoweringHotSpotSuitesProvider(new AMD64SuitesCreator(compilerConfiguration, plugins), config, runtime,
-                        new AddressLoweringPhase(new AMD64HotSpotAddressLowering(config, registers.getHeapBaseRegister(), options)));
+                        new AddressLoweringPhase(new AMD64HotSpotAddressLowering(config, registers.getHeapBaseRegister())));
     }
 
     @Override

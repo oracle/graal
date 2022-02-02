@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -60,6 +60,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 
+import com.oracle.truffle.api.strings.TruffleString;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 
@@ -197,6 +198,12 @@ abstract class HostToTypeNode extends Node {
                 return convertedValue;
             }
             // no default conversion available but we can still try target type mappings.
+        } else if (value instanceof TruffleString && targetType.isAssignableFrom(String.class)) {
+            try {
+                return interop.asString(value);
+            } catch (UnsupportedMessageException e) {
+                throw shouldNotReachHere(e);
+            }
         }
         if (targetType.isInstance(value)) {
             convertedValue = value;
@@ -353,10 +360,10 @@ abstract class HostToTypeNode extends Node {
                     return result;
                 }
                 // fallthrough
-            } else if (interop.hasMembers(value)) {
-                return asJavaObject(hostContext, value, Map.class, null, false);
             } else if (interop.hasArrayElements(value)) {
                 return asJavaObject(hostContext, value, List.class, null, false);
+            } else if (interop.hasHashEntries(value) || interop.hasMembers(value)) {
+                return asJavaObject(hostContext, value, Map.class, null, false);
             } else if (interop.hasIterator(value)) {
                 return asJavaObject(hostContext, value, Iterable.class, null, false);
             } else if (interop.isIterator(value)) {

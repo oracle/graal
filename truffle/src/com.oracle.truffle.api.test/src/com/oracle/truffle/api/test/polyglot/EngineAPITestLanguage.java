@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,6 @@ import org.graalvm.options.OptionKey;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Option;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.EngineAPITestLanguage.LanguageContext;
@@ -99,7 +98,7 @@ public class EngineAPITestLanguage extends TruffleLanguage<LanguageContext> {
 
     @Override
     protected CallTarget parse(ParsingRequest request) throws Exception {
-        return Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+        return RootNode.createConstantNode(42).getCallTarget();
     }
 
     @Override

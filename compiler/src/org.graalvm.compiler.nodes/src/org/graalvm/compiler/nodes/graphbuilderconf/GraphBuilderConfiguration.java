@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,8 +42,6 @@ public final class GraphBuilderConfiguration {
         private TypePlugin[] typePlugins;
         private InlineInvokePlugin[] inlineInvokePlugins;
         private ClassInitializationPlugin classInitializationPlugin;
-        private InvokeDynamicPlugin invokeDynamicPlugin;
-        private ProfilingPlugin profilingPlugin;
 
         /**
          * Creates a copy of a given set of plugins. The {@link InvocationPlugins} in
@@ -51,14 +49,12 @@ public final class GraphBuilderConfiguration {
          * {@linkplain #getInvocationPlugins() invocation plugins} in this object.
          */
         public Plugins(Plugins copyFrom, InvocationPlugins invocationPlugins) {
-            this.invocationPlugins = invocationPlugins != null ? invocationPlugins : new InvocationPlugins(copyFrom.invocationPlugins);
+            this.invocationPlugins = invocationPlugins != null ? invocationPlugins : new InvocationPlugins(null, copyFrom.invocationPlugins);
             this.nodePlugins = copyFrom.nodePlugins;
             this.parameterPlugins = copyFrom.parameterPlugins;
             this.typePlugins = copyFrom.typePlugins;
             this.inlineInvokePlugins = copyFrom.inlineInvokePlugins;
             this.classInitializationPlugin = copyFrom.classInitializationPlugin;
-            this.invokeDynamicPlugin = copyFrom.invokeDynamicPlugin;
-            this.profilingPlugin = copyFrom.profilingPlugin;
         }
 
         public Plugins(Plugins copyFrom) {
@@ -165,22 +161,6 @@ public final class GraphBuilderConfiguration {
 
         public void setClassInitializationPlugin(ClassInitializationPlugin plugin) {
             this.classInitializationPlugin = plugin;
-        }
-
-        public InvokeDynamicPlugin getInvokeDynamicPlugin() {
-            return invokeDynamicPlugin;
-        }
-
-        public void setInvokeDynamicPlugin(InvokeDynamicPlugin plugin) {
-            this.invokeDynamicPlugin = plugin;
-        }
-
-        public ProfilingPlugin getProfilingPlugin() {
-            return profilingPlugin;
-        }
-
-        public void setProfilingPlugin(ProfilingPlugin plugin) {
-            this.profilingPlugin = plugin;
         }
 
         public StampPair getOverridingStamp(GraphBuilderTool b, JavaType type, boolean nonNull) {

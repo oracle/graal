@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -209,8 +209,7 @@ public class TypeSystemTest extends GraalCompilerTest {
 
     public static void outputGraph(StructuredGraph graph, String message) {
         TTY.println("========================= " + message);
-        SchedulePhase schedulePhase = new SchedulePhase(graph.getOptions());
-        schedulePhase.apply(graph);
+        SchedulePhase.runWithoutContextOptimizations(graph);
         ScheduleResult schedule = graph.getLastSchedule();
         for (Block block : schedule.getCFG().getBlocks()) {
             TTY.print("Block " + block + " ");

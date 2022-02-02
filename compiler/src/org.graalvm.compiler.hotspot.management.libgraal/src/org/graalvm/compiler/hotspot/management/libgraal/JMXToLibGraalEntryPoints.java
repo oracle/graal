@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -53,10 +53,10 @@ import javax.management.openmbean.OpenType;
 import javax.management.openmbean.SimpleType;
 import org.graalvm.compiler.hotspot.management.JMXToLibGraalCalls;
 import org.graalvm.compiler.hotspot.management.libgraal.annotation.JMXToLibGraal;
-import org.graalvm.nativebridge.jni.JNIMethodScope;
+import org.graalvm.jniutils.JNIMethodScope;
 import org.graalvm.libgraal.jni.LibGraalUtil;
-import org.graalvm.nativebridge.jni.JNI;
-import org.graalvm.nativebridge.jni.JNIUtil;
+import org.graalvm.jniutils.JNI;
+import org.graalvm.jniutils.JNIUtil;
 import org.graalvm.nativeimage.ObjectHandles;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CCharPointer;

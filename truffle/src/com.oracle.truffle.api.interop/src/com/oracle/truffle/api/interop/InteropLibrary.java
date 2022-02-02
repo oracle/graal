@@ -40,16 +40,39 @@
  */
 package com.oracle.truffle.api.interop;
 
+import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
+import static com.oracle.truffle.api.interop.AssertUtils.assertString;
+import static com.oracle.truffle.api.interop.AssertUtils.preCondition;
+import static com.oracle.truffle.api.interop.AssertUtils.validArguments;
+import static com.oracle.truffle.api.interop.AssertUtils.validInteropArgument;
+import static com.oracle.truffle.api.interop.AssertUtils.validInteropReturn;
+import static com.oracle.truffle.api.interop.AssertUtils.validNonInteropArgument;
+import static com.oracle.truffle.api.interop.AssertUtils.validProtocolArgument;
+import static com.oracle.truffle.api.interop.AssertUtils.validProtocolReturn;
+import static com.oracle.truffle.api.interop.AssertUtils.validScope;
+import static com.oracle.truffle.api.interop.AssertUtils.violationInvariant;
+import static com.oracle.truffle.api.interop.AssertUtils.violationPost;
+
+import java.nio.ByteOrder;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.zone.ZoneRules;
+import java.util.Objects;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.Accessor.EngineSupport;
 import com.oracle.truffle.api.interop.InteropLibrary.Asserts;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.GenerateLibrary.Abstract;
@@ -64,28 +87,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.utilities.TriState;
-
-import java.nio.ByteOrder;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.zone.ZoneRules;
-
-import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
-import static com.oracle.truffle.api.interop.AssertUtils.assertString;
-import static com.oracle.truffle.api.interop.AssertUtils.preCondition;
-import static com.oracle.truffle.api.interop.AssertUtils.validInteropArgument;
-import static com.oracle.truffle.api.interop.AssertUtils.validProtocolArgument;
-import static com.oracle.truffle.api.interop.AssertUtils.validArguments;
-import static com.oracle.truffle.api.interop.AssertUtils.validNonInteropArgument;
-import static com.oracle.truffle.api.interop.AssertUtils.validInteropReturn;
-import static com.oracle.truffle.api.interop.AssertUtils.validProtocolReturn;
-import static com.oracle.truffle.api.interop.AssertUtils.validScope;
-import static com.oracle.truffle.api.interop.AssertUtils.violationInvariant;
-import static com.oracle.truffle.api.interop.AssertUtils.violationPost;
 
 /**
  * Represents the library that specifies the interoperability message protocol between Truffle
@@ -105,9 +106,9 @@ import static com.oracle.truffle.api.interop.AssertUtils.violationPost;
  * The interop protocol only allows <i>interop values</i> to be used as receivers, return values or
  * parameters of messages. Allowed Java types of interop values are:
  * <ul>
- * <li>{@link TruffleObject}: Any subclass of {@link TruffleObject} is interpreted depending on the
- * interop messages it {@link ExportLibrary exports}. Truffle objects are expected but not required
- * to export interop library messages.
+ * <li>{@link TruffleObject}: Any object that implements the {@link TruffleObject} interface is
+ * interpreted according to the interop messages it {@link ExportLibrary exports}. Truffle objects
+ * are expected but not required to export interop library messages.
  * <li>{@link String} and {@link Character} are interpreted as {@link #isString(Object) string}
  * value.
  * <li>{@link Boolean} is interpreted as {@link #isBoolean(Object) boolean} value.
@@ -186,6 +187,7 @@ import static com.oracle.truffle.api.interop.AssertUtils.violationPost;
 @DefaultExport(DefaultDoubleExports.class)
 @DefaultExport(DefaultCharacterExports.class)
 @DefaultExport(DefaultStringExports.class)
+@DefaultExport(DefaultTStringExports.class)
 @SuppressWarnings("unused")
 public abstract class InteropLibrary extends Library {
 
@@ -364,7 +366,7 @@ public abstract class InteropLibrary extends Library {
      * @see #asString(Object)
      * @since 19.0
      */
-    @Abstract(ifExported = "asString")
+    @Abstract(ifExported = {"asString", "asTruffleString"})
     public boolean isString(Object receiver) {
         return false;
     }
@@ -381,6 +383,19 @@ public abstract class InteropLibrary extends Library {
     @Abstract(ifExported = "isString")
     public String asString(Object receiver) throws UnsupportedMessageException {
         throw UnsupportedMessageException.create();
+    }
+
+    /**
+     * Returns the {@link TruffleString} value if the receiver represents a {@link #isString(Object)
+     * string} like value.
+     *
+     * @throws UnsupportedMessageException if and only if {@link #isString(Object)} returns
+     *             <code>false</code> for the same receiver.
+     * @see #isString(Object)
+     * @since 21.3
+     */
+    public TruffleString asTruffleString(Object receiver) throws UnsupportedMessageException {
+        return TruffleString.fromJavaStringUncached(asString(receiver), TruffleString.Encoding.UTF_16);
     }
 
     // Number Messages
@@ -658,19 +673,24 @@ public abstract class InteropLibrary extends Library {
     }
 
     /**
-     * Reads the value of a given member. If the member is {@link #isMemberReadable(Object, String)
-     * readable} and {@link #isMemberInvocable(Object, String) invocable} then the result of reading
-     * the member is {@link #isExecutable(Object) executable} and is bound to this receiver. This
-     * method must have not observable side-effects unless
+     * Reads the value of a given member.
+     * <p>
+     * In case of a method-like member, we recommend that languages return a bound method (or an
+     * artificial receiver-method binding) to improve cross-language portability. In this case, the
+     * member should be {@link #isMemberReadable(Object, String) readable} and
+     * {@link #isMemberInvocable(Object, String) invocable} and the result of reading the member
+     * should be {@link #isExecutable(Object) executable} and bound to the receiver.
+     * <p>
+     * This message must have not observable side-effects unless
      * {@link #hasMemberReadSideEffects(Object, String)} returns <code>true</code>.
      *
      * @throws UnsupportedMessageException if when the receiver does not support reading at all. An
      *             empty receiver with no readable members supports the read operation (even though
      *             there is nothing to read), therefore it throws {@link UnknownIdentifierException}
      *             for all arguments instead.
-     * @throws UnknownIdentifierException if the given member is not
-     *             {@link #isMemberReadable(Object, String) readable}, e.g. when the member with the
-     *             given name does not exist.
+     * @throws UnknownIdentifierException if the given member cannot be read, e.g. because it is not
+     *             (or no longer) {@link #isMemberReadable(Object, String) readable} such as when
+     *             the member with the given name does not exist or has been removed.
      * @see #hasMemberReadSideEffects(Object, String)
      * @since 19.0
      */
@@ -1852,7 +1872,6 @@ public abstract class InteropLibrary extends Library {
      * @since 19.3
      */
     @Abstract(ifExported = {"throwException"})
-    @SuppressWarnings("deprecation")
     public boolean isException(Object receiver) {
         // A workaround for missing inheritance feature for default exports.
         return InteropAccessor.EXCEPTION.isException(receiver) ||
@@ -1936,9 +1955,11 @@ public abstract class InteropLibrary extends Library {
     /**
      * Returns exception exit status of the receiver. Throws {@code UnsupportedMessageException}
      * when the receiver is not an {@link #isException(Object) exception} of the
-     * {@link ExceptionType#EXIT exit type}. A return value zero indicates that the execution of the
-     * application was successful, a non-zero value that it failed. The individual interpretation of
-     * non-zero values depends on the application.
+     * {@link ExceptionType#EXIT exit type}. See
+     * <a href= "https://github.com/oracle/graal/blob/master/truffle/docs/Exit.md">Context Exit</a>
+     * for further information. A return value zero indicates that the execution of the application
+     * was successful, a non-zero value that it failed. The individual interpretation of non-zero
+     * values depends on the application.
      *
      * @see #isException(Object)
      * @see #getExceptionType(Object)
@@ -2254,13 +2275,6 @@ public abstract class InteropLibrary extends Library {
     @Abstract(ifExported = {"getSourceLocation"})
     @TruffleBoundary
     public boolean hasSourceLocation(Object receiver) {
-        Env env = getLegacyEnv(receiver, false);
-        if (env != null) {
-            SourceSection location = InteropAccessor.ACCESSOR.languageSupport().legacyFindSourceLocation(env, receiver);
-            if (location != null) {
-                return true;
-            }
-        }
         // A workaround for missing inheritance feature for default exports.
         if (InteropAccessor.EXCEPTION.isException(receiver)) {
             return InteropAccessor.EXCEPTION.hasSourceLocation(receiver);
@@ -2287,13 +2301,6 @@ public abstract class InteropLibrary extends Library {
     @Abstract(ifExported = {"hasSourceLocation"})
     @TruffleBoundary
     public SourceSection getSourceLocation(Object receiver) throws UnsupportedMessageException {
-        Env env = getLegacyEnv(receiver, false);
-        if (env != null) {
-            SourceSection location = InteropAccessor.ACCESSOR.languageSupport().legacyFindSourceLocation(env, receiver);
-            if (location != null) {
-                return location;
-            }
-        }
         // A workaround for missing inheritance feature for default exports.
         if (InteropAccessor.EXCEPTION.isException(receiver)) {
             return InteropAccessor.EXCEPTION.getSourceLocation(receiver);
@@ -2326,9 +2333,8 @@ public abstract class InteropLibrary extends Library {
      * @since 20.1
      */
     @Abstract(ifExported = {"getLanguage", "isScope"})
-    @TruffleBoundary
     public boolean hasLanguage(Object receiver) {
-        return getLegacyEnv(receiver, false) != null;
+        return false;
     }
 
     /**
@@ -2345,12 +2351,7 @@ public abstract class InteropLibrary extends Library {
      */
     @SuppressWarnings("unchecked")
     @Abstract(ifExported = {"hasLanguage"})
-    @TruffleBoundary
     public Class<? extends TruffleLanguage<?>> getLanguage(Object receiver) throws UnsupportedMessageException {
-        Env env = getLegacyEnv(receiver, false);
-        if (env != null) {
-            return (Class<? extends TruffleLanguage<?>>) InteropAccessor.ACCESSOR.languageSupport().getSPI(env).getClass();
-        }
         throw UnsupportedMessageException.create();
     }
 
@@ -2378,15 +2379,7 @@ public abstract class InteropLibrary extends Library {
      * @since 20.1
      */
     @Abstract(ifExported = {"getMetaObject"})
-    @TruffleBoundary
     public boolean hasMetaObject(Object receiver) {
-        Env env = getLegacyEnv(receiver, false);
-        if (env != null) {
-            Object metaObject = InteropAccessor.ACCESSOR.languageSupport().legacyFindMetaObject(env, receiver);
-            if (metaObject != null) {
-                return true;
-            }
-        }
         return false;
     }
 
@@ -2414,15 +2407,7 @@ public abstract class InteropLibrary extends Library {
      * @since 20.1
      */
     @Abstract(ifExported = {"hasMetaObject"})
-    @TruffleBoundary
     public Object getMetaObject(Object receiver) throws UnsupportedMessageException {
-        Env env = getLegacyEnv(receiver, false);
-        if (env != null) {
-            Object metaObject = InteropAccessor.ACCESSOR.languageSupport().legacyFindMetaObject(env, receiver);
-            if (metaObject != null) {
-                return new LegacyMetaObjectWrapper(receiver, metaObject);
-            }
-        }
         throw UnsupportedMessageException.create();
     }
 
@@ -2446,16 +2431,11 @@ public abstract class InteropLibrary extends Library {
     @Abstract(ifExported = {"hasLanguage", "getLanguage", "isScope"})
     @TruffleBoundary
     public Object toDisplayString(Object receiver, boolean allowSideEffects) {
-        Env env = getLegacyEnv(receiver, false);
-        if (env != null && allowSideEffects) {
-            return InteropAccessor.ACCESSOR.languageSupport().legacyToString(env, receiver);
+        if (allowSideEffects) {
+            return Objects.toString(receiver);
         } else {
             return receiver.getClass().getTypeName() + "@" + Integer.toHexString(System.identityHashCode(receiver));
         }
-    }
-
-    private static Env getLegacyEnv(Object receiver, boolean nullForhost) {
-        return InteropAccessor.ACCESSOR.engineSupport().getLegacyLanguageEnv(receiver, nullForhost);
     }
 
     /**
@@ -2902,7 +2882,8 @@ public abstract class InteropLibrary extends Library {
                         || receiver instanceof Long //
                         || receiver instanceof Float //
                         || receiver instanceof Double //
-                        || receiver instanceof String;
+                        || receiver instanceof String //
+                        || receiver instanceof TruffleString;
     }
 
     /**
@@ -2967,10 +2948,6 @@ public abstract class InteropLibrary extends Library {
         }
 
         private boolean notOtherType(Object receiver, Type type) {
-            if (receiver instanceof LegacyMetaObjectWrapper) {
-                // ignore other type assertions for legacy meta object wrapper
-                return true;
-            }
             assert type == Type.NULL || !delegate.isNull(receiver) : violationInvariant(receiver);
             assert type == Type.BOOLEAN || !delegate.isBoolean(receiver) : violationInvariant(receiver);
             assert type == Type.STRING || !delegate.isString(receiver) : violationInvariant(receiver);
@@ -3110,6 +3087,24 @@ public abstract class InteropLibrary extends Library {
                 String result = delegate.asString(receiver);
                 assert wasString : violationInvariant(receiver);
                 assert validProtocolReturn(receiver, result);
+                return result;
+            } catch (InteropException e) {
+                assert e instanceof UnsupportedMessageException : violationInvariant(receiver);
+                assert !wasString : violationInvariant(receiver);
+                throw e;
+            }
+        }
+
+        @Override
+        public TruffleString asTruffleString(Object receiver) throws UnsupportedMessageException {
+            if (CompilerDirectives.inCompiledCode()) {
+                return delegate.asTruffleString(receiver);
+            }
+            assert preCondition(receiver);
+            boolean wasString = delegate.isString(receiver);
+            try {
+                TruffleString result = delegate.asTruffleString(receiver);
+                assert wasString : violationInvariant(receiver);
                 return result;
             } catch (InteropException e) {
                 assert e instanceof UnsupportedMessageException : violationInvariant(receiver);

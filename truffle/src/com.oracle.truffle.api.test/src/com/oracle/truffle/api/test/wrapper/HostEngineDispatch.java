@@ -45,6 +45,7 @@ import java.io.OutputStream;
 import java.time.ZoneId;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import org.graalvm.options.OptionDescriptors;
@@ -60,6 +61,8 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractEngineDispatch;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.ProcessHandler;
+import org.graalvm.polyglot.management.ExecutionEvent;
+import org.graalvm.polyglot.management.ExecutionListener;
 
 public class HostEngineDispatch extends AbstractEngineDispatch {
 
@@ -81,14 +84,14 @@ public class HostEngineDispatch extends AbstractEngineDispatch {
                     boolean allowNativeAccess, boolean allowCreateThread, boolean allowHostIO, boolean allowHostClassLoading, boolean allowExperimentalOptions, Predicate<String> classFilter,
                     Map<String, String> options, Map<String, String[]> arguments, String[] onlyLanguages, FileSystem fileSystem, Object logHandlerOrStream, boolean allowCreateProcess,
                     ProcessHandler processHandler, EnvironmentAccess environmentAccess, Map<String, String> environment, ZoneId zone, Object limitsImpl, String currentWorkingDirectory,
-                    ClassLoader hostClassLoader, boolean allowValueSharing) {
+                    ClassLoader hostClassLoader, boolean allowValueSharing, boolean useSystemExit) {
         HostEngine engine = (HostEngine) receiver;
         Engine localEngine = engine.localEngine;
         AbstractEngineDispatch dispatch = api.getDispatch(localEngine);
         Object engineReceiver = api.getReceiver(localEngine);
         Context localContext = dispatch.createContext(engineReceiver, out, err, in, allowHostAccess, hostAccess, polyglotAccess, allowNativeAccess, allowCreateThread, allowHostIO,
                         allowHostClassLoading, allowExperimentalOptions, classFilter, options, arguments, onlyLanguages, fileSystem, logHandlerOrStream, allowCreateProcess, processHandler,
-                        environmentAccess, environment, zone, limitsImpl, currentWorkingDirectory, hostClassLoader, true);
+                        environmentAccess, environment, zone, limitsImpl, currentWorkingDirectory, hostClassLoader, true, useSystemExit);
         long guestContextId = hostToGuest.remoteCreateContext(engine.remoteEngine);
         HostContext context = new HostContext(engine, guestContextId, localContext);
         hostToGuest.registerHostContext(guestContextId, context);
@@ -145,4 +148,9 @@ public class HostEngineDispatch extends AbstractEngineDispatch {
         throw new UnsupportedOperationException();
     }
 
+    @Override
+    public ExecutionListener attachExecutionListener(Object engine, Consumer<ExecutionEvent> onEnter, Consumer<ExecutionEvent> onReturn, boolean expressions, boolean statements, boolean roots,
+                    Predicate<Source> sourceFilter, Predicate<String> rootFilter, boolean collectInputValues, boolean collectReturnValues, boolean collectExceptions) {
+        throw new UnsupportedOperationException();
+    }
 }

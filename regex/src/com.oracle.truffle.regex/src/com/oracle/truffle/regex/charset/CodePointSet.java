@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,10 +48,11 @@ import com.oracle.truffle.regex.tregex.string.Encodings.Encoding;
 import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
+import com.oracle.truffle.regex.util.EmptyArrays;
 
 public final class CodePointSet extends ImmutableSortedListOfIntRanges implements Comparable<CodePointSet>, JsonConvertible {
 
-    private static final CodePointSet CONSTANT_EMPTY = new CodePointSet(new int[0]);
+    private static final CodePointSet CONSTANT_EMPTY = new CodePointSet(EmptyArrays.INT);
 
     private static final CodePointSet[] CONSTANT_ASCII = new CodePointSet[128];
     private static final CodePointSet[] CONSTANT_CASE_FOLD_ASCII = new CodePointSet[26];

@@ -42,6 +42,8 @@ import com.oracle.svm.hosted.phases.SubstrateGraphBuilderPhase;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+import java.util.BitSet;
+
 public class SubstrateGraphMaker extends GraphMaker {
 
     private final WordTypes wordTypes;
@@ -57,9 +59,9 @@ public class SubstrateGraphMaker extends GraphMaker {
     }
 
     @Override
-    protected StructuredGraph buildInitialGraph(DebugContext debug, BytecodeProvider bytecodeProvider, ResolvedJavaMethod methodToParse, Object[] args, boolean trackNodeSourcePosition,
-                    NodeSourcePosition replaceePosition, IntrinsicContext.CompilationContext context) {
-        StructuredGraph graph = super.buildInitialGraph(debug, bytecodeProvider, methodToParse, args, trackNodeSourcePosition, replaceePosition, context);
+    protected StructuredGraph buildInitialGraph(DebugContext debug, BytecodeProvider bytecodeProvider, ResolvedJavaMethod methodToParse, Object[] args, BitSet nonNullParameters,
+                    boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition, IntrinsicContext.CompilationContext context) {
+        StructuredGraph graph = super.buildInitialGraph(debug, bytecodeProvider, methodToParse, args, nonNullParameters, trackNodeSourcePosition, replaceePosition, context);
         graph.setGuardsStage(GuardsStage.FIXED_DEOPTS);
         return graph;
     }

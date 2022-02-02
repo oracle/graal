@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -151,6 +151,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      *            be set to zero-register if scratch register is not available.
      */
     private AArch64Address tryMakeAddress(int bitMemoryTransferSize, Register base, long displacement, Register scratchReg) {
+        assert !base.equals(scratchReg);
         assert bitMemoryTransferSize == 8 || bitMemoryTransferSize == 16 || bitMemoryTransferSize == 32 || bitMemoryTransferSize == 64 || bitMemoryTransferSize == 128;
         if (displacement == 0) {
             return AArch64Address.createBaseRegisterOnlyAddress(bitMemoryTransferSize, base);
@@ -748,7 +749,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * Loads a srcSize value from address into rt zero-extending it if necessary.
+     * Loads a srcSize value from address into rt.
      *
      * @param srcSize size of memory read in bits. Must be 8, 16 or 32 and smaller or equal to
      *            targetSize.
@@ -761,11 +762,11 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * Loads a srcSize value from address into rt zero-extending it if necessary.
+     * Loads a srcSize value from address into rt.
      *
      * In addition, if requested, tries to merge two adjacent loads into one ldp.
      */
-    private void ldr(int srcSize, Register rt, AArch64Address address, boolean tryMerge) {
+    public void ldr(int srcSize, Register rt, AArch64Address address, boolean tryMerge) {
         if (!tryMerge) {
             /* Need to reset state information normally generated during tryMergeLoadStore. */
             isImmLoadStoreMerged = false;
@@ -785,8 +786,21 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     @Override
     public void str(int destSize, Register rt, AArch64Address address) {
-        // Try to merge two adjacent stores into one stp.
-        if (!tryMergeLoadStore(destSize, rt, address, true, false)) {
+        str(destSize, rt, address, true);
+    }
+
+    /**
+     * Stores register rt into memory pointed by address.
+     *
+     * In addition, if requested, tries to merge two adjacent stores into one stp.
+     */
+    public void str(int destSize, Register rt, AArch64Address address, boolean tryMerge) {
+        if (!tryMerge) {
+            /* Need to reset state information normally generated during tryMergeLoadStore. */
+            isImmLoadStoreMerged = false;
+            lastImmLoadStoreEncoding = null;
+            super.str(destSize, rt, address);
+        } else if (!tryMergeLoadStore(destSize, rt, address, true, false)) {
             super.str(destSize, rt, address);
         }
     }
@@ -801,8 +815,21 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     @Override
     public void fldr(int size, Register rt, AArch64Address address) {
-        // Try to merge two adjacent loads into one fldp.
-        if (!(tryMergeLoadStore(size, rt, address, false, true))) {
+        fldr(size, rt, address, true);
+    }
+
+    /**
+     * Floating point load.
+     *
+     * In addition, if requested, tries to merge two adjacent loads into one fldp.
+     */
+    public void fldr(int size, Register rt, AArch64Address address, boolean tryMerge) {
+        if (!tryMerge) {
+            /* Need to reset state information normally generated during tryMergeLoadStore. */
+            isImmLoadStoreMerged = false;
+            lastImmLoadStoreEncoding = null;
+            super.fldr(size, rt, address);
+        } else if (!(tryMergeLoadStore(size, rt, address, false, true))) {
             super.fldr(size, rt, address);
         }
     }
@@ -816,8 +843,21 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     @Override
     public void fstr(int size, Register rt, AArch64Address address) {
-        // Try to merge two adjacent stores into one fstp.
-        if (!(tryMergeLoadStore(size, rt, address, true, true))) {
+        fstr(size, rt, address, true);
+    }
+
+    /**
+     * Floating point store.
+     *
+     * In addition, if requested, tries to merge two adjacent stores into one stp.
+     */
+    public void fstr(int size, Register rt, AArch64Address address, boolean tryMerge) {
+        if (!tryMerge) {
+            /* Need to reset state information normally generated during tryMergeLoadStore. */
+            isImmLoadStoreMerged = false;
+            lastImmLoadStoreEncoding = null;
+            super.fstr(size, rt, address);
+        } else if (!(tryMergeLoadStore(size, rt, address, true, true))) {
             super.fstr(size, rt, address);
         }
     }
@@ -965,7 +1005,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * dst = src1 + shiftType(src2, shiftAmt & (size-1)) and sets condition flags.
+     * dst = src1 - shiftType(src2, shiftAmt & (size-1)) and sets condition flags.
      *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or stackpointer.
@@ -986,7 +1026,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * dst = -src1.
+     * dst = -src.
      *
      * @param size register size. Has to be 32 or 64.
      * @param dst general purpose register. May not be null or stackpointer.
@@ -994,6 +1034,19 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     public void neg(int size, Register dst, Register src) {
         sub(size, dst, zr, src);
+    }
+
+    /**
+     * dst = -(shiftType(src, shiftAmt & (size - 1))).
+     *
+     * @param size register size. Has to be 32 or 64.
+     * @param dst general purpose register. May not be null or stackpointer.
+     * @param src general purpose register. May not be null or stackpointer.
+     * @param shiftType right or left shift, arithmetic or logical.
+     * @param shiftAmt number of shift bits. Has to be between 0 and (size - 1).
+     */
+    public void neg(int size, Register dst, Register src, ShiftType shiftType, int shiftAmt) {
+        sub(size, dst, zr, src, shiftType, shiftAmt);
     }
 
     /**
@@ -1520,8 +1573,8 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     public void fmov(int size, Register dst, double imm) {
         assert size == 32 || size == 64;
         if (imm == 0.0) {
-            assert Double.doubleToRawLongBits(imm) == 0L : "-0.0 is no valid immediate.";
-            fmovCpu2Fpu(size, dst, zr);
+            assert Double.doubleToRawLongBits(imm) == 0L : "-0.0 is not a valid immediate.";
+            neon.moviVI(ASIMDSize.HalfReg, dst, 0);
         } else {
             super.fmov(size, dst, imm);
         }
@@ -1640,7 +1693,8 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         COMPARE_REG_BRANCH_ZERO(0x3), // (CBZ)
         TEST_BIT_BRANCH_NONZERO(0x4), // (TBNZ)
         TEST_BIT_BRANCH_ZERO(0x5), // (TBZ)
-        ADR(0x6); // (ADR)
+        ADR(0x6), // (ADR)
+        JUMP_TABLE_TARGET_OFFSET(0x7); // (signed 32-bit integer value)
 
         /**
          * Offset by which additional information encoded within the instruction to be patched must
@@ -1781,7 +1835,7 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * Branches if condition is true. Address of jump is patched up by HotSpot c++ code.
+     * Branches if condition is true. Address of jump is patched up by the runtime.
      *
      * @param condition any condition value allowed. Non null.
      */
@@ -1798,10 +1852,6 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     @Override
     public void jmp(Label label) {
         // TODO Handle case where offset is too large for a single jump instruction
-        /*
-         * Note if this code is changed to potentially generate more than a single instruction, then
-         * the JumpTable code within AArch64ControlFlow must also be altered.
-         */
         if (label.isBound()) {
             super.b(getPCRelativeOffset(label));
         } else {
@@ -1820,11 +1870,25 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
-     * Immediate jump instruction fixed up by HotSpot c++ code.
+     * Immediate jump instruction fixed up by the runtime.
      */
     public void jmp() {
-        // Offset has to be fixed up by c++ code.
-        super.b(0);
+        super.b();
+    }
+
+    /**
+     * Emits offset to store in JumpTable for given JumpTable start ({@code jumpTable}) and jump
+     * target ({@code entryTarget}).
+     */
+    public void emitJumpTableOffset(Label jumpTable, Label entryTarget) {
+        if (entryTarget.isBound()) {
+            int targetOffset = entryTarget.position() - jumpTable.position();
+            emitInt(targetOffset);
+        } else {
+            int offsetToJumpTableBase = position() - jumpTable.position();
+            entryTarget.addPatchAt(position(), this);
+            emitInt(PatchLabelKind.encode(PatchLabelKind.JUMP_TABLE_TARGET_OFFSET, offsetToJumpTableBase));
+        }
     }
 
     /**
@@ -1984,6 +2048,13 @@ public class AArch64MacroAssembler extends AArch64Assembler {
                 super.adr(reg, pcRelativeOffset, patchPos);
                 break;
             }
+            case JUMP_TABLE_TARGET_OFFSET: {
+                int offsetToJumpTableBase = extraInformation;
+                int jumpTableBase = patchPos - offsetToJumpTableBase;
+                int targetOffset = jumpTarget - jumpTableBase;
+                emitInt(targetOffset, patchPos);
+                break;
+            }
             default:
                 throw GraalError.shouldNotReachHere();
         }
@@ -2057,16 +2128,15 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         }
 
         @Override
-        public void patch(int codePos, int relative, byte[] code) {
-            int pos = instructionPosition;
-            long targetAddress = ((long) pos) + relative;
-            int relativePageDifference = PatcherUtil.computeRelativePageDifference(targetAddress, pos, 1 << 12);
-            int originalInst = PatcherUtil.readInstruction(code, pos);
+        public void patch(long startAddress, int relative, byte[] code) {
+            long targetAddress = startAddress + relative;
+            int relativePageDifference = PatcherUtil.computeRelativePageDifference(targetAddress, startAddress, 1 << 12);
+            int originalInst = PatcherUtil.readInstruction(code, instructionPosition);
             int newInst = PatcherUtil.patchAdrpHi21(originalInst, relativePageDifference & 0x1FFFFF);
-            PatcherUtil.writeInstruction(code, pos, newInst);
-            originalInst = PatcherUtil.readInstruction(code, pos + 4);
+            PatcherUtil.writeInstruction(code, instructionPosition, newInst);
+            originalInst = PatcherUtil.readInstruction(code, instructionPosition + 4);
             newInst = PatcherUtil.patchLdrLo12(originalInst, (int) targetAddress & 0xFFF, srcSize);
-            PatcherUtil.writeInstruction(code, pos + 4, newInst);
+            PatcherUtil.writeInstruction(code, instructionPosition + 4, newInst);
         }
     }
 
@@ -2081,16 +2151,15 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         }
 
         @Override
-        public void patch(int codePos, int relative, byte[] code) {
-            int pos = instructionPosition;
-            long targetAddress = ((long) pos) + relative;
-            int relativePageDifference = PatcherUtil.computeRelativePageDifference(targetAddress, pos, 1 << 12);
-            int originalInst = PatcherUtil.readInstruction(code, pos);
+        public void patch(long startAddress, int relative, byte[] code) {
+            long targetAddress = startAddress + relative;
+            int relativePageDifference = PatcherUtil.computeRelativePageDifference(targetAddress, startAddress, 1 << 12);
+            int originalInst = PatcherUtil.readInstruction(code, instructionPosition);
             int newInst = PatcherUtil.patchAdrpHi21(originalInst, relativePageDifference & 0x1FFFFF);
-            PatcherUtil.writeInstruction(code, pos, newInst);
-            originalInst = PatcherUtil.readInstruction(code, pos + 4);
+            PatcherUtil.writeInstruction(code, instructionPosition, newInst);
+            originalInst = PatcherUtil.readInstruction(code, instructionPosition + 4);
             newInst = PatcherUtil.patchAddLo12(originalInst, (int) targetAddress & 0xFFF);
-            PatcherUtil.writeInstruction(code, pos + 4, newInst);
+            PatcherUtil.writeInstruction(code, instructionPosition + 4, newInst);
         }
     }
 
@@ -2128,13 +2197,13 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         }
 
         @Override
-        public void patch(int codePos, int relative, byte[] code) {
+        public void patch(long startAddress, int relative, byte[] code) {
             /*
              * Each move has a 16 bit immediate operand. We use a series of shifted moves to
              * represent immediate values larger than 16 bits.
              */
             // first retrieving the target address
-            long curValue = ((long) instructionPosition) + relative;
+            long curValue = startAddress + relative;
             int siteOffset = 0;
             boolean containsNegatedMov = false;
             for (MovAction include : includeSet) {

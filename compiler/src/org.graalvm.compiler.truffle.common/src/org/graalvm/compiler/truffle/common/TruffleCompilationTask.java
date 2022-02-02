@@ -52,4 +52,20 @@ public interface TruffleCompilationTask {
     TruffleInliningData inliningData();
 
     boolean hasNextTier();
+
+    default long time() {
+        return 0;
+    }
+
+    default double weight() {
+        return Double.NaN;
+    }
+
+    default double rate() {
+        return Double.NaN;
+    }
+
+    default int queueChange() {
+        return 0;
+    }
 }

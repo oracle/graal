@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -199,16 +199,6 @@ public final class GraalOptions {
     @Option(help = "", type = OptionType.Debug)
     public static final OptionKey<Boolean> CanOmitFrame = new OptionKey<>(true);
 
-    // Ahead of time compilation
-    @Option(help = "Try to avoid emitting code where patching is required", type = OptionType.Expert)
-    public static final OptionKey<Boolean> ImmutableCode = new OptionKey<>(false);
-
-    @Option(help = "Generate position independent code", type = OptionType.Expert)
-    public static final OptionKey<Boolean> GeneratePIC = new OptionKey<>(false);
-
-    @Option(help = "Generate verify oop checks in AOT code", type = OptionType.Expert)
-    public static final OptionKey<Boolean> AOTVerifyOops = new OptionKey<>(false);
-
     // Runtime settings
     @Option(help = "", type = OptionType.Expert)
     public static final OptionKey<Boolean> SupportJsrBytecodes = new OptionKey<>(true);
@@ -285,8 +275,14 @@ public final class GraalOptions {
     @Option(help = "Alignment in bytes for loop header blocks.", type = OptionType.Expert)
     public static final OptionKey<Integer> LoopHeaderAlignment = new OptionKey<>(16);
 
-    @Option(help = "String.indexOf invocations will be evaluated at compile time if the receiver is a constant and its length is lower than this value.", type = OptionType.Expert)
-    public static final OptionKey<Integer> StringIndexOfLimit = new OptionKey<>(4096);
+    @Option(help = "Alignment in bytes for loop header blocks that have no fall through paths.", type = OptionType.Expert)
+    public static final OptionKey<Integer> IsolatedLoopHeaderAlignment = new OptionKey<>(32);
+
+    @Option(help = "Array region equality checks will be evaluated at compile time if the receiver is a constant and its length is smaller than this value.", type = OptionType.Expert)
+    public static final OptionKey<Integer> ArrayRegionEqualsConstantLimit = new OptionKey<>(4096);
+
+    @Option(help = "String.indexOf invocations will be evaluated at compile time if the receiver is a constant and its length is smaller than this value.", type = OptionType.Expert)
+    public static final OptionKey<Integer> StringIndexOfConstantLimit = new OptionKey<>(4096);
 
     @Option(help = "Emit substitutions for String methods", type = OptionType.Debug)
     public static final OptionKey<Boolean> EmitStringSubstitutions = new OptionKey<>(true);

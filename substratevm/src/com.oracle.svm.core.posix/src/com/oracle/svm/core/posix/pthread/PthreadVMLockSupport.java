@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.posix.pthread;
 
+import static com.oracle.svm.core.annotate.RestrictHeapAccess.Access.NO_ALLOCATION;
+
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.word.Word;
@@ -39,6 +41,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -51,7 +54,8 @@ import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Pthread;
 import com.oracle.svm.core.posix.headers.Time;
-import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 
 import jdk.vm.ci.meta.JavaKind;
 
@@ -62,14 +66,14 @@ import jdk.vm.ci.meta.JavaKind;
 @AutomaticFeature
 final class PthreadVMLockFeature implements Feature {
 
-    private final ClassInstanceReplacer<VMMutex, VMMutex> mutexReplacer = new ClassInstanceReplacer<VMMutex, VMMutex>(VMMutex.class) {
+    private final ClassInstanceReplacer<VMMutex, VMMutex> mutexReplacer = new ClassInstanceReplacer<>(VMMutex.class) {
         @Override
         protected VMMutex createReplacement(VMMutex source) {
             return new PthreadVMMutex(source.getName());
         }
     };
 
-    private final ClassInstanceReplacer<VMCondition, VMCondition> conditionReplacer = new ClassInstanceReplacer<VMCondition, VMCondition>(VMCondition.class) {
+    private final ClassInstanceReplacer<VMCondition, VMCondition> conditionReplacer = new ClassInstanceReplacer<>(VMCondition.class) {
         @Override
         protected VMCondition createReplacement(VMCondition source) {
             return new PthreadVMCondition((PthreadVMMutex) mutexReplacer.apply(source.getMutex()));
@@ -92,17 +96,21 @@ final class PthreadVMLockFeature implements Feature {
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
         ObjectLayout layout = ConfigurationValues.getObjectLayout();
-        int nextIndex = 0;
+        int alignment = layout.getAlignment();
+
+        int baseOffset = layout.getArrayBaseOffset(JavaKind.Byte);
+        /* padding if first element is not object aligned */
+        int nextIndex = NumUtil.roundUp(baseOffset, alignment) - baseOffset;
 
         PthreadVMMutex[] mutexes = mutexReplacer.getReplacements().toArray(new PthreadVMMutex[0]);
-        int mutexSize = NumUtil.roundUp(SizeOf.get(Pthread.pthread_mutex_t.class), 8);
+        int mutexSize = NumUtil.roundUp(SizeOf.get(Pthread.pthread_mutex_t.class), alignment);
         for (PthreadVMMutex mutex : mutexes) {
             mutex.structOffset = WordFactory.unsigned(layout.getArrayElementOffset(JavaKind.Byte, nextIndex));
             nextIndex += mutexSize;
         }
 
         PthreadVMCondition[] conditions = conditionReplacer.getReplacements().toArray(new PthreadVMCondition[0]);
-        int conditionSize = NumUtil.roundUp(SizeOf.get(Pthread.pthread_cond_t.class), 8);
+        int conditionSize = NumUtil.roundUp(SizeOf.get(Pthread.pthread_cond_t.class), alignment);
         for (PthreadVMCondition condition : conditions) {
             condition.structOffset = WordFactory.unsigned(layout.getArrayElementOffset(JavaKind.Byte, nextIndex));
             nextIndex += conditionSize;
@@ -160,13 +168,16 @@ public final class PthreadVMLockSupport extends VMLockSupport {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", calleeMustBe = false)
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in fatal error handling.")
     protected static void checkResult(int result, String functionName) {
         if (result != 0) {
             /*
              * Functions are called very early and late during our execution, so there is not much
              * we can do when they fail.
              */
-            VMThreads.StatusSupport.setStatusIgnoreSafepoints();
+            SafepointBehavior.preventSafepoints();
+            StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
+
             Log.log().string(functionName).string(" returned ").signed(result).newline();
             ImageSingletons.lookup(LogHandler.class).fatalError();
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.nodes.memory;
 
+import org.graalvm.compiler.graph.MemoryKillMarker;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.ValueNodeInterface;
 import org.graalvm.word.LocationIdentity;
@@ -36,6 +37,6 @@ import org.graalvm.word.LocationIdentity;
  * i.e., nodes in the memory graph that mark the last accesses to such a location, like a
  * {@linkplain MemoryPhiNode} node.
  */
-public interface MemoryKill extends ValueNodeInterface {
+public interface MemoryKill extends ValueNodeInterface, MemoryKillMarker {
 
 }

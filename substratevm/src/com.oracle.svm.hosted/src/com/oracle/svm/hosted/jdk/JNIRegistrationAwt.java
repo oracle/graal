@@ -24,6 +24,15 @@
  */
 package com.oracle.svm.hosted.jdk;
 
+import java.awt.GraphicsEnvironment;
+
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.impl.InternalPlatform;
+
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.configure.ResourcesRegistry;
@@ -33,15 +42,6 @@ import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jni.JNIRuntimeAccess;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.c.NativeLibraries;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
-import org.graalvm.nativeimage.impl.InternalPlatform;
-
-import java.awt.GraphicsEnvironment;
 
 @Platforms({InternalPlatform.PLATFORM_JNI.class})
 @AutomaticFeature
@@ -50,7 +50,7 @@ public class JNIRegistrationAwt extends JNIRegistrationUtil implements Feature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (JavaVersionUtil.JAVA_SPEC >= 11 && Platform.includedIn(Platform.LINUX.class)) {
+        if (Platform.includedIn(Platform.LINUX.class)) {
             access.registerReachabilityHandler(JNIRegistrationAwt::handlePreferencesClassReachable,
                             clazz(access, "java.awt.Toolkit"),
                             clazz(access, "sun.java2d.cmm.lcms.LCMS"),
@@ -161,8 +161,6 @@ public class JNIRegistrationAwt extends JNIRegistrationUtil implements Feature {
 
         NativeLibrarySupport.singleton().preregisterUninitializedBuiltinLibrary("fontmanager");
         nativeLibraries.addStaticJniLibrary("fontmanager", isHeadless() ? "awt_headless" : "awt_xawt");
-        nativeLibraries.addStaticJniLibrary("harfbuzz");
-
         nativeLibraries.addDynamicNonJniLibrary("freetype");
 
         JNIRuntimeAccess.register(clazz(access, "sun.font.FontConfigManager$FontConfigInfo"));

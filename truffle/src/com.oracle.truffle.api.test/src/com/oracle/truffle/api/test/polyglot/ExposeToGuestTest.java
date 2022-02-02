@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -72,6 +72,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class ExposeToGuestTest {
     @Test
@@ -302,6 +303,7 @@ public class ExposeToGuestTest {
 
     @Test
     public void staticFieldAccessIsForbidden() throws InteropException {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
         Context.Builder builder = Context.newBuilder();
         builder.allowHostClassLookup((c) -> c.endsWith("FieldAccess"));
         Context c = builder.build();
@@ -377,6 +379,7 @@ public class ExposeToGuestTest {
 
     @Test
     public void staticConstructorAccessIsForbidden() throws InteropException {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
         Context.Builder builder = Context.newBuilder();
         builder.allowHostClassLookup((c) -> c.endsWith("ConstructorAccess"));
         Context c = builder.build();

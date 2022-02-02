@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -96,7 +96,7 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
     public void set(Node node, T value) {
         assert check(node);
         if (!node.isAlive()) {
-            throw new VerificationError("this node is not alive: " + node);
+            throw new GraalGraphError("this node is not alive: " + node);
         }
         values[getNodeId(node)] = value;
     }
@@ -141,11 +141,11 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
 
     @Override
     public Iterable<Node> getKeys() {
-        return new Iterable<Node>() {
+        return new Iterable<>() {
 
             @Override
             public Iterator<Node> iterator() {
-                return new Iterator<Node>() {
+                return new Iterator<>() {
 
                     int i = 0;
 
@@ -181,7 +181,7 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
 
     @Override
     public MapCursor<Node, T> getEntries() {
-        return new MapCursor<Node, T>() {
+        return new MapCursor<>() {
 
             int current = -1;
 
@@ -210,16 +210,24 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
                 assert NodeMap.this.values[current] != null;
                 NodeMap.this.values[current] = null;
             }
+
+            @SuppressWarnings("unchecked")
+            @Override
+            public T setValue(T newValue) {
+                T oldValue = (T) NodeMap.this.values[current];
+                NodeMap.this.values[current] = newValue;
+                return oldValue;
+            }
         };
     }
 
     @Override
     public Iterable<T> getValues() {
-        return new Iterable<T>() {
+        return new Iterable<>() {
 
             @Override
             public Iterator<T> iterator() {
-                return new Iterator<T>() {
+                return new Iterator<>() {
 
                     int i = 0;
 

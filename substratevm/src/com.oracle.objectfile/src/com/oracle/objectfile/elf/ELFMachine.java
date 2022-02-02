@@ -33,12 +33,6 @@ import com.oracle.objectfile.elf.ELFRelocationSection.ELFRelocationMethod;
  * ELF machine type (incomplete). Each machine type also defines its set of relocation types.
  */
 public enum ELFMachine/* implements Integral */ {
-    NONE {
-        @Override
-        Class<? extends Enum<? extends RelocationMethod>> relocationTypes() {
-            return ELFDummyRelocation.class;
-        }
-    },
     X86_64 {
         @Override
         Class<? extends Enum<? extends RelocationMethod>> relocationTypes() {
@@ -136,16 +130,13 @@ public enum ELFMachine/* implements Integral */ {
 
                 }
             default:
-            case NONE:
-                return ELFDummyRelocation.R_NONE;
+                throw new IllegalStateException("unknown ELF machine type");
         }
     }
 
     // TODO: use explicit enum values
     public static ELFMachine from(int m) {
         switch (m) {
-            case 0:
-                return NONE;
             case 0x3E:
                 return X86_64;
             case 0xB7:
@@ -156,9 +147,7 @@ public enum ELFMachine/* implements Integral */ {
     }
 
     public short toShort() {
-        if (this == NONE) {
-            return 0;
-        } else if (this == AArch64) {
+        if (this == AArch64) {
             return 0xB7;
         } else if (this == X86_64) {
             return 0x3E;
@@ -173,25 +162,6 @@ public enum ELFMachine/* implements Integral */ {
         } else {
             return X86_64;
         }
-    }
-}
-
-enum ELFDummyRelocation implements ELFRelocationMethod {
-    R_NONE;
-
-    @Override
-    public boolean canUseExplicitAddend() {
-        return true;
-    }
-
-    @Override
-    public boolean canUseImplicitAddend() {
-        return true;
-    }
-
-    @Override
-    public long toLong() {
-        return ordinal();
     }
 }
 
@@ -243,19 +213,6 @@ enum ELFX86_64Relocation implements ELFRelocationMethod {
     static {
         // spot check
         assert R_COUNT.ordinal() == 39;
-    }
-
-    /*
-     * x86-64 relocs always use explicit addends.
-     */
-    @Override
-    public boolean canUseExplicitAddend() {
-        return true;
-    }
-
-    @Override
-    public boolean canUseImplicitAddend() {
-        return false;
     }
 
     @Override
@@ -396,16 +353,6 @@ enum ELFAArch64Relocation implements ELFRelocationMethod {
 
     ELFAArch64Relocation(long code) {
         this.code = code;
-    }
-
-    @Override
-    public boolean canUseImplicitAddend() {
-        return false;
-    }
-
-    @Override
-    public boolean canUseExplicitAddend() {
-        return true;
     }
 
     @Override

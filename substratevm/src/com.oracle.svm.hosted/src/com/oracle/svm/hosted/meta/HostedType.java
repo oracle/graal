@@ -96,9 +96,7 @@ public abstract class HostedType implements SharedType, WrappedJavaType, Compara
      */
     protected HostedType strengthenStampType;
 
-    private final boolean isCloneable;
-
-    public HostedType(HostedUniverse universe, AnalysisType wrapped, JavaKind kind, JavaKind storageKind, HostedClass superClass, HostedInterface[] interfaces, boolean isCloneable) {
+    public HostedType(HostedUniverse universe, AnalysisType wrapped, JavaKind kind, JavaKind storageKind, HostedClass superClass, HostedInterface[] interfaces) {
         this.universe = universe;
         this.wrapped = wrapped;
         this.kind = kind;
@@ -106,7 +104,6 @@ public abstract class HostedType implements SharedType, WrappedJavaType, Compara
         this.superClass = superClass;
         this.interfaces = interfaces;
         this.typeID = -1;
-        this.isCloneable = isCloneable;
     }
 
     public HostedType getStrengthenStampType() {
@@ -433,7 +430,7 @@ public abstract class HostedType implements SharedType, WrappedJavaType, Compara
 
     @Override
     public boolean isCloneableWithAllocation() {
-        return isCloneable;
+        return wrapped.isCloneableWithAllocation();
     }
 
     @SuppressWarnings("deprecation")

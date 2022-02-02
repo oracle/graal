@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,6 @@
  */
 package org.graalvm.compiler.nodes.calc;
 
-import static org.graalvm.compiler.core.common.GraalOptions.GeneratePIC;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_1;
 
 import org.graalvm.compiler.core.common.PermanentBailoutException;
@@ -32,6 +31,7 @@ import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
 import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
+import org.graalvm.compiler.core.common.type.FloatStamp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -49,7 +49,7 @@ import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.memory.VolatileReadNode;
+import org.graalvm.compiler.nodes.memory.OrderedReadNode;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
@@ -195,9 +195,9 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
             } else if (nonConstant instanceof ConvertNode) {
                 ConvertNode convert = (ConvertNode) nonConstant;
                 boolean multiUsage = (convert.asNode().hasMoreThanOneUsage() && convert.getValue().hasExactlyOneUsage());
-                if (!multiUsage && convert.asNode().hasMoreThanOneUsage() && convert.getValue() instanceof VolatileReadNode) {
+                if (!multiUsage && convert.asNode().hasMoreThanOneUsage() && convert.getValue() instanceof OrderedReadNode) {
                     // Only account for data usages
-                    VolatileReadNode read = (VolatileReadNode) convert.getValue();
+                    OrderedReadNode read = (OrderedReadNode) convert.getValue();
                     int nonMemoryEdges = 0;
                     for (Node u : read.usages()) {
                         for (Position pos : u.inputPositions()) {
@@ -220,10 +220,40 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
                         // Avoid large integer constants.
                         return null;
                     }
+                    Stamp convertInputStamp = narrowNode.getValue().stamp(NodeView.DEFAULT);
+
+                    // if we don't know the range the narrowing cannot be safely folded away
+                    if (convertInputStamp.isUnrestricted()) {
+                        return null;
+                    }
+
+                    // don't proceed if we will be changing the range of values
+                    if (convertInputStamp instanceof IntegerStamp) {
+                        IntegerStamp intConvertInputStamp = (IntegerStamp) convertInputStamp;
+                        IntegerStamp intConvertStamp = (IntegerStamp) narrowNode.stamp(NodeView.DEFAULT);
+                        if (condition.isUnsigned()) {
+                            if (intConvertInputStamp.unsignedLowerBound() < intConvertStamp.unsignedLowerBound() || intConvertInputStamp.unsignedUpperBound() > intConvertStamp.unsignedUpperBound()) {
+                                return null;
+                            }
+                        } else {
+                            if (intConvertInputStamp.lowerBound() < intConvertStamp.lowerBound() || intConvertInputStamp.upperBound() > intConvertStamp.upperBound()) {
+                                return null;
+                            }
+                        }
+                    } else if (convertInputStamp instanceof FloatStamp) {
+                        FloatStamp floatConvertInputStamp = (FloatStamp) convertInputStamp;
+                        FloatStamp floatConvertStamp = (FloatStamp) narrowNode.stamp(NodeView.DEFAULT);
+                        GraalError.guarantee(!condition.isUnsigned(), "An unsigned floating point comparison makes no sense");
+                        if (floatConvertInputStamp.lowerBound() < floatConvertStamp.lowerBound() || floatConvertInputStamp.upperBound() > floatConvertStamp.upperBound()) {
+                            return null;
+                        }
+                    } else {
+                        return null;
+                    }
                 }
 
                 if (isConstantConversionSupported(convert, view, smallestCompareWidth)) {
-                    ConstantNode newConstant = canonicalConvertConstant(constantReflection, metaAccess, options, condition, convert, constant, view);
+                    ConstantNode newConstant = canonicalConvertConstant(constantReflection, metaAccess, condition, convert, constant, view);
                     if (newConstant != null) {
                         if (mirrored) {
                             return duplicateModified(newConstant, convert.getValue(), unorderedIsTrue, view);
@@ -253,15 +283,11 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
             return supported;
         }
 
-        private static ConstantNode canonicalConvertConstant(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, OptionValues options, CanonicalCondition condition,
-                        ConvertNode convert, Constant constant, NodeView view) {
+        private static ConstantNode canonicalConvertConstant(ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess, CanonicalCondition condition, ConvertNode convert,
+                        Constant constant, NodeView view) {
             if (convert.preservesOrder(condition, constant, constantReflection)) {
                 Constant reverseConverted = convert.reverse(constant, constantReflection);
                 if (reverseConverted != null && convert.convert(reverseConverted, constantReflection).equals(constant)) {
-                    if (GeneratePIC.getValue(options)) {
-                        // We always want uncompressed constants
-                        return null;
-                    }
                     return ConstantNode.forConstant(convert.getValue().stamp(view), reverseConverted, metaAccess);
                 }
             }
@@ -407,6 +433,14 @@ public abstract class CompareNode extends BinaryOpLogicNode implements Canonical
             if (otherCondition == CanonicalCondition.EQ && (condition() == CanonicalCondition.LT || condition() == CanonicalCondition.BT)) {
                 if (thisNegated && !otherNegated) {
                     // a < b => a != b
+                    return true;
+                }
+            }
+        }
+        if (condition() == otherCondition && sameValue(getX(), otherY) && sameValue(getY(), otherX)) {
+            if ((condition() == CanonicalCondition.LT || condition() == CanonicalCondition.BT) && getY().stamp(NodeView.DEFAULT) instanceof IntegerStamp) {
+                if (!thisNegated && otherNegated) {
+                    // a < b => !(b < a)
                     return true;
                 }
             }

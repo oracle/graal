@@ -105,6 +105,8 @@ import com.oracle.svm.core.handles.ThreadLocalHandles;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 
+// Checkstyle: stop method name check
+
 @SuppressWarnings("unused")
 @CHeader(value = PolyglotAPIHeader.class)
 public final class PolyglotNativeAPI {
@@ -119,7 +121,7 @@ public final class PolyglotNativeAPI {
 
     private static ThreadLocal<CallbackException> exceptionsTL = new ThreadLocal<>();
     private static ThreadLocal<ErrorStateHolder> errorHolder = new ThreadLocal<>();
-    @SuppressWarnings("rawtypes") private static final FastThreadLocalObject<ThreadLocalHandles> handles = FastThreadLocalFactory.createObject(ThreadLocalHandles.class);
+    @SuppressWarnings("rawtypes") private static final FastThreadLocalObject<ThreadLocalHandles> handles = FastThreadLocalFactory.createObject(ThreadLocalHandles.class, "PolyglotNativeAPI.handles");
 
     @SuppressWarnings("unchecked")
     private static ThreadLocalHandles<PolyglotNativeAPITypes.PolyglotHandle> getHandles() {

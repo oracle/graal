@@ -55,7 +55,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
@@ -210,9 +209,7 @@ public class AOTTutorial {
 
         /**
          * The doDouble specialization is only enabled depending on an option stored in the language
-         * instance. Note that only the current language associated with the RootNode maybe used in
-         * {@link CachedLanguage}. Any other language instance used will result in a
-         * {@link IllegalStateException} when the node is prepared for AOT.
+         * instance.
          *
          * In this case since doublesEnabled is not set to true this specialization will not produce
          * any code after AOT preparation.
@@ -348,7 +345,7 @@ public class AOTTutorial {
                 // program
                 // this is equivalent to (arg0 + arg1) + arg2
                 BaseNode body = AddNodeGen.create(AddNodeGen.create(new ArgumentNode(0), new ArgumentNode(1)), new ArgumentNode(2));
-                return Truffle.getRuntime().createCallTarget(new AOTRootNode(this, body, returnType, argumentTypes));
+                return new AOTRootNode(this, body, returnType, argumentTypes).getCallTarget();
             } else {
                 throw CompilerDirectives.shouldNotReachHere("not-implemented");
             }
@@ -375,7 +372,7 @@ public class AOTTutorial {
             // immediately compiled at parse time without prior execution.
             Value v = context.parse("AOTTestLanguage", "sample");
             String beforeExecute = log.toString();
-            assertTrue(beforeExecute, beforeExecute.contains("[engine] opt done     sample"));
+            assertTrue(beforeExecute, beforeExecute.contains("[engine] opt done") && beforeExecute.contains("sample"));
 
             // we can compile the function and it is executed compiled immediately.
             // note that if we would use any other types than the ones used during AOT

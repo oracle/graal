@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -46,7 +46,7 @@ import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 
 @NodeInfo(cycles = CYCLES_UNKNOWN, size = SIZE_UNKNOWN)
-public class ProfileBooleanNode extends MacroStateSplitNode implements Simplifiable {
+public class ProfileBooleanNode extends MacroNode implements Simplifiable {
     public static final NodeClass<ProfileBooleanNode> TYPE = NodeClass.create(ProfileBooleanNode.class);
     private final ConstantReflectionProvider constantProvider;
 

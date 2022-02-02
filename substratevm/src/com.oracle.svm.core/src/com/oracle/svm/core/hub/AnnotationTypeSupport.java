@@ -25,22 +25,20 @@
 package com.oracle.svm.core.hub;
 
 import java.lang.annotation.Annotation;
-import java.util.HashMap;
-import java.util.Map;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.util.ImageHeapMap;
 
-// Checkstyle: stop
 import sun.reflect.annotation.AnnotationType;
-// Checkstyle: start
 
 public class AnnotationTypeSupport {
-    private Map<Class<? extends Annotation>, AnnotationType> annotationTypeMap = new HashMap<>();
+    private final EconomicMap<Class<? extends Annotation>, AnnotationType> annotationTypeMap = ImageHeapMap.create();
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void createInstance(Class<? extends Annotation> annotationClass) {

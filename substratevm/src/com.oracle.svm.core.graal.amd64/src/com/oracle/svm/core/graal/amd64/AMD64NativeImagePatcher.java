@@ -52,7 +52,7 @@ class AMD64NativeImagePatcherFeature implements Feature {
 final class AMD64NativePatchConsumerFactory extends PatchConsumerFactory.NativePatchConsumerFactory {
     @Override
     public Consumer<Assembler.CodeAnnotation> newConsumer(CompilationResult compilationResult) {
-        return new Consumer<Assembler.CodeAnnotation>() {
+        return new Consumer<>() {
             @Override
             public void accept(Assembler.CodeAnnotation annotation) {
                 if (annotation instanceof OperandDataAnnotation) {
@@ -75,7 +75,7 @@ public class AMD64NativeImagePatcher extends CompilationResult.CodeAnnotation im
     }
 
     @Override
-    public void patchCode(int relative, byte[] code) {
+    public void patchCode(long methodStartAddress, int relative, byte[] code) {
         int curValue = relative - (annotation.nextInstructionPosition - annotation.instructionPosition);
 
         for (int i = 0; i < annotation.operandSize; i++) {

@@ -37,7 +37,6 @@ import org.junit.After;
 import org.junit.Assume;
 import org.junit.Before;
 
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -59,8 +58,7 @@ public abstract class TruffleCompilerImplTest extends GraalCompilerTest {
     @Before
     public void onlyWhiteBox() {
         if (TruffleOptions.AOT) {
-            GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
-            TruffleCompiler compiler = runtime.getTruffleCompiler((OptimizedCallTarget) runtime.createCallTarget(RootNode.createConstantNode(42)));
+            TruffleCompiler compiler = GraalTruffleRuntime.getRuntime().getTruffleCompiler((OptimizedCallTarget) RootNode.createConstantNode(42).getCallTarget());
             Assume.assumeTrue("cannot get whitebox interface to Truffle compiler", compiler instanceof TruffleCompilerImpl);
             this.truffleCompiler = (TruffleCompilerImpl) compiler;
         }
@@ -75,7 +73,7 @@ public abstract class TruffleCompilerImplTest extends GraalCompilerTest {
 
     @Override
     protected CompilationIdentifier createCompilationId() {
-        OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(RootNode.createConstantNode(42));
+        OptimizedCallTarget target = (OptimizedCallTarget) RootNode.createConstantNode(42).getCallTarget();
         return getTruffleCompiler(target).createCompilationIdentifier(target);
     }
 

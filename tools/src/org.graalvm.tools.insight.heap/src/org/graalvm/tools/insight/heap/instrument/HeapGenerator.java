@@ -167,14 +167,22 @@ final class HeapGenerator {
     }
 
     private static Object readMember(InteropLibrary iop, Object obj, String member) {
+        return readMember(iop, obj, member, (id) -> id);
+    }
+
+    private interface Convert<T> {
+        T convert(Object obj) throws UnsupportedTypeException, UnsupportedMessageException;
+    }
+
+    private static <T> T readMember(InteropLibrary iop, Object obj, String member, Convert<T> convert) {
         String errMsg;
         try {
             Object value = iop.readMember(obj, member);
             if (!iop.isNull(value)) {
-                return value;
+                return convert.convert(value);
             }
             errMsg = "'" + member + "' should be defined";
-        } catch (UnsupportedMessageException | UnknownIdentifierException ex) {
+        } catch (UnsupportedTypeException | UnsupportedMessageException | UnknownIdentifierException ex) {
             errMsg = "Cannot find '" + member + "'";
         }
         StringBuilder sb = new StringBuilder(errMsg);
@@ -389,7 +397,7 @@ final class HeapGenerator {
      *             represented
      */
     private ObjectInstance dumpSource(InteropLibrary iop, HeapDump seg, Object source) throws IOException, UnsupportedMessageException {
-        String srcName = asStringOrNull(iop, source, "name");
+        String srcName = readMember(iop, source, "name", iop::asString);
         String mimeType = asStringOrNull(iop, source, "mimeType");
         String uri = asStringOrNull(iop, source, "uri");
         String characters = asStringOrNull(iop, source, "characters");

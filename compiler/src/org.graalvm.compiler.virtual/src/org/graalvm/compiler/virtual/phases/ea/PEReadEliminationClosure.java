@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -188,7 +188,7 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
     }
 
     private boolean processUnsafeLoad(RawLoadNode load, PEReadEliminationBlockState state, GraphEffectList effects) {
-        if (load.isVolatile()) {
+        if (load.ordersMemoryAccesses()) {
             state.killReadCache();
             return false;
         }
@@ -218,7 +218,7 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
     }
 
     private boolean processUnsafeStore(RawStoreNode store, PEReadEliminationBlockState state, GraphEffectList effects) {
-        if (store.isVolatile()) {
+        if (store.ordersMemoryAccesses()) {
             state.killReadCache();
             return false;
         }
@@ -250,7 +250,7 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
     }
 
     private boolean processStoreField(StoreFieldNode store, PEReadEliminationBlockState state, GraphEffectList effects) {
-        if (store.isVolatile()) {
+        if (store.ordersMemoryAccesses()) {
             state.killReadCache();
             return false;
         }
@@ -259,7 +259,7 @@ public final class PEReadEliminationClosure extends PartialEscapeClosure<PEReadE
     }
 
     private boolean processLoadField(LoadFieldNode load, PEReadEliminationBlockState state, GraphEffectList effects) {
-        if (load.isVolatile()) {
+        if (load.ordersMemoryAccesses()) {
             state.killReadCache();
             return false;
         }

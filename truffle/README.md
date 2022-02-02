@@ -3,7 +3,7 @@
 ## Introduction
 
 Truffle is an Open Source library for building programming language implementations as interpreters for self-modifying Abstract Syntax Trees.
-Together with the Open Source [GraalVM compiler](../compiler), Truffle represents a significant step
+Together with the Open Source [Graal Compiler](../compiler), Truffle represents a significant step
 forward in programming language implementation technology in the current era of dynamic languages.
 
 A growing  body of shared implementation code and services
@@ -17,7 +17,7 @@ Software of the Johannes Kepler University Linz.
 
 ## Using Truffle
 
-If you are looking for documentation on how to use Truffle, please consult the documentation [here](../docs/truffle-framework/README.md) or [on the website](https://www.graalvm.org/graalvm-as-a-platform/language-implementation-framework/).
+If you are looking for documentation on how to use Truffle, please consult the documentation [here](docs/README.md) or [on the website](https://www.graalvm.org/graalvm-as-a-platform/language-implementation-framework/).
 
 ## Hacking Truffle
 

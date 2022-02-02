@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 package org.graalvm.compiler.nodes.spi;
 
 import org.graalvm.compiler.api.replacements.MethodSubstitution;
+import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.SnippetTemplateCache;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
@@ -45,6 +46,8 @@ import org.graalvm.compiler.options.OptionValues;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
+import java.util.BitSet;
+
 /**
  * Interface for managing replacements.
  */
@@ -64,18 +67,25 @@ public interface Replacements extends GeneratedPluginInjectionProvider {
     Class<? extends GraphBuilderPlugin> getIntrinsifyingPlugin(ResolvedJavaMethod method);
 
     /**
+     * Create a {@link DebugContext} for use with {@link Snippet} related work. Snippet processingis
+     * hidden by default using the flags {@code DebugStubsAndSnippets}.
+     */
+    DebugContext openSnippetDebugContext(DebugContext.Description description, DebugContext outer, OptionValues options);
+
+    /**
      * Gets the snippet graph derived from a given method.
      *
      * @param recursiveEntry if the snippet contains a call to this method, it's considered as
      *            recursive call and won't be processed for {@linkplain MethodSubstitution
      *            substitutions}.
      * @param args arguments to the snippet if available, otherwise {@code null}
+     * @param nonNullParameters
      * @param trackNodeSourcePosition
      * @param options
      * @return the snippet graph, if any, that is derived from {@code method}
      */
-    StructuredGraph getSnippet(ResolvedJavaMethod method, ResolvedJavaMethod recursiveEntry, Object[] args, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition,
-                    OptionValues options);
+    StructuredGraph getSnippet(ResolvedJavaMethod method, ResolvedJavaMethod recursiveEntry, Object[] args, BitSet nonNullParameters, boolean trackNodeSourcePosition,
+                    NodeSourcePosition replaceePosition, OptionValues options);
 
     /**
      * Get the snippet metadata required to inline the snippet.
@@ -166,7 +176,7 @@ public interface Replacements extends GeneratedPluginInjectionProvider {
      *
      * @return true iff there may be a substitution graph available for {@code method}
      */
-    boolean hasSubstitution(ResolvedJavaMethod method);
+    boolean hasSubstitution(ResolvedJavaMethod method, OptionValues options);
 
     /**
      * Gets the provider for accessing the bytecode of a substitution method if no other provider is

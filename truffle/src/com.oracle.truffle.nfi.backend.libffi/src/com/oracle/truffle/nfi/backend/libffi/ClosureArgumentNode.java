@@ -44,7 +44,6 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.nfi.backend.libffi.LibFFIType.CachedTypeInfo;
 
@@ -90,10 +89,9 @@ abstract class ClosureArgumentNode extends Node {
         }
 
         @Specialization
-        Object doBuffer(NativeArgumentBuffer.Pointer arg,
-                        @CachedLibrary("type") NativeArgumentLibrary nativeArguments) {
+        Object doBuffer(NativeArgumentBuffer.Pointer arg) {
             NativeArgumentBuffer buffer = new NativeArgumentBuffer.Direct(arg, 0);
-            return nativeArguments.deserialize(type, buffer);
+            return type.deserializeRet(this, buffer);
         }
     }
 

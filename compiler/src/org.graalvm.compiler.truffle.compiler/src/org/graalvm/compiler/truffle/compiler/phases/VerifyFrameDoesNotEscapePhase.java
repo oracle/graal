@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,7 @@
  */
 package org.graalvm.compiler.truffle.compiler.phases;
 
-import org.graalvm.compiler.graph.VerificationError;
+import org.graalvm.compiler.graph.GraalGraphError;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
@@ -44,7 +44,7 @@ public class VerifyFrameDoesNotEscapePhase extends Phase {
                 if (callTarget.invoke() != null) {
                     String properties = callTarget.getDebugProperties().toString();
                     String arguments = callTarget.arguments().toString();
-                    Throwable exception = new VerificationError("Frame escapes at: %s#%s\nproperties:%s\narguments: %s", callTarget, callTarget.targetMethod(), properties, arguments);
+                    Throwable exception = new GraalGraphError("Frame escapes at: %s#%s\nproperties:%s\narguments: %s", callTarget, callTarget.targetMethod(), properties, arguments);
                     throw GraphUtil.approxSourceException(callTarget, exception);
                 }
             }

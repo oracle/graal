@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,8 +36,6 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.Canonicalizable;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -56,6 +54,8 @@ import org.graalvm.compiler.nodes.memory.MemoryAccess;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.word.WordTypes;
@@ -72,10 +72,9 @@ import jdk.vm.ci.meta.PrimitiveConstant;
  * based on the element type and memory properties.
  *
  * The target of the call is queried via {@link ArrayCopyLookup#lookupArraycopyDescriptor}.
- *
- * @see GenericArrayCopyCallNode A generic {@link System#arraycopy} stub call node.
- * @see CheckcastArrayCopyCallNode A {@link System#arraycopy} stub call node that performs a fast
- *      check cast.
+ * <p>
+ * <strong>Note:</strong> this node does not have an exception edge. Only use in situations where
+ * the exception edge is not needed.
  */
 @NodeInfo(allowedUsageTypes = {Memory}, cycles = CYCLES_UNKNOWN, size = SIZE_UNKNOWN)
 public final class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements Lowerable, SingleMemoryKill, MemoryAccess, Canonicalizable {
@@ -310,7 +309,7 @@ public final class ArrayCopyCallNode extends AbstractMemoryCheckpoint implements
                 aligned = isHeapWordAligned(metaAccess, constantSrc, componentKind) && isHeapWordAligned(metaAccess, constantDst, componentKind);
             }
             if (constantSrc.asInt() >= constantDst.asInt()) {
-                // low to high copy so treat as disjoint
+                // low to high copy (copying forwards) so treat as disjoint
                 disjoint = true;
             }
         }

@@ -149,7 +149,7 @@ public class HeapObjectTest {
 
     @Test
     public void everythingIsOK() throws Exception {
-        Source nullSource = new Source(null, null, null, null, null);
+        Source nullSource = new Source("no.source", null, null, null, null);
         invokeDump(heap, 1, new Event[]{
                         new StackEvent(new StackElement[]{new StackElement(new At(null, nullSource, 1, 0, 5), new HashMap<>())})
         });

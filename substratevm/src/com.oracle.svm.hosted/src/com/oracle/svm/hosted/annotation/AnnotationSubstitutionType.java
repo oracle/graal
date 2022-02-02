@@ -35,6 +35,7 @@ public class AnnotationSubstitutionType extends CustomSubstitutionType<Annotatio
 
     private final String name;
     private final MetaAccessProvider metaAccess;
+    private final ResolvedJavaType annotationInterfaceType;
 
     public AnnotationSubstitutionType(MetaAccessProvider metaAccess, ResolvedJavaType original) {
         super(original);
@@ -43,7 +44,7 @@ public class AnnotationSubstitutionType extends CustomSubstitutionType<Annotatio
         assert original.getSuperclass().equals(metaAccess.lookupJavaType(Proxy.class));
         assert metaAccess.lookupJavaType(Annotation.class).isAssignableFrom(original);
 
-        ResolvedJavaType annotationInterfaceType = AnnotationSupport.findAnnotationInterfaceTypeForMarkedAnnotationType(original, metaAccess);
+        annotationInterfaceType = AnnotationSupport.findAnnotationInterfaceTypeForMarkedAnnotationType(original, metaAccess);
         assert annotationInterfaceType.isAssignableFrom(original);
         assert metaAccess.lookupJavaType(Annotation.class).isAssignableFrom(annotationInterfaceType);
 
@@ -64,6 +65,10 @@ public class AnnotationSubstitutionType extends CustomSubstitutionType<Annotatio
     @Override
     public String getName() {
         return name;
+    }
+
+    public ResolvedJavaType getAnnotationInterfaceType() {
+        return annotationInterfaceType;
     }
 
     @Override

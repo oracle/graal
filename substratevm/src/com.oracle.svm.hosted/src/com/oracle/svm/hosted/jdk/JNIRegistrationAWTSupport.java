@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.hosted.jdk;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -35,6 +34,7 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 @Platforms(Platform.WINDOWS.class)
 @AutomaticFeature
 public class JNIRegistrationAWTSupport implements Feature {
+
     @Override
     public void beforeImageWrite(BeforeImageWriteAccess access) {
         JNIRegistrationSupport jniRegistrationSupport = JNIRegistrationSupport.singleton();
@@ -75,33 +75,16 @@ public class JNIRegistrationAWTSupport implements Feature {
                 return linkerInvocation;
             });
         }
-        if (jniRegistrationSupport.isRegisteredLibrary("dcpr") && JavaVersionUtil.JAVA_SPEC == 8) {
-            jniRegistrationSupport.addJavaShimExports(
-                            "JNU_ThrowClassNotFoundException");
-        }
-        if (jniRegistrationSupport.isRegisteredLibrary("fontmanager") && JavaVersionUtil.JAVA_SPEC >= 11) {
-            /*
-             * Dependency on `harfbuzz` may not be expressed in Java, so we register it manually
-             * here just in case.
-             */
-            jniRegistrationSupport.registerLibrary("harfbuzz");
-        }
-        if (jniRegistrationSupport.isRegisteredLibrary("javaaccessbridge") && JavaVersionUtil.JAVA_SPEC > 8) {
+        if (jniRegistrationSupport.isRegisteredLibrary("javaaccessbridge")) {
             /* Dependency on `jawt` is not expressed in Java, so we register it manually here. */
             jniRegistrationSupport.registerLibrary("jawt");
         }
-        if (jniRegistrationSupport.isRegisteredLibrary(JavaVersionUtil.JAVA_SPEC > 8 ? "javajpeg" : "jpeg")) {
+        if (jniRegistrationSupport.isRegisteredLibrary("javajpeg")) {
             jniRegistrationSupport.addJavaShimExports(
                             "JNU_GetEnv",
                             "JNU_ThrowByName",
                             "JNU_ThrowNullPointerException",
                             "jio_snprintf");
-        }
-        if (jniRegistrationSupport.isRegisteredLibrary("jpeg") && JavaVersionUtil.JAVA_SPEC == 8) {
-            jniRegistrationSupport.addJavaShimExports(
-                            "JNU_CallMethodByName",
-                            "JNU_CallStaticMethodByName",
-                            "JNU_NewObjectByName");
         }
     }
 }

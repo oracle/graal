@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,7 @@ import org.graalvm.compiler.debug.DebugContext.CompilerPhaseScope;
 import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.debug.MemUseTrackerKey;
 import org.graalvm.compiler.debug.MethodFilter;
+import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Graph.Mark;
@@ -63,7 +64,14 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         // @formatter:off
         @Option(help = "Verify before - after relation of the relative, computed, code size of a graph", type = OptionType.Debug)
         public static final OptionKey<Boolean> VerifyGraalPhasesSize = new OptionKey<>(false);
-        @Option(help = "Exclude certain phases from compilation, either unconditionally or with a method filter", type = OptionType.Debug)
+        @Option(help = "Minimal size in NodeSize to check the graph size increases of phases.", type = OptionType.Debug)
+        public static final OptionKey<Integer> MinimalGraphNodeSizeCheckSize = new OptionKey<>(1000);
+        @Option(help = "Exclude certain phases from compilation, either unconditionally or with a " +
+                        "method filter. Multiple exclusions can be specified separated by ':'. " +
+                        "Phase names are matched as substrings, e.g.: " +
+                        "CompilationExcludePhases=PartialEscape:Loop=A.*,B.foo excludes PartialEscapePhase " +
+                        "from all compilations and any phase containing 'Loop' in its name from " +
+                        "compilations of all methods in class A and of method B.foo.", type = OptionType.Debug)
         public static final OptionKey<String> CompilationExcludePhases = new OptionKey<>(null);
         // @formatter:on
     }
@@ -124,7 +132,7 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
         }
     }
 
-    private static final ClassValue<BasePhaseStatistics> statisticsClassValue = new ClassValue<BasePhaseStatistics>() {
+    private static final ClassValue<BasePhaseStatistics> statisticsClassValue = new ClassValue<>() {
         @Override
         protected BasePhaseStatistics computeValue(Class<?> c) {
             return new BasePhaseStatistics(c);
@@ -184,8 +192,9 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
     }
 
     @SuppressWarnings("try")
-    protected final void apply(final StructuredGraph graph, final C context, final boolean dumpGraph) {
+    public final void apply(final StructuredGraph graph, final C context, final boolean dumpGraph) {
         if (ExcludePhaseFilter.exclude(graph.getOptions(), this, graph.asJavaMethod())) {
+            TTY.println("excluding " + getName() + " during compilation of " + graph.asJavaMethod().format("%H.%n(%p)"));
             return;
         }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -34,6 +34,7 @@ import org.graalvm.nativeimage.impl.ReflectionRegistry;
 import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.core.configure.ConditionalElement;
 import com.oracle.svm.core.configure.ReflectionConfigurationParserDelegate;
+import com.oracle.svm.core.jdk.SealedClassSupport;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.util.ClassUtil;
 
@@ -85,6 +86,14 @@ public class ReflectionRegistryAdapter implements ReflectionConfigurationParserD
     @Override
     public void registerDeclaredClasses(ConditionalElement<Class<?>> type) {
         registry.register(type.getCondition(), type.getElement().getDeclaredClasses());
+    }
+
+    @Override
+    public void registerPermittedSubclasses(ConditionalElement<Class<?>> type) {
+        Class<?>[] classes = SealedClassSupport.singleton().getPermittedSubclasses(type.getElement());
+        if (classes != null) {
+            registry.register(type.getCondition(), classes);
+        }
     }
 
     @Override

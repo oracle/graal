@@ -1,0 +1,4 @@
+DYNAMIC_IMPORTS=/compiler,/espresso,/graal-js,/graal-nodejs,/regex,/sdk,/substratevm,/sulong,/tools,/truffle,/wasm,truffleruby
+COMPONENTS=cmp,cov,dap,ejvm,gu,gvm,gwa,icu4j,ins,insight,insightheap,java,js,lg,llp,llrc,llrl,llrn,lsp,nfi-libffi,ni,nic,nil,njs,poly,polynative,pro,rby,rbyl,rgx,sdk,svm,svml,svmnfi,tfl,tflm,vvm
+NATIVE_IMAGES=graalvm-native-binutil,graalvm-native-clang,graalvm-native-clang++,graalvm-native-ld,gu,lib:jsvm,lib:espresso,lib:graal-nodejs,lib:jvmcicompiler,lib:native-image-agent,lib:native-image-diagnostics-agent,lli,native-image,lib:rubyvm,wasm
+DISABLE_INSTALLABLES=False

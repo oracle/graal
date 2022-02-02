@@ -49,7 +49,6 @@ import com.oracle.truffle.api.staticobject.StaticShape.StorageStrategy;
 import java.lang.reflect.Field;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.atomic.AtomicInteger;
 import sun.misc.Unsafe;
 
 import static com.oracle.truffle.api.impl.asm.Opcodes.ACC_FINAL;
@@ -58,26 +57,22 @@ import static com.oracle.truffle.api.impl.asm.Opcodes.ACC_PUBLIC;
 abstract class ShapeGenerator<T> {
     protected static final Unsafe UNSAFE = getUnsafe();
     private static final String DELIMITER = "$$";
-    private static final AtomicInteger counter = new AtomicInteger();
 
-    abstract StaticShape<T> generateShape(StaticShape<T> parentShape, Map<String, StaticProperty> staticProperties, boolean safetyChecks);
+    abstract StaticShape<T> generateShape(StaticShape<T> parentShape, Map<String, StaticProperty> staticProperties, boolean safetyChecks, String storageClassName);
 
-    static <T> ShapeGenerator<T> getShapeGenerator(TruffleLanguage<?> language, GeneratorClassLoader gcl, StaticShape<T> parentShape, StorageStrategy strategy) {
+    static <T> ShapeGenerator<T> getShapeGenerator(TruffleLanguage<?> language, GeneratorClassLoader gcl, StaticShape<T> parentShape, StorageStrategy strategy, String storageClassName) {
         Class<?> parentStorageClass = parentShape.getStorageClass();
         Class<?> storageSuperclass = strategy == StorageStrategy.ARRAY_BASED ? parentStorageClass.getSuperclass() : parentStorageClass;
-        return getShapeGenerator(language, gcl, storageSuperclass, parentShape.getFactoryInterface(), strategy);
+        return getShapeGenerator(language, gcl, storageSuperclass, parentShape.getFactoryInterface(), strategy, storageClassName);
     }
 
-    static <T> ShapeGenerator<T> getShapeGenerator(TruffleLanguage<?> language, GeneratorClassLoader gcl, Class<?> storageSuperClass, Class<T> storageFactoryInterface, StorageStrategy strategy) {
+    static <T> ShapeGenerator<T> getShapeGenerator(TruffleLanguage<?> language, GeneratorClassLoader gcl, Class<?> storageSuperClass, Class<T> storageFactoryInterface, StorageStrategy strategy,
+                    String storageClassName) {
         if (strategy == StorageStrategy.ARRAY_BASED) {
-            return ArrayBasedShapeGenerator.getShapeGenerator(language, gcl, storageSuperClass, storageFactoryInterface);
+            return ArrayBasedShapeGenerator.getShapeGenerator(language, gcl, storageSuperClass, storageFactoryInterface, storageClassName);
         } else {
             return FieldBasedShapeGenerator.getShapeGenerator(gcl, storageSuperClass, storageFactoryInterface);
         }
-    }
-
-    static String generateStorageName() {
-        return ShapeGenerator.class.getPackage().getName().replace('.', '/') + "/GeneratedStaticObject" + DELIMITER + counter.incrementAndGet();
     }
 
     static String generateFactoryName(Class<?> generatedStorageClass) {
@@ -86,13 +81,15 @@ abstract class ShapeGenerator<T> {
 
     static void addStorageFields(ClassVisitor cv, Map<String, StaticProperty> staticProperties) {
         for (Entry<String, StaticProperty> entry : staticProperties.entrySet()) {
-            addStorageField(cv, entry.getKey(), entry.getValue().getInternalKind(), entry.getValue().storeAsFinal());
+            StaticProperty property = entry.getValue();
+            String descriptor = Type.getDescriptor(property.getPropertyType());
+            addStorageField(cv, entry.getKey(), descriptor, property.storeAsFinal());
         }
     }
 
-    static void addStorageField(ClassVisitor cv, String propertyName, byte internalKind, boolean storeAsFinal) {
+    static void addStorageField(ClassVisitor cv, String propertyName, String descriptor, boolean storeAsFinal) {
         int access = storeAsFinal ? ACC_FINAL | ACC_PUBLIC : ACC_PUBLIC;
-        FieldVisitor fv = cv.visitField(access, propertyName, StaticPropertyKind.getDescriptor(internalKind), null, null);
+        FieldVisitor fv = cv.visitField(access, propertyName, descriptor, null, null);
         fv.visitEnd();
     }
 

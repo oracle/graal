@@ -27,15 +27,14 @@ package com.oracle.svm.methodhandles;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.invoke.MethodHandleUtils.MethodHandlesSupported;
 
-@TargetClass(className = "java.lang.invoke.ClassSpecializer", onlyWith = MethodHandlesSupported.class)
+@TargetClass(className = "java.lang.invoke.ClassSpecializer")
 final class Target_java_lang_invoke_ClassSpecializer {
     @Alias
     native Target_java_lang_invoke_BoundMethodHandle_SpeciesData findSpecies(Object ll);
 }
 
-@TargetClass(className = "java.lang.invoke.ClassSpecializer", innerClass = "SpeciesData", onlyWith = MethodHandlesSupported.class)
+@TargetClass(className = "java.lang.invoke.ClassSpecializer", innerClass = "SpeciesData")
 final class Target_java_lang_invoke_ClassSpecializer_SpeciesData {
     @Alias
     native String key();
@@ -47,7 +46,7 @@ final class Target_java_lang_invoke_ClassSpecializer_SpeciesData {
     protected native boolean isResolved();
 }
 
-@TargetClass(className = "java.lang.invoke.ClassSpecializer", innerClass = "Factory", onlyWith = MethodHandlesSupported.class)
+@TargetClass(className = "java.lang.invoke.ClassSpecializer", innerClass = "Factory")
 final class Target_java_lang_invoke_ClassSpecializer_Factory {
     @Alias
     protected native void linkSpeciesDataToCode(Target_java_lang_invoke_ClassSpecializer_SpeciesData speciesData, Class<?> speciesCode);
@@ -67,17 +66,13 @@ final class Target_java_lang_invoke_ClassSpecializer_Factory {
             if (Target_java_lang_invoke_MethodHandleStatics.TRACE_RESOLVE) {
                 // Used by jlink species pregeneration plugin, see
                 // jdk.tools.jlink.internal.plugins.GenerateJLIClassesPlugin
-                // Checkstyle: stop
                 System.out.println("[SPECIES_RESOLVE] " + className + " (generated)");
-                // Checkstyle: resume
             }
             // This operation causes a lot of churn:
             linkSpeciesDataToCode(speciesData, speciesCode);
         } catch (Error ex) {
             if (Target_java_lang_invoke_MethodHandleStatics.TRACE_RESOLVE) {
-                // Checkstyle: stop
                 System.out.println("[SPECIES_RESOLVE] " + className + " (Error #2)");
-                // Checkstyle: resume
             }
             // We can get here if there is a race condition loading a class.
             // Or maybe we are out of resources. Back out of the CHM.get and retry.
@@ -91,7 +86,7 @@ final class Target_java_lang_invoke_ClassSpecializer_Factory {
     }
 }
 
-@TargetClass(className = "java.lang.invoke.MethodHandleStatics", onlyWith = MethodHandlesSupported.class)
+@TargetClass(className = "java.lang.invoke.MethodHandleStatics")
 final class Target_java_lang_invoke_MethodHandleStatics {
     // Checkstyle: stop
     @Alias static boolean TRACE_RESOLVE;

@@ -108,6 +108,10 @@ public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
     @Override
     @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
     public Pointer reserve(UnsignedWord nbytes, UnsignedWord alignment) {
+        if (nbytes.equal(0)) {
+            return WordFactory.nullPointer();
+        }
+
         UnsignedWord granularity = getGranularity();
         boolean customAlignment = !UnsignedUtils.isAMultiple(granularity, alignment);
         UnsignedWord mappingSize = nbytes;
@@ -139,6 +143,10 @@ public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
     @Override
     @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
     public Pointer mapFile(PointerBase start, UnsignedWord nbytes, WordBase fileHandle, UnsignedWord offset, int access) {
+        if ((start.isNonNull() && !isAligned(start)) || nbytes.equal(0)) {
+            return WordFactory.nullPointer();
+        }
+
         int flags = MAP_PRIVATE();
         if (start.isNonNull()) {
             flags |= MAP_FIXED();
@@ -151,10 +159,15 @@ public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
     @Override
     @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
     public Pointer commit(PointerBase start, UnsignedWord nbytes, int access) {
+        if ((start.isNonNull() && !isAligned(start)) || nbytes.equal(0)) {
+            return WordFactory.nullPointer();
+        }
+
         int flags = MAP_ANON() | MAP_PRIVATE();
         if (start.isNonNull()) {
             flags |= MAP_FIXED();
         }
+        /* The memory returned by mmap is guaranteed to be zeroed. */
         final Pointer result = mmap(start, nbytes, accessAsProt(access), flags, NO_FD, NO_FD_OFFSET);
         return result.notEqual(MAP_FAILED()) ? result : nullPointer();
     }
@@ -162,12 +175,20 @@ public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
     @Override
     @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
     public int protect(PointerBase start, UnsignedWord nbytes, int access) {
+        if (start.isNull() || !isAligned(start) || nbytes.equal(0)) {
+            return -1;
+        }
+
         return mprotect(start, nbytes, accessAsProt(access));
     }
 
     @Override
     @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
     public int uncommit(PointerBase start, UnsignedWord nbytes) {
+        if (start.isNull() || !isAligned(start) || nbytes.equal(0)) {
+            return -1;
+        }
+
         final Pointer result = mmap(start, nbytes, PROT_NONE(), MAP_FIXED() | MAP_ANON() | MAP_PRIVATE() | MAP_NORESERVE(), NO_FD, NO_FD_OFFSET);
         return result.notEqual(MAP_FAILED()) ? 0 : -1;
     }
@@ -175,9 +196,18 @@ public class PosixVirtualMemoryProvider implements VirtualMemoryProvider {
     @Override
     @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
     public int free(PointerBase start, UnsignedWord nbytes) {
+        if (start.isNull() || !isAligned(start) || nbytes.equal(0)) {
+            return -1;
+        }
+
         UnsignedWord granularity = getGranularity();
         Pointer mappingBegin = PointerUtils.roundDown(start, granularity);
         UnsignedWord mappingSize = UnsignedUtils.roundUp(nbytes, granularity);
         return munmap(mappingBegin, mappingSize);
+    }
+
+    @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
+    private boolean isAligned(PointerBase ptr) {
+        return ptr.isNonNull() && UnsignedUtils.isAMultiple((UnsignedWord) ptr, getGranularity());
     }
 }

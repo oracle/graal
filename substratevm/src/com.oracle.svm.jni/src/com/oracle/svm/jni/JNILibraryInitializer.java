@@ -24,12 +24,11 @@
  */
 package com.oracle.svm.jni;
 
-import com.oracle.svm.core.c.CGlobalData;
-import com.oracle.svm.core.c.CGlobalDataFactory;
-import com.oracle.svm.core.jdk.NativeLibrarySupport;
-import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
-import com.oracle.svm.jni.functions.JNIFunctionTables;
-import com.oracle.svm.jni.nativeapi.JNIJavaVM;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
@@ -38,16 +37,14 @@ import org.graalvm.nativeimage.c.type.VoidPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-
-import static com.oracle.svm.jni.nativeapi.JNIVersion.JNI_VERSION_1_1;
-import static com.oracle.svm.jni.nativeapi.JNIVersion.JNI_VERSION_1_2;
-import static com.oracle.svm.jni.nativeapi.JNIVersion.JNI_VERSION_1_4;
-import static com.oracle.svm.jni.nativeapi.JNIVersion.JNI_VERSION_1_6;
-import static com.oracle.svm.jni.nativeapi.JNIVersion.JNI_VERSION_1_8;
+import com.oracle.svm.core.c.CGlobalData;
+import com.oracle.svm.core.c.CGlobalDataFactory;
+import com.oracle.svm.core.jdk.NativeLibrarySupport;
+import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
+import com.oracle.svm.core.util.ImageHeapMap;
+import com.oracle.svm.jni.functions.JNIFunctionTables;
+import com.oracle.svm.jni.nativeapi.JNIJavaVM;
+import com.oracle.svm.jni.nativeapi.JNIVersion;
 
 interface JNIOnLoadFunctionPointer extends CFunctionPointer {
     @InvokeCFunctionPointer
@@ -56,7 +53,7 @@ interface JNIOnLoadFunctionPointer extends CFunctionPointer {
 
 public class JNILibraryInitializer implements NativeLibrarySupport.LibraryInitializer {
 
-    private final EconomicMap<String, CGlobalData<PointerBase>> onLoadCGlobalDataMap = EconomicMap.create(Equivalence.IDENTITY);
+    private final EconomicMap<String, CGlobalData<PointerBase>> onLoadCGlobalDataMap = ImageHeapMap.create(Equivalence.IDENTITY);
 
     public static String getOnLoadName(String libName, boolean isBuiltIn) {
         String name = "JNI_OnLoad";
@@ -75,7 +72,7 @@ public class JNILibraryInitializer implements NativeLibrarySupport.LibraryInitia
     }
 
     private static void checkSupportedJNIVersion(String libName, int expected) {
-        if (expected != JNI_VERSION_1_8() && expected != JNI_VERSION_1_6() && expected != JNI_VERSION_1_4() && expected != JNI_VERSION_1_2() && expected != JNI_VERSION_1_1()) {
+        if (!JNIVersion.isSupported(expected)) {
             String message = "Unsupported JNI version 0x" + Integer.toHexString(expected) + ", required by " + libName;
             throw new UnsatisfiedLinkError(message);
         }

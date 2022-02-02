@@ -14,22 +14,23 @@ GraalVM's polyglot capabilities make it possible to mix multiple programming lan
 Here you will find information about installing GraalVM Community Edition, running basic applications with it, and adding support for accompanying features.
 Further, you will learn about the polyglot capabilities of GraalVM and see how to build platform-specific native executables of JVM-based applications.
 
-If you are new to GraaVM, we recommend starting with [Introduction to GraalVM](/docs/introduction/), where you will find information about GraalVM's architecture, distributions available, supported platforms, core and additional features, and much more.
+If you are new to GraaVM, we recommend starting with [Introduction to GraalVM](../../introduction.md), where you will find information about GraalVM's architecture, distributions available, supported platforms, core and additional features, and much more.
 
-If you have GraalVM already installed and have experience using it, you can skip this getting started guide and proceed to the in-depth [Reference Manuals](/reference-manual/).
+If you have GraalVM already installed and have experience using it, you can skip this getting started guide and proceed to the in-depth [Reference Manuals](../../reference-manual/reference-manuals.md).
 
 ## Install GraalVM
 
 Getting GraalVM installed and ready-to-go should take a few minutes.
 Choose the operating system and proceed to the installation steps:
-* [Linux](/docs/getting-started/linux/)
-* [Linux AArch64](/docs/getting-started/linux-aarch64/)
-* [macOS](/docs/getting-started/macos/)
-* [Windows](/docs/getting-started/windows/)
+* [Linux](linux.md)
+* [Linux AArch64](linux-aarch64.md)
+* [macOS](macos.md)
+* [Windows](windows.md)
+* [Docker Container](container-images/graalvm-ce-container-images.md)
 
 ## Start Running Applications
 
-For demonstration purposes here, we will use GraalVM Community Edition based on OpenJDK 11.
+For demonstration purposes here, we will use GraalVM Community Edition based on OpenJDK 17.
 
 The core distribution of GraalVM includes the JVM, the GraalVM compiler, the LLVM runtime, and JavaScript runtime.
 Having downloaded and installed GraalVM, you can already run Java, JavaScript, and LLVM-based applications.
@@ -42,14 +43,15 @@ GraalVM's `/bin` directory is similar to that of a standard JDK, but includes a 
 Check the versions of the runtimes provided by default:
 ```shell
 java -version
-openjdk version "11.0.12" 2021-07-20
-OpenJDK Runtime Environment GraalVM CE 21.2.0 (build 11.0.12+6-jvmci-21.2-b06)
-OpenJDK 64-Bit Server VM GraalVM CE 21.2.0 (build 11.0.12+6-jvmci-21.2-b06, mixed mode, sharing)
+openjdk version "17.0.2" 2022-01-18
+OpenJDK Runtime Environment GraalVM CE 22.0.0 (build 17.0.2+5-jvmci-22.0-b02)
+OpenJDK 64-Bit Server VM GraalVM CE 22.0.0 (build 17.0.2+5-jvmci-22.0-b02, mixed mode, sharing)
+
 js -version
-GraalVM JavaScript (GraalVM CE Native 21.2.0)
+GraalVM JavaScript (GraalVM CE Native 22.0.0)
 
 lli --version
-LLVM 10.0.0 (GraalVM CE Native 21.2.0)
+LLVM 12.0.1 (GraalVM CE Native 22.0.0)
 ```
 
 Further below you will find information on how to add other optionally available GraalVM runtimes including Node.js, Ruby, R, Python, and WebAssembly.
@@ -73,16 +75,16 @@ java HelloWorld
 Hello World!
 ```
 
-You can find a collection of larger Java examples on the [Examples Applications](/examples/) page.
+You can find a collection of larger Java examples on the [Examples Applications](../../examples/examples.md) page.
 For more information on the GraalVM
-compiler, go to [Compiler](/reference-manual/compiler/).
-For more extensive documentation on running Java, proceed to [JVM Languages](/reference-manual/java/).
+compiler, go to [Compiler](../../reference-manual/java/compiler.md).
+For more extensive documentation on running Java, proceed to [JVM Languages](../../reference-manual/java/README.md).
 
 ## Run JavaScript and Node.js
 
 GraalVM can execute plain JavaScript code, both in REPL mode and by executing script files directly:
 ```shell
-js
+$JAVA_HOME/bin/js
 > 1 + 2
 3
 ```
@@ -91,17 +93,20 @@ GraalVM also supports running Node.js applications.
 Node.js support is not installed by default, but can be easily added with GraalVM Updater:
 ```shell
 gu install nodejs
-node -v
-v14.16.1
+```
+```shell
+$JAVA_HOME/bin/node -v
+v14.18.1
 ```
 
 More than 100,000 npm packages are regularly tested and are compatible with GraalVM, including modules like express, react, async, request, browserify, grunt, mocha, and underscore.
 To install a Node.js module, use the `npm` executable from the `<graalvm>/bin` folder, which is installed together with `node`.
 The `npm` command is equivalent to the default Node.js command and supports all Node.js APIs.
 
-Install the `colors` and `ansispan` modules using `npm install`. After the modules are installed, you can use them from your application.
+Install the modules `colors`, `ansispan`, and `express` using `npm install`.
+After the modules are installed, you can use them from your application.
 ```shell
-npm install colors ansispan
+$JAVA_HOME/bin/npm install colors ansispan express
 ```
 
 Use the following code snippet and save it as the `app.js` file in the same directory where you installed the Node.js modules:
@@ -120,11 +125,10 @@ setTimeout(function() { console.log("DONE!"); process.exit(); }, 2000);
 
 Run _app.js_ on GraalVM Enterprise using the `node` command:
 ```shell
-node app.js
+$JAVA_HOME/bin/node app.js
 ```
 
-For more detailed documentation and information on compatibility with Node.js,
-proceed to [JavaScript and Node.js](/reference-manual/js/).
+For more detailed documentation and information on compatibility with Node.js, proceed to [JavaScript and Node.js](../../reference-manual/js/README.md).
 
 ## Run LLVM Languages
 
@@ -154,55 +158,58 @@ $LLVM_TOOLCHAIN/clang hello.c -o hello
 lli hello
 ```
 
-For in-depth documentation and more examples of running LLVM bitcode on GraalVM, go to [LLVM Languages](/reference-manual/llvm/).
+For in-depth documentation and more examples of running LLVM bitcode on GraalVM, go to [LLVM Languages](../../reference-manual/llvm/README.md).
 
 ## Run Python
 
 With GraalVM you can run Python applications in the Python 3 runtime environment.
-The support is not available by default, but you can quickly add it to GraalVM using the [GraalVM Updater](/reference-manual/graalvm-updater/) tool:
+The support is not available by default, but you can quickly add it to GraalVM using the [GraalVM Updater](../../reference-manual/graalvm-updater.md) tool:
 ```shell
 gu install python
 ```
 
-Once it is installed, you can run Python programs:
+It installs the `graalpython` launcher. Check the version, and you can already run Python programs:
 ```shell
-graalpython
+$JAVA_HOME/bin/graalpython --version
+```
+
+```shell
+$JAVA_HOME/bin/graalpython
 ...
 >>> 1 + 2
 3
 >>> exit()
 ```
 
-More examples and additional information on Python support in GraalVM can be found in the [Python reference manual](/reference-manual/python/).
+More examples and additional information on Python support in GraalVM can be found in the [Python reference manual](../../reference-manual/python/README.md).
 
 ## Run Ruby
 
 GraalVM provides a high-performance Ruby runtime environment including the `gem` command that allows you to interact with RubyGems, Ruby Bundler, and much more.
-The Ruby runtime is not available by default in GraalVM, but can be easily added using the [GraalVM Updater](/reference-manual/graalvm-updater/) tool:
+The Ruby runtime is not available by default in GraalVM, but can be easily added using the [GraalVM Updater](../../reference-manual/graalvm-updater.md) tool:
 ```shell
 gu install ruby
 ```
 
 Once it is installed, Ruby launchers like `ruby`, `gem`, `irb`, `rake`, `rdoc`, and `ri` become available to run Ruby programs:
 ```shell
-ruby [options] program.rb
+$JAVA_HOME/bin/ruby [options] program.rb
 ```
 
-GraalVM Ruby runtime environment uses the
-[same options as the standard implementation of Ruby](/reference-manual/ruby/Options/),
-with some additions. For example:
+GraalVM runtime for Ruby uses the [same options as the standard implementation of Ruby](../../reference-manual/ruby/options.md), with some additions.
+For example:
 ```shell
 gem install chunky_png
-ruby -r chunky_png -e "puts ChunkyPNG::Color.to_hex(ChunkyPNG::Color('mintcream @ 0.5'))"
+$JAVA_HOME/bin/ruby -r chunky_png -e "puts ChunkyPNG::Color.to_hex(ChunkyPNG::Color('mintcream @ 0.5'))"
 #f5fffa80
 ```
 
-More examples and in-depth documentation can be found in the [Ruby reference manual](/reference-manual/ruby/).
+More examples and in-depth documentation can be found in the [Ruby reference manual](../../reference-manual/ruby/README.md).
 
 ## Run R
 
 GraalVM provides a GNU-compatible environment to run R programs directly or in the REPL mode.
-Although the R language support is not available by default, you can add it to GraalVM using the [GraalVM Updater](/reference-manual/graalvm-updater/) tool:
+Although the R language support is not available by default, you can add it to GraalVM using the [GraalVM Updater](../../reference-manual/graalvm-updater.md) tool:
 ```shell
 gu install R
 ```
@@ -217,12 +224,12 @@ R version 4.0.3 (FastR)
 [1] 2
 ```
 
-More examples and in-depth documentation can be found in the [R reference manual](/reference-manual/r/).
+More examples and in-depth documentation can be found in the [R reference manual](../../reference-manual/r/README.md).
 
 ## Run WebAssembly
 
 With GraalVM you can run programs compiled to WebAssembly.
-The support is not available by default, but you can add it to GraalVM using the [GraalVM Updater](/reference-manual/graalvm-updater/) tool:
+The support is not available by default, but you can add it to GraalVM using the [GraalVM Updater](../../reference-manual/graalvm-updater.md) tool:
 ```shell
 gu install wasm
 ```
@@ -253,10 +260,10 @@ emcc -o floyd.wasm floyd.c
 
 Then you can run the compiled WebAssembly binary on GraalVM as follows:
 ```shell
-wasm --Builtins=wasi_snapshot_preview1 floyd.wasm
+$JAVA_HOME/bin/wasm --Builtins=wasi_snapshot_preview1 floyd.wasm
 ```
 
-More details can be found in the [WebAssembly reference manual](/reference-manual/wasm/).
+More details can be found in the [WebAssembly reference manual](../../reference-manual/wasm/README.md).
 
 ## Combine Languages
 
@@ -265,12 +272,12 @@ To enable interoperability, GraalVM provides the `--polyglot` flag.
 
 For example, running `js --jvm --polyglot example.js` executes `example.js` in a polyglot context.
 If the program calls any code in other supported languages, GraalVM executes that code in the same runtime as the `example.js` application.
-For more information on running polyglot applications, see [Polyglot Programming](/reference-manual/polyglot-programming/).
+For more information on running polyglot applications, see [Polyglot Programming](../../reference-manual/polyglot-programming.md).
 
 ## Native Images
 
 With GraalVM you can compile Java bytecode into a platform-specific, self-contained, native executable - a native image - to achieve faster startup and smaller footprint for your application.
-The [Native Image](/reference-manual/native-image/) functionality is not available by default, but can be easily installed with the [GraalVM Updater](/reference-manual/graalvm-updater/) tool:
+The [Native Image](../../reference-manual/native-image/README.md) functionality is not available by default, but can be easily installed with the [GraalVM Updater](../../reference-manual/graalvm-updater.md) tool:
 ```shell
 gu install native-image
 ```
@@ -285,7 +292,7 @@ public class HelloWorld {
 }
 ```
 
-> Note: For compilation `native-image` depends on the local toolchain. Make sure your system meets the [prerequisites](/reference-manual/native-image/#prerequisites).
+> Note: For compilation `native-image` depends on the local toolchain. Make sure your system meets the [prerequisites](../../reference-manual/native-image/README.md#prerequisites).
 
 Compile _HelloWorld.java_ to bytecode and then build a native image:
 ```shell
@@ -300,7 +307,7 @@ Invoking it executes the natively compiled code of the `HelloWorld` class as fol
 Hello, World!
 ```
 
-More detailed documentation on this innovative technology is available in the [Native Image reference manual](/reference-manual/native-image/).
+More detailed documentation on this innovative technology is available in the [Native Image reference manual](../../reference-manual/native-image/README.md).
 
 ## Polyglot Capabilities of Native Images
 
@@ -336,7 +343,7 @@ javac PrettyPrintJSON.java
 native-image --language:js --initialize-at-build-time PrettyPrintJSON
 ```
 The native image generatation will take several minutes as it does not just build the `PrettyPrintJSON` class, but also builds JavaScript.
-Additionally, the image building requires large amounts of physical memory, especially if you build an image with the [Truffle language implementation framework](/graalvm-as-a-platform/language-implementation-framework/) included, which is the case here.
+Additionally, the image building requires large amounts of physical memory, especially if you build an image with the [Truffle language implementation framework](../../../truffle/docs/README.md) included, which is the case here.
 
 The resulting executable can now perform JSON pretty-printing:
 ```shell
@@ -384,14 +391,14 @@ sys	0m0.016s
 ## What to Read Next
 
 ### New Users
-Since this guide is intended mainly for users new to GraalVM, or users who are familiar with GraalVM but may have little experience using it, please consider investigating more complex [Example Applications](/examples/).
-We also recommend checking our [GraalVM Team Blog](/blog/).
+Since this guide is intended mainly for users new to GraalVM, or users who are familiar with GraalVM but may have little experience using it, please consider investigating more complex [Example Applications](../../examples/examples.md).
+We also recommend checking our [GraalVM Team Blog](https://medium.com/graalvm).
 
 ### Advanced Users
-If you are mostly interested in GraalVM support for a specific language, or want more in-depth details about GraalVM's diverse technologies, proceed to [Reference Manuals](/reference-manual/).
+If you are mostly interested in GraalVM support for a specific language, or want more in-depth details about GraalVM's diverse technologies, proceed to [Reference Manuals](../../reference-manual/reference-manuals.md).
 
-If you are looking for the tooling support GraalVM offers, proceed to [Debugging and Monitoring Tools](/tools/).
+If you are looking for the tooling support GraalVM offers, proceed to [Debugging and Monitoring Tools](../../tools/tools.md).
 
-If you are considering GraalVM as a platform for your future language or tool implementation, go to [GraalVM as a Platform](/graalvm-as-a-platform/language-implementation-framework/).
+If you are considering GraalVM as a platform for your future language or tool implementation, go to [GraalVM as a Platform](../../../truffle/docs/README.md).
 
-You can find information on GraalVM's security model in the [Security Guide](/security-guide/), and rich API documentation in [GraalVM SDK Javadoc](https://www.graalvm.org/sdk/javadoc/) and [Truffle Javadoc](https://www.graalvm.org/truffle/javadoc/).
+You can find information on GraalVM's security model in the [Security Guide](../../security/security-guide.md), and rich API documentation in [GraalVM SDK Javadoc](https://www.graalvm.org/sdk/javadoc/) and [Truffle Javadoc](https://www.graalvm.org/truffle/javadoc/).

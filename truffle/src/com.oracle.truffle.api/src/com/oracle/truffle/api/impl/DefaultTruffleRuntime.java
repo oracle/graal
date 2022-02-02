@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -89,7 +89,7 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
 
         @Override
         public CallTarget createTestCallTarget(Closeable testContext, RootNode testNode) {
-            return createCallTarget(testNode);
+            return testNode.getCallTarget();
         }
 
         @Override
@@ -120,9 +120,7 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
     @SuppressWarnings("deprecation")
     @Override
     public RootCallTarget createCallTarget(RootNode rootNode) {
-        DefaultCallTarget target = new DefaultCallTarget(rootNode);
-        DefaultRuntimeAccessor.INSTRUMENT.onLoad(target.getRootNode());
-        return target;
+        return rootNode.getCallTarget();
     }
 
     @Override
@@ -138,7 +136,7 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
 
     @Override
     public VirtualFrame createVirtualFrame(Object[] arguments, FrameDescriptor frameDescriptor) {
-        return new DefaultVirtualFrame(frameDescriptor, arguments);
+        return new FrameWithoutBoxing(frameDescriptor, arguments);
     }
 
     @Override
@@ -148,7 +146,7 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
 
     @Override
     public MaterializedFrame createMaterializedFrame(Object[] arguments, FrameDescriptor frameDescriptor) {
-        return new DefaultMaterializedFrame(new DefaultVirtualFrame(frameDescriptor, arguments));
+        return new FrameWithoutBoxing(frameDescriptor, arguments);
     }
 
     @Override
@@ -345,4 +343,7 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
 
     }
 
+    public void markFrameMaterializeCalled(@SuppressWarnings("unused") FrameDescriptor descriptor) {
+        // empty
+    }
 }

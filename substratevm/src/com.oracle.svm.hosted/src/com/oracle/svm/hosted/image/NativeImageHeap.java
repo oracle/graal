@@ -418,6 +418,7 @@ public final class NativeImageHeap implements ImageHeap {
                     written = true;
                 }
 
+                assert hybridArray != null : "Cannot read value for field " + hybridArrayField.format("%H.%n");
                 size = hybridLayout.getTotalSize(Array.getLength(hybridArray));
             } else {
                 size = LayoutEncoding.getInstanceSize(hub.getLayoutEncoding()).rawValue();

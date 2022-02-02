@@ -58,6 +58,7 @@ import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.util.VMError;
 
 @AutomaticFeature
@@ -77,13 +78,14 @@ class SubstrateSegfaultHandlerFeature implements Feature {
     }
 }
 
-final class SubstrateSegfaultHandlerStartupHook implements Runnable {
-
+final class SubstrateSegfaultHandlerStartupHook implements RuntimeSupport.Hook {
     @Override
-    public void run() {
-        Boolean optionValue = SubstrateSegfaultHandler.Options.InstallSegfaultHandler.getValue();
-        if (optionValue == Boolean.TRUE || (optionValue == null && ImageInfo.isExecutable())) {
-            ImageSingletons.lookup(SubstrateSegfaultHandler.class).install();
+    public void execute(boolean isFirstIsolate) {
+        if (isFirstIsolate) {
+            Boolean optionValue = SubstrateSegfaultHandler.Options.InstallSegfaultHandler.getValue();
+            if (optionValue == Boolean.TRUE || (optionValue == null && ImageInfo.isExecutable())) {
+                ImageSingletons.lookup(SubstrateSegfaultHandler.class).install();
+            }
         }
     }
 }
@@ -117,7 +119,7 @@ public abstract class SubstrateSegfaultHandler {
 
     /** Called from the platform dependent segfault handler to enter the isolate. */
     @Uninterruptible(reason = "Called from uninterruptible code.")
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in segfault handler.", overridesCallers = true)
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in segfault handler.")
     protected static boolean tryEnterIsolate(RegisterDumper.Context context) {
         // Check if we have sufficient information to enter the correct isolate.
         Isolate isolate = SingleIsolateSegfaultSetup.singleton().getIsolate();
@@ -143,17 +145,16 @@ public abstract class SubstrateSegfaultHandler {
              * overflow.
              */
             isolate = VMThreads.IsolateTL.get();
-            return Isolates.checkSanity(isolate) == CEntryPointErrors.NO_ERROR &&
-                            (!SubstrateOptions.SpawnIsolates.getValue() || isolate.equal(KnownIntrinsics.heapBase()));
+            return Isolates.checkSanity(isolate) == CEntryPointErrors.NO_ERROR && (!SubstrateOptions.SpawnIsolates.getValue() || isolate.equal(KnownIntrinsics.heapBase()));
         }
         return false;
     }
 
     /** Called from the platform dependent segfault handler to print diagnostics. */
     @Uninterruptible(reason = "Must be uninterruptible until we get immune to safepoints.", calleeMustBe = false)
-    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in segfault handler.", overridesCallers = true)
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in segfault handler.")
     protected static void dump(PointerBase signalInfo, RegisterDumper.Context context) {
-        VMThreads.StatusSupport.setStatusIgnoreSafepoints();
+        SafepointBehavior.preventSafepoints();
         StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
 
         dumpInterruptibly(signalInfo, context);

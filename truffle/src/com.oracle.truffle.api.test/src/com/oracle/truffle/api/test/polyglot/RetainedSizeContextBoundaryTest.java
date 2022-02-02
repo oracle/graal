@@ -51,6 +51,7 @@ import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyObject;
 import org.junit.Assert;
 import org.junit.Assume;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -71,6 +72,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class RetainedSizeContextBoundaryTest extends AbstractPolyglotTest {
     @ExportLibrary(InteropLibrary.class)
@@ -166,6 +168,15 @@ public class RetainedSizeContextBoundaryTest extends AbstractPolyglotTest {
         }
     }
 
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
+
+    public RetainedSizeContextBoundaryTest() {
+        needsInstrumentEnv = true;
+    }
+
     @Test
     public void testRetainedSizeWithProxyObject() {
         Assume.assumeFalse(TruffleOptions.AOT);
@@ -234,7 +245,7 @@ public class RetainedSizeContextBoundaryTest extends AbstractPolyglotTest {
             protected CallTarget parse(ParsingRequest request) {
                 com.oracle.truffle.api.source.Source source = request.getSource();
                 if (target == null) {
-                    target = Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+                    target = new RootNode(languageInstance) {
 
                         @Override
                         public Object execute(VirtualFrame frame) {
@@ -246,7 +257,7 @@ public class RetainedSizeContextBoundaryTest extends AbstractPolyglotTest {
                             return source.createSection(1);
                         }
 
-                    });
+                    }.getCallTarget();
                 }
                 return target;
             }
@@ -279,7 +290,7 @@ public class RetainedSizeContextBoundaryTest extends AbstractPolyglotTest {
             protected CallTarget parse(ParsingRequest request) {
                 com.oracle.truffle.api.source.Source source = request.getSource();
                 if (target == null) {
-                    target = Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+                    target = new RootNode(languageInstance) {
 
                         @Override
                         public Object execute(VirtualFrame frame) {
@@ -296,7 +307,7 @@ public class RetainedSizeContextBoundaryTest extends AbstractPolyglotTest {
                             return source.createSection(1);
                         }
 
-                    });
+                    }.getCallTarget();
                 }
                 return target;
             }

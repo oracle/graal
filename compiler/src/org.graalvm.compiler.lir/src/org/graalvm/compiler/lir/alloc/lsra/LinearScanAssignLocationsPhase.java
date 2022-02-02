@@ -51,6 +51,8 @@ import org.graalvm.compiler.lir.StandardOp;
 import org.graalvm.compiler.lir.StandardOp.MoveOp;
 import org.graalvm.compiler.lir.StandardOp.ValueMoveOp;
 import org.graalvm.compiler.lir.Variable;
+import org.graalvm.compiler.lir.framemap.SimpleVirtualStackSlot;
+import org.graalvm.compiler.lir.framemap.SimpleVirtualStackSlotAlias;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.phases.AllocationPhase.AllocationContext;
 
@@ -60,6 +62,7 @@ import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.code.ValueUtil;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.meta.ValueKind;
 
 /**
  * Phase 7: Assign register numbers back to LIR.
@@ -191,22 +194,40 @@ public class LinearScanAssignLocationsPhase extends LinearScanAllocationPhase {
         }
     }
 
+    /**
+     * Returns new value with the provided ValueKind.
+     */
+    private static Value changeValueKind(Value value, ValueKind<?> newKind, boolean allowVirtual) {
+        if (isRegister(value)) {
+            return ((RegisterValue) value).getRegister().asValue(newKind);
+        } else if (value instanceof StackSlot) {
+            StackSlot stackSlot = (StackSlot) value;
+            return StackSlot.get(newKind, stackSlot.getRawOffset(), stackSlot.getRawAddFrameSize());
+        } else if (allowVirtual && value instanceof SimpleVirtualStackSlot) {
+            SimpleVirtualStackSlot stackSlot = (SimpleVirtualStackSlot) value;
+            return new SimpleVirtualStackSlotAlias(newKind, stackSlot);
+        } else {
+            throw GraalError.shouldNotReachHere();
+        }
+    }
+
     private final InstructionValueProcedure assignProc = new InstructionValueProcedure() {
         @Override
         public Value doValue(LIRInstruction instruction, Value value, OperandMode mode, EnumSet<OperandFlag> flags) {
             if (isVariable(value)) {
                 Value location = colorLirOperand(instruction, asVariable(value), mode);
-                if (mode == OperandMode.USE && isCast(value)) {
-                    // Use the same location, but with the cast's kind.
+                if (isCast(value)) {
+                    GraalError.guarantee(mode == LIRInstruction.OperandMode.USE || mode == LIRInstruction.OperandMode.ALIVE, "Invalid application of CastValue");
+                    // return the same location, but with the cast's kind.
                     CastValue cast = (CastValue) value;
-                    if (isRegister(location)) {
-                        location = ((RegisterValue) location).getRegister().asValue(cast.getValueKind());
-                    } else if (location instanceof StackSlot) {
-                        StackSlot stackSlot = (StackSlot) location;
-                        location = StackSlot.get(cast.getValueKind(), stackSlot.getRawOffset(), stackSlot.getRawAddFrameSize());
-                    }
+                    return changeValueKind(location, cast.getValueKind(), true);
                 }
                 return location;
+            } else if (isCast(value)) {
+                GraalError.guarantee(mode == LIRInstruction.OperandMode.USE || mode == LIRInstruction.OperandMode.ALIVE, "Invalid application of CastValue");
+                // strip CastValue: return underlying value, but with the cast's kind.
+                CastValue cast = (CastValue) value;
+                return changeValueKind(cast.underlyingValue(), cast.getValueKind(), false);
             }
             return value;
         }

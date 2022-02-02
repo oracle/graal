@@ -32,7 +32,6 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunction.Transition;
@@ -122,8 +121,8 @@ public final class UninterruptibleAnnotationChecker {
         }
         for (HostedMethod caller : methodCollection) {
             Uninterruptible callerAnnotation = caller.getAnnotation(Uninterruptible.class);
-            StructuredGraph graph = caller.compilationInfo.getGraph();
             if (callerAnnotation != null) {
+                StructuredGraph graph = caller.compilationInfo.getGraph();
                 if (graph != null) {
                     for (Invoke invoke : graph.getInvokes()) {
                         HostedMethod callee = (HostedMethod) invoke.callTarget().targetMethod();
@@ -179,7 +178,7 @@ public final class UninterruptibleAnnotationChecker {
             StructuredGraph graph = method.compilationInfo.getGraph();
             if (methodAnnotation != null && graph != null) {
                 for (Node node : graph.getNodes()) {
-                    if (node instanceof AbstractNewObjectNode) {
+                    if (RestrictHeapAccessAnnotationChecker.isAllocationNode(node)) {
                         violations.add("Annotated method: " + method.format("%H.%n(%p)") + " allocates.");
                     }
                 }

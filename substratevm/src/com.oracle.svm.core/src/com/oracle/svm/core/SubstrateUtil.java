@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core;
 
-// Checkstyle: allow reflection
-
 import java.io.FileDescriptor;
 import java.io.FileOutputStream;
 import java.lang.reflect.Constructor;
@@ -34,7 +32,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -61,6 +58,7 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
+import com.oracle.svm.util.StringUtil;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.services.Services;
@@ -270,31 +268,7 @@ public class SubstrateUtil {
      * regular expression. This avoids making regular expression code reachable.
      */
     public static String[] split(String value, String separator, int limit) {
-        int offset = 0;
-        int next;
-        ArrayList<String> list = null;
-        while ((next = value.indexOf(separator, offset)) != -1) {
-            if (list == null) {
-                list = new ArrayList<>();
-            }
-            boolean limited = limit > 0;
-            if (!limited || list.size() < limit - 1) {
-                list.add(value.substring(offset, next));
-                offset = next + separator.length();
-            } else {
-                break;
-            }
-        }
-
-        if (offset == 0) {
-            /* No match found. */
-            return new String[]{value};
-        }
-
-        /* Add remaining segment. */
-        list.add(value.substring(offset));
-
-        return list.toArray(new String[list.size()]);
+        return StringUtil.split(value, separator, limit);
     }
 
     public static String toHex(byte[] data) {
@@ -383,15 +357,12 @@ public class SubstrateUtil {
                 out.append("__");
             } else {
                 out.append('_');
-                // Checkstyle: stop
                 out.append(String.format("%04x", (int) c));
-                // Checkstyle: resume
             }
         }
         String mangled = out.toString();
         assert mangled.matches("[a-zA-Z\\._][a-zA-Z0-9_]*");
-        //@formatter:off
-        /*
+        /*-
          * To demangle, the following pipeline works for me (assuming no multi-byte characters):
          *
          * sed -r 's/\_([0-9a-f]{4})/\n\1\n/g' | sed -r 's#^[0-9a-f]{2}([0-9a-f]{2})#/usr/bin/printf "\\x\1"#e' | tr -d '\n'
@@ -399,14 +370,13 @@ public class SubstrateUtil {
          * It's not strictly correct if the first characters after an escape sequence
          * happen to match ^[0-9a-f]{2}, but hey....
          */
-        //@formatter:on
         return mangled;
     }
 
-    private static final Method isHiddenMethod = JavaVersionUtil.JAVA_SPEC >= 15 ? ReflectionUtil.lookupMethod(Class.class, "isHidden") : null;
+    private static final Method isHiddenMethod = JavaVersionUtil.JAVA_SPEC >= 17 ? ReflectionUtil.lookupMethod(Class.class, "isHidden") : null;
 
     public static boolean isHiddenClass(Class<?> javaClass) {
-        if (JavaVersionUtil.JAVA_SPEC >= 15) {
+        if (JavaVersionUtil.JAVA_SPEC >= 17) {
             try {
                 return (boolean) isHiddenMethod.invoke(javaClass);
             } catch (IllegalAccessException | InvocationTargetException e) {

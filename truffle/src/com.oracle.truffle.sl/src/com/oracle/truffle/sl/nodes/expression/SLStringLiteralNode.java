@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.sl.nodes.expression;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 
 /**
@@ -50,14 +51,14 @@ import com.oracle.truffle.sl.nodes.SLExpressionNode;
 @NodeInfo(shortName = "const")
 public final class SLStringLiteralNode extends SLExpressionNode {
 
-    private final String value;
+    private final TruffleString value;
 
-    public SLStringLiteralNode(String value) {
+    public SLStringLiteralNode(TruffleString value) {
         this.value = value;
     }
 
     @Override
-    public String executeGeneric(VirtualFrame frame) {
+    public TruffleString executeGeneric(VirtualFrame frame) {
         return value;
     }
 }

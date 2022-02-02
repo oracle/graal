@@ -44,7 +44,7 @@ public abstract class Assembler {
     public abstract static class CodeAnnotation {
     }
 
-    public final TargetDescription target;
+    private final TargetDescription target;
     private List<LabelHint> jumpDisplacementHints;
 
     /**
@@ -297,5 +297,21 @@ public abstract class Assembler {
         String[] getSupportedInstructionTypes();
 
         int[] countInstructions(String[] instructionTypes, int beginPc, int endPc);
+    }
+
+    public boolean isTargetMP() {
+        return target.isMP;
+    }
+
+    public int getReturnAddressSize() {
+        return target.arch.getReturnAddressSize();
+    }
+
+    public int getMachineCodeCallDisplacementOffset() {
+        return target.arch.getMachineCodeCallDisplacementOffset();
+    }
+
+    public boolean inlineObjects() {
+        return target.inlineObjects;
     }
 }

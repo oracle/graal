@@ -32,8 +32,6 @@ import java.util.Set;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -143,22 +141,18 @@ public final class EspressoScope {
             if (slotInfo == null) {
                 throw UnknownIdentifierException.create(member);
             }
-            FrameSlot refsSlot = frame.getFrameDescriptor().findFrameSlot("refs");
-            FrameSlot primitivesSlot = frame.getFrameDescriptor().findFrameSlot("primitives");
-            final Object[] refs = (Object[]) FrameUtil.getObjectSafe(frame, refsSlot);
-            final long[] primitives = (long[]) FrameUtil.getObjectSafe(frame, primitivesSlot);
 
             // @formatter:off
             switch (slotInfo.getKind()) {
-                case Boolean: return BytecodeNode.getLocalInt(primitives, slotInfo.getSlot()) != 0;
-                case Byte:    return (byte) BytecodeNode.getLocalInt(primitives, slotInfo.getSlot());
-                case Short:   return (short) BytecodeNode.getLocalInt(primitives, slotInfo.getSlot());
-                case Char:    return (char) BytecodeNode.getLocalInt(primitives, slotInfo.getSlot());
-                case Int:     return BytecodeNode.getLocalInt(primitives, slotInfo.getSlot());
-                case Float:   return BytecodeNode.getLocalFloat(primitives, slotInfo.getSlot());
-                case Long:    return BytecodeNode.getLocalLong(primitives, slotInfo.getSlot());
-                case Double:  return BytecodeNode.getLocalDouble(primitives, slotInfo.getSlot());
-                case Object:  return BytecodeNode.getLocalObject(refs, slotInfo.getSlot());
+                case Boolean: return BytecodeNode.getLocalInt(frame, slotInfo.getSlot()) != 0;
+                case Byte:    return (byte) BytecodeNode.getLocalInt(frame, slotInfo.getSlot());
+                case Short:   return (short) BytecodeNode.getLocalInt(frame, slotInfo.getSlot());
+                case Char:    return (char) BytecodeNode.getLocalInt(frame, slotInfo.getSlot());
+                case Int:     return BytecodeNode.getLocalInt(frame, slotInfo.getSlot());
+                case Float:   return BytecodeNode.getLocalFloat(frame, slotInfo.getSlot());
+                case Long:    return BytecodeNode.getLocalLong(frame, slotInfo.getSlot());
+                case Double:  return BytecodeNode.getLocalDouble(frame, slotInfo.getSlot());
+                case Object:  return BytecodeNode.getLocalObject(frame, slotInfo.getSlot());
                 default:
                     throw EspressoError.shouldNotReachHere();
             }
@@ -198,22 +192,17 @@ public final class EspressoScope {
                 throw UnknownIdentifierException.create(member);
             }
 
-            FrameSlot refsSlot = frame.getFrameDescriptor().findFrameSlot("refs");
-            FrameSlot primitivesSlot = frame.getFrameDescriptor().findFrameSlot("primitives");
-            final Object[] refs = (Object[]) FrameUtil.getObjectSafe(frame, refsSlot);
-            final long[] primitives = (long[]) FrameUtil.getObjectSafe(frame, primitivesSlot);
-
             // @formatter:off
             switch (slotInfo.getKind()) {
-                case Boolean: BytecodeNode.setLocalInt(primitives, slotInfo.getSlot(), interop.asBoolean(value) ? 1 : 0);  break;
-                case Byte:    BytecodeNode.setLocalInt(primitives, slotInfo.getSlot(), interop.asByte(value));             break;
-                case Short:   BytecodeNode.setLocalInt(primitives, slotInfo.getSlot(), interop.asShort(value));            break;
-                case Char:    BytecodeNode.setLocalInt(primitives, slotInfo.getSlot(), interop.asString(value).charAt(0)); break;
-                case Int:     BytecodeNode.setLocalInt(primitives, slotInfo.getSlot(), interop.asInt(value));              break;
-                case Float:   BytecodeNode.setLocalFloat(primitives, slotInfo.getSlot(), interop.asFloat(value));          break;
-                case Long:    BytecodeNode.setLocalLong(primitives, slotInfo.getSlot(), interop.asLong(value));            break;
-                case Double:  BytecodeNode.setLocalDouble(primitives, slotInfo.getSlot(), interop.asDouble(value));        break;
-                case Object:  BytecodeNode.setLocalObject(refs, slotInfo.getSlot(), (StaticObject) value);                 break;
+                case Boolean: BytecodeNode.setLocalInt(frame, slotInfo.getSlot(), interop.asBoolean(value) ? 1 : 0);  break;
+                case Byte:    BytecodeNode.setLocalInt(frame, slotInfo.getSlot(), interop.asByte(value));             break;
+                case Short:   BytecodeNode.setLocalInt(frame, slotInfo.getSlot(), interop.asShort(value));            break;
+                case Char:    BytecodeNode.setLocalInt(frame, slotInfo.getSlot(), interop.asString(value).charAt(0)); break;
+                case Int:     BytecodeNode.setLocalInt(frame, slotInfo.getSlot(), interop.asInt(value));              break;
+                case Float:   BytecodeNode.setLocalFloat(frame, slotInfo.getSlot(), interop.asFloat(value));          break;
+                case Long:    BytecodeNode.setLocalLong(frame, slotInfo.getSlot(), interop.asLong(value));            break;
+                case Double:  BytecodeNode.setLocalDouble(frame, slotInfo.getSlot(), interop.asDouble(value));        break;
+                case Object:  BytecodeNode.setLocalObject(frame, slotInfo.getSlot(), (StaticObject) value);                 break;
                 default:
                     throw EspressoError.shouldNotReachHere();
             }

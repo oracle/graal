@@ -29,18 +29,9 @@
  */
 package com.oracle.truffle.llvm.nativemode.runtime;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.WeakHashMap;
-
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.Equivalence;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -69,6 +60,13 @@ import com.oracle.truffle.llvm.runtime.types.PrimitiveType.PrimitiveKind;
 import com.oracle.truffle.llvm.runtime.types.Type;
 import com.oracle.truffle.llvm.runtime.types.VoidType;
 import com.oracle.truffle.nfi.api.SignatureLibrary;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Equivalence;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.WeakHashMap;
 
 public final class NFIContextExtension extends NativeContextExtension {
 
@@ -285,8 +283,7 @@ public final class NFIContextExtension extends NativeContextExtension {
          */
         try {
             Source signatureSource = signatureSourceCache.getSignatureSource(code.getLLVMFunction().getType());
-            RootNode root = CreateClosureNodeGen.create(LLVMLanguage.get(null), signatureSource, new LLVMNativeWrapper(code));
-            return Truffle.getRuntime().createCallTarget(root);
+            return CreateClosureNodeGen.create(LLVMLanguage.get(null), signatureSource, new LLVMNativeWrapper(code)).getCallTarget();
         } catch (UnsupportedNativeTypeException ex) {
             // ignore, fall back to tagged id
             return null;
@@ -553,6 +550,7 @@ public final class NFIContextExtension extends NativeContextExtension {
     }
 
     @Override
+    @TruffleBoundary
     public Object createSignature(Source signatureSource) {
         synchronized (signatureCache) {
             Object ret = signatureCache.get(signatureSource);

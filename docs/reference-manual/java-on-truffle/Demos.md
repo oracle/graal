@@ -105,24 +105,31 @@ Watch  video version of the enhanced HotSwap capabilities with Java on Truffle d
 ### Supported Changes
 
 The plan is to support arbitrary code changes when running applications with Java on Truffle.
-As of GraalVM 21.1.0 the following changes are supported:
-1. Add and remove methods
-2. Add and remove constructors
-3. Add and remove methods from interfaces
-4. Change access modifiers of methods
-5. Change access modifiers of constructors
-6. Changes to Lambdas
-7. Add new anonymous inner classes
-8. Remove anonymous inner classes
+As of GraalVM 22.0.0 the following changes are supported:
 
-As of GraalVM 21.1.0, the following limitations remain:
-1. Changes to fields
-2. Changes to class access modifiers, e.g., from abstract to concrete
-3. Changing the superclass
-4. Changing implemented interfaces
-5. Changes to enums
+* Add and remove methods
+* Add and remove constructors
+* Add and remove methods from interfaces
+* Change access modifiers of methods
+* Change access modifiers of constructors
+* Changes to Lambdas
+* Add new anonymous inner classes
+* Remove anonymous inner classes
+
+The following changes are supported under the new flag `--java.ArbitraryChangesSupport=true`:
+
+* Add and remove fields
+* Change field type
+* Changes to class access modifiers, e.g. abstract and final modifiers
+
+As of GraalVM 22.0.0, the following limitations remain:
+
+* Changing the superclass
+* Changing implemented interfaces
+* Changes to Enums
 
 ## Mixing AOT and JIT for Java
+
 GraalVM Native Image technology allows compiling applications ahead-of-time (AOT) to executable native binaries which:
 * are standalone
 * start instantly
@@ -131,7 +138,7 @@ GraalVM Native Image technology allows compiling applications ahead-of-time (AOT
 The main trade off for using Native Image is that the analysis and compilation of your program happens under the closed world assumption, meaning the static analysis needs to process all bytecode which will ever be executed in the application.
 This makes using some language features like dynamic class loading or reflection tricky.
 
-Java on Truffle is a JVM implementation of a JVM bytecode interpreter, built on the [Truffle framework](/graalvm-as-a-platform/language-implementation-framework/).
+Java on Truffle is a JVM implementation of a JVM bytecode interpreter, built on the [Truffle framework](../../../truffle/docs/README.md).
 It is essentially a Java application, as are the Truffle framework itself and the GraalVM JIT compiler.
 All three of them can be compiled ahead-of-time with `native-image`.
 Using Java on Truffle for some parts of your application makes it possible to isolate the required dynamic behaviour and still use the native image on the rest of your code.
@@ -144,10 +151,9 @@ It is a REPL capable of evaluating Java code and consists of two parts:
 This design naturally fits the point we are trying to illustrate. We can build a native executable of the JShell's UI part, and make it include Java on Truffle to run the code dynamically specified at run time.
 
 Prerequisites:
-* [GraalVM 21.0](/downloads/)
-* [Native Image](/reference-manual/native-image/#install-native-image)
-* [Java on Truffle](/reference-manual/java-on-truffle/#install-java-on-truffle)
-
+* [Latest GraalVM](https://www.graalvm.org/downloads/)
+* [Native Image](../native-image/README.md#install-native-image)
+* [Java on Truffle](README.md#install-java-on-truffle)
 
 1. Clone the [project](https://github.com/graalvm/graalvm-demos) with the demo applications and navigate to the `espresso-jshell` directory:
 

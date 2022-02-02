@@ -43,10 +43,10 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import com.oracle.graal.pointsto.BigBang;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.ValueNode;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;
 import com.oracle.graal.pointsto.flow.AllInstantiatedTypeFlow;
@@ -55,7 +55,7 @@ import com.oracle.graal.pointsto.flow.ArrayElementsTypeFlow;
 import com.oracle.graal.pointsto.flow.CloneTypeFlow;
 import com.oracle.graal.pointsto.flow.DynamicNewInstanceTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldFilterTypeFlow;
-import com.oracle.graal.pointsto.flow.FieldSinkTypeFlow;
+import com.oracle.graal.pointsto.flow.ContextInsensitiveFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.FilterTypeFlow;
 import com.oracle.graal.pointsto.flow.FormalParamTypeFlow;
@@ -495,8 +495,8 @@ public class PointsToStats {
             return "AllInstantiated(" + formatType(flow.getDeclaredType(), true) + ")";
         } else if (flow instanceof AllSynchronizedTypeFlow) {
             return "AllSynchronized";
-        } else if (flow instanceof FieldSinkTypeFlow) {
-            FieldSinkTypeFlow sink = (FieldSinkTypeFlow) flow;
+        } else if (flow instanceof ContextInsensitiveFieldTypeFlow) {
+            ContextInsensitiveFieldTypeFlow sink = (ContextInsensitiveFieldTypeFlow) flow;
             return "FieldSink(" + formatField(sink.getSource()) + ")";
         } else if (flow instanceof FieldTypeFlow) {
             FieldTypeFlow fieldFlow = (FieldTypeFlow) flow;
@@ -628,7 +628,7 @@ public class PointsToStats {
     }
 
     @SuppressWarnings("unused")
-    private static String asDetailedString(TypeState s) {
+    private static String asDetailedString(BigBang bb, TypeState s) {
         if (s.isEmpty()) {
             return "<Empty>";
         }
@@ -637,7 +637,7 @@ public class PointsToStats {
         }
 
         String canBeNull = s.canBeNull() ? "null" : "!null";
-        String types = s.typesStream().map(JavaType::getUnqualifiedName).sorted().collect(Collectors.joining(", "));
+        String types = s.typesStream(bb).map(JavaType::getUnqualifiedName).sorted().collect(Collectors.joining(", "));
 
         return canBeNull + ", " + types;
     }

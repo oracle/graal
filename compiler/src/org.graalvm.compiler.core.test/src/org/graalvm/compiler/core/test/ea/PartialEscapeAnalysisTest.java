@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 package org.graalvm.compiler.core.test.ea;
 
 import java.lang.ref.SoftReference;
+import java.lang.reflect.Array;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.core.test.TypeSystemTest;
@@ -127,6 +128,18 @@ public class PartialEscapeAnalysisTest extends EATestBase {
         } else {
             return null;
         }
+    }
+
+    @Test
+    public void testDynArray() {
+        testPartialEscapeAnalysis("testDynArraySnippet", 0, 0);
+    }
+
+    public static Object testDynArraySnippet(int a) {
+        Object[] args = (Object[]) Array.newInstance(Object.class, 2);
+        args[0] = a;
+        args[1] = 42;
+        return (int) args[0] + (int) args[1];
     }
 
     @Test
@@ -280,7 +293,7 @@ public class PartialEscapeAnalysisTest extends EATestBase {
     @SafeVarargs
     protected final void testPartialEscapeAnalysis(String snippet, double expectedProbability, int expectedCount, Class<? extends Node>... invalidNodeClasses) {
         prepareGraph(snippet, false);
-        graph.clearAllStateAfter();
+        graph.clearAllStateAfterForTestingOnly();
         new DeadCodeEliminationPhase().apply(graph);
         createCanonicalizerPhase().apply(graph, context);
         try {

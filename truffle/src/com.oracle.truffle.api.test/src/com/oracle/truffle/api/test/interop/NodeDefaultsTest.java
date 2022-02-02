@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -143,22 +143,20 @@ public class NodeDefaultsTest extends InteropLibraryBaseTest {
     }
 
     @ExportLibrary(InteropLibrary.class)
+    @SuppressWarnings("static-method")
     static final class ProxyLanguageValue implements TruffleObject {
 
         @ExportMessage
-        @SuppressWarnings("static-method")
         boolean hasLanguage() {
             return true;
         }
 
         @ExportMessage
-        @SuppressWarnings("static-method")
         Class<? extends TruffleLanguage<?>> getLanguage() {
             return ProxyLanguage.class;
         }
 
         @ExportMessage
-        @SuppressWarnings("static-method")
         Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
             return "Proxy value";
         }

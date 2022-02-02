@@ -272,12 +272,21 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
                 }
             }
 
+            /*
+             * The AMD64 ABI does not specify whether subword (i.e., boolean, byte, char, short)
+             * values should be extended to 32 bits. Hence, for incoming native calls, we can only
+             * assume the bits sizes as specified in the standard.
+             *
+             * Since within the graal compiler subwords are already extended to 32 bits, we save
+             * extended values in outgoing calls. Note that some compilers also expect arguments to
+             * be extended (https://reviews.llvm.org/rG1db979bae832563efde2523bb36ddabad43293d8).
+             */
+            ValueKind<?> paramValueKind = valueKindFactory.getValueKind(isEntryPoint ? kind : kind.getStackKind());
             if (register != null) {
-                locations[i] = register.asValue(valueKindFactory.getValueKind(kind.getStackKind()));
+                locations[i] = register.asValue(paramValueKind);
             } else {
-                ValueKind<?> valueKind = valueKindFactory.getValueKind(kind.getStackKind());
-                locations[i] = StackSlot.get(valueKind, currentStackOffset, !type.outgoing);
-                currentStackOffset += Math.max(valueKind.getPlatformKind().getSizeInBytes(), target.wordSize);
+                locations[i] = StackSlot.get(paramValueKind, currentStackOffset, !type.outgoing);
+                currentStackOffset += Math.max(paramValueKind.getPlatformKind().getSizeInBytes(), target.wordSize);
             }
         }
 

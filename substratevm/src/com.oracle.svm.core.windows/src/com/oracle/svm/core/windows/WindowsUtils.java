@@ -30,12 +30,13 @@ import java.io.FileDescriptor;
 import java.io.IOException;
 
 import org.graalvm.nativeimage.PinnedObject;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
+import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CLongPointer;
+import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
@@ -45,13 +46,15 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.CustomFieldValueComputer;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.c.function.CEntryPointActions;
 import com.oracle.svm.core.windows.headers.FileAPI;
+import com.oracle.svm.core.windows.headers.LibLoaderAPI;
 import com.oracle.svm.core.windows.headers.WinBase;
+import com.oracle.svm.core.windows.headers.WinBase.HMODULE;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
-@Platforms(Platform.WINDOWS.class)
 public class WindowsUtils {
 
     @TargetClass(className = "java.lang.ProcessImpl")
@@ -61,13 +64,18 @@ public class WindowsUtils {
 
     public static int getpid(java.lang.Process process) {
         Target_java_lang_ProcessImpl processImpl = SubstrateUtil.cast(process, Target_java_lang_ProcessImpl.class);
-        return com.oracle.svm.core.windows.headers.Process.GetProcessId(WordFactory.pointer(processImpl.handle));
+        return com.oracle.svm.core.windows.headers.Process.NoTransitions.GetProcessId(WordFactory.pointer(processImpl.handle));
     }
 
     @TargetClass(java.io.FileDescriptor.class)
     private static final class Target_java_io_FileDescriptor {
         /** Invalidates the standard FileDescriptors, which are allowed in the image heap. */
         static class InvalidHandleValueComputer implements CustomFieldValueComputer {
+            @Override
+            public RecomputeFieldValue.ValueAvailability valueAvailability() {
+                return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+            }
+
             @Override
             public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
                 return -1L;
@@ -181,5 +189,54 @@ public class WindowsUtils {
         double current = currentCount.read();
         double freq = performanceFrequency;
         return (long) ((current / freq) * NANOSECS_PER_SEC);
+    }
+
+    /** Sentinel value denoting the uninitialized kernel handle. */
+    public static final PointerBase UNINITIALIZED_HANDLE = WordFactory.pointer(1);
+
+    @CPointerTo(nameOfCType = "void*")
+    interface CFunctionPointerPointer<T extends CFunctionPointer> extends PointerBase {
+        T read();
+
+        void write(T value);
+    }
+
+    /** Sentinel value denoting the uninitialized pointer. */
+    static final PointerBase UNINITIALIZED_POINTER = WordFactory.pointer(0xBAD);
+
+    /**
+     * Retrieves and caches the address of an exported function from an already loaded DLL if the
+     * cached function pointer is {@linkplain #UNINITIALIZED_POINTER uninitialized}, otherwise it
+     * returns the cached value.
+     */
+    @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
+    static <T extends CFunctionPointer> T getAndCacheFunctionPointer(CFunctionPointerPointer<T> cachedFunctionPointer,
+                    CCharPointer dllName, CCharPointer functionName) {
+        T functionPointer = cachedFunctionPointer.read();
+        if (functionPointer.equal(UNINITIALIZED_POINTER)) {
+            functionPointer = getFunctionPointer(dllName, functionName, false);
+            cachedFunctionPointer.write(functionPointer);
+        }
+        return functionPointer;
+    }
+
+    /** Retrieves the address of an exported function from an already loaded DLL. */
+    @SuppressWarnings("unchecked")
+    @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
+    static <T extends CFunctionPointer> T getFunctionPointer(CCharPointer dllName, CCharPointer functionName, boolean failOnError) {
+        PointerBase functionPointer = LibLoaderAPI.GetProcAddress(getDLLHandle(dllName), functionName);
+        if (functionPointer.isNull() && failOnError) {
+            CEntryPointActions.failFatally(WinBase.GetLastError(), functionName);
+        }
+        return (T) functionPointer;
+    }
+
+    @Uninterruptible(reason = "May be called from uninterruptible code.", mayBeInlined = true)
+    private static HMODULE getDLLHandle(CCharPointer dllName) {
+        HMODULE dllHandle = LibLoaderAPI.GetModuleHandleA(dllName);
+        if (dllHandle.isNull()) {
+            CEntryPointActions.failFatally(WinBase.GetLastError(), dllName);
+        }
+        return dllHandle;
     }
 }

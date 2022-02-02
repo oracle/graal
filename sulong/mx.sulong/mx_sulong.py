@@ -233,15 +233,6 @@ def runLLVM(args=None, out=None, err=None, timeout=None, nonZeroIsFatal=True, ge
         dists.append('CHROMEINSPECTOR')
     return mx.run_java(getCommonOptions(False) + vmArgs + get_classpath_options(dists) + ["com.oracle.truffle.llvm.launcher.LLVMLauncher"] + sulongArgs, timeout=timeout, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err)
 
-@mx.command(_suite.name, "llimul")
-def runLLVMMul(args=None, out=None, err=None, timeout=None, nonZeroIsFatal=True, get_classpath_options=getClasspathOptions):
-    """uses Sulong to execute a LLVM IR file"""
-    vmArgs, sulongArgs = truffle_extract_VM_args(args)
-    dists = []
-    if "tools" in (s.name for s in mx.suites()):
-        dists.append('CHROMEINSPECTOR')
-    return mx.run_java(getCommonOptions(False) + vmArgs + get_classpath_options(dists) + ["com.oracle.truffle.llvm.launcher.LLVMMultiContextLauncher"] + sulongArgs, timeout=timeout, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err)
-
 @mx.command(_suite.name, "lli")
 def lli(args=None, out=None):
     """run lli via the current GraalVM"""
@@ -314,8 +305,12 @@ if 'CPPFLAGS' in os.environ:
     _env_flags = os.environ['CPPFLAGS'].split(' ')
 
 
-mx_benchmark.add_bm_suite(mx_sulong_benchmarks.SulongBenchmarkSuite())
-
+# Legacy bm suite
+mx_benchmark.add_bm_suite(mx_sulong_benchmarks.SulongBenchmarkSuite(False))
+# Polybench bm suite
+mx_benchmark.add_bm_suite(mx_sulong_benchmarks.SulongBenchmarkSuite(True))
+# LLVM unit tests suite
+mx_benchmark.add_bm_suite(mx_sulong_benchmarks.LLVMUnitTestsSuite())
 
 _toolchains = {}
 
@@ -367,7 +362,9 @@ class ToolchainConfig(object):
         self.name = name
         self.dist = dist if isinstance(dist, list) else [dist]
         self.bootstrap_provider = create_toolchain_root_provider(name, bootstrap_dist)
+        self.bootstrap_dist = bootstrap_dist
         self.tools = tools
+        self.llvm_binutil_tools = [tool.upper() for tool in ToolchainConfig._llvm_tool_map]
         self.suite = suite
         self.mx_command = self.name + '-toolchain'
         self.tool_map = {tool: [_exe_sub(alias.format(name=name)) for alias in aliases] for tool, aliases in ToolchainConfig._tool_map.items()}
@@ -415,7 +412,12 @@ class ToolchainConfig(object):
             mx.abort("The {} toolchain (defined by {}) does not support tool '{}'".format(self.name, self.dist[0], tool))
 
     def get_toolchain_tool(self, tool):
-        return os.path.join(self.bootstrap_provider(), 'bin', self._tool_to_exe(tool))
+        if tool in self._supported_tools():
+            return os.path.join(self.bootstrap_provider(), 'bin', self._tool_to_exe(tool))
+        elif tool in self.llvm_binutil_tools:
+            return os.path.join(self.bootstrap_provider(), 'bin', _exe_sub(tool.lower()))
+        else:
+            mx.abort("The {} toolchain (defined by {}) does not support tool '{}'".format(self.name, self.dist[0], tool))
 
     def get_toolchain_subdir(self):
         return self.name
@@ -439,7 +441,7 @@ class ToolchainConfig(object):
         return [d if ":" in d else self.suite.name + ":" + d for d in self.dist]
 
 
-_suite.toolchain = ToolchainConfig('native', 'SULONG_TOOLCHAIN_LAUNCHERS', 'SULONG_BOOTSTRAP_TOOLCHAIN',
+_suite.toolchain = ToolchainConfig('native', 'SULONG_TOOLCHAIN_LAUNCHERS', 'sulong:SULONG_BOOTSTRAP_TOOLCHAIN',
                                    # unfortunately, we cannot define those in the suite.py because graalvm component
                                    # registration runs before the suite is properly initialized
                                    tools={
@@ -458,8 +460,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     dir_name='llvm',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['Truffle'],
-    truffle_jars=['sulong:SULONG_CORE', 'sulong:SULONG_API'],
+    dependencies=['Truffle', 'Truffle NFI'],
+    truffle_jars=['sulong:SULONG_CORE', 'sulong:SULONG_API', 'sulong:SULONG_NFI'],
     support_distributions=[
         'sulong:SULONG_CORE_HOME',
         'sulong:SULONG_GRAALVM_DOCS',
@@ -474,7 +476,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     dir_name='llvm',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['Truffle NFI', 'LLVM Runtime Core'],
+    dependencies=['Truffle NFI LIBFFI', 'LLVM Runtime Core'],
     truffle_jars=['sulong:SULONG_NATIVE'],
     support_distributions=[
         'sulong:SULONG_NATIVE_HOME',
@@ -498,28 +500,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
             destination='bin/<exe:lli>',
             jar_distributions=['sulong:SULONG_LAUNCHER'],
             main_class='com.oracle.truffle.llvm.launcher.LLVMLauncher',
-            build_args=[],
-            language='llvm',
-        ),
-    ],
-    installable=False,
-))
-
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
-    suite=_suite,
-    name='LLVM Multi-Context Runtime Launcher',
-    short_name='llmulrl',
-    dir_name='llvm',
-    license_files=[],
-    third_party_license_files=[],
-    dependencies=[],
-    truffle_jars=[],
-    support_distributions=[],
-    launcher_configs=[
-        mx_sdk_vm.LanguageLauncherConfig(
-            destination='bin/<exe:llimul>',
-            jar_distributions=['sulong:SULONG_LAUNCHER'],
-            main_class='com.oracle.truffle.llvm.launcher.LLVMMultiContextLauncher',
             build_args=[],
             language='llvm',
         ),

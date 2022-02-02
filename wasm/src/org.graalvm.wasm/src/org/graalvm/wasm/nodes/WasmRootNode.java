@@ -40,6 +40,15 @@
  */
 package org.graalvm.wasm.nodes;
 
+import static org.graalvm.wasm.nodes.WasmFrame.popLong;
+import static org.graalvm.wasm.nodes.WasmFrame.popDouble;
+import static org.graalvm.wasm.nodes.WasmFrame.popFloat;
+import static org.graalvm.wasm.nodes.WasmFrame.popInt;
+import static org.graalvm.wasm.nodes.WasmFrame.pushLong;
+import static org.graalvm.wasm.nodes.WasmFrame.pushDouble;
+import static org.graalvm.wasm.nodes.WasmFrame.pushFloat;
+import static org.graalvm.wasm.nodes.WasmFrame.pushInt;
+
 import org.graalvm.wasm.WasmCodeEntry;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
@@ -51,6 +60,7 @@ import org.graalvm.wasm.exception.WasmException;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -58,15 +68,15 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 
 @NodeInfo(language = WasmLanguage.ID, description = "The root node of all WebAssembly functions")
-public class WasmRootNode extends RootNode implements WasmNodeInterface {
+public class WasmRootNode extends RootNode {
 
     protected final WasmInstance instance;
     private final WasmCodeEntry codeEntry;
     private final SourceSection sourceSection;
     @Child private WasmNode body;
 
-    public WasmRootNode(TruffleLanguage<?> language, WasmInstance instance, WasmCodeEntry codeEntry) {
-        super(language);
+    public WasmRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, WasmInstance instance, WasmCodeEntry codeEntry) {
+        super(language, frameDescriptor);
         this.instance = instance;
         this.codeEntry = codeEntry;
         this.body = null;
@@ -112,19 +122,16 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
         // The reason for this is that the operand stack cannot be passed
         // as an argument to the loop-node's execute method,
         // and must be restored at the beginning of the loop body.
-        final int maxStackSize = codeEntry.maxStackSize();
         final int numLocals = body.codeEntry().numLocals();
-        long[] stacklocals = new long[numLocals + maxStackSize];
-        frame.setObject(codeEntry.stackLocalsSlot(), stacklocals);
-        moveArgumentsToLocals(frame, stacklocals);
+        moveArgumentsToLocals(frame);
 
         // WebAssembly rules dictate that a function's locals must be initialized to zero before
         // function invocation. For more information, check the specification:
         // https://webassembly.github.io/spec/core/exec/instructions.html#function-calls
-        initializeLocals(stacklocals);
+        initializeLocals(frame);
 
         try {
-            body.execute(context, frame, stacklocals);
+            body.execute(context, frame);
         } catch (StackOverflowError e) {
             errorBranch();
             throw WasmException.create(Failure.CALL_STACK_EXHAUSTED);
@@ -134,27 +141,16 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
         CompilerAsserts.partialEvaluationConstant(returnTypeId);
         switch (returnTypeId) {
             case 0x00:
-            case WasmType.VOID_TYPE: {
+            case WasmType.VOID_TYPE:
                 return WasmVoidResult.getInstance();
-            }
-            case WasmType.I32_TYPE: {
-                long returnValue = pop(stacklocals, numLocals);
-                assert returnValue >>> 32 == 0;
-                return (int) returnValue;
-            }
-            case WasmType.I64_TYPE: {
-                long returnValue = pop(stacklocals, numLocals);
-                return returnValue;
-            }
-            case WasmType.F32_TYPE: {
-                long returnValue = pop(stacklocals, numLocals);
-                assert returnValue >>> 32 == 0;
-                return Float.intBitsToFloat((int) returnValue);
-            }
-            case WasmType.F64_TYPE: {
-                long returnValue = pop(stacklocals, numLocals);
-                return Double.longBitsToDouble(returnValue);
-            }
+            case WasmType.I32_TYPE:
+                return popInt(frame, numLocals);
+            case WasmType.I64_TYPE:
+                return popLong(frame, numLocals);
+            case WasmType.F32_TYPE:
+                return popFloat(frame, numLocals);
+            case WasmType.F64_TYPE:
+                return popDouble(frame, numLocals);
             default:
                 throw WasmException.format(Failure.UNSPECIFIED_INTERNAL, this, "Unknown return type id: %d", returnTypeId);
         }
@@ -165,7 +161,7 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
     }
 
     @ExplodeLoop
-    private void moveArgumentsToLocals(VirtualFrame frame, long[] stacklocals) {
+    private void moveArgumentsToLocals(VirtualFrame frame) {
         Object[] args = frame.getArguments();
         int numArgs = body.instance().symbolTable().function(codeEntry().functionIndex()).numArguments();
         assert args.length == numArgs : "Expected number of arguments " + numArgs + ", actual " + args.length;
@@ -174,50 +170,49 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
             byte type = body.codeEntry().localType(i);
             switch (type) {
                 case WasmType.I32_TYPE:
-                    pushInt(stacklocals, i, (int) arg);
+                    pushInt(frame, i, (int) arg);
                     break;
                 case WasmType.I64_TYPE:
-                    push(stacklocals, i, (long) arg);
+                    pushLong(frame, i, (long) arg);
                     break;
                 case WasmType.F32_TYPE:
-                    pushFloat(stacklocals, i, (float) arg);
+                    pushFloat(frame, i, (float) arg);
                     break;
                 case WasmType.F64_TYPE:
-                    pushDouble(stacklocals, i, (double) arg);
+                    pushDouble(frame, i, (double) arg);
                     break;
             }
         }
     }
 
     @ExplodeLoop
-    private void initializeLocals(long[] stacklocals) {
+    private void initializeLocals(VirtualFrame frame) {
         int numArgs = body.instance().symbolTable().function(codeEntry().functionIndex()).numArguments();
         for (int i = numArgs; i != body.codeEntry().numLocals(); ++i) {
             byte type = body.codeEntry().localType(i);
             switch (type) {
                 case WasmType.I32_TYPE:
-                    // Already set to 0 at allocation.
+                    pushInt(frame, i, 0);
                     break;
                 case WasmType.I64_TYPE:
-                    // Already set to 0 at allocation.
+                    pushLong(frame, i, 0L);
                     break;
                 case WasmType.F32_TYPE:
-                    stacklocals[i] = Float.floatToRawIntBits(0.0f);
+                    pushFloat(frame, i, 0F);
                     break;
                 case WasmType.F64_TYPE:
-                    stacklocals[i] = Double.doubleToRawLongBits(0.0);
+                    pushDouble(frame, i, 0D);
                     break;
             }
         }
     }
 
-    @Override
-    public WasmCodeEntry codeEntry() {
+    public final WasmCodeEntry codeEntry() {
         return codeEntry;
     }
 
     @Override
-    public String toString() {
+    public final String toString() {
         return getName();
     }
 
@@ -230,7 +225,7 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
     }
 
     @Override
-    public String getQualifiedName() {
+    public final String getQualifiedName() {
         if (codeEntry == null) {
             return getName();
         }
@@ -238,7 +233,7 @@ public class WasmRootNode extends RootNode implements WasmNodeInterface {
     }
 
     @Override
-    public SourceSection getSourceSection() {
+    public final SourceSection getSourceSection() {
         return sourceSection;
     }
 }

@@ -28,6 +28,7 @@ import java.io.PrintWriter;
 import java.util.Set;
 import java.util.function.Function;
 
+import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
@@ -88,7 +89,7 @@ public abstract class GeneratedPlugin {
         out.printf("        return %s.class;\n", getAnnotationClass(processor).getQualifiedName().toString().replace('$', '.'));
         out.printf("    }\n");
 
-        createPrivateMembers(processor, out, deps, pluginName);
+        createPrivateMembersAndConstructor(processor, out, deps, pluginName);
 
         out.printf("}\n");
 
@@ -98,6 +99,10 @@ public abstract class GeneratedPlugin {
 
     protected void createOtherClasses(AbstractProcessor processor, PrintWriter out) {
         String name = getReplacementName();
+        out.printf("//        class: %s\n", intrinsicMethod.getEnclosingElement());
+        out.printf("//       method: %s\n", intrinsicMethod);
+        out.printf("// generated-by: %s\n", getClass().getName());
+        out.printf("@JacocoIgnoreGenerated(\"deferred plugin support that is only called in libgraal\")\n");
         out.printf("final class %s implements PluginReplacementNode.ReplacementFunction {\n", name);
         out.printf("    static PluginReplacementNode.ReplacementFunction FUNCTION = new %s();\n", name);
         InjectedDependencies deps = new InjectedDependencies(false, intrinsicMethod);
@@ -117,18 +122,11 @@ public abstract class GeneratedPlugin {
     }
 
     public void register(PrintWriter out) {
-        out.printf("        plugins.register(new %s(", pluginName);
+        out.printf("        plugins.register(%s.class, new %s(", intrinsicMethod.getEnclosingElement(), pluginName);
         if (needInjectionProvider) {
             out.printf("injection");
         }
-        out.printf("), %s.class, \"%s\"", intrinsicMethod.getEnclosingElement(), intrinsicMethod.getSimpleName());
-        if (!intrinsicMethod.getModifiers().contains(Modifier.STATIC)) {
-            out.printf(", InvocationPlugin.Receiver.class");
-        }
-        for (VariableElement arg : intrinsicMethod.getParameters()) {
-            out.printf(", %s.class", getErasedType(arg.asType()));
-        }
-        out.printf(");\n");
+        out.printf("));\n");
     }
 
     public abstract void extraImports(AbstractProcessor processor, Set<String> imports);
@@ -189,22 +187,30 @@ public abstract class GeneratedPlugin {
         }
     }
 
-    protected void createPrivateMembers(AbstractProcessor processor, PrintWriter out, InjectedDependencies deps, String constructorName) {
+    protected void createPrivateMembersAndConstructor(AbstractProcessor processor, PrintWriter out, InjectedDependencies deps, String constructorName) {
         if (!deps.isEmpty()) {
             out.printf("\n");
             for (InjectedDependencies.Dependency dep : deps) {
                 out.printf("    private final %s %s;\n", dep.getType(), dep.getName(processor, intrinsicMethod));
             }
 
-            out.printf("\n");
-            out.printf("    %s(GeneratedPluginInjectionProvider injection) {\n", constructorName);
-            for (InjectedDependencies.Dependency dep : deps) {
-                out.printf("        this.%s = %s;\n", dep.getName(processor, intrinsicMethod), dep.getExpression(processor, intrinsicMethod));
-            }
-            out.printf("    }\n");
-
             needInjectionProvider = true;
         }
+
+        out.printf("\n");
+        out.printf("    %s(%s) {\n", constructorName, needInjectionProvider ? "GeneratedPluginInjectionProvider injection" : "");
+        out.printf("        super(\"%s\"", intrinsicMethod.getSimpleName());
+        if (!intrinsicMethod.getModifiers().contains(Modifier.STATIC)) {
+            out.printf(", InvocationPlugin.Receiver.class");
+        }
+        for (VariableElement arg : intrinsicMethod.getParameters()) {
+            out.printf(", %s.class", getErasedType(arg.asType()));
+        }
+        out.printf(");\n");
+        for (InjectedDependencies.Dependency dep : deps) {
+            out.printf("        this.%s = %s;\n", dep.getName(processor, intrinsicMethod), dep.getExpression(processor, intrinsicMethod));
+        }
+        out.printf("    }\n");
     }
 
     /**
@@ -213,6 +219,12 @@ public abstract class GeneratedPlugin {
      */
     protected boolean needsReplacement(AbstractProcessor processor) {
         return true;
+    }
+
+    protected boolean isWithExceptionReplacement(AbstractProcessor processor) {
+        Element nodeElement = intrinsicMethod.getEnclosingElement();
+        TypeMirror withExceptionNodeType = processor.getType("org.graalvm.compiler.nodes.WithExceptionNode");
+        return processor.env().getTypeUtils().isAssignable(nodeElement.asType(), withExceptionNodeType);
     }
 
     protected static String getReturnKind(ExecutableElement method) {
@@ -304,7 +316,7 @@ public abstract class GeneratedPlugin {
         out.printf("        } else {\n");
         if (!isReplacement) {
             out.printf("            if (b.shouldDeferPlugin(this)) {\n");
-            out.printf("                b.replacePlugin(this, targetMethod, args, %s.FUNCTION);\n", getReplacementName());
+            out.printf("                b.replacePlugin%s(this, targetMethod, args, %s.FUNCTION);\n", getReplacementFunctionSuffix(processor), getReplacementName());
             out.printf("                return true;\n");
             out.printf("            }\n");
             out.printf("            assert b.canDeferPlugin(this) : b.getClass().toString() + \" \" + %s;\n", argFormatter.apply(nodeIdx));
@@ -313,5 +325,9 @@ public abstract class GeneratedPlugin {
 
         out.printf("        }\n");
         return argName;
+    }
+
+    protected String getReplacementFunctionSuffix(AbstractProcessor processor) {
+        return isWithExceptionReplacement(processor) ? "WithException" : "";
     }
 }

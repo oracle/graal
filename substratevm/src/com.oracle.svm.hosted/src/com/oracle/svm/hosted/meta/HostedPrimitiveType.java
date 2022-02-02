@@ -31,7 +31,7 @@ import jdk.vm.ci.meta.JavaKind;
 public class HostedPrimitiveType extends HostedType {
 
     public HostedPrimitiveType(HostedUniverse universe, AnalysisType wrapped, JavaKind kind, JavaKind storageKind) {
-        super(universe, wrapped, kind, storageKind, null, new HostedInterface[0], false);
+        super(universe, wrapped, kind, storageKind, null, new HostedInterface[0]);
     }
 
     @Override

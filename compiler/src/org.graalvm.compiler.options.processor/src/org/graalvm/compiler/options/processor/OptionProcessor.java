@@ -303,7 +303,7 @@ public class OptionProcessor extends AbstractProcessor {
             out.println();
             out.println("    @Override");
             out.println("    public Iterator<" + desc + "> iterator() {");
-            out.println("        return new Iterator<OptionDescriptor>() {");
+            out.println("        return new Iterator<" + (processingEnv.getSourceVersion().compareTo(SourceVersion.RELEASE_8) <= 0 ? desc : "") + ">() {");
             out.println("            int i = 0;");
             out.println("            @Override");
             out.println("            public boolean hasNext() {");

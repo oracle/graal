@@ -8,9 +8,11 @@ redirect_from: /docs/tools/chrome-debugger/
 
 # Chrome Debugger
 
-GraalVM supports debugging of guest language applications and provides a built-in implementation of the [Chrome DevTools Protocol](https://chromedevtools.github.io/devtools-protocol/). This allows you to attach compatible debuggers such as [Chrome Developer Tools](https://developers.google.com/web/tools/chrome-devtools/) to GraalVM.
+GraalVM supports debugging of guest language applications and provides a built-in implementation of the [Chrome DevTools Protocol](https://chromedevtools.github.io/devtools-protocol/).
+This allows you to attach compatible debuggers such as [Chrome Developer Tools](https://developers.google.com/web/tools/chrome-devtools/) to GraalVM.
 
 To debug guest language applications, pass the `--inspect` option to the command line launcher, as in the following example with a Node.js _HelloWorld_ program:
+
 ```javascript
 var http = require('http');
 
@@ -26,11 +28,10 @@ console.log("Server running at http://localhost:8000/");
 
 1. Save this program as `HelloWorld.js` and then run:
 ```shell
-node --inspect --jvm HelloWorld.js
-Debugger listening on port 9229.
-To start debugging, open the following URL in Chrome:
-    devtools://devtools/bundled/js_app.html?ws=127.0.1.1:9229/76fcb6dd-35267eb09c3
-Server running at http://localhost:8000/
+$JAVA_HOME/bin/node --inspect --jvm HelloWorld.js
+Debugger listening on ws://127.0.0.1:9229/SBqxI5YIqtREaDrXkFr8hLE0HL1AfKx8TjkI8qPMq2s
+For help, see: https://www.graalvm.org/tools/chrome-debugger
+E.g. in Chrome open: devtools://devtools/bundled/js_app.html?ws=127.0.0.1:9229/SBqxI5YIqtREaDrXkFr8hLE0HL1AfKx8TjkI8qPMq2s
 ```
 
 2. Navigate to `http://localhost:8000/` in your browser to launch the node application.

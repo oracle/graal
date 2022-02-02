@@ -26,7 +26,6 @@ package org.graalvm.compiler.truffle.test;
 
 import static org.junit.Assert.assertNotEquals;
 
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.polyglot.Context;
 import org.junit.Test;
@@ -78,7 +77,7 @@ public class FlushEngineQueueTest {
     }
 
     private static OptimizedCallTarget createConstantCallTarget(int i) {
-        return (OptimizedCallTarget) GraalTruffleRuntime.getRuntime().createCallTarget(new RootNode(null) {
+        return (OptimizedCallTarget) new RootNode(null) {
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -94,7 +93,7 @@ public class FlushEngineQueueTest {
             public String toString() {
                 return getName();
             }
-        });
+        }.getCallTarget();
     }
 
 }

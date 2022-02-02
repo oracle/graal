@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,20 +24,32 @@
  */
 package org.graalvm.compiler.truffle.test.nodes;
 
+import org.graalvm.compiler.api.directives.GraalDirectives;
+
 import com.oracle.truffle.api.frame.VirtualFrame;
 
 public class AddTestNode extends AbstractTestNode {
 
     @Child private AbstractTestNode left;
     @Child private AbstractTestNode right;
+    private final boolean cfgAnchorBeforeReturn;
 
-    public AddTestNode(AbstractTestNode left, AbstractTestNode right) {
+    public AddTestNode(AbstractTestNode left, AbstractTestNode right, boolean cfgAnchorBeforeReturn) {
         this.left = left;
         this.right = right;
+        this.cfgAnchorBeforeReturn = cfgAnchorBeforeReturn;
+    }
+
+    public AddTestNode(AbstractTestNode left, AbstractTestNode right) {
+        this(left, right, false);
     }
 
     @Override
     public int execute(VirtualFrame frame) {
-        return left.execute(frame) + right.execute(frame);
+        int res = left.execute(frame) + right.execute(frame);
+        if (cfgAnchorBeforeReturn) {
+            GraalDirectives.controlFlowAnchor();
+        }
+        return res;
     }
 }

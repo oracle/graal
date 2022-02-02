@@ -44,7 +44,6 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -282,8 +281,12 @@ public final class ImageClassLoader {
         }
     }
 
-    Class<?> forName(String name) throws ClassNotFoundException {
-        return Class.forName(name, false, classLoaderSupport.getClassLoader());
+    public Class<?> forName(String className) throws ClassNotFoundException {
+        return forName(className, false);
+    }
+
+    public Class<?> forName(String className, boolean initialize) throws ClassNotFoundException {
+        return Class.forName(className, initialize, classLoaderSupport.getClassLoader());
     }
 
     public Class<?> forName(String className, Object module) throws ClassNotFoundException {
@@ -426,9 +429,5 @@ public final class ImageClassLoader {
 
     public Optional<? extends Object> findModule(String moduleName) {
         return classLoaderSupport.findModule(moduleName);
-    }
-
-    public void processAddExportsAndAddOpens(OptionValues parsedHostedOptions) {
-        classLoaderSupport.processAddExportsAndAddOpens(parsedHostedOptions);
     }
 }

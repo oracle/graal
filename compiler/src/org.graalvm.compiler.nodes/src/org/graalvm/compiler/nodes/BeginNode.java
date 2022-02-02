@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -31,9 +31,9 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.spi.Simplifiable;
 import org.graalvm.compiler.nodes.spi.SimplifierTool;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
 
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
 public final class BeginNode extends AbstractBeginNode implements Simplifiable {
@@ -46,17 +46,6 @@ public final class BeginNode extends AbstractBeginNode implements Simplifiable {
 
     public BeginNode(Stamp stamp) {
         super(TYPE, stamp);
-    }
-
-    public void trySimplify() {
-        FixedNode prev = (FixedNode) this.predecessor();
-        if (prev instanceof ControlSplitNode) {
-            // This begin node is necessary.
-        } else {
-            // This begin node can be removed and all guards moved up to the preceding begin node.
-            prepareDelete();
-            graph().removeFixed(this);
-        }
     }
 
     @Override

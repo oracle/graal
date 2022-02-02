@@ -56,6 +56,27 @@ import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 public final class RuntimeSerialization {
 
     /**
+     * Register the specified serialization target class itself and all associated classes.
+     * <p>
+     * According to the Java Object Serialization Specification, the associated classes include 1)
+     * all the target class' non-static and non-transient fields types and their associated classes;
+     * 2) other fields defined in the customised writeObject(ObjectOutputStream) and
+     * readObject(ObjectInputStream). This method can automatically explore all possible
+     * serialization target classes in the first scenario, but can't figure out the classes in the
+     * second scenario.
+     * <p>
+     * Another limitation is the specified {@code clazz} must have no subclasses (effectively
+     * final). Otherwise, the actual serialization target class could be any subclass of the
+     * specified class at runtime.
+     *
+     * @param clazz the serialization target class
+     * @since 23.0
+     */
+    public static void registerIncludingAssociatedClasses(Class<?> clazz) {
+        ImageSingletons.lookup(RuntimeSerializationSupport.class).registerIncludingAssociatedClasses(ConfigurationCondition.alwaysTrue(), clazz);
+    }
+
+    /**
      * Makes the provided classes available for serialization at runtime.
      *
      * @since 21.3

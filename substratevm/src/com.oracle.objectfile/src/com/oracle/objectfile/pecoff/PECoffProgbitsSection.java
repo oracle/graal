@@ -31,8 +31,8 @@ import java.util.EnumSet;
 import com.oracle.objectfile.BasicProgbitsSectionImpl;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.ObjectFile.ProgbitsSectionImpl;
-import com.oracle.objectfile.pecoff.PECoffObjectFile.PECoffSectionFlag;
 import com.oracle.objectfile.io.InputDisassembler;
+import com.oracle.objectfile.pecoff.PECoffObjectFile.PECoffSectionFlag;
 
 public class PECoffProgbitsSection extends PECoffUserDefinedSection implements ProgbitsSectionImpl {
 
@@ -69,7 +69,7 @@ public class PECoffProgbitsSection extends PECoffUserDefinedSection implements P
     }
 
     @Override
-    public void markRelocationSite(int offset, ObjectFile.RelocationKind k, String symbolName, boolean useImplicitAddend, Long explicitAddend) {
-        markRelocationSite(offset, ByteBuffer.wrap(getContent()).order(getOwner().getByteOrder()), k, symbolName, useImplicitAddend, explicitAddend);
+    public void markRelocationSite(int offset, ObjectFile.RelocationKind k, String symbolName, long addend) {
+        markRelocationSite(offset, ByteBuffer.wrap(getContent()).order(getOwner().getByteOrder()), k, symbolName, addend);
     }
 }

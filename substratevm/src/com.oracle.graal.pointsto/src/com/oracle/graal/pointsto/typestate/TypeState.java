@@ -33,8 +33,8 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import com.oracle.graal.pointsto.AnalysisPolicy;
-import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
 import com.oracle.graal.pointsto.flow.context.BytecodeLocation;
@@ -77,16 +77,16 @@ public abstract class TypeState {
     public abstract AnalysisType exactType();
 
     /** Provides an iterator over the types. */
-    protected abstract Iterator<AnalysisType> typesIterator();
+    protected abstract Iterator<AnalysisType> typesIterator(BigBang bb);
 
     /** Provides an iterable for the types for easy "for-each loop" iteration. */
-    public Iterable<AnalysisType> types() {
-        return this::typesIterator;
+    public Iterable<AnalysisType> types(BigBang bb) {
+        return () -> typesIterator(bb);
     }
 
     /** Provides a stream for the types. */
-    public Stream<AnalysisType> typesStream() {
-        return StreamSupport.stream(types().spliterator(), false);
+    public Stream<AnalysisType> typesStream(BigBang bb) {
+        return StreamSupport.stream(types(bb).spliterator(), false);
     }
 
     /** Returns true if this type state contains the type, otherwise it returns false. */
@@ -233,6 +233,10 @@ public abstract class TypeState {
     public void noteMerge(@SuppressWarnings("unused") PointsToAnalysis bb) {
     }
 
+    public boolean isMerged() {
+        return false;
+    }
+
     /**
      * This method is needed for accessing the SingleTypeState associated with an specific type of a
      * MutiTypeState, e.g. for transferring the state from a virtual invoke type flow to the formal
@@ -240,23 +244,15 @@ public abstract class TypeState {
      */
     public abstract TypeState exactTypeState(PointsToAnalysis bb, AnalysisType exactType);
 
-    public boolean verifyDeclaredType(AnalysisType declaredType) {
+    public boolean verifyDeclaredType(BigBang bb, AnalysisType declaredType) {
         if (declaredType != null) {
-            for (AnalysisType e : types()) {
+            for (AnalysisType e : types(bb)) {
                 if (!declaredType.isAssignableFrom(e)) {
                     return false;
                 }
             }
         }
         return true;
-    }
-
-    /**
-     * The {@link MultiTypeState} overrides this method and provides the proper test. All the other
-     * type states have only 0 or 1 types.
-     */
-    public boolean closeToAllInstantiated(@SuppressWarnings("unused") BigBang bb) {
-        return false;
     }
 
     @Override
@@ -386,7 +382,7 @@ public abstract class TypeState {
                 AnalysisObject[] objectsArray = new AnalysisObject[multiState.typesCount()];
 
                 int i = 0;
-                for (AnalysisType type : multiState.types()) {
+                for (AnalysisType type : multiState.types(bb)) {
                     objectsArray[i++] = type.getContextInsensitiveAnalysisObject();
                 }
                 /*
@@ -437,7 +433,7 @@ public abstract class TypeState {
          * All filtered types (s1) must be marked as instantiated to ensures that the filter state
          * (s2) has been updated before a type appears in the input, otherwise types can be missed.
          */
-        assert !bb.extendedAsserts() || checkTypes(s1);
+        assert !bb.extendedAsserts() || checkTypes(bb, s1);
         if (s1.isEmpty()) {
             return s1;
         } else if (s1.isNull()) {
@@ -463,7 +459,7 @@ public abstract class TypeState {
          * All filtered types (s1) must be marked as instantiated to ensures that the filter state
          * (s2) has been updated before a type appears in the input, otherwise types can be missed.
          */
-        assert !bb.extendedAsserts() || checkTypes(s1);
+        assert !bb.extendedAsserts() || checkTypes(bb, s1);
         if (s1.isEmpty()) {
             return s1;
         } else if (s1.isNull()) {
@@ -484,8 +480,8 @@ public abstract class TypeState {
         }
     }
 
-    private static boolean checkTypes(TypeState state) {
-        for (AnalysisType type : state.types()) {
+    private static boolean checkTypes(BigBang bb, TypeState state) {
+        for (AnalysisType type : state.types(bb)) {
             if (!type.isInstantiated()) {
                 System.out.println("Processing a type not yet marked as instantiated: " + type.getName());
                 return false;
@@ -1394,10 +1390,6 @@ final class EmptyTypeState extends TypeState {
     }
 
     @Override
-    public void noteMerge(PointsToAnalysis bb) {
-    }
-
-    @Override
     public boolean hasExactTypes(BitSet typesBitSet) {
         if (typesBitSet.isEmpty()) {
             return true;
@@ -1416,7 +1408,7 @@ final class EmptyTypeState extends TypeState {
     }
 
     @Override
-    public Iterator<AnalysisType> typesIterator() {
+    public Iterator<AnalysisType> typesIterator(BigBang bb) {
         return Collections.emptyIterator();
     }
 
@@ -1485,10 +1477,6 @@ final class NullTypeState extends TypeState {
     }
 
     @Override
-    public void noteMerge(PointsToAnalysis bb) {
-    }
-
-    @Override
     public boolean hasExactTypes(BitSet typesBitSet) {
         if (typesBitSet.isEmpty()) {
             return true;
@@ -1507,7 +1495,7 @@ final class NullTypeState extends TypeState {
     }
 
     @Override
-    public Iterator<AnalysisType> typesIterator() {
+    public Iterator<AnalysisType> typesIterator(BigBang bb) {
         return Collections.emptyIterator();
     }
 

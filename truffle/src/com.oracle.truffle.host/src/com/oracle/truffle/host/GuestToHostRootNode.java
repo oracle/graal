@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,6 @@
 package com.oracle.truffle.host;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
@@ -92,10 +91,6 @@ abstract class GuestToHostRootNode extends RootNode {
     }
 
     protected abstract Object executeImpl(Object receiver, Object[] arguments) throws InteropException;
-
-    static CallTarget createGuestToHost(GuestToHostRootNode rootNode) {
-        return Truffle.getRuntime().createCallTarget(rootNode);
-    }
 
     static Object guestToHostCall(Node node, CallTarget target, Object... arguments) {
         Node encapsulatingNode;

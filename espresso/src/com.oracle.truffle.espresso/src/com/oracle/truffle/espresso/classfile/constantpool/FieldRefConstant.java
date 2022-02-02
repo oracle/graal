@@ -24,6 +24,9 @@ package com.oracle.truffle.espresso.classfile.constantpool;
 
 import java.util.Objects;
 
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.utilities.AlwaysValidAssumption;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
 import com.oracle.truffle.espresso.classfile.RuntimeConstantPool;
@@ -37,6 +40,8 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.perf.DebugCounter;
+import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 
 public interface FieldRefConstant extends MemberRefConstant {
 
@@ -44,6 +49,10 @@ public interface FieldRefConstant extends MemberRefConstant {
 
     static FieldRefConstant create(int classIndex, int nameAndTypeIndex) {
         return new Indexes(classIndex, nameAndTypeIndex);
+    }
+
+    static Resolvable.ResolvedConstant fromPreResolved(Field field) {
+        return new Resolved(field);
     }
 
     @Override
@@ -123,7 +132,15 @@ public interface FieldRefConstant extends MemberRefConstant {
             Field field = lookupField(holderKlass, name, type);
             if (field == null) {
                 Meta meta = pool.getContext().getMeta();
-                throw meta.throwExceptionWithMessage(meta.java_lang_NoSuchFieldError, meta.toGuestString(name));
+                EspressoException failure = EspressoException.wrap(Meta.initExceptionWithMessage(meta.java_lang_NoSuchFieldError, name.toString()), meta);
+                ClassRedefinition classRedefinition = pool.getContext().getClassRedefinition();
+                Assumption missingFieldAssumption;
+                if (classRedefinition != null) {
+                    missingFieldAssumption = classRedefinition.getMissingFieldAssumption();
+                } else {
+                    missingFieldAssumption = AlwaysValidAssumption.INSTANCE;
+                }
+                return new Missing(failure, missingFieldAssumption);
             }
 
             MemberRefConstant.doAccessCheck(accessingKlass, holderKlass, field, pool.getContext().getMeta());
@@ -141,11 +158,11 @@ public interface FieldRefConstant extends MemberRefConstant {
     }
 
     final class Resolved implements FieldRefConstant, Resolvable.ResolvedConstant {
-        private final Field.FieldVersion resolved;
+        private final Field resolved;
 
         Resolved(Field resolvedField) {
             Objects.requireNonNull(resolvedField);
-            this.resolved = resolvedField.getFieldVersion();
+            this.resolved = resolvedField;
         }
 
         @Override
@@ -154,7 +171,7 @@ public interface FieldRefConstant extends MemberRefConstant {
         }
 
         @Override
-        public Field.FieldVersion value() {
+        public Field value() {
             return resolved;
         }
 
@@ -165,12 +182,52 @@ public interface FieldRefConstant extends MemberRefConstant {
 
         @Override
         public Symbol<Name> getName(ConstantPool pool) {
-            return resolved.getField().getName();
+            return resolved.getName();
         }
 
         @Override
         public Symbol<? extends Descriptor> getDescriptor(ConstantPool pool) {
-            return resolved.getType();
+            return getType(pool);
+        }
+    }
+
+    final class Missing implements FieldRefConstant, Resolvable.ResolvedConstant {
+        private final EspressoException failure;
+        private final Assumption assumption;
+
+        public Missing(EspressoException failure, Assumption missingFieldAssumption) {
+            this.failure = failure;
+            this.assumption = missingFieldAssumption;
+        }
+
+        @Override
+        public Symbol<Type> getType(ConstantPool pool) {
+            throw EspressoError.shouldNotReachHere();
+        }
+
+        @Override
+        public Field value() {
+            if (assumption.isValid()) {
+                throw failure;
+            } else {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw new NeedsFreshResolutionException();
+            }
+        }
+
+        @Override
+        public Symbol<Name> getHolderKlassName(ConstantPool pool) {
+            throw EspressoError.shouldNotReachHere();
+        }
+
+        @Override
+        public Symbol<Name> getName(ConstantPool pool) {
+            throw EspressoError.shouldNotReachHere();
+        }
+
+        @Override
+        public Symbol<? extends Descriptor> getDescriptor(ConstantPool pool) {
+            throw EspressoError.shouldNotReachHere();
         }
     }
 }

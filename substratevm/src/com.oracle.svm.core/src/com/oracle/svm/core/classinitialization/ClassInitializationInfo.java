@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.classinitialization;
 
-// Checkstyle: stop
-
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -34,6 +32,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
+import com.oracle.svm.core.FunctionPointerHolder;
 import com.oracle.svm.core.annotate.InvokeJavaFunctionPointer;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.InternalVMMethod;
@@ -41,7 +40,6 @@ import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.util.VMError;
 
 import sun.misc.Unsafe;
-// Checkstyle: resume
 
 /**
  * Information about the runtime class initialization state of a {@link DynamicHub class}, and
@@ -92,27 +90,10 @@ public final class ClassInitializationInfo {
     }
 
     /**
-     * Isolates require that all function pointers to image methods are in immutable classes.
-     * {@link ClassInitializationInfo} is mutable, so we use this class as an immutable indirection.
-     */
-    public static class ClassInitializerFunctionPointerHolder {
-        /**
-         * We cannot declare the field to have type {@link ClassInitializerFunctionPointer} because
-         * during image building the field refers to a wrapper object that cannot implement custom
-         * interfaces.
-         */
-        final CFunctionPointer functionPointer;
-
-        ClassInitializerFunctionPointerHolder(CFunctionPointer functionPointer) {
-            this.functionPointer = functionPointer;
-        }
-    }
-
-    /**
      * Function pointer to the class initializer, or null if the class does not have a class
      * initializer.
      */
-    private final ClassInitializerFunctionPointerHolder classInitializer;
+    private final FunctionPointerHolder classInitializer;
 
     /**
      * The current initialization state.
@@ -156,7 +137,7 @@ public final class ClassInitializationInfo {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public ClassInitializationInfo(CFunctionPointer classInitializer) {
-        this.classInitializer = classInitializer == null || classInitializer.isNull() ? null : new ClassInitializerFunctionPointerHolder(classInitializer);
+        this.classInitializer = classInitializer == null || classInitializer.isNull() ? null : new FunctionPointerHolder(classInitializer);
         this.initState = InitState.Linked;
         this.initLock = new ReentrantLock();
         this.hasInitializer = classInitializer != null;

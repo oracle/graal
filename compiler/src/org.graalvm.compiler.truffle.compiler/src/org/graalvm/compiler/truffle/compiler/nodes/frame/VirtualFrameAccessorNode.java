@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,19 +54,41 @@ public abstract class VirtualFrameAccessorNode extends FixedWithNextNode impleme
 
     protected final int frameSlotIndex;
     protected final int accessTag;
+    protected final VirtualFrameAccessType type;
 
-    protected VirtualFrameAccessorNode(NodeClass<? extends VirtualFrameAccessorNode> c, Stamp stamp, Receiver frame, int frameSlotIndex, int accessTag) {
+    protected VirtualFrameAccessorNode(NodeClass<? extends VirtualFrameAccessorNode> c, Stamp stamp, Receiver frame, int frameSlotIndex, int accessTag, VirtualFrameAccessType type) {
+        this(c, stamp, (NewFrameNode) frame.get(), frameSlotIndex, accessTag, type);
+    }
+
+    protected VirtualFrameAccessorNode(NodeClass<? extends VirtualFrameAccessorNode> c, Stamp stamp, NewFrameNode frame, int frameSlotIndex, int accessTag, VirtualFrameAccessType type) {
         super(c, stamp);
-        this.frame = (NewFrameNode) frame.get();
+        this.type = type;
+        this.frame = frame;
         this.frameSlotIndex = frameSlotIndex;
         this.accessTag = accessTag;
     }
 
-    protected ValueNode getConstant(int n) {
+    protected final ValueNode getConstant(int n) {
         return frame.smallIntConstants.get(n);
     }
 
-    protected void insertDeoptimization(VirtualizerTool tool) {
+    public final NewFrameNode getFrame() {
+        return frame;
+    }
+
+    public final int getFrameSlotIndex() {
+        return frameSlotIndex;
+    }
+
+    public final int getAccessTag() {
+        return accessTag;
+    }
+
+    public final VirtualFrameAccessType getType() {
+        return type;
+    }
+
+    protected final void insertDeoptimization(VirtualizerTool tool) {
         /*
          * Escape analysis does not allow insertion of a DeoptimizeNode. We work around this
          * restriction by inserting an always-failing guard, which will be canonicalized to a

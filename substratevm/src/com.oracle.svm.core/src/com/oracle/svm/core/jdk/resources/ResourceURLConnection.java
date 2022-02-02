@@ -63,7 +63,7 @@ public class ResourceURLConnection extends URLConnection {
         connected = true;
 
         String resourceName = resolveName(url.getPath());
-        ResourceStorageEntry entry = Resources.get(resourceName);
+        ResourceStorageEntry entry = Resources.get(Resources.toCanonicalForm(resourceName));
         if (entry != null) {
             List<byte[]> bytes = entry.getData();
             if (index < bytes.size()) {

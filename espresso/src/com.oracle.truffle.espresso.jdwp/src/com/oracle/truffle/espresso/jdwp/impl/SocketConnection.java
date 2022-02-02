@@ -51,10 +51,25 @@ public final class SocketConnection implements Runnable {
     }
 
     public void close() throws IOException {
+        // send outstanding packets before closing
+        while (!queue.isEmpty()) {
+            for (PacketStream packetStream : queue) {
+                byte[] shipment = packetStream.prepareForShipment();
+                try {
+                    writePacket(shipment);
+                } catch (ConnectionClosedException e) {
+                    JDWP.LOGGER.finest("connection was closed when trying to flush queue");
+                }
+            }
+        }
+        socketOutput.flush();
+
         synchronized (closeLock) {
             if (closed) {
                 return;
             }
+            JDWP.LOGGER.fine("closing socket now");
+
             if (serverSocket != null) {
                 serverSocket.close();
             }

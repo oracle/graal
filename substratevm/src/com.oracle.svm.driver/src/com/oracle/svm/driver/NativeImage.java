@@ -50,6 +50,7 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.StringJoiner;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -70,6 +71,7 @@ import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.reports.ReportUtils;
+import com.oracle.svm.common.option.CommonOptions;
 import com.oracle.svm.core.FallbackExecutor;
 import com.oracle.svm.core.FallbackExecutor.Options;
 import com.oracle.svm.core.OS;
@@ -90,10 +92,8 @@ import com.oracle.svm.util.ModuleSupport;
 
 public class NativeImage {
 
-    private static final String ENV_VAR_USE_MODULE_SYSTEM = "USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM";
-
     private static final String DEFAULT_GENERATOR_CLASS_NAME = NativeImageGeneratorRunner.class.getName();
-    private static final String DEFAULT_GENERATOR_MODULE_NAME = ModuleSupport.getModuleName(NativeImageGeneratorRunner.class);
+    private static final String DEFAULT_GENERATOR_MODULE_NAME = NativeImageGeneratorRunner.class.getModule().getName();
 
     private static final String DEFAULT_GENERATOR_9PLUS_SUFFIX = "$JDK9Plus";
     private static final String CUSTOM_SYSTEM_CLASS_LOADER = NativeImageSystemClassLoader.class.getCanonicalName();
@@ -189,8 +189,8 @@ public class NativeImage {
     public static final String oH = "-H:";
     static final String oR = "-R:";
 
-    final String enablePrintFlags = SubstrateOptions.PrintFlags.getName();
-    final String enablePrintFlagsWithExtraHelp = SubstrateOptions.PrintFlagsWithExtraHelp.getName();
+    final String enablePrintFlags = CommonOptions.PrintFlags.getName();
+    final String enablePrintFlagsWithExtraHelp = CommonOptions.PrintFlagsWithExtraHelp.getName();
 
     private static <T> String oH(OptionKey<T> option) {
         return oH + option.getName() + "=";
@@ -257,6 +257,7 @@ public class NativeImage {
     private LinkedHashSet<EnabledOption> enabledLanguages;
 
     private final List<ExcludeConfig> excludedConfigs = new ArrayList<>();
+    private final LinkedHashSet<String> addModules = new LinkedHashSet<>();
 
     protected static class BuildConfiguration {
 
@@ -279,7 +280,7 @@ public class NativeImage {
 
         @SuppressWarnings("deprecation")
         BuildConfiguration(Path rootDir, Path workDir, List<String> args) {
-            modulePathBuild = Boolean.parseBoolean(System.getenv().get(ENV_VAR_USE_MODULE_SYSTEM));
+            modulePathBuild = Boolean.parseBoolean(System.getenv().get(ModuleSupport.ENV_VAR_USE_MODULE_SYSTEM));
             this.args = args;
             this.workDir = workDir != null ? workDir : Paths.get(".").toAbsolutePath().normalize();
             if (rootDir != null) {
@@ -361,6 +362,7 @@ public class NativeImage {
          * @return true if Java modules system should be used
          */
         public boolean useJavaModules() {
+            /* GR-33851: Once Java 8 support is gone, this should be constant-folded to true. */
             try {
                 Class.forName("java.lang.Module");
             } catch (ClassNotFoundException e) {
@@ -795,12 +797,8 @@ public class NativeImage {
         if (!"0".equals(xmxVal)) {
             addImageBuilderJavaArgs(oXmx + xmxVal);
         }
-        addImageBuilderJavaArgs("-Duser.country=US", "-Duser.language=en");
         /* Prevent JVM that runs the image builder to steal focus */
-        if (OS.getCurrent() != OS.WINDOWS || JavaVersionUtil.JAVA_SPEC > 8) {
-            /* Conditional because of https://bugs.openjdk.java.net/browse/JDK-8159956 */
-            addImageBuilderJavaArgs("-Djava.awt.headless=true");
-        }
+        addImageBuilderJavaArgs("-Djava.awt.headless=true");
         addImageBuilderJavaArgs("-Dorg.graalvm.version=" + graalvmVersion);
         addImageBuilderJavaArgs("-Dorg.graalvm.config=" + graalvmConfig);
         addImageBuilderJavaArgs("-Dcom.oracle.graalvm.isaot=true");
@@ -1161,6 +1159,10 @@ public class NativeImage {
             return 2;
         }
 
+        if (!addModules.isEmpty()) {
+            imageBuilderJavaArgs.add("-D" + ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES + "=" + String.join(",", addModules));
+        }
+
         List<String> finalImageBuilderJavaArgs = Stream.concat(config.getBuilderJavaArgs().stream(), imageBuilderJavaArgs.stream()).collect(Collectors.toList());
         return buildImage(finalImageBuilderJavaArgs, imageBuilderBootClasspath, imageBuilderClasspath, imageBuilderModulePath, imageBuilderArgs, finalImageClasspath, finalImageModulePath);
     }
@@ -1301,7 +1303,22 @@ public class NativeImage {
     protected static String createVMInvocationArgumentFile(List<String> arguments) {
         try {
             Path argsFile = Files.createTempFile("vminvocation", ".args");
-            String joinedOptions = String.join("\n", arguments);
+            StringJoiner joiner = new StringJoiner("\n");
+            for (String arg : arguments) {
+                // Options in @argfile need to be properly quoted as
+                // this relies on the JDK's @argfile parsing when the
+                // native image generator is being launched.
+                String quoted = SubstrateUtil.quoteShellArg(arg);
+                // @argfile rules for Windows quirk: backslashes don't need to be
+                // escaped if the option they are used in isn't quoted. If it is
+                // though, then they need to be escaped. This might mean that
+                // user-supplied arguments containing '\' will be double escaped.
+                if (quoted.startsWith("'")) {
+                    quoted = quoted.replace("\\", "\\\\");
+                }
+                joiner.add(quoted);
+            }
+            String joinedOptions = joiner.toString();
             Files.write(argsFile, joinedOptions.getBytes());
             argsFile.toFile().deleteOnExit();
             return "@" + argsFile;
@@ -1385,7 +1402,7 @@ public class NativeImage {
             ProcessBuilder pb = new ProcessBuilder();
             pb.command(command);
             if (config.modulePathBuild) {
-                pb.environment().put(ENV_VAR_USE_MODULE_SYSTEM, Boolean.toString(true));
+                pb.environment().put(ModuleSupport.ENV_VAR_USE_MODULE_SYSTEM, Boolean.toString(true));
             }
             p = pb.inheritIO().start();
             exitStatus = p.waitFor();
@@ -1491,6 +1508,10 @@ public class NativeImage {
 
     public void addImageBuilderModulePath(Path modulePathEntry) {
         imageBuilderModulePath.add(canonicalize(modulePathEntry));
+    }
+
+    public void addAddedModules(String addModulesArg) {
+        addModules.addAll(Arrays.asList(SubstrateUtil.split(addModulesArg, ",")));
     }
 
     void addImageBuilderClasspath(Path classpath) {
@@ -1790,7 +1811,7 @@ public class NativeImage {
         return "1g";
     }
 
-    @SuppressWarnings("deprecation") // getTotalPhysicalMemorySize deprecated since JDK 14
+    @SuppressWarnings("deprecation") // getTotalPhysicalMemorySize is deprecated after JDK 11
     private static long getPhysicalMemorySize() {
         OperatingSystemMXBean osMXBean = ManagementFactory.getOperatingSystemMXBean();
         long totalPhysicalMemorySize = ((com.sun.management.OperatingSystemMXBean) osMXBean).getTotalPhysicalMemorySize();
@@ -1859,7 +1880,7 @@ public class NativeImage {
              * substitutions of kind ${<argName>} -> <argValue> on resultVal.
              */
             for (String argNameValue : optionArg.split(",")) {
-                String[] splitted = argNameValue.split(":");
+                String[] splitted = argNameValue.split(":", 2);
                 if (splitted.length == 2) {
                     String argName = splitted[0];
                     String argValue = splitted[1];

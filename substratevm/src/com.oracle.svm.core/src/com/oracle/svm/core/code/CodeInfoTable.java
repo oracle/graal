@@ -278,7 +278,6 @@ class CodeInfoFeature implements Feature {
         ImageSingletons.add(RuntimeCodeInfoHistory.class, new RuntimeCodeInfoHistory());
         ImageSingletons.add(RuntimeCodeCache.class, new RuntimeCodeCache());
         ImageSingletons.add(RuntimeCodeInfoMemory.class, new RuntimeCodeInfoMemory());
-        ImageSingletons.add(MethodMetadataEncoding.class, new MethodMetadataEncoding());
     }
 
     @Override
@@ -292,6 +291,5 @@ class CodeInfoFeature implements Feature {
         config.registerAsImmutable(imageInfo.frameInfoObjectConstants);
         config.registerAsImmutable(imageInfo.frameInfoSourceClasses);
         config.registerAsImmutable(imageInfo.frameInfoSourceMethodNames);
-        config.registerAsImmutable(imageInfo.frameInfoNames);
     }
 }

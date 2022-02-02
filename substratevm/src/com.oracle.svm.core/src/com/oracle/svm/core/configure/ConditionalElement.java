@@ -32,8 +32,8 @@ import java.util.function.Function;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 public class ConditionalElement<T> {
-    private ConfigurationCondition condition;
-    private T element;
+    private final ConfigurationCondition condition;
+    private final T element;
 
     public ConditionalElement(ConfigurationCondition condition, T element) {
         this.condition = condition;

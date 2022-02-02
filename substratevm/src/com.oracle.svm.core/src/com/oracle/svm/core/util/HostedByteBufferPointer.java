@@ -210,6 +210,11 @@ public final class HostedByteBufferPointer implements Pointer {
     }
 
     @Override
+    public <T extends WordBase> T readWordVolatile(int offset, LocationIdentity locationIdentity) {
+        throw unsupported();
+    }
+
+    @Override
     public void writeChar(WordBase offset, char val, LocationIdentity locationIdentity) {
         writeChar(offsetAsInt(offset), val, locationIdentity);
     }
@@ -496,6 +501,11 @@ public final class HostedByteBufferPointer implements Pointer {
 
     @Override
     public void writeObject(int offset, Object val) {
+        throw unsupported();
+    }
+
+    @Override
+    public void writeWordVolatile(int offset, WordBase val) {
         throw unsupported();
     }
 

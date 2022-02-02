@@ -45,7 +45,6 @@ import java.util.Map;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -81,12 +80,7 @@ public final class TestReceiverLanguage extends ProxyLanguage {
     @Override
     protected CallTarget parse(ParsingRequest request) throws Exception {
         Source source = request.getSource();
-        return Truffle.getRuntime().createCallTarget(new TestReceiverRootNode(languageInstance, source));
-    }
-
-    @Override
-    protected Object findMetaObject(LanguageContext context, Object value) {
-        return "String";
+        return new TestReceiverRootNode(languageInstance, source).getCallTarget();
     }
 
     private static class TestReceiverRootNode extends RootNode {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -261,7 +261,7 @@ public class UseTrappingNullChecksPhase extends BasePhase<LowTierContext> {
                     if (((base == value && index == null) || (base == null && index == value)) && address.getMaxConstantDisplacement() < implicitNullCheckLimit) {
                         // Opportunity for implicit null check as part of an existing read found!
                         fixedAccessNode.setStateBefore(deopt.stateBefore());
-                        fixedAccessNode.setNullCheck(true);
+                        fixedAccessNode.setUsedAsNullCheck(true);
                         fixedAccessNode.setImplicitDeoptimization(deoptReasonAndAction, deoptSpeculation);
                         graph.removeSplit(ifNode, nonTrappingContinuation);
                         trappingNullCheck = fixedAccessNode;

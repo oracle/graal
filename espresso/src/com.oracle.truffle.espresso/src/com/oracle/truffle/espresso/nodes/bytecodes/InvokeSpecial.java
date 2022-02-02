@@ -33,7 +33,6 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
@@ -74,12 +73,11 @@ public abstract class InvokeSpecial extends Node {
              * Accept a slow path once the method has been removed put method behind a boundary to
              * avoid a deopt loop.
              */
-            return ClassRedefinition.handleRemovedMethod(method, receiver.getKlass(), receiver).getMethodVersion();
+            return method.getContext().getClassRedefinition().handleRemovedMethod(method, receiver.getKlass()).getMethodVersion();
         }
         return method.getMethodVersion();
     }
 
-    @ReportPolymorphism
     @ImportStatic(InvokeSpecial.class)
     @NodeInfo(shortName = "INVOKESPECIAL !nullcheck")
     public abstract static class WithoutNullCheck extends Node {
@@ -97,15 +95,14 @@ public abstract class InvokeSpecial extends Node {
         }
 
         @SuppressWarnings("unused")
-        @Specialization(assumptions = "resolvedMethod.getAssumption()")
+        @Specialization(assumptions = "resolvedMethod.getRedefineAssumption()")
         public Object callDirect(Object[] args,
                         @Bind("getReceiver(args)") StaticObject receiver,
                         // TODO(peterssen): Use the method's declaring class instead of the first
                         // receiver's class?
                         @Cached("methodLookup(method, receiver)") Method.MethodVersion resolvedMethod,
-                        @Cached("create(resolvedMethod.getCallTargetNoInit())") DirectCallNode directCallNode) {
+                        @Cached("create(resolvedMethod.getCallTarget())") DirectCallNode directCallNode) {
             assert !StaticObject.isNull(receiver);
-            assert resolvedMethod.getMethod().getDeclaringKlass().isInitializedOrInitializing() : resolvedMethod.getMethod().getDeclaringKlass();
             return directCallNode.call(args);
         }
 
@@ -116,7 +113,6 @@ public abstract class InvokeSpecial extends Node {
             StaticObject receiver = (StaticObject) args[0];
             assert !StaticObject.isNull(receiver);
             Method.MethodVersion resolvedMethod = methodLookup(method, receiver);
-            assert resolvedMethod.getMethod().getDeclaringKlass().isInitializedOrInitializing() : resolvedMethod.getMethod().getDeclaringKlass();
             return indirectCallNode.call(resolvedMethod.getCallTarget(), receiver, args);
         }
     }
@@ -137,7 +133,6 @@ public abstract class InvokeSpecial extends Node {
         }
 
         @GenerateUncached
-        @ReportPolymorphism
         @NodeInfo(shortName = "INVOKESPECIAL dynamic !nullcheck")
         public abstract static class WithoutNullCheck extends Node {
 
@@ -166,7 +161,6 @@ public abstract class InvokeSpecial extends Node {
                 StaticObject receiver = (StaticObject) args[0];
                 assert !StaticObject.isNull(receiver);
                 Method.MethodVersion resolvedMethod = methodLookup(method, receiver);
-                assert resolvedMethod.getMethod().getDeclaringKlass().isInitializedOrInitializing() : resolvedMethod.getMethod().getDeclaringKlass();
                 return indirectCallNode.call(resolvedMethod.getCallTarget(), args);
             }
         }

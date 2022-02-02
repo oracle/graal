@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -770,6 +770,14 @@ final class EconomicMapImpl<K, V> implements EconomicMap<K, V>, EconomicSet<K> {
                     EconomicMapImpl.this.findAndRemoveHash(EconomicMapImpl.this.getKey(current));
                 }
                 current = EconomicMapImpl.this.remove(current) - 1;
+            }
+
+            @SuppressWarnings("unchecked")
+            @Override
+            public V setValue(V newValue) {
+                V oldValue = (V) EconomicMapImpl.this.getValue(current);
+                EconomicMapImpl.this.setValue(current, newValue);
+                return oldValue;
             }
         };
     }

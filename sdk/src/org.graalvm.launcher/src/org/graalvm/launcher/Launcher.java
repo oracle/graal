@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,6 +65,7 @@ import java.util.BitSet;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Formatter;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -952,7 +953,7 @@ public abstract class Launcher {
         return new String(new char[length]).replace('\0', ' ');
     }
 
-    private static String wrap(String s) {
+    private static String wrap(String s, String indent) {
         final int width = 120;
         StringBuilder sb = new StringBuilder(s);
         int cursor = 0;
@@ -962,8 +963,8 @@ public abstract class Launcher {
                 i = sb.indexOf(" ", cursor + width);
             }
             if (i != -1) {
-                sb.replace(i, i + 1, System.lineSeparator());
-                cursor = i;
+                sb.replace(i, i + 1, System.lineSeparator() + indent);
+                cursor = i + indent.length();
             } else {
                 break;
             }
@@ -973,9 +974,12 @@ public abstract class Launcher {
 
     private void printOption(String option, String description, int indentStart, int optionWidth) {
         String indent = spaces(indentStart);
-        String desc = wrap(description != null ? description : "");
+        String desc = description != null ? description : "";
         String nl = System.lineSeparator();
         String[] descLines = desc.split(nl);
+        for (int i = 0; i < descLines.length; i++) {
+            descLines[i] = wrap(descLines[i], indent + spaces(optionWidth));
+        }
         if (option.length() >= optionWidth && description != null) {
             out.println(indent + option + nl + indent + spaces(optionWidth) + descLines[0]);
         } else {
@@ -986,26 +990,24 @@ public abstract class Launcher {
         }
     }
 
-    void printOption(PrintableOption option) {
-        printOption(option, 2);
-    }
-
     void printOption(PrintableOption option, int indentation) {
         printOption(option.option, option.description, indentation, optionIndent);
     }
 
     static final class PrintableOption implements Comparable<PrintableOption> {
+        final String name;
         final String option;
         final String description;
 
-        protected PrintableOption(String option, String description) {
+        protected PrintableOption(String name, String option, String description) {
+            this.name = name;
             this.option = option;
             this.description = description;
         }
 
         @Override
         public int compareTo(PrintableOption o) {
-            return this.option.compareTo(o.option);
+            return this.name.compareTo(o.name);
         }
     }
 
@@ -1115,7 +1117,8 @@ public abstract class Launcher {
      *
      * @param originalArgs the original arguments from main(), unmodified.
      * @param unrecognizedArgs a subset of {@code originalArgs} that was not recognized by
-     *            {@link AbstractLanguageLauncher#preprocessArguments(List, Map)}.
+     *            {@link AbstractLanguageLauncher#preprocessArguments(List, Map)}. All arguments
+     *            recognized by maybeExec are removed from the list.
      * @param isPolyglotLauncher whether this is the {@link PolyglotLauncher} (bin/polyglot)
      * @since 20.0
      */
@@ -1123,10 +1126,10 @@ public abstract class Launcher {
         if (!IS_AOT) {
             return;
         }
-        maybeExec(originalArgs, unrecognizedArgs, isPolyglotLauncher, getDefaultVMType());
+        maybeExec(originalArgs, unrecognizedArgs, isPolyglotLauncher, getDefaultVMType(), false);
     }
 
-    void maybeExec(List<String> originalArgs, List<String> unrecognizedArgs, boolean isPolyglotLauncher, VMType defaultVmType) {
+    void maybeExec(List<String> originalArgs, List<String> unrecognizedArgs, boolean isPolyglotLauncher, VMType defaultVmType, boolean thinLauncher) {
         assert isAOT();
         VMType vmType = null;
         boolean polyglot = false;
@@ -1187,12 +1190,24 @@ public abstract class Launcher {
                 applicationArgs.add(0, "--polyglot");
             }
             assert !isStandalone();
-            executeJVM(nativeAccess == null ? System.getProperty("java.class.path") : nativeAccess.getClasspath(jvmArgs), jvmArgs, applicationArgs, Collections.emptyMap());
+            if (thinLauncher) {
+                Map<String, String> env = new HashMap<>();
+                env.put("GRAALVM_LAUNCHER_FORCE_JVM", "true");
+                nativeAccess.reExec(originalArgs, env);
+            } else {
+                executeJVM(nativeAccess == null ? System.getProperty("java.class.path") : nativeAccess.getClasspath(jvmArgs), jvmArgs, applicationArgs, Collections.emptyMap());
+            }
         } else {
             assert vmType == VMType.Native;
 
-            for (String vmOption : vmOptions) {
-                nativeAccess.setNativeOption(vmOption);
+            /*
+             * If the VM args have already been applied (e.g. by the thin launcher), there is no
+             * need to set them again at runtime
+             */
+            if (!thinLauncher) {
+                for (String vmOption : vmOptions) {
+                    nativeAccess.setNativeOption(vmOption);
+                }
             }
             /*
              * All options are processed, now we can run the startup hooks that can depend on the
@@ -1549,6 +1564,30 @@ public abstract class Launcher {
             return sb.substring(0, sb.length() - 1);
         }
 
+        /**
+         * Re-rexecutes the launcher executable with the given arguments and additional environment.
+         *
+         * @param args launcher arguments
+         * @param env additional environment - the entries will be added to the existing environment
+         */
+        private void reExec(List<String> args, Map<String, String> env) {
+            assert isAOT();
+            String path = ProcessProperties.getExecutableName();
+            Path executable = Paths.get(path);
+            if (isVerbose()) {
+                StringBuilder sb = formatExec(executable, args);
+                err.print(sb.toString());
+            }
+            Map<String, String> newEnv = new HashMap<>();
+            newEnv.putAll(System.getenv());
+            newEnv.putAll(env);
+            // for exec, arg 0 needs to be the name of the executable
+            List<String> execArgs = new ArrayList<>();
+            execArgs.add(path);
+            execArgs.addAll(args);
+            ProcessProperties.exec(executable, execArgs.toArray(new String[0]), newEnv);
+        }
+
         private void exec(Path executable, List<String> command) {
             assert isAOT();
             if (isVerbose()) {
@@ -1620,41 +1659,47 @@ public abstract class Launcher {
         Path usedPath = path;
         Path fileNamePath = path.getFileName();
         String fileName = fileNamePath == null ? "" : fileNamePath.toString();
-        Path lockFile = null;
-        FileChannel lockFileChannel = null;
-        for (int unique = 0;; unique++) {
-            StringBuilder lockFileNameBuilder = new StringBuilder(fileName);
-            if (unique > 0) {
-                lockFileNameBuilder.append(unique);
-                usedPath = path.resolveSibling(lockFileNameBuilder.toString());
+        OutputStream outputStream;
+        if (Files.exists(path) && !Files.isRegularFile(path)) {
+            // Don't try to lock device or named pipe.
+            outputStream = new BufferedOutputStream(Files.newOutputStream(usedPath, WRITE, CREATE, APPEND));
+        } else {
+            Path lockFile = null;
+            FileChannel lockFileChannel = null;
+            for (int unique = 0;; unique++) {
+                StringBuilder lockFileNameBuilder = new StringBuilder(fileName);
+                if (unique > 0) {
+                    lockFileNameBuilder.append(unique);
+                    usedPath = path.resolveSibling(lockFileNameBuilder.toString());
+                }
+                lockFileNameBuilder.append(".lck");
+                lockFile = path.resolveSibling(lockFileNameBuilder.toString());
+                Pair<FileChannel, Boolean> openResult = openChannel(lockFile);
+                if (openResult != null) {
+                    lockFileChannel = openResult.getLeft();
+                    if (lock(lockFileChannel, openResult.getRight())) {
+                        break;
+                    } else {
+                        // Close and try next name
+                        lockFileChannel.close();
+                    }
+                }
             }
-            lockFileNameBuilder.append(".lck");
-            lockFile = path.resolveSibling(lockFileNameBuilder.toString());
-            Pair<FileChannel, Boolean> openResult = openChannel(lockFile);
-            if (openResult != null) {
-                lockFileChannel = openResult.getLeft();
-                if (lock(lockFileChannel, openResult.getRight())) {
-                    break;
-                } else {
-                    // Close and try next name
-                    lockFileChannel.close();
+            assert lockFile != null && lockFileChannel != null;
+            boolean success = false;
+            try {
+                outputStream = new LockableOutputStream(
+                                new BufferedOutputStream(Files.newOutputStream(usedPath, WRITE, CREATE, APPEND)),
+                                lockFile,
+                                lockFileChannel);
+                success = true;
+            } finally {
+                if (!success) {
+                    LockableOutputStream.unlock(lockFile, lockFileChannel);
                 }
             }
         }
-        assert lockFile != null && lockFileChannel != null;
-        boolean success = false;
-        try {
-            OutputStream stream = new LockableOutputStream(
-                            new BufferedOutputStream(Files.newOutputStream(usedPath, WRITE, CREATE, APPEND)),
-                            lockFile,
-                            lockFileChannel);
-            success = true;
-            return stream;
-        } finally {
-            if (!success) {
-                LockableOutputStream.unlock(lockFile, lockFileChannel);
-            }
-        }
+        return outputStream;
     }
 
     private static Pair<FileChannel, Boolean> openChannel(Path path) throws IOException {

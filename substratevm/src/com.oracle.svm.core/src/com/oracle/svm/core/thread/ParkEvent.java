@@ -24,25 +24,16 @@
  */
 package com.oracle.svm.core.thread;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
-import com.oracle.svm.core.util.VMError;
 
 /**
  * Each thread has several of these on which to wait. Instances are usually expensive objects
- * because they encapsulate native resources. Therefore, lazy initialization is supported using
- * {@link #initializeOnce} and {@link #detach} with three states and {@link AtomicReference atomic
- * transitions}:
- * <ol>
- * <li>uninitialized: the {@link AtomicReference} is null.
- * <li>used: A concrete platform-specific subclass of {@link ParkEvent} that allows wait and unpark
- * operations.
- * <li>detached: The thread has exited (or was manually detached from the VM). The
- * {@link DetachedParkEvent} singleton.
- * </ol>
- * The allowed transitions are uninitialized->used (wait or park is called on an active thread);
- * used->detached; and uninitialized->detached.
+ * because they encapsulate native resources. Therefore, lazy initialization is used, see
+ * {@link ThreadData}.
  */
 public abstract class ParkEvent {
 
@@ -65,8 +56,7 @@ public abstract class ParkEvent {
     }
 
     /**
-     * Resets a pending {@link #unpark()} at the time of the call. This must synchronize in a way
-     * that prevents it from being reordered with regard to setting the thread's interrupted status.
+     * Resets a pending {@link #unpark()} at the time of the call.
      */
     protected abstract void reset();
 
@@ -80,6 +70,7 @@ public abstract class ParkEvent {
     protected abstract void unpark();
 
     /** Use up the cons-cell for this ParkEvent. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     ParkEventConsCell consumeConsCell() {
         assert consCell != null : "Consuming null cons cell.";
         ParkEventConsCell result = consCell;
@@ -87,95 +78,26 @@ public abstract class ParkEvent {
         return result;
     }
 
-    /*
-     * Since ParkEvents are immortal, they are acquired and released, rather than being allocated
-     * and garbage collected.
+    /**
+     * Acquire a ParkEvent, either from the free-list or by construction. ParkEvents are immortal,
+     * so they are acquired and released, rather than being allocated and garbage collected.
      */
-
-    static ParkEvent initializeOnce(AtomicReference<ParkEvent> ref, boolean isSleepEvent) {
-        ParkEvent result = ref.get();
-        if (result == null) {
-            ParkEvent newEvent = ParkEvent.acquire();
-            /*
-             * Assign a *new* cons-cell for this ParkEvent, whether it was acquired from the
-             * free-list or allocated.
-             */
-            newEvent.consCell = new ParkEventConsCell(newEvent);
-            newEvent.isSleepEvent = isSleepEvent;
-            newEvent.reset();
-
-            if (ref.compareAndSet(null, newEvent)) {
-                /* We won the race. */
-                result = newEvent;
-            } else {
-                /*
-                 * We lost the race. We have one extra ParkEvent now, which we put back on the
-                 * queue, so that it is reused later on.
-                 */
-                ParkEvent.release(newEvent);
-                result = ref.get();
-                VMError.guarantee(result != null, "ParkEvent must never be reset to null once it has been initialized.");
-            }
-        }
-        return result;
-    }
-
-    /** Acquire a ParkEvent, either from the free-list or by construction. */
-    private static ParkEvent acquire() {
+    static ParkEvent acquire(boolean isSleepEvent) {
         ParkEvent result = ParkEventList.getSingleton().pop();
         if (result == null) {
             result = ImageSingletons.lookup(ParkEventFactory.class).create();
         }
+
+        /* Assign a *new* cons-cell for this ParkEvent. */
+        result.consCell = new ParkEventConsCell(result);
+        result.isSleepEvent = isSleepEvent;
+        result.reset();
         return result;
     }
 
-    static void detach(AtomicReference<ParkEvent> ref) {
-        /*
-         * We must not reset the AtomicReference back to null, because a racing thread could
-         * interpret that as "uninitialized" and immediately re-initialize the park event, or even
-         * return the null value in some race conditions.
-         */
-        ParkEvent event = ref.getAndSet(DetachedParkEvent.SINGLETON);
-        if (event != null && event != DetachedParkEvent.SINGLETON) {
-            ParkEvent.release(event);
-        }
-    }
-
-    private static void release(ParkEvent event) {
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    static void release(ParkEvent event) {
         ParkEventList.getSingleton().push(event);
-    }
-}
-
-/**
- * The {@link ParkEvent} used for threads that are detached, i.e., no longer executing Java code.
- * Such threads cannot wait (because waiting can only be initiated by the thread itself), but they
- * can be unparked (because {@link #unpark} can be called for any thread in any state).
- */
-final class DetachedParkEvent extends ParkEvent {
-
-    static final ParkEvent SINGLETON = new DetachedParkEvent();
-
-    private DetachedParkEvent() {
-    }
-
-    @Override
-    protected void reset() {
-        throw VMError.shouldNotReachHere("Cannot reset a DetachedParkEvent");
-    }
-
-    @Override
-    protected void condWait() {
-        throw VMError.shouldNotReachHere("Cannot wait on a DetachedParkEvent");
-    }
-
-    @Override
-    protected void condTimedWait(long delayNanos) {
-        throw VMError.shouldNotReachHere("Cannot wait on a DetachedParkEvent");
-    }
-
-    @Override
-    protected void unpark() {
-        /* It is an allowed no-op to unpark an already detached thread. */
     }
 }
 
@@ -190,6 +112,7 @@ final class ParkEventList {
 
     private static final ParkEventList SINGLETON = new ParkEventList();
 
+    @Fold
     public static ParkEventList getSingleton() {
         return SINGLETON;
     }
@@ -203,6 +126,7 @@ final class ParkEventList {
     }
 
     /** Push an element on to the free-list. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected void push(ParkEvent element) {
         ParkEventConsCell sampleHead;
         /* Use up the cons-cell for each attempted push to avoid the ABA problem on pops. */
@@ -250,6 +174,7 @@ final class ParkEventConsCell {
         return next;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected void setNext(ParkEventConsCell next) {
         this.next = next;
     }

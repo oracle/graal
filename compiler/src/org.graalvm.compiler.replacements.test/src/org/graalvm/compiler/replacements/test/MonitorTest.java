@@ -212,9 +212,8 @@ public class MonitorTest extends GraalCompilerTest {
         return new String(dst);
     }
 
-    @SuppressWarnings("synchronization")
     public static String lockBoxedLong(long value) {
-        Long lock = value;
+        Object lock = value;
         synchronized (lock) {
             return lock.toString();
         }

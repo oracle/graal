@@ -362,10 +362,6 @@ class SubstrateInspectedFrame implements InspectedFrame {
             JavaConstant con = getLocalConstant(i);
             if (con.getJavaKind() != JavaKind.Illegal) {
                 result.append("\n    local ").append(i);
-                String name = frameInfo.getLocalVariableName(i);
-                if (name != null) {
-                    result.append(" ").append(name);
-                }
                 if (con.getJavaKind() == JavaKind.Object) {
                     if (isVirtual(i)) {
                         result.append("  [virtual object]");

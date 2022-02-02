@@ -48,6 +48,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
+import java.util.List;
 
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.Proxy;
@@ -288,6 +289,14 @@ final class HostProxy implements TruffleObject {
             Object guestValue = context.toGuestValue(library, result);
             InteropLibrary interop = InteropLibrary.getFactory().getUncached();
             if (!interop.hasArrayElements(guestValue)) {
+                if (guestValue instanceof HostObject) {
+                    HostObject hostObject = (HostObject) guestValue;
+                    if (hostObject.obj.getClass().isArray() && !hostObject.getHostClassCache().isArrayAccess()) {
+                        throw illegalProxy(context, "getMemberKeys() returned a Java array %s, but allowArrayAccess in HostAccess is false.", context.asValue(library, guestValue).toString());
+                    } else if (hostObject.obj instanceof List && !hostObject.getHostClassCache().isListAccess()) {
+                        throw illegalProxy(context, "getMemberKeys() returned a Java List %s, but allowListAccess in HostAccess is false.", context.asValue(library, guestValue).toString());
+                    }
+                }
                 throw illegalProxy(context, "getMemberKeys() returned invalid value %s but must return an array of member key Strings.",
                                 context.asValue(library, guestValue).toString());
             }

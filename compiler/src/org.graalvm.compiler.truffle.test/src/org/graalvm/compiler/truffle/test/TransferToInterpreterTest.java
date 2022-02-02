@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -53,7 +53,7 @@ public class TransferToInterpreterTest extends TestWithPolyglotOptions {
     public void test() {
         RootNode rootNode = new TestRootNode();
         GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
-        OptimizedCallTarget target = (OptimizedCallTarget) runtime.createCallTarget(rootNode);
+        OptimizedCallTarget target = (OptimizedCallTarget) rootNode.getCallTarget();
         target.call(0);
         Assert.assertFalse(target.isValid());
         final OptimizedCallTarget compilable = target;

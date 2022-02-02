@@ -47,6 +47,7 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
@@ -66,6 +67,7 @@ import com.oracle.svm.core.posix.headers.Unistd;
 import com.oracle.svm.core.posix.headers.darwin.DarwinPthread;
 import com.oracle.svm.core.posix.headers.linux.LinuxPthread;
 import com.oracle.svm.core.posix.pthread.PthreadConditionUtils;
+import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.ParkEvent;
 import com.oracle.svm.core.thread.ParkEvent.ParkEventFactory;
@@ -84,35 +86,42 @@ public final class PosixJavaThreads extends JavaThreads {
     }
 
     @Override
-    protected void doStartThread(Thread thread, long stackSize) {
+    protected boolean startOSThread(Thread thread, long stackSize) {
         pthread_attr_t attributes = StackValue.get(pthread_attr_t.class);
-        PosixUtils.checkStatusIs0(
-                        Pthread.pthread_attr_init(attributes),
-                        "PosixJavaThreads.start0: pthread_attr_init");
-        PosixUtils.checkStatusIs0(
-                        Pthread.pthread_attr_setdetachstate(attributes, Pthread.PTHREAD_CREATE_JOINABLE()),
-                        "PosixJavaThreads.start0: pthread_attr_setdetachstate");
-        UnsignedWord threadStackSize = WordFactory.unsigned(stackSize);
-        /* If there is a chosen stack size, use it as the stack size. */
-        if (threadStackSize.notEqual(WordFactory.zero())) {
-            /* Make sure the chosen stack size is large enough. */
-            threadStackSize = UnsignedUtils.max(threadStackSize, Pthread.PTHREAD_STACK_MIN());
-            /* Make sure the chosen stack size is a multiple of the system page size. */
-            threadStackSize = UnsignedUtils.roundUp(threadStackSize, WordFactory.unsigned(Unistd.getpagesize()));
-            PosixUtils.checkStatusIs0(
-                            Pthread.pthread_attr_setstacksize(attributes, threadStackSize),
-                            "PosixJavaThreads.start0: pthread_attr_setstacksize");
+        if (Pthread.pthread_attr_init(attributes) != 0) {
+            return false;
         }
+        try {
+            if (Pthread.pthread_attr_setdetachstate(attributes, Pthread.PTHREAD_CREATE_JOINABLE()) != 0) {
+                return false;
+            }
 
-        ThreadStartData startData = UnmanagedMemory.malloc(SizeOf.get(ThreadStartData.class));
-        prepareStartData(thread, startData);
+            UnsignedWord threadStackSize = WordFactory.unsigned(stackSize);
+            /* If there is a chosen stack size, use it as the stack size. */
+            if (threadStackSize.notEqual(WordFactory.zero())) {
+                /* Make sure the chosen stack size is large enough. */
+                threadStackSize = UnsignedUtils.max(threadStackSize, Pthread.PTHREAD_STACK_MIN());
+                /* Make sure the chosen stack size is a multiple of the system page size. */
+                threadStackSize = UnsignedUtils.roundUp(threadStackSize, WordFactory.unsigned(Unistd.getpagesize()));
 
-        Pthread.pthread_tPointer newThread = StackValue.get(Pthread.pthread_tPointer.class);
-        PosixUtils.checkStatusIs0(
-                        Pthread.pthread_create(newThread, attributes, PosixJavaThreads.pthreadStartRoutine.getFunctionPointer(), startData),
-                        "PosixJavaThreads.start0: pthread_create");
-        setPthreadIdentifier(thread, newThread.read());
-        Pthread.pthread_attr_destroy(attributes);
+                if (Pthread.pthread_attr_setstacksize(attributes, threadStackSize) != 0) {
+                    return false;
+                }
+            }
+
+            ThreadStartData startData = prepareStart(thread, SizeOf.get(ThreadStartData.class));
+
+            Pthread.pthread_tPointer newThread = StackValue.get(Pthread.pthread_tPointer.class);
+            if (Pthread.pthread_create(newThread, attributes, PosixJavaThreads.pthreadStartRoutine.getFunctionPointer(), startData) != 0) {
+                undoPrepareStartOnError(thread, startData);
+                return false;
+            }
+
+            setPthreadIdentifier(thread, newThread.read());
+            return true;
+        } finally {
+            Pthread.pthread_attr_destroy(attributes);
+        }
     }
 
     private static void setPthreadIdentifier(Thread thread, Pthread.pthread_t pthread) {
@@ -171,10 +180,11 @@ public final class PosixJavaThreads extends JavaThreads {
 
     private static final CEntryPointLiteral<CFunctionPointer> pthreadStartRoutine = CEntryPointLiteral.create(PosixJavaThreads.class, "pthreadStartRoutine", ThreadStartData.class);
 
-    private static class PthreadStartRoutinePrologue {
+    private static class PthreadStartRoutinePrologue implements CEntryPointOptions.Prologue {
         private static final CGlobalData<CCharPointer> errorMessage = CGlobalDataFactory.createCString("Failed to attach a newly launched thread.");
 
         @SuppressWarnings("unused")
+        @Uninterruptible(reason = "prologue")
         static void enter(ThreadStartData data) {
             int code = CEntryPointActions.enterAttachThread(data.getIsolate(), false);
             if (code != CEntryPointErrors.NO_ERROR) {
@@ -183,11 +193,11 @@ public final class PosixJavaThreads extends JavaThreads {
         }
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(prologue = PthreadStartRoutinePrologue.class, epilogue = LeaveDetachThreadEpilogue.class, publishAs = Publish.NotPublished, include = CEntryPointOptions.NotIncludedAutomatically.class)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(prologue = PthreadStartRoutinePrologue.class, epilogue = LeaveDetachThreadEpilogue.class, publishAs = Publish.NotPublished)
     static WordBase pthreadStartRoutine(ThreadStartData data) {
         ObjectHandle threadHandle = data.getThreadHandle();
-        UnmanagedMemory.free(data);
+        freeStartData(data);
 
         threadStartRoutine(threadHandle);
 
@@ -207,7 +217,7 @@ final class Target_java_lang_Thread {
     @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     boolean hasPthreadIdentifier;
 
-    /** Every thread started by {@link PosixJavaThreads#doStartThread} has an opaque pthread_t. */
+    /** Every thread started by {@link PosixJavaThreads#startOSThread} has an opaque pthread_t. */
     @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     Pthread.pthread_t pthreadIdentifier;
 }
@@ -244,56 +254,71 @@ class PosixParkEvent extends ParkEvent {
 
     @Override
     protected void condWait() {
-        PosixUtils.checkStatusIs0(Pthread.pthread_mutex_lock(mutex), "park(): mutex lock");
+        StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {
-            while (!event) {
-                int status = Pthread.pthread_cond_wait(cond, mutex);
-                PosixUtils.checkStatusIs0(status, "park(): condition variable wait");
+            PosixUtils.checkStatusIs0(Pthread.pthread_mutex_lock(mutex), "park(): mutex lock");
+            try {
+                while (!event) {
+                    int status = Pthread.pthread_cond_wait(cond, mutex);
+                    PosixUtils.checkStatusIs0(status, "park(): condition variable wait");
+                }
+                event = false;
+            } finally {
+                PosixUtils.checkStatusIs0(Pthread.pthread_mutex_unlock(mutex), "park(): mutex unlock");
             }
-            event = false;
         } finally {
-            PosixUtils.checkStatusIs0(Pthread.pthread_mutex_unlock(mutex), "park(): mutex unlock");
+            StackOverflowCheck.singleton().protectYellowZone();
         }
     }
 
     @Override
     protected void condTimedWait(long delayNanos) {
-        /* Encode the delay as a deadline in a Time.timespec. */
-        Time.timespec deadlineTimespec = StackValue.get(Time.timespec.class);
-        PthreadConditionUtils.delayNanosToDeadlineTimespec(delayNanos, deadlineTimespec);
-
-        PosixUtils.checkStatusIs0(Pthread.pthread_mutex_lock(mutex), "park(long): mutex lock");
+        StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {
-            while (!event) {
-                int status = Pthread.pthread_cond_timedwait(cond, mutex, deadlineTimespec);
-                if (status == Errno.ETIMEDOUT()) {
-                    break;
-                } else if (status != 0) {
-                    Log.log().newline()
-                                    .string("[PosixParkEvent.condTimedWait(delayNanos: ").signed(delayNanos).string("): Should not reach here.")
-                                    .string("  mutex: ").hex(mutex)
-                                    .string("  cond: ").hex(cond)
-                                    .string("  deadlineTimeSpec.tv_sec: ").signed(deadlineTimespec.tv_sec())
-                                    .string("  deadlineTimespec.tv_nsec: ").signed(deadlineTimespec.tv_nsec())
-                                    .string("  status: ").signed(status).string(" ").string(Errno.strerror(status))
-                                    .string("]").newline();
-                    PosixUtils.checkStatusIs0(status, "park(long): condition variable timed wait");
+            /* Encode the delay as a deadline in a Time.timespec. */
+            Time.timespec deadlineTimespec = StackValue.get(Time.timespec.class);
+            PthreadConditionUtils.delayNanosToDeadlineTimespec(delayNanos, deadlineTimespec);
+
+            PosixUtils.checkStatusIs0(Pthread.pthread_mutex_lock(mutex), "park(long): mutex lock");
+            try {
+                while (!event) {
+                    int status = Pthread.pthread_cond_timedwait(cond, mutex, deadlineTimespec);
+                    if (status == Errno.ETIMEDOUT()) {
+                        break;
+                    } else if (status != 0) {
+                        Log.log().newline()
+                                        .string("[PosixParkEvent.condTimedWait(delayNanos: ").signed(delayNanos).string("): Should not reach here.")
+                                        .string("  mutex: ").hex(mutex)
+                                        .string("  cond: ").hex(cond)
+                                        .string("  deadlineTimeSpec.tv_sec: ").signed(deadlineTimespec.tv_sec())
+                                        .string("  deadlineTimespec.tv_nsec: ").signed(deadlineTimespec.tv_nsec())
+                                        .string("  status: ").signed(status).string(" ").string(Errno.strerror(status))
+                                        .string("]").newline();
+                        PosixUtils.checkStatusIs0(status, "park(long): condition variable timed wait");
+                    }
                 }
+                event = false;
+            } finally {
+                PosixUtils.checkStatusIs0(Pthread.pthread_mutex_unlock(mutex), "park(long): mutex unlock");
             }
-            event = false;
         } finally {
-            PosixUtils.checkStatusIs0(Pthread.pthread_mutex_unlock(mutex), "park(long): mutex unlock");
+            StackOverflowCheck.singleton().protectYellowZone();
         }
     }
 
     @Override
     protected void unpark() {
-        PosixUtils.checkStatusIs0(Pthread.pthread_mutex_lock(mutex), "PosixParkEvent.unpark(): mutex lock");
+        StackOverflowCheck.singleton().makeYellowZoneAvailable();
         try {
-            event = true;
-            PosixUtils.checkStatusIs0(Pthread.pthread_cond_broadcast(cond), "PosixParkEvent.unpark(): condition variable broadcast");
+            PosixUtils.checkStatusIs0(Pthread.pthread_mutex_lock(mutex), "PosixParkEvent.unpark(): mutex lock");
+            try {
+                event = true;
+                PosixUtils.checkStatusIs0(Pthread.pthread_cond_broadcast(cond), "PosixParkEvent.unpark(): condition variable broadcast");
+            } finally {
+                PosixUtils.checkStatusIs0(Pthread.pthread_mutex_unlock(mutex), "PosixParkEvent.unpark(): mutex unlock");
+            }
         } finally {
-            PosixUtils.checkStatusIs0(Pthread.pthread_mutex_unlock(mutex), "PosixParkEvent.unpark(): mutex unlock");
+            StackOverflowCheck.singleton().protectYellowZone();
         }
     }
 }

@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -457,7 +457,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         /* Only write stmt_list if the entry actually has line number info. */
         if (abbrevCode == DwarfDebugInfo.DW_ABBREV_CODE_class_unit1) {
             log(context, "  [0x%08x]     stmt_list  0x%08x", pos, lineIndex);
-            pos = writeAttrData4(lineIndex, buffer, pos);
+            pos = writeAttrSecOffset(lineIndex, buffer, pos);
         }
 
         /* Now write the child DIEs starting with the layout and pointer type. */
@@ -736,6 +736,9 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int pos = p;
         if (!Modifier.isStatic(method.getModifiers())) {
             pos = writeMethodParameterDeclaration(context, "this", classEntry.getTypeName(), true, isSpecification, buffer, pos);
+        }
+        if (method.getParamTypes() == null) {
+            return pos;
         }
         for (TypeEntry paramType : method.getParamTypes()) {
             String paramTypeName = paramType.getTypeName();

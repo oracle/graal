@@ -29,16 +29,13 @@ import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.c.CContext;
 
 import com.oracle.svm.core.OS;
 
 public class JNIHeaderDirectives implements CContext.Directives {
 
-    private final Path jdkIncludeDir = JavaVersionUtil.JAVA_SPEC <= 8
-                    ? Paths.get(System.getProperty("java.home")).getParent().resolve("include")
-                    : Paths.get(System.getProperty("java.home")).resolve("include");
+    private final Path jdkIncludeDir = Paths.get(System.getProperty("java.home")).resolve("include");
 
     @Override
     public List<String> getHeaderFiles() {

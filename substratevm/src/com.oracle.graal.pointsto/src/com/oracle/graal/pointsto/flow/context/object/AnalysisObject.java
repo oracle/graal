@@ -237,16 +237,21 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
             boolean result = instanceFieldsTypeStore.compareAndSet(field.getPosition(), null, fieldStore);
             if (result) {
                 fieldStore.init(bb);
-                // link the initial instance field flow to the field write flow
-                field.getInitialInstanceFieldFlow().addUse(bb, fieldStore.writeFlow());
-                // link the field read flow to the context insensitive instance field flow
-                fieldStore.readFlow().addUse(bb, field.getInstanceFieldFlow());
+                linkFieldFlows(bb, field, fieldStore);
             } else {
                 fieldStore = instanceFieldsTypeStore.get(field.getPosition());
             }
         }
 
         return fieldStore;
+    }
+
+    @SuppressWarnings("unused")
+    protected void linkFieldFlows(PointsToAnalysis bb, AnalysisField field, FieldTypeStore fieldStore) {
+        // link the initial instance field flow to the field write flow
+        field.getInitialInstanceFieldFlow().addUse(bb, fieldStore.writeFlow());
+        // link the field read flow to the context insensitive instance field flow
+        fieldStore.readFlow().addUse(bb, field.getInstanceFieldFlow());
     }
 
     /**
@@ -285,7 +290,7 @@ public class AnalysisObject implements Comparable<AnalysisObject> {
 
     @Override
     public String toString() {
-        return String.format("0x%016X", id) + ":" + kind.prefix + ":" + (type != null ? type.toJavaName(false) : "");
+        return String.format("0x%016X", id) + ":" + kind.prefix + ":" + (merged ? "M" : "") + ":" + (type != null ? type.toJavaName(false) : "");
     }
 
     @Override

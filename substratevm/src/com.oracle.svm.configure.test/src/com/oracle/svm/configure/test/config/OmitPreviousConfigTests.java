@@ -154,21 +154,21 @@ public class OmitPreviousConfigTests {
 
     private static void doTestTypeFlags(TypeConfiguration typeConfig) {
         ConfigurationType flagTestHasDeclaredType = getConfigTypeOrFail(typeConfig, "FlagTestC");
-        Assert.assertTrue(flagTestHasDeclaredType.haveAllDeclaredClasses() || flagTestHasDeclaredType.haveAllDeclaredFields() ||
-                        flagTestHasDeclaredType.getAllDeclaredConstructors() == ConfigurationMemberAccessibility.ACCESSED);
+        Assert.assertTrue(ConfigurationType.TestBackdoor.haveAllDeclaredClasses(flagTestHasDeclaredType) || ConfigurationType.TestBackdoor.haveAllDeclaredFields(flagTestHasDeclaredType) ||
+                        ConfigurationType.TestBackdoor.getAllDeclaredConstructors(flagTestHasDeclaredType) == ConfigurationMemberAccessibility.ACCESSED);
 
         ConfigurationType flagTestHasPublicType = getConfigTypeOrFail(typeConfig, "FlagTestD");
-        Assert.assertTrue(flagTestHasPublicType.haveAllPublicClasses() || flagTestHasPublicType.haveAllPublicFields() ||
-                        flagTestHasPublicType.getAllPublicConstructors() == ConfigurationMemberAccessibility.ACCESSED);
+        Assert.assertTrue(ConfigurationType.TestBackdoor.haveAllPublicClasses(flagTestHasPublicType) || ConfigurationType.TestBackdoor.haveAllPublicFields(flagTestHasPublicType) ||
+                        ConfigurationType.TestBackdoor.getAllPublicConstructors(flagTestHasPublicType) == ConfigurationMemberAccessibility.ACCESSED);
     }
 
     private static void doTestFields(TypeConfiguration typeConfig) {
         ConfigurationType fieldTestType = getConfigTypeOrFail(typeConfig, "MethodAndFieldTest");
 
-        Assert.assertNull(fieldTestType.getFieldInfoIfPresent("SimpleField"));
-        Assert.assertNull(fieldTestType.getFieldInfoIfPresent("AllowWriteField"));
+        Assert.assertNull(ConfigurationType.TestBackdoor.getFieldInfoIfPresent(fieldTestType, "SimpleField"));
+        Assert.assertNull(ConfigurationType.TestBackdoor.getFieldInfoIfPresent(fieldTestType, "AllowWriteField"));
 
-        FieldInfo newField = fieldTestType.getFieldInfoIfPresent("NewField");
+        FieldInfo newField = ConfigurationType.TestBackdoor.getFieldInfoIfPresent(fieldTestType, "NewField");
         Assert.assertFalse(newField.isFinalButWritable());
 
         FieldInfo newWritableField = getFieldInfoOrFail(fieldTestType, "NewAllowWriteField");
@@ -181,8 +181,8 @@ public class OmitPreviousConfigTests {
     private static void doTestMethods(TypeConfiguration typeConfig) {
         ConfigurationType methodTestType = getConfigTypeOrFail(typeConfig, "MethodAndFieldTest");
 
-        Assert.assertNull(methodTestType.getMethodKindIfPresent(new ConfigurationMethod("<init>", "(I)V")));
-        Assert.assertNotNull(methodTestType.getMethodKindIfPresent(new ConfigurationMethod("method", "()V")));
+        Assert.assertNull(ConfigurationType.TestBackdoor.getMethodInfoIfPresent(methodTestType, new ConfigurationMethod("<init>", "(I)V")));
+        Assert.assertNotNull(ConfigurationType.TestBackdoor.getMethodInfoIfPresent(methodTestType, new ConfigurationMethod("method", "()V")));
     }
 
     private static void doTestProxyConfig(ProxyConfiguration proxyConfig) {
@@ -213,7 +213,7 @@ public class OmitPreviousConfigTests {
     }
 
     private static FieldInfo getFieldInfoOrFail(ConfigurationType type, String field) {
-        FieldInfo fieldInfo = type.getFieldInfoIfPresent(field);
+        FieldInfo fieldInfo = ConfigurationType.TestBackdoor.getFieldInfoIfPresent(type, field);
         Assert.assertNotNull(fieldInfo);
         return fieldInfo;
     }
@@ -242,7 +242,6 @@ class TypeMethodsWithFlagsTest {
         this.methodKind = methodKind;
         generateTestMethods();
         populateConfig();
-        currentConfig.removeAll(previousConfig);
     }
 
     void generateTestMethods() {
@@ -301,20 +300,22 @@ class TypeMethodsWithFlagsTest {
     }
 
     void doTest() {
+        TypeConfiguration currentConfigWithoutPrevious = TypeConfiguration.copyAndSubtract(currentConfig, previousConfig);
+
         String name = getTypeName();
-        ConfigurationType configurationType = currentConfig.get(ConfigurationCondition.alwaysTrue(), name);
+        ConfigurationType configurationType = currentConfigWithoutPrevious.get(ConfigurationCondition.alwaysTrue(), name);
         if (methodsThatMustExist.size() == 0) {
             Assert.assertNull("Generated configuration type " + name + " exists. Expected it to be cleared as it is empty.", configurationType);
         } else {
             Assert.assertNotNull("Generated configuration type " + name + " does not exist. Has the test code changed?", configurationType);
 
             for (Map.Entry<ConfigurationMethod, ConfigurationMemberDeclaration> methodEntry : methodsThatMustExist.entrySet()) {
-                ConfigurationMemberDeclaration kind = configurationType.getMethodKindIfPresent(methodEntry.getKey()).getMemberKind();
+                ConfigurationMemberDeclaration kind = ConfigurationType.TestBackdoor.getMethodInfoIfPresent(configurationType, methodEntry.getKey()).getDeclaration();
                 Assert.assertNotNull("Method " + methodEntry.getKey() + " unexpectedly NOT found in the new configuration.", kind);
                 Assert.assertEquals("Method " + methodEntry.getKey() + " contains a different kind than expected in the new configuration.", kind, methodEntry.getValue());
             }
             for (Map.Entry<ConfigurationMethod, ConfigurationMemberDeclaration> methodEntry : methodsThatMustNotExist.entrySet()) {
-                ConfigurationMemberInfo kind = configurationType.getMethodKindIfPresent(methodEntry.getKey());
+                ConfigurationMemberInfo kind = ConfigurationType.TestBackdoor.getMethodInfoIfPresent(configurationType, methodEntry.getKey());
                 Assert.assertNull("Method " + methodEntry.getKey() + " unexpectedly found in the new configuration.", kind);
             }
         }

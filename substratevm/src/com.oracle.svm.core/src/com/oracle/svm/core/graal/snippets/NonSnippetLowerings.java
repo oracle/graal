@@ -30,18 +30,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.StampPair;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
+import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeInputList;
+import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DirectCallTargetNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FixedNode;
+import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.IndirectCallTargetNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
@@ -54,11 +56,15 @@ import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
+import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
+import org.graalvm.compiler.nodes.extended.FixedValueAnchorNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.GetClassNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
+import org.graalvm.compiler.nodes.extended.OpaqueNode;
+import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.memory.OnHeapMemoryAccess.BarrierType;
 import org.graalvm.compiler.nodes.memory.ReadNode;
@@ -73,6 +79,9 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.FrameAccess;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
@@ -81,6 +90,8 @@ import com.oracle.svm.core.graal.nodes.ThrowBytecodeExceptionNode;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
+import com.oracle.svm.core.snippets.SnippetRuntime;
+import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.CallingConvention;
@@ -93,12 +104,17 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public abstract class NonSnippetLowerings {
 
+    public static final SnippetRuntime.SubstrateForeignCallDescriptor REPORT_VERIFY_TYPES_ERROR = SnippetRuntime.findForeignCall(
+                    NonSnippetLowerings.class, "reportVerifyTypesError", false, LocationIdentity.any());
+
     private final RuntimeConfiguration runtimeConfig;
     private final Predicate<ResolvedJavaMethod> mustNotAllocatePredicate;
 
+    final boolean verifyTypes = SubstrateOptions.VerifyTypes.getValue();
+
     @SuppressWarnings("unused")
-    protected NonSnippetLowerings(RuntimeConfiguration runtimeConfig, Predicate<ResolvedJavaMethod> mustNotAllocatePredicate, OptionValues options, Iterable<DebugHandlersFactory> factories,
-                    Providers providers, SnippetReflectionProvider snippetReflection, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
+    protected NonSnippetLowerings(RuntimeConfiguration runtimeConfig, Predicate<ResolvedJavaMethod> mustNotAllocatePredicate, OptionValues options,
+                    Providers providers, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings) {
         this.runtimeConfig = runtimeConfig;
         this.mustNotAllocatePredicate = mustNotAllocatePredicate;
 
@@ -123,6 +139,7 @@ public abstract class NonSnippetLowerings {
         getCachedExceptionDescriptors.put(BytecodeExceptionKind.ARRAY_STORE, ImplicitExceptions.GET_CACHED_ARRAY_STORE_EXCEPTION);
         getCachedExceptionDescriptors.put(BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_NEGATIVE_LENGTH, ImplicitExceptions.GET_CACHED_ILLEGAL_ARGUMENT_EXCEPTION);
         getCachedExceptionDescriptors.put(BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_ARGUMENT_IS_NOT_AN_ARRAY, ImplicitExceptions.GET_CACHED_ILLEGAL_ARGUMENT_EXCEPTION);
+        getCachedExceptionDescriptors.put(BytecodeExceptionKind.NEGATIVE_ARRAY_SIZE, ImplicitExceptions.GET_CACHED_NEGATIVE_ARRAY_SIZE_EXCEPTION);
         getCachedExceptionDescriptors.put(BytecodeExceptionKind.DIVISION_BY_ZERO, ImplicitExceptions.GET_CACHED_ARITHMETIC_EXCEPTION);
         getCachedExceptionDescriptors.put(BytecodeExceptionKind.ASSERTION_ERROR_NULLARY, ImplicitExceptions.GET_CACHED_ASSERTION_ERROR);
         getCachedExceptionDescriptors.put(BytecodeExceptionKind.ASSERTION_ERROR_OBJECT, ImplicitExceptions.GET_CACHED_ASSERTION_ERROR);
@@ -135,6 +152,7 @@ public abstract class NonSnippetLowerings {
         createExceptionDescriptors.put(BytecodeExceptionKind.ARRAY_STORE, ImplicitExceptions.CREATE_ARRAY_STORE_EXCEPTION);
         createExceptionDescriptors.put(BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_NEGATIVE_LENGTH, ImplicitExceptions.CREATE_ILLEGAL_ARGUMENT_EXCEPTION);
         createExceptionDescriptors.put(BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_ARGUMENT_IS_NOT_AN_ARRAY, ImplicitExceptions.CREATE_ILLEGAL_ARGUMENT_EXCEPTION);
+        createExceptionDescriptors.put(BytecodeExceptionKind.NEGATIVE_ARRAY_SIZE, ImplicitExceptions.CREATE_NEGATIVE_ARRAY_SIZE_EXCEPTION);
         createExceptionDescriptors.put(BytecodeExceptionKind.DIVISION_BY_ZERO, ImplicitExceptions.CREATE_DIVISION_BY_ZERO_EXCEPTION);
         createExceptionDescriptors.put(BytecodeExceptionKind.ASSERTION_ERROR_NULLARY, ImplicitExceptions.CREATE_ASSERTION_ERROR_NULLARY);
         createExceptionDescriptors.put(BytecodeExceptionKind.ASSERTION_ERROR_OBJECT, ImplicitExceptions.CREATE_ASSERTION_ERROR_OBJECT);
@@ -147,6 +165,7 @@ public abstract class NonSnippetLowerings {
         throwCachedExceptionDescriptors.put(BytecodeExceptionKind.ARRAY_STORE, ImplicitExceptions.THROW_CACHED_ARRAY_STORE_EXCEPTION);
         throwCachedExceptionDescriptors.put(BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_NEGATIVE_LENGTH, ImplicitExceptions.THROW_CACHED_ILLEGAL_ARGUMENT_EXCEPTION);
         throwCachedExceptionDescriptors.put(BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_ARGUMENT_IS_NOT_AN_ARRAY, ImplicitExceptions.THROW_CACHED_ILLEGAL_ARGUMENT_EXCEPTION);
+        throwCachedExceptionDescriptors.put(BytecodeExceptionKind.NEGATIVE_ARRAY_SIZE, ImplicitExceptions.THROW_CACHED_NEGATIVE_ARRAY_SIZE_EXCEPTION);
         throwCachedExceptionDescriptors.put(BytecodeExceptionKind.DIVISION_BY_ZERO, ImplicitExceptions.THROW_CACHED_ARITHMETIC_EXCEPTION);
         throwCachedExceptionDescriptors.put(BytecodeExceptionKind.ASSERTION_ERROR_NULLARY, ImplicitExceptions.THROW_CACHED_ASSERTION_ERROR);
         throwCachedExceptionDescriptors.put(BytecodeExceptionKind.ASSERTION_ERROR_OBJECT, ImplicitExceptions.THROW_CACHED_ASSERTION_ERROR);
@@ -159,6 +178,7 @@ public abstract class NonSnippetLowerings {
         throwNewExceptionDescriptors.put(BytecodeExceptionKind.ARRAY_STORE, ImplicitExceptions.THROW_NEW_ARRAY_STORE_EXCEPTION_WITH_ARGS);
         throwNewExceptionDescriptors.put(BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_NEGATIVE_LENGTH, ImplicitExceptions.THROW_NEW_ILLEGAL_ARGUMENT_EXCEPTION_WITH_ARGS);
         throwNewExceptionDescriptors.put(BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_ARGUMENT_IS_NOT_AN_ARRAY, ImplicitExceptions.THROW_NEW_ILLEGAL_ARGUMENT_EXCEPTION_WITH_ARGS);
+        throwNewExceptionDescriptors.put(BytecodeExceptionKind.NEGATIVE_ARRAY_SIZE, ImplicitExceptions.THROW_NEW_NEGATIVE_ARRAY_SIZE_EXCEPTION);
         throwNewExceptionDescriptors.put(BytecodeExceptionKind.DIVISION_BY_ZERO, ImplicitExceptions.THROW_NEW_DIVISION_BY_ZERO_EXCEPTION);
         throwNewExceptionDescriptors.put(BytecodeExceptionKind.ASSERTION_ERROR_NULLARY, ImplicitExceptions.THROW_NEW_ASSERTION_ERROR_NULLARY);
         throwNewExceptionDescriptors.put(BytecodeExceptionKind.ASSERTION_ERROR_OBJECT, ImplicitExceptions.THROW_NEW_ASSERTION_ERROR_OBJECT);
@@ -250,12 +270,53 @@ public abstract class NonSnippetLowerings {
                 SharedMethod method = (SharedMethod) callTarget.targetMethod();
                 JavaType[] signature = method.getSignature().toParameterTypes(callTarget.isStatic() ? null : method.getDeclaringClass());
                 CallingConvention.Type callType = method.getCallingConventionKind().toType(true);
-
                 InvokeKind invokeKind = callTarget.invokeKind();
                 SharedMethod[] implementations = method.getImplementations();
+
+                if (verifyTypes && !callTarget.isStatic() && receiver.getStackKind() == JavaKind.Object && !Uninterruptible.Utils.isUninterruptible(graph.method())) {
+                    /*
+                     * Verify that the receiver is an instance of the class that declares the call
+                     * target method. To avoid that the new type check floats above a deoptimization
+                     * entry point, we need to anchor the receiver to the control flow. To avoid
+                     * that Graal optimizes away the InstanceOfNode immediately, we need an
+                     * OpaqueNode that removes all type information from the receiver. Then we wire
+                     * up an IfNode that leads to a ForeignCallNode in case the verification fails.
+                     */
+                    FixedValueAnchorNode anchoredReceiver = graph.add(new FixedValueAnchorNode(receiver));
+                    graph.addBeforeFixed(node, anchoredReceiver);
+                    ValueNode opaqueReceiver = graph.unique(new OpaqueNode(anchoredReceiver));
+                    TypeReference declaringClass = TypeReference.createTrustedWithoutAssumptions(method.getDeclaringClass());
+                    LogicNode instanceOf = graph.addOrUniqueWithInputs(InstanceOfNode.create(declaringClass, opaqueReceiver));
+                    BeginNode passingBegin = graph.add(new BeginNode());
+                    BeginNode failingBegin = graph.add(new BeginNode());
+                    IfNode ifNode = graph.add(new IfNode(instanceOf, passingBegin, failingBegin, BranchProbabilityNode.EXTREMELY_FAST_PATH_PROFILE));
+
+                    ((FixedWithNextNode) node.predecessor()).setNext(ifNode);
+                    passingBegin.setNext(node);
+
+                    String errorMessage;
+                    if (SubstrateUtil.HOSTED) {
+                        errorMessage = "Invoke " + invokeKind + " of " + method.format("%H.%n(%p)%r");
+                        errorMessage += System.lineSeparator() + "  declaringClass = " + declaringClass;
+                        if (implementations.length == 0 || implementations.length > 10) {
+                            errorMessage += System.lineSeparator() + "  implementations.length = " + implementations.length;
+                        } else {
+                            for (int i = 0; i < implementations.length; i++) {
+                                errorMessage += System.lineSeparator() + "  implementations[" + i + "] = " + implementations[i].format("%H.%n(%p)%r");
+                            }
+                        }
+                    } else {
+                        errorMessage = "Invoke (method name not added because message must be a compile-time constant)";
+                    }
+                    ConstantNode errorConstant = ConstantNode.forConstant(tool.getConstantReflection().forString(errorMessage), tool.getMetaAccess(), graph);
+                    ForeignCallNode reportError = graph.add(new ForeignCallNode(REPORT_VERIFY_TYPES_ERROR, opaqueReceiver, errorConstant));
+                    reportError.setStateAfter(invoke.stateAfter().duplicateModifiedDuringCall(invoke.bci(), node.getStackKind()));
+                    failingBegin.setNext(reportError);
+                    reportError.setNext(graph.add(new LoweredDeadEndNode()));
+                }
+
                 LoadHubNode hub = null;
                 CallTargetNode loweredCallTarget;
-
                 if (invokeKind.isDirect() || implementations.length == 1) {
                     SharedMethod targetMethod = method;
                     if (!invokeKind.isDirect()) {
@@ -352,4 +413,10 @@ public abstract class NonSnippetLowerings {
         }
     }
 
+    @SubstrateForeignCallTarget(stubCallingConvention = true)
+    private static void reportVerifyTypesError(Object object, String message) {
+        throw VMError.shouldNotReachHere("VerifyTypes: object=" + (object == null ? "null" : object.getClass().getTypeName()) +
+                        System.lineSeparator() + message +
+                        System.lineSeparator() + "VerifyTypes found a type error");
+    }
 }

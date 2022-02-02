@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -76,7 +76,7 @@ import jdk.vm.ci.meta.SpeculationLog.Speculation;
  * Node for invocation methods defined on the class {@link MethodHandle}.
  */
 @NodeInfo(cycles = CYCLES_UNKNOWN, cyclesRationale = "see MacroNode", size = SIZE_UNKNOWN, sizeRationale = "see MacroNode")
-public final class MethodHandleNode extends MacroStateSplitNode implements Simplifiable {
+public final class MethodHandleNode extends MacroNode implements Simplifiable {
     public static final NodeClass<MethodHandleNode> TYPE = NodeClass.create(MethodHandleNode.class);
 
     protected final IntrinsicMethod intrinsicMethod;

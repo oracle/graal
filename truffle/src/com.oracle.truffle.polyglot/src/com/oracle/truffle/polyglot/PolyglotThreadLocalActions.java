@@ -158,7 +158,8 @@ final class PolyglotThreadLocalActions {
 
     void notifyContextClosed() {
         assert Thread.holdsLock(context);
-        assert !context.isActive() || context.state == PolyglotContextImpl.State.CLOSED_CANCELLED : "context is still active, cannot flush safepoints";
+        assert !context.isActive() || context.state == PolyglotContextImpl.State.CLOSED_CANCELLED ||
+                        context.state == PolyglotContextImpl.State.CLOSED_EXITED : "context is still active, cannot flush safepoints";
         if (intervalTimer != null) {
             intervalTimer.cancel();
         }

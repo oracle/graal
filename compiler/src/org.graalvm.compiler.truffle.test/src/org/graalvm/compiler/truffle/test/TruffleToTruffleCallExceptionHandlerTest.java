@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,7 +47,7 @@ public class TruffleToTruffleCallExceptionHandlerTest extends PartialEvaluationT
 
     private static final class Compilables {
 
-        final OptimizedCallTarget calleeNoException = (OptimizedCallTarget) GraalTruffleRuntime.getRuntime().createCallTarget(new RootNode(null) {
+        final OptimizedCallTarget calleeNoException = (OptimizedCallTarget) new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
                 return null;
@@ -57,9 +57,9 @@ public class TruffleToTruffleCallExceptionHandlerTest extends PartialEvaluationT
             public String toString() {
                 return "CALLEE_NO_EXCEPTION";
             }
-        });
+        }.getCallTarget();
 
-        final OptimizedCallTarget callerNoException = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
+        final OptimizedCallTarget callerNoException = (OptimizedCallTarget) new RootNode(null) {
 
             @Child protected DirectCallNode callNode = runtime.createDirectCallNode(calleeNoException);
 
@@ -73,9 +73,9 @@ public class TruffleToTruffleCallExceptionHandlerTest extends PartialEvaluationT
             public String toString() {
                 return "CALLER_NO_EXCEPTION";
             }
-        });
+        }.getCallTarget();
 
-        final OptimizedCallTarget calleeWithException = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
+        final OptimizedCallTarget calleeWithException = (OptimizedCallTarget) new RootNode(null) {
             @Override
             public Object execute(VirtualFrame frame) {
                 throw new RuntimeException();
@@ -85,9 +85,9 @@ public class TruffleToTruffleCallExceptionHandlerTest extends PartialEvaluationT
             public String toString() {
                 return "CALLEE_EXCEPTION";
             }
-        });
+        }.getCallTarget();
 
-        final OptimizedCallTarget callerWithException = (OptimizedCallTarget) runtime.createCallTarget(new RootNode(null) {
+        final OptimizedCallTarget callerWithException = (OptimizedCallTarget) new RootNode(null) {
 
             @Child protected DirectCallNode callNode = runtime.createDirectCallNode(calleeWithException);
 
@@ -101,7 +101,7 @@ public class TruffleToTruffleCallExceptionHandlerTest extends PartialEvaluationT
             public String toString() {
                 return "CALLER_EXCEPTION";
             }
-        });
+        }.getCallTarget();
     }
 
     @Test

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
+import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.common.TruffleInliningData;
 
@@ -74,8 +75,14 @@ final class GraalTruffleRuntimeListenerDispatcher extends CopyOnWriteArrayList<G
     }
 
     @Override
+    @SuppressWarnings("deprecation")
     public void onCompilationStarted(OptimizedCallTarget target, int tier) {
         invokeListeners((l) -> l.onCompilationStarted(target, tier));
+    }
+
+    @Override
+    public void onCompilationStarted(OptimizedCallTarget target, TruffleCompilationTask task) {
+        invokeListeners((l) -> l.onCompilationStarted(target, task));
     }
 
     @Override
@@ -161,8 +168,8 @@ final class GraalTruffleRuntimeListenerDispatcher extends CopyOnWriteArrayList<G
     }
 
     @Override
-    public void onCompilationRetry(CompilableTruffleAST compilable, int tier) {
-        onCompilationQueued((OptimizedCallTarget) compilable, tier);
-        onCompilationStarted((OptimizedCallTarget) compilable, tier);
+    public void onCompilationRetry(CompilableTruffleAST compilable, TruffleCompilationTask task) {
+        onCompilationQueued((OptimizedCallTarget) compilable, task.tier());
+        onCompilationStarted((OptimizedCallTarget) compilable, task);
     }
 }

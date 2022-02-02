@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -158,6 +158,7 @@ public final class CPUTracer implements Closeable {
 
     private Payload getCounter(EventContext context) {
         SourceSection sourceSection = context.getInstrumentedSourceSection();
+        assert sourceSection != null : context;
         return payloadMap.computeIfAbsent(sourceSection, new Function<SourceSection, Payload>() {
             @Override
             public Payload apply(SourceSection section) {
@@ -192,7 +193,11 @@ public final class CPUTracer implements Closeable {
         this.activeBinding = env.getInstrumenter().attachExecutionEventFactory(f, new ExecutionEventNodeFactory() {
             @Override
             public ExecutionEventNode create(EventContext context) {
-                return new CounterNode(getCounter(context));
+                if (context.getInstrumentedSourceSection() != null) {
+                    return new CounterNode(getCounter(context));
+                } else {
+                    return null;
+                }
             }
         });
     }
@@ -302,13 +307,13 @@ public final class CPUTracer implements Closeable {
         }
     }
 
-    static {
-        CPUTracerInstrument.setFactory(new ProfilerToolFactory<CPUTracer>() {
+    static ProfilerToolFactory<CPUTracer> createFactory() {
+        return new ProfilerToolFactory<>() {
             @Override
             public CPUTracer create(Env env) {
                 return new CPUTracer(env);
             }
-        });
+        };
     }
 }
 

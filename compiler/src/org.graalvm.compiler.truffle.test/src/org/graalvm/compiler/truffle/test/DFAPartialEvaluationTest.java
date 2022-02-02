@@ -31,7 +31,6 @@ import org.junit.Test;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -302,7 +301,7 @@ public class DFAPartialEvaluationTest extends PartialEvaluationTest {
     }
 
     private static void assertMatches(RootNode program, String input) {
-        Object result = Truffle.getRuntime().createCallTarget(program).call(input);
+        Object result = program.getCallTarget().call(input);
         Assert.assertEquals(Boolean.TRUE, result);
     }
 
@@ -312,7 +311,7 @@ public class DFAPartialEvaluationTest extends PartialEvaluationTest {
 
     private void assertPartialEvalEqualsAndRunsCorrect(RootNode program, String input) {
         assertMatches(program, input);
-        final OptimizedCallTarget compilable = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(program);
+        final OptimizedCallTarget compilable = (OptimizedCallTarget) program.getCallTarget();
         partialEval(compilable, new Object[]{input}, getCompilationId(compilable));
         // fail on Exceptions only for now
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -23,8 +23,6 @@
  * questions.
  */
 package org.graalvm.compiler.replacements.nodes;
-
-import static org.graalvm.compiler.core.common.GraalOptions.ImmutableCode;
 
 import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -76,9 +74,6 @@ public abstract class IdentityHashCodeNode extends AbstractStateSplit implements
         if (object.isConstant()) {
             assert object.stamp(NodeView.DEFAULT) instanceof AbstractObjectStamp;
             JavaConstant c = (JavaConstant) object.asConstant();
-            if (ImmutableCode.getValue(tool.getOptions())) {
-                return this;
-            }
 
             int identityHashCode;
             if (c.isNull()) {

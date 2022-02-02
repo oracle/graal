@@ -24,8 +24,7 @@
  */
 package com.oracle.svm.jni.hosted;
 
-// Checkstyle: allow reflection
-
+import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
@@ -55,10 +54,12 @@ import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import com.oracle.svm.hosted.code.SimpleSignature;
+import com.oracle.svm.hosted.heap.SVMImageHeapScanner;
 import com.oracle.svm.jni.access.JNIAccessFeature;
 import com.oracle.svm.jni.access.JNINativeLinkage;
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
 import com.oracle.svm.jni.nativeapi.JNIObjectHandle;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
@@ -75,6 +76,7 @@ import jdk.vm.ci.meta.Signature;
  */
 class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
     private final JNINativeLinkage linkage;
+    private final Field linkageBuiltInAddressField = ReflectionUtil.lookupField(JNINativeLinkage.class, "builtInAddress");
 
     JNINativeCallWrapperMethod(ResolvedJavaMethod method) {
         super(method);
@@ -114,6 +116,7 @@ class JNINativeCallWrapperMethod extends CustomSubstitutionMethod {
         ValueNode callAddress;
         if (linkage.isBuiltInFunction()) {
             callAddress = kit.unique(new CGlobalDataLoadAddressNode(linkage.getBuiltInAddress()));
+            SVMImageHeapScanner.instance().rescanField(linkage, linkageBuiltInAddressField);
         } else {
             callAddress = kit.nativeCallAddress(kit.createObject(linkage));
         }

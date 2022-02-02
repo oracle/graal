@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -29,7 +29,6 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.UnsupportedSpecializationException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -45,7 +44,7 @@ public class ExplodeLoopBlockDuplicationTest extends TestWithSynchronousCompilin
      */
     @Test
     public void testBlockDuplication() {
-        OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(new ObjectCacheTestRootNode());
+        OptimizedCallTarget target = (OptimizedCallTarget) new ObjectCacheTestRootNode().getCallTarget();
         AbstractType value1 = new ConcreteType1();
         AbstractType value2 = new ConcreteType2();
         target.call(value1);

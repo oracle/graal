@@ -26,9 +26,7 @@ package com.oracle.graal.pointsto.api;
 
 import java.lang.reflect.AnnotatedElement;
 import java.util.Optional;
-import java.util.concurrent.ForkJoinPool;
 
-import com.oracle.graal.pointsto.BigBang;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.java.GraphBuilderPhase;
@@ -38,6 +36,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -54,8 +53,6 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public interface HostVM {
 
     OptionValues options();
-
-    ForkJoinPool executor();
 
     boolean isRelocatedPointer(Object originalObject);
 
@@ -125,7 +122,7 @@ public interface HostVM {
     }
 
     @SuppressWarnings("unused")
-    default boolean platformSupported(AnalysisUniverse universe, AnnotatedElement element) {
+    default boolean platformSupported(AnnotatedElement element) {
         return true;
     }
 }

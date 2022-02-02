@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -2199,6 +2199,7 @@ public abstract class AArch64ASIMDAssembler {
      * @param imm long value to move. If size is 128, then this value is copied twice
      */
     public void moviVI(ASIMDSize size, Register dst, long imm) {
+        assert dst.getRegisterCategory().equals(SIMD);
         modifiedImmEncoding(ImmediateOp.MOVI, size, dst, imm);
     }
 
@@ -2417,9 +2418,8 @@ public abstract class AArch64ASIMDAssembler {
      * <code>for i in 0..n-1 do dst[i] = src[i] << imm</code>
      *
      * @param size register size.
-     * @param eSize element size. Must be ElementSize.Word or ElementSize.DoubleWord. Note
-     *            ElementSize.DoubleWord is only applicable when size is 128 (i.e. the operation is
-     *            performed on more than one element).
+     * @param eSize element size. ElementSize.DoubleWord is only applicable when size is 128 (i.e.
+     *            the operation is performed on more than one element).
      * @param dst SIMD register.
      * @param src SIMD register.
      * @param shiftAmt shift amount.
@@ -2554,9 +2554,8 @@ public abstract class AArch64ASIMDAssembler {
      * dst[i] = (src1[i] >> byte(src2[i])</code>
      *
      * @param size register size.
-     * @param eSize element size. Must be ElementSize.Word or ElementSize.DoubleWord. Note
-     *            ElementSize.DoubleWord is only applicable when size is 128 (i.e. the operation is
-     *            performed on more than one element).
+     * @param eSize element size. ElementSize.DoubleWord is only applicable when size is 128 (i.e.
+     *            the operation is performed on more than one element).
      * @param dst SIMD register.
      * @param src1 SIMD register.
      * @param src2 SIMD register.
@@ -2604,9 +2603,8 @@ public abstract class AArch64ASIMDAssembler {
      * <code>for i in 0..n-1 do dst[i] = src[i] >> imm</code>
      *
      * @param size register size.
-     * @param eSize element size. Must be ElementSize.Word or ElementSize.DoubleWord. Note
-     *            ElementSize.DoubleWord is only applicable when size is 128 (i.e. the operation is
-     *            performed on more than one element).
+     * @param eSize element size. ElementSize.DoubleWord is only applicable when size is 128 (i.e.
+     *            the operation is performed on more than one element).
      * @param dst SIMD register.
      * @param src SIMD register.
      * @param shiftAmt shift right amount.
@@ -2984,9 +2982,8 @@ public abstract class AArch64ASIMDAssembler {
      * dst[i] = (src1[i] >>> byte(src2[i])</code>
      *
      * @param size register size.
-     * @param eSize element size. Must be ElementSize.Word or ElementSize.DoubleWord. Note
-     *            ElementSize.DoubleWord is only applicable when size is 128 (i.e. the operation is
-     *            performed on more than one element).
+     * @param eSize element size. ElementSize.DoubleWord is only applicable when size is 128 (i.e.
+     *            the operation is performed on more than one element).
      * @param dst SIMD register.
      * @param src1 SIMD register.
      * @param src2 SIMD register.
@@ -3057,9 +3054,8 @@ public abstract class AArch64ASIMDAssembler {
      * <code>dst = src >>> imm</code>
      *
      * @param size register size.
-     * @param eSize element size. Must be ElementSize.Word or ElementSize.DoubleWord. Note
-     *            ElementSize.DoubleWord is only applicable when size is 128 (i.e. the operation is
-     *            performed on more than one element).
+     * @param eSize element size. ElementSize.DoubleWord is only applicable when size is 128 (i.e.
+     *            the operation is performed on more than one element).
      * @param dst SIMD register.
      * @param src SIMD register.
      * @param shiftAmt shift right amount.

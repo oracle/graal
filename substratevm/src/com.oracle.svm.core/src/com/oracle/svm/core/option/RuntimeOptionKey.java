@@ -34,9 +34,11 @@ import org.graalvm.compiler.options.OptionKey;
  * @see com.oracle.svm.core.option
  */
 public class RuntimeOptionKey<T> extends OptionKey<T> {
+    private final int flags;
 
-    public RuntimeOptionKey(T defaultValue) {
+    public RuntimeOptionKey(T defaultValue, RuntimeOptionKeyFlag... flags) {
         super(defaultValue);
+        this.flags = computeFlags(flags);
     }
 
     /**
@@ -46,8 +48,33 @@ public class RuntimeOptionKey<T> extends OptionKey<T> {
         return getValue(RuntimeOptionValues.singleton());
     }
 
+    public void update(T value) {
+        RuntimeOptionValues.singleton().update(this, value);
+    }
+
+    public boolean hasBeenSet() {
+        return hasBeenSet(RuntimeOptionValues.singleton());
+    }
+
+    public boolean shouldCopyToCompilationIsolate() {
+        return (flags & RuntimeOptionKeyFlag.RelevantForCompilationIsolates.ordinal()) != 0;
+    }
+
     @Fold
     public T getHostedValue() {
         return getValue(RuntimeOptionValues.singleton());
+    }
+
+    private static int computeFlags(RuntimeOptionKeyFlag[] flags) {
+        int result = 0;
+        for (RuntimeOptionKeyFlag flag : flags) {
+            assert flag.ordinal() <= Integer.SIZE - 1;
+            result |= 1 << flag.ordinal();
+        }
+        return result;
+    }
+
+    public enum RuntimeOptionKeyFlag {
+        RelevantForCompilationIsolates
     }
 }

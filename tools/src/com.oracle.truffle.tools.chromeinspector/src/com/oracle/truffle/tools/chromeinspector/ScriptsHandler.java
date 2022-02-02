@@ -102,7 +102,7 @@ public final class ScriptsHandler implements LoadSourceListener {
         }
     }
 
-    public int assureLoaded(Source sourceLoaded) {
+    public Script assureLoaded(Source sourceLoaded) {
         DebuggerSession ds = debuggerSession;
         Source sourceResolved = sourceLoaded;
         if (ds != null) {
@@ -110,14 +110,15 @@ public final class ScriptsHandler implements LoadSourceListener {
         }
         Source source = (sourceResolved != null) ? sourceResolved : sourceLoaded;
         Script scr;
-        int id;
         LoadScriptListener[] listenersToNotify;
         synchronized (sourceIDs) {
             Integer eid = sourceIDs.get(source);
             if (eid != null) {
-                return eid;
+                scr = scripts.get(eid);
+                assert scr != null : sourceLoaded;
+                return scr;
             }
-            id = scripts.size();
+            int id = scripts.size();
             String sourceUrl = getSourceURL(source);
             scr = new Script(id, sourceUrl, source, sourceLoaded);
             sourceIDs.put(source, id);
@@ -128,7 +129,7 @@ public final class ScriptsHandler implements LoadSourceListener {
         for (LoadScriptListener l : listenersToNotify) {
             l.loadedScript(scr);
         }
-        return id;
+        return scr;
     }
 
     public String getSourceURL(Source source) {

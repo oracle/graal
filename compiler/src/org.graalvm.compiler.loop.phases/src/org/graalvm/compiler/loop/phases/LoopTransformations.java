@@ -34,6 +34,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.common.RetryableBailoutException;
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph.Mark;
 import org.graalvm.compiler.graph.Graph.NodeEventScope;
 import org.graalvm.compiler.graph.Node;
@@ -49,13 +50,14 @@ import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.GuardPhiNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PhiNode;
-import org.graalvm.compiler.nodes.ProfileData.LoopFrequencyData;
+import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.SafepointNode;
 import org.graalvm.compiler.nodes.StateSplit;
@@ -63,6 +65,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.ValueProxyNode;
 import org.graalvm.compiler.nodes.VirtualState.NodePositionClosure;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
@@ -81,6 +84,7 @@ import org.graalvm.compiler.nodes.spi.Simplifiable;
 import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.util.IntegerHelper;
+import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
 
@@ -90,14 +94,21 @@ public abstract class LoopTransformations {
         // does not need to be instantiated
     }
 
-    public static void peel(LoopEx loop) {
+    public static LoopFragmentInside peel(LoopEx loop) {
         loop.detectCounted();
-        loop.inside().duplicate().insertBefore(loop);
+        double frequencyBefore = -1D;
+        AbstractBeginNode countedExit = null;
         if (loop.isCounted()) {
-            // For counted loops we assume that we have an effect on the loop frequency.
-            loop.loopBegin().setLoopFrequency(loop.loopBegin().profileData().decrementFrequency(1.0));
+            frequencyBefore = loop.localLoopFrequency();
+            countedExit = loop.counted().getCountedExit();
         }
+        LoopFragmentInside inside = loop.inside().duplicate();
+        inside.insertBefore(loop);
         loop.loopBegin().incrementPeelings();
+        if (countedExit != null) {
+            adaptCountedLoopExitProbability(countedExit, frequencyBefore - 1D);
+        }
+        return inside;
     }
 
     @SuppressWarnings("try")
@@ -208,20 +219,9 @@ public abstract class LoopTransformations {
     public static void partialUnroll(LoopEx loop, EconomicMap<LoopBeginNode, OpaqueNode> opaqueUnrolledStrides) {
         assert loop.loopBegin().isMainLoop();
         loop.loopBegin().graph().getDebug().log("LoopPartialUnroll %s", loop);
-
+        adaptCountedLoopExitProbability(loop.counted().getCountedExit(), loop.localLoopFrequency() / 2D);
         LoopFragmentInside newSegment = loop.inside().duplicate();
         newSegment.insertWithinAfter(loop, opaqueUnrolledStrides);
-
-        // Try to update the corresponding post loop's frequency.
-        for (LoopExitNode exit : loop.loopBegin().loopExits()) {
-            if (exit.next().hasExactlyOneUsage() && exit.next().usages().first() instanceof LoopBeginNode) {
-                LoopBeginNode possiblePostLoopBegin = (LoopBeginNode) exit.next().usages().first();
-                if (possiblePostLoopBegin.isPostLoop()) {
-                    possiblePostLoopBegin.setLoopFrequency(loop.loopBegin().profileData().copy(loop.loopBegin().getUnrollFactor() - 1));
-                    break;
-                }
-            }
-        }
     }
 
     /**
@@ -372,10 +372,22 @@ public abstract class LoopTransformations {
              * Fix the framestates for the pre loop exit node and the main loop exit node.
              *
              * The only exit that actually really exits the original loop is the loop exit of the
-             * post-loop. We can never go from pre/main loop directly to the code after the loop, we
-             * always have to go through the original loop header, thus we need to fix the correct
-             * state on the pre/main loop exit, which is the loop header state with the values fixed
-             * (proxies if need be),
+             * post-loop. All other paths have to fully go through pre->main->post loops. We can
+             * never go from pre/main loop directly to the code after the loop, we always have to go
+             * through the original loop header, thus we need to fix the correct state on the
+             * pre/main loop exit.
+             *
+             * However, depending on the shape of the loop this is either
+             *
+             * for head counted loops: the loop header state with the values fixed
+             *
+             * for tail counted loops: the last state inside the body of the loop dominating the
+             * tail check (This is different since tail counted loops have protection control flow
+             * meaning it is possible to go pre -> after post, pre->main->after post, pre -> post ->
+             * after post. For the protected main and post loops it is enough to deopt to the last
+             * body state and the interpreter can then re-execute any failing counter check).
+             *
+             * For both scenarios we proxy the necessary nodes.
              */
             createExitState(preLoopBegin, (LoopExitNode) preLoopExitNode, loop.counted().isInverted(), preLoop);
             createExitState(mainLoopBegin, (LoopExitNode) mainLoopExitNode, loop.counted().isInverted(), mainLoop);
@@ -416,13 +428,17 @@ public abstract class LoopTransformations {
         } else {
             updatePreLoopLimit(preCounted);
         }
-        double originalFrequency = loop.loopBegin().loopFrequency();
-        preLoopBegin.setLoopFrequency(LoopFrequencyData.injected(1.0));
-        mainLoopBegin.setLoopFrequency(mainLoopBegin.profileData().decrementFrequency(2.0));
-        postLoopBegin.setLoopFrequency(LoopFrequencyData.injected(1.0));
+        double originalFrequency = loop.localLoopFrequency();
         preLoopBegin.setLoopOrigFrequency(originalFrequency);
         mainLoopBegin.setLoopOrigFrequency(originalFrequency);
         postLoopBegin.setLoopOrigFrequency(originalFrequency);
+
+        assert preLoopExitNode.predecessor() instanceof IfNode;
+        assert mainLoopExitNode.predecessor() instanceof IfNode;
+        assert postLoopExitNode.predecessor() instanceof IfNode;
+
+        setSingleVisitedLoopFrequencySplitProbability(preLoopExitNode);
+        setSingleVisitedLoopFrequencySplitProbability(postLoopExitNode);
 
         if (graph.isAfterStage(StageFlag.VALUE_PROXY_REMOVAL)) {
             // The pre and post loops don't require safepoints at all
@@ -436,6 +452,27 @@ public abstract class LoopTransformations {
         graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "InsertPrePostLoops %s", loop);
 
         return new PreMainPostResult(preLoopBegin, mainLoopBegin, postLoopBegin, preLoop, mainLoop, postLoop);
+    }
+
+    /**
+     * Inject a split probability for the (counted) loop check that will result in a loop frequency
+     * of 1 (in case this is the only loop exit).
+     */
+    private static void setSingleVisitedLoopFrequencySplitProbability(AbstractBeginNode lex) {
+        IfNode ifNode = ((IfNode) lex.predecessor());
+        boolean trueSucc = ifNode.trueSuccessor() == lex;
+        ifNode.setTrueSuccessorProbability(BranchProbabilityData.injected(0.01, trueSucc));
+    }
+
+    public static void adaptCountedLoopExitProbability(AbstractBeginNode lex, double newFrequency) {
+        double d = Math.abs(1D - newFrequency);
+        if (d <= 1D) {
+            setSingleVisitedLoopFrequencySplitProbability(lex);
+            return;
+        }
+        IfNode ifNode = ((IfNode) lex.predecessor());
+        boolean trueSucc = ifNode.trueSuccessor() == lex;
+        ifNode.setTrueSuccessorProbability(BranchProbabilityData.injected((newFrequency - 1) / newFrequency, trueSucc));
     }
 
     public static class PreMainPostResult {
@@ -532,26 +569,36 @@ public abstract class LoopTransformations {
     }
 
     private static void createExitState(LoopBeginNode begin, LoopExitNode lex, boolean inverted, LoopFragment loop) {
-        FrameState loopHeaderState = begin.stateAfter().duplicateWithVirtualState();
-        loopHeaderState.applyToNonVirtual(new NodePositionClosure<Node>() {
+        FrameState stateToUse;
+        if (inverted) {
+            stateToUse = GraphUtil.findLastFrameState((FixedNode) lex.predecessor()).duplicateWithVirtualState();
+        } else {
+            stateToUse = begin.stateAfter().duplicateWithVirtualState();
+        }
+        stateToUse.applyToNonVirtual(new NodePositionClosure<>() {
             @Override
             public void apply(Node from, Position p) {
-                ValueNode usage = (ValueNode) p.get(from);
-                if (begin.isPhiAtMerge(usage)) {
-                    PhiNode phi = (PhiNode) usage;
-                    ValueNode toProxy = inverted ? phi.singleBackValueOrThis() : phi;
-                    Node replacement;
-                    if (loop.contains(toProxy)) {
-                        // do not proxy values that are dominating the loop and are outside
-                        replacement = LoopFragmentInside.patchProxyAtPhi((PhiNode) usage, lex, toProxy);
-                    } else {
-                        replacement = toProxy;
-                    }
-                    p.set(from, replacement);
+                final ValueNode toProxy = (ValueNode) p.get(from);
+                if (toProxy instanceof VirtualObjectNode) {
+                    /*
+                     * VirtualObjectNodes: though they are leaf nodes they are considered to be
+                     * inside a loop for duplication purposes of loop optimizations. However, we do
+                     * not need/must proxy them: see LoopFragement::computeNodes for details.
+                     */
+                    return;
                 }
+                Node replacement;
+                // we are reasoning about a framestate here, it can only ever have
+                // InputType.Value inputs.
+                if (loop.contains(toProxy)) {
+                    replacement = lex.graph().addOrUnique(new ValueProxyNode(toProxy, lex));
+                } else {
+                    replacement = toProxy;
+                }
+                p.set(from, replacement);
             }
         });
-        lex.setStateAfter(loopHeaderState);
+        lex.setStateAfter(stateToUse);
         begin.graph().getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, begin.graph(), "After proxy-ing phis for exit state");
     }
 
@@ -572,12 +619,13 @@ public abstract class LoopTransformations {
         if (currentPhi.graph().isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL)) {
             ValueNode set = null;
             ValueNode toProxy = inverted ? currentPhi.singleBackValueOrThis() : currentPhi;
-            if (loopToProxy.contains(toProxy)) {
+            set = toProxy;
+            if (toProxy == null) {
+                GraalError.guarantee(currentPhi instanceof GuardPhiNode, "Only guard phi nodes can have null inputs %s", currentPhi);
+            } else if (loopToProxy.contains(toProxy)) {
                 set = LoopFragmentInside.patchProxyAtPhi(currentPhi, exitToProxy, toProxy);
-            } else {
-                set = toProxy;
+                assert set != null;
             }
-            assert set != null;
             outGoingPhi.setValueAt(0, set);
         } else {
             outGoingPhi.setValueAt(0, currentPhi);

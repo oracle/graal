@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -66,6 +66,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.builtins.SLBuiltinNode;
 import com.oracle.truffle.sl.builtins.SLDefineFunctionBuiltin;
 import com.oracle.truffle.sl.builtins.SLNanoTimeBuiltin;
@@ -112,6 +113,7 @@ import com.oracle.truffle.sl.runtime.SLFunctionRegistry;
 import com.oracle.truffle.sl.runtime.SLLanguageView;
 import com.oracle.truffle.sl.runtime.SLNull;
 import com.oracle.truffle.sl.runtime.SLObject;
+import com.oracle.truffle.sl.runtime.SLStrings;
 
 /**
  * SL is a simple language to demonstrate and showcase features of Truffle. The implementation is as
@@ -194,7 +196,8 @@ import com.oracle.truffle.sl.runtime.SLObject;
  * variables.
  * </ul>
  */
-@TruffleLanguage.Registration(id = SLLanguage.ID, name = "SL", defaultMimeType = SLLanguage.MIME_TYPE, characterMimeTypes = SLLanguage.MIME_TYPE, contextPolicy = ContextPolicy.SHARED, fileTypeDetectors = SLFileDetector.class)
+@TruffleLanguage.Registration(id = SLLanguage.ID, name = "SL", defaultMimeType = SLLanguage.MIME_TYPE, characterMimeTypes = SLLanguage.MIME_TYPE, contextPolicy = ContextPolicy.SHARED, fileTypeDetectors = SLFileDetector.class, //
+                website = "https://www.graalvm.org/graalvm-as-a-platform/implement-language/")
 @ProvidedTags({StandardTags.CallTag.class, StandardTags.StatementTag.class, StandardTags.RootTag.class, StandardTags.RootBodyTag.class, StandardTags.ExpressionTag.class, DebuggerTags.AlwaysHalt.class,
                 StandardTags.ReadVariableTag.class, StandardTags.WriteVariableTag.class})
 public final class SLLanguage extends TruffleLanguage<SLContext> {
@@ -204,10 +207,12 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     public static final String MIME_TYPE = "application/x-sl";
     private static final Source BUILTIN_SOURCE = Source.newBuilder(SLLanguage.ID, "", "SL builtin").build();
 
+    public static final TruffleString.Encoding STRING_ENCODING = TruffleString.Encoding.UTF_16;
+
     private final Assumption singleContext = Truffle.getRuntime().createAssumption("Single SL context.");
 
     private final Map<NodeFactory<? extends SLBuiltinNode>, RootCallTarget> builtinTargets = new ConcurrentHashMap<>();
-    private final Map<String, RootCallTarget> undefinedFunctions = new ConcurrentHashMap<>();
+    private final Map<TruffleString, RootCallTarget> undefinedFunctions = new ConcurrentHashMap<>();
 
     private final Shape rootShape;
 
@@ -227,10 +232,10 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         return true;
     }
 
-    public RootCallTarget getOrCreateUndefinedFunction(String name) {
+    public RootCallTarget getOrCreateUndefinedFunction(TruffleString name) {
         RootCallTarget target = undefinedFunctions.get(name);
         if (target == null) {
-            target = Truffle.getRuntime().createCallTarget(new SLUndefinedFunctionRootNode(this, name));
+            target = new SLUndefinedFunctionRootNode(this, name).getCallTarget();
             RootCallTarget other = undefinedFunctions.putIfAbsent(name, target);
             if (other != null) {
                 target = other;
@@ -265,7 +270,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         SLBuiltinNode builtinBodyNode = factory.createNode((Object) argumentNodes);
         builtinBodyNode.addRootTag();
         /* The name of the builtin function is specified via an annotation on the node class. */
-        String name = lookupNodeInfo(builtinBodyNode.getClass()).shortName();
+        TruffleString name = SLStrings.fromJavaString(lookupNodeInfo(builtinBodyNode.getClass()).shortName());
         builtinBodyNode.setUnavailableSourceSection();
 
         /* Wrap the builtin in a RootNode. Truffle requires all AST to start with a RootNode. */
@@ -275,8 +280,8 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
          * Register the builtin function in the builtin registry. Call targets for builtins may be
          * reused across multiple contexts.
          */
-        RootCallTarget newTarget = Truffle.getRuntime().createCallTarget(rootNode);
-        RootCallTarget oldTarget = builtinTargets.put(factory, newTarget);
+        RootCallTarget newTarget = rootNode.getCallTarget();
+        RootCallTarget oldTarget = builtinTargets.putIfAbsent(factory, newTarget);
         if (oldTarget != null) {
             return oldTarget;
         }
@@ -298,7 +303,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     @Override
     protected CallTarget parse(ParsingRequest request) throws Exception {
         Source source = request.getSource();
-        Map<String, RootCallTarget> functions;
+        Map<TruffleString, RootCallTarget> functions;
         /*
          * Parse the provided source. At this point, we do not have a SLContext yet. Registration of
          * the functions with the SLContext happens lazily in SLEvalRootNode.
@@ -322,7 +327,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
             functions = SimpleLanguageParser.parseSL(this, decoratedSource);
         }
 
-        RootCallTarget main = functions.get("main");
+        RootCallTarget main = functions.get(SLStrings.MAIN);
         RootNode evalMain;
         if (main != null) {
             /*
@@ -339,7 +344,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
              */
             evalMain = new SLEvalRootNode(this, null, functions);
         }
-        return Truffle.getRuntime().createCallTarget(evalMain);
+        return evalMain.getCallTarget();
     }
 
     /**
@@ -372,16 +377,6 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
     @Override
     protected Object getLanguageView(SLContext context, Object value) {
         return SLLanguageView.create(value);
-    }
-
-    /*
-     * Still necessary for the old SL TCK to pass. We should remove with the old TCK. New language
-     * should not override this.
-     */
-    @SuppressWarnings("deprecation")
-    @Override
-    protected Object findExportedSymbol(SLContext context, String globalName, boolean onlyExplicit) {
-        return context.getFunctionRegistry().lookup(globalName, false);
     }
 
     @Override
@@ -421,4 +416,12 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         EXTERNAL_BUILTINS.add(builtin);
     }
 
+    @Override
+    protected void exitContext(SLContext context, ExitMode exitMode, int exitCode) {
+        /*
+         * Runs shutdown hooks during explicit exit triggered by TruffleContext#closeExit(Node, int)
+         * or natural exit triggered during natural context close.
+         */
+        context.runShutdownHooks();
+    }
 }

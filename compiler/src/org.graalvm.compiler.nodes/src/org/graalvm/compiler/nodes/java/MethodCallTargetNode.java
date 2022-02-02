@@ -62,16 +62,16 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 @NodeInfo
 public class MethodCallTargetNode extends CallTargetNode implements IterableNodeType, Simplifiable {
     public static final NodeClass<MethodCallTargetNode> TYPE = NodeClass.create(MethodCallTargetNode.class);
-    protected JavaTypeProfile profile;
+    protected JavaTypeProfile typeProfile;
 
-    public MethodCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, StampPair returnStamp, JavaTypeProfile profile) {
-        this(TYPE, invokeKind, targetMethod, arguments, returnStamp, profile);
+    public MethodCallTargetNode(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, StampPair returnStamp, JavaTypeProfile typeProfile) {
+        this(TYPE, invokeKind, targetMethod, arguments, returnStamp, typeProfile);
     }
 
     protected MethodCallTargetNode(NodeClass<? extends MethodCallTargetNode> c, InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] arguments, StampPair returnStamp,
-                    JavaTypeProfile profile) {
+                    JavaTypeProfile typeProfile) {
         super(c, arguments, targetMethod, invokeKind, returnStamp);
-        this.profile = profile;
+        this.typeProfile = typeProfile;
     }
 
     /**
@@ -179,7 +179,7 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
         }
 
         if (invokeKind.isInterface()) {
-            MethodCallTargetNode result = tryDevirtualizeInterfaceCall(receiver(), targetMethod, profile, graph().getAssumptions(), contextType, this, invoke().asNode());
+            MethodCallTargetNode result = tryDevirtualizeInterfaceCall(receiver(), targetMethod, typeProfile, graph().getAssumptions(), contextType, this, invoke().asFixedNode());
             assert result == this;
         }
     }
@@ -282,8 +282,8 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
         return null;
     }
 
-    public JavaTypeProfile getProfile() {
-        return profile;
+    public JavaTypeProfile getTypeProfile() {
+        return typeProfile;
     }
 
     @Override
@@ -304,6 +304,6 @@ public class MethodCallTargetNode extends CallTargetNode implements IterableNode
     }
 
     public void setJavaTypeProfile(JavaTypeProfile profile) {
-        this.profile = profile;
+        this.typeProfile = profile;
     }
 }

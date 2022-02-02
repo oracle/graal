@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "5.309.2",
+  "mxversion" : "5.316.15",
   "name": "java-benchmarks",
 
   "javac.lint.overrides": "none",
@@ -75,6 +75,21 @@ suite = {
     "RENAISSANCE_0.11.0" : {
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-gpl-0.11.0.jar"],
       "sha1" : "613f7615179ea364116cdd68aa41ad44a9cc49e4",
+    },
+
+    "RENAISSANCE_0.12.0" : {
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-gpl-0.12.0.jar"],
+      "sha1" : "5bf404f875622a714f9b5c772b52ad857b97658d",
+    },
+
+    "RENAISSANCE_0.13.0" : {
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-gpl-0.13.0.jar"],
+      "sha1" : "65eaca6ec6ba4c7293b82644bbdefd5cb2178825",
+    },
+    
+    "RENAISSANCE_0.14.0" : {
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-gpl-0.14.0.jar"],
+      "sha1" : "d83a508c593a2389880936cbf9aa034bc86e7ef2",
     },
 
     "UBENCH_AGENT_DIST" : {
@@ -333,7 +348,7 @@ suite = {
       "dependencies" : [
         "mx:JMH_1_21",
       ],
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "checkPackagePrefix" : "false",
       "annotationProcessors" : ["mx:JMH_1_21"],
       "spotbugsIgnoresGenerated" : True,
@@ -346,7 +361,7 @@ suite = {
       "dependencies" : [
         "mx:JMH_1_21",
       ],
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "checkPackagePrefix" : "false",
       "annotationProcessors" : ["mx:JMH_1_21"],
       "spotbugsIgnoresGenerated" : True,
@@ -359,7 +374,7 @@ suite = {
       "dependencies" : [
         "SCALAFMT"
       ],
-      "javaCompliance" : "8+",
+      "javaCompliance" : "11+",
       "checkPackagePrefix" : "false",
       "workingSets" : "Graal,Bench",
       "testProject" : True,

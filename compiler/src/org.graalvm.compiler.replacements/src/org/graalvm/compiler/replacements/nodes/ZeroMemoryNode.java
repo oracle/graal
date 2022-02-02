@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,6 +33,7 @@ import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.memory.FixedAccessNode;
+import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
@@ -44,7 +45,7 @@ import org.graalvm.word.LocationIdentity;
  * Zeros a chunk of memory.
  */
 @NodeInfo(nameTemplate = "ZeroMemory#{p#location/s}", allowedUsageTypes = {InputType.Memory}, cycles = CYCLES_8, size = SIZE_8)
-public class ZeroMemoryNode extends FixedAccessNode implements LIRLowerable {
+public class ZeroMemoryNode extends FixedAccessNode implements LIRLowerable, SingleMemoryKill {
     public static final NodeClass<ZeroMemoryNode> TYPE = NodeClass.create(ZeroMemoryNode.class);
 
     @Input ValueNode length;
@@ -72,4 +73,9 @@ public class ZeroMemoryNode extends FixedAccessNode implements LIRLowerable {
 
     @NodeIntrinsic
     public static native void zero(Word address, long length, @ConstantNodeParameter boolean isAligned, @ConstantNodeParameter LocationIdentity locationIdentity);
+
+    @Override
+    public LocationIdentity getKilledLocationIdentity() {
+        return location;
+    }
 }

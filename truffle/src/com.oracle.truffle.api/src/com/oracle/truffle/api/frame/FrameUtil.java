@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,13 @@
  */
 package com.oracle.truffle.api.frame;
 
-/** @since 0.8 or earlier */
+/**
+ * @since 0.8 or earlier
+ * @deprecated in 22.0, not necessary any more since FrameSlotTypeException now extends
+ *             IllegalStateException
+ */
+@Deprecated
+@SuppressWarnings("deprecation")
 public final class FrameUtil {
     private FrameUtil() {
     }
@@ -51,14 +57,13 @@ public final class FrameUtil {
      *
      * @param frameSlot the slot of the variable
      * @throws IllegalStateException if the slot kind does not match
-     * @see Frame#getObject(FrameSlot)
      * @since 0.8 or earlier
      */
     public static Object getObjectSafe(Frame frame, FrameSlot frameSlot) {
         try {
             return frame.getObject(frameSlot);
         } catch (FrameSlotTypeException e) {
-            throw new IllegalStateException();
+            throw unexpectedFrameSlotTypeException();
         }
     }
 
@@ -68,14 +73,13 @@ public final class FrameUtil {
      *
      * @param frameSlot the slot of the variable
      * @throws IllegalStateException if the slot kind does not match
-     * @see Frame#getByte(FrameSlot)
      * @since 0.8 or earlier
      */
     public static byte getByteSafe(Frame frame, FrameSlot frameSlot) {
         try {
             return frame.getByte(frameSlot);
         } catch (FrameSlotTypeException e) {
-            throw new IllegalStateException();
+            throw unexpectedFrameSlotTypeException();
         }
     }
 
@@ -85,14 +89,13 @@ public final class FrameUtil {
      *
      * @param frameSlot the slot of the variable
      * @throws IllegalStateException if the slot kind does not match
-     * @see Frame#getBoolean(FrameSlot)
      * @since 0.8 or earlier
      */
     public static boolean getBooleanSafe(Frame frame, FrameSlot frameSlot) {
         try {
             return frame.getBoolean(frameSlot);
         } catch (FrameSlotTypeException e) {
-            throw new IllegalStateException();
+            throw unexpectedFrameSlotTypeException();
         }
     }
 
@@ -102,14 +105,13 @@ public final class FrameUtil {
      *
      * @param frameSlot the slot of the variable
      * @throws IllegalStateException if the slot kind does not match
-     * @see Frame#getInt(FrameSlot)
      * @since 0.8 or earlier
      */
     public static int getIntSafe(Frame frame, FrameSlot frameSlot) {
         try {
             return frame.getInt(frameSlot);
         } catch (FrameSlotTypeException e) {
-            throw new IllegalStateException();
+            throw unexpectedFrameSlotTypeException();
         }
     }
 
@@ -119,14 +121,13 @@ public final class FrameUtil {
      *
      * @param frameSlot the slot of the variable
      * @throws IllegalStateException if the slot kind does not match
-     * @see Frame#getLong(FrameSlot)
      * @since 0.8 or earlier
      */
     public static long getLongSafe(Frame frame, FrameSlot frameSlot) {
         try {
             return frame.getLong(frameSlot);
         } catch (FrameSlotTypeException e) {
-            throw new IllegalStateException();
+            throw unexpectedFrameSlotTypeException();
         }
     }
 
@@ -136,14 +137,13 @@ public final class FrameUtil {
      *
      * @param frameSlot the slot of the variable
      * @throws IllegalStateException if the slot kind does not match
-     * @see Frame#getDouble(FrameSlot)
      * @since 0.8 or earlier
      */
     public static double getDoubleSafe(Frame frame, FrameSlot frameSlot) {
         try {
             return frame.getDouble(frameSlot);
         } catch (FrameSlotTypeException e) {
-            throw new IllegalStateException();
+            throw unexpectedFrameSlotTypeException();
         }
     }
 
@@ -153,14 +153,17 @@ public final class FrameUtil {
      *
      * @param frameSlot the slot of the variable
      * @throws IllegalStateException if the slot kind does not match
-     * @see Frame#getFloat(FrameSlot)
      * @since 0.8 or earlier
      */
     public static float getFloatSafe(Frame frame, FrameSlot frameSlot) {
         try {
             return frame.getFloat(frameSlot);
         } catch (FrameSlotTypeException e) {
-            throw new IllegalStateException();
+            throw unexpectedFrameSlotTypeException();
         }
+    }
+
+    private static IllegalStateException unexpectedFrameSlotTypeException() {
+        throw new IllegalStateException();
     }
 }

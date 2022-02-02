@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,7 +26,6 @@ package org.graalvm.compiler.truffle.test;
 
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.polyglot.Context;
 import org.junit.Test;
@@ -115,7 +114,7 @@ public class AOTSupportCompilationTest extends PartialEvaluationTest {
         context.initialize(ProxyLanguage.ID);
         context.enter();
         TestRootNode root = new TestRootNode(TestLanguage.getCurrentLanguage(), node, receiver);
-        GraalTruffleRuntime.getRuntime().createCallTarget(root);
+        root.getCallTarget();
         context.leave();
         return root;
     }

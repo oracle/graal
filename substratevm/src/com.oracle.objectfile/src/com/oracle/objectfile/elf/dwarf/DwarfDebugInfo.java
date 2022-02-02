@@ -1,6 +1,6 @@
 /*
  * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -169,11 +169,12 @@ public class DwarfDebugInfo extends DebugInfoBase {
     @SuppressWarnings("unused") public static final int DW_FORM_data8 = 0x7;
     @SuppressWarnings("unused") private static final int DW_FORM_string = 0x8;
     @SuppressWarnings("unused") public static final int DW_FORM_block1 = 0x0a;
+    public static final int DW_FORM_ref_addr = 0x10;
     @SuppressWarnings("unused") public static final int DW_FORM_ref1 = 0x11;
     @SuppressWarnings("unused") public static final int DW_FORM_ref2 = 0x12;
     @SuppressWarnings("unused") public static final int DW_FORM_ref4 = 0x13;
     @SuppressWarnings("unused") public static final int DW_FORM_ref8 = 0x14;
-    public static final int DW_FORM_ref_addr = 0x10;
+    public static final int DW_FORM_sec_offset = 0x17;
     public static final int DW_FORM_data1 = 0x0b;
     public static final int DW_FORM_flag = 0xc;
     public static final int DW_FORM_strp = 0xe;

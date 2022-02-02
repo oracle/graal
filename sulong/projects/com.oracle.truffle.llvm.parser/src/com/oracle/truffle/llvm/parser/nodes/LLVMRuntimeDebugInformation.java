@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -38,7 +38,6 @@ import java.util.Map.Entry;
 import java.util.Objects;
 
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.llvm.parser.metadata.debuginfo.SourceVariable;
@@ -97,21 +96,18 @@ public final class LLVMRuntimeDebugInformation implements LocalVariableDebugInfo
 
         private final boolean mustDereference;
         private final Object value;
-        private final int valueFrameIdentifier;
+        private final int frameSlot;
 
-        SimpleLocalVariable(int instructionIndex, boolean mustDereference, Object value, int valueFrameIdentifier, LLVMSourceSymbol variable) {
+        SimpleLocalVariable(int instructionIndex, boolean mustDereference, Object value, int frameSlot, LLVMSourceSymbol variable) {
             super(instructionIndex, variable);
             this.mustDereference = mustDereference;
             this.value = value;
-            this.valueFrameIdentifier = valueFrameIdentifier;
+            this.frameSlot = frameSlot;
         }
 
         protected Object getValue(Frame frame) {
-            if (valueFrameIdentifier != -1) {
-                FrameSlot slot = frame.getFrameDescriptor().findFrameSlot(valueFrameIdentifier);
-                if (slot != null) {
-                    return frame.getValue(slot);
-                }
+            if (frameSlot != -1) {
+                return frame.getValue(frameSlot);
             } else if (value != null) {
                 if (value instanceof LLVMExpressionNode) {
                     try {
@@ -195,8 +191,8 @@ public final class LLVMRuntimeDebugInformation implements LocalVariableDebugInfo
 
         private final int partIndex;
 
-        SetLocalVariablePart(int instructionIndex, boolean mustDereference, Object value, int valueFrameIdentifier, LLVMSourceSymbol variable, int partIndex) {
-            super(instructionIndex, mustDereference, value, valueFrameIdentifier, variable);
+        SetLocalVariablePart(int instructionIndex, boolean mustDereference, Object value, int valueFrameSlot, LLVMSourceSymbol variable, int partIndex) {
+            super(instructionIndex, mustDereference, value, valueFrameSlot, variable);
             this.partIndex = partIndex;
         }
 
@@ -318,9 +314,9 @@ public final class LLVMRuntimeDebugInformation implements LocalVariableDebugInfo
         return values;
     }
 
+    @SuppressWarnings({"unchecked", "rawtypes"})
     private void initializePredecessors() {
         if (predecessors == null) {
-            @SuppressWarnings({"unchecked", "rawtypes"})
             ArrayList<Integer>[] result = new ArrayList[infos.length];
             for (int i = 0; i < infos.length; i++) {
                 result[i] = new ArrayList<>(2);

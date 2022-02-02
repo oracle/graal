@@ -34,9 +34,9 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.windows.headers.LibC;
 import com.oracle.svm.core.windows.headers.Process;
 import com.oracle.svm.core.windows.headers.SynchAPI;
 import com.oracle.svm.core.windows.headers.WinBase;
@@ -46,8 +46,8 @@ public final class WindowsVMThreads extends VMThreads {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     public OSThreadHandle getCurrentOSThreadHandle() {
-        WinBase.HANDLE pseudoThreadHandle = Process.GetCurrentThread();
-        WinBase.HANDLE pseudoProcessHandle = Process.GetCurrentProcess();
+        WinBase.HANDLE pseudoThreadHandle = Process.NoTransitions.GetCurrentThread();
+        WinBase.HANDLE pseudoProcessHandle = Process.NoTransitions.GetCurrentProcess();
 
         // convert the thread pseudo handle to a real handle using DuplicateHandle
         WinBase.LPHANDLE pointerToResult = StackValue.get(WinBase.LPHANDLE.class);
@@ -61,7 +61,7 @@ public final class WindowsVMThreads extends VMThreads {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
     protected OSThreadId getCurrentOSThreadId() {
-        return WordFactory.unsigned(Process.GetCurrentThreadId());
+        return WordFactory.unsigned(Process.NoTransitions.GetCurrentThreadId());
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.")
@@ -78,6 +78,18 @@ public final class WindowsVMThreads extends VMThreads {
     @Override
     public void nativeSleep(int milliseconds) {
         SynchAPI.NoTransitions.Sleep(milliseconds);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Override
+    public void yield() {
+        Process.NoTransitions.SwitchToThread();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Override
+    public boolean supportsNativeYieldAndSleep() {
+        return true;
     }
 
     /**

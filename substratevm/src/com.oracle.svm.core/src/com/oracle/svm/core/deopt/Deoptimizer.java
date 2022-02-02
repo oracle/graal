@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.deopt;
 
-// Checkstyle: allow reflection
-
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -751,7 +749,7 @@ public final class Deoptimizer {
     };
 
     public static void logRecentDeoptimizationEvents(Log log) {
-        log.string("Recent deoptimization events:").indent(true);
+        log.string("Recent deoptimization events (oldest first):").indent(true);
         recentDeoptimizationEvents.foreach(log, deoptEventsConsumer);
         log.indent(false);
     }
@@ -1059,7 +1057,7 @@ public final class Deoptimizer {
     }
 
     private static void printDeoptimizedFrame(Log log, Pointer sp, DeoptimizedFrame deoptimizedFrame, FrameInfoQueryResult sourceFrameInfo, boolean printOnlyTopFrames) {
-        log.string("[Deoptimization of frame").newline();
+        log.string("[Deoptimization of frame (timestamp ").unsigned(System.currentTimeMillis()).string(")").newline();
 
         SubstrateInstalledCode installedCode = deoptimizedFrame.getSourceInstalledCode();
         if (installedCode != null) {
@@ -1124,10 +1122,6 @@ public final class Deoptimizer {
             JavaConstant con = virtualFrame.getConstant(i);
             if (con.getJavaKind() != JavaKind.Illegal) {
                 log.newline().string("            slot ").signed(i);
-                String name = frameInfo.getLocalVariableName(i);
-                if (name != null) {
-                    log.string(" ").string(name);
-                }
                 log.string("  kind: ").string(con.getJavaKind().toString());
                 if (con.getJavaKind() == JavaKind.Object) {
                     Object val = SubstrateObjectConstant.asObject(con);

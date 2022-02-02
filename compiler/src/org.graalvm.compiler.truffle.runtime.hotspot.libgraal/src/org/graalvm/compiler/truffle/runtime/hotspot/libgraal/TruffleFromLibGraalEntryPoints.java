@@ -383,8 +383,8 @@ final class TruffleFromLibGraalEntryPoints {
     }
 
     @TruffleFromLibGraal(OnCompilationRetry)
-    static void onCompilationRetry(Object listener, Object compilable, int tier) {
-        ((TruffleCompilerListener) listener).onCompilationRetry((CompilableTruffleAST) compilable, tier);
+    static void onCompilationRetry(Object listener, Object compilable, Object task) {
+        ((TruffleCompilerListener) listener).onCompilationRetry((CompilableTruffleAST) compilable, (TruffleCompilationTask) task);
     }
 
     @TruffleFromLibGraal(OnGraalTierFinished)

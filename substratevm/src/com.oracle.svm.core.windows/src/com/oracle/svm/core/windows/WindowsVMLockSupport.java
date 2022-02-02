@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.windows;
 
+import static com.oracle.svm.core.annotate.RestrictHeapAccess.Access.NO_ALLOCATION;
+
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.word.Word;
@@ -38,6 +40,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.annotate.RestrictHeapAccess;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.annotate.UnknownObjectField;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -47,14 +50,13 @@ import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMLockSupport;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
-import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.windows.headers.Process;
 import com.oracle.svm.core.windows.headers.SynchAPI;
 import com.oracle.svm.core.windows.headers.WinBase;
 
 import jdk.vm.ci.meta.JavaKind;
-
-//Checkstyle: stop
 
 /**
  * Support of {@link VMMutex} and {@link VMCondition} in multi-threaded environments. Locking is
@@ -64,14 +66,14 @@ import jdk.vm.ci.meta.JavaKind;
 @Platforms(Platform.WINDOWS.class)
 final class WindowsVMLockFeature implements Feature {
 
-    private final ClassInstanceReplacer<VMMutex, WindowsVMMutex> mutexReplacer = new ClassInstanceReplacer<VMMutex, WindowsVMMutex>(VMMutex.class) {
+    private final ClassInstanceReplacer<VMMutex, WindowsVMMutex> mutexReplacer = new ClassInstanceReplacer<>(VMMutex.class) {
         @Override
         protected WindowsVMMutex createReplacement(VMMutex source) {
             return new WindowsVMMutex(source.getName());
         }
     };
 
-    private final ClassInstanceReplacer<VMCondition, WindowsVMCondition> conditionReplacer = new ClassInstanceReplacer<VMCondition, WindowsVMCondition>(VMCondition.class) {
+    private final ClassInstanceReplacer<VMCondition, WindowsVMCondition> conditionReplacer = new ClassInstanceReplacer<>(VMCondition.class) {
         @Override
         protected WindowsVMCondition createReplacement(VMCondition source) {
             return new WindowsVMCondition((WindowsVMMutex) mutexReplacer.apply(source.getMutex()));
@@ -147,21 +149,24 @@ public final class WindowsVMLockSupport extends VMLockSupport {
         WindowsVMLockSupport support = WindowsVMLockSupport.singleton();
         for (WindowsVMMutex mutex : support.mutexes) {
             // critical sections on windows always support recursive locking
-            Process.InitializeCriticalSection(mutex.getStructPointer());
+            Process.NoTransitions.InitializeCriticalSection(mutex.getStructPointer());
         }
         for (WindowsVMCondition condition : support.conditions) {
-            Process.InitializeConditionVariable(condition.getStructPointer());
+            Process.NoTransitions.InitializeConditionVariable(condition.getStructPointer());
         }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", calleeMustBe = false)
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in fatal error handling.")
     static void checkResult(int result, String functionName) {
         if (result == 0) {
             /*
              * Functions are called very early and late during our execution, so there is not much
              * we can do when they fail.
              */
-            VMThreads.StatusSupport.setStatusIgnoreSafepoints();
+            SafepointBehavior.preventSafepoints();
+            StackOverflowCheck.singleton().disableStackOverflowChecksForFatalError();
+
             int lastError = WinBase.GetLastError();
             Log.log().string(functionName).string(" failed with error ").hex(lastError).newline();
             ImageSingletons.lookup(LogHandler.class).fatalError();
@@ -205,14 +210,14 @@ final class WindowsVMMutex extends VMMutex {
     @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
     public void lockNoTransition() {
         assertNotOwner("Recursive locking is not supported");
-        Process.EnterCriticalSectionNoTrans(getStructPointer());
+        Process.NoTransitions.EnterCriticalSection(getStructPointer());
         setOwnerToCurrentThread();
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
     public void lockNoTransitionUnspecifiedOwner() {
-        Process.EnterCriticalSectionNoTrans(getStructPointer());
+        Process.NoTransitions.EnterCriticalSection(getStructPointer());
         setOwnerToUnspecified();
     }
 
@@ -220,20 +225,20 @@ final class WindowsVMMutex extends VMMutex {
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public void unlock() {
         clearCurrentThreadOwner();
-        Process.LeaveCriticalSection(getStructPointer());
+        Process.NoTransitions.LeaveCriticalSection(getStructPointer());
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public void unlockNoTransitionUnspecifiedOwner() {
         clearUnspecifiedOwner();
-        Process.LeaveCriticalSection(getStructPointer());
+        Process.NoTransitions.LeaveCriticalSection(getStructPointer());
     }
 
     @Override
     public void unlockWithoutChecks() {
         clearCurrentThreadOwner();
-        Process.LeaveCriticalSectionNoTrans(getStructPointer());
+        Process.NoTransitions.LeaveCriticalSection(getStructPointer());
     }
 }
 
@@ -262,7 +267,7 @@ final class WindowsVMCondition extends VMCondition {
     @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
     public void blockNoTransition() {
         mutex.clearCurrentThreadOwner();
-        WindowsVMLockSupport.checkResult(Process.SleepConditionVariableCSNoTrans(getStructPointer(), ((WindowsVMMutex) getMutex()).getStructPointer(), SynchAPI.INFINITE()),
+        WindowsVMLockSupport.checkResult(Process.NoTransitions.SleepConditionVariableCS(getStructPointer(), ((WindowsVMMutex) getMutex()).getStructPointer(), SynchAPI.INFINITE()),
                         "SleepConditionVariableCS");
         mutex.setOwnerToCurrentThread();
     }
@@ -271,7 +276,7 @@ final class WindowsVMCondition extends VMCondition {
     @Uninterruptible(reason = "Called from uninterruptible code.", callerMustBe = true)
     public void blockNoTransitionUnspecifiedOwner() {
         mutex.clearUnspecifiedOwner();
-        WindowsVMLockSupport.checkResult(Process.SleepConditionVariableCSNoTrans(getStructPointer(), ((WindowsVMMutex) getMutex()).getStructPointer(), SynchAPI.INFINITE()),
+        WindowsVMLockSupport.checkResult(Process.NoTransitions.SleepConditionVariableCS(getStructPointer(), ((WindowsVMMutex) getMutex()).getStructPointer(), SynchAPI.INFINITE()),
                         "SleepConditionVariableCS");
         mutex.setOwnerToUnspecified();
     }
@@ -308,7 +313,7 @@ final class WindowsVMCondition extends VMCondition {
         int dwMilliseconds = (int) (waitNanos / WindowsUtils.NANOSECS_PER_MILLISEC);
 
         mutex.clearCurrentThreadOwner();
-        final int timedwaitResult = Process.SleepConditionVariableCSNoTrans(getStructPointer(), ((WindowsVMMutex) getMutex()).getStructPointer(), dwMilliseconds);
+        final int timedwaitResult = Process.NoTransitions.SleepConditionVariableCS(getStructPointer(), ((WindowsVMMutex) getMutex()).getStructPointer(), dwMilliseconds);
         mutex.setOwnerToCurrentThread();
 
         /* If the timed wait timed out, then I am done blocking. */
@@ -325,12 +330,12 @@ final class WindowsVMCondition extends VMCondition {
 
     @Override
     public void signal() {
-        Process.WakeConditionVariable(getStructPointer());
+        Process.NoTransitions.WakeConditionVariable(getStructPointer());
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.")
     public void broadcast() {
-        Process.WakeAllConditionVariable(getStructPointer());
+        Process.NoTransitions.WakeAllConditionVariable(getStructPointer());
     }
 }

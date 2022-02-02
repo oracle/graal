@@ -79,7 +79,7 @@ public abstract class LIRPhase<C> {
         }
     }
 
-    public static final ClassValue<LIRPhaseStatistics> statisticsClassValue = new ClassValue<LIRPhaseStatistics>() {
+    public static final ClassValue<LIRPhaseStatistics> statisticsClassValue = new ClassValue<>() {
         @Override
         protected LIRPhaseStatistics computeValue(Class<?> c) {
             return new LIRPhaseStatistics(c);

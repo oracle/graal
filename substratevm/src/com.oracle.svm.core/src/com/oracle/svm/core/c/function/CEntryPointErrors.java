@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.c.function;
 
-// Checkstyle: stop
-
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -36,8 +34,6 @@ import java.util.Arrays;
 import org.graalvm.util.DirectAnnotationAccess;
 
 import com.oracle.svm.core.util.VMError;
-
-// Checkstyle: resume
 
 /**
  * Errors returned by {@link CEntryPointActions} and {@link CEntryPointNativeFunctions} and their
@@ -119,6 +115,9 @@ public final class CEntryPointErrors {
 
     @Description("Releasing the isolate's image heap memory failed.") //
     public static final int FREE_IMAGE_HEAP_FAILED = 20;
+
+    @Description("The auxiliary image was built from a different primary image.") //
+    public static final int AUX_IMAGE_PRIMARY_IMAGE_MISMATCH = 21;
 
     public static String getDescription(int code) {
         String result = null;

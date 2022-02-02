@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.api.test.polyglot;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
@@ -56,21 +57,26 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
@@ -78,6 +84,7 @@ import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.options.OptionCategory;
+import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
@@ -93,6 +100,7 @@ import org.graalvm.polyglot.io.FileSystem;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -102,7 +110,6 @@ import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.ThreadLocalAction;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -111,9 +118,13 @@ import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.ContextsListener;
 import com.oracle.truffle.api.instrumentation.EventBinding;
+import com.oracle.truffle.api.instrumentation.ThreadsActivationListener;
+import com.oracle.truffle.api.instrumentation.ThreadsListener;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.TestAPIAccessor;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class ContextPreInitializationTest {
 
@@ -126,6 +137,11 @@ public class ContextPreInitializationTest {
     private static final String SYS_OPTION2_KEY = "polyglot." + FIRST + ".Option2";
     private static final List<CountingContext> emittedContexts = new ArrayList<>();
     private static final Set<String> patchableLanguages = new HashSet<>();
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     @Before
     public void setUp() throws Exception {
@@ -145,6 +161,12 @@ public class ContextPreInitializationTest {
         resetLanguageHomes();
         patchableLanguages.clear();
         emittedContexts.clear();
+        NEXT_ORDER_INDEX.set(0);
+
+        final Class<?> holderClz = Class.forName("org.graalvm.polyglot.Engine$ImplHolder", true, ContextPreInitializationTest.class.getClassLoader());
+        final Method preInitMethod = holderClz.getDeclaredMethod("resetPreInitializedEngine");
+        preInitMethod.setAccessible(true);
+        preInitMethod.invoke(null);
     }
 
     @Test
@@ -594,13 +616,13 @@ public class ContextPreInitializationTest {
             assertSame(firstLangCtx, langCtx);
 
             ctx.enter();
-            try (TruffleContext truffleContext = langCtx.environment().newContextBuilder().build()) {
+            try (TruffleContext innerContext = langCtx.environment().newContextBuilder().build()) {
                 contexts = new ArrayList<>(emittedContexts);
                 assertEquals(2, contexts.size());
                 langCtx = contexts.get(1);
                 assertTrue(langCtx.optionValues.get(ContextPreInitializationTestSharedLanguage.Option1));
                 assertFalse(langCtx.optionValues.get(ContextPreInitializationTestSharedLanguage.Option2));
-                assertSame("Patched pre-initialized language should be shared with the second context since the options are compatible.", firstLang, langCtx.language);
+                assertNotSame("No sharing with inner contexts.", firstLang, langCtx.language);
             } finally {
                 ctx.leave();
             }
@@ -816,7 +838,7 @@ public class ContextPreInitializationTest {
     @Test
     public void testSingleLanguageExceptionFromContextPatch() throws Exception {
         setPatchable(FIRST);
-        BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_PATCH_CONTEXT, (env) -> {
+        BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_PATCH_CONTEXT, (Consumer<Env>) (env) -> {
             throw new RuntimeException("patchContext() exception");
         });
         doContextPreinitialize(FIRST);
@@ -849,7 +871,7 @@ public class ContextPreInitializationTest {
     @Test
     public void testMoreLanguagesExceptionFromContextPatch() throws Exception {
         setPatchable(FIRST, SECOND);
-        BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_PATCH_CONTEXT, (env) -> {
+        BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_PATCH_CONTEXT, (Consumer<Env>) (env) -> {
             throw new RuntimeException("patchContext() exception");
         });
         doContextPreinitialize(FIRST, SECOND);
@@ -1643,53 +1665,389 @@ public class ContextPreInitializationTest {
         }
     }
 
+    /*
+     * We trigger context preinitialization with no language ever used. No language context should
+     * get preinitialized as no sharing layer was claimed. In theory we could precreate the context
+     * instance without any language initialized, but that does not make much sense in practice.
+     */
+    @Test
+    public void testCodeSharingEmpty() throws Exception {
+        try (Engine engine = Engine.create()) {
+            triggerPreinitialization(engine);
+            assertEquals(0, emittedContexts.size());
+
+            Context context = Context.newBuilder().engine(engine).build();
+            context.initialize(SHARED);
+            assertEquals(1, emittedContexts.size());
+            assertEquals(0, findContext(SHARED, emittedContexts).patchContextCount);
+            assertEquals(1, findContext(SHARED, emittedContexts).createContextCount);
+        }
+    }
+
+    /*
+     * We create a single contexts that triggers a single sharing layer. The implementation should
+     * create a single preinitialized context.
+     */
     @Test
     @SuppressWarnings("try")
-    public void testAuxImageStore() throws Exception {
-        setPatchable(FIRST);
-        Path testFolder = Files.createTempDirectory("testSources").toRealPath();
-        try {
-            Path home = Files.createDirectories(testFolder.resolve("build").resolve(FIRST));
-            Path resource = Files.write(home.resolve("testImageStore.test"), Collections.singleton("test"));
-            System.setProperty(String.format("org.graalvm.language.%s.home", FIRST), home.toString());
-            AtomicReference<com.oracle.truffle.api.source.Source> buildTimeSourceRef = new AtomicReference<>();
-            BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, (env) -> {
-                buildTimeSourceRef.set(createSource(env, resource, true));
-            });
-            doContextPreinitialize(FIRST);
-            List<CountingContext> contexts = new ArrayList<>(emittedContexts);
-            assertEquals(1, contexts.size());
-            CountingContext firstLangCtx = findContext(FIRST, contexts);
-            assertEquals(1, firstLangCtx.initializeContextCount);
-            assertNotNull(buildTimeSourceRef.get());
+    public void testCodeSharingSingleLayer() throws Exception {
+        try (Engine engine = Engine.create()) {
+            try (Context cacheContext = Context.newBuilder().engine(engine).build()) {
+                cacheContext.initialize(SHARED);
+            }
 
-            Engine engine = Engine.create();
-            AbstractPolyglotImpl impl = findImpl();
-            Object engineImpl = impl.getAPIAccess().getReceiver(engine);
-            AtomicReference<com.oracle.truffle.api.source.Source> storeTimeSourceRef = new AtomicReference<>();
-            BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, (env) -> {
-                storeTimeSourceRef.set(createSource(env, resource, true));
-            });
-            setPreInitializeOption(FIRST);
-            try {
-                TestAPIAccessor.engineAccess().preinitializeContext(engineImpl);
-            } finally {
-                clearPreInitializeOption();
+            assertEquals(1, emittedContexts.size());
+            emittedContexts.clear();
+
+            triggerPreinitialization(engine);
+            assertEquals(1, emittedContexts.size());
+
+            assertEquals(1, findContext(SHARED, emittedContexts).createContextCount);
+            assertEquals(0, findContext(SHARED, emittedContexts).patchContextCount);
+            try (Context preinitializedContext = Context.newBuilder().engine(engine).build()) {
+                assertEquals(1, findContext(SHARED, emittedContexts).patchContextCount);
             }
-            contexts = new ArrayList<>(emittedContexts);
-            assertEquals(2, contexts.size());
-            AtomicReference<com.oracle.truffle.api.source.Source> runtimeSourceRef = new AtomicReference<>();
-            BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_PATCH_CONTEXT, (env) -> {
-                runtimeSourceRef.set(createSource(env, resource, true));
-            });
-            try (Context ctx = Context.create()) {
-                assertEquals(1, firstLangCtx.patchContextCount);
-                assertSame(buildTimeSourceRef.get(), storeTimeSourceRef.get());
-                assertSame(buildTimeSourceRef.get(), runtimeSourceRef.get());
-            }
-        } finally {
-            delete(testFolder);
         }
+    }
+
+    /*
+     * We create two contexts that trigger separate sharing layers as their areOptionsComptible
+     * return false. The implementation should create separate preinitialized contexts for each
+     * layer that can be used independently. Part of the previously used context configuration will
+     * be passed on to the createContext method during context preinitialization.
+     */
+    @Test
+    public void testCodeSharingTwoLayers() throws Exception {
+        try (Engine engine = Engine.create()) {
+
+            final ZoneId systemDefault = ZoneId.systemDefault();
+            ZoneId foundId = null;
+            for (String zoneId : ZoneId.getAvailableZoneIds()) {
+                if (!Objects.equals(ZoneId.of(zoneId), systemDefault)) {
+                    foundId = ZoneId.of(zoneId);
+                    break;
+                }
+            }
+            final ZoneId testId = foundId;
+
+            // always patchable or this test
+            BaseLanguage.registerFunction(ContextPreInitializationTestSharedLanguage.class, ActionKind.ON_PATCH_CONTEXT, (env) -> {
+                return true;
+            });
+
+            try (Context cacheContext = Context.newBuilder().engine(engine).option(SHARED + ".Option1", "true").//
+                            allowNativeAccess(true).//
+                            allowPolyglotAccess(PolyglotAccess.ALL).//
+                            timeZone(testId).//
+                            allowCreateProcess(true).//
+                            allowCreateThread(true).//
+                            allowHostClassLookup((s) -> true).//
+                            build()) {
+                cacheContext.initialize(SHARED);
+            }
+            try (Context cacheContext = Context.newBuilder().engine(engine).option(SHARED + ".Option1", "false").build()) {
+                cacheContext.initialize(SHARED);
+            }
+
+            assertEquals(2, emittedContexts.size());
+            emittedContexts.clear();
+
+            AtomicBoolean firstContextInitialized = new AtomicBoolean();
+            AtomicBoolean secondContextInitialized = new AtomicBoolean();
+            AtomicInteger initializeCount = new AtomicInteger();
+
+            BaseLanguage.registerAction(ContextPreInitializationTestSharedLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, (env) -> {
+                assertTrue(env.isPreInitialization());
+                assertEquals(0, env.getApplicationArguments().length);
+                initializeCount.incrementAndGet();
+                if (emittedContexts.size() == 1) {
+                    assertTrue(env.getOptions().get(ContextPreInitializationTestSharedLanguage.Option1));
+                    assertTrue(env.isCreateProcessAllowed());
+                    assertTrue(env.isCreateThreadAllowed());
+                    assertFalse(env.isHostLookupAllowed());
+                    assertTrue(env.isNativeAccessAllowed());
+                    assertTrue(env.isPolyglotEvalAllowed());
+                    assertTrue(env.isPolyglotBindingsAccessAllowed());
+                    assertEquals(testId, env.getTimeZone());
+                    firstContextInitialized.set(true);
+                } else {
+                    assertTrue(emittedContexts.size() == 2);
+                    assertFalse(env.isCreateProcessAllowed());
+                    assertFalse(env.isCreateThreadAllowed());
+                    assertFalse(env.isHostLookupAllowed());
+                    assertFalse(env.isNativeAccessAllowed());
+                    assertFalse(env.isPolyglotEvalAllowed());
+                    assertFalse(env.isPolyglotBindingsAccessAllowed());
+                    assertFalse(env.getOptions().get(ContextPreInitializationTestSharedLanguage.Option1));
+                    assertEquals(systemDefault, env.getTimeZone());
+                    secondContextInitialized.set(true);
+                }
+            });
+
+            triggerPreinitialization(engine);
+
+            assertTrue(firstContextInitialized.get());
+            assertTrue(secondContextInitialized.get());
+
+            BaseLanguage.registerAction(ContextPreInitializationTestSharedLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, (env) -> {
+                initializeCount.incrementAndGet();
+            });
+
+            assertEquals(2, emittedContexts.size());
+            assertEquals(2, initializeCount.get());
+
+            /*
+             * The order of emitted contexts actually matters for this test.
+             */
+            List<CountingContext> contexts = new ArrayList<>(findContexts(SHARED, emittedContexts));
+            assertEquals(2, contexts.size());
+            for (CountingContext c : contexts) {
+                assertEquals(1, c.createContextCount);
+                assertEquals(0, c.patchContextCount);
+            }
+
+            // the first context uses the first preinitialized context
+            try (Context cacheContext = Context.newBuilder().engine(engine).option(SHARED + ".Option1", "true").build()) {
+                assertEquals(1, contexts.get(0).patchContextCount);
+                assertEquals(0, contexts.get(1).patchContextCount);
+                cacheContext.initialize(SHARED);
+            }
+
+            // the second context uses a new context
+            try (Context cacheContext = Context.newBuilder().engine(engine).option(SHARED + ".Option1", "true").build()) {
+                assertEquals(1, contexts.get(0).patchContextCount);
+                assertEquals(0, contexts.get(1).patchContextCount);
+                assertEquals(2, initializeCount.get());
+                cacheContext.initialize(SHARED);
+                assertEquals(3, initializeCount.get());
+            }
+
+            try (Context cacheContext = Context.newBuilder().engine(engine).option(SHARED + ".Option1", "false").build()) {
+                assertEquals(1, contexts.get(0).patchContextCount);
+                assertEquals(1, contexts.get(1).patchContextCount);
+                cacheContext.initialize(SHARED);
+            }
+
+            try (Context cacheContext = Context.newBuilder().engine(engine).option(SHARED + ".Option1", "false").build()) {
+                assertEquals(1, contexts.get(0).patchContextCount);
+                assertEquals(1, contexts.get(1).patchContextCount);
+                assertEquals(3, initializeCount.get());
+                cacheContext.initialize(SHARED);
+                assertEquals(4, initializeCount.get());
+            }
+
+        }
+    }
+
+    /*
+     * We create two contexts where sharing is supported with the same layer so only a single
+     * context will be preinitialized. We use different context configuration, so the preinitialize
+     * config is commoned and defaults to their default configuration if it is different between
+     * contexts.
+     */
+    @Test
+    public void testCodeSharingCommonConfig() throws Exception {
+        try (Engine engine = Engine.create()) {
+
+            final ZoneId systemDefault = ZoneId.systemDefault();
+            ZoneId foundId = null;
+            for (String zoneId : ZoneId.getAvailableZoneIds()) {
+                if (!Objects.equals(ZoneId.of(zoneId), systemDefault)) {
+                    foundId = ZoneId.of(zoneId);
+                    break;
+                }
+            }
+            final ZoneId testId = foundId;
+
+            // always patchable or this test
+            BaseLanguage.registerFunction(ContextPreInitializationTestSharedLanguage.class, ActionKind.ON_PATCH_CONTEXT, (env) -> {
+                return true;
+            });
+
+            try (Context cacheContext = Context.newBuilder().engine(engine).option(SHARED + ".Option1", "true").//
+                            option(SHARED + ".Option2", "false").//
+                            allowNativeAccess(true).//
+                            allowPolyglotAccess(PolyglotAccess.ALL).//
+                            timeZone(testId).//
+                            allowCreateProcess(true).//
+                            allowCreateThread(true).//
+                            allowValueSharing(false).//
+                            useSystemExit(true).//
+                            allowHostClassLookup((s) -> true).//
+                            build()) {
+                cacheContext.initialize(SHARED);
+            }
+            try (Context cacheContext = Context.newBuilder().engine(engine).option(SHARED + ".Option1", "true").build()) {
+                cacheContext.initialize(SHARED);
+            }
+
+            assertEquals(2, emittedContexts.size());
+            emittedContexts.clear();
+
+            AtomicBoolean firstContextInitialized = new AtomicBoolean();
+            AtomicInteger initializeCount = new AtomicInteger();
+
+            BaseLanguage.registerAction(ContextPreInitializationTestSharedLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, (env) -> {
+                initializeCount.incrementAndGet();
+
+                assertTrue(env.isPreInitialization());
+                assertEquals(0, env.getApplicationArguments().length);
+                assertFalse(env.getOptions().hasBeenSet(ContextPreInitializationTestSharedLanguage.Option2));
+                assertTrue(env.getOptions().hasBeenSet(ContextPreInitializationTestSharedLanguage.Option1));
+                assertTrue(env.getOptions().get(ContextPreInitializationTestSharedLanguage.Option1));
+                assertFalse(env.isCreateProcessAllowed());
+                assertFalse(env.isCreateThreadAllowed());
+                assertFalse(env.isHostLookupAllowed());
+                assertFalse(env.isNativeAccessAllowed());
+                // polyglot access currently defaults to true for preinit. See GR-14657.
+                assertTrue(env.isPolyglotEvalAllowed());
+                assertTrue(env.isPolyglotBindingsAccessAllowed());
+                assertEquals(systemDefault, env.getTimeZone());
+                firstContextInitialized.set(true);
+            });
+
+            triggerPreinitialization(engine);
+
+            assertTrue(firstContextInitialized.get());
+
+            BaseLanguage.registerAction(ContextPreInitializationTestSharedLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, (env) -> {
+                initializeCount.incrementAndGet();
+            });
+
+            assertEquals(1, emittedContexts.size());
+            assertEquals(1, initializeCount.get());
+
+            /*
+             * The order of emitted contexts actually matters for this test.
+             */
+            List<CountingContext> contexts = new ArrayList<>(findContexts(SHARED, emittedContexts));
+            assertEquals(1, contexts.size());
+            for (CountingContext c : contexts) {
+                assertEquals(1, c.createContextCount);
+                assertEquals(0, c.patchContextCount);
+            }
+
+            // the first context uses the first preinitialized context
+            try (Context cacheContext = Context.newBuilder().engine(engine).option(SHARED + ".Option1", "true").build()) {
+                assertEquals(1, contexts.get(0).patchContextCount);
+                cacheContext.initialize(SHARED);
+                assertEquals(1, initializeCount.get());
+            }
+
+            // the second context uses a new context
+            try (Context cacheContext = Context.newBuilder().engine(engine).option(SHARED + ".Option1", "true").build()) {
+                assertEquals(1, contexts.get(0).patchContextCount);
+                assertEquals(1, initializeCount.get());
+                cacheContext.initialize(SHARED);
+                assertEquals(2, initializeCount.get());
+            }
+
+        }
+    }
+
+    /*
+     * We create two preinitialized contexts for two layers. This time patching the context fails.
+     * This test is intended to test recovery from patching failure.
+     */
+    @Test
+    @SuppressWarnings("try")
+    public void testCodeSharingTwoLayersIncompatible() throws Exception {
+        try (Engine engine = Engine.create()) {
+            try (Context cacheContext = Context.newBuilder().engine(engine).option(SHARED + ".Option1", "true").build()) {
+                cacheContext.initialize(SHARED);
+            }
+            try (Context cacheContext = Context.newBuilder().engine(engine).option(SHARED + ".Option1", "false").build()) {
+                cacheContext.initialize(SHARED);
+            }
+
+            assertEquals(2, emittedContexts.size());
+            emittedContexts.clear();
+
+            AtomicInteger initializeCount = new AtomicInteger();
+            BaseLanguage.registerAction(ContextPreInitializationTestSharedLanguage.class, ActionKind.ON_INITIALIZE_CONTEXT, (env) -> {
+                initializeCount.incrementAndGet();
+            });
+
+            triggerPreinitialization(engine);
+
+            assertEquals(2, emittedContexts.size());
+
+            List<CountingContext> contexts = new ArrayList<>(findContexts(SHARED, emittedContexts));
+            assertEquals(2, contexts.size());
+            for (CountingContext c : findContexts(SHARED, emittedContexts)) {
+                assertEquals(1, c.createContextCount);
+                assertEquals(0, c.patchContextCount);
+            }
+            assertEquals(2, initializeCount.get());
+
+            // try to create contexts that are incompatilbe
+
+            BaseLanguage.registerFunction(ContextPreInitializationTestSharedLanguage.class, ActionKind.ON_PATCH_CONTEXT, (env) -> {
+                return false;
+            });
+
+            try (Context cacheContext = Context.newBuilder().engine(engine).option(SHARED + ".Option1", "true").build()) {
+                assertEquals(2, initializeCount.get());
+                assertEquals(1, contexts.get(0).patchContextCount);
+                assertEquals(0, contexts.get(1).patchContextCount);
+
+                cacheContext.initialize(SHARED);
+                assertEquals(3, initializeCount.get());
+            }
+
+            try (Context cacheContext = Context.newBuilder().engine(engine).option(SHARED + ".Option1", "false").build()) {
+                assertEquals(3, initializeCount.get());
+                assertEquals(1, contexts.get(0).patchContextCount);
+                assertEquals(1, contexts.get(0).patchContextCount);
+
+                cacheContext.initialize(SHARED);
+                assertEquals(4, initializeCount.get());
+            }
+
+            // both contexts were tried but failed to patch, so should not be tried again
+            BaseLanguage.registerFunction(ContextPreInitializationTestSharedLanguage.class, ActionKind.ON_PATCH_CONTEXT, (env) -> {
+                return true;
+            });
+
+            try (Context cacheContext = Context.newBuilder().engine(engine).option(SHARED + ".Option1", "true").build()) {
+                assertEquals(1, contexts.get(0).patchContextCount);
+                assertEquals(1, contexts.get(0).patchContextCount);
+            }
+
+            try (Context cacheContext = Context.newBuilder().engine(engine).option(SHARED + ".Option1", "false").build()) {
+                assertEquals(1, contexts.get(0).patchContextCount);
+                assertEquals(1, contexts.get(0).patchContextCount);
+            }
+        }
+    }
+
+    /*
+     * We test context preinitialization with used instruments.
+     */
+    @Test
+    @SuppressWarnings("try")
+    public void testCodeSharingWithInstruments() throws Exception {
+        try (Engine engine = Engine.newBuilder().option(ContextPreInitializationFirstInstrument.ID, "true").build()) {
+
+            try (Context cacheContext = Context.newBuilder().engine(engine).build()) {
+                cacheContext.initialize(SHARED);
+            }
+            assertEquals(1, emittedContexts.size());
+            emittedContexts.clear();
+
+            triggerPreinitialization(engine);
+            assertEquals(1, emittedContexts.size());
+
+            assertEquals(1, findContext(SHARED, emittedContexts).createContextCount);
+            assertEquals(0, findContext(SHARED, emittedContexts).patchContextCount);
+            try (Context preinitializedContext = Context.newBuilder().engine(engine).build()) {
+                assertEquals(1, findContext(SHARED, emittedContexts).patchContextCount);
+            }
+        }
+    }
+
+    private void triggerPreinitialization(Engine engine) throws ReflectiveOperationException {
+        TestAPIAccessor.engineAccess().preinitializeContext(findImpl().getAPIAccess().getReceiver(engine));
     }
 
     AbstractPolyglotImpl findImpl() throws ReflectiveOperationException {
@@ -2118,7 +2476,7 @@ public class ContextPreInitializationTest {
     private static Collection<? extends CountingContext> findContexts(
                     final String languageId,
                     Collection<? extends CountingContext> contexts) {
-        final Set<CountingContext> result = new HashSet<>();
+        final Set<CountingContext> result = new LinkedHashSet<>();
         for (CountingContext context : contexts) {
             if (context.getLanguageId().equals(languageId)) {
                 result.add(context);
@@ -2217,9 +2575,16 @@ public class ContextPreInitializationTest {
 
     abstract static class BaseLanguage extends TruffleLanguage<CountingContext> {
 
-        static Map<Pair<Class<? extends BaseLanguage>, ActionKind>, Consumer<TruffleLanguage.Env>> actions = new HashMap<>();
+        static Map<Pair<Class<? extends BaseLanguage>, ActionKind>, Function<TruffleLanguage.Env, Object>> actions = new HashMap<>();
 
         static void registerAction(Class<? extends BaseLanguage> languageClass, ActionKind kind, Consumer<TruffleLanguage.Env> action) {
+            registerFunction(languageClass, kind, (e) -> {
+                action.accept(e);
+                return null;
+            });
+        }
+
+        static void registerFunction(Class<? extends BaseLanguage> languageClass, ActionKind kind, Function<TruffleLanguage.Env, Object> action) {
             Pair<Class<? extends BaseLanguage>, ActionKind> key = Pair.create(languageClass, kind);
             actions.put(key, action);
         }
@@ -2246,7 +2611,7 @@ public class ContextPreInitializationTest {
         protected void initializeContext(CountingContext context) throws Exception {
             context.initializeContextCount++;
             context.initializeContextOrder = nextId();
-            findAction(ActionKind.ON_INITIALIZE_CONTEXT).ifPresent((c) -> c.accept(context.environment()));
+            findAction(ActionKind.ON_INITIALIZE_CONTEXT).map((c) -> c.apply(context.environment()));
         }
 
         @Override
@@ -2263,13 +2628,16 @@ public class ContextPreInitializationTest {
                 context.arguments.clear();
                 Collections.addAll(context.arguments, newEnv.getApplicationArguments());
             }
-            findAction(ActionKind.ON_PATCH_CONTEXT).ifPresent((c) -> c.accept(context.environment()));
+            Optional<Object> result = findAction(ActionKind.ON_PATCH_CONTEXT).map((c) -> c.apply(context.environment()));
+            if (result.isPresent() && result.get() instanceof Boolean) {
+                return (boolean) result.get();
+            }
             return patchable;
         }
 
         @Override
         protected void finalizeContext(CountingContext context) {
-            findAction(ActionKind.ON_FINALIZE_CONTEXT).ifPresent((c) -> c.accept(context.environment()));
+            findAction(ActionKind.ON_FINALIZE_CONTEXT).map((c) -> c.apply(context.environment()));
         }
 
         @Override
@@ -2293,13 +2661,13 @@ public class ContextPreInitializationTest {
         @Override
         protected CallTarget parse(TruffleLanguage.ParsingRequest request) throws Exception {
             final CharSequence result = request.getSource().getCharacters();
-            return Truffle.getRuntime().createCallTarget(new RootNode(this) {
+            return new RootNode(this) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     executeImpl(getContextReference0().get(this));
                     return result;
                 }
-            });
+            }.getCallTarget();
         }
 
         protected abstract ContextReference<CountingContext> getContextReference0();
@@ -2311,15 +2679,15 @@ public class ContextPreInitializationTest {
 
         @CompilerDirectives.TruffleBoundary
         private void executeImpl(CountingContext context) {
-            findAction(ActionKind.ON_EXECUTE).ifPresent((c) -> c.accept(context.environment()));
+            findAction(ActionKind.ON_EXECUTE).map((c) -> c.apply(context.environment()));
             assertEquals(0, context.disposeContextCount);
         }
 
-        Optional<Consumer<Env>> findAction(ActionKind kind) {
+        Optional<Function<Env, Object>> findAction(ActionKind kind) {
             Class<?> clz = getClass();
             while (clz != null) {
                 Pair<Class<?>, ActionKind> key = Pair.create(clz, kind);
-                Consumer<Env> action = actions.get(key);
+                Function<Env, Object> action = actions.get(key);
                 if (action != null) {
                     return Optional.of(action);
                 }
@@ -2549,7 +2917,12 @@ public class ContextPreInitializationTest {
 
         @Override
         protected boolean areOptionsCompatible(OptionValues firstOptions, OptionValues newOptions) {
-            return firstOptions.equals(newOptions);
+            for (OptionDescriptor descriptor : firstOptions.getDescriptors()) {
+                if (!Objects.equals(firstOptions.get(descriptor.getKey()), newOptions.get(descriptor.getKey()))) {
+                    return false;
+                }
+            }
+            return true;
         }
 
         @Override
@@ -2567,6 +2940,8 @@ public class ContextPreInitializationTest {
         private EventBinding<?> verifyContextLocalBinding;
 
         final ContextLocal<TruffleContext> contextLocal = createContextLocal((c) -> c);
+        final ContextThreadLocal<TruffleContext> contextThreadLocal = createContextThreadLocal((c, t) -> c);
+        private final Set<Pair<TruffleContext, Thread>> initializedThreads = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
         @Override
         protected void onCreate(Env env) {
@@ -2577,16 +2952,17 @@ public class ContextPreInitializationTest {
 
                     public void onLanguageContextInitialized(TruffleContext context, LanguageInfo language) {
                         assertSame(context, contextLocal.get(context));
+                        assertSame(context, contextThreadLocal.get(context));
                     }
 
                     public void onLanguageContextFinalized(TruffleContext context, LanguageInfo language) {
                         assertSame(context, contextLocal.get(context));
-
+                        assertSame(context, contextThreadLocal.get(context));
                     }
 
                     public void onLanguageContextCreated(TruffleContext context, LanguageInfo language) {
                         assertSame(context, contextLocal.get(context));
-
+                        assertSame(context, contextThreadLocal.get(context));
                     }
 
                     public void onContextCreated(TruffleContext context) {
@@ -2595,15 +2971,44 @@ public class ContextPreInitializationTest {
 
                     public void onLanguageContextDisposed(TruffleContext context, LanguageInfo language) {
                         assertSame(context, contextLocal.get(context));
+                        assertSame(context, contextThreadLocal.get(context));
                     }
 
                     public void onContextClosed(TruffleContext context) {
                         assertSame(context, contextLocal.get(context));
-
+                        assertSame(context, contextThreadLocal.get(context));
                     }
                 }, false);
                 performAction(null, null);
             }
+            env.getInstrumenter().attachThreadsActivationListener(new ThreadsActivationListener() {
+                @Override
+                public void onEnterThread(TruffleContext context) {
+                    // tests that locals are initialized
+                    contextLocal.get(context);
+                    contextThreadLocal.get(context);
+                }
+
+                @Override
+                public void onLeaveThread(TruffleContext context) {
+                    // tests that locals are initialized
+                    contextLocal.get(context);
+                    contextThreadLocal.get(context);
+                }
+            });
+            env.getInstrumenter().attachThreadsListener(new ThreadsListener() {
+                @Override
+                public void onThreadInitialized(TruffleContext context, Thread thread) {
+                    assertTrue(initializedThreads.add(Pair.create(context, thread)));
+                }
+
+                @Override
+                public void onThreadDisposed(TruffleContext context, Thread thread) {
+                    // tests that onThreadInitialized was called
+                    assertTrue(initializedThreads.remove(Pair.create(context, thread)));
+                }
+
+            }, true);
         }
 
         @Override
@@ -2688,6 +3093,7 @@ public class ContextPreInitializationTest {
         protected Map<String, Consumer<Event>> getActions() {
             return actions;
         }
+
     }
 
     @TruffleInstrument.Registration(id = ContextPreInitializationSecondInstrument.ID, name = ContextPreInitializationSecondInstrument.ID, services = Service.class)

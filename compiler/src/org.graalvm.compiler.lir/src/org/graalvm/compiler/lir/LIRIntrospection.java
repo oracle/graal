@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -43,6 +43,7 @@ import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.core.common.FieldIntrospection;
 import org.graalvm.compiler.core.common.Fields;
 import org.graalvm.compiler.core.common.FieldsScanner;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
 import org.graalvm.compiler.lir.LIRInstruction.OperandMode;
 
@@ -259,6 +260,7 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
                     if (!(value instanceof CompositeValue)) {
                         assert verifyAssignment(inst, newValue, values.getFlags(i));
                     }
+                    GraalError.guarantee(newValue.getPlatformKind().equals(value.getPlatformKind()), "New assignment changes PlatformKind");
                     values.setValue(inst, i, newValue);
                 }
             } else {
@@ -273,6 +275,7 @@ abstract class LIRIntrospection<T> extends FieldIntrospection<T> {
                         newValue = proc.doValue(inst, value, mode, values.getFlags(i));
                     }
                     if (!value.identityEquals(newValue)) {
+                        GraalError.guarantee(newValue.getPlatformKind().equals(value.getPlatformKind()), "New assignment changes PlatformKind");
                         valueArray[j] = newValue;
                     }
                 }

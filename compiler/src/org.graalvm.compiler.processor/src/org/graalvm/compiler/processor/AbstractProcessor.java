@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,6 +44,7 @@ import javax.lang.model.element.AnnotationValue;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 import javax.tools.Diagnostic.Kind;
@@ -54,7 +55,7 @@ import javax.tools.StandardLocation;
  * {@link javax.annotation.processing.AbstractProcessor} subclass that provides extra functionality.
  */
 @SuppressFBWarnings(value = "NM_SAME_SIMPLE_NAME_AS_SUPERCLASS", //
-                reason = "We want this type to be found when someone is writing a new Graal annotation processor")
+                justification = "We want this type to be found when someone is writing a new Graal annotation processor")
 public abstract class AbstractProcessor extends javax.annotation.processing.AbstractProcessor {
 
     /**
@@ -66,13 +67,6 @@ public abstract class AbstractProcessor extends javax.annotation.processing.Abst
 
     @Override
     public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-        // In JDK 8, each annotation processing round has its own Elements object
-        // so this cache must be cleared at the start of each round. As of JDK9,
-        // a single Elements is preserved across all annotation processing rounds.
-        // However, since both behaviors are compliant with the annotation processing
-        // specification, we unconditionally clear the cache to be safe.
-        types.clear();
-
         return doProcess(annotations, roundEnv);
     }
 
@@ -87,6 +81,45 @@ public abstract class AbstractProcessor extends javax.annotation.processing.Abst
      */
     public TypeMirror getType(String className) {
         return getTypeElement(className).asType();
+    }
+
+    public TypeMirror getType(Class<?> element) {
+        if (element.isArray()) {
+            return processingEnv.getTypeUtils().getArrayType(getType(element.getComponentType()));
+        }
+        if (element.isPrimitive()) {
+            if (element == void.class) {
+                return processingEnv.getTypeUtils().getNoType(TypeKind.VOID);
+            }
+            TypeKind typeKind;
+            if (element == boolean.class) {
+                typeKind = TypeKind.BOOLEAN;
+            } else if (element == byte.class) {
+                typeKind = TypeKind.BYTE;
+            } else if (element == short.class) {
+                typeKind = TypeKind.SHORT;
+            } else if (element == char.class) {
+                typeKind = TypeKind.CHAR;
+            } else if (element == int.class) {
+                typeKind = TypeKind.INT;
+            } else if (element == long.class) {
+                typeKind = TypeKind.LONG;
+            } else if (element == float.class) {
+                typeKind = TypeKind.FLOAT;
+            } else if (element == double.class) {
+                typeKind = TypeKind.DOUBLE;
+            } else {
+                assert false;
+                return null;
+            }
+            return processingEnv.getTypeUtils().getPrimitiveType(typeKind);
+        } else {
+            TypeElement typeElement = getTypeElement(element.getCanonicalName());
+            if (typeElement == null) {
+                return null;
+            }
+            return processingEnv.getTypeUtils().erasure(typeElement.asType());
+        }
     }
 
     /**

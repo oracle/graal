@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -49,7 +49,7 @@ import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -76,7 +76,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 /** Registration of native JDK libraries. */
 @Platforms(InternalPlatform.PLATFORM_JNI.class)
 @AutomaticFeature
-class JNIRegistrationSupport extends JNIRegistrationUtil implements GraalFeature {
+public final class JNIRegistrationSupport extends JNIRegistrationUtil implements GraalFeature {
 
     private final ConcurrentMap<String, Boolean> registeredLibraries = new ConcurrentHashMap<>();
     private NativeLibraries nativeLibraries = null;
@@ -103,9 +103,9 @@ class JNIRegistrationSupport extends JNIRegistrationUtil implements GraalFeature
         registerLoadLibraryPlugin(plugins, System.class);
     }
 
-    void registerLoadLibraryPlugin(Plugins plugins, Class<?> clazz) {
+    public void registerLoadLibraryPlugin(Plugins plugins, Class<?> clazz) {
         Registration r = new Registration(plugins.getInvocationPlugins(), clazz);
-        r.register1("loadLibrary", String.class, new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("loadLibrary", String.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode libnameNode) {
                 /*

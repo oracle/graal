@@ -38,7 +38,6 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -90,14 +89,14 @@ public class CastExactPartialEvaluationTest extends PartialEvaluationTest {
      */
     @Test
     public void byteBufferAccess() {
-        Assume.assumeTrue(JavaVersionUtil.JAVA_SPEC <= 11 || JavaVersionUtil.JAVA_SPEC >= 16);
+        Assume.assumeTrue(JavaVersionUtil.JAVA_SPEC >= 16);
         AbstractTestNode result = new BufferGetPutTestNode(newBuffer().getClass());
         testCommon(result, "byteBufferAccess");
     }
 
     @Test
     public void byteBufferAccessIndex() {
-        Assume.assumeTrue(JavaVersionUtil.JAVA_SPEC <= 11 || JavaVersionUtil.JAVA_SPEC >= 16);
+        Assume.assumeTrue(JavaVersionUtil.JAVA_SPEC >= 16);
         AbstractTestNode result = new BufferGetPutIndexTestNode(newBuffer().getClass());
         testCommon(result, "byteBufferAccessIndex");
     }
@@ -105,7 +104,7 @@ public class CastExactPartialEvaluationTest extends PartialEvaluationTest {
     private void testCommon(AbstractTestNode testNode, String testName) {
         FrameDescriptor fd = new FrameDescriptor();
         RootNode rootNode = new RootTestNode(fd, testName, testNode);
-        RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
+        RootCallTarget callTarget = rootNode.getCallTarget();
         Assert.assertEquals(42, callTarget.call(newBuffer()));
         assertPartialEvalNoInvokes(callTarget, new Object[]{newBuffer()});
     }

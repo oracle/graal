@@ -27,12 +27,10 @@ package com.oracle.svm.methodhandles;
 import java.lang.invoke.CallSite;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
-// Checkstyle: stop
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-// Checkstyle: resume
 import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -41,16 +39,15 @@ import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
-import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.invoke.MethodHandleIntrinsic;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.util.ReflectionUtil;
 
-// Checkstyle: stop
 import sun.invoke.util.ValueConversions;
 import sun.invoke.util.Wrapper;
-// Checkstyle: resume
 
 /**
  * Method handles are implemented in Native Image through reflection. A method handle can have one
@@ -81,7 +78,6 @@ import sun.invoke.util.Wrapper;
 @SuppressWarnings("unused")
 public class MethodHandleFeature implements Feature {
 
-    private boolean analysisFinished = false;
     private Set<MethodHandle> seenMethodHandles;
     private Class<?> directMethodHandleClass;
     private Class<?> boundMethodHandleClass;
@@ -99,11 +95,15 @@ public class MethodHandleFeature implements Feature {
     private Field lambdaFormArity;
     private Field nameFunction;
     private Field namedFunctionMemberName;
-
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.areMethodHandlesSupported();
-    }
+    private Field lambdaFormLFIdentity;
+    private Field lambdaFormLFZero;
+    private Field lambdaFormNFIdentity;
+    private Field lambdaFormNFZero;
+    private Field typedAccessors;
+    private Field classSpecializerCache;
+    private Class<?> lambdaFormClass;
+    private Class<?> classSpecializerClass;
+    private Class<?> arrayAccessorClass;
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
@@ -123,13 +123,23 @@ public class MethodHandleFeature implements Feature {
         memberNameIsField = ReflectionUtil.lookupMethod(memberNameClass, "isField");
         memberNameGetParameterTypes = ReflectionUtil.lookupMethod(memberNameClass, "getParameterTypes");
 
-        Class<?> lambdaFormClass = access.findClassByName("java.lang.invoke.LambdaForm");
+        lambdaFormClass = access.findClassByName("java.lang.invoke.LambdaForm");
         lambdaFormNames = ReflectionUtil.lookupField(lambdaFormClass, "names");
         lambdaFormArity = ReflectionUtil.lookupField(lambdaFormClass, "arity");
         Class<?> nameClass = access.findClassByName("java.lang.invoke.LambdaForm$Name");
         nameFunction = ReflectionUtil.lookupField(nameClass, "function");
         Class<?> namedFunctionClass = access.findClassByName("java.lang.invoke.LambdaForm$NamedFunction");
         namedFunctionMemberName = ReflectionUtil.lookupField(namedFunctionClass, "member");
+
+        lambdaFormLFIdentity = ReflectionUtil.lookupField(lambdaFormClass, "LF_identity");
+        lambdaFormLFZero = ReflectionUtil.lookupField(lambdaFormClass, "LF_zero");
+        lambdaFormNFIdentity = ReflectionUtil.lookupField(lambdaFormClass, "NF_identity");
+        lambdaFormNFZero = ReflectionUtil.lookupField(lambdaFormClass, "NF_zero");
+
+        classSpecializerClass = access.findClassByName("java.lang.invoke.ClassSpecializer");
+        arrayAccessorClass = access.findClassByName("java.lang.invoke.MethodHandleImpl$ArrayAccessor");
+        typedAccessors = ReflectionUtil.lookupField(arrayAccessorClass, "TYPED_ACCESSORS");
+        classSpecializerCache = ReflectionUtil.lookupField(classSpecializerClass, "cache");
 
         access.registerObjectReplacer(this::registerMethodHandle);
     }
@@ -174,11 +184,8 @@ public class MethodHandleFeature implements Feature {
 
         access.registerSubtypeReachabilityHandler(MethodHandleFeature::registerVarHandleMethodsForReflection,
                         access.findClassByName("java.lang.invoke.VarHandle"));
-    }
 
-    @Override
-    public void afterAnalysis(AfterAnalysisAccess access) {
-        analysisFinished = true;
+        access.registerSubtypeReachabilityHandler(MethodHandleFeature::scanBoundMethodHandle, boundMethodHandleClass);
     }
 
     private static void registerMHImplFunctionsForReflection(DuringAnalysisAccess access) {
@@ -194,7 +201,7 @@ public class MethodHandleFeature implements Feature {
 
     private static void registerMHImplConstantHandlesForReflection(DuringAnalysisAccess access) {
         Class<?> mhImplClazz = access.findClassByName("java.lang.invoke.MethodHandleImpl");
-        if (JavaVersionUtil.JAVA_SPEC <= 16) {
+        if (JavaVersionUtil.JAVA_SPEC <= 11) {
             RuntimeReflection.register(ReflectionUtil.lookupMethod(mhImplClazz, "copyAsPrimitiveArray", access.findClassByName("sun.invoke.util.Wrapper"), Object[].class));
             RuntimeReflection.register(ReflectionUtil.lookupMethod(mhImplClazz, "identity", Object[].class));
             RuntimeReflection.register(ReflectionUtil.lookupMethod(mhImplClazz, "fillNewArray", Integer.class, Object[].class));
@@ -223,6 +230,9 @@ public class MethodHandleFeature implements Feature {
                         access.findClassByName("java.lang.invoke.VarHandle$AccessDescriptor")));
         RuntimeReflection.register(ReflectionUtil.lookupMethod(invokersClazz, "checkVarHandleExactType", access.findClassByName("java.lang.invoke.VarHandle"),
                         access.findClassByName("java.lang.invoke.VarHandle$AccessDescriptor")));
+        if (JavaVersionUtil.JAVA_SPEC >= 17) {
+            RuntimeReflection.register(ReflectionUtil.lookupMethod(invokersClazz, "directVarHandleTarget", access.findClassByName("java.lang.invoke.VarHandle")));
+        }
     }
 
     private static void registerValueConversionBoxFunctionsForReflection(DuringAnalysisAccess access) {
@@ -283,7 +293,7 @@ public class MethodHandleFeature implements Feature {
     }
 
     private Object registerMethodHandle(Object obj) {
-        if (!analysisFinished) {
+        if (!BuildPhaseProvider.isAnalysisFinished()) {
             registerMethodHandleRecurse(obj);
         }
         return obj;
@@ -360,6 +370,24 @@ public class MethodHandleFeature implements Feature {
             /* Internal, malformed or illegal member name, we do not need to register it */
         } catch (IllegalAccessException | InvocationTargetException e) {
             throw VMError.shouldNotReachHere(e);
+        }
+    }
+
+    @Override
+    public void duringAnalysis(DuringAnalysisAccess a) {
+        DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
+        access.rescanRoot(lambdaFormLFIdentity);
+        access.rescanRoot(lambdaFormLFZero);
+        access.rescanRoot(lambdaFormNFIdentity);
+        access.rescanRoot(lambdaFormNFZero);
+        access.rescanRoot(typedAccessors);
+    }
+
+    private static void scanBoundMethodHandle(DuringAnalysisAccess a, Class<?> bmhSubtype) {
+        DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
+        Field bmhSpeciesField = ReflectionUtil.lookupField(true, bmhSubtype, "BMH_SPECIES");
+        if (bmhSpeciesField != null) {
+            access.rescanRoot(bmhSpeciesField);
         }
     }
 }

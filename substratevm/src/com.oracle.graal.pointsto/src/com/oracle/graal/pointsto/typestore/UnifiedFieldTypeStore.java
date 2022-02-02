@@ -36,8 +36,12 @@ public class UnifiedFieldTypeStore extends FieldTypeStore {
     private final FieldTypeFlow readWriteFlow;
 
     public UnifiedFieldTypeStore(AnalysisField field, AnalysisObject object) {
+        this(field, object, new FieldTypeFlow(field, field.getType(), object));
+    }
+
+    public UnifiedFieldTypeStore(AnalysisField field, AnalysisObject object, FieldTypeFlow fieldFlow) {
         super(field, object);
-        this.readWriteFlow = new FieldTypeFlow(field, field.getType(), object);
+        this.readWriteFlow = fieldFlow;
     }
 
     @Override

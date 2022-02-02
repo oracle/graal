@@ -77,7 +77,6 @@ import org.graalvm.compiler.nodes.spi.CoreProvidersDelegate;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
-import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
 import org.graalvm.compiler.phases.graph.ScheduledNodeIterator;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
@@ -104,7 +103,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
     private static final CounterKey counterBetterMergedStamps = DebugContext.counter("FixReads_BetterMergedStamp");
 
     protected boolean replaceInputsWithConstants;
-    protected Phase schedulePhase;
+    protected BasePhase<? super CoreProviders> schedulePhase;
     protected CanonicalizerPhase canonicalizerPhase;
 
     @Override
@@ -595,7 +594,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
 
     }
 
-    public FixReadsPhase(boolean replaceInputsWithConstants, Phase schedulePhase, CanonicalizerPhase canonicalizerPhase) {
+    public FixReadsPhase(boolean replaceInputsWithConstants, BasePhase<? super CoreProviders> schedulePhase, CanonicalizerPhase canonicalizerPhase) {
         this.replaceInputsWithConstants = replaceInputsWithConstants;
         this.schedulePhase = schedulePhase;
         this.canonicalizerPhase = canonicalizerPhase;
@@ -605,7 +604,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
     @SuppressWarnings("try")
     protected void run(StructuredGraph graph, CoreProviders context) {
         assert graph.verify();
-        schedulePhase.apply(graph);
+        schedulePhase.apply(graph, context);
         ScheduleResult schedule = graph.getLastSchedule();
         FixReadsClosure fixReadsClosure = new FixReadsClosure();
         EconomicSetNodeEventListener ec = new EconomicSetNodeEventListener();
@@ -642,7 +641,7 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
         protected void run(StructuredGraph graph, LowTierContext context) {
             if (GraalOptions.RawConditionalElimination.getValue(graph.getOptions())) {
                 SchedulePhase schedulePhase = new SchedulePhase(SchedulingStrategy.LATEST, true);
-                schedulePhase.apply(graph);
+                schedulePhase.apply(graph, context);
                 ScheduleResult schedule = graph.getLastSchedule();
                 schedule.getCFG().visitDominatorTree(new RawConditionalEliminationVisitor(graph, schedule, context.getMetaAccess(), replaceInputsWithConstants), false);
             }

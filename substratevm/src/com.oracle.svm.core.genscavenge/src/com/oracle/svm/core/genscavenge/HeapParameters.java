@@ -29,6 +29,7 @@ import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
@@ -39,9 +40,9 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Uninterruptible;
+import com.oracle.svm.core.option.GCRuntimeOptionKey;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
-import com.oracle.svm.core.option.RuntimeOptionValues;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 
@@ -49,13 +50,13 @@ import com.oracle.svm.core.util.VMError;
 public final class HeapParameters {
     public static final class Options {
         @Option(help = "The maximum heap size as percent of physical memory") //
-        public static final RuntimeOptionKey<Integer> MaximumHeapSizePercent = new RuntimeOptionKey<>(80);
+        public static final RuntimeOptionKey<Integer> MaximumHeapSizePercent = new GCRuntimeOptionKey<>(80);
 
         @Option(help = "The maximum size of the young generation as a percentage of the maximum heap size") //
-        public static final RuntimeOptionKey<Integer> MaximumYoungGenerationSizePercent = new RuntimeOptionKey<>(10);
+        public static final RuntimeOptionKey<Integer> MaximumYoungGenerationSizePercent = new GCRuntimeOptionKey<>(10);
 
         @Option(help = "The size of an aligned chunk.") //
-        public static final HostedOptionKey<Long> AlignedHeapChunkSize = new HostedOptionKey<Long>(1L * 1024L * 1024L) {
+        public static final HostedOptionKey<Long> AlignedHeapChunkSize = new HostedOptionKey<>(1L * 1024L * 1024L) {
             @Override
             protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Long oldValue, Long newValue) {
                 int multiple = 4096;
@@ -83,7 +84,7 @@ public final class HeapParameters {
         public static final RuntimeOptionKey<Boolean> TraceHeapChunks = new RuntimeOptionKey<>(false);
 
         @Option(help = "Maximum number of survivor spaces.") //
-        public static final HostedOptionKey<Integer> MaxSurvivorSpaces = new HostedOptionKey<Integer>(null) {
+        public static final HostedOptionKey<Integer> MaxSurvivorSpaces = new HostedOptionKey<>(null) {
             @Override
             public Integer getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
                 Integer value = (Integer) values.get(this);
@@ -99,7 +100,10 @@ public final class HeapParameters {
         };
 
         @Option(help = "Determines if a full GC collects the young generation separately or together with the old generation.") //
-        public static final RuntimeOptionKey<Boolean> CollectYoungGenerationSeparately = new RuntimeOptionKey<>(false);
+        public static final RuntimeOptionKey<Boolean> CollectYoungGenerationSeparately = new RuntimeOptionKey<>(null);
+
+        @Option(help = "The maximum free bytes reserved for allocations, in bytes (0 for automatic according to GC policy).", type = OptionType.User)//
+        public static final RuntimeOptionKey<Long> MaxHeapFree = new RuntimeOptionKey<>(0L);
 
         private Options() {
         }
@@ -149,11 +153,19 @@ public final class HeapParameters {
      */
 
     public static void setMaximumHeapSize(UnsignedWord value) {
-        RuntimeOptionValues.singleton().update(SubstrateGCOptions.MaxHeapSize, value.rawValue());
+        SubstrateGCOptions.MaxHeapSize.update(value.rawValue());
     }
 
     public static void setMinimumHeapSize(UnsignedWord value) {
-        RuntimeOptionValues.singleton().update(SubstrateGCOptions.MinHeapSize, value.rawValue());
+        SubstrateGCOptions.MinHeapSize.update(value.rawValue());
+    }
+
+    public static void setMaximumHeapFree(UnsignedWord bytes) {
+        HeapParameters.Options.MaxHeapFree.update(bytes.rawValue());
+    }
+
+    public static UnsignedWord getMaximumHeapFree() {
+        return WordFactory.unsigned(HeapParameters.Options.MaxHeapFree.getValue());
     }
 
     static int getMaximumYoungGenerationSizePercent() {

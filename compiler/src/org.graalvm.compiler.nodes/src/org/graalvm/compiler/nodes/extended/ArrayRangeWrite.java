@@ -24,14 +24,13 @@
  */
 package org.graalvm.compiler.nodes.extended;
 
-import org.graalvm.compiler.graph.NodeInterface;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.FixedWithNextNodeInterface;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.memory.FixedAccessNode;
 import org.graalvm.compiler.nodes.memory.address.AddressNode;
 
-public interface ArrayRangeWrite extends NodeInterface {
+public interface ArrayRangeWrite extends FixedWithNextNodeInterface {
     AddressNode getAddress();
 
     /**
@@ -52,9 +51,6 @@ public interface ArrayRangeWrite extends NodeInterface {
     boolean isInitialization();
 
     int getElementStride();
-
-    @Override
-    FixedAccessNode asNode();
 
     /**
      * Returns the place where a pre-write barrier should be inserted if one is necessary for this

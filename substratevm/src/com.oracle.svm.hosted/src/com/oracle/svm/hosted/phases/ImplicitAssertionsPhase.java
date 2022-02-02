@@ -48,7 +48,9 @@ import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.java.NewInstanceNode;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.util.GuardedAnnotationAccess;
 
+import com.oracle.svm.core.code.FactoryMethodMarker;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -71,10 +73,10 @@ public class ImplicitAssertionsPhase extends BasePhase<CoreProviders> {
 
     @Override
     protected void run(StructuredGraph graph, CoreProviders context) {
-        if (graph.method().getDeclaringClass().equals(context.getMetaAccess().lookupJavaType(ImplicitExceptions.class))) {
+        if (GuardedAnnotationAccess.isAnnotationPresent(graph.method().getDeclaringClass(), FactoryMethodMarker.class)) {
             /*
-             * ImplicitExceptions contains final target methods invoked by the intrinsification,
-             * i.e., the methods that actually will perform the allocations at run time.
+             * Factory methods, which includes methods in ImplicitExceptions, are the methods that
+             * actually perform the allocations at run time.
              */
             return;
         }
@@ -130,14 +132,14 @@ public class ImplicitAssertionsPhase extends BasePhase<CoreProviders> {
             } else if (usagesToDelete.contains(exceptionUsage)) {
                 /* Frame state between constructor and allocation. */
             } else if (exceptionUsage instanceof UnwindNode) {
-                if (!hasSimpleControlFlow(exceptionUsage, constructorInvoke.asNode(), null)) {
+                if (!hasSimpleControlFlow(exceptionUsage, constructorInvoke.asFixedNode(), null)) {
                     /* No simple control flow path found to the UnwindNode. */
                     return;
                 }
             } else if (exceptionUsage instanceof PhiNode) {
                 PhiNode phi = (PhiNode) exceptionUsage;
                 for (int i = 0; i < phi.valueCount(); i++) {
-                    if (phi.valueAt(i) == exceptionAllocation && !hasSimpleControlFlow(phi.merge().phiPredecessorAt(i), constructorInvoke.asNode(), null)) {
+                    if (phi.valueAt(i) == exceptionAllocation && !hasSimpleControlFlow(phi.merge().phiPredecessorAt(i), constructorInvoke.asFixedNode(), null)) {
                         /* No simple control flow path found to the PhiNode. */
                         return;
                     }

@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.tck.tests;
 
-import java.io.IOException;
 import java.util.AbstractMap;
 import java.util.Collection;
 import java.util.Collections;
@@ -71,6 +70,11 @@ public class ScriptTest {
                 res.add(new TestRun(new AbstractMap.SimpleImmutableEntry<>(lang, script), Collections.emptyList()));
             }
         }
+        if (res.isEmpty()) {
+            // BeforeClass and AfterClass annotated methods are not called when there are no tests
+            // to run. But we need to free TestContext.
+            afterClass();
+        }
         return res;
     }
 
@@ -80,7 +84,7 @@ public class ScriptTest {
     }
 
     @AfterClass
-    public static void afterClass() throws IOException {
+    public static void afterClass() {
         context.close();
         context = null;
     }

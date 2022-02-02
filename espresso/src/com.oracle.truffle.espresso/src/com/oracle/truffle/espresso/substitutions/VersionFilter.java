@@ -53,6 +53,18 @@ public interface VersionFilter {
         }
     }
 
+    final class Java9OrLater implements VersionFilter {
+        public static final Java9OrLater INSTANCE = new Java9OrLater();
+
+        private Java9OrLater() {
+        }
+
+        @Override
+        public boolean isValidFor(JavaVersion version) {
+            return version.java9OrLater();
+        }
+    }
+
     final class Java11OrEarlier implements VersionFilter {
         public static final Java11OrEarlier INSTANCE = new Java11OrEarlier();
 

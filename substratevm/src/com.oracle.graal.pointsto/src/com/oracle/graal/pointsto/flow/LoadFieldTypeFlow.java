@@ -28,6 +28,7 @@ import org.graalvm.compiler.nodes.java.LoadFieldNode;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
 import jdk.vm.ci.code.BytecodePosition;
@@ -38,7 +39,7 @@ import jdk.vm.ci.code.BytecodePosition;
 public abstract class LoadFieldTypeFlow extends AccessFieldTypeFlow {
 
     protected LoadFieldTypeFlow(LoadFieldNode node) {
-        super(node);
+        super(node, (AnalysisField) node.field());
     }
 
     protected LoadFieldTypeFlow(MethodFlowsGraph methodFlows, LoadFieldTypeFlow original) {

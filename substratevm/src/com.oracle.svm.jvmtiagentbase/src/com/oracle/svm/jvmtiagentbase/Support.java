@@ -264,6 +264,10 @@ public final class Support {
         return nullHandle();
     }
 
+    public static JNIObjectHandle readObjectField(JNIEnvironment env, JNIObjectHandle obj, JNIFieldId fieldId) {
+        return jniFunctions().getGetObjectField().invoke(env, obj, fieldId);
+    }
+
     /*
      * We use the Call*A functions that take a jvalue* for the Java arguments because that doesn't
      * require that calling conventions for a varargs call are the same as those for a regular call
@@ -367,6 +371,12 @@ public final class Support {
         args.addressOf(0).setObject(l0);
         args.addressOf(1).setObject(l1);
         jniFunctions().getCallStaticVoidMethodA().invoke(env, clazz, method, args);
+    }
+
+    public static boolean callStaticBooleanMethodL(JNIEnvironment env, JNIObjectHandle clazz, JNIMethodId method, JNIObjectHandle l0) {
+        JNIValue args = StackValue.get(1, JNIValue.class);
+        args.addressOf(0).setObject(l0);
+        return jniFunctions().getCallStaticBooleanMethodA().invoke(env, clazz, method, args);
     }
 
     public static boolean callBooleanMethod(JNIEnvironment env, JNIObjectHandle obj, JNIMethodId method) {

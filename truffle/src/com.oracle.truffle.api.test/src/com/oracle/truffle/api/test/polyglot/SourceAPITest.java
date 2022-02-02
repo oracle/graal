@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
-import com.oracle.truffle.api.test.OSUtils;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
@@ -69,20 +68,34 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Source.Builder;
 import org.graalvm.polyglot.SourceSection;
+import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceDispatch;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceSectionDispatch;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.test.OSUtils;
 import com.oracle.truffle.api.test.ReflectionUtils;
-import org.junit.Assume;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class SourceAPITest {
 
     @Test
     public void testCharSequenceNotMaterialized() throws IOException {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
         AtomicBoolean materialized = new AtomicBoolean(false);
         final CharSequence testString = "testString";
         Source source = Source.newBuilder(SourceAPITestLanguage.ID, new CharSequence() {
@@ -660,10 +673,12 @@ public class SourceAPITest {
     @Test
     @SuppressWarnings("rawtypes")
     public void testNoContentSource() {
+        AbstractPolyglotImpl polyglot = (AbstractPolyglotImpl) ReflectionUtils.invokeStatic(Engine.class, "getImpl");
         com.oracle.truffle.api.source.Source truffleSource = com.oracle.truffle.api.source.Source.newBuilder(ProxyLanguage.ID, "x", "name").content(
                         com.oracle.truffle.api.source.Source.CONTENT_NONE).build();
-        Class<?>[] sourceConstructorTypes = new Class[]{Object.class};
-        Source source = ReflectionUtils.newInstance(Source.class, sourceConstructorTypes, truffleSource);
+        Class<?>[] sourceConstructorTypes = new Class[]{AbstractSourceDispatch.class, Object.class};
+        Source source = ReflectionUtils.newInstance(Source.class, sourceConstructorTypes,
+                        polyglot.getAPIAccess().getDispatch(Source.create(ProxyLanguage.ID, "")), truffleSource);
         assertFalse(source.hasCharacters());
         assertFalse(source.hasBytes());
         try {
@@ -678,14 +693,52 @@ public class SourceAPITest {
         } catch (IllegalArgumentException ex) {
             // O.K.
         }
-        com.oracle.truffle.api.source.SourceSection truffleSection = truffleSource.createSection(1, 2, 3, 4);
-        Class<?>[] sectionConstructorTypes = new Class[]{Source.class, Object.class};
-        SourceSection section = ReflectionUtils.newInstance(SourceSection.class, sectionConstructorTypes, source, truffleSection);
-        assertFalse(section.hasCharIndex());
-        assertTrue(section.hasLines());
-        assertTrue(section.hasColumns());
-        assertEquals("", section.getCharacters());
-        assertTrue(truffleSource.getURI().toString().contains("name"));
+        if (TruffleTestAssumptions.isWeakEncapsulation()) {
+            com.oracle.truffle.api.source.SourceSection truffleSection = truffleSource.createSection(1, 2, 3, 4);
+            Class<?>[] sectionConstructorTypes = new Class[]{Source.class, AbstractSourceSectionDispatch.class, Object.class};
+            SourceSection section = ReflectionUtils.newInstance(SourceSection.class, sectionConstructorTypes, source,
+                            getSourceSectionDispatch(polyglot), truffleSection);
+            assertFalse(section.hasCharIndex());
+            assertTrue(section.hasLines());
+            assertTrue(section.hasColumns());
+            assertEquals("", section.getCharacters());
+            assertTrue(truffleSource.getURI().toString().contains("name"));
+        }
+    }
+
+    private static AbstractSourceSectionDispatch getSourceSectionDispatch(AbstractPolyglotImpl polyglot) {
+        ProxyLanguage.setDelegate(new ProxyLanguage() {
+            @Override
+            protected CallTarget parse(ParsingRequest request) {
+                return RootNode.createConstantNode(new SourceSectionProvider(request.getSource())).getCallTarget();
+            }
+        });
+        try (Context context = Context.create(ProxyLanguage.ID)) {
+            Value res = context.eval(Source.create(ProxyLanguage.ID, ""));
+            SourceSection sourceSection = res.getSourceLocation();
+            return polyglot.getAPIAccess().getDispatch(sourceSection);
+        }
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class SourceSectionProvider implements TruffleObject {
+
+        private final com.oracle.truffle.api.source.Source source;
+
+        SourceSectionProvider(com.oracle.truffle.api.source.Source source) {
+            this.source = source;
+        }
+
+        @ExportMessage
+        @SuppressWarnings("static-method")
+        public boolean hasSourceLocation() {
+            return true;
+        }
+
+        @ExportMessage
+        public com.oracle.truffle.api.source.SourceSection getSourceLocation() {
+            return source.createSection(0, 0);
+        }
     }
 
     @Test

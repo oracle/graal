@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -84,6 +84,21 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public final class DebugContext implements AutoCloseable {
 
+    /**
+     * The format of the message printed on the console by {@link #getDumpPath} when
+     * {@link DebugOptions#ShowDumpFiles} is true. The {@code %s} placeholder is replaced with the
+     * absolute path of the dump file (i.e. the value returned by the method).
+     */
+    public static final String DUMP_FILE_MESSAGE_FORMAT = "Dumping debug output to '%s'";
+
+    /**
+     * The regular expression for matching the message derived from
+     * {@link #DUMP_FILE_MESSAGE_FORMAT}.
+     *
+     * Keep in sync with the {@code catch_files} array in {@code common.json}.
+     */
+    public static final String DUMP_FILE_MESSAGE_REGEXP = "Dumping debug output to '(?<filename>[^']+)'";
+
     public static final Description NO_DESCRIPTION = new Description(null, "NO_DESCRIPTION");
     public static final GlobalMetrics NO_GLOBAL_METRIC_VALUES = null;
     public static final Iterable<DebugHandlersFactory> NO_CONFIG_CUSTOMIZERS = Collections.emptyList();
@@ -99,6 +114,11 @@ public final class DebugContext implements AutoCloseable {
      * Determines whether metrics are enabled.
      */
     boolean metricsEnabled;
+
+    /**
+     * Determines whether debug context was closed.
+     */
+    boolean closed;
 
     DebugConfigImpl currentConfig;
     ScopeImpl currentScope;
@@ -125,7 +145,11 @@ public final class DebugContext implements AutoCloseable {
     private long[] metricValues;
 
     public static PrintStream getDefaultLogStream() {
-        return TTY.out;
+        // The PrintStream in the TTY#out field cannot be used because it does not respect current
+        // thread TTY.Filter. We have to use TTY#out(), which returns a LogStream that respects
+        // current thread TTY.filter. Truffle uses TTY.Filter to redirect Graal logging into engine
+        // logger.
+        return TTY.out().out();
     }
 
     /**
@@ -613,7 +637,7 @@ public final class DebugContext implements AutoCloseable {
             String label = description == null ? null : description.getLabel();
             String result = PathUtilities.createUnique(immutable.options, DumpPath, id, label, extension, createMissingDirectory);
             if (ShowDumpFiles.getValue(immutable.options)) {
-                TTY.println("Dumping debug output to %s", result);
+                TTY.println(DUMP_FILE_MESSAGE_FORMAT, result);
             }
             return result;
         } catch (IOException ex) {
@@ -965,7 +989,7 @@ public final class DebugContext implements AutoCloseable {
         if (immutable.scopesEnabled) {
             if (currentScope == null) {
                 // In an active DisabledScope
-                return true;
+                return !closed;
             }
             return !currentScope.isTopLevel();
         } else {
@@ -1372,6 +1396,30 @@ public final class DebugContext implements AutoCloseable {
     public void dump(int dumpLevel, Object object, String format, Object arg1, Object arg2, Object arg3) {
         if (currentScope != null && currentScope.isDumpEnabled(dumpLevel)) {
             currentScope.dump(dumpLevel, object, format, arg1, arg2, arg3);
+        }
+    }
+
+    public void dump(int dumpLevel, Object object, String format, Object arg1, Object arg2, Object arg3, Object arg4) {
+        if (currentScope != null && currentScope.isDumpEnabled(dumpLevel)) {
+            currentScope.dump(dumpLevel, object, format, arg1, arg2, arg3, arg4);
+        }
+    }
+
+    public void dump(int dumpLevel, Object object, String format, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5) {
+        if (currentScope != null && currentScope.isDumpEnabled(dumpLevel)) {
+            currentScope.dump(dumpLevel, object, format, arg1, arg2, arg3, arg4, arg5);
+        }
+    }
+
+    public void dump(int dumpLevel, Object object, String format, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5, Object arg6) {
+        if (currentScope != null && currentScope.isDumpEnabled(dumpLevel)) {
+            currentScope.dump(dumpLevel, object, format, arg1, arg2, arg3, arg4, arg5, arg6);
+        }
+    }
+
+    public void dump(int dumpLevel, Object object, String format, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5, Object arg6, Object arg7) {
+        if (currentScope != null && currentScope.isDumpEnabled(dumpLevel)) {
+            currentScope.dump(dumpLevel, object, format, arg1, arg2, arg3, arg4, arg5, arg6, arg7);
         }
     }
 
@@ -2021,7 +2069,7 @@ public final class DebugContext implements AutoCloseable {
      * There are paths where construction of formatted class names are common and the code below is
      * surprisingly expensive, so compute it once and cache it.
      */
-    private static final ClassValue<String> formattedClassName = new ClassValue<String>() {
+    private static final ClassValue<String> formattedClassName = new ClassValue<>() {
         @Override
         protected String computeValue(Class<?> c) {
             String baseName = getBaseName(c);
@@ -2164,6 +2212,10 @@ public final class DebugContext implements AutoCloseable {
             }
         }
         prototypeOutput = null;
+        lastClosedScope = null;
+        currentScope = null;
+        currentConfig = null;
+        closed = true;
     }
 
     public void closeDumpHandlers(boolean ignoreErrors) {

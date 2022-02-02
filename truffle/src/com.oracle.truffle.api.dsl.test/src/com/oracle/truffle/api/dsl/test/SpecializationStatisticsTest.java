@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,9 +43,13 @@ package com.oracle.truffle.api.dsl.test;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.Locale;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Context.Builder;
+import org.junit.After;
 import org.junit.Assert;
+import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.Assumption;
@@ -134,6 +138,20 @@ public class SpecializationStatisticsTest {
 
     }
 
+    private Locale systemSetting;
+
+    @Before
+    public final void localeFixup() {
+        systemSetting = Locale.getDefault();
+        // make sure formatting (e.g. decimal separator) matches the expected string above
+        Locale.setDefault(Locale.ENGLISH);
+    }
+
+    @After
+    public final void localeRestore() {
+        Locale.setDefault(systemSetting);
+    }
+
     @Test
     public void testCustomEnterLeave() {
         SpecializationStatistics statistics = SpecializationStatistics.create();
@@ -184,7 +202,7 @@ public class SpecializationStatisticsTest {
     @Test
     public void testWithContextEnabled() {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        try (Context context = Context.newBuilder().allowExperimentalOptions(true).option("engine.SpecializationStatistics", "true").logHandler(out).build()) {
+        try (Context context = newTestContextBuilder().option("engine.SpecializationStatistics", "true").logHandler(out).build()) {
             context.enter();
             createAndExecuteNodes();
             context.leave();
@@ -195,7 +213,7 @@ public class SpecializationStatisticsTest {
     @Test
     public void testWithContextEnabledNestedEnter() {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        try (Context context = Context.newBuilder().allowExperimentalOptions(true).option("engine.SpecializationStatistics", "true").logHandler(out).build()) {
+        try (Context context = newTestContextBuilder().option("engine.SpecializationStatistics", "true").logHandler(out).build()) {
             context.enter();
             context.enter();
             createAndExecuteNodesPart1();
@@ -213,7 +231,7 @@ public class SpecializationStatisticsTest {
     @Test
     public void testWithContextDisabled() {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        try (Context context = Context.newBuilder().allowExperimentalOptions(true).option("engine.SpecializationStatistics", "false").logHandler(out).build()) {
+        try (Context context = newTestContextBuilder().option("engine.SpecializationStatistics", "false").logHandler(out).build()) {
             context.enter();
             createAndExecuteNodes();
             context.leave();
@@ -224,13 +242,17 @@ public class SpecializationStatisticsTest {
     @Test
     public void testWithContextNoExecute() {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        try (Context context = Context.newBuilder().allowExperimentalOptions(true).option("engine.SpecializationStatistics", "true").logHandler(out).build()) {
+        try (Context context = newTestContextBuilder().option("engine.SpecializationStatistics", "true").logHandler(out).build()) {
             context.enter();
             context.leave();
         }
         Assert.assertEquals(createLogEntry("No specialization statistics data was collected. " +
                         "Either no node with @Specialization annotations was executed or the interpreter was not compiled with -J-Dtruffle.dsl.GenerateSpecializationStatistics=true e.g as parameter to the javac tool."),
                         new String(out.toByteArray()));
+    }
+
+    private static Builder newTestContextBuilder() {
+        return Context.newBuilder().allowExperimentalOptions(true).option("engine.WarnInterpreterOnly", "false");
     }
 
 }

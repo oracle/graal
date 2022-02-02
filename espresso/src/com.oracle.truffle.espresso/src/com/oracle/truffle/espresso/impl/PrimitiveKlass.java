@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.impl;
 
 import java.lang.reflect.Modifier;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Name;
@@ -36,6 +37,7 @@ import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
+import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 /**
  * Implementation of {@link Klass} for primitive types. Primitive classes don't have a .class
@@ -50,7 +52,7 @@ public final class PrimitiveKlass extends Klass {
      * @param primitiveKind the kind to create the type for
      */
     public PrimitiveKlass(EspressoContext context, JavaKind primitiveKind) {
-        super(context, primitiveKind.getPrimitiveBinaryName(), primitiveKind.getType(), null, ObjectKlass.EMPTY_ARRAY,
+        super(context, primitiveKind.getPrimitiveBinaryName(), primitiveKind.getType(),
                         Modifier.ABSTRACT | Modifier.FINAL | Modifier.PUBLIC);
         assert primitiveKind.isPrimitive() : primitiveKind + " not a primitive kind";
         this.primitiveKind = primitiveKind;
@@ -114,6 +116,11 @@ public final class PrimitiveKlass extends Klass {
     }
 
     @Override
+    public Method.MethodVersion[] getDeclaredMethodVersions() {
+        return Method.EMPTY_VERSION_ARRAY;
+    }
+
+    @Override
     public Method lookupMethod(Symbol<Name> methodName, Symbol<Signature> signature, Klass accessingKlass, LookupMode lookupMode) {
         return null;
     }
@@ -146,5 +153,10 @@ public final class PrimitiveKlass extends Klass {
     @Override
     public int getClassModifiers() {
         return getModifiers();
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    public StaticObject allocatePrimitiveArray(int length) {
+        return InterpreterToVM.allocatePrimitiveArray((byte) getPrimitiveJavaKind().getBasicType(), length, getMeta());
     }
 }

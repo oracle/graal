@@ -33,13 +33,23 @@ public interface ReadableJavaField extends ResolvedJavaField {
 
     static JavaConstant readFieldValue(MetaAccessProvider metaAccess, ConstantReflectionProvider originalConstantReflection, ResolvedJavaField javaField, JavaConstant javaConstant) {
         if (javaField instanceof ReadableJavaField) {
-            return ((ReadableJavaField) javaField).readValue(metaAccess, javaConstant);
+            ReadableJavaField readableField = (ReadableJavaField) javaField;
+            assert readableField.isValueAvailable();
+            return readableField.readValue(metaAccess, javaConstant);
         } else {
             return originalConstantReflection.readFieldValue(javaField, javaConstant);
         }
     }
 
     JavaConstant readValue(MetaAccessProvider metaAccess, JavaConstant receiver);
+
+    default boolean isValueAvailableBeforeAnalysis() {
+        return true;
+    }
+
+    default boolean isValueAvailable() {
+        return true;
+    }
 
     boolean allowConstantFolding();
 

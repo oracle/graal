@@ -123,6 +123,12 @@ public final class BytecodeExceptionNode extends AbstractMemoryCheckpoint implem
         ILLEGAL_ARGUMENT_EXCEPTION_ARGUMENT_IS_NOT_AN_ARRAY(0, IllegalArgumentException.class, "Argument is not an array"),
 
         /**
+         * Represents a {@link NegativeArraySizeException} with one required int argument for the
+         * length of the array.
+         */
+        NEGATIVE_ARRAY_SIZE(1, NegativeArraySizeException.class),
+
+        /**
          * Represents a {@link ArithmeticException}, with the exception message indicating a
          * division by zero. No arguments are allowed.
          */
@@ -156,6 +162,10 @@ public final class BytecodeExceptionNode extends AbstractMemoryCheckpoint implem
 
         public String getExceptionMessage() {
             return exceptionMessage;
+        }
+
+        public int getNumArguments() {
+            return numArguments;
         }
     }
 
@@ -206,7 +216,7 @@ public final class BytecodeExceptionNode extends AbstractMemoryCheckpoint implem
         boolean rethrowException = false;
         boolean duringCall = true;
         return stateAfter.duplicateModified(graph(), stateAfter.bci, rethrowException, duringCall,
-                        JavaKind.Object, null, null);
+                        JavaKind.Object, null, null, null);
     }
 
 }

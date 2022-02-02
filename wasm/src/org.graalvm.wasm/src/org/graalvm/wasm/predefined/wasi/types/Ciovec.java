@@ -56,7 +56,7 @@ public final class Ciovec {
     }
 
     /** Size of this structure, in bytes. */
-    public static int BYTES = 8;
+    public static final int BYTES = 8;
 
     /** Reads the address of the buffer to be written. */
     public static int readBuf(Node node, WasmMemory memory, int address) {

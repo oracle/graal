@@ -9,7 +9,7 @@ permalink: /graalvm-as-a-platform/language-implementation-framework/Profiling/
 There is no shortage of tools for profiling interpreters written using Truffle.
 When running in JVM mode you can use standard JVM tooling such as VisualVM, Java Flight Recorder, and Oracle Developer Studio. When running in Native Image you can use `callgrind` from the Valgrind tool suite, and other system tools such as `strace`.
 As a language running on GraalVM, other GraalVM tools can be used.
-For a broad enough definition of profiling, you can also use the [Ideal Graph Visualizer (IGV)](https://docs.oracle.com/en/graalvm/enterprise/21/docs/tools/igv/) and C1 Visualizer to inspect the compiler output.
+For a broad enough definition of profiling, you can also use the [Ideal Graph Visualizer (IGV)](../../docs/tools/ideal-graph-visualizer.md) and C1 Visualizer to inspect the compiler output.
 
 This guide is less about how to use each tool and more about suggestions for extracting the most useful information from the tools, assuming a basic knowledge of their usage.
 
@@ -28,7 +28,7 @@ See `language-launcher --help:tools` for more `--cpusampler` options.
 
 ### Getting compilation data from the CPU Sampler
 
-Since versions 21.3.0 the CPU sampler CLI output was simplified to not include information about time spent in compiled code. This was, at least in part, motivated by the introduction of multi-tier compilation where "compiled code" was not descriptive enough.
+Since version 21.3.0 the CPU sampler CLI output was simplified to not include information about time spent in compiled code. This was, at least in part, motivated by the introduction of multi-tier compilation where "compiled code" was not descriptive enough.
 Using the `--cpusampler.ShowTiers` option allows users to control whether they wish to see compilation data at all, as well as to specify exactly which compilation tiers should be considered in the report.
 For example, adding `--cpusampler.ShowTiers=true` will show all the compilation tiers encountered during execution as shown bellow.
 

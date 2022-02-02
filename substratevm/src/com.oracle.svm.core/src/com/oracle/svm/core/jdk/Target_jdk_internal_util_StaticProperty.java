@@ -37,7 +37,7 @@ import com.oracle.svm.core.annotate.TargetElement;
  * same methods also used to initialize the system properties.
  */
 @Substitute
-@TargetClass(className = "jdk.internal.util.StaticProperty", onlyWith = JDK11OrLater.class)
+@TargetClass(className = "jdk.internal.util.StaticProperty")
 @SuppressWarnings("unused")
 final class Target_jdk_internal_util_StaticProperty {
 
@@ -63,26 +63,26 @@ final class Target_jdk_internal_util_StaticProperty {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK16OrLater.class)
+    @TargetElement(onlyWith = JDK17OrLater.class)
     private static String javaIoTmpDir() {
         return ImageSingletons.lookup(SystemPropertiesSupport.class).tmpDir();
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK15OrLater.class)
+    @TargetElement(onlyWith = JDK17OrLater.class)
     private static String javaLibraryPath() {
         return ImageSingletons.lookup(SystemPropertiesSupport.class).javaLibraryPath();
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK15OrLater.class)
+    @TargetElement(onlyWith = JDK17OrLater.class)
     private static String sunBootLibraryPath() {
         String value = ImageSingletons.lookup(SystemPropertiesSupport.class).savedProperties.get("sun.boot.library.path");
         return value == null ? "" : value;
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK15OrLater.class)
+    @TargetElement(onlyWith = JDK17OrLater.class)
     private static String jdkSerialFilter() {
         return ImageSingletons.lookup(SystemPropertiesSupport.class).savedProperties.get("jdk.serialFilter");
     }

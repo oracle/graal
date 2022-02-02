@@ -32,11 +32,13 @@ import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.impl.AbstractFastThreadLocal;
+import com.oracle.truffle.api.impl.FrameWithoutBoxing;
 import com.oracle.truffle.api.impl.Accessor.RuntimeSupport;
 import com.oracle.truffle.api.impl.ThreadLocalHandshake;
 import com.oracle.truffle.api.nodes.BlockNode;
@@ -53,6 +55,33 @@ final class GraalRuntimeSupport extends RuntimeSupport {
 
     GraalRuntimeSupport(Object permission) {
         super(permission);
+    }
+
+    @Override
+    public RootCallTarget newCallTarget(CallTarget source, RootNode rootNode) {
+        assert GraalRuntimeAccessor.NODES.getCallTargetWithoutInitialization(rootNode) == null : "CallTarget for root node already initialized.";
+
+        CompilerAsserts.neverPartOfCompilation();
+        return GraalTruffleRuntime.getRuntime().createOptimizedCallTarget((OptimizedCallTarget) source, rootNode);
+    }
+
+    @Override
+    public boolean isLoaded(CallTarget callTarget) {
+        return ((OptimizedCallTarget) callTarget).isLoaded();
+    }
+
+    @Override
+    public void notifyOnLoad(CallTarget callTarget) {
+        CompilerAsserts.neverPartOfCompilation();
+        OptimizedCallTarget target = (OptimizedCallTarget) callTarget;
+        GraalRuntimeAccessor.INSTRUMENT.onLoad(target.getRootNode());
+        if (target.engine.compileAOTOnCreate) {
+            if (target.prepareForAOT()) {
+                target.compile(true);
+            }
+        }
+        TruffleSplittingStrategy.newTargetCreated(target);
+        target.setLoaded();
     }
 
     @ExplodeLoop
@@ -83,21 +112,7 @@ final class GraalRuntimeSupport extends RuntimeSupport {
         TruffleSafepoint.poll((Node) osrNode);
         BytecodeOSRMetadata osrMetadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
         if (osrMetadata == null) {
-            Node node = (Node) osrNode;
-            osrMetadata = node.atomic(() -> { // double checked locking
-                BytecodeOSRMetadata metadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
-                if (metadata == null) {
-                    OptimizedCallTarget callTarget = (OptimizedCallTarget) node.getRootNode().getCallTarget();
-                    if (callTarget.getOptionValue(PolyglotCompilerOptions.OSR)) {
-                        metadata = new BytecodeOSRMetadata(osrNode, callTarget.getOptionValue(PolyglotCompilerOptions.OSRCompilationThreshold));
-                    } else {
-                        metadata = BytecodeOSRMetadata.DISABLED;
-                    }
-
-                    osrNode.setOSRMetadata(metadata);
-                }
-                return metadata;
-            });
+            osrMetadata = initializeBytecodeOSRMetadata(osrNode);
         }
 
         // metadata can be set to DISABLED during initialization (above) or dynamically after
@@ -107,6 +122,24 @@ final class GraalRuntimeSupport extends RuntimeSupport {
         } else {
             return osrMetadata.incrementAndPoll();
         }
+    }
+
+    private static BytecodeOSRMetadata initializeBytecodeOSRMetadata(BytecodeOSRNode osrNode) {
+        Node node = (Node) osrNode;
+        return node.atomic(() -> { // double checked locking
+            BytecodeOSRMetadata metadata = (BytecodeOSRMetadata) osrNode.getOSRMetadata();
+            if (metadata == null) {
+                OptimizedCallTarget callTarget = (OptimizedCallTarget) node.getRootNode().getCallTarget();
+                if (callTarget.getOptionValue(PolyglotCompilerOptions.OSR)) {
+                    metadata = new BytecodeOSRMetadata(osrNode, callTarget.getOptionValue(PolyglotCompilerOptions.OSRCompilationThreshold));
+                } else {
+                    metadata = BytecodeOSRMetadata.DISABLED;
+                }
+
+                osrNode.setOSRMetadata(metadata);
+            }
+            return metadata;
+        });
     }
 
     @Override
@@ -214,11 +247,6 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     }
 
     @Override
-    public boolean inFirstTier() {
-        return GraalCompilerDirectives.hasNextTier();
-    }
-
-    @Override
     public void flushCompileQueue(Object runtimeData) {
         EngineData engine = (EngineData) runtimeData;
         BackgroundCompileQueue queue = GraalTruffleRuntime.getRuntime().getCompileQueue();
@@ -291,8 +319,8 @@ final class GraalRuntimeSupport extends RuntimeSupport {
     }
 
     @Override
-    public Object[] getNonPrimitiveResolvedFields(Class<?> type) {
-        return GraalTruffleRuntime.getRuntime().getNonPrimitiveResolvedFields(type);
+    public Object[] getResolvedFields(Class<?> type, boolean includePrimitive, boolean includeSuperclasses) {
+        return GraalTruffleRuntime.getRuntime().getResolvedFields(type, includePrimitive, includeSuperclasses);
     }
 
     @Override

@@ -74,6 +74,8 @@ import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
+import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.AutomaticFeature;
@@ -85,9 +87,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.SVMHost;
-import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.classinitialization.ClassInitializerGraphBuilderPhase;
-import com.oracle.svm.hosted.phases.NoClassInitializationPlugin;
 import com.oracle.svm.hosted.snippets.ReflectionPlugins;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -172,16 +172,13 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             fieldGetMethod = originalMetaAccess.lookupJavaMethod(fieldGet);
             neverInlineSet.add(fieldGetMethod);
 
-            if (JavaVersionUtil.JAVA_SPEC > 8) {
-                /*
-                 * Various factory methods in VarHandle query the array base/index or field offsets.
-                 * There is no need to analyze these calls because VarHandle accesses are
-                 * intrinsified to simple array and field access nodes in
-                 * IntrinsifyMethodHandlesInvocationPlugin.
-                 */
-                for (Method method : loader.findClassOrFail("java.lang.invoke.VarHandles").getDeclaredMethods()) {
-                    neverInlineSet.add(originalMetaAccess.lookupJavaMethod(method));
-                }
+            /*
+             * Various factory methods in VarHandle query the array base/index or field offsets.
+             * There is no need to analyze these calls because VarHandle accesses are intrinsified
+             * to simple array and field access nodes in IntrinsifyMethodHandlesInvocationPlugin.
+             */
+            for (Method method : loader.findClassOrFail("java.lang.invoke.VarHandles").getDeclaredMethods()) {
+                neverInlineSet.add(originalMetaAccess.lookupJavaMethod(method));
             }
 
             Class<?> unsafeClass;
@@ -189,11 +186,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
 
             try {
                 sunMiscUnsafeClass = Class.forName("sun.misc.Unsafe");
-                if (JavaVersionUtil.JAVA_SPEC <= 8) {
-                    unsafeClass = sunMiscUnsafeClass;
-                } else {
-                    unsafeClass = Class.forName("jdk.internal.misc.Unsafe");
-                }
+                unsafeClass = Class.forName("jdk.internal.misc.Unsafe");
             } catch (ClassNotFoundException cnfe) {
                 throw VMError.shouldNotReachHere(cnfe);
             }
@@ -206,17 +199,14 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             noCheckedExceptionsSet.add(unsafeObjectFieldOffsetFieldMethod);
             neverInlineSet.add(unsafeObjectFieldOffsetFieldMethod);
 
-            if (JavaVersionUtil.JAVA_SPEC >= 11) {
-                /* JDK 11 and later have Unsafe.objectFieldOffset(Class, String). */
-                Method unsafeObjectClassStringOffset = unsafeClass.getMethod("objectFieldOffset", java.lang.Class.class, String.class);
-                unsafeObjectFieldOffsetClassStringMethod = originalMetaAccess.lookupJavaMethod(unsafeObjectClassStringOffset);
-                noCheckedExceptionsSet.add(unsafeObjectFieldOffsetClassStringMethod);
-                neverInlineSet.add(unsafeObjectFieldOffsetClassStringMethod);
-            }
+            Method unsafeObjectClassStringOffset = unsafeClass.getMethod("objectFieldOffset", java.lang.Class.class, String.class);
+            unsafeObjectFieldOffsetClassStringMethod = originalMetaAccess.lookupJavaMethod(unsafeObjectClassStringOffset);
+            noCheckedExceptionsSet.add(unsafeObjectFieldOffsetClassStringMethod);
+            neverInlineSet.add(unsafeObjectFieldOffsetClassStringMethod);
 
-            if (JavaVersionUtil.JAVA_SPEC >= 15) {
+            if (JavaVersionUtil.JAVA_SPEC >= 17) {
                 /*
-                 * JDK 15 and later add checks for hidden classes and record classes in
+                 * JDK 17 and later add checks for hidden classes and record classes in
                  * sun.misc.Unsafe before delegating to jdk.internal.misc.Unsafe. When inlined, the
                  * checks make control flow too complex to detect offset field assignments.
                  */
@@ -426,7 +416,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
         }
 
         boolean valid = true;
-        if (JavaVersionUtil.JAVA_SPEC >= 15 && isInvokeTo(invoke, sunMiscUnsafeObjectFieldOffsetMethod)) {
+        if (JavaVersionUtil.JAVA_SPEC >= 17 && isInvokeTo(invoke, sunMiscUnsafeObjectFieldOffsetMethod)) {
             Class<?> declaringClass = field.getDeclaringClass();
             if (RecordSupport.singleton().isRecord(declaringClass)) {
                 unsuccessfulReasons.add("The argument to sun.misc.Unsafe.objectFieldOffset(Field) is a field of a record.");
@@ -896,6 +886,13 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             reportConflictingSubstitution(field, kind, conflictingSubstitution);
             return false;
         } else {
+            ComputedValueField computedValueField = substitutionSupplier.get();
+            Field targetField = computedValueField.getTargetField();
+            if (targetField != null && annotationSubstitutions.isDeleted(targetField)) {
+                String conflictingSubstitution = "The target field of " + field.format("%H.%n") + " is marked as deleted. ";
+                reportSkippedSubstitution(field, kind, conflictingSubstitution);
+                return false;
+            }
             Optional<ResolvedJavaField> annotationSubstitution = annotationSubstitutions.findSubstitution(field);
             if (annotationSubstitution.isPresent()) {
                 /* An annotation substitutions detected. */
@@ -917,7 +914,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
                          * AnalysisUniverse.lookupAllowUnresolved(JavaField), the alias field is
                          * forwarded to the the automatic substitution.
                          */
-                        addSubstitutionField(computedSubstitutionField, substitutionSupplier.get());
+                        addSubstitutionField(computedSubstitutionField, computedValueField);
                         reportOvewrittenSubstitution(substitutionField, kind, computedSubstitutionField.getAnnotated(), computedSubstitutionField.getRecomputeValueKind());
                         return true;
                     } else {
@@ -933,7 +930,7 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
                 }
             } else {
                 /* No other substitutions detected. */
-                addSubstitutionField(field, substitutionSupplier.get());
+                addSubstitutionField(field, computedValueField);
                 return true;
             }
         }
@@ -994,6 +991,18 @@ public class UnsafeAutomaticSubstitutionProcessor extends SubstitutionProcessor 
             String msg = "Warning: The " + substitutionKindStr + " substitution for " + fieldStr + " could not be recomputed automatically because a conflicting substitution was detected. ";
             msg += "Conflicting substitution: " + conflictingSubstitution;
             msg += "Add a " + substitutionKindStr + " manual substitution for " + fieldStr + ". ";
+
+            System.out.println(msg);
+        }
+    }
+
+    private static void reportSkippedSubstitution(ResolvedJavaField field, Kind substitutionKind, String conflictingSubstitution) {
+        if (Options.UnsafeAutomaticSubstitutionsLogLevel.getValue() >= BASIC_LEVEL) {
+            String fieldStr = field.format("%H.%n");
+            String substitutionKindStr = RecomputeFieldValue.class.getSimpleName() + "." + substitutionKind;
+
+            String msg = "Warning: The " + substitutionKindStr + " substitution for " + fieldStr + " could not be recomputed automatically because a conflicting substitution was detected. ";
+            msg += "Conflicting substitution: " + conflictingSubstitution;
 
             System.out.println(msg);
         }

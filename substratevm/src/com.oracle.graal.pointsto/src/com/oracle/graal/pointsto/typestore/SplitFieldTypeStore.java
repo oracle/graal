@@ -39,9 +39,13 @@ public class SplitFieldTypeStore extends FieldTypeStore {
     private final FieldTypeFlow readFlow;
 
     public SplitFieldTypeStore(AnalysisField field, AnalysisObject object) {
+        this(field, object, new FieldTypeFlow(field, field.getType(), object), new FieldTypeFlow(field, field.getType(), object));
+    }
+
+    public SplitFieldTypeStore(AnalysisField field, AnalysisObject object, FieldTypeFlow writeFlow, FieldTypeFlow readFlow) {
         super(field, object);
-        this.writeFlow = new FieldTypeFlow(field, field.getType(), object);
-        this.readFlow = new FieldTypeFlow(field, field.getType(), object);
+        this.writeFlow = writeFlow;
+        this.readFlow = readFlow;
     }
 
     @Override

@@ -22,13 +22,23 @@
  */
 package com.oracle.truffle.espresso.ffi.nfi;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.graalvm.options.OptionValues;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.espresso.EspressoOptions;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.ffi.Pointer;
+import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.runtime.EspressoProperties;
 import com.oracle.truffle.espresso.substitutions.Collect;
 
 public final class NFISulongNativeAccess extends NFINativeAccess {
@@ -40,6 +50,9 @@ public final class NFISulongNativeAccess extends NFINativeAccess {
     @Override
     public @Pointer TruffleObject loadLibrary(Path libraryPath) {
         CompilerAsserts.neverPartOfCompilation();
+        if (!Files.exists(libraryPath)) {
+            return null;
+        }
         String nfiSource = String.format("with llvm load(RTLD_LAZY) '%s'", libraryPath);
         return loadLibraryHelper(nfiSource);
     }
@@ -49,11 +62,128 @@ public final class NFISulongNativeAccess extends NFINativeAccess {
         return null; // not supported
     }
 
+    /**
+     * Returns the Java version of the specified Java home directory, as declared in the 'release'
+     * file.
+     * 
+     * @return Java version as declared in the JAVA_VERSION property in the 'release' file, or null
+     *         otherwise.
+     */
+    static String getJavaVersion(Path javaHome) {
+        Path releaseFile = javaHome.resolve("release");
+        if (!Files.isRegularFile(releaseFile)) {
+            return null;
+        }
+        try {
+            for (String line : Files.readAllLines(releaseFile)) {
+                if (line.startsWith("JAVA_VERSION=")) {
+                    String version = line.substring("JAVA_VERSION=".length()).trim();
+                    // JAVA_VERSION=<value> may be quoted or unquoted, both cases are supported.
+                    if (version.length() > 2 && version.startsWith("\"") && version.endsWith("\"")) {
+                        version = version.substring(1, version.length() - 1);
+                    }
+                    return version;
+                }
+            }
+        } catch (IOException e) {
+            // cannot read file, skip
+        }
+        return null; // JAVA_VERSION not found
+    }
+
+    /**
+     * Finds a folder containing libraries with LLVM bitcode compatible with the specified Java
+     * version. First checks the 'default' folder, as it matches the Java version of the parent
+     * GraalVM. Then checks remaining folders under llvmRoot.
+     */
+    private Path llvmBootLibraryPath(String javaVersion, Path llvmRoot) {
+        // Try $ESPRESSO_HOME/lib/llvm/default first.
+        Path llvmDefault = llvmRoot.resolve("default");
+        if (!Files.exists(llvmDefault)) {
+            getLogger().warning(() -> "espresso-llvm (default) component not found. Run 'gu install espresso-llvm' to install it, if available for your platform.");
+        }
+        String llvmDefaultVersion = getJavaVersion(llvmDefault);
+        getLogger().fine(() -> "Check " + llvmDefault + " with Java version: " + llvmDefaultVersion);
+        if (javaVersion.equals(llvmDefaultVersion)) {
+            return llvmDefault;
+        }
+
+        /*
+         * Try directories in $ESPRESSO_HOME/lib/llvm/* for libraries with LLVM-bitcode compatible
+         * with the specified Java version.
+         */
+        if (!Files.exists(llvmRoot)) {
+            return null; // no folders with Java libraries + embedded LLVM-bitcode.
+        }
+
+        List<Path> sortedPaths = null;
+        try {
+            // Order must be deterministic.
+            sortedPaths = Files.list(llvmRoot) //
+                            .filter(f -> !llvmDefault.equals(f) && Files.isDirectory(f)) //
+                            .sorted() //
+                            .collect(Collectors.toList());
+        } catch (IOException e) {
+            throw EspressoError.unexpected(e.getMessage(), e);
+        }
+
+        for (Path llvmImpl : sortedPaths) {
+            String llvmImplVersion = getJavaVersion(llvmImpl);
+            getLogger().fine(() -> "Checking " + llvmImpl + " with Java version: " + llvmImplVersion);
+            if (javaVersion.equals(llvmImplVersion)) {
+                return llvmImpl;
+            }
+        }
+
+        return null; // not found
+    }
+
+    /**
+     * Overrides the JVMLibraryPath and BootLibraryPath properties only if the options are not set
+     * by the user.
+     *
+     * Looks for libraries with embedded LLVM bitcode located in languages/java/lib/llvm/* , every
+     * folder represents different Java versions and/or different configurations.
+     */
+    @Override
+    public void updateEspressoProperties(EspressoProperties.Builder builder, OptionValues options) {
+        if (options.hasBeenSet(EspressoOptions.BootLibraryPath)) {
+            getLogger().info("--java.BootLibraryPath was set by the user, skipping override for " + Provider.ID);
+        } else {
+            String targetJavaVersion = getJavaVersion(builder.javaHome());
+            if (targetJavaVersion == null) {
+                getLogger().warning("Cannot determine the Java version for '" + builder.javaHome() + "'. The default --java.BootLibraryPath will be used.");
+            } else {
+                Path llvmRoot = builder.espressoHome().resolve("lib").resolve("llvm");
+                Path llvmBootLibraryPath = llvmBootLibraryPath(targetJavaVersion, llvmRoot);
+                if (llvmBootLibraryPath == null) {
+                    getLogger().warning("Couldn't find libraries with LLVM bitcode for Java version '" + targetJavaVersion + "'. The default --java.BootLibraryPath will be used.");
+                } else {
+                    builder.bootLibraryPath(Collections.singletonList(llvmBootLibraryPath));
+                }
+            }
+        }
+
+        /*
+         * The location of Espresso's libjvm is updated to point to exactly the same file inside the
+         * Espresso home so it can be loaded by Sulong without extra configuration of the Truffle
+         * file system.
+         */
+        if (options.hasBeenSet(EspressoOptions.JVMLibraryPath)) {
+            getLogger().info("--java.JVMLibraryPath was set by the user, skipping override for " + Provider.ID);
+        } else {
+            builder.jvmLibraryPath(Collections.singletonList(builder.espressoHome().resolve("lib")));
+        }
+    }
+
     @Collect(NativeAccess.class)
     public static final class Provider implements NativeAccess.Provider {
+
+        public static final String ID = "nfi-llvm";
+
         @Override
         public String id() {
-            return "nfi-sulong";
+            return ID;
         }
 
         @Override

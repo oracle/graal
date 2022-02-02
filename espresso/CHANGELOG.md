@@ -1,5 +1,20 @@
 # Espresso Changelog
 
+## Version 22.1.0
+
+## Version 22.0.0
+### User-visible changes
+* New HotSwap support for changing fields. Enable with the `--java.ArbitraryChangesSupport=true` experimental flag.
+* New HotSwap support for changing class access modifiers. Enable with the `--java.ArbitraryChangesSupport=true` experimental flag.
+* Added support for running native code with the LLVM runtime. This can be enabled with the `--java.NativeBackend=nfi-llvm` experimental flag.
+  Native JDK libraries can be installed with `gu install espresso-llvm`. When installed, those libraries will be picked up by the `nfi-llvm` native backend.
+  This allows to bypass some limitations of the default native backend (`nfi-dlmopen`). In particular, it avoids crashes that can happen on some glibc versions when using multiple contexts.
+### Internal changes
+* Espresso adopted the new Frame API.
+### Noteworthy fixes
+* Fix Strings sometimes not properly displayed in the debugger view through JDWP
+
+
 ## Version 21.3.0
 ### User-visible changes
 * Java 17 guest and host support.

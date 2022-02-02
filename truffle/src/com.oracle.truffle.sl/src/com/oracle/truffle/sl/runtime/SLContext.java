@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,11 @@ import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.List;
+
+import com.oracle.truffle.api.strings.TruffleString;
+import org.graalvm.polyglot.Context;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -56,13 +60,19 @@ import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.dsl.NodeFactory;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
+import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.sl.SLLanguage;
+import com.oracle.truffle.sl.builtins.SLAddToHostClassPathBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLBuiltinNode;
 import com.oracle.truffle.sl.builtins.SLDefineFunctionBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLEvalBuiltinFactory;
+import com.oracle.truffle.sl.builtins.SLExitBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLGetSizeBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLHasSizeBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLHelloEqualsWorldBuiltinFactory;
@@ -77,10 +87,10 @@ import com.oracle.truffle.sl.builtins.SLPrintlnBuiltin;
 import com.oracle.truffle.sl.builtins.SLPrintlnBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLReadlnBuiltin;
 import com.oracle.truffle.sl.builtins.SLReadlnBuiltinFactory;
+import com.oracle.truffle.sl.builtins.SLRegisterShutdownHookBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLStackTraceBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLTypeOfBuiltinFactory;
 import com.oracle.truffle.sl.builtins.SLWrapPrimitiveBuiltinFactory;
-import org.graalvm.polyglot.Context;
 
 /**
  * The run-time state of SL during execution. The context is created by the {@link SLLanguage}. It
@@ -98,6 +108,7 @@ public final class SLContext {
     private final PrintWriter output;
     private final SLFunctionRegistry functionRegistry;
     private final AllocationReporter allocationReporter;
+    private final List<SLFunction> shutdownHooks = new ArrayList<>();
 
     public SLContext(SLLanguage language, TruffleLanguage.Env env, List<NodeFactory<? extends SLBuiltinNode>> externalBuiltins) {
         this.env = env;
@@ -175,13 +186,15 @@ public final class SLContext {
         installBuiltin(SLTypeOfBuiltinFactory.getInstance());
         installBuiltin(SLIsInstanceBuiltinFactory.getInstance());
         installBuiltin(SLJavaTypeBuiltinFactory.getInstance());
+        installBuiltin(SLExitBuiltinFactory.getInstance());
+        installBuiltin(SLRegisterShutdownHookBuiltinFactory.getInstance());
+        installBuiltin(SLAddToHostClassPathBuiltinFactory.getInstance());
     }
 
     public void installBuiltin(NodeFactory<? extends SLBuiltinNode> factory) {
         /* Register the builtin function in our function registry. */
         RootCallTarget target = language.lookupBuiltin(factory);
-        String rootName = target.getRootNode().getName();
-        getFunctionRegistry().register(rootName, target);
+        getFunctionRegistry().register(SLStrings.getSLRootName(target.getRootNode()), target);
     }
 
     /*
@@ -195,7 +208,7 @@ public final class SLContext {
      * Methods for language interoperability.
      */
     public static Object fromForeignValue(Object a) {
-        if (a instanceof Long || a instanceof SLBigNumber || a instanceof String || a instanceof Boolean) {
+        if (a instanceof Long || a instanceof SLBigNumber || a instanceof String || a instanceof TruffleString || a instanceof Boolean) {
             return a;
         } else if (a instanceof Character) {
             return fromForeignCharacter((Character) a);
@@ -237,4 +250,28 @@ public final class SLContext {
         return REFERENCE.get(node);
     }
 
+    /**
+     * Register a function as a shutdown hook. Only no-parameter functions are supported.
+     *
+     * @param func no-parameter function to be registered as a shutdown hook
+     */
+    @TruffleBoundary
+    public void registerShutdownHook(SLFunction func) {
+        shutdownHooks.add(func);
+    }
+
+    /**
+     * Run registered shutdown hooks. This method is designed to be executed in
+     * {@link TruffleLanguage#exitContext(Object, TruffleLanguage.ExitMode, int)}.
+     */
+    public void runShutdownHooks() {
+        InteropLibrary interopLibrary = InteropLibrary.getUncached();
+        for (SLFunction shutdownHook : shutdownHooks) {
+            try {
+                interopLibrary.execute(shutdownHook);
+            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                throw shouldNotReachHere("Shutdown hook is not executable!", e);
+            }
+        }
+    }
 }

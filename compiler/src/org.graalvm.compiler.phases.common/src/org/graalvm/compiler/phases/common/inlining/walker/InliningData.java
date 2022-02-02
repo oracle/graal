@@ -259,7 +259,7 @@ public class InliningData {
     private InlineInfo getTypeCheckedInlineInfo(Invoke invoke, ResolvedJavaMethod targetMethod) {
         StructuredGraph graph = invoke.asNode().graph();
         InliningLog inliningLog = graph.getInliningLog();
-        JavaTypeProfile typeProfile = ((MethodCallTargetNode) invoke.callTarget()).getProfile();
+        JavaTypeProfile typeProfile = ((MethodCallTargetNode) invoke.callTarget()).getTypeProfile();
         if (typeProfile == null) {
             InliningUtil.traceNotInlinedMethod(invoke, inliningDepth(), targetMethod, "no type profile exists");
             inliningLog.addDecision(invoke, false, "InliningPhase", null, null, "no type profile exists");

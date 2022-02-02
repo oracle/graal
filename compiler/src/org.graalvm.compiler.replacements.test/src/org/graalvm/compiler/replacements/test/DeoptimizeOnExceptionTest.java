@@ -27,6 +27,7 @@ package org.graalvm.compiler.replacements.test;
 import java.util.Random;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
+import org.graalvm.compiler.api.test.ExportingClassLoader;
 import org.graalvm.compiler.core.phases.HighTier;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -34,10 +35,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.common.AbstractInliningPhase;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.compiler.api.test.ExportingClassLoader;
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Test;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Label;
@@ -104,7 +102,6 @@ public class DeoptimizeOnExceptionTest extends GraalCompilerTest {
 
     @Test
     public void test3() {
-        Assume.assumeTrue("Only works on jdk8 right now", JavaVersionUtil.JAVA_SPEC <= 8);
         ResolvedJavaMethod method = getResolvedJavaMethod("test3Snippet");
 
         for (int i = 0; i < 2; i++) {

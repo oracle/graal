@@ -55,6 +55,7 @@ public class PECoffRelocationTable extends ObjectFile.Element {
     }
 
     interface PECoffRelocationMethod extends RelocationMethod {
+
         long toLong();
     }
 
@@ -101,19 +102,17 @@ public class PECoffRelocationTable extends ObjectFile.Element {
         }
     }
 
-    private final boolean withExplicitAddends;
     private final PECoffSymtab syms;
     private PECoffObjectFile owner = null;
 
-    PECoffRelocationTable(PECoffObjectFile owner, String name, PECoffSymtab syms, boolean withExplicitAddends) {
+    PECoffRelocationTable(PECoffObjectFile owner, String name, PECoffSymtab syms) {
         owner.super(name, 4);
 
         this.owner = owner;
-        this.withExplicitAddends = withExplicitAddends;
         this.syms = syms;
     }
 
-    public Entry addEntry(PECoffSection s, long offset, PECoffRelocationMethod t, PECoffSymtab.Entry sym, Long explicitAddend) {
+    void addEntry(PECoffSection s, long offset, PECoffRelocationMethod t, PECoffSymtab.Entry sym, long addend) {
         Map<Entry, Entry> entries = (Map<Entry, Entry>) s.getRelocEntries();
 
         if (entries == null) {
@@ -121,23 +120,7 @@ public class PECoffRelocationTable extends ObjectFile.Element {
             s.setRelocEntries(entries);
         }
 
-        if (explicitAddend != null) {
-            if (!t.canUseExplicitAddend()) {
-                throw new IllegalArgumentException("cannot use relocation method " + t + " with explicit addends");
-            }
-            if (!withExplicitAddends) {
-                throw new IllegalStateException("cannot create relocation with addend in .rel section");
-            }
-        } else {
-            if (!t.canUseImplicitAddend()) {
-                throw new IllegalArgumentException("cannot use relocation method " + t + " with implicit addends");
-            }
-            if (withExplicitAddends) {
-                throw new IllegalStateException("cannot create relocation without addend in .rela section");
-            }
-        }
-        long addend = (explicitAddend != null) ? explicitAddend : 0L;
-        return entries.computeIfAbsent(new Entry(s, offset, t, sym, addend), Function.identity());
+        entries.computeIfAbsent(new Entry(s, offset, t, sym, addend), Function.identity());
     }
 
     // Returns count of relocation entries for section

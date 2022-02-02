@@ -23,8 +23,9 @@
     min_jdk_version:: null,
     max_jdk_version:: null,
     is_jdk_supported(jdk_version)::
-      if self.min_jdk_version != null && jdk_version < self.min_jdk_version then false
-      else if self.max_jdk_version != null && jdk_version > self.max_jdk_version then false
+      if jdk_version == null then error "jdk_version cannot be null!" else
+      if std.objectHasAll(self, "min_jdk_version") && self.min_jdk_version != null && jdk_version < self.min_jdk_version then false
+      else if std.objectHasAll(self, "max_jdk_version") &&  self.max_jdk_version != null && jdk_version > self.max_jdk_version then false
       else true
   },
 
@@ -48,6 +49,13 @@
       numa_nodes:: [0, 1],
       default_numa_node:: 0,
       num_threads:: 72
+    },
+    x82:: common.linux + common.amd64 + self._bench_machine + {
+      machine_name:: "x82",
+      capabilities+: ["no_frequency_scaling", "tmpfs25g"],
+      numa_nodes:: [0, 1],
+      default_numa_node:: 0,
+      num_threads:: 96
     },
     xgene3:: common.linux + common.aarch64 + self._bench_machine + {
       machine_name:: "xgene3",

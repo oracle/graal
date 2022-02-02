@@ -24,10 +24,7 @@
  */
 package com.oracle.svm.reflect.hosted;
 
-// Checkstyle: allow reflection
-
 import java.lang.invoke.MethodHandle;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -52,11 +49,10 @@ import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.configure.ReflectionConfigurationParser;
 import com.oracle.svm.core.graal.GraalFeature;
+import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.reflect.ReflectionAccessorHolder;
-import com.oracle.svm.core.reflect.RuntimeReflectionConstructors;
 import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
 import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
-import com.oracle.svm.core.reflect.SubstrateReflectionAccessorFactory;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.FeatureImpl;
@@ -65,10 +61,8 @@ import com.oracle.svm.hosted.FeatureImpl.FeatureAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
-import com.oracle.svm.hosted.meta.MethodPointer;
 import com.oracle.svm.hosted.snippets.ReflectionPlugins;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
-import com.oracle.svm.reflect.target.RuntimeReflectionConstructorsImpl;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -87,9 +81,8 @@ public class ReflectionFeature implements GraalFeature {
     final Map<Executable, Object> accessors = new ConcurrentHashMap<>();
 
     private static final Method invokePrototype = ReflectionUtil.lookupMethod(ReflectionAccessorHolder.class, "invokePrototype", boolean.class, Object.class, Object[].class);
-    private static final Method newInstancePrototype = ReflectionUtil.lookupMethod(ReflectionAccessorHolder.class, "newInstancePrototype", Object[].class);
     private static final Method methodHandleInvokeErrorMethod = ReflectionUtil.lookupMethod(ReflectionAccessorHolder.class, "methodHandleInvokeError", boolean.class, Object.class, Object[].class);
-    private static final Method newInstanceErrorMethod = ReflectionUtil.lookupMethod(ReflectionAccessorHolder.class, "newInstanceError", Object[].class);
+    private static final Method newInstanceErrorMethod = ReflectionUtil.lookupMethod(ReflectionAccessorHolder.class, "newInstanceError", boolean.class, Object.class, Object[].class);
 
     FeatureImpl.BeforeAnalysisAccessImpl analysisAccess;
 
@@ -111,26 +104,26 @@ public class ReflectionFeature implements GraalFeature {
      * instances use function pointer calls to invocation stubs. The invocation stubs unpack the
      * Object[] array arguments and invoke the actual method.
      * 
-     * The stubs are methods with manually created Graal IR: {@link ReflectiveInvokeMethod} and
-     * {@link ReflectiveNewInstanceMethod}. Since they are only invoked via function pointers and
-     * never at a normal call site, they need to be registered for compilation manually. From the
-     * point of view of the static analysis, they are root methods.
+     * The stubs are methods with manually created Graal IR: {@link ReflectiveInvokeMethod}. Since
+     * they are only invoked via function pointers and never at a normal call site, they need to be
+     * registered for compilation manually. From the point of view of the static analysis, they are
+     * root methods.
      * 
      * {@link ConcurrentHashMap#computeIfAbsent} guarantees that this method is called only once per
      * member, so no further synchronization is necessary.
      */
     private Object createAccessor(Executable member) {
         String name = SubstrateUtil.uniqueShortName(member);
+        ResolvedJavaMethod prototype = analysisAccess.getMetaAccess().lookupJavaMethod(invokePrototype).getWrapped();
         if (member instanceof Method) {
             ResolvedJavaMethod invokeMethod;
             if (member.getDeclaringClass() == MethodHandle.class && (member.getName().equals("invoke") || member.getName().equals("invokeExact"))) {
                 /* Method handles must not be invoked via reflection. */
                 invokeMethod = analysisAccess.getMetaAccess().lookupJavaMethod(methodHandleInvokeErrorMethod);
             } else {
-                ResolvedJavaMethod prototype = analysisAccess.getMetaAccess().lookupJavaMethod(invokePrototype).getWrapped();
-                invokeMethod = createReflectiveInvokeMethod(name, prototype, (Method) member);
+                invokeMethod = new ReflectiveInvokeMethod(name, prototype, member);
             }
-            return ImageSingletons.lookup(SubstrateReflectionAccessorFactory.class).createMethodAccessor(member, register(invokeMethod));
+            return new SubstrateMethodAccessor(member, register(invokeMethod));
 
         } else {
             ResolvedJavaMethod newInstanceMethod;
@@ -144,25 +137,16 @@ public class ReflectionFeature implements GraalFeature {
                  */
                 newInstanceMethod = analysisAccess.getMetaAccess().lookupJavaMethod(newInstanceErrorMethod);
             } else {
-                ResolvedJavaMethod prototype = analysisAccess.getMetaAccess().lookupJavaMethod(newInstancePrototype).getWrapped();
-                newInstanceMethod = createReflectiveNewInstanceMethod(name, prototype, (Constructor<?>) member);
+                newInstanceMethod = new ReflectiveInvokeMethod(name, prototype, member);
             }
-            return ImageSingletons.lookup(SubstrateReflectionAccessorFactory.class).createConstructorAccessor(member, register(newInstanceMethod));
+            return new SubstrateConstructorAccessor(member, register(newInstanceMethod));
         }
     }
 
     private CFunctionPointer register(ResolvedJavaMethod method) {
         AnalysisMethod aMethod = method instanceof AnalysisMethod ? (AnalysisMethod) method : analysisAccess.getUniverse().lookup(method);
         analysisAccess.registerAsCompiled(aMethod);
-        return MethodPointer.factory(aMethod);
-    }
-
-    protected ResolvedJavaMethod createReflectiveInvokeMethod(String name, ResolvedJavaMethod prototype, Method method) {
-        return new ReflectiveInvokeMethod(name, prototype, method);
-    }
-
-    protected ResolvedJavaMethod createReflectiveNewInstanceMethod(String name, ResolvedJavaMethod prototype, Constructor<?> constructor) {
-        return new ReflectiveNewInstanceMethod(name, prototype, constructor);
+        return new MethodPointer(aMethod);
     }
 
     protected void inspectAccessibleField(@SuppressWarnings("unused") Field field) {
@@ -174,7 +158,6 @@ public class ReflectionFeature implements GraalFeature {
 
         reflectionData = new ReflectionDataBuilder((FeatureAccessImpl) access);
         ImageSingletons.add(RuntimeReflectionSupport.class, reflectionData);
-        ImageSingletons.add(RuntimeReflectionConstructors.class, new RuntimeReflectionConstructorsImpl());
     }
 
     @Override
@@ -191,6 +174,7 @@ public class ReflectionFeature implements GraalFeature {
 
         loader = access.getImageClassLoader();
         annotationSubstitutions = ((Inflation) access.getBigBang()).getAnnotationSubstitutionProcessor();
+        reflectionData.duringSetup(access);
     }
 
     @Override

@@ -54,6 +54,7 @@ import com.oracle.truffle.espresso.jdwp.api.JDWPContext;
 import com.oracle.truffle.espresso.jdwp.api.JDWPSetup;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
+import com.oracle.truffle.espresso.jdwp.api.ModuleRef;
 import com.oracle.truffle.espresso.jdwp.api.MonitorStackInfo;
 import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
 import com.oracle.truffle.espresso.jdwp.api.TagConstants;
@@ -74,7 +75,7 @@ import com.oracle.truffle.espresso.redefinition.InnerClassRedefiner;
 import com.oracle.truffle.espresso.redefinition.RedefintionNotSupportedException;
 import com.oracle.truffle.espresso.redefinition.plugins.impl.RedefinitionPluginHandler;
 import com.oracle.truffle.espresso.runtime.dispatch.EspressoInterop;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
+import com.oracle.truffle.espresso.threads.State;
 
 public final class JDWPContextImpl implements JDWPContext {
 
@@ -102,7 +103,7 @@ public final class JDWPContextImpl implements JDWPContext {
         vmEventListener.activate(mainThread, control, this);
         setup.setup(debugger, control, context.JDWPOptions, this, mainThread, vmEventListener);
         redefinitionPluginHandler = RedefinitionPluginHandler.create(context);
-        classRedefinition = new ClassRedefinition(context, ids, redefinitionPluginHandler);
+        classRedefinition = context.createClassRedefinition(ids, redefinitionPluginHandler);
     }
 
     public void finalizeContext() {
@@ -128,7 +129,7 @@ public final class JDWPContextImpl implements JDWPContext {
             if (context.getMeta().java_lang_Thread.isAssignableFrom(staticObject.getKlass())) {
                 if (checkTerminated) {
                     // check if thread has been terminated
-                    return getThreadStatus(thread) != Target_java_lang_Thread.State.TERMINATED.value;
+                    return getThreadStatus(thread) != State.TERMINATED.value;
                 }
                 return true;
             }
@@ -251,7 +252,7 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public Thread asHostThread(Object thread) {
-        return Target_java_lang_Thread.getHostFromGuestThread((StaticObject) thread);
+        return context.getThreadAccess().getHost((StaticObject) thread);
     }
 
     @Override
@@ -366,7 +367,7 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public String getThreadName(Object thread) {
-        return Target_java_lang_Thread.getThreadName(context.getMeta(), (StaticObject) thread);
+        return context.getThreadAccess().getThreadName((StaticObject) thread);
     }
 
     @Override
@@ -521,7 +522,7 @@ public final class JDWPContextImpl implements JDWPContext {
     public Object getGuestException(Throwable exception) {
         if (exception instanceof EspressoException) {
             EspressoException ex = (EspressoException) exception;
-            return ex.getExceptionObject();
+            return ex.getGuestException();
         } else {
             throw new RuntimeException("unknown exception type: " + exception.getClass(), exception);
         }
@@ -542,7 +543,8 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public void stopThread(Object guestThread, Object guestThrowable) {
-        Target_java_lang_Thread.stop0((StaticObject) guestThread, (StaticObject) guestThrowable);
+        context.invalidateNoThreadStop("JDWP STOP");
+        context.getThreadAccess().stop((StaticObject) guestThread, (StaticObject) guestThrowable);
     }
 
     @Override
@@ -687,7 +689,7 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public boolean isSystemThread() {
-        return ClassRedefinition.isRedefineThread();
+        return classRedefinition.isRedefineThread();
     }
 
     public long getBCI(Node rawNode, Frame frame) {
@@ -711,6 +713,21 @@ public final class JDWPContextImpl implements JDWPContext {
         return rootNode;
     }
 
+    @Override
+    public boolean isMemberOf(Object guestObject, KlassRef klass) {
+        if (guestObject instanceof StaticObject) {
+            StaticObject staticObject = (StaticObject) guestObject;
+            return klass.isAssignable(staticObject.getKlass());
+        } else {
+            return false;
+        }
+    }
+
+    @Override
+    public ModuleRef[] getAllModulesRefs() {
+        return context.getRegistries().getAllModuleRefs();
+    }
+
     public void rerunclinit(ObjectKlass oldKlass) {
         classInitializerActions.add(new ReloadingAction(oldKlass));
     }
@@ -722,7 +739,13 @@ public final class JDWPContextImpl implements JDWPContext {
             JDWP.LOGGER.fine(() -> "Redefining " + redefineInfos.size() + " classes");
 
             // begin redefine transaction
-            ClassRedefinition.begin();
+            classRedefinition.begin();
+
+            // clear synthetic fields, which forces re-resolution
+            classRedefinition.clearDelegationFields();
+
+            // invalidate missing fields assumption, which forces re-resolution
+            classRedefinition.invalidateMissingFields();
 
             // redefine classes based on direct code changes first
             doRedefine(redefineInfos, changedKlasses);
@@ -753,7 +776,7 @@ public final class JDWPContextImpl implements JDWPContext {
         } catch (RedefintionNotSupportedException ex) {
             return ex.getErrorCode();
         } finally {
-            ClassRedefinition.end();
+            classRedefinition.end();
         }
         return 0;
     }
@@ -761,8 +784,11 @@ public final class JDWPContextImpl implements JDWPContext {
     private void doRedefine(List<RedefineInfo> redefineInfos, List<ObjectKlass> changedKlasses) throws RedefintionNotSupportedException {
         // list to hold removed inner classes that must be marked removed
         List<ObjectKlass> removedInnerClasses = new ArrayList<>(0);
-        // list of sub classes that needs to refresh things like vtable
-        List<ObjectKlass> refreshSubClasses = new ArrayList<>();
+        // list of classes that need to refresh due to
+        // changes in other classes for things like vtable
+        List<ObjectKlass> invalidatedClasses = new ArrayList<>();
+        // list of all classes that have been redefined within this transaction
+        List<ObjectKlass> redefinedClasses = new ArrayList<>();
 
         // match anon inner classes with previous state
         HotSwapClassInfo[] matchedInfos = innerClassRedefiner.matchAnonymousInnerClasses(redefineInfos, removedInnerClasses);
@@ -776,21 +802,23 @@ public final class JDWPContextImpl implements JDWPContext {
 
         for (ChangePacket packet : changePackets) {
             JDWP.LOGGER.fine(() -> "Redefining class " + packet.info.getNewName());
-            int result = classRedefinition.redefineClass(packet, refreshSubClasses);
+            int result = classRedefinition.redefineClass(packet, invalidatedClasses, redefinedClasses);
             if (result != 0) {
                 throw new RedefintionNotSupportedException(result);
             }
         }
 
-        // refresh subclasses when needed
-        Collections.sort(refreshSubClasses, new SubClassHierarchyComparator());
-        for (ObjectKlass subKlass : refreshSubClasses) {
-            JDWP.LOGGER.fine(() -> "Updating sub class " + subKlass.getName() + " for redefined super class");
-            subKlass.onSuperKlassUpdate();
+        // refresh invalidated classes if not already redefined
+        Collections.sort(invalidatedClasses, new SubClassHierarchyComparator());
+        for (ObjectKlass invalidatedClass : invalidatedClasses) {
+            if (!redefinedClasses.contains(invalidatedClass)) {
+                JDWP.LOGGER.fine(() -> "Updating invalidated class " + invalidatedClass.getName());
+                invalidatedClass.swapKlassVersion(ids);
+            }
         }
 
-        // include updated subclasses in all changed classes list
-        changedKlasses.addAll(refreshSubClasses);
+        // include invalidated classes in all changed classes list
+        changedKlasses.addAll(invalidatedClasses);
 
         // update the JWDP IDs for renamed inner classes
         for (ChangePacket changePacket : changePackets) {

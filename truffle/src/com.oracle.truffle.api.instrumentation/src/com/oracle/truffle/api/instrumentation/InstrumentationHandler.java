@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -174,7 +174,7 @@ final class InstrumentationHandler {
             trace("ON-LOAD: %-5s CallTarget: %s%n", lang, name);
         }
 
-        if (InstrumentAccessor.nodesAccess().getPolyglotEngine(root) == null) {
+        if (InstrumentAccessor.nodesAccess().getSharingLayer(root) == null) {
             return;
         }
 
@@ -958,6 +958,10 @@ final class InstrumentationHandler {
 
     boolean hasContextBindings() {
         return !contextsBindings.isEmpty();
+    }
+
+    boolean hasThreadBindings() {
+        return !threadsBindings.isEmpty();
     }
 
     void notifyContextCreated(TruffleContext context) {
@@ -2170,12 +2174,12 @@ final class InstrumentationHandler {
 
         @Override
         public <T extends ContextsListener> EventBinding<T> attachContextsListener(T listener, boolean includeActiveContexts) {
-            throw new UnsupportedOperationException("Not supported in engine instrumenter.");
+            return InstrumentationHandler.this.attachContextsListener(this, listener, includeActiveContexts);
         }
 
         @Override
         public <T extends ThreadsListener> EventBinding<T> attachThreadsListener(T listener, boolean includeStartedThreads) {
-            throw new UnsupportedOperationException("Not supported in engine instrumenter.");
+            return InstrumentationHandler.this.attachThreadsListener(this, listener, includeStartedThreads);
         }
 
         @Override

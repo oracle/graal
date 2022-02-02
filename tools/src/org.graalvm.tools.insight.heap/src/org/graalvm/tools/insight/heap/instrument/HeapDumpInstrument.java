@@ -38,7 +38,7 @@ import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
 import org.graalvm.tools.insight.Insight;
 
-@TruffleInstrument.Registration(id = "heap", internal = false, services = {Insight.SymbolProvider.class, Consumer.class})
+@TruffleInstrument.Registration(id = "heap", name = "Heap Dump", internal = false, services = {Insight.SymbolProvider.class, Consumer.class})
 public final class HeapDumpInstrument extends TruffleInstrument {
     @Option(stability = OptionStability.STABLE, name = "dump", help = "Output file to ", category = OptionCategory.EXPERT) //
     static final OptionKey<String> DUMP = new OptionKey<>("");

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,12 +24,6 @@
  */
 package org.graalvm.compiler.truffle.test;
 
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.OptimizationFailedException;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.RootNode;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -39,10 +33,11 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
-import java.util.regex.Pattern;
 import java.util.logging.FileHandler;
 import java.util.logging.SimpleFormatter;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
 import org.graalvm.compiler.core.GraalCompilerOptions;
 import org.graalvm.compiler.test.SubprocessUtil;
 import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
@@ -50,9 +45,15 @@ import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
 import org.graalvm.polyglot.Context;
-import org.junit.Test;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.Test;
+
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.OptimizationFailedException;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.RootNode;
 
 public class ExceptionActionTest extends TestWithPolyglotOptions {
 
@@ -66,7 +67,7 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
 
     @BeforeClass
     public static void setUp() {
-        Truffle.getRuntime().createCallTarget(createPermanentBailoutNode()).call();
+        createPermanentBailoutNode().getCallTarget().call();
     }
 
     @Test
@@ -190,7 +191,7 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
             verifier.accept(log);
         } else {
             setupContext(contextOptions);
-            OptimizedCallTarget target = (OptimizedCallTarget) Truffle.getRuntime().createCallTarget(rootNodeFactory.get());
+            OptimizedCallTarget target = (OptimizedCallTarget) rootNodeFactory.get().getCallTarget();
             try {
                 target.call();
             } catch (RuntimeException e) {
@@ -227,26 +228,19 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
     }
 
     @Override
-    protected Context setupContext(String... keyValuePairs) {
+    protected Context.Builder newContextBuilder() {
         try {
+            Context.Builder builder = super.newContextBuilder();
             String logFile = System.getProperty(LOG_FILE_PROPERTY);
             FileHandler handler = new FileHandler(logFile);
             handler.setFormatter(new SimpleFormatter());
-            Context.Builder builder = Context.newBuilder().allowAllAccess(true).allowExperimentalOptions(true).logHandler(handler);
-            setOptions(builder, DEFAULT_OPTIONS);
-            setOptions(builder, keyValuePairs);
-            return super.setupContext(builder);
+            builder.logHandler(handler);
+            for (int i = 0; i < DEFAULT_OPTIONS.length; i += 2) {
+                builder.option(DEFAULT_OPTIONS[i], DEFAULT_OPTIONS[i + 1]);
+            }
+            return builder;
         } catch (IOException ioe) {
             throw new AssertionError("Cannot write log file.", ioe);
-        }
-    }
-
-    private static void setOptions(Context.Builder builder, String... keyValuePairs) {
-        if ((keyValuePairs.length & 1) == 1) {
-            throw new IllegalArgumentException("KeyValuePairs must have even length.");
-        }
-        for (int i = 0; i < keyValuePairs.length; i += 2) {
-            builder.option(keyValuePairs[i], keyValuePairs[i + 1]);
         }
     }
 
@@ -282,7 +276,7 @@ public class ExceptionActionTest extends TestWithPolyglotOptions {
     }
 
     private static List<String> getVmArgs() {
-        List<String> vmArgs = SubprocessUtil.getVMCommandLine();
+        List<String> vmArgs = SubprocessUtil.getVMCommandLine(true);
         vmArgs.add(SubprocessUtil.PACKAGE_OPENING_OPTIONS);
         return vmArgs;
     }

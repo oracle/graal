@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -130,7 +130,7 @@ public class TypeGuardInlineInfo extends AbstractInlineInfo {
             ValueNode anchoredReceiver = InliningUtil.createAnchoredReceiver(graph, guard, type, nonNullReceiver, true);
             invoke.callTarget().replaceFirstInput(nonNullReceiver, anchoredReceiver);
 
-            graph.addBeforeFixed(invoke.asNode(), guard);
+            graph.addBeforeFixed(invoke.asFixedNode(), guard);
         }
     }
 

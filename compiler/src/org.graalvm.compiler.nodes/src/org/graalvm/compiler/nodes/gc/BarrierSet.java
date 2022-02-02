@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2019, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -48,4 +48,13 @@ public interface BarrierSet {
     BarrierType arrayStoreBarrierType(JavaKind storageKind);
 
     BarrierType guessStoreBarrierType(ValueNode object, ValueNode value);
+
+    /**
+     * Determine whether writes of the given {@code storageKind} may ever need a pre-write barrier.
+     *
+     * @return {@code false} if no writes of {@code storageKind} ever need a pre-write barrier;
+     *         {@code true} if writes of {@code storageKind} may need a pre-write barrier at least
+     *         under certain circumstances.
+     */
+    boolean mayNeedPreWriteBarrier(JavaKind storageKind);
 }

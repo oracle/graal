@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,18 @@
  */
 package com.oracle.truffle.nfi.test;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.function.Supplier;
+
+import org.junit.Assert;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -48,19 +60,10 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.nfi.test.KeyInfoNFITestFactory.VerifyKeyInfoNodeGen;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.function.Supplier;
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameter;
-import org.junit.runners.Parameterized.Parameters;
 
 @RunWith(Parameterized.class)
 @Parameterized.UseParametersRunnerFactory(TruffleRunner.ParametersFactory.class)
@@ -83,12 +86,19 @@ public class KeyInfoNFITest extends NFITest {
                 throw new AssertionError(e);
             }
         };
-        addTest(ret, "bind", symbol, "symbol", false, true, false);
         addTest(ret, "__NOT_EXISTING__", symbol, "symbol", false, false, false);
 
         Supplier<Object> boundSymbol = () -> lookupAndBind("increment_SINT32", "(sint32):sint32");
-        addTest(ret, "bind", boundSymbol, "boundSymbol", false, true, false);
         addTest(ret, "__NOT_EXISTING__", boundSymbol, "boundSymbol", false, false, false);
+
+        Supplier<Object> signature = () -> {
+            Source sigSource = Source.newBuilder("nfi", "(sint32):sint32", "signature").internal(true).build();
+            CallTarget sigTarget = runWithPolyglot.getTruffleTestEnv().parseInternal(sigSource);
+            return sigTarget.call();
+        };
+        addTest(ret, "bind", signature, "signature", false, true, false);
+        addTest(ret, "createClosure", signature, "signature", false, true, false);
+        addTest(ret, "__NOT_EXISTING__", signature, "signature", false, false, false);
 
         return ret;
     }

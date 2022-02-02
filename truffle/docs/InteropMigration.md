@@ -7,7 +7,7 @@ permalink: /graalvm-as-a-platform/language-implementation-framework/InteropMigra
 # Truffle Interop 2.0
 
 This document is targeted at guest language and tool implementers.
-It is recommended to read the [Truffle Library Tutorial](https://github.com/oracle/graal/blob/master/truffle/docs/TruffleLibraries.md) first, before proceeding.
+It is recommended to read the [Truffle Library Tutorial](./TruffleLibraries.md) first, before proceeding.
 
 ## Motivation
 

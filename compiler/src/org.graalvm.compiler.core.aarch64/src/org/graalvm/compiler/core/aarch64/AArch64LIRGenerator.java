@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,6 +32,7 @@ import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 
 import java.util.function.Function;
 
+import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.calc.Condition;
@@ -62,8 +63,9 @@ import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.BranchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.CompareBranchZeroOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.CondMoveOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.CondSetOp;
+import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.HashTableSwitchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.StrategySwitchOp;
-import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.TableSwitchOp;
+import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.RangeTableSwitchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64Move;
 import org.graalvm.compiler.lir.aarch64.AArch64Move.MembarOp;
 import org.graalvm.compiler.lir.aarch64.AArch64PauseOp;
@@ -73,6 +75,7 @@ import org.graalvm.compiler.lir.aarch64.AArch64ZapStackOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ZeroMemoryOp;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGenerator;
+import org.graalvm.compiler.lir.gen.MoveFactory;
 import org.graalvm.compiler.phases.util.Providers;
 
 import jdk.vm.ci.aarch64.AArch64;
@@ -93,21 +96,6 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
     public AArch64LIRGenerator(LIRKindTool lirKindTool, AArch64ArithmeticLIRGenerator arithmeticLIRGen, MoveFactory moveFactory, Providers providers, LIRGenerationResult lirGenRes) {
         super(lirKindTool, arithmeticLIRGen, moveFactory, providers, lirGenRes);
-    }
-
-    /**
-     * Checks whether the supplied constant can be used without loading it into a register for store
-     * operations, i.e., on the right hand side of a memory access.
-     *
-     * @param c The constant to check.
-     * @return True if the constant can be used directly, false if the constant needs to be in a
-     *         register.
-     */
-    protected static final boolean canStoreConstant(JavaConstant c) {
-        // Our own code never calls this since we can't make a definite statement about whether or
-        // not we can inline a constant without knowing what kind of operation we execute. Let's be
-        // optimistic here and fix up mistakes later.
-        return true;
     }
 
     /**
@@ -138,7 +126,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
     @Override
     public void emitNullCheck(Value address, LIRFrameState state) {
-        append(new AArch64Move.NullCheckOp(asAddressValue(address), state));
+        append(new AArch64Move.NullCheckOp(asAddressValue(address, AArch64Address.ANY_SIZE), state));
     }
 
     @Override
@@ -148,12 +136,13 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         return result;
     }
 
-    public AArch64AddressValue asAddressValue(Value address) {
+    public AArch64AddressValue asAddressValue(Value address, int bitTransferSize) {
+        assert address.getPlatformKind() == AArch64Kind.QWORD;
+
         if (address instanceof AArch64AddressValue) {
             return (AArch64AddressValue) address;
         } else {
-            int size = address.getValueKind().getPlatformKind().getSizeInBytes() * Byte.SIZE;
-            return AArch64AddressValue.makeAddress(address.getValueKind(), size, asAllocatable(address));
+            return AArch64AddressValue.makeAddress(address.getValueKind(), bitTransferSize, asAllocatable(address));
         }
     }
 
@@ -287,7 +276,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         } else if (isIntConstant(trueValue, 0) && isIntConstant(falseValue, 1)) {
             append(new CondSetOp(result, cmpCondition.negate()));
         } else {
-            append(new CondMoveOp(result, cmpCondition, loadReg(trueValue), loadReg(falseValue)));
+            append(new CondMoveOp(result, cmpCondition, asAllocatable(trueValue), asAllocatable(falseValue)));
         }
         return result;
     }
@@ -449,10 +438,10 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
             mirrored = true;
         } else {
             left = a;
-            right = bIsConstant ? b : loadReg(b);
+            right = bIsConstant ? b : asAllocatable(b);
             mirrored = false;
         }
-        left = loadReg(left);
+        left = asAllocatable(left);
         append(kind.isInteger() ? new AArch64Compare.CompareOp(left, right) : new AArch64Compare.FloatCompareOp(left, right, condition, unorderedIsTrue));
         return mirrored;
     }
@@ -478,24 +467,28 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         } else if (isIntConstant(trueValue, 0) && isIntConstant(falseValue, 1)) {
             append(new CondSetOp(result, ConditionFlag.NE));
         } else {
-            append(new CondMoveOp(result, ConditionFlag.EQ, load(trueValue), load(falseValue)));
+            append(new CondMoveOp(result, ConditionFlag.EQ, asAllocatable(trueValue), asAllocatable(falseValue)));
         }
         return result;
     }
 
     @Override
-    public void emitStrategySwitch(SwitchStrategy strategy, Variable key, LabelRef[] keyTargets, LabelRef defaultTarget) {
+    public void emitStrategySwitch(SwitchStrategy strategy, AllocatableValue key, LabelRef[] keyTargets, LabelRef defaultTarget) {
         append(createStrategySwitchOp(strategy, keyTargets, defaultTarget, key, AArch64LIRGenerator::toIntConditionFlag));
     }
 
-    protected StrategySwitchOp createStrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Variable key,
-                    Function<Condition, ConditionFlag> converter) {
+    protected StrategySwitchOp createStrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, AllocatableValue key, Function<Condition, ConditionFlag> converter) {
         return new StrategySwitchOp(strategy, keyTargets, defaultTarget, key, converter);
     }
 
     @Override
-    protected void emitTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, Value key) {
-        append(new TableSwitchOp(lowKey, defaultTarget, targets, asAllocatable(key)));
+    protected void emitRangeTableSwitch(int lowKey, LabelRef defaultTarget, LabelRef[] targets, AllocatableValue key) {
+        append(new RangeTableSwitchOp(lowKey, defaultTarget, targets, key));
+    }
+
+    @Override
+    protected void emitHashTableSwitch(JavaConstant[] keys, LabelRef defaultTarget, LabelRef[] targets, AllocatableValue value, Value hash) {
+        append(new HashTableSwitchOp(keys, defaultTarget, targets, value, asAllocatable(hash)));
     }
 
     @Override
@@ -521,18 +514,39 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitArrayEquals(JavaKind kind, int array1BaseOffset, int array2BaseOffset, Value array1, Value array2, Value length, boolean directPointers) {
+    public Variable emitArrayEquals(JavaKind kind, int array1BaseOffset, int array2BaseOffset, Value array1, Value array2, Value length) {
         Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
-        append(new AArch64ArrayEqualsOp(this, kind, array1BaseOffset, array2BaseOffset, result, array1, array2, asAllocatable(length), directPointers));
+        append(new AArch64ArrayEqualsOp(this, kind, array1BaseOffset, array2BaseOffset, result,
+                        asAllocatable(array1), null, asAllocatable(array2), null, asAllocatable(length)));
         return result;
     }
 
     @Override
-    public Variable emitArrayIndexOf(int arrayBaseOffset, JavaKind valueKind, boolean findTwoConsecutive, Value arrayPointer, Value arrayLength, Value fromIndex, Value... searchValues) {
-        assert searchValues.length == 1;
+    public Variable emitArrayEquals(JavaKind kind, int array1BaseOffset, int array2BaseOffset, Value array1, Value offset1, Value array2, Value offset2, Value length) {
         Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
-        append(new AArch64ArrayIndexOfOp(arrayBaseOffset, valueKind, findTwoConsecutive, this, result, asAllocatable(arrayPointer), asAllocatable(arrayLength), asAllocatable(fromIndex),
-                        asAllocatable(searchValues[0])));
+        append(new AArch64ArrayEqualsOp(this, kind, array1BaseOffset, array2BaseOffset, result,
+                        asAllocatable(array1), asAllocatable(offset1), asAllocatable(array2), asAllocatable(offset2), asAllocatable(length)));
+        return result;
+    }
+
+    @Override
+    public Variable emitArrayIndexOf(int arrayBaseOffset, JavaKind valueKind, boolean findTwoConsecutive, boolean withMask, Value arrayPointer, Value arrayOffset, Value arrayLength, Value fromIndex,
+                    Value... searchValues) {
+        if (findTwoConsecutive) {
+            GraalError.guarantee(searchValues.length == 2, "findTwoConsecutive requires exactly two search values");
+        } else if (searchValues.length > 1) {
+            throw GraalError.unimplemented("arrayIndexOf with multiple search values not yet implemented on AARCH64");
+        }
+        if (withMask) {
+            throw GraalError.unimplemented("arrayIndexOf with mask parameter not yet implemented on AARCH64");
+        }
+        Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
+        AllocatableValue[] allocatableSearchValues = new AllocatableValue[searchValues.length];
+        for (int i = 0; i < searchValues.length; i++) {
+            allocatableSearchValues[i] = asAllocatable(searchValues[i]);
+        }
+        append(new AArch64ArrayIndexOfOp(arrayBaseOffset, valueKind, findTwoConsecutive, this, result, asAllocatable(arrayPointer), asAllocatable(arrayOffset), asAllocatable(arrayLength),
+                        asAllocatable(fromIndex), allocatableSearchValues));
         return result;
     }
 
@@ -564,31 +578,6 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         }
     }
 
-    /**
-     * Loads value into virtual register. Contrary to {@link #load(Value)} this handles
-     * RegisterValues (i.e. values corresponding to fixed physical registers) correctly, by not
-     * creating an unnecessary move into a virtual register.
-     *
-     * This avoids generating the following code:
-     *
-     * <pre>
-     * mov x0, x19 # x19 is fixed thread register
-     * ldr x0, [x0]
-     * </pre>
-     *
-     * instead of:
-     *
-     * <pre>
-     * ldr x0, [x19]
-     * </pre>
-     */
-    protected AllocatableValue loadReg(Value val) {
-        if (!(LIRValueUtil.isVariable(val) || val instanceof RegisterValue)) {
-            return emitMove(val);
-        }
-        return (AllocatableValue) val;
-    }
-
     @Override
     public void emitPause() {
         append(new AArch64PauseOp());
@@ -596,7 +585,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
     @Override
     public void emitCacheWriteback(Value address) {
-        append(new AArch64CacheWritebackOp(asAddressValue(address)));
+        append(new AArch64CacheWritebackOp(asAddressValue(address, AArch64Address.ANY_SIZE)));
     }
 
     @Override

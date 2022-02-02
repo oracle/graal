@@ -75,6 +75,7 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.runtime.JVMCI;
+import jdk.vm.ci.services.Services;
 import sun.misc.Unsafe;
 
 /**
@@ -85,6 +86,7 @@ import sun.misc.Unsafe;
  * native-image shared library).
  */
 public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime implements HotSpotTruffleCompilerRuntime {
+    static final int JAVA_SPEC = getJavaSpecificationVersion();
 
     static final sun.misc.Unsafe UNSAFE = getUnsafe();
 
@@ -181,9 +183,9 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
             installReservedOopMethods(null);
 
             try {
-                setReservedReference0 = MethodHandles.publicLookup().findVirtual(HotSpotJVMCIRuntime.class,
+                setReservedReference0 = MethodHandles.lookup().findVirtual(HotSpotJVMCIRuntime.class,
                                 "setThreadLocalObject", MethodType.methodType(void.class, int.class, Object.class));
-                getReservedReference0 = MethodHandles.publicLookup().findVirtual(HotSpotJVMCIRuntime.class,
+                getReservedReference0 = MethodHandles.lookup().findVirtual(HotSpotJVMCIRuntime.class,
                                 "getThreadLocalObject", MethodType.methodType(Object.class, int.class));
             } catch (NoSuchMethodException | IllegalAccessException e) {
                 /*
@@ -266,6 +268,17 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         } else {
             assert truffleCompilerInitialized || truffleCompilerInitializationException != null;
         }
+    }
+
+    @Override
+    public boolean isLatestJVMCI() {
+        if (getJVMCIReservedReference0 == null) {
+            return false;
+        }
+        if (getJVMCIReservedLongOffset0() == -1) {
+            return false;
+        }
+        return true;
     }
 
     /*
@@ -454,7 +467,6 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
             throw CompilerDirectives.shouldNotReachHere("bypassedReservedOop without field available. default fast thread locals should be used instead.");
         }
 
-        // finish initialization
         CompilationTask task = initializationTask;
         if (task != null) {
             while (waitForInit) {
@@ -467,17 +479,46 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
                     continue;
                 }
             }
-            // compiler init did install the methods
+            /*
+             * We were currently initializing. No need to reinstall the code stubs. Just try using
+             * them again has a very likely-hood of succeeding or if we do not wait for
+             * inititialization then the caller can use oop accessor methods
+             * (setJVMCIReservedReference0, getJVMCIReservedReference0) instead.
+             */
             return true;
         }
+
         if (!truffleCompilerInitialized) {
+            /*
+             * If the initialization did not yet complete here, then this means that initializing
+             * the compiler failed. We can therefore not continue installing the stubs. So we
+             * re-throw the compiler initialization error or we return false which will likely
+             * trigger an assertion error in the caller at a later point.
+             */
             if (truffleCompilerInitializationException != null) {
                 throw new AssertionError("Compiler initialization failed cannot continue.", truffleCompilerInitializationException);
             }
             return false;
         }
-        // otherwise stubs are installed as part of initialization.
+
+        /*
+         * If we reached this point we are not initializing anymore and the compiler is successfully
+         * initialized. If bypassedReservedOop was called this also means that we skipped the
+         * installed code for the JVMCI reserved oop accessor. This can happen if the debugger steps
+         * over the code and invalidates any installed Java code stub, the HotSpot code cache
+         * decides to clean up the the stub for the accessor method or this happened due to an
+         * initialization race condition. In all three cases the best we can do is to try to install
+         * the stub code again even if this means repeated compilation and installation of this
+         * method during debug-stepping. Unfortunately there is no known way to detect invalidation
+         * of HotSpot installed code reliably.
+         */
         installReservedOopMethods((HotSpotTruffleCompiler) truffleCompiler);
+
+        /*
+         * We have reinstalled the stubs. Returning true indicates that the caller should retry
+         * calling the stubs or use other available means like the oop accessor methods
+         * (setJVMCIReservedReference0, getJVMCIReservedReference0).
+         */
         return true;
     }
 
@@ -564,18 +605,18 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
     }
 
     @Override
-    protected Object[] getNonPrimitiveResolvedFields(Class<?> type) {
+    protected Object[] getResolvedFields(Class<?> type, boolean includePrimitive, boolean includeSuperclasses) {
         if (type.isArray() || type.isPrimitive()) {
             throw new IllegalArgumentException("Class " + type.getName() + " is a primitive type or an array class!");
         }
         HotSpotMetaAccessProvider meta = (HotSpotMetaAccessProvider) getMetaAccess();
         ResolvedJavaType javaType = meta.lookupJavaType(type);
-        ResolvedJavaField[] fields = javaType.getInstanceFields(true);
+        ResolvedJavaField[] fields = javaType.getInstanceFields(includeSuperclasses);
         ResolvedJavaField[] fieldsToReturn = new ResolvedJavaField[fields.length];
         int fieldsCount = 0;
         for (int i = 0; i < fields.length; i++) {
             final ResolvedJavaField f = fields[i];
-            if (!f.getJavaKind().isPrimitive() && !fieldIsNotEligible(type, f)) {
+            if ((includePrimitive || !f.getJavaKind().isPrimitive()) && !fieldIsNotEligible(type, f)) {
                 fieldsToReturn[fieldsCount++] = f;
             }
         }
@@ -632,6 +673,27 @@ public abstract class AbstractHotSpotTruffleRuntime extends GraalTruffleRuntime 
         ResolvedJavaType resolvedType = meta.lookupJavaType(componentType);
 
         return ((HotSpotJVMCIRuntime) JVMCI.getRuntime()).getArrayBaseOffset(resolvedType.getJavaKind());
+    }
+
+    private static int getJavaSpecificationVersion() {
+        String value = Services.getSavedProperties().get("java.specification.version");
+        if (value.startsWith("1.")) {
+            value = value.substring(2);
+        }
+        return Integer.parseInt(value);
+    }
+
+    @Override
+    public long getStackOverflowLimit() {
+        try {
+            int stackOverflowLimitOffset = vmConfigAccess.getFieldOffset(JAVA_SPEC >= 16 ? "JavaThread::_stack_overflow_state._stack_overflow_limit" : "JavaThread::_stack_overflow_limit",
+                            Integer.class, "address");
+            long threadEETopOffset = UNSAFE.objectFieldOffset(Thread.class.getDeclaredField("eetop"));
+            long eetop = UNSAFE.getLong(Thread.currentThread(), threadEETopOffset);
+            return UNSAFE.getLong(eetop + stackOverflowLimitOffset);
+        } catch (NoSuchFieldException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     @Override

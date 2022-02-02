@@ -52,7 +52,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread.State;
+import com.oracle.truffle.espresso.threads.State;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 import com.oracle.truffle.espresso.vm.UnsafeAccess;
 
@@ -191,14 +191,18 @@ public final class Target_sun_misc_Unsafe {
     }
 
     private static Field getInstanceFieldFromIndex(StaticObject holder, int slot) {
-        if (!(0 <= slot && slot < (1 << 16))) {
+        if (!(0 <= slot && slot < (1 << 16)) && slot >= 0) {
             throw EspressoError.shouldNotReachHere("the field offset is not normalized");
         }
-        if (holder.isStaticStorage()) {
-            // Lookup static field in current class.
-            return holder.getKlass().lookupStaticFieldTable(slot);
-        } else {
-            return holder.getKlass().lookupFieldTable(slot);
+        try {
+            if (holder.isStaticStorage()) {
+                // Lookup static field in current class.
+                return holder.getKlass().lookupStaticFieldTable(slot);
+            } else {
+                return holder.getKlass().lookupFieldTable(slot);
+            }
+        } catch (IndexOutOfBoundsException ex) {
+            throw EspressoError.shouldNotReachHere("invalid field offset");
         }
     }
 
@@ -1376,12 +1380,12 @@ public final class Target_sun_misc_Unsafe {
         EspressoContext context = meta.getContext();
         StaticObject thread = context.getCurrentThread();
 
-        if (Target_java_lang_Thread.checkInterrupt(thread)) {
+        if (meta.getThreadAccess().isInterrupted(thread, false)) {
             return;
         }
 
         Unsafe unsafe = UnsafeAccess.getIfAllowed(meta);
-        Target_java_lang_Thread.fromRunnable(thread, meta, time > 0 ? State.TIMED_WAITING : State.WAITING);
+        meta.getThreadAccess().fromRunnable(thread, time > 0 ? State.TIMED_WAITING : State.WAITING);
         Thread hostThread = Thread.currentThread();
         Object blocker = LockSupport.getBlocker(hostThread);
         Field parkBlocker = meta.java_lang_Thread.lookupDeclaredField(Symbol.Name.parkBlocker, Type.java_lang_Object);
@@ -1393,7 +1397,7 @@ public final class Target_sun_misc_Unsafe {
 
         parkBoundary(self, isAbsolute, time, meta);
 
-        Target_java_lang_Thread.toRunnable(thread, meta, State.RUNNABLE);
+        meta.getThreadAccess().toRunnable(thread);
         unsafe.putObject(hostThread, PARK_BLOCKER_OFFSET, blocker);
     }
 
@@ -1417,7 +1421,7 @@ public final class Target_sun_misc_Unsafe {
     @Substitution(hasReceiver = true)
     public static void unpark(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject thread,
                     @Inject Meta meta) {
-        Thread hostThread = (Thread) meta.HIDDEN_HOST_THREAD.getHiddenObject(thread);
+        Thread hostThread = meta.getThreadAccess().getHost(thread);
         UnsafeAccess.getIfAllowed(meta).unpark(hostThread);
     }
 
@@ -1548,12 +1552,12 @@ public final class Target_sun_misc_Unsafe {
         if (k instanceof ObjectKlass) {
             ObjectKlass kl = (ObjectKlass) k;
             for (Field f : kl.getFieldTable()) {
-                if (f.getNameAsString().equals(hostName)) {
+                if (!f.isRemoved() && f.getNameAsString().equals(hostName)) {
                     return SAFETY_FIELD_OFFSET + f.getSlot();
                 }
             }
             for (Field f : kl.getStaticFieldTable()) {
-                if (f.getNameAsString().equals(hostName)) {
+                if (!f.isRemoved() && f.getNameAsString().equals(hostName)) {
                     return SAFETY_FIELD_OFFSET + f.getSlot();
                 }
             }

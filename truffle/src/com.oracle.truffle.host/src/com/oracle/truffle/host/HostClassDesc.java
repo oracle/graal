@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -227,6 +227,10 @@ final class HostClassDesc {
                         putMethod(hostAccess, m, methodMap, staticMethodMap);
                     }
                 }
+                if (hostAccess.isArrayAccess() && type.isArray()) {
+                    SingleMethod arrayCloneMethod = SingleMethod.SyntheticArrayCloneMethod.SINGLETON;
+                    methodMap.put(arrayCloneMethod.getName(), arrayCloneMethod);
+                }
             }
             /*
              * Look for inherited public methods if the class/interface is not public or if we have
@@ -330,6 +334,10 @@ final class HostClassDesc {
                 }
                 if (inheritedPublicInstanceFields) {
                     collectPublicInstanceFields(hostAccess, type, fieldMap, inheritedPublicInaccessibleFields);
+                }
+                if (hostAccess.isArrayAccess() && type.isArray()) {
+                    HostFieldDesc arrayLengthField = HostFieldDesc.SyntheticArrayLengthField.SINGLETON;
+                    fieldMap.put(arrayLengthField.getName(), arrayLengthField);
                 }
             } else {
                 if (!Modifier.isInterface(type.getModifiers())) {

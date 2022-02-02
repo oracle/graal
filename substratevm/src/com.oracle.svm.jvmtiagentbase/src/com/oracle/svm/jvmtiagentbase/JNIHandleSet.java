@@ -62,10 +62,7 @@ public abstract class JNIHandleSet {
 
     public JNIHandleSet(JNIEnvironment env) {
         JNIObjectHandle javaLangClass = findClass(env, "java/lang/Class");
-        try (CTypeConversion.CCharPointerHolder name = Support.toCString("getName"); CTypeConversion.CCharPointerHolder signature = Support.toCString("()Ljava/lang/String;")) {
-            javaLangClassGetName = Support.jniFunctions().getGetMethodID().invoke(env, javaLangClass, name.get(), signature.get());
-            guarantee(javaLangClassGetName.isNonNull());
-        }
+        javaLangClassGetName = getMethodId(env, javaLangClass, "getName", "()Ljava/lang/String;", false);
     }
 
     /** {@link #findClassOptional}, but the class must exist. If not found, the VM terminates. */

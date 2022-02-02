@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,7 +37,7 @@ import com.oracle.truffle.espresso.impl.Method;
 public abstract class AbstractLookupNode extends Node {
     public static final char METHOD_SELECTION_SEPARATOR = '/';
 
-    abstract Method[] getMethodArray(Klass k);
+    abstract Method.MethodVersion[] getMethodArray(Klass k);
 
     @TruffleBoundary
     Method doLookup(Klass klass, String key, boolean publicOnly, boolean isStatic, int arity) throws ArityException {
@@ -53,9 +53,9 @@ public abstract class AbstractLookupNode extends Node {
         Method result = null;
         int minOverallArity = Integer.MAX_VALUE;
         int maxOverallArity = -1;
-        for (Method m : getMethodArray(klass)) {
-            if (matchMethod(m, methodName, signature, isStatic, publicOnly)) {
-                int matchArity = m.getParameterCount();
+        for (Method.MethodVersion m : getMethodArray(klass)) {
+            if (matchMethod(m.getMethod(), methodName, signature, isStatic, publicOnly)) {
+                int matchArity = m.getMethod().getParameterCount();
                 minOverallArity = min(minOverallArity, matchArity);
                 maxOverallArity = max(maxOverallArity, matchArity);
                 if (matchArity == arity) {
@@ -66,7 +66,7 @@ public abstract class AbstractLookupNode extends Node {
                          */
                         return null;
                     }
-                    result = m;
+                    result = m.getMethod();
                 }
             }
         }
@@ -98,9 +98,9 @@ public abstract class AbstractLookupNode extends Node {
         }
         BitSet seenArity = new BitSet();
         // we will disambiguate overloads with arity
-        for (Method m : getMethodArray(klass)) {
-            if (matchMethod(m, methodName, signature, isStatic, publicOnly)) {
-                int arity = m.getParameterCount();
+        for (Method.MethodVersion m : getMethodArray(klass)) {
+            if (matchMethod(m.getMethod(), methodName, signature, isStatic, publicOnly)) {
+                int arity = m.getMethod().getParameterCount();
                 if (seenArity.get(arity)) {
                     return false;
                 }

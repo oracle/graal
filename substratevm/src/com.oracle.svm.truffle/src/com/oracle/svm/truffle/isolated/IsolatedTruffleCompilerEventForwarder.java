@@ -85,28 +85,28 @@ final class IsolatedTruffleCompilerEventForwarder implements TruffleCompilerList
     }
 
     @Override
-    public void onCompilationRetry(CompilableTruffleAST compilable, int tier) {
-        onCompilationRetry0(IsolatedCompileContext.get().getClient(), contextHandle, tier);
+    public void onCompilationRetry(CompilableTruffleAST compilable, TruffleCompilationTask task) {
+        onCompilationRetry0(IsolatedCompileContext.get().getClient(), contextHandle, IsolatedCompileClient.get().hand(task));
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static void onGraalTierFinished0(@SuppressWarnings("unused") ClientIsolateThread client,
                     ClientHandle<IsolatedEventContext> contextHandle, CompilerHandle<GraphInfo> graphInfo, int nodeCount) {
         IsolatedEventContext context = IsolatedCompileClient.get().unhand(contextHandle);
         context.listener.onGraalTierFinished(context.compilable, new IsolatedGraphInfo(graphInfo, nodeCount));
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static void onTruffleTierFinished0(@SuppressWarnings("unused") ClientIsolateThread client,
                     ClientHandle<IsolatedEventContext> contextHandle, CompilerHandle<GraphInfo> graphInfo, int nodeCount) {
         IsolatedEventContext context = IsolatedCompileClient.get().unhand(contextHandle);
         context.listener.onTruffleTierFinished(context.compilable, context.task.inliningData(), new IsolatedGraphInfo(graphInfo, nodeCount));
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static void onSuccess0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<IsolatedEventContext> contextHandle,
                     CompilerHandle<GraphInfo> graphInfo, int nodeCount, IsolatedCompilationResultData resultData, int tier) {
 
@@ -114,19 +114,20 @@ final class IsolatedTruffleCompilerEventForwarder implements TruffleCompilerList
         context.listener.onSuccess(context.compilable, context.task.inliningData(), new IsolatedGraphInfo(graphInfo, nodeCount), new IsolatedCompilationResultInfo(resultData), tier);
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static void onFailure0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<IsolatedEventContext> contextHandle,
                     CCharPointer reason, boolean bailout, boolean permanentBailout, int tier) {
         IsolatedEventContext context = IsolatedCompileClient.get().unhand(contextHandle);
         context.listener.onFailure(context.compilable, CTypeConversion.toJavaString(reason), bailout, permanentBailout, tier);
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
-    private static void onCompilationRetry0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<IsolatedEventContext> contextHandle, int tier) {
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
+    private static void onCompilationRetry0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<IsolatedEventContext> contextHandle,
+                    @SuppressWarnings("unused") ClientHandle<TruffleCompilationTask> task) {
         IsolatedEventContext context = IsolatedCompileClient.get().unhand(contextHandle);
-        context.listener.onCompilationRetry(context.compilable, tier);
+        context.listener.onCompilationRetry(context.compilable, context.task);
     }
 }
 
@@ -163,8 +164,8 @@ final class IsolatedGraphInfo implements GraphInfo {
         return IsolatedCompileClient.get().unhand(handle);
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static ClientHandle<String[]> getNodeTypes0(@SuppressWarnings("unused") CompilerIsolateThread compiler, CompilerHandle<GraphInfo> infoHandle, boolean simpleNames) {
         GraphInfo info = IsolatedCompileContext.get().unhand(infoHandle);
         return IsolatedCompileContext.get().createStringArrayInClient(info.getNodeTypes(simpleNames));
@@ -226,8 +227,8 @@ final class IsolatedCompilationResultInfo implements CompilationResultInfo {
         return dataPatchesCount;
     }
 
-    @CEntryPoint
-    @CEntryPointOptions(include = CEntryPointOptions.NotIncludedAutomatically.class, publishAs = CEntryPointOptions.Publish.NotPublished)
+    @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(publishAs = CEntryPointOptions.Publish.NotPublished)
     private static ClientHandle<String[]> getInfopoints0(@SuppressWarnings("unused") CompilerIsolateThread compiler, CompilerHandle<CompilationResultInfo> infoHandle) {
         CompilationResultInfo info = IsolatedCompileContext.get().unhand(infoHandle);
         return IsolatedCompileContext.get().createStringArrayInClient(info.getInfopoints());

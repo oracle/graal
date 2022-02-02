@@ -28,7 +28,6 @@ import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQ
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
 import org.graalvm.compiler.api.replacements.Snippet;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
@@ -38,8 +37,6 @@ import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.nodes.IdentityHashCodeNode;
 import org.graalvm.word.LocationIdentity;
-
-import jdk.vm.ci.code.TargetDescription;
 
 public abstract class IdentityHashCodeSnippets implements Snippets {
 
@@ -57,9 +54,8 @@ public abstract class IdentityHashCodeSnippets implements Snippets {
 
         private final SnippetInfo identityHashCodeSnippet;
 
-        public Templates(IdentityHashCodeSnippets receiver, OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, TargetDescription target,
-                        LocationIdentity locationIdentity) {
-            super(options, factories, providers, providers.getSnippetReflection(), target);
+        public Templates(IdentityHashCodeSnippets receiver, OptionValues options, Providers providers, LocationIdentity locationIdentity) {
+            super(options, providers);
 
             identityHashCodeSnippet = snippet(IdentityHashCodeSnippets.class, "identityHashCodeSnippet", null, receiver, locationIdentity);
         }

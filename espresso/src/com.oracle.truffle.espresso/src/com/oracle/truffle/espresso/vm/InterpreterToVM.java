@@ -60,6 +60,7 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.substitutions.Throws;
+import com.oracle.truffle.espresso.threads.State;
 
 public final class InterpreterToVM implements ContextAccess {
 
@@ -363,7 +364,7 @@ public final class InterpreterToVM implements ContextAccess {
     public void setArrayObject(StaticObject value, int index, StaticObject wrapper, BytecodeNode bytecodeNode) {
         if (StaticObject.isNull(value) || instanceOf(value, ((ArrayKlass) wrapper.getKlass()).getComponentType())) {
             try {
-                (wrapper.<Object[]> unwrap())[index] = value;
+                (wrapper.<StaticObject[]> unwrap())[index] = value;
             } catch (ArrayIndexOutOfBoundsException e) {
                 throwArrayIndexOutOfBoundsException(getMeta(), bytecodeNode);
             }
@@ -399,7 +400,7 @@ public final class InterpreterToVM implements ContextAccess {
         EspressoContext context = meta.getContext();
         if (!monitorTryLock(lock)) {
             StaticObject thread = context.getCurrentThread();
-            Target_java_lang_Thread.fromRunnable(thread, meta, Target_java_lang_Thread.State.BLOCKED);
+            meta.getThreadAccess().fromRunnable(thread, State.BLOCKED);
             if (context.EnableManagement) {
                 // Locks bookkeeping.
                 meta.HIDDEN_THREAD_BLOCKED_OBJECT.setHiddenObject(thread, obj);
@@ -417,7 +418,7 @@ public final class InterpreterToVM implements ContextAccess {
             if (context.EnableManagement) {
                 meta.HIDDEN_THREAD_BLOCKED_OBJECT.setHiddenObject(thread, null);
             }
-            Target_java_lang_Thread.toRunnable(thread, meta, Target_java_lang_Thread.State.RUNNABLE);
+            meta.getThreadAccess().toRunnable(thread);
         }
     }
 
@@ -461,7 +462,7 @@ public final class InterpreterToVM implements ContextAccess {
         return field.getDouble(obj);
     }
 
-    public static StaticObject getFieldObject(StaticObject obj, Field.FieldVersion field) {
+    public static StaticObject getFieldObject(StaticObject obj, Field field) {
         return field.getObject(obj);
     }
 

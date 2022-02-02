@@ -100,7 +100,6 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<CoreProviders> {
                 propagateFixed(d, d, context, lazyLoops);
             }
         }
-
         if (context != null) {
             for (FixedGuardNode fixedGuard : graph.getNodes(FixedGuardNode.TYPE)) {
                 try (DebugCloseable closable = fixedGuard.withNodeSourcePosition()) {
@@ -108,7 +107,6 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<CoreProviders> {
                 }
             }
         }
-
         new DeadCodeEliminationPhase(Optional).apply(graph);
     }
 
@@ -268,6 +266,9 @@ public class ConvertDeoptimizeToGuardPhase extends BasePhase<CoreProviders> {
             LoopEx loopEx = loopsData.loop(loop);
             if (loopEx.detectCounted()) {
                 return ifNode == loopEx.counted().getLimitTest();
+            }
+            if (loopEx.canBecomeLimitTestAfterFloatingReads(ifNode)) {
+                return true;
             }
         }
         return false;

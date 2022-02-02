@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,7 +35,6 @@ import static org.graalvm.compiler.nodes.Invoke.SIZE_UNKNOWN_RATIONALE;
 import java.util.Map;
 
 import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
@@ -82,11 +81,6 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
     @Override
     protected void afterClone(Node other) {
         updateInliningLogAfterClone(other);
-    }
-
-    @Override
-    public FixedNode asFixedNode() {
-        return this;
     }
 
     @Override
@@ -142,7 +136,7 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
     @Override
     public void setNext(FixedNode x) {
         if (x != null) {
-            this.setNext(KillingBeginNode.begin(x, this.getKilledLocationIdentity()));
+            this.setNext(BeginNode.begin(x));
         } else {
             this.setNext(null);
         }
@@ -181,21 +175,6 @@ public final class InvokeWithExceptionNode extends WithExceptionNode implements 
             debugProperties.put("targetMethod", callTarget.targetName());
         }
         return debugProperties;
-    }
-
-    @SuppressWarnings("try")
-    public AbstractBeginNode killKillingBegin() {
-        AbstractBeginNode begin = next();
-        if (begin instanceof KillingBeginNode) {
-            try (DebugCloseable position = begin.withNodeSourcePosition()) {
-                AbstractBeginNode newBegin = new BeginNode();
-                graph().addAfterFixed(begin, graph().add(newBegin));
-                begin.replaceAtUsages(newBegin);
-                graph().removeFixed(begin);
-                return newBegin;
-            }
-        }
-        return begin;
     }
 
     @Override

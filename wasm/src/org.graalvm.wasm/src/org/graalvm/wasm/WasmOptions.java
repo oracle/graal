@@ -66,11 +66,18 @@ public class WasmOptions {
         NONE
     }
 
-    public static OptionType<ConstantsStorePolicy> StoreConstantsPolicyOptionType = new OptionType<>("StoreConstantsPolicy", ConstantsStorePolicy::valueOf);
+    public static final OptionType<ConstantsStorePolicy> StoreConstantsPolicyOptionType = new OptionType<>("StoreConstantsPolicy", ConstantsStorePolicy::valueOf);
 
     @Option(help = "Whenever to store the constants in a pool or not. Deprecated: no longer has any effect.", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL, deprecated = true)//
     public static final OptionKey<ConstantsStorePolicy> StoreConstantsPolicy = new OptionKey<>(ConstantsStorePolicy.NONE, StoreConstantsPolicyOptionType);
 
     @Option(help = "Use sun.misc.Unsafe-based memory.", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL)//
     public static final OptionKey<Boolean> UseUnsafeMemory = new OptionKey<>(false);
+
+    // WASM Context Options
+    @Option(help = "Use saturating-float-to-int conversion", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Boolean> SaturatingFloatToInt = new OptionKey<>(false);
+
+    @Option(help = "Use sign-extension operators", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Boolean> SignExtensionOps = new OptionKey<>(false);
 }

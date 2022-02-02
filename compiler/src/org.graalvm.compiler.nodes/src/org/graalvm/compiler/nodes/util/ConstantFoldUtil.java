@@ -26,9 +26,13 @@ package org.graalvm.compiler.nodes.util;
 
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider.ConstantFieldTool;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.nodes.ConstantNode;
+import org.graalvm.compiler.nodes.memory.ReadNode;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.options.OptionValues;
 
+import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -69,6 +73,58 @@ public class ConstantFoldUtil {
             public ConstantNode foldStableArray(JavaConstant ret, int stableDimensions, boolean isDefaultStable) {
                 if (ret != null) {
                     return ConstantNode.forConstant(ret, stableDimensions, isDefaultStable, metaAccess);
+                } else {
+                    return null;
+                }
+            }
+
+            @Override
+            public OptionValues getOptions() {
+                return options;
+            }
+        });
+    }
+
+    /**
+     * Perform a constant folding read on a regular Java field that's already been lowered to a
+     * {@link ReadNode}.
+     */
+    public static ConstantNode tryConstantFold(CoreProviders tool, ResolvedJavaField field, JavaConstant receiver, long displacement, Stamp resultStamp, Stamp accessStamp, OptionValues options) {
+        if (!field.isStatic()) {
+            if (receiver == null || receiver.isNull()) {
+                return null;
+            }
+        }
+
+        return tool.getConstantFieldProvider().readConstantField(field, new ConstantFieldTool<ConstantNode>() {
+
+            @Override
+            public JavaConstant readValue() {
+                Constant constant = resultStamp.readConstant(tool.getConstantReflection().getMemoryAccessProvider(), receiver, displacement, accessStamp);
+                if (constant instanceof JavaConstant) {
+                    return (JavaConstant) constant;
+                }
+                return null;
+            }
+
+            @Override
+            public JavaConstant getReceiver() {
+                return receiver;
+            }
+
+            @Override
+            public ConstantNode foldConstant(JavaConstant ret) {
+                if (ret != null) {
+                    return ConstantNode.forConstant(resultStamp, ret, tool.getMetaAccess());
+                } else {
+                    return null;
+                }
+            }
+
+            @Override
+            public ConstantNode foldStableArray(JavaConstant ret, int stableDimensions, boolean isDefaultStable) {
+                if (ret != null) {
+                    return ConstantNode.forConstant(resultStamp, ret, stableDimensions, isDefaultStable, tool.getMetaAccess());
                 } else {
                     return null;
                 }

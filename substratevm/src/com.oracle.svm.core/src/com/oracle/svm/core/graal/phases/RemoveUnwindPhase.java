@@ -69,7 +69,7 @@ public class RemoveUnwindPhase extends Phase {
 
         List<WithExceptionNode> withExceptionNodes = new ArrayList<>();
         List<BytecodeExceptionNode> bytecodeExceptionNodes = new ArrayList<>();
-        for (UnwindNode node : graph.getNodes().filter(UnwindNode.class)) {
+        for (UnwindNode node : graph.getNodes(UnwindNode.TYPE)) {
             walkBack(node.predecessor(), node, withExceptionNodes, bytecodeExceptionNodes, GraphUtil.unproxify(node.exception()), graph);
         }
 

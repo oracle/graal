@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.jni;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 
@@ -31,12 +32,13 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
  * Retains one exception per thread that is pending to be handled in that thread (or none).
  */
 public class JNIThreadLocalPendingException {
-    private static final FastThreadLocalObject<Throwable> pendingException = FastThreadLocalFactory.createObject(Throwable.class);
+    private static final FastThreadLocalObject<Throwable> pendingException = FastThreadLocalFactory.createObject(Throwable.class, "JNIThreadLocalPendingException.pendingException");
 
     public static Throwable get() {
         return pendingException.get();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void set(Throwable t) {
         pendingException.set(t);
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -85,7 +85,7 @@ public class TestExecutableNamesLanguage extends ProxyLanguage {
     @Override
     protected CallTarget parse(ParsingRequest request) throws Exception {
         Source source = request.getSource();
-        return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+        return new RootNode(languageInstance) {
             @Override
             public Object execute(VirtualFrame frame) {
                 CallTarget target = createCallTarget();
@@ -102,10 +102,9 @@ public class TestExecutableNamesLanguage extends ProxyLanguage {
 
             @TruffleBoundary
             private CallTarget createCallTarget() {
-                TestNamedRoot root = new TestNamedRoot(languageInstance, depth, rootName, source);
-                return Truffle.getRuntime().createCallTarget(root);
+                return new TestNamedRoot(languageInstance, depth, rootName, source).getCallTarget();
             }
-        });
+        }.getCallTarget();
     }
 
     private static class TestNamedRoot extends RootNode {
@@ -121,7 +120,7 @@ public class TestExecutableNamesLanguage extends ProxyLanguage {
             CallTarget target = null;
             TestNamedRootStatement statement = null;
             if (depth > 0) {
-                target = Truffle.getRuntime().createCallTarget(new TestNamedRoot(language, depth - 1, rootName, source));
+                target = new TestNamedRoot(language, depth - 1, rootName, source).getCallTarget();
             } else {
                 statement = new TestNamedRootStatement(source.createSection(1));
             }
@@ -323,7 +322,7 @@ public class TestExecutableNamesLanguage extends ProxyLanguage {
 
         Executable(String name, RootNode rootNode) {
             this.name = name;
-            this.target = Truffle.getRuntime().createCallTarget(rootNode);
+            this.target = rootNode.getCallTarget();
         }
 
         @ExportMessage

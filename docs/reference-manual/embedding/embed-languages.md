@@ -17,26 +17,23 @@ permalink: /reference-manual/embed-languages/
 * [Build Native Images from Polyglot Applications](#build-native-images-from-polyglot-applications)
 * [Code Caching Across Multiple Contexts](#code-caching-across-multiple-contexts)
 * [Embed languages in Guest Languages](#embed-languages-in-guest-languages)
-* [Step Through with Execution Listeners](#step-through-with-execution-listeners)
 * [Build a Shell for Many Languages](#build-a-shell-for-many-languages)
-* [Configure Sandbox Resource Limits](#configure-sandbox-resource-limits)
-
+* [Step Through with Execution Listeners](#step-through-with-execution-listeners)
+* [Enterprise Sandbox Resource Limits](#enterprise-sandbox-resource-limits)
+* [Dependency setup](#dependency-setup)
 
 The GraalVM Polyglot API lets you embed and run code from guest languages in JVM-based host applications.
 
-Throughout this section, you will learn how to create a host application in Java that
-runs on GraalVM and directly calls a guest language. You can use the tabs
-beneath each code example to choose between JavaScript, R, Ruby, and Python.
+Throughout this section, you will learn how to create a host application in Java that runs on GraalVM and directly calls a guest language.
+You can use the tabs beneath each code example to choose between JavaScript, R, Ruby, and Python.
 
 Ensure you set up GraalVM before you begin.
 
 ## Compile and Run a Polyglot Application
-GraalVM can run polyglot applications written in any language implemented with the [Truffle language implementation framework](/graalvm-as-a-platform/language-implementation-framework/).
+GraalVM can run polyglot applications written in any language implemented with the [Truffle language implementation framework](../../../truffle/docs/README.md).
 These languages are henceforth referenced as **guest languages**.
 
-Complete the steps in this section to create a sample polyglot
-application that runs on GraalVM and demonstrates programming language
-interoperability.
+Complete the steps in this section to create a sample polyglot application that runs on GraalVM and demonstrates programming language interoperability.
 
 1&#46; Create a `hello-polyglot` project directory.
 
@@ -67,10 +64,8 @@ GraalVM.
 
 4&#46; Run `java HelloPolyglot` to run the application on GraalVM.
 
-You now have a polyglot application that consists of a Java host application
-and guest language code that run on GraalVM. You can use this application with
-other code examples to demonstrate more advanced capabilities of the
-Polyglot API.
+You now have a polyglot application that consists of a Java host application and guest language code that run on GraalVM.
+You can use this application with other code examples to demonstrate more advanced capabilities of the Polyglot API.
 
 To use other code examples in this section, you simply need to do the following:
 
@@ -80,12 +75,9 @@ To use other code examples in this section, you simply need to do the following:
 
 ## Define Guest Language Functions as Java Values
 
-Polyglot applications let you take values from one programming language and
-use them with other languages.
+Polyglot applications let you take values from one programming language and use them with other languages.
 
-Use the code example in this section with your polyglot application to show
-how the Polyglot API can return JavaScript, R, Ruby, or Python functions as
-Java values.
+Use the code example in this section with your polyglot application to show how the Polyglot API can return JavaScript, R, Ruby, or Python functions as Java values.
 
 {%
 include snippet-tabs
@@ -106,12 +98,10 @@ executed.
 
 ## Access Guest Languages Directly from Java
 
-Polyglot applications can readily access most language types and are not
-limited to functions. Host languages, such as Java, can directly access guest
-language values embedded in the polyglot application.
+Polyglot applications can readily access most language types and are not limited to functions.
+Host languages, such as Java, can directly access guest language values embedded in the polyglot application.
 
-Use the code example in this section with your polyglot application to show
-how the Polyglot API can access objects, numbers, strings, and arrays.
+Use the code example in this section with your polyglot application to show how the Polyglot API can access objects, numbers, strings, and arrays.
 
 {%
 include snippet-tabs
@@ -145,17 +135,13 @@ R where indices start with one.
 
 ## Access Java from Guest Languages
 
-Polyglot applications offer bi-directional access between guest languages and
-host languages. As a result, you can pass Java objects to guest languages.
+Polyglot applications offer bi-directional access between guest languages and host languages.
+As a result, you can pass Java objects to guest languages.
 
-Use the code example in this section with your polyglot application to show how
-guest languages can access primitive Java values, objects, arrays, and
-functional interfaces.
+Use the code example in this section with your polyglot application to show how guest languages can access primitive Java values, objects, arrays, and functional interfaces.
 
-To permit guest languages to access any public method or field of a Java
-object, set `allowAllAccess(true)` when the context is built. In this mode, the guest
-language code must be fully trusted, as it can access other not explicitly exported Java methods
-using reflection.
+To permit guest languages to access any public method or field of a Java object, set `allowAllAccess(true)` when the context is built.
+In this mode, the guest language code must be fully trusted, as it can access other not explicitly exported Java methods using reflection.
 
 {%
 include snippet-tabs
@@ -193,11 +179,9 @@ that the script returns a `boolean` value of `true` as a result.
 
 ## Lookup Java Types from Guest Languages
 
-In addition to passing Java objects to the guest language, it is possible
-to allow the lookup of Java types in the guest language.
+In addition to passing Java objects to the guest language, it is possible to allow the lookup of Java types in the guest language.
 
-Use the code example in this section with your polyglot application to show how
-guest languages lookup Java types and instantiate them.
+Use the code example in this section with your polyglot application to show how guest languages lookup Java types and instantiate them.
 
 {%
 include snippet-tabs
@@ -221,14 +205,11 @@ JavaScript using the `new` keyword.
 
 ## Computed Arrays Using Polyglot Proxies
 
-The Polyglot API includes polyglot proxy interfaces that let you
-customize Java interoperability by mimicking guest language types, such as
-objects, arrays, native objects, or primitives.
+The Polyglot API includes polyglot proxy interfaces that let you customize Java interoperability by mimicking guest language types, such as objects, arrays, native objects, or primitives.
 
-Use the code example in this section with your polyglot application to see how
-you can implement arrays that compute their values lazily.
+Use the code example in this section with your polyglot application to see how you can implement arrays that compute their values lazily.
 
-Note: The Polyglot API supports polyglot proxies either on the JVM or in Native Image.
+> Note: The Polyglot API supports polyglot proxies either on the JVM or in Native Image.
 
 {%
 include snippet-tabs
@@ -255,24 +236,20 @@ then returned. Note that array indices from 1-based languages such as R are
 converted to 0-based indices for proxy arrays.
 - The result of the language script is returned as a long value and verified.
 
-For more information about the polyglot proxy interfaces, see the
-[Polyglot API JavaDoc](http://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/package-summary.html).
+For more information about the polyglot proxy interfaces, see the [Polyglot API JavaDoc](http://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/package-summary.html).
 
 ## Host Access
 
 The Polyglot API by default restricts access to certain critical functionality, such as file I/O.
 These restrictions can be lifted entirely by setting `allowAllAccess` to `true`.
 
-Note: The access restrictions are currently only supported with JavaScript.
+> Note: The access restrictions are currently only supported with JavaScript.
 
 ### Controlling Access to Host Functions
 
 It might be desireable to limit the access of guest applications to the host.
-For example, if a Java method is exposed that calls `System.exit` then the guest
-application will be able to exit the host process.
-In order to avoid accidentally exposed methods, no host access is allowed by
-default and every public method or field needs to be annotated with
-`@HostAccess.Export` explicitly.
+For example, if a Java method is exposed that calls `System.exit` then the guest application will be able to exit the host process.
+In order to avoid accidentally exposed methods, no host access is allowed by default and every public method or field needs to be annotated with `@HostAccess.Export` explicitly.
 
 {%
 include snippet-tabs
@@ -394,7 +371,7 @@ The following access parameters may be configured:
 * Allow access to native APIs using [`allowNativeAccess`](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/Context.Builder.html#allowNativeAccess-boolean-).
 * Allow access to IO using [`allowIO`](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/Context.Builder.html#allowIO-boolean-) and proxy file accesses using [`fileSystem`](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/Context.Builder.html#fileSystem-org.graalvm.polyglot.io.FileSystem-).
 
-Note: Granting access to class loading, native APIs, or host I/O effectively grants all access, as these privileges can be used to bypass other access restrictions.
+> Note: Granting access to class loading, native APIs, or host I/O effectively grants all access, as these privileges can be used to bypass other access restrictions.
 
 ## Build Native Images from Polyglot Applications
 
@@ -415,7 +392,7 @@ native-image --language:js --initialize-at-build-time -cp . HelloPolyglot
 It should be mentioned that you can also include a guest language into the native image, but exclude the JIT compiler by passing the `-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime` option to the builder.
 Be aware, the flag `-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime` has to placed *after* all the Truffle language/tool options, so that it will override the default settings.
 
-You can build the above example again but this time the created image will only contain the Truffle language interpreter (the GraalVM compiler will not be included in the image) by running:
+You can build the above example again but this time the created image will only contain the Truffle language interpreter (the Graal compiler will not be included in the image) by running:
 ```shell
 native-image --language:js -Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime --initialize-at-build-time -cp . HelloPolyglotInterpreter
 ```
@@ -493,7 +470,7 @@ Caching may be disabled explicitly by setting [cached(boolean cached)](https://
 
 Consider the following code snippet as an example:
 
-```
+```java
 public class Main {
     public static void main(String[] args) {
         try (Engine engine = Engine.create()) {
@@ -543,12 +520,12 @@ public class Main {
     public static void main(String[] args) {
         try (Context outer = Context.newBuilder()
                                    .allowAllAccess(true)
-                               .build()) {            
+                               .build()) {
             outer.eval("js", "inner = Java.type('org.graalvm.polyglot.Context').create()");
             outer.eval("js", "value = inner.eval('js', '({data:42})')");
             int result = outer.eval("js", "value.data").asInt();
             outer.eval("js", "inner.close()");
-            
+
             System.out.println("Valid " + (result == 42));
         }
     }
@@ -566,8 +543,7 @@ In this code: 
 
 ## Build a Shell for Many Languages
 
-With just a few lines of code, the GraalVM Polyglot API lets you build
-applications that integrate with any guest language supported by GraalVM.
+With just a few lines of code, the GraalVM Polyglot API lets you build applications that integrate with any guest language supported by GraalVM.
 
 This shell implementation is agnostic to any particular guest language.
 
@@ -600,12 +576,11 @@ for (;;) {
 }
 ```
 
-
-
 ## Step Through with Execution Listeners
 
-The GraalVM Polyglot API allows users to instrument the execution of guest languages through [ExecutionListener class](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/management/ExecutionListener.html). For example, it lets you attach an execution listener that is invoked for every statement of the guest language program. Execution listeners
-are designed as simple API for polyglot embedders and may become handy in, e.g., single-stepping through the program.
+The GraalVM Polyglot API allows users to instrument the execution of guest languages through [ExecutionListener class](http://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/management/ExecutionListener.html).
+For example, it lets you attach an execution listener that is invoked for every statement of the guest language program.
+Execution listeners are designed as simple API for polyglot embedders and may become handy in, e.g., single-stepping through the program.
 
 ```java
 import org.graalvm.polyglot.*;
@@ -635,5 +610,119 @@ In this code:
 - The `context.eval()` call evaluates a specified snippet of guest language code.
 - The `listener.close()` closes a listener earlier, however execution listeners are automatically closed with the engine.
 
-<!-- Configure Sandbox Resource Limits -->
+<!-- Enterprise Sandbox Resource Limits -->
 {% include_relative sandbox-options.md %}
+
+## Polyglot Isolates
+
+On GraalVM Enterprise, a Polyglot engine can be configured to run in a dedicated native image isolate.
+This experimental feature is enabled with the `--engine.SpawnIsolate` option.
+An engine running in this mode executes within a VM-level fault domain with its own garbage collector and JIT compiler.
+The fact that an engine runs within an isolate is completely transparent with respect to the Polyglot API and interoperability:
+
+```java
+import org.graalvm.polyglot.*;
+
+public class PolyglotIsolate {
+  public static void main(String[] args) {
+    Context context = Context.newBuilder("js")
+      .allowHostAccess(HostAccess.SCOPED)
+      .allowExperimentalOptions(true)
+      .option("engine.SpawnIsolate", "true").build();
+    Value function = context.eval("js", "x => x+1")
+    assert function.canExecute();
+    int x = function.execute(41).asInt();
+    assert x == 42;
+  }
+}
+```
+
+Since the host's GC and the isolate's GC are not aware of one another, cyclic references between objects on both heaps may occur.
+We thus strongly recommend to use [scoped parameters for host callbacks](#controlling-host-callback-parameter-scoping) to avoid cyclic references.
+
+Multiple contexts can be spawned in the same isolated engine by [sharing engines](#code-caching-across-multiple-contexts):
+
+```java
+public class PolyglotIsolateMultipleContexts {
+    public static void main(String[] args) {
+        try (Engine engine = Engine.newBuilder()
+                .allowExperimentalOptions(true)
+                .option("engine.SpawnIsolate", "js").build()) {
+            Source source = Source.create("js", "21 + 21");
+            try (Context context = Context.newBuilder()
+                .engine(engine)
+                .build()) {
+                    int v = context.eval(source).asInt();
+                    assert v == 42;
+            }
+            try (Context context = Context.newBuilder()
+                .engine(engine)
+                .build()) {
+                    int v = context.eval(source).asInt();
+                    assert v == 42;
+            }
+        }
+    }
+}
+```
+
+Note how we need to specify the language for the isolated engine as a parameter to `--engine.SpawnIsolate` in this case.
+The reason is that an isolated engine needs to know which set of languages should be available.
+Behind the scenes, GraalVM will then locate the corresponding native image language library.
+If only a single language is selected, then the library for the language will be loaded.
+If multiple languages are selected, then `libpolyglot`, the library containing all Truffle languages shipped with GraalVM, will be loaded.
+If a matching library is not available, creation of the engine will fail.
+
+Only one language library can be loaded during GraalVM's lifetime.
+This means that the first isolated engine that is created sets the default for the remainder of the execution: if an isolated engine with solely Javascript was created first, only Javascript will be available in isolated languages.
+
+### Passing Native Image Runtime Options
+Engines running in an isolate can make use of [native image runtime options](../native-image/HostedvsRuntimeOptions/) by passing `--engine.IsolateOption.<option>` to the engine builder.
+For example, this can be used to limit the maximum heap memory used by an engine by setting the maximum heap size for the isolate via `--engine.IsolateOption.MaxHeapSize=128m`:
+
+```java
+import org.graalvm.polyglot.*;
+
+public class PolyglotIsolateMaxHeap {
+  public static void main(String[] args) {
+    try {
+      Context context = Context.newBuilder("js")
+        .allowHostAccess(HostAccess.SCOPED)
+        .allowExperimentalOptions(true)
+        .option("engine.SpawnIsolate", "true")
+        .option("engine.IsolateOption.MaxHeapSize", "64m").build()
+      context.eval("js", "var a = [];while (true) {a.push('foobar');}");
+    } catch (PolyglotException ex) {
+      if (ex.isResourceExhausted()) {
+        System.out.println("Resource exhausted");
+      }
+    }
+  }
+}
+```
+Exceeding the maximum heap size will automatically close the context and raise a `PolyglotException`.
+
+## Dependency Setup
+
+To best make use of the embedding API of GraalVM (i.e. `org.graalvm.polyglot.*`) your project should use a GraalVM as `JAVA_HOME`.
+In addition to that, you should specify the `graal-sdk.jar` (which is included in GraalVM) as a provided dependency to your projects.
+This is mainly to provide IDEs and other tools with the information that the project uses this API.
+An example of this for Maven means adding the following to the `pom.xml` file.
+
+```xml
+<dependency>
+    <groupId>org.graalvm.sdk</groupId>
+    <artifactId>graal-sdk</artifactId>
+    <version>${graalvm.version}</version>
+    <scope>provided</scope>
+</dependency>
+```
+
+Additionally, when using Java modules, your `modue-info.java` file should require `org.graalvm.sdk`.
+
+```java
+module com.mycompany.app {
+  requires org.graalvm.sdk;
+
+}
+```

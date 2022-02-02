@@ -33,14 +33,14 @@ import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCa
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCallNodeGen.callGetCallCount;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCallNodeGen.callGetCurrentCallTarget;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCallNodeGen.callIsInliningForced;
-import static org.graalvm.nativebridge.jni.JNIMethodScope.env;
+import static org.graalvm.jniutils.JNIMethodScope.env;
 
 import org.graalvm.compiler.truffle.common.CompilableTruffleAST;
 import org.graalvm.compiler.truffle.common.TruffleCallNode;
-import org.graalvm.nativebridge.jni.HSObject;
-import org.graalvm.nativebridge.jni.JNIMethodScope;
-import org.graalvm.nativebridge.jni.JNI.JObject;
-import org.graalvm.nativebridge.jni.JNIUtil;
+import org.graalvm.jniutils.HSObject;
+import org.graalvm.jniutils.JNIMethodScope;
+import org.graalvm.jniutils.JNI.JObject;
+import org.graalvm.jniutils.JNIUtil;
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal;
 
 final class HSTruffleCallNode extends HSObject implements TruffleCallNode {

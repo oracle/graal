@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,7 @@
  */
 package org.graalvm.libgraal;
 
-import java.lang.reflect.Method;
-import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Scope for calling CEntryPoints in libgraal. {@linkplain #LibGraalScope() Opening} a scope ensures
@@ -42,17 +41,38 @@ public final class LibGraalScope implements AutoCloseable {
     static class Shared {
         final DetachAction detachAction;
         final LibGraalIsolate isolate;
-        final long isolateThread;
+        private long isolateThread;
 
         Shared(DetachAction detachAction, LibGraalIsolate isolate, long isolateThread) {
             this.detachAction = detachAction;
             this.isolate = isolate;
             this.isolateThread = isolateThread;
         }
+
+        public long getIsolateThread() {
+            if (isolateThread == 0L) {
+                throw new IllegalStateException(Thread.currentThread() + " is no longer attached to " + isolate);
+            }
+            return isolateThread;
+        }
+
+        public long detach() {
+            long res = getIsolateThread();
+            isolateThread = 0L;
+            return res;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("isolate=%s, isolateThread=0x%x, detachAction=%s", isolate, isolateThread, detachAction);
+        }
     }
 
     private final LibGraalScope parent;
     private final Shared shared;
+
+    private static final AtomicInteger nextId = new AtomicInteger(1);
+    private final int id;
 
     /**
      * Gets the current scope.
@@ -78,7 +98,7 @@ public final class LibGraalScope implements AutoCloseable {
      * @throws IllegalStateException if the current thread is not attached to libgraal
      */
     public static long getIsolateThread() {
-        return current().shared.isolateThread;
+        return current().shared.getIsolateThread();
     }
 
     /**
@@ -128,6 +148,7 @@ public final class LibGraalScope implements AutoCloseable {
         if (LibGraal.inLibGraal() || !LibGraal.isAvailable()) {
             throw new IllegalStateException();
         }
+        id = nextId.getAndIncrement();
         parent = currentScope.get();
         if (parent == null) {
             long[] isolateBox = {0};
@@ -141,6 +162,11 @@ public final class LibGraalScope implements AutoCloseable {
             shared = parent.shared;
         }
         currentScope.set(this);
+    }
+
+    @Override
+    public String toString() {
+        return String.format("LibGraalScope@%d[%s, parent=%s]", id, shared, parent);
     }
 
     /**
@@ -159,6 +185,7 @@ public final class LibGraalScope implements AutoCloseable {
         if (LibGraal.inLibGraal() || !LibGraal.isAvailable()) {
             throw new IllegalStateException();
         }
+        id = nextId.getAndIncrement();
         parent = currentScope.get();
         if (parent == null) {
             long isolateThread = getIsolateThreadIn(isolateAddress);
@@ -223,29 +250,26 @@ public final class LibGraalScope implements AutoCloseable {
      * Gets the address of the isolate thread associated with this scope.
      */
     public long getIsolateThreadAddress() {
-        return shared.isolateThread;
+        return shared.getIsolateThread();
     }
 
     @Override
     public void close() {
+        // Reset the currentScope thread local before detaching. Detaching may trigger HotSpot to
+        // shutdown the libgraal isolate. That involves re-attaching the current thread to the
+        // libgraal isolate with a *new* isolate thread for calling
+        // HotSpotJVMCIRuntime.shutdown(). In the scope of the latter call, if a new LibGraalScope
+        // is opened, it must not see this LibGraalScope as its parent otherwise it will use the
+        // closed and discarded isolate thread (i.e. this.shared.isolateThread).
+        currentScope.set(parent);
         if (parent == null && shared.detachAction != null) {
+            long isolateThread = shared.detach();
             if (shared.detachAction == DetachAction.DETACH) {
-                detachThreadFrom(shared.isolateThread);
+                detachThreadFrom(isolateThread);
             } else {
                 LibGraal.detachCurrentThread(shared.detachAction == DetachAction.DETACH_RUNTIME_AND_RELEASE);
             }
         }
-        currentScope.set(parent);
-    }
-
-    // Shared support for the LibGraal overlays
-
-    /**
-     * Convenience function for wrapping varargs into an array for use in calls to
-     * {@link #method(Class, String, Class[][])}.
-     */
-    static Class<?>[] sig(Class<?>... types) {
-        return types;
     }
 
     /**
@@ -259,68 +283,5 @@ public final class LibGraalScope implements AutoCloseable {
             ancestor = ancestor.parent;
         }
         return depth;
-    }
-
-    /**
-     * Gets the method in {@code declaringClass} with the unique name {@code name}.
-     *
-     * @param sigs the signatures the method may have
-     */
-    static Method method(Class<?> declaringClass, String name, Class<?>[]... sigs) {
-        if (sigs.length == 1 || sigs.length == 0) {
-            try {
-                Class<?>[] sig = sigs.length == 1 ? sigs[0] : new Class<?>[0];
-                return declaringClass.getDeclaredMethod(name, sig);
-            } catch (NoSuchMethodException | SecurityException e) {
-                throw (NoSuchMethodError) new NoSuchMethodError(name).initCause(e);
-            }
-        }
-        Method match = null;
-        for (Method m : declaringClass.getDeclaredMethods()) {
-            if (m.getName().equals(name)) {
-                if (match != null) {
-                    throw new InternalError(String.format("Expected single method named %s, found %s and %s",
-                                    name, match, m));
-                }
-                match = m;
-            }
-        }
-        if (match == null) {
-            throw new NoSuchMethodError("Cannot find method " + name + " in " + declaringClass.getName());
-        }
-        Class<?>[] parameterTypes = match.getParameterTypes();
-        for (Class<?>[] sig : sigs) {
-            if (Arrays.equals(parameterTypes, sig)) {
-                return match;
-            }
-        }
-        throw new NoSuchMethodError(String.format("Unexpected signature for %s: %s", name, Arrays.toString(parameterTypes)));
-    }
-
-    /**
-     * Gets the method in {@code declaringClass} with the unique name {@code name} or {@code null}
-     * if not found.
-     *
-     * @param sigs the signatures the method may have
-     */
-    static Method methodOrNull(Class<?> declaringClass, String name, Class<?>[]... sigs) {
-        try {
-            return method(declaringClass, name, sigs);
-        } catch (NoSuchMethodError e) {
-            return null;
-        }
-    }
-
-    /**
-     * Gets the method in {@code declaringClass} with the unique name {@code name} or {@code null}
-     * if {@code guard == null}.
-     *
-     * @param sigs the signatures the method may have
-     */
-    static Method methodIf(Object guard, Class<?> declaringClass, String name, Class<?>[]... sigs) {
-        if (guard == null) {
-            return null;
-        }
-        return method(declaringClass, name, sigs);
     }
 }

@@ -86,9 +86,6 @@ public class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Featu
             if (isPosix()) {
                 a.registerReachabilityHandler(registerServerSocketChannelImplInitIDs, method(a, "sun.nio.ch.UnixAsynchronousServerSocketChannelImpl", "initIDs"));
             }
-        }
-
-        if (JavaVersionUtil.JAVA_SPEC < 13) {
             a.registerReachabilityHandler(JNIRegistrationJavaNio::registerDatagramChannelImplInitIDs, method(a, "sun.nio.ch.DatagramChannelImpl", "initIDs"));
         } else {
             // JDK-8220738
@@ -111,15 +108,13 @@ public class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Featu
         a.registerReachabilityHandler(JNIRegistrationJavaNio::registerConnectionCreateInetSocketAddress, method(a, "com.sun.jndi.ldap.Connection", "createInetSocketAddress", String.class, int.class));
 
         Consumer<DuringAnalysisAccess> registerInitInetAddressIDs = JNIRegistrationJavaNet::registerInitInetAddressIDs;
-        if (JavaVersionUtil.JAVA_SPEC < 9) {
-            a.registerReachabilityHandler(registerInitInetAddressIDs, method(a, "sun.nio.ch.IOUtil", "initIDs"));
-        } else {
-            a.registerReachabilityHandler(registerInitInetAddressIDs, method(a, "sun.nio.ch.Net", "initIDs"));
-        }
+        a.registerReachabilityHandler(registerInitInetAddressIDs, method(a, "sun.nio.ch.Net", "initIDs"));
 
-        // In JDK 14, all of the Buffer classes require MemorySegmentProxy which is accessed via
-        // reflection
-        if (JavaVersionUtil.JAVA_SPEC >= 14) {
+        /*
+         * Starting with support for JDK 17, all of the Buffer classes require MemorySegmentProxy
+         * which is accessed via reflection.
+         */
+        if (JavaVersionUtil.JAVA_SPEC >= 17) {
             RuntimeReflection.register(clazz(a, "jdk.internal.access.foreign.MemorySegmentProxy"));
         }
     }
@@ -200,19 +195,13 @@ public class JNIRegistrationJavaNio extends JNIRegistrationUtil implements Featu
         JNIRuntimeAccess.register(fields(a, "sun.nio.fs.WindowsNativeDispatcher$VolumeInformation", "fileSystemName", "volumeName", "volumeSerialNumber", "flags"));
         JNIRuntimeAccess.register(clazz(a, "sun.nio.fs.WindowsNativeDispatcher$DiskFreeSpace"));
         JNIRuntimeAccess.register(fields(a, "sun.nio.fs.WindowsNativeDispatcher$DiskFreeSpace", "freeBytesAvailable", "totalNumberOfBytes", "totalNumberOfFreeBytes"));
-        if (JavaVersionUtil.JAVA_SPEC >= 10) {
-            JNIRuntimeAccess.register(fields(a, "sun.nio.fs.WindowsNativeDispatcher$DiskFreeSpace", "bytesPerSector"));
-        }
+        JNIRuntimeAccess.register(fields(a, "sun.nio.fs.WindowsNativeDispatcher$DiskFreeSpace", "bytesPerSector"));
         JNIRuntimeAccess.register(clazz(a, "sun.nio.fs.WindowsNativeDispatcher$Account"));
         JNIRuntimeAccess.register(fields(a, "sun.nio.fs.WindowsNativeDispatcher$Account", "domain", "name", "use"));
         JNIRuntimeAccess.register(clazz(a, "sun.nio.fs.WindowsNativeDispatcher$AclInformation"));
         JNIRuntimeAccess.register(fields(a, "sun.nio.fs.WindowsNativeDispatcher$AclInformation", "aceCount"));
         JNIRuntimeAccess.register(clazz(a, "sun.nio.fs.WindowsNativeDispatcher$CompletionStatus"));
         JNIRuntimeAccess.register(fields(a, "sun.nio.fs.WindowsNativeDispatcher$CompletionStatus", "error", "bytesTransferred", "completionKey"));
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            JNIRuntimeAccess.register(clazz(a, "sun.nio.fs.WindowsNativeDispatcher$BackupResult"));
-            JNIRuntimeAccess.register(fields(a, "sun.nio.fs.WindowsNativeDispatcher$BackupResult", "bytesTransferred", "context"));
-        }
     }
 
     private static void registerIocpInitIDs(DuringAnalysisAccess a) {

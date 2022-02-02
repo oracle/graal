@@ -124,7 +124,7 @@ public abstract class AbstractBeginNode extends FixedWithNextNode implements LIR
     }
 
     public NodeIterable<FixedNode> getBlockNodes() {
-        return new NodeIterable<FixedNode>() {
+        return new NodeIterable<>() {
 
             @Override
             public Iterator<FixedNode> iterator() {

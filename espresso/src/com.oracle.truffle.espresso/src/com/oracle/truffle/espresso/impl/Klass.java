@@ -29,9 +29,11 @@ import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
 import java.util.Comparator;
 import java.util.function.IntFunction;
 
-import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.utilities.AlwaysValidAssumption;
 import org.graalvm.collections.EconomicSet;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -65,6 +67,7 @@ import com.oracle.truffle.espresso.jdwp.api.ClassStatusConstants;
 import com.oracle.truffle.espresso.jdwp.api.JDWPConstantPool;
 import com.oracle.truffle.espresso.jdwp.api.KlassRef;
 import com.oracle.truffle.espresso.jdwp.api.MethodRef;
+import com.oracle.truffle.espresso.jdwp.api.ModuleRef;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
@@ -364,6 +367,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
             if (init != null) {
                 Method initMethod = init.getMethod();
                 assert !initMethod.isStatic() && initMethod.isPublic() && initMethod.getName().toString().equals(INIT_NAME) && initMethod.getParameterCount() == arguments.length;
+                initMethod.getDeclaringKlass().safeInitialize();
                 StaticObject newObject = StaticObject.createNew(objectKlass);
                 invoke.execute(initMethod, newObject, arguments);
                 return newObject;
@@ -458,6 +462,13 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         }
     };
 
+    static final Comparator<ObjectKlass.KlassVersion> KLASS_VERSION_ID_COMPARATOR = new Comparator<ObjectKlass.KlassVersion>() {
+        @Override
+        public int compare(ObjectKlass.KlassVersion k1, ObjectKlass.KlassVersion k2) {
+            return Integer.compare(k1.getKlass().getId(), k2.getKlass().getId());
+        }
+    };
+
     public static final Klass[] EMPTY_ARRAY = new Klass[0];
 
     static final DebugCounter KLASS_LOOKUP_METHOD_COUNT = DebugCounter.create("Klass.lookupMethod call count");
@@ -468,12 +479,8 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     protected Symbol<Name> name;
     protected Symbol<Type> type;
     private final EspressoContext context;
-    private final ObjectKlass superKlass;
 
     private final int id;
-
-    @CompilationFinal(dimensions = 1) //
-    private final ObjectKlass[] superInterfaces;
 
     @CompilationFinal //
     private volatile ArrayKlass arrayClass;
@@ -483,8 +490,6 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
     @CompilationFinal //
     private Class<?> dispatch;
-
-    @CompilationFinal private int hierarchyDepth = -1;
 
     protected Object prepareThread;
 
@@ -583,20 +588,18 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return packageTo.isQualifiedExportTo(moduleFrom);
     }
 
-    public final ObjectKlass[] getSuperInterfaces() {
-        return superInterfaces;
+    public ObjectKlass[] getSuperInterfaces() {
+        return ObjectKlass.EMPTY_ARRAY;
     }
 
-    Klass(EspressoContext context, Symbol<Name> name, Symbol<Type> type, ObjectKlass superKlass, ObjectKlass[] superInterfaces, int modifiers) {
-        this(context, name, type, superKlass, superInterfaces, modifiers, -1);
+    Klass(EspressoContext context, Symbol<Name> name, Symbol<Type> type, int modifiers) {
+        this(context, name, type, modifiers, -1);
     }
 
-    Klass(EspressoContext context, Symbol<Name> name, Symbol<Type> type, ObjectKlass superKlass, ObjectKlass[] superInterfaces, int modifiers, int possibleID) {
+    Klass(EspressoContext context, Symbol<Name> name, Symbol<Type> type, int modifiers, int possibleID) {
         this.context = context;
         this.name = name;
         this.type = type;
-        this.superKlass = superKlass;
-        this.superInterfaces = superInterfaces;
         this.id = (possibleID >= 0) ? possibleID : context.getNewKlassId();
         this.modifiers = modifiers;
         this.runtimePackage = initRuntimePackage();
@@ -742,7 +745,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
      * The setting of the final bit for types is a bit confusing since arrays are marked as final.
      * This method provides a semantically equivalent test that appropriate for types.
      */
-    public boolean isLeaf() {
+    public boolean hasNoSubtypes() {
         return getElementalType().isFinalFlagSet();
     }
 
@@ -840,7 +843,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
      * @return true if {@code this} is a super interface of {@code other}
      */
     public boolean checkInterfaceSubclassing(Klass other) {
-        Klass[] interfaces = other.getTransitiveInterfacesList();
+        ObjectKlass.KlassVersion[] interfaces = other.getTransitiveInterfacesList();
         return fastLookup(this, interfaces) >= 0;
     }
 
@@ -903,8 +906,8 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
      * an interface, a primitive type, or void, then null is returned. If this object represents an
      * array class then the type object representing the {@code Object} class is returned.
      */
-    public final ObjectKlass getSuperKlass() {
-        return superKlass;
+    public ObjectKlass getSuperKlass() {
+        return null;
     }
 
     /**
@@ -912,8 +915,9 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
      * {@link Class#getInterfaces()} and as such, only returns the interfaces directly implemented
      * or extended by this type.
      */
-    public final ObjectKlass[] getInterfaces() {
-        return superInterfaces;
+    @Override
+    public Klass[] getImplementedInterfaces() {
+        return getSuperInterfaces();
     }
 
     public abstract Klass getElementalType();
@@ -944,6 +948,12 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
      * {@link Class#getDeclaredMethods()} in terms of returned methods.
      */
     public abstract Method[] getDeclaredMethods();
+
+    /**
+     * Returns a version-specific array reflecting all the methods declared by this type. This
+     * method is similar to {@link Class#getDeclaredMethods()} in terms of returned methods.
+     */
+    public abstract Method.MethodVersion[] getDeclaredMethodVersions();
 
     /**
      * Returns an array reflecting all the methods declared by this type. This method is similar to
@@ -985,7 +995,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         try {
             initialize();
         } catch (EspressoException e) {
-            StaticObject cause = e.getExceptionObject();
+            StaticObject cause = e.getGuestException();
             Meta meta = getMeta();
             if (!InterpreterToVM.instanceOf(cause, meta.java_lang_Error)) {
                 throw meta.throwExceptionWithCause(meta.java_lang_ExceptionInInitializerError, cause);
@@ -1020,60 +1030,20 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         return !isInterface();
     }
 
-    @CompilationFinal(dimensions = 1) //
-    private Klass[] supertypesWithSelfCache;
-
     // index 0 is Object, index hierarchyDepth is this
-    Klass[] getSuperTypes() {
-        Klass[] supertypes = supertypesWithSelfCache;
-        if (supertypes == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            Klass supertype = getSupertype();
-            if (supertype == null) {
-                this.supertypesWithSelfCache = new Klass[]{this};
-                return supertypesWithSelfCache;
-            }
-            Klass[] superKlassTypes = supertype.getSuperTypes();
-            supertypes = new Klass[superKlassTypes.length + 1];
-            int depth = getHierarchyDepth();
-            assert supertypes.length == depth + 1;
-            supertypes[depth] = this;
-            System.arraycopy(superKlassTypes, 0, supertypes, 0, depth);
-            supertypesWithSelfCache = supertypes;
-        }
-        return supertypes;
+    protected Klass[] getSuperTypes() {
+        // default implementation for primitive classes
+        return new Klass[]{this};
     }
 
-    int getHierarchyDepth() {
-        int result = hierarchyDepth;
-        if (result == -1) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            if (getSupertype() == null) {
-                // Primitives or java.lang.Object
-                result = 0;
-            } else {
-                result = getSupertype().getHierarchyDepth() + 1;
-            }
-            hierarchyDepth = result;
-        }
-        return result;
+    protected int getHierarchyDepth() {
+        // default implementation for primitive classes
+        return 0;
     }
 
-    @CompilationFinal(dimensions = 1) private Klass[] transitiveInterfaceCache;
-
-    protected final Klass[] getTransitiveInterfacesList() {
-        Klass[] transitiveInterfaces = transitiveInterfaceCache;
-        if (transitiveInterfaces == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            if (this.isArray() || this.isPrimitive()) {
-                transitiveInterfaces = this.getSuperInterfaces();
-            } else {
-                // Use the itable construction.
-                transitiveInterfaces = ((ObjectKlass) this).getiKlassTable();
-            }
-            transitiveInterfaceCache = transitiveInterfaces;
-        }
-        return transitiveInterfaces;
+    protected ObjectKlass.KlassVersion[] getTransitiveInterfacesList() {
+        // default implementation for primitive classes
+        return ObjectKlass.EMPTY_KLASSVERSION_ARRAY;
     }
 
     @TruffleBoundary
@@ -1146,21 +1116,21 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
 
     /*
      * 5.4.3.2. Field Resolution:
-     * 
+     *
      * When resolving a field reference, field resolution first attempts to look up the referenced
      * field in C and its superclasses:
-     * 
+     *
      * 1) If C declares a field with the name and descriptor specified by the field reference, field
      * lookup succeeds. The declared field is the result of the field lookup.
-     * 
+     *
      * 2) Otherwise, field lookup is applied recursively to the direct superinterfaces of the
      * specified class or interface C.
      * 
      * 3) Otherwise, if C has a superclass S, field lookup is applied recursively to S.
-     * 
+     *
      * 4) Otherwise, field lookup fails.
-     * 
-     * 
+     *
+     *
      */
     public final Field lookupField(Symbol<Name> fieldName, Symbol<Type> fieldType, LookupMode mode) {
         KLASS_LOOKUP_FIELD_COUNT.inc();
@@ -1254,11 +1224,11 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     }
 
     @TruffleBoundary(allowInlining = true)
-    protected static int fastLookupBoundary(Klass target, Klass[] klasses) {
+    protected static int fastLookupBoundary(Klass target, ObjectKlass.KlassVersion[] klasses) {
         return fastLookupImpl(target, klasses);
     }
 
-    protected static int fastLookup(Klass target, Klass[] klasses) {
+    protected static int fastLookup(Klass target, ObjectKlass.KlassVersion[] klasses) {
         if (!CompilerDirectives.isPartialEvaluationConstant(klasses)) {
             return fastLookupBoundary(target, klasses);
         }
@@ -1268,11 +1238,11 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     }
 
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.FULL_EXPLODE_UNTIL_RETURN)
-    protected static int fastLookupImpl(Klass target, Klass[] klasses) {
-        assert isSorted(klasses, KLASS_ID_COMPARATOR);
+    protected static int fastLookupImpl(Klass target, ObjectKlass.KlassVersion[] klasses) {
+        assert isSorted(klasses, KLASS_VERSION_ID_COMPARATOR);
         if (klasses.length <= LINEAR_SEARCH_THRESHOLD) {
             for (int i = 0; i < klasses.length; i++) {
-                if (klasses[i] == target) {
+                if (klasses[i].getKlass() == target) {
                     return i;
                 }
             }
@@ -1281,7 +1251,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
             int hi = klasses.length - 1;
             while (lo <= hi) {
                 int mid = (lo + hi) >>> 1;
-                int cmp = KLASS_ID_COMPARATOR.compare(target, klasses[mid]);
+                int cmp = KLASS_ID_COMPARATOR.compare(target, klasses[mid].getKlass());
                 if (cmp < 0) {
                     hi = mid - 1;
                 } else if (cmp > 0) {
@@ -1359,7 +1329,9 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
      * Returns the access flags provided by the .class file, e.g. ignores inner class access flags.
      */
     @Override
-    public final int getModifiers() {
+    public int getModifiers() {
+        // Note: making this method non-final
+        // may cause heavy performance issues
         return modifiers;
     }
 
@@ -1455,11 +1427,6 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     public String getGenericTypeAsString() {
         // only ObjectKlass(es) can have a generic signature
         return "";
-    }
-
-    @Override
-    public Klass[] getImplementedInterfaces() {
-        return getInterfaces();
     }
 
     @Override
@@ -1562,6 +1529,16 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     @Override
     public String getSourceDebugExtension() {
         return null;
+    }
+
+    @Override
+    public final ModuleRef getModule() {
+        return module();
+    }
+
+    // visible to TypeCheckNode
+    public Assumption getRedefineAssumption() {
+        return AlwaysValidAssumption.INSTANCE;
     }
 
     // endregion jdwp-specific

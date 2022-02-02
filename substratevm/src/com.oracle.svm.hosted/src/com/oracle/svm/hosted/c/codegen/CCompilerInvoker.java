@@ -258,10 +258,10 @@ public abstract class CCompilerInvoker {
             Class<? extends Architecture> substrateTargetArch = ImageSingletons.lookup(SubstrateTargetDescription.class).arch.getClass();
             Class<? extends Architecture> guessed = guessArchitecture(compilerInfo.targetArch);
             if (guessed == null) {
-                UserError.abort("Native toolchain (%s) has no matching native-image target architecture.", compilerInfo.targetArch);
+                UserError.abort("Linux native toolchain (%s) has no matching native-image target architecture.", compilerInfo.targetArch);
             }
             if (guessed != substrateTargetArch) {
-                UserError.abort("Native toolchain (%s) implies native-image target architecture %s but configured native-image target architecture is %s.",
+                UserError.abort("Linux native toolchain (%s) implies native-image target architecture %s but configured native-image target architecture is %s.",
                                 compilerInfo.targetArch, guessed, substrateTargetArch);
             }
         }
@@ -302,12 +302,23 @@ public abstract class CCompilerInvoker {
 
         @Override
         protected void verify() {
-            if (guessArchitecture(compilerInfo.targetArch) != AMD64.class) {
-                UserError.abort("Native-image building on Darwin currently only supports target architecture: %s (%s unsupported)",
-                                AMD64.class.getSimpleName(), compilerInfo.targetArch);
+            Class<? extends Architecture> substrateTargetArch = ImageSingletons.lookup(SubstrateTargetDescription.class).arch.getClass();
+            Class<? extends Architecture> guessed = guessArchitecture(compilerInfo.targetArch);
+            if (guessed == null) {
+                UserError.abort("Darwin native toolchain (%s) has no matching native-image target architecture.", compilerInfo.targetArch);
+            }
+            if (guessed != substrateTargetArch) {
+                UserError.abort("Darwin native toolchain (%s) implies native-image target architecture %s but configured native-image target architecture is %s.",
+                                compilerInfo.targetArch, guessed, substrateTargetArch);
             }
         }
 
+        @Override
+        protected List<String> compileStrictOptions() {
+            List<String> strictOptions = new ArrayList<>(super.compileStrictOptions());
+            strictOptions.add("-Wno-tautological-compare");
+            return strictOptions;
+        }
     }
 
     protected InputStream getCompilerErrorStream(Process compilingProcess) {
@@ -421,6 +432,7 @@ public abstract class CCompilerInvoker {
             case "x64": /* Windows notation */
                 return AMD64.class;
             case "aarch64":
+            case "arm64": /* Darwin notation */
                 return AArch64.class;
             case "i686":
             case "80x86": /* Windows notation */

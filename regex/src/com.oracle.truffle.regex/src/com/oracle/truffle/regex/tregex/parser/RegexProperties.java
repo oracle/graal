@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,6 +61,8 @@ public class RegexProperties implements JsonConvertible {
     private static final int FLAG_LARGE_COUNTED_REPETITIONS = 1 << 10;
     private static final int FLAG_CHAR_CLASSES_CAN_BE_MATCHED_WITH_MASK = 1 << 11;
     private static final int FLAG_FIXED_CODEPOINT_WIDTH = 1 << 12;
+    private static final int FLAG_CAPTURE_GROUPS_IN_LOOK_AROUND_ASSERTIONS = 1 << 13;
+    private static final int FLAG_EMPTY_CAPTURE_GROUPS = 1 << 14;
 
     private int flags = FLAG_CHAR_CLASSES_CAN_BE_MATCHED_WITH_MASK | FLAG_FIXED_CODEPOINT_WIDTH;
     private int innerLiteralStart = -1;
@@ -92,6 +94,14 @@ public class RegexProperties implements JsonConvertible {
 
     public void setCaptureGroups() {
         setFlag(FLAG_CAPTURE_GROUPS);
+    }
+
+    public boolean hasEmptyCaptureGroups() {
+        return getFlag(FLAG_EMPTY_CAPTURE_GROUPS);
+    }
+
+    public void setEmptyCaptureGroups() {
+        setFlag(FLAG_EMPTY_CAPTURE_GROUPS);
     }
 
     public boolean hasCharClasses() {
@@ -207,6 +217,14 @@ public class RegexProperties implements JsonConvertible {
         return innerLiteralEnd;
     }
 
+    public boolean hasCaptureGroupsInLookAroundAssertions() {
+        return getFlag(FLAG_CAPTURE_GROUPS_IN_LOOK_AROUND_ASSERTIONS);
+    }
+
+    public void setCaptureGroupsInLookAroundAssertions() {
+        setFlag(FLAG_CAPTURE_GROUPS_IN_LOOK_AROUND_ASSERTIONS);
+    }
+
     @TruffleBoundary
     @Override
     public JsonValue toJson() {
@@ -218,6 +236,7 @@ public class RegexProperties implements JsonConvertible {
                         Json.prop("lookBehindAssertions", hasLookBehindAssertions()),
                         Json.prop("nonLiteralLookBehindAssertions", hasNonLiteralLookBehindAssertions()),
                         Json.prop("negativeLookBehindAssertions", hasNegativeLookBehindAssertions()),
-                        Json.prop("largeCountedRepetitions", hasLargeCountedRepetitions()));
+                        Json.prop("largeCountedRepetitions", hasLargeCountedRepetitions()),
+                        Json.prop("captureGroupsInLookAroundAssertions", hasCaptureGroupsInLookAroundAssertions()));
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.reflect.hosted;
 
-//Checkstyle: allow reflection
-
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Constructor;
@@ -33,6 +31,7 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -40,8 +39,10 @@ import java.lang.reflect.TypeVariable;
 import java.lang.reflect.WildcardType;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
@@ -55,6 +56,7 @@ import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.util.GuardedAnnotationAccess;
 
+import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.SubstrateOptions;
@@ -62,15 +64,22 @@ import com.oracle.svm.core.hub.AnnotationTypeSupport;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.RecordSupport;
+import com.oracle.svm.core.jdk.SealedClassSupport;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.FeatureAccessImpl;
+import com.oracle.svm.hosted.annotation.AnnotationSubstitutionType;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
+import sun.reflect.annotation.AnnotationType;
 import sun.reflect.annotation.TypeAnnotation;
 import sun.reflect.annotation.TypeAnnotationParser;
 
@@ -89,15 +98,24 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private final Set<Executable> reflectionMethods = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final Set<Field> reflectionFields = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private Set<Executable> queriedMethods;
+    private Set<AnalysisMethod> hidingMethods;
 
     private final Set<Class<?>> processedClasses = new HashSet<>();
 
+    /* Keep track of annotation interface members to include in proxy classes */
+    private final Map<Class<?>, Set<Member>> annotationMembers = new HashMap<>();
+
     private final ReflectionDataAccessors accessors;
+
+    private static Field dynamicHubReflectionDataField;
 
     public ReflectionDataBuilder(FeatureAccessImpl access) {
         arrayReflectionData = getArrayReflectionData();
         accessors = new ReflectionDataAccessors(access);
-        queriedMethods = SubstrateOptions.ConfigureReflectionMetadata.getValue() ? ConcurrentHashMap.newKeySet() : null;
+        if (SubstrateOptions.ConfigureReflectionMetadata.getValue()) {
+            queriedMethods = ConcurrentHashMap.newKeySet();
+            hidingMethods = ConcurrentHashMap.newKeySet();
+        }
     }
 
     private static DynamicHub.ReflectionData getArrayReflectionData() {
@@ -122,6 +140,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                         EMPTY_FIELDS,
                         EMPTY_METHODS,
                         EMPTY_CLASSES,
+                        null,
                         EMPTY_CLASSES,
                         null,
                         null);
@@ -180,6 +199,10 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
     }
 
+    protected void duringSetup(DuringSetupAccessImpl access) {
+        dynamicHubReflectionDataField = access.findField(DynamicHub.class, "rd");
+    }
+
     protected void duringAnalysis(DuringAnalysisAccess a) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
         processReachableTypes(access);
@@ -225,70 +248,141 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                     processedClasses.add(originalClass);
                     access.requireAnalysisIteration();
                 }
+                if (type.getWrappedWithoutResolve() instanceof AnnotationSubstitutionType) {
+                    /*
+                     * Proxy classes for annotations present the annotation default methods and
+                     * fields as their own.
+                     */
+                    ResolvedJavaType annotationType = ((AnnotationSubstitutionType) type.getWrappedWithoutResolve()).getAnnotationInterfaceType();
+                    Class<?> annotationClass = access.getUniverse().lookup(annotationType).getJavaClass();
+                    if (!annotationMembers.containsKey(annotationClass)) {
+                        processClass(access, annotationClass);
+                    }
+                    for (Member member : annotationMembers.get(annotationClass)) {
+                        try {
+                            if (member instanceof Field) {
+                                Field field = (Field) member;
+                                register(ConfigurationCondition.alwaysTrue(), false, originalClass.getDeclaredField(field.getName()));
+                            } else if (member instanceof Method) {
+                                Method method = (Method) member;
+                                register(ConfigurationCondition.alwaysTrue(), false, originalClass.getDeclaredMethod(method.getName(), method.getParameterTypes()));
+                            }
+                        } catch (NoSuchFieldException | NoSuchMethodException e) {
+                            /*
+                             * The annotation member is not present in the proxy class so we don't
+                             * add it.
+                             */
+                        }
+                    }
+                }
             }
         }
     }
 
+    /**
+     * See {@link MethodMetadataEncoderImpl} for details.
+     */
     protected void processMethodMetadata(DuringAnalysisAccessImpl access) {
         if (SubstrateOptions.ConfigureReflectionMetadata.getValue()) {
-            /* Trigger creation of the AnalysisMethod objects needed to store metadata */
             Set<Executable> newQueriedMethods = new HashSet<>();
-            for (Executable method : queriedMethods) {
-                if (!SubstitutionReflectivityFilter.shouldExclude(method, access.getMetaAccess(), access.getUniverse())) {
-                    access.getMetaAccess().lookupJavaMethod(method);
-                    registerMetadataForReflection(access, method);
-                    newQueriedMethods.add(method);
+            for (Executable reflectMethod : queriedMethods) {
+                if (!SubstitutionReflectivityFilter.shouldExclude(reflectMethod, access.getMetaAccess(), access.getUniverse())) {
+                    AnalysisMethod analysisMethod = access.getMetaAccess().lookupJavaMethod(reflectMethod);
+                    registerTypesForQueriedMethod(access, analysisMethod, reflectMethod);
+                    registerHidingSubTypeMethods(analysisMethod, analysisMethod.getDeclaringClass());
+                    newQueriedMethods.add(reflectMethod);
                 }
             }
             queriedMethods = newQueriedMethods;
-        } else {
-            for (AnalysisMethod method : access.getUniverse().getMethods()) {
-                /*
-                 * Methods generated by Graal and class initialization methods have no reflection
-                 * method.
-                 */
-                if (method.isReachable() && method.hasJavaMethod()) {
-                    registerMetadataForReflection(access, method.getJavaMethod());
+            for (Executable method : reflectionMethods) {
+                if (!SubstitutionReflectivityFilter.shouldExclude(method, access.getMetaAccess(), access.getUniverse())) {
+                    AnalysisMethod analysisMethod = access.getMetaAccess().lookupJavaMethod(method);
+                    registerHidingSubTypeMethods(analysisMethod, analysisMethod.getDeclaringClass());
                 }
+            }
+        }
+        if (SubstrateOptions.IncludeMethodData.getValue()) {
+            for (AnalysisMethod method : access.getUniverse().getMethods()) {
+                if (method.isReachable() && !method.isIntrinsicMethod()) {
+                    registerTypesForReachableMethod(access, method);
+                }
+            }
+        }
+    }
+
+    private final Map<AnalysisMethod, Set<AnalysisType>> seenHidingMethods = new HashMap<>();
+
+    private void registerHidingSubTypeMethods(AnalysisMethod method, AnalysisType type) {
+        if (!type.equals(method.getDeclaringClass()) && type.isReachable()) {
+            if (!seenHidingMethods.containsKey(method) || !seenHidingMethods.get(method).contains(type)) {
+                seenHidingMethods.computeIfAbsent(method, m -> new HashSet<>()).add(type);
+                try {
+                    /*
+                     * Using findMethod here which uses getDeclaredMethods internally, instead of
+                     * resolveConcreteMethods which gives different results in at least two
+                     * scenarios:
+                     *
+                     * 1) When resolving a static method, resolveConcreteMethods does not return a
+                     * subclass method with the same signature, since they are actually fully
+                     * distinct methods. However these methods need to be included in the hiding
+                     * list because them showing up in a reflection query would be wrong.
+                     *
+                     * 2) When resolving an interface method from an abstract class,
+                     * resolveConcreteMethods returns an undeclared method with the abstract
+                     * subclass as declaring class, which is not the reflection API behavior.
+                     */
+                    AnalysisMethod subClassMethod = type.findMethod(method.getName(), method.getSignature());
+                    if (subClassMethod != null) {
+                        hidingMethods.add(subClassMethod);
+                    }
+                } catch (UnsupportedFeatureException | LinkageError e) {
+                    /*
+                     * A method that is not supposed to end up in the image is considered as being
+                     * absent for reflection purposes.
+                     */
+                }
+            }
+        }
+        for (AnalysisType subType : type.getSubTypes()) {
+            if (!subType.equals(type)) {
+                registerHidingSubTypeMethods(method, subType);
             }
         }
     }
 
     private static final Method parseAllTypeAnnotations = ReflectionUtil.lookupMethod(TypeAnnotationParser.class, "parseAllTypeAnnotations", AnnotatedElement.class);
 
-    private void registerMetadataForReflection(DuringAnalysisAccessImpl access, Executable reflectMethod) {
-        /*
-         * Reflection signature parsing will try to instantiate classes via Class.forName().
-         */
-        makeTypeReachable(access, reflectMethod.getDeclaringClass(), false);
+    private static void registerTypesForQueriedMethod(DuringAnalysisAccessImpl access, AnalysisMethod analysisMethod, Executable reflectMethod) {
+        makeAnalysisTypeReachable(access, analysisMethod.getDeclaringClass());
+
         for (TypeVariable<?> type : reflectMethod.getTypeParameters()) {
-            makeTypeReachable(access, type, true);
+            makeTypeReachable(access, type);
         }
-        for (Type paramType : reflectMethod.getGenericParameterTypes()) {
-            makeTypeReachable(access, paramType, true);
+        for (Type paramType : analysisMethod.getGenericParameterTypes()) {
+            makeTypeReachable(access, paramType);
         }
-        if (reflectMethod instanceof Method) {
-            makeTypeReachable(access, ((Method) reflectMethod).getGenericReturnType(), true);
+        if (!analysisMethod.isConstructor()) {
+            makeTypeReachable(access, ((Method) reflectMethod).getGenericReturnType());
         }
         for (Type exceptionType : reflectMethod.getGenericExceptionTypes()) {
-            makeTypeReachable(access, exceptionType, true);
+            makeTypeReachable(access, exceptionType);
         }
 
         /*
-         * Enable runtime parsing of annotations
+         * Enable runtime instantiation of annotations
          */
-        for (Annotation annotation : GuardedAnnotationAccess.getDeclaredAnnotations(reflectMethod)) {
-            makeTypeReachable(access, annotation.annotationType(), false);
+        for (Annotation annotation : GuardedAnnotationAccess.getDeclaredAnnotations(analysisMethod)) {
+            registerTypesForAnnotationValue(access, annotation.annotationType(), annotation);
         }
         for (Annotation[] parameterAnnotations : reflectMethod.getParameterAnnotations()) {
             for (Annotation parameterAnnotation : parameterAnnotations) {
-                makeTypeReachable(access, parameterAnnotation.annotationType(), false);
+                registerTypesForAnnotationValue(access, parameterAnnotation.annotationType(), parameterAnnotation);
             }
         }
         try {
             for (TypeAnnotation typeAnnotation : (TypeAnnotation[]) parseAllTypeAnnotations.invoke(null, reflectMethod)) {
                 // Checkstyle: allow direct annotation access
-                makeTypeReachable(access, typeAnnotation.getAnnotation().annotationType(), false);
+                registerTypesForAnnotationValue(access, typeAnnotation.getAnnotation().annotationType(), typeAnnotation.getAnnotation());
                 // Checkstyle: disallow direct annotation access
             }
         } catch (IllegalAccessException | InvocationTargetException e) {
@@ -296,56 +390,98 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
     }
 
+    private static void registerTypesForReachableMethod(DuringAnalysisAccessImpl access, AnalysisMethod analysisMethod) {
+        makeAnalysisTypeReachable(access, analysisMethod.getDeclaringClass());
+        for (JavaType paramType : analysisMethod.toParameterTypes()) {
+            makeAnalysisTypeReachable(access, (AnalysisType) paramType);
+        }
+    }
+
     private static final Set<Type> seenTypes = new HashSet<>();
 
     @SuppressWarnings("unchecked")
-    private void makeTypeReachable(DuringAnalysisAccessImpl access, Type type, boolean needsClassForName) {
+    private static void makeTypeReachable(DuringAnalysisAccessImpl access, Type type) {
         if (type == null || seenTypes.contains(type)) {
             return;
         }
         seenTypes.add(type);
-        if (type instanceof Class<?>) {
+        if (type instanceof Class<?> && !SubstitutionReflectivityFilter.shouldExclude((Class<?>) type, access.getMetaAccess(), access.getUniverse())) {
             Class<?> clazz = (Class<?>) type;
-            if (access.getMetaAccess().lookupJavaType(clazz).registerAsReachable()) {
+            makeAnalysisTypeReachable(access, access.getMetaAccess().lookupJavaType(clazz));
+
+            /*
+             * Reflection signature parsing will try to instantiate classes via Class.forName().
+             */
+            if (ClassForNameSupport.forNameOrNull(clazz.getName(), null) == null) {
                 access.requireAnalysisIteration();
             }
-
-            if (needsClassForName) {
-                if (ClassForNameSupport.forNameOrNull(clazz.getName(), null) == null) {
-                    access.requireAnalysisIteration();
-                }
-                ClassForNameSupport.registerClass(clazz);
-            }
-
-            if (clazz.isAnnotation()) {
-                /*
-                 * Parsing annotation data in reflection classes requires being able to instantiate
-                 * all annotation types at runtime.
-                 */
-                ImageSingletons.lookup(AnnotationTypeSupport.class).createInstance((Class<? extends Annotation>) clazz);
-                ImageSingletons.lookup(DynamicProxyRegistry.class).addProxyClass(clazz);
-            }
+            ClassForNameSupport.registerClass(clazz);
         } else if (type instanceof TypeVariable<?>) {
             for (Type bound : ((TypeVariable<?>) type).getBounds()) {
-                makeTypeReachable(access, bound, needsClassForName);
+                makeTypeReachable(access, bound);
             }
         } else if (type instanceof GenericArrayType) {
-            makeTypeReachable(access, ((GenericArrayType) type).getGenericComponentType(), needsClassForName);
+            makeTypeReachable(access, ((GenericArrayType) type).getGenericComponentType());
         } else if (type instanceof ParameterizedType) {
             ParameterizedType parameterizedType = (ParameterizedType) type;
             for (Type actualType : parameterizedType.getActualTypeArguments()) {
-                makeTypeReachable(access, actualType, needsClassForName);
+                makeTypeReachable(access, actualType);
             }
-            makeTypeReachable(access, parameterizedType.getRawType(), needsClassForName);
-            makeTypeReachable(access, parameterizedType.getOwnerType(), needsClassForName);
+            makeTypeReachable(access, parameterizedType.getRawType());
+            makeTypeReachable(access, parameterizedType.getOwnerType());
         } else if (type instanceof WildcardType) {
             WildcardType wildcardType = (WildcardType) type;
             for (Type lowerBound : wildcardType.getLowerBounds()) {
-                makeTypeReachable(access, lowerBound, needsClassForName);
+                makeTypeReachable(access, lowerBound);
             }
             for (Type upperBound : wildcardType.getUpperBounds()) {
-                makeTypeReachable(access, upperBound, needsClassForName);
+                makeTypeReachable(access, upperBound);
             }
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void registerTypesForAnnotationValue(DuringAnalysisAccessImpl access, Class<?> type, Object value) {
+        if (type.isAnnotation()) {
+            makeAnalysisTypeReachable(access, access.getMetaAccess().lookupJavaType(type));
+            /*
+             * Parsing annotation data in reflection classes requires being able to instantiate all
+             * annotation types at runtime.
+             */
+            ImageSingletons.lookup(AnnotationTypeSupport.class).createInstance((Class<? extends Annotation>) type);
+            ImageSingletons.lookup(DynamicProxyRegistry.class).addProxyClass(type);
+
+            Annotation annotation = (Annotation) value;
+            AnnotationType annotationType = AnnotationType.getInstance((Class<? extends Annotation>) type);
+            for (Map.Entry<String, Class<?>> entry : annotationType.memberTypes().entrySet()) {
+                String valueName = entry.getKey();
+                Class<?> valueType = entry.getValue();
+                try {
+                    Method getAnnotationValue = annotationType.members().get(valueName);
+                    getAnnotationValue.setAccessible(true);
+                    Object annotationValue = getAnnotationValue.invoke(annotation);
+                    registerTypesForAnnotationValue(access, valueType, annotationValue);
+                } catch (IllegalAccessException | InvocationTargetException e) {
+                    throw GraalError.shouldNotReachHere();
+                }
+            }
+        } else if (type.isArray()) {
+            Class<?> componentType = type.getComponentType();
+            if (!componentType.isPrimitive()) {
+                for (Object val : (Object[]) value) {
+                    registerTypesForAnnotationValue(access, componentType, val);
+                }
+            }
+        } else if (type == Class.class) {
+            makeAnalysisTypeReachable(access, access.getMetaAccess().lookupJavaType((Class<?>) value));
+        } else if (type.isEnum()) {
+            makeAnalysisTypeReachable(access, access.getMetaAccess().lookupJavaType(type));
+        }
+    }
+
+    private static void makeAnalysisTypeReachable(DuringAnalysisAccessImpl access, AnalysisType type) {
+        if (type.registerAsReachable()) {
+            access.requireAnalysisIteration();
         }
     }
 
@@ -399,6 +535,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         query(clazz::getDeclaredConstructors, errors);
         query(clazz::getConstructors, errors);
         Class<?>[] declaredClasses = query(clazz::getDeclaredClasses, errors);
+        Class<?>[] permittedClasses = SealedClassSupport.singleton().getPermittedSubclasses(clazz);
         Class<?>[] classes = query(clazz::getClasses, errors);
         reportLinkingErrors(clazz, errors);
 
@@ -421,11 +558,26 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                             filterFields(accessors.getDeclaredPublicFields(originalReflectionData), reflectionFields, access),
                             filterMethods(accessors.getDeclaredPublicMethods(originalReflectionData), reflectionMethods, access),
                             filterClasses(declaredClasses, reflectionClasses, access),
+                            filterClasses(permittedClasses, reflectionClasses, access, true),
+                            /* null is different from Class<?>[0] here. */
                             filterClasses(classes, reflectionClasses, access),
                             enclosingMethodOrConstructor(clazz),
                             buildRecordComponents(clazz, access));
         }
         hub.setReflectionData(reflectionData);
+        access.rescanField(hub, dynamicHubReflectionDataField);
+
+        if (type.isAnnotation()) {
+            /*
+             * Cache the annotation members to allow proxy classes seen later to include those in
+             * their own reflection data
+             */
+            Set<Member> members = new HashSet<>();
+            Collections.addAll(members, filterFields(accessors.getDeclaredFields(originalReflectionData), reflectionFields, access));
+            Collections.addAll(members, filterMethods(accessors.getDeclaredMethods(originalReflectionData), reflectionMethods, access));
+            annotationMembers.put(clazz, members);
+            access.requireAnalysisIteration(); /* Need the proxy class to see the added members */
+        }
     }
 
     private static <T> T query(Callable<T> callable, List<Throwable> errors) {
@@ -472,9 +624,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
         String messages = errors.stream().map(e -> e.getClass().getTypeName() + ": " + e.getMessage())
                         .distinct().collect(Collectors.joining(", "));
-        // Checkstyle: stop
         System.out.println("Warning: Could not register complete reflection metadata for " + clazz.getTypeName() + ". Reason(s): " + messages);
-        // Checkstyle: resume
     }
 
     protected void afterAnalysis() {
@@ -482,6 +632,11 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         if (!modifiedClasses.isEmpty()) {
             throw UserError.abort("Registration of classes, methods, and fields for reflective access during analysis must set DuringAnalysisAccess.requireAnalysisIteration().");
         }
+    }
+
+    @Override
+    public boolean requiresProcessing() {
+        return !modifiedClasses.isEmpty();
     }
 
     private static Constructor<?> nullaryConstructor(Object constructors, Set<?> reflectionMethods, DuringAnalysisAccessImpl access) {
@@ -583,8 +738,16 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private static Class<?>[] filterClasses(Object classes, Set<Class<?>> filter, DuringAnalysisAccessImpl access) {
+        return filterClasses(classes, filter, access, false);
+    }
+
+    private static Class<?>[] filterClasses(Object classes, Set<Class<?>> filter, DuringAnalysisAccessImpl access, boolean keepNull) {
         if (classes == null) {
-            return EMPTY_CLASSES;
+            if (keepNull) {
+                return null;
+            } else {
+                return EMPTY_CLASSES;
+            }
         }
         List<Class<?>> result = new ArrayList<>();
         for (Class<?> clazz : (Class<?>[]) classes) {
@@ -597,7 +760,27 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     @Override
     public Set<Executable> getQueriedOnlyMethods() {
-        return queriedMethods;
+        return queriedMethods != null ? Collections.unmodifiableSet(queriedMethods) : Collections.emptySet();
+    }
+
+    @Override
+    public Set<ResolvedJavaMethod> getHidingMethods() {
+        return hidingMethods != null ? Collections.unmodifiableSet(hidingMethods) : Collections.emptySet();
+    }
+
+    @Override
+    public int getReflectionClassesCount() {
+        return reflectionClasses.size();
+    }
+
+    @Override
+    public int getReflectionMethodsCount() {
+        return reflectionMethods.size();
+    }
+
+    @Override
+    public int getReflectionFieldsCount() {
+        return reflectionFields.size();
     }
 
     static final class ReflectionDataAccessors {

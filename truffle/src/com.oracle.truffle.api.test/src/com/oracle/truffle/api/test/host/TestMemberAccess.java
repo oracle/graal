@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.test.host;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -56,6 +57,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.interop.InteropException;
@@ -66,9 +68,15 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.test.host.AsCollectionsTest.ListBasedTO;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class TestMemberAccess extends ProxyLanguageEnvTest {
     private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     @Test
     public void testFields() throws IllegalAccessException, InteropException {
@@ -353,11 +361,23 @@ public class TestMemberAccess extends ProxyLanguageEnvTest {
     }
 
     @Test
-    public void testNewArray() throws InteropException {
+    public void testArray() throws InteropException {
         TruffleObject arrayClass = asTruffleHostSymbol(Array.class);
         TruffleObject newInstanceMethod = (TruffleObject) INTEROP.readMember(arrayClass, "newInstance");
-        TruffleObject stringArray = (TruffleObject) INTEROP.execute(newInstanceMethod, asTruffleHostSymbol(String.class), 2);
+        int arrayLength = 2;
+        TruffleObject stringArray = (TruffleObject) INTEROP.execute(newInstanceMethod, asTruffleHostSymbol(String.class), arrayLength);
         assertTrue(INTEROP.hasArrayElements(stringArray));
+        INTEROP.writeArrayElement(stringArray, 0, "foo");
+        INTEROP.writeArrayElement(stringArray, 1, "bar");
+        assertEquals(INTEROP.readMember(stringArray, "length"), arrayLength);
+        TruffleObject stringArrayCopy1 = (TruffleObject) INTEROP.invokeMember(stringArray, "clone");
+        TruffleObject stringArrayCopy2 = (TruffleObject) INTEROP.execute(INTEROP.readMember(stringArray, "clone"));
+        for (int i = 0; i < arrayLength; i++) {
+            assertEquals(INTEROP.readArrayElement(stringArray, i), INTEROP.readArrayElement(stringArrayCopy1, i));
+            assertEquals(INTEROP.readArrayElement(stringArray, i), INTEROP.readArrayElement(stringArrayCopy2, i));
+        }
+        INTEROP.writeArrayElement(stringArrayCopy1, 1, "waz"); // Mutate copy
+        assertNotEquals(INTEROP.readArrayElement(stringArray, 1), INTEROP.readArrayElement(stringArrayCopy1, 1));
     }
 
     @Test

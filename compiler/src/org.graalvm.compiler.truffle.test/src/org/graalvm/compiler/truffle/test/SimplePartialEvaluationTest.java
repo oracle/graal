@@ -30,7 +30,6 @@ import org.graalvm.compiler.core.common.PermanentBailoutException;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.replacements.PEGraphDecoder;
-import org.graalvm.compiler.truffle.runtime.FrameWithoutBoxing;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.AddTestNode;
@@ -65,6 +64,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.impl.FrameWithoutBoxing;
 import com.oracle.truffle.api.nodes.RootNode;
 
 import jdk.vm.ci.code.BailoutException;
@@ -225,8 +225,8 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
         FrameDescriptor fd = new FrameDescriptor();
         final int loopIterations = 2;
         UnrollingTestNode t = new UnrollingTestNode(loopIterations);
-        AbstractTestNode result = new AddTestNode(t.new FullUnrollUntilReturnNestedLoopsContinueOuter01(), new ConstantTestNode(37));
-        compileHelper("Test", new RootTestNode(fd, "nestedLoopExplosion", result), new Object[]{});
+        AbstractTestNode result = new AddTestNode(t.new FullUnrollUntilReturnNestedLoopsContinueOuter01(), new ConstantTestNode(37), true);
+        compileHelper("Test", new RootTestNode(fd, "nestedLoopExplosion", result, true), new Object[]{});
         StructuredGraph peResult = lastCompiledGraph;
 
         Assert.assertEquals(UnrollingTestNode.INSIDE_LOOP_MARKER, 4, UnrollingTestNode.countBlackholeNodes(peResult, UnrollingTestNode.INSIDE_LOOP_MARKER));
@@ -238,8 +238,8 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
         FrameDescriptor fd = new FrameDescriptor();
         final int loopIterations = 2;
         UnrollingTestNode t = new UnrollingTestNode(loopIterations);
-        AbstractTestNode result = new AddTestNode(t.new FullUnrollUntilReturnNestedLoopsContinueOuter02(), new ConstantTestNode(37));
-        compileHelper("Test", new RootTestNode(fd, "nestedLoopExplosion", result), new Object[]{});
+        AbstractTestNode result = new AddTestNode(t.new FullUnrollUntilReturnNestedLoopsContinueOuter02(), new ConstantTestNode(37), true);
+        compileHelper("Test", new RootTestNode(fd, "nestedLoopExplosion", result, true), new Object[]{});
         StructuredGraph peResult = lastCompiledGraph;
 
         Assert.assertEquals(UnrollingTestNode.INSIDE_LOOP_MARKER, 8, UnrollingTestNode.countBlackholeNodes(peResult, UnrollingTestNode.INSIDE_LOOP_MARKER));
@@ -251,8 +251,8 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
         FrameDescriptor fd = new FrameDescriptor();
         final int loopIterations = 2;
         UnrollingTestNode t = new UnrollingTestNode(loopIterations);
-        AbstractTestNode result = new AddTestNode(t.new FullUnrollUntilReturnNestedLoopsContinueOuter03(), new ConstantTestNode(37));
-        compileHelper("Test", new RootTestNode(fd, "nestedLoopExplosion", result), new Object[]{});
+        AbstractTestNode result = new AddTestNode(t.new FullUnrollUntilReturnNestedLoopsContinueOuter03(), new ConstantTestNode(37), true);
+        compileHelper("Test", new RootTestNode(fd, "nestedLoopExplosion", result, true), new Object[]{});
         StructuredGraph peResult = lastCompiledGraph;
 
         Assert.assertEquals(UnrollingTestNode.INSIDE_LOOP_MARKER, 4, UnrollingTestNode.countBlackholeNodes(peResult, UnrollingTestNode.INSIDE_LOOP_MARKER));
@@ -264,8 +264,8 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
         FrameDescriptor fd = new FrameDescriptor();
         final int loopIterations = 2;
         UnrollingTestNode t = new UnrollingTestNode(loopIterations);
-        AbstractTestNode result = new AddTestNode(t.new FullUnrollUntilReturnNestedLoopsContinueOuter04(), new ConstantTestNode(37));
-        compileHelper("Test", new RootTestNode(fd, "nestedLoopExplosion", result), new Object[]{});
+        AbstractTestNode result = new AddTestNode(t.new FullUnrollUntilReturnNestedLoopsContinueOuter04(), new ConstantTestNode(37), true);
+        compileHelper("Test", new RootTestNode(fd, "nestedLoopExplosion", result, true), new Object[]{});
         StructuredGraph peResult = lastCompiledGraph;
 
         Assert.assertEquals(UnrollingTestNode.INSIDE_LOOP_MARKER, 4, UnrollingTestNode.countBlackholeNodes(peResult, UnrollingTestNode.INSIDE_LOOP_MARKER));
@@ -277,8 +277,8 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
         FrameDescriptor fd = new FrameDescriptor();
         final int loopIterations = 2;
         UnrollingTestNode t = new UnrollingTestNode(loopIterations);
-        AbstractTestNode result = new AddTestNode(t.new FullUnrollUntilReturnNestedLoopsContinueOuter05(), new ConstantTestNode(37));
-        compileHelper("Test", new RootTestNode(fd, "nestedLoopExplosion", result), new Object[]{});
+        AbstractTestNode result = new AddTestNode(t.new FullUnrollUntilReturnNestedLoopsContinueOuter05(), new ConstantTestNode(37), true);
+        compileHelper("Test", new RootTestNode(fd, "nestedLoopExplosion", result, true), new Object[]{});
         StructuredGraph peResult = lastCompiledGraph;
 
         Assert.assertEquals(UnrollingTestNode.INSIDE_LOOP_MARKER, 6, UnrollingTestNode.countBlackholeNodes(peResult, UnrollingTestNode.INSIDE_LOOP_MARKER));
@@ -458,7 +458,7 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
         final int loopIterations = 5;
         UnrollingTestNode t = new UnrollingTestNode(loopIterations);
         AbstractTestNode result = new AddTestNode(t.new Unroll01(), new ConstantTestNode(37));
-        compileHelper("Test", new RootTestNode(fd, "nestedLoopExplosion", result), new Object[]{});
+        compileHelper("Test", new RootTestNode(fd, "nestedLoopExplosion", result, true), new Object[]{});
         StructuredGraph peResult = lastCompiledGraph;
         //@formatter:off
         /*
@@ -499,7 +499,7 @@ public class SimplePartialEvaluationTest extends PartialEvaluationTest {
         final int loopIterations = 5;
         UnrollingTestNode t = new UnrollingTestNode(loopIterations);
         AbstractTestNode result = new AddTestNode(t.new Unroll02(), new ConstantTestNode(37));
-        compileHelper("Test", new RootTestNode(fd, "nestedLoopExplosion", result), new Object[]{});
+        compileHelper("Test", new RootTestNode(fd, "nestedLoopExplosion", result, true), new Object[]{});
         StructuredGraph peResult = lastCompiledGraph;
 
         //@formatter:off

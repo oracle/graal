@@ -29,6 +29,11 @@
  */
 package com.oracle.truffle.llvm.runtime.nodes.api;
 
+import java.lang.reflect.Field;
+import java.util.Arrays;
+import java.util.WeakHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -46,12 +51,6 @@ import com.oracle.truffle.llvm.runtime.datalayout.DataLayout;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceLocation;
 import com.oracle.truffle.llvm.runtime.memory.LLVMHandleMemoryBase;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
-
-import java.io.PrintStream;
-import java.lang.reflect.Field;
-import java.util.Arrays;
-import java.util.WeakHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 @TypeSystemReference(LLVMTypes.class)
 @GenerateAOT
@@ -78,14 +77,9 @@ public abstract class LLVMNode extends Node {
 
     public static final int ADDRESS_SIZE_IN_BYTES = 8;
 
-    protected final PrintStream nativeCallStatisticsStream() {
+    protected static final boolean nativeCallStatisticsEnabled() {
         CompilerAsserts.neverPartOfCompilation();
-        return getContext().nativeCallStatsStream();
-    }
-
-    protected final boolean nativeCallStatisticsEnabled() {
-        CompilerAsserts.neverPartOfCompilation();
-        return nativeCallStatisticsStream() != null;
+        return LLVMContext.logNativeCallStatsEnabled();
     }
 
     protected static boolean isFunctionDescriptor(Object object) {
@@ -164,7 +158,7 @@ public abstract class LLVMNode extends Node {
                     Object value = declaredField.get(node);
                     str.append(" ").append(field).append("=").append(formatFieldValue(value));
                     break;
-                } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException e) {
+                } catch (NoSuchFieldException | IllegalAccessException | RuntimeException e) {
                     // skip
                 }
                 c = c.getSuperclass();
@@ -182,7 +176,25 @@ public abstract class LLVMNode extends Node {
     private static Object formatFieldValue(Object value) {
         if (value != null) {
             if (value.getClass().isArray()) {
-                return Arrays.asList((Object[]) value).toString();
+                if (value instanceof int[]) {
+                    return Arrays.toString((int[]) value);
+                } else if (value instanceof long[]) {
+                    return Arrays.toString((long[]) value);
+                } else if (value instanceof byte[]) {
+                    return Arrays.toString((byte[]) value);
+                } else if (value instanceof boolean[]) {
+                    return Arrays.toString((boolean[]) value);
+                } else if (value instanceof short[]) {
+                    return Arrays.toString((short[]) value);
+                } else if (value instanceof char[]) {
+                    return Arrays.toString((char[]) value);
+                } else if (value instanceof float[]) {
+                    return Arrays.toString((float[]) value);
+                } else if (value instanceof double[]) {
+                    return Arrays.toString((double[]) value);
+                } else {
+                    return Arrays.asList((Object[]) value).toString();
+                }
             }
         }
         return String.valueOf(value);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,6 +21,9 @@
  * questions.
  */
 package com.oracle.truffle.espresso.runtime;
+
+import java.util.Arrays;
+import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.espresso.descriptors.Symbol;
@@ -50,5 +53,21 @@ public class Attribute {
     public Attribute(Symbol<Name> name, final byte[] data) {
         this.name = name;
         this.data = data;
+    }
+
+    /**
+     * Used as a dedicated and specialized replacement for equals().
+     *
+     * @param other the object to compare 'this' to
+     * @return true if objects are equal
+     */
+    public boolean sameAs(Attribute other) {
+        if (this == other) {
+            return true;
+        }
+        if (other == null || getClass() != other.getClass()) {
+            return false;
+        }
+        return Objects.equals(name, other.name) && Arrays.equals(data, other.data);
     }
 }

@@ -44,7 +44,6 @@ import org.graalvm.collections.Pair;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunction;
@@ -62,7 +61,8 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.results.AbstractAnalysisResultsBuilder;
-import com.oracle.svm.core.InvalidVTableEntryHandler;
+import com.oracle.svm.core.FunctionPointerHolder;
+import com.oracle.svm.core.InvalidMethodPointerHandler;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
@@ -70,7 +70,6 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.ExcludeFromReferenceMap;
 import com.oracle.svm.core.c.BoxedRelocatedPointer;
 import com.oracle.svm.core.c.function.CFunctionOptions;
-import com.oracle.svm.core.classinitialization.ClassInitializationInfo.ClassInitializerFunctionPointerHolder;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.deopt.DeoptimizedFrame;
@@ -83,6 +82,9 @@ import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
+import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.HostedConfiguration;
@@ -226,8 +228,7 @@ public class UniverseBuilder {
         } else if (aType.isInstanceClass()) {
             assert !aType.isInterface() && !aType.isArray();
             HostedInstanceClass superClass = (HostedInstanceClass) makeType(aType.getSuperclass());
-            boolean isCloneable = aMetaAccess.lookupJavaType(Cloneable.class).isAssignableFrom(aType);
-            hType = new HostedInstanceClass(hUniverse, aType, kind, storageKind, superClass, sInterfaces, isCloneable);
+            hType = new HostedInstanceClass(hUniverse, aType, kind, storageKind, superClass, sInterfaces);
 
             if (superClass == null) {
                 hUniverse.kindToType.put(JavaKind.Object, hType);
@@ -367,22 +368,9 @@ public class UniverseBuilder {
                     DynamicHub.class,
                     CEntryPointLiteral.class,
                     BoxedRelocatedPointer.class,
-                    ClassInitializerFunctionPointerHolder.class,
+                    FunctionPointerHolder.class,
+                    SubstrateMethodAccessor.class, SubstrateConstructorAccessor.class,
                     FillerObject.class));
-
-    static {
-        try {
-            if (JavaVersionUtil.JAVA_SPEC >= 11) {
-                IMMUTABLE_TYPES.add(Class.forName("com.oracle.svm.core.jdk11.reflect.SubstrateMethodAccessorJDK11"));
-                IMMUTABLE_TYPES.add(Class.forName("com.oracle.svm.core.jdk11.reflect.SubstrateConstructorAccessorJDK11"));
-            } else {
-                IMMUTABLE_TYPES.add(Class.forName("com.oracle.svm.core.jdk8.reflect.SubstrateMethodAccessorJDK8"));
-                IMMUTABLE_TYPES.add(Class.forName("com.oracle.svm.core.jdk8.reflect.SubstrateConstructorAccessorJDK8"));
-            }
-        } catch (ClassNotFoundException ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
-    }
 
     private void collectMonitorFieldInfo(BigBang bb) {
         if (!SubstrateOptions.MultiThreaded.getValue()) {
@@ -407,10 +395,10 @@ public class UniverseBuilder {
     }
 
     private void layoutInstanceFields() {
-        layoutInstanceFields(hUniverse.getObjectClass(), ConfigurationValues.getObjectLayout().getFirstFieldOffset());
+        layoutInstanceFields(hUniverse.getObjectClass(), ConfigurationValues.getObjectLayout().getFirstFieldOffset(), new HostedField[0]);
     }
 
-    private void layoutInstanceFields(HostedInstanceClass clazz, int superSize) {
+    private void layoutInstanceFields(HostedInstanceClass clazz, int superSize, HostedField[] superFields) {
         ArrayList<HostedField> rawFields = new ArrayList<>();
         ArrayList<HostedField> orderedFields = new ArrayList<>();
         ObjectLayout layout = ConfigurationValues.getObjectLayout();
@@ -484,9 +472,18 @@ public class UniverseBuilder {
             nextOffset += referenceFieldAlignmentAndSize;
         }
 
-        clazz.instanceFields = orderedFields.toArray(new HostedField[orderedFields.size()]);
+        clazz.instanceFieldsWithoutSuper = orderedFields.toArray(new HostedField[orderedFields.size()]);
         clazz.instanceSize = layout.alignUp(nextOffset);
         clazz.afterFieldsOffset = nextOffset;
+
+        if (clazz.instanceFieldsWithoutSuper.length == 0) {
+            clazz.instanceFieldsWithSuper = superFields;
+        } else if (superFields.length == 0) {
+            clazz.instanceFieldsWithSuper = clazz.instanceFieldsWithoutSuper;
+        } else {
+            clazz.instanceFieldsWithSuper = Arrays.copyOf(superFields, superFields.length + clazz.instanceFieldsWithoutSuper.length);
+            System.arraycopy(clazz.instanceFieldsWithoutSuper, 0, clazz.instanceFieldsWithSuper, superFields.length, clazz.instanceFieldsWithoutSuper.length);
+        }
 
         for (HostedType subClass : clazz.subTypes) {
             if (subClass.isInstanceClass()) {
@@ -496,7 +493,7 @@ public class UniverseBuilder {
                  * possible because each class that needs a synthetic field gets its own synthetic
                  * field at the end of its instance fields.
                  */
-                layoutInstanceFields((HostedInstanceClass) subClass, endOfFieldsOffset);
+                layoutInstanceFields((HostedInstanceClass) subClass, endOfFieldsOffset, clazz.instanceFieldsWithSuper);
             }
         }
     }
@@ -674,7 +671,7 @@ public class UniverseBuilder {
          * To avoid segfaults when jumping to address 0, all unused vtable entries are filled with a
          * stub that reports a fatal error.
          */
-        HostedMethod invalidVTableEntryHandler = hMetaAccess.lookupJavaMethod(InvalidVTableEntryHandler.HANDLER_METHOD);
+        HostedMethod invalidVTableEntryHandler = hMetaAccess.lookupJavaMethod(InvalidMethodPointerHandler.INVALID_VTABLE_ENTRY_HANDLER_METHOD);
 
         for (HostedType type : hUniverse.getTypes()) {
             if (type.isArray()) {
@@ -925,7 +922,7 @@ public class UniverseBuilder {
                  * We install a CodePointer in the vtable; when generating relocation info, we will
                  * know these point into .text
                  */
-                vtable[idx] = MethodPointer.factory(type.vtable[idx]);
+                vtable[idx] = new MethodPointer(type.vtable[idx]);
             }
 
             // pointer maps in Dynamic Hub
@@ -999,6 +996,6 @@ final class InvalidVTableEntryFeature implements Feature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
-        access.registerAsCompiled(InvalidVTableEntryHandler.HANDLER_METHOD);
+        access.registerAsCompiled(InvalidMethodPointerHandler.INVALID_VTABLE_ENTRY_HANDLER_METHOD);
     }
 }

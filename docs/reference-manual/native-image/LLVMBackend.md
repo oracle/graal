@@ -6,7 +6,8 @@ permalink: /reference-manual/native-image/LLVMBackend/
 ---
 # LLVM Backend for Native Image
 
-Native Image includes an alternative backend which uses the [LLVM intermediate representation](https://llvm.org/docs/LangRef.html) and the [LLVM compiler](http://llvm.org/docs/CommandGuide/llc.html) to produce native executables. To use it, add the `-H:CompilerBackend=llvm` option to the Native Image invocation.
+Native Image includes an alternative backend which uses the [LLVM intermediate representation](https://llvm.org/docs/LangRef.html) and the [LLVM compiler](http://llvm.org/docs/CommandGuide/llc.html) to produce native executables.
+To use it, add the `-H:CompilerBackend=llvm` option to the Native Image invocation.
 
 The LLVM backend requires GraalVM's LLVM toolchain to be installed (with `gu install llvm-toolchain`).
 
@@ -29,13 +30,15 @@ The LLVM backend requires GraalVM's LLVM toolchain to be installed (with `gu ins
 
 ## How to Add a Target Architecture to GraalVM Using LLVM Backend
 
-An interesting use case for the LLVM backend is to target a new architecture without having to implement a complete new backend for Native Image. The following are the necessary steps to achieve this at the moment.
+An interesting use case for the LLVM backend is to target a new architecture without having to implement a complete new backend for Native Image.
+The following are the necessary steps to achieve this at the moment.
 
 ### Target-Specific LLVM Settings
 
 There are a few instances where the GraalVM code has to go deeper than the target-independent nature of LLVM.
 These are most notably inline assembly snippets to implement direct register accesses and direct register jumps (for trampolines), as well as precisions about the structure of the stack frames of the code emitted by LLVM.
-All in all, this represents less than a dozen simple values to be set for each new target. It is our goal that in the future this will be the only addition needed to support a new target.
+All in all, this represents less than a dozen simple values to be set for each new target.
+It is our goal that in the future this will be the only addition needed to support a new target.
 
 _([Complete set of values for AArch64](https://github.com/oracle/graal/commit/80cceec6f6299181d94e844eb22dffbef3ecc9e4))_
 
@@ -51,8 +54,8 @@ _([Implementation of statepoints for AArch64](https://reviews.llvm.org/D66012))_
 
 ### Object File Support
 
-The data section for programs created with the LLVM backend of the GraalVM compiler is currently emitted independently from the code, which is handled by LLVM.
-This means that the GraalVM compiler needs an understanding of object file relocations for the target architecture to be able to link the LLVM-compiled code with the GraalVM-generated data section.
+The data section for programs created with the LLVM backend of the Graal compiler is currently emitted independently from the code, which is handled by LLVM.
+This means that the Graal compiler needs an understanding of object file relocations for the target architecture to be able to link the LLVM-compiled code with the GraalVM-generated data section.
 Emitting the data section with the code as LLVM bitcode is our next priority for the LLVM backend, so this should not be an issue for future targets.
 
 _(see `ELFMachine$ELFAArch64Relocations` for an example)_

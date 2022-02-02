@@ -41,9 +41,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -52,9 +50,10 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.ValueProfile;
 
 public class MaterializedFrameTest extends PartialEvaluationTest {
+    @SuppressWarnings("deprecation")
     private static RootNode createRootNode() {
         FrameDescriptor fd = new FrameDescriptor();
-        FrameSlot slot = fd.addFrameSlot("test");
+        com.oracle.truffle.api.frame.FrameSlot slot = fd.addFrameSlot("test");
         return new RootNode(null, fd) {
             private final ValueProfile frameClassProfile = ValueProfile.createClassProfile();
 
@@ -81,7 +80,7 @@ public class MaterializedFrameTest extends PartialEvaluationTest {
     @Test
     public void getFrameSlotKind() {
         RootNode rootNode = createRootNode();
-        RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
+        RootCallTarget callTarget = rootNode.getCallTarget();
         StructuredGraph graph = partialEval((OptimizedCallTarget) callTarget, new Object[]{}, getCompilationId(callTarget));
 
         NodeIterable<MethodCallTargetNode> calls = graph.getNodes().filter(MethodCallTargetNode.class);

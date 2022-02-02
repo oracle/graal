@@ -235,6 +235,23 @@ public final class Instructions {
     public static final int F32_REINTERPRET_I32 = 0xBE;
     public static final int F64_REINTERPRET_I64 = 0xBF;
 
+    public static final int MISC = 0xFC;
+
+    public static final int I32_TRUNC_SAT_F32_S = 0x00;
+    public static final int I32_TRUNC_SAT_F32_U = 0x01;
+    public static final int I32_TRUNC_SAT_F64_S = 0x02;
+    public static final int I32_TRUNC_SAT_F64_U = 0x03;
+    public static final int I64_TRUNC_SAT_F32_S = 0x04;
+    public static final int I64_TRUNC_SAT_F32_U = 0x05;
+    public static final int I64_TRUNC_SAT_F64_S = 0x06;
+    public static final int I64_TRUNC_SAT_F64_U = 0x07;
+
+    public static final int I32_EXTEND8_S = 0xC0;
+    public static final int I32_EXTEND16_S = 0xC1;
+    public static final int I64_EXTEND8_S = 0xC2;
+    public static final int I64_EXTEND16_S = 0xC3;
+    public static final int I64_EXTEND32_S = 0xC4;
+
     private static String[] decodingTable = new String[256];
 
     private Instructions() {

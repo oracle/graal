@@ -36,6 +36,8 @@ import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.AbstractSpecialInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;
+import com.oracle.graal.pointsto.flow.ContextInsensitiveFieldTypeFlow;
+import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
@@ -48,6 +50,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.typestate.TypeState.TypesObjectsIterator;
 import com.oracle.graal.pointsto.typestore.ArrayElementsTypeStore;
@@ -142,7 +145,25 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
     public FieldTypeStore createFieldTypeStore(AnalysisObject object, AnalysisField field, AnalysisUniverse universe) {
         assert PointstoOptions.AllocationSiteSensitiveHeap.getValue(options);
         if (object.isContextInsensitiveObject()) {
-            return new SplitFieldTypeStore(field, object);
+            /*
+             * Write flow is context-sensitive and read flow is context-insensitive. This split is
+             * used to model context sensitivity and context merging for fields of this
+             * context-insensitive object, and the interaction with the fields of context-sensitive
+             * objects of the same type.
+             * 
+             * All values written to fields of context-sensitive receivers are also reflected to the
+             * context-insensitive receiver *read* flow, but without any context information, such
+             * that all the reads from the fields of the context insensitive object reflect all the
+             * types written to the context-sensitive ones, but without triggering merging.
+             * 
+             * Once the context-sensitive receiver object is marked as merged, i.e., it looses its
+             * context sensitivity, the field flows are routed to the context-insensitive receiver
+             * *write* flow, thus triggering their merging. See ContextSensitiveAnalysisObject.
+             * mergeInstanceFieldFlow().
+             */
+            FieldTypeFlow writeFlow = new FieldTypeFlow(field, field.getType(), object);
+            ContextInsensitiveFieldTypeFlow readFlow = new ContextInsensitiveFieldTypeFlow(field, field.getType(), object);
+            return new SplitFieldTypeStore(field, object, writeFlow, readFlow);
         } else {
             return new UnifiedFieldTypeStore(field, object);
         }
@@ -175,13 +196,13 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
     }
 
     @Override
-    public AbstractVirtualInvokeTypeFlow createVirtualInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, AnalysisMethod targetMethod,
+    public AbstractVirtualInvokeTypeFlow createVirtualInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
                     TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
         return new BytecodeSensitiveVirtualInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
     }
 
     @Override
-    public AbstractSpecialInvokeTypeFlow createSpecialInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, AnalysisMethod targetMethod,
+    public AbstractSpecialInvokeTypeFlow createSpecialInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
                     TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
         return new BytecodeSensitiveSpecialInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
     }
@@ -203,7 +224,7 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
         private final ConcurrentMap<MethodFlowsGraph, Object> calleesFlows;
         private final AnalysisContext callerContext;
 
-        protected BytecodeSensitiveVirtualInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, AnalysisMethod targetMethod,
+        protected BytecodeSensitiveVirtualInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
                         TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
             super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
             calleesFlows = null;
@@ -248,7 +269,7 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
 
                 assert !Modifier.isAbstract(method.getModifiers());
 
-                MethodTypeFlow callee = method.getTypeFlow();
+                MethodTypeFlow callee = PointsToAnalysis.assertPointsToAnalysisMethod(method).getTypeFlow();
 
                 while (toi.hasNextObject(type)) {
                     AnalysisObject actualReceiverObject = toi.nextObject(type);
@@ -284,7 +305,7 @@ public class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
          */
         private ConcurrentMap<MethodFlowsGraph, Object> calleesFlows;
 
-        BytecodeSensitiveSpecialInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, AnalysisMethod targetMethod,
+        BytecodeSensitiveSpecialInvokeTypeFlow(BytecodePosition invokeLocation, AnalysisType receiverType, PointsToAnalysisMethod targetMethod,
                         TypeFlow<?>[] actualParameters, ActualReturnTypeFlow actualReturn, BytecodeLocation location) {
             super(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, location);
         }

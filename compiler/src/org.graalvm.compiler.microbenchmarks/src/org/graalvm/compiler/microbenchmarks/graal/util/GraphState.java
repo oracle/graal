@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,9 +44,11 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 @State(Scope.Thread)
 public abstract class GraphState {
 
+    final GraalState graal;
+
     @SuppressWarnings("try")
     public GraphState() {
-        GraalState graal = new GraalState();
+        graal = new GraalState();
         DebugContext debug = graal.debug;
         ResolvedJavaMethod method = graal.metaAccess.lookupJavaMethod(getMethodFromMethodSpec(getClass()));
         StructuredGraph structuredGraph = null;

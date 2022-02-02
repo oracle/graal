@@ -84,7 +84,7 @@ final class HostEntryPoint {
     public long remoteCreateEngine() {
         // host access needs to be replaced
         GuestHostLanguage hostLanguage = new GuestHostLanguage(guestPolyglot, guestPolyglot.createHostAccess());
-        Object engine = guestPolyglot.buildEngine(null, null, null, new HashMap<>(), true, false, false, null, null, hostLanguage, false);
+        Object engine = guestPolyglot.buildEngine(new String[0], null, null, null, new HashMap<>(), true, false, false, null, null, hostLanguage, false);
         return guestToHost(engine);
     }
 
@@ -123,7 +123,7 @@ final class HostEntryPoint {
                         false, false, false, false, false, null, new HashMap<>(), new HashMap<>(),
                         new String[0], null, null,
                         false, null, EnvironmentAccess.NONE,
-                        null, null, null, null, null, true);
+                        null, null, null, null, null, true, false);
         return guestToHost(remoteContext);
     }
 

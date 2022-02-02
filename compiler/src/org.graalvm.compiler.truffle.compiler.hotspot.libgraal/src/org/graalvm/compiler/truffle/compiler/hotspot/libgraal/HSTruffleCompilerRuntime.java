@@ -63,9 +63,9 @@ import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCo
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callLog;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callOnCodeInstallation;
 import static org.graalvm.compiler.truffle.compiler.hotspot.libgraal.HSTruffleCompilerRuntimeGen.callRegisterOptimizedAssumptionDependency;
-import static org.graalvm.nativebridge.jni.JNIMethodScope.env;
-import static org.graalvm.nativebridge.jni.JNIMethodScope.scope;
-import static org.graalvm.nativebridge.jni.JNIUtil.getInternalName;
+import static org.graalvm.jniutils.JNIMethodScope.env;
+import static org.graalvm.jniutils.JNIMethodScope.scope;
+import static org.graalvm.jniutils.JNIUtil.getInternalName;
 
 import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
@@ -80,12 +80,12 @@ import org.graalvm.compiler.truffle.common.hotspot.HotSpotTruffleCompilerRuntime
 import org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal;
 import org.graalvm.libgraal.LibGraal;
 import org.graalvm.libgraal.jni.annotation.FromLibGraalEntryPointsResolver;
-import org.graalvm.nativebridge.jni.HSObject;
-import org.graalvm.nativebridge.jni.JNI.JNIEnv;
-import org.graalvm.nativebridge.jni.JNI.JObject;
-import org.graalvm.nativebridge.jni.JNI.JString;
-import org.graalvm.nativebridge.jni.JNIMethodScope;
-import org.graalvm.nativebridge.jni.JNIUtil;
+import org.graalvm.jniutils.HSObject;
+import org.graalvm.jniutils.JNI.JNIEnv;
+import org.graalvm.jniutils.JNI.JObject;
+import org.graalvm.jniutils.JNI.JString;
+import org.graalvm.jniutils.JNIMethodScope;
+import org.graalvm.jniutils.JNIUtil;
 import org.graalvm.word.WordFactory;
 
 import jdk.vm.ci.code.InstalledCode;

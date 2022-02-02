@@ -26,7 +26,6 @@ package org.graalvm.polybench.micro.nodes;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -52,7 +51,7 @@ public abstract class SetupRootNode extends RootNode {
         super(language);
         MicrobenchRootNode workloadRoot = new MicrobenchRootNode(language, spec);
 
-        this.workload = Truffle.getRuntime().createCallTarget(workloadRoot);
+        this.workload = workloadRoot.getCallTarget();
         this.prepare = prepare;
         this.spec = spec;
     }

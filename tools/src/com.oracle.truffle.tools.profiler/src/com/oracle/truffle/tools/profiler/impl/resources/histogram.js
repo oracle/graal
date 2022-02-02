@@ -43,55 +43,80 @@ function h_search(term) {
 
 function h_update_search() {
     let re = h_search_regex;
-    if (re == null) {
-        return;
-    }
-    for (let i = 0; i < histogramData.length; i++) {
-        let bar = histogramData[i];
-        if (name_for_sample(bar).match(re)) {
-            bar.searchMatch = true;
-            let e = h_element_for_id(i);
-            if (e != null) {
-                let r = e.children[1];
-                r.style.fill = searchColor;
+    if (re != null) {
+        for (let i = 0; i < histogramData.length; i++) {
+            let bar = histogramData[i];
+            if (name_for_sample(bar).match(re)) {
+                bar.searchMatch = true;
+                let e = h_element_for_id(i);
+                h_highlight_bar(i, bar);
+            }
+        }
+    } else if (hilight_bar != null) {
+        for (let i = 0; i < histogramData.length; i++) {
+            let bar = histogramData[i];
+            if (hilight_bar.k == bar.k) {
+                bar.searchMatch = true;
+                let e = h_element_for_id(i);
+                h_highlight_bar(i, bar);
             }
         }
     }
 }
 
-var hilight_element = null;
+var hilight_bar = null;
 
 function h_reset_search() {
     for (let i = 0; i < histogramData.length; i++) {
         let bar = histogramData[i];
         if (bar.searchMatch = true) {
             bar.searchMatch = false;
-            let e = h_element_for_id(i);
-            if (e != null) {
-                let color = bar.currentColor;
-                if (color == undefined) {
-                    color = fg_color_for_sample(color_type, bar);
-                }
-                let r = e.children[1];
-                r.style.fill = color;
-            }
+            h_unhighlight_bar(i, bar);
         }
     }
     h_search_regex = null;
 }
 
+function h_highlight_bar(id, bar) {
+    let e = h_element_for_id(id)
+    if (e != null) {
+        let r = e.children[1];
+        r.style.fill = searchColor;
+    }
+}
+
+function h_unhighlight_bar(id, bar) {
+    let e = h_element_for_id(id)
+    if (e != null) {
+        let color = bar.currentColor;
+        if (color == undefined) {
+            color = h_color_for_sample(color_type, bar);
+        }
+        let r = e.children[1];
+        r.style.fill = color;
+    }
+}
+
 function h_highlight(e) {
-    if (hilight_element == e) {
+    let id = e.getAttribute("id").substring(2);
+    let bar = histogram_entry_for_id(id);
+    if (hilight_bar != null && hilight_bar.k == bar.k) {
         hilight_element = null;
         reset_search();
     } else {
-        let bar = histogram_entry_for_id(e.getAttribute("id").substring(2));
         reset_search();
-        hilight_element = e;
-        let name = name_for_sample(bar);
-        // Ensure we escape anything that might cause a problem with the regexp.
-        name = "^" + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + "$"; // $& means the whole matched string
-        search(name);
+        hilight_bar = bar;
+        h_highlight_bar(id, bar);
+
+        let iter = sample_and_children_depth_first(profileData[0]);
+        let c = iter.next();
+        while (!c.done) {
+            let sample = c.value;
+            if (sample.k == bar.k) {
+                fg_highlight_sample(search_matches, sample);
+            }
+            c = iter.next();
+        }
     }
 }
 
@@ -126,7 +151,7 @@ function h_create_element_for_id(id, bar, width) {
     r.width.baseVal.value = width;
     r.height.baseVal.value = fg_frameheight
 
-    r.style.fill = fg_color_for_sample(color_type, bar);
+    r.style.fill = h_color_for_sample(color_type, bar);
     r.rx.baseVal.value = 2;
     r.ry.baseVal.vlaue = 2;
 
@@ -162,13 +187,16 @@ function h_update_bar(id, bar) {
         let t = e.lastElementChild;
 
         let name = name_for_sample(bar);
+        let source = source_for_sample(bar);
+        let sourceLine = source_line_for_sample(bar);
+        let hits = bar.i + bar.c;
 
-        title.textContent = "Function: " + name + "\n" +
-            (bar.c + bar.i) + " samples (" + bar.i + " interpreted, " + bar.c + " compiled).\n" +
-            (100 * (bar.c + bar.i) / (fg_xmax - fg_xmin)).toFixed(2) + "% of displayed samples.\n";
+        title.textContent = name + " (" + languageNames[bar.l] + ")\n" +
+            "Samples: " + (hits) + " (" + (100 * (hits) / (fg_xmax - fg_xmin)).toFixed(2) + "%)\n" +
+            "Source location: " + source + ":" + sourceLine + "\n";
 
         r.width.baseVal.value = width;
-        r.style.fill = fg_color_for_sample(color_type, bar);
+        r.style.fill = h_color_for_sample(color_type, bar);
         t.textContent = name;
         let t_width = t.textLength.baseVal.value;
         if (t_width < width - 6) {
@@ -232,27 +260,32 @@ function h_canvas_resize() {
     h_svg.viewBox.baseVal.height = height;
     let h_canvas = document.getElementById("h_canvas");
     h_canvas.height.baseVal.value = height;
-    svg.height.baseVal.value = svg.height.baseVal.value - old_height + height;
-    svg.viewBox.baseVal.height = svg.height.baseVal.value;
+    graph_ensure_space();
 }
 
 function calculate_histogram_bars(bars, sample) {
     let bar;
-    if (!bars.hasOwnProperty(sample["n"])) {
+    if (!bars.hasOwnProperty(sample.k)) {
         bar = [];
         bar["id"] = sample["id"];
         bar["i"] = 0;
         bar["c"] = 0;
         bar["l"] = sample["l"];
-        bar["n"] = sample["n"];
-        bars[sample["n"]] = bar;
+        bar["k"] = sample["k"];
+        bars[sample.k] = bar;
     } else {
-        bar = bars[sample["n"]];
+        bar = bars[sample.k];
     }
-    bar["i"] = bar["i"] + sample["i"];
-    bar["c"] = bar["c"] + sample["c"];
-    if (sample.hasOwnProperty("s")) {
-        for (const child of sample["s"]) {
+    if (fg_collapsed) {
+        bar["i"] = bar["i"] + sample["ri"];
+        bar["c"] = bar["c"] + sample["rc"];
+        for (const child of collapsed_children(sample)) {
+            calculate_histogram_bars(bars, child);
+        }
+    } else {
+        bar["i"] = bar["i"] + sample["i"];
+        bar["c"] = bar["c"] + sample["c"];
+        for (const child of direct_children(sample)) {
             calculate_histogram_bars(bars, child);
         }
     }
@@ -261,7 +294,7 @@ function calculate_histogram_bars(bars, sample) {
 function h_update_color(color_type) {
     for (let i = 0; i < histogramData.length; i++) {
         let bar = histogramData[i];
-        let color = fg_color_for_sample(color_type, bar);
+        let color = h_color_for_sample(color_type, bar);
         bar.currentColor = color;
         if (bar.searchMatch != true) {
             let e = h_element_for_id(i);
@@ -270,6 +303,16 @@ function h_update_color(color_type) {
                 r.style.fill = color;
             }
         }
+    }
+}
+
+function h_color_for_sample(color_type, sample) {
+    if (color_type == "fg") {
+        return color_for_key(0, key_for_sample(sample));
+    } else if (color_type == "bl") {
+        return color_for_key(sample.l, key_for_sample(sample));
+    } else if (color_type = "bc") {
+        return color_for_compilation(sample.i, sample.c);
     }
 }
 

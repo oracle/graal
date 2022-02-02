@@ -33,6 +33,8 @@ import com.oracle.svm.core.deopt.DeoptimizedFrame;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.TargetDescription;
 
+import java.util.EnumSet;
+
 public class SubstrateTargetDescription extends TargetDescription {
     @Platforms(Platform.HOSTED_ONLY.class)
     public static boolean shouldInlineObjectsInImageCode() {
@@ -44,11 +46,13 @@ public class SubstrateTargetDescription extends TargetDescription {
     }
 
     private final int deoptScratchSpace;
+    private final EnumSet<?> runtimeCheckedCPUFeatures;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public SubstrateTargetDescription(Architecture arch, boolean isMP, int stackAlignment, int implicitNullCheckLimit, int deoptScratchSpace) {
+    public SubstrateTargetDescription(Architecture arch, boolean isMP, int stackAlignment, int implicitNullCheckLimit, int deoptScratchSpace, EnumSet<?> runtimeCheckedCPUFeatures) {
         super(arch, isMP, stackAlignment, implicitNullCheckLimit, shouldInlineObjectsInImageCode());
         this.deoptScratchSpace = deoptScratchSpace;
+        this.runtimeCheckedCPUFeatures = runtimeCheckedCPUFeatures;
     }
 
     /**
@@ -57,5 +61,9 @@ public class SubstrateTargetDescription extends TargetDescription {
      */
     public int getDeoptScratchSpace() {
         return deoptScratchSpace;
+    }
+
+    public EnumSet<?> getRuntimeCheckedCPUFeatures() {
+        return runtimeCheckedCPUFeatures;
     }
 }

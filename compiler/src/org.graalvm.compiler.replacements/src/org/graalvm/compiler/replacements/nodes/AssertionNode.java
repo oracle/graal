@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,7 +27,6 @@ package org.graalvm.compiler.replacements.nodes;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
 
-import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
@@ -104,22 +103,13 @@ public final class AssertionNode extends FixedWithNextNode implements Lowerable,
     @Override
     public void lower(LoweringTool tool) {
         if (!compileTimeAssertion) {
-            if (GraalOptions.ImmutableCode.getValue(getOptions())) {
-                // Snippet assertions are disabled for AOT
-                graph().removeFixed(this);
-            } else {
-                tool.getLowerer().lower(this, tool);
-            }
+            tool.getLowerer().lower(this, tool);
         }
     }
 
     @Override
     public void generate(NodeLIRBuilderTool generator) {
         assert compileTimeAssertion;
-        if (GraalOptions.ImmutableCode.getValue(getOptions())) {
-            // Snippet assertions are disabled for AOT
-            return;
-        }
         if (condition.isConstant()) {
             if (condition.asJavaConstant().asInt() == 0) {
                 throw new GraalError("%s: failed compile-time assertion: %s", this, message);

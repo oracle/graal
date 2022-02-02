@@ -37,9 +37,10 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.CGlobalData;
 import com.oracle.svm.core.c.CGlobalDataFactory;
+import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.posix.PosixUtils;
-import com.oracle.svm.core.posix.headers.LibC;
 import com.oracle.svm.core.posix.headers.Pthread;
+import com.oracle.svm.core.posix.headers.Sched;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.posix.headers.Time.timespec;
 import com.oracle.svm.core.posix.pthread.PthreadVMLockSupport;
@@ -74,6 +75,18 @@ public final class PosixVMThreads extends VMThreads {
         ts.set_tv_sec(milliseconds / TimeUtils.millisPerSecond);
         ts.set_tv_nsec((milliseconds % TimeUtils.millisPerSecond) * TimeUtils.nanosPerMilli);
         Time.NoTransitions.nanosleep(ts, WordFactory.nullPointer());
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Override
+    public void yield() {
+        Sched.NoTransitions.sched_yield();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Override
+    public boolean supportsNativeYieldAndSleep() {
+        return true;
     }
 
     @Uninterruptible(reason = "Thread state not set up.")

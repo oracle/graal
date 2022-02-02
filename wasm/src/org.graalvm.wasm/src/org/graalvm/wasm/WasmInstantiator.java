@@ -42,8 +42,9 @@
 package org.graalvm.wasm;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.nodes.Node;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
@@ -61,7 +62,7 @@ import org.graalvm.wasm.parser.ir.ParserNode;
 import java.util.List;
 
 /**
- * Creates wasm instances by converting parser nodes into truffle nodes.
+ * Creates wasm instances by converting parser nodes into Truffle nodes.
  */
 public class WasmInstantiator {
     private static final int MIN_DEFAULT_STACK_SIZE = 1_000_000;
@@ -133,10 +134,19 @@ public class WasmInstantiator {
         }
     }
 
+    private static FrameDescriptor createFrameDescriptor(byte[] localTypes, int maxStackSize) {
+        FrameDescriptor.Builder builder = FrameDescriptor.newBuilder(localTypes.length);
+        for (byte type : localTypes) {
+            builder.addSlot(WasmType.asFrameSlotKind(type), null, null);
+        }
+        builder.addSlots(maxStackSize, FrameSlotKind.Illegal);
+        return builder.build();
+    }
+
     private void instantiateCodeEntry(WasmInstance instance, CodeEntry codeEntry) {
         final int functionIndex = codeEntry.getFunctionIndex();
         final WasmFunction function = instance.module().symbolTable().function(functionIndex);
-        WasmCodeEntry wasmCodeEntry = new WasmCodeEntry(function, instance.module().data());
+        WasmCodeEntry wasmCodeEntry = new WasmCodeEntry(function, instance.module().data(), codeEntry.getLocalTypes(), codeEntry.getMaxStackSize());
         function.setCodeEntry(wasmCodeEntry);
 
         /*
@@ -144,13 +154,8 @@ public class WasmInstantiator {
          * done before translating the body block, because we need to be able to create direct call
          * nodes {@see TruffleRuntime#createDirectCallNode} during translation.
          */
-        WasmRootNode rootNode = new WasmRootNode(language, instance, wasmCodeEntry);
-        RootCallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
-        instance.setTarget(codeEntry.getFunctionIndex(), callTarget);
-        /*
-         * Set the code entry local variables (which contain the parameters and the locals).
-         */
-        wasmCodeEntry.setLocalTypes(codeEntry.getLocalTypes());
+        WasmRootNode rootNode = new WasmRootNode(language, createFrameDescriptor(codeEntry.getLocalTypes(), codeEntry.getMaxStackSize()), instance, wasmCodeEntry);
+        instance.setTarget(codeEntry.getFunctionIndex(), rootNode.getCallTarget());
 
         /*
          * Translate and set the function body.

@@ -120,7 +120,7 @@ public final class LLVMFunctionCode {
         if (ret == null) {
             // either no native access, or signature is unsupported
             // fall back to tagged id
-            ret = Truffle.getRuntime().createCallTarget(new TagSulongFunctionPointerNode(this));
+            ret = new TagSulongFunctionPointerNode(this).getCallTarget();
         }
         return ret;
     }
@@ -427,6 +427,16 @@ public final class LLVMFunctionCode {
         return nativeFunction;
     }
 
+    public Object getNativeFunction(ResolveFunctionNode resolveFunctionNode) {
+        Function fn = resolveFunctionNode.execute(getFunction(), this);
+        Object nativeFunction = ((NativeFunction) fn).nativeFunction;
+        if (nativeFunction == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new LLVMLinkerException("Native function " + fn.toString() + " not found");
+        }
+        return nativeFunction;
+    }
+
     // used for calls from foreign languages
     // includes boundary conversions
     private CallTarget foreignFunctionCallTarget;
@@ -451,7 +461,7 @@ public final class LLVMFunctionCode {
                 foreignCall = LLVMForeignFunctionCallNode.create(language, this, interopType, sourceType);
             }
 
-            foreignFunctionCallTarget = LLVMLanguage.createCallTarget(foreignCall);
+            foreignFunctionCallTarget = foreignCall.getCallTarget();
         }
     }
 
@@ -478,7 +488,7 @@ public final class LLVMFunctionCode {
                 LLVMInteropType.Structured structured = ((LLVMInteropType.Value) extractedType).baseType;
                 LLVMForeignCallNode foreignCall = LLVMForeignConstructorCallNode.create(
                                 language, this, interopType, sourceType, structured);
-                foreignConstructorCallTarget = LLVMLanguage.createCallTarget(foreignCall);
+                foreignConstructorCallTarget = foreignCall.getCallTarget();
             }
         }
     }

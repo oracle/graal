@@ -233,7 +233,6 @@ public class LoopFragmentInside extends LoopFragment {
             }
         }
         mainLoopBegin.setUnrollFactor(mainLoopBegin.getUnrollFactor() * 2);
-        mainLoopBegin.setLoopFrequency(mainLoopBegin.profileData().scaleFrequency(1 / 2.0));
         graph.getDebug().dump(DebugContext.DETAILED_LEVEL, graph, "LoopPartialUnroll %s", loop);
 
         mainLoopBegin.getDebug().dump(DebugContext.VERBOSE_LEVEL, mainLoopBegin.graph(), "After insertWithinAfter %s", mainLoopBegin);
@@ -404,7 +403,7 @@ public class LoopFragmentInside extends LoopFragment {
         FrameState exitState = exit.stateAfter();
         FrameState duplicate = exitState.duplicateWithVirtualState();
         graph.getDebug().dump(DebugContext.VERY_DETAILED_LEVEL, graph, "After duplicating state %s for new exit %s", exitState, lex);
-        duplicate.applyToNonVirtual(new NodePositionClosure<Node>() {
+        duplicate.applyToNonVirtual(new NodePositionClosure<>() {
             @Override
             public void apply(Node from, Position p) {
                 ValueNode to = (ValueNode) p.get(from);
@@ -578,6 +577,12 @@ public class LoopFragmentInside extends LoopFragment {
         // Nothing to do
     }
 
+    private EconomicMap<PhiNode, PhiNode> old2NewPhi;
+
+    public EconomicMap<PhiNode, PhiNode> getOld2NewPhi() {
+        return old2NewPhi;
+    }
+
     private void patchPeeling(LoopFragmentInside peel) {
         LoopBeginNode loopBegin = loop().loopBegin();
         List<PhiNode> newPhis = new LinkedList<>();
@@ -592,20 +597,32 @@ public class LoopFragmentInside extends LoopFragment {
         markStateNodes(loopBegin, usagesToPatch);
 
         List<PhiNode> oldPhis = loopBegin.phis().snapshot();
+
+        if (peel.old2NewPhi == null) {
+            peel.old2NewPhi = EconomicMap.create();
+        }
+
         for (PhiNode phi : oldPhis) {
             if (phi.hasNoUsages()) {
+                peel.old2NewPhi.put(phi, null);
                 continue;
             }
             ValueNode first;
             if (loopBegin.loopEnds().count() == 1) {
                 ValueNode b = phi.valueAt(loopBegin.loopEnds().first()); // back edge value
-                first = peel.prim(b); // corresponding value in the peel
+                if (b == null) {
+                    assert phi instanceof GuardPhiNode;
+                    first = null;
+                } else {
+                    first = peel.prim(b); // corresponding value in the peel
+                }
             } else {
                 first = peel.mergedInitializers.get(phi);
             }
             // create a new phi (we don't patch the old one since some usages of the old one may
             // still be valid)
             PhiNode newPhi = phi.duplicateOn(loopBegin);
+            peel.old2NewPhi.put(phi, newPhi);
             newPhi.addInput(first);
             for (LoopEndNode end : loopBegin.orderedLoopEnds()) {
                 newPhi.addInput(phi.valueAt(end));
@@ -766,7 +783,7 @@ public class LoopFragmentInside extends LoopFragment {
                 ValueNode initializer = firstPhi;
                 if (duplicateState != null) {
                     // fix the merge's state after
-                    duplicateState.applyToNonVirtual(new NodePositionClosure<Node>() {
+                    duplicateState.applyToNonVirtual(new NodePositionClosure<>() {
                         @Override
                         public void apply(Node from, Position p) {
                             if (p.get(from) == phi) {

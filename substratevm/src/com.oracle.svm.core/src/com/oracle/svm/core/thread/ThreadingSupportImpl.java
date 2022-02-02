@@ -217,7 +217,7 @@ public class ThreadingSupportImpl implements ThreadingSupport {
          * {@link Uninterruptible} and allocation-free.
          */
         @Uninterruptible(reason = "Required by caller, but does not apply to callee.", calleeMustBe = false)
-        @RestrictHeapAccess(reason = "Callee may allocate", access = RestrictHeapAccess.Access.UNRESTRICTED, overridesCallers = true)
+        @RestrictHeapAccess(reason = "Callee may allocate", access = RestrictHeapAccess.Access.UNRESTRICTED)
         private void invokeCallback() {
             try {
                 callback.run(CALLBACK_ACCESS);
@@ -233,9 +233,9 @@ public class ThreadingSupportImpl implements ThreadingSupport {
         }
     }
 
-    private static final FastThreadLocalObject<RecurringCallbackTimer> activeTimer = FastThreadLocalFactory.createObject(RecurringCallbackTimer.class);
+    private static final FastThreadLocalObject<RecurringCallbackTimer> activeTimer = FastThreadLocalFactory.createObject(RecurringCallbackTimer.class, "ThreadingSupportImpl.activeTimer");
 
-    private static final FastThreadLocalInt currentPauseDepth = FastThreadLocalFactory.createInt();
+    private static final FastThreadLocalInt currentPauseDepth = FastThreadLocalFactory.createInt("ThreadingSupportImpl.currentPauseDepth");
 
     private static final String enableSupportOption = SubstrateOptionsParser.commandArgument(SupportRecurringCallback, "+");
 
@@ -283,8 +283,11 @@ public class ThreadingSupportImpl implements ThreadingSupport {
         return isRecurringCallbackSupported() && activeTimer.get(thread) != null;
     }
 
+    @Uninterruptible(reason = "Called by uninterruptible code.", mayBeInlined = true)
     static boolean needsNativeToJavaSlowpath() {
-        return ActionOnTransitionToJavaSupport.isActionPending() || (isRecurringCallbackSupported() && Options.CheckRecurringCallbackOnNativeToJavaTransition.getValue() && activeTimer.get() != null);
+        return ActionOnTransitionToJavaSupport.isActionPending() ||
+                        (isRecurringCallbackSupported() && Options.CheckRecurringCallbackOnNativeToJavaTransition.getValue() &&
+                                        activeTimer.get() != null && !isRecurringCallbackPaused());
     }
 
     /**

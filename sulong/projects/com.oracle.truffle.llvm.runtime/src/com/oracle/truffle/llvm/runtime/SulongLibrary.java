@@ -29,6 +29,10 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Objects;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -38,7 +42,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -58,10 +61,6 @@ import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMNode;
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMGlobalRootNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
-
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Objects;
 
 /**
  * Object that is returned when a bitcode library is parsed.
@@ -106,8 +105,8 @@ public final class SulongLibrary implements TruffleObject {
             LLVMLanguage language = LLVMLanguage.get(null);
             RootCallTarget startCallTarget = language.getStartFunctionCode().getLLVMIRFunctionSlowPath();
             Path applicationPath = Paths.get(mainFunction.getStringPath());
-            RootNode rootNode = new LLVMGlobalRootNode(language, new FrameDescriptor(), mainFunction, startCallTarget, Objects.toString(applicationPath, ""));
-            return LLVMLanguage.createCallTarget(rootNode);
+            RootNode rootNode = new LLVMGlobalRootNode(language, mainFunction, startCallTarget, Objects.toString(applicationPath, ""));
+            return rootNode.getCallTarget();
         }
     }
 
@@ -243,7 +242,7 @@ public final class SulongLibrary implements TruffleObject {
             return call.call(library.main.getMainCallTarget(), args);
         }
 
-        @Specialization(replaces = "doGeneric")
+        @Specialization(guards = "library.main == null")
         static Object doUnsupported(@SuppressWarnings("unused") SulongLibrary library, @SuppressWarnings("unused") Object[] args) throws UnsupportedMessageException {
             throw UnsupportedMessageException.create();
         }

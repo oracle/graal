@@ -36,6 +36,7 @@ import static org.graalvm.compiler.core.common.SpectrePHTMitigations.GuardTarget
 import static org.graalvm.compiler.core.common.SpectrePHTMitigations.NonDeoptGuardTargets;
 import static org.graalvm.compiler.core.common.SpectrePHTMitigations.Options.SpectrePHTBarriers;
 
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.loop.phases.LoopPartialUnrollPhase;
 import org.graalvm.compiler.loop.phases.LoopPredicationPhase;
 import org.graalvm.compiler.loop.phases.LoopSafepointEliminationPhase;
@@ -65,7 +66,7 @@ import org.graalvm.compiler.phases.tiers.MidTierContext;
 public class MidTier extends BaseTier<MidTierContext> {
 
     public MidTier(OptionValues options) {
-        CanonicalizerPhase canonicalizer = createCanonicalizerPhase(options);
+        CanonicalizerPhase canonicalizer = createCanonicalizerPhase();
 
         appendPhase(new LockEliminationPhase());
 
@@ -101,6 +102,10 @@ public class MidTier extends BaseTier<MidTierContext> {
         appendPhase(new LoopSafepointInsertionPhase());
 
         appendPhase(new LoweringPhase(canonicalizer, LoweringTool.StandardLoweringStage.MID_TIER));
+
+        if (GraalOptions.ConditionalElimination.getValue(options)) {
+            appendPhase(new IterativeConditionalEliminationPhase(canonicalizer, false));
+        }
 
         appendPhase(new OptimizeDivPhase());
 

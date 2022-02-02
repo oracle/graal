@@ -46,7 +46,7 @@ public class SerializationConfiguration implements ConfigurationBase, RuntimeSer
     }
 
     public SerializationConfiguration(SerializationConfiguration other) {
-        this.serializations.addAll(other.serializations);
+        serializations.addAll(other.serializations);
     }
 
     public void removeAll(SerializationConfiguration other) {
@@ -70,6 +70,11 @@ public class SerializationConfiguration implements ConfigurationBase, RuntimeSer
         }
         writer.unindent().newline();
         writer.append(']');
+    }
+
+    @Override
+    public void registerIncludingAssociatedClasses(ConfigurationCondition condition, Class<?> clazz) {
+        register(condition, clazz);
     }
 
     @Override

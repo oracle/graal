@@ -571,6 +571,9 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
     def daCapoSizes(self):
         raise NotImplementedError()
 
+    def completeBenchmarkList(self, bmSuiteArgs):
+        return sorted([bench for bench in self.daCapoIterations().keys() if self.workloadSize() in self.daCapoSizes().get(bench, [])])
+
     def existingSizes(self):
         return list(dict.fromkeys([s for bench, sizes in self.daCapoSizes().items() for s in sizes]))
 
@@ -588,7 +591,7 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
 
     def postprocessRunArgs(self, benchname, runArgs):
         parser = argparse.ArgumentParser(add_help=False)
-        parser.add_argument("-n", default=None)
+        parser.add_argument("-n", "--iterations", default=None)
         parser.add_argument("-s", "--size", default=None)
         args, remaining = parser.parse_known_args(runArgs)
 
@@ -603,10 +606,10 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
 
         otherArgs = ["-s", self.workloadSize()] + remaining
 
-        if args.n:
-            if args.n.isdigit():
-                return ["-n", args.n] + otherArgs
-            if args.n == "-1":
+        if args.iterations:
+            if args.iterations.isdigit():
+                return ["-n", args.iterations] + otherArgs
+            if args.iterations == "-1":
                 return None
         else:
             iterations = self.daCapoIterations()[benchname]
@@ -632,10 +635,10 @@ class BaseDaCapoBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Ave
 
     def repairDatapoints(self, benchmarks, bmSuiteArgs, partialResults):
         parser = argparse.ArgumentParser(add_help=False)
-        parser.add_argument("-n", default=None)
+        parser.add_argument("-n", "--iterations", default=None)
         args, _ = parser.parse_known_args(self.runArgs(bmSuiteArgs))
-        if args.n and args.n.isdigit():
-            iterations = int(args.n)
+        if args.iterations and args.iterations.isdigit():
+            iterations = int(args.iterations)
         else:
             iterations = self.daCapoIterations()[benchmarks[0]]
             iterations = iterations + self.getExtraIterationCount(iterations)
@@ -800,10 +803,25 @@ _daCapoSizes = {
     "pmd":          ["default", "small", "large"],
     "sunflow":      ["default", "small", "large"],
     "tomcat":       ["default", "small", "large", "huge"],
-    "tradebeans":   ["default", "small", "large", "huge"],
+    "tradebeans":   ["small", "large", "huge"],
     "tradesoap":    ["default", "small", "large", "huge"],
     "xalan":        ["default", "small", "large"]
 }
+
+
+def _is_batik_supported(jdk):
+    """
+    Determines if Batik runs on the given jdk. Batik's JPEGRegistryEntry contains a reference
+    to TruncatedFileException, which is specific to the Sun/Oracle JDK. On a different JDK,
+    this results in a NoClassDefFoundError: com/sun/image/codec/jpeg/TruncatedFileException
+    """
+    import subprocess
+    try:
+        subprocess.check_output([jdk.javap, 'com.sun.image.codec.jpeg.TruncatedFileException'])
+        return True
+    except subprocess.CalledProcessError:
+        mx.warn('Batik uses Sun internal class com.sun.image.codec.jpeg.TruncatedFileException which is not present in ' + jdk.home)
+        return False
 
 
 class DaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-many-ancestors
@@ -814,9 +832,6 @@ class DaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-many-
             return "dacapo"
         else:
             return "dacapo-{}".format(self.workloadSize())
-
-    def version(self):
-        return super(DaCapoBenchmarkSuite, self).version()
 
     def defaultSuiteVersion(self):
         return "9.12-MR1-bach"
@@ -856,13 +871,16 @@ class DaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-many-
             # Stopped working as of 8u92 on the initial release
             del iterations["tomcat"]
 
-        if mx.get_jdk().javaCompliance >= '9' and self.version() in ["9.12-bach", "9.12-MR1-bach"]:
-            if "batik" in iterations:
-                # batik crashes on JDK9+. This is fixed in the dacapo chopin release only
+        if self.version() in ["9.12-bach", "9.12-MR1-bach"]:
+            if mx.get_jdk().javaCompliance >= '9':
+                if "batik" in iterations:
+                    # batik crashes on JDK9+. This is fixed in the dacapo chopin release only
+                    del iterations["batik"]
+                if "tradesoap" in iterations:
+                    # validation fails transiently but frequently in the first iteration in JDK9+
+                    del iterations["tradesoap"]
+            elif not _is_batik_supported(java_home_jdk()):
                 del iterations["batik"]
-            if "tradesoap" in iterations:
-                # validation fails transiently but frequently in the first iteration in JDK9+
-                del iterations["tradesoap"]
 
         if self.workloadSize() == "small":
             # Ensure sufficient warmup by doubling the number of default iterations for the small configuration
@@ -1186,6 +1204,14 @@ class ScalaDacapoLargeBenchmarkSuite(ScalaDaCapoBenchmarkSuite):
     def workloadSize(self):
         return "large"
 
+    def flakySkipPatterns(self, benchmarks, bmSuiteArgs):
+        skip_patterns = super(ScalaDaCapoBenchmarkSuite, self).flakySuccessPatterns()
+        if "specs" in benchmarks:
+            skip_patterns += [
+                re.escape(r"Line count validation failed for stdout.log, expecting 1996 found 1997"),
+            ]
+        return skip_patterns
+
 
 class ScalaDacapoHugeBenchmarkSuite(ScalaDaCapoBenchmarkSuite):
     """The subset of Scala DaCapo benchmarks supporting the 'huge' configuration."""
@@ -1313,7 +1339,7 @@ class SpecJvm2008BenchmarkSuite(mx_benchmark.JavaBenchmarkSuite):
             # Skips initial check benchmark which tests for javac.jar on classpath.
             runArgs += ["-pja", "-Dspecjvm.run.initial.check=false"]
         return runArgs
-    
+
     def vmArgs(self, bmSuiteArgs):
         vmArgs = super(SpecJvm2008BenchmarkSuite, self).vmArgs(bmSuiteArgs)
         if java_home_jdk().javaCompliance >= '16' and \
@@ -1838,17 +1864,43 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
     def renaissanceIterations(self):
         benchmarks = _renaissanceConfig.copy()
         if self.version() == "0.9.0":
-            del benchmarks["scala-doku"]  # was introduced in 0.10.0
+            # benchmark was introduced in 0.10.0
+            del benchmarks["scala-doku"]
+
+        if mx.get_jdk().javaCompliance >= '17' and self.version() in ["0.9.0", "0.10.0", "0.11.0", "0.12.0"]:
+            # JDK17 support for Spark benchmarks was added in 0.13.0
+            # See: renaissance-benchmarks/renaissance #295
+            del benchmarks["als"]
+            del benchmarks["chi-square"]
+            del benchmarks["dec-tree"]
+            del benchmarks["gauss-mix"]
+            del benchmarks["log-regression"]
+            del benchmarks["movie-lens"]
+            del benchmarks["naive-bayes"]
+            del benchmarks["page-rank"]
+
+        if self.version() in ["0.9.0", "0.10.0", "0.11.0", "0.12.0", "0.13.0"] and mx.get_arch() != "amd64" or mx.get_jdk().javaCompliance > '11':
+            # GR-33879
+            # JNA libraries needed are currently limited to amd64: renaissance-benchmarks/renaissance #153
+            del benchmarks["db-shootout"]
+
+        if self.version() in ["0.9.0", "0.10.0", "0.11.0"]:
+            if mx.get_jdk().javaCompliance > '11':
+                del benchmarks["neo4j-analytics"]
+        else:
+            if mx.get_jdk().javaCompliance < '11' or mx.get_jdk().javaCompliance > '15':
+                del benchmarks["neo4j-analytics"]
         return benchmarks
 
-    def version(self):
-        return super(RenaissanceBenchmarkSuite, self).version()
+    def completeBenchmarkList(self, bmSuiteArgs):
+        return sorted([bench for bench in _renaissanceConfig.keys()])
 
     def defaultSuiteVersion(self):
-        return "0.11.0"
+        #  return self.availableSuiteVersions()[-1]
+        return "0.11.0"  # stick to 0.11.0 for both JIT and AOT until Native Image is compatible with 0.13.0 (GR-34147)
 
     def availableSuiteVersions(self):
-        return ["0.9.0", "0.10.0", "0.11.0"]
+        return ["0.9.0", "0.10.0", "0.11.0", "0.12.0", "0.13.0", "0.14.0"]
 
     def renaissancePath(self):
         lib = mx.library(self.renaissanceLibraryName())
@@ -1872,6 +1924,16 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
             else:
                 return ["-r", str(iterations)] + remaining
 
+    def vmArgs(self, bmSuiteArgs):
+        vm_args = super(RenaissanceBenchmarkSuite, self).vmArgs(bmSuiteArgs)
+        # Those --add-opens flags are specified in the manifest as of renaissance 0.14.0
+        if java_home_jdk().javaCompliance > '16' and self.version() in ["0.9.0", "0.10.0", "0.11.0", "0.12.0",
+                                                                        "0.13.0"]:
+            vm_args += ["--add-opens", "java.management/sun.management=ALL-UNNAMED"]
+            vm_args += ["--add-opens", "java.management/sun.management.counter=ALL-UNNAMED"]
+            vm_args += ["--add-opens", "java.management/sun.management.counter.perf=ALL-UNNAMED"]
+        return vm_args
+
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         benchArg = ""
         if benchmarks is None:
@@ -1884,7 +1946,7 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
         return (self.vmArgs(bmSuiteArgs) + ["-jar", self.renaissancePath()] + runArgs + [benchArg])
 
     def benchmarkList(self, bmSuiteArgs):
-        return sorted(_renaissanceConfig.keys())
+        return [b for b, it in self.renaissanceIterations().items() if it != -1]
 
     def successPatterns(self):
         return []

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2017, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -95,7 +95,7 @@ public class AArch64ReadNode extends ReadNode {
         Stamp stamp = usage.stamp(NodeView.DEFAULT);
         GuardingNode guard = readNode.getGuard();
         BarrierType barrierType = readNode.getBarrierType();
-        boolean nullCheck = readNode.getNullCheck();
+        boolean nullCheck = readNode.getUsedAsNullCheck();
         FrameState stateBefore = readNode.stateBefore();
         AArch64ReadNode clone = new AArch64ReadNode(address, location, stamp, guard, barrierType, nullCheck, stateBefore, accessStamp, isSigned);
         StructuredGraph graph = readNode.graph();

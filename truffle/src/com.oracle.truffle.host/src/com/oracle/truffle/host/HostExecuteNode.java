@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -542,18 +542,18 @@ abstract class HostExecuteNode extends Node {
         assert overloads.length > 0;
         for (SingleMethod overload : overloads) {
             int paramCount = overload.getParameterCount();
-            if (!overload.isVarArgs()) {
-                if (args.length != paramCount) {
-                    minOverallArity = Math.min(minOverallArity, paramCount);
-                    maxOverallArity = Math.max(maxOverallArity, paramCount);
-                    continue;
-                }
-            } else {
+            if (overload.isVarArgs()) {
                 anyVarArgs = true;
                 int fixedParamCount = paramCount - 1;
                 if (args.length < fixedParamCount) {
                     minOverallArity = Math.min(minOverallArity, fixedParamCount);
                     maxOverallArity = Math.max(maxOverallArity, fixedParamCount);
+                    continue;
+                }
+            } else {
+                if (args.length != paramCount) {
+                    minOverallArity = Math.min(minOverallArity, paramCount);
+                    maxOverallArity = Math.max(maxOverallArity, paramCount);
                     continue;
                 }
             }
@@ -569,16 +569,14 @@ abstract class HostExecuteNode extends Node {
             if (best != null) {
                 return best;
             }
-        }
-        if (anyVarArgs) {
-            for (int priority : HostToTypeNode.PRIORITIES) {
+
+            if (anyVarArgs) {
                 best = findBestCandidate(applicableByArity, args, hostContext, true, priority, cachedArgTypes);
                 if (best != null) {
                     return best;
                 }
             }
         }
-
         throw noApplicableOverloadsException(overloads, args);
     }
 

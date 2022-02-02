@@ -25,16 +25,15 @@ package com.oracle.truffle.espresso;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
-import com.oracle.truffle.api.ContextThreadLocal;
-import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
 import org.graalvm.home.Version;
 import org.graalvm.options.OptionDescriptors;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.Node;
@@ -56,7 +55,7 @@ import com.oracle.truffle.espresso.nodes.interop.DestroyVMNode;
 import com.oracle.truffle.espresso.nodes.interop.ExitCodeNode;
 import com.oracle.truffle.espresso.nodes.interop.GetBindingsNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.EspressoExitException;
+import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 import com.oracle.truffle.espresso.runtime.StaticObject.StaticObjectFactory;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
@@ -64,16 +63,14 @@ import com.oracle.truffle.espresso.substitutions.Substitutions;
 @Registration(id = EspressoLanguage.ID, //
                 name = EspressoLanguage.NAME, //
                 implementationName = EspressoLanguage.IMPLEMENTATION_NAME, //
-                version = EspressoLanguage.VERSION, //
                 contextPolicy = TruffleLanguage.ContextPolicy.EXCLUSIVE, //
-                dependentLanguages = {"nfi", "llvm"})
+                dependentLanguages = "nfi")
 @ProvidedTags({StandardTags.RootTag.class, StandardTags.RootBodyTag.class, StandardTags.StatementTag.class})
 public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     public static final String ID = "java";
     public static final String NAME = "Java";
     public static final String IMPLEMENTATION_NAME = "Espresso";
-    public static final String VERSION = "1.8|11";
 
     // Espresso VM info
     public static final String VM_SPECIFICATION_NAME = "Java Virtual Machine Specification";
@@ -159,9 +156,11 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         context.prepareDispose();
         try {
             context.doExit(0);
-        } catch (EspressoExitException e) {
+        } catch (AbstractTruffleException e) {
             // Expected. Suppress. We do not want to throw during context closing.
         }
+
+        context.setFinalized();
     }
 
     @Override
@@ -180,15 +179,15 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
         String contents = request.getSource().getCharacters().toString();
         if (DestroyVMNode.EVAL_NAME.equals(contents)) {
             RootNode node = new DestroyVMNode(this);
-            return Truffle.getRuntime().createCallTarget(node);
+            return node.getCallTarget();
         }
         if (ExitCodeNode.EVAL_NAME.equals(contents)) {
             RootNode node = new ExitCodeNode(this);
-            return Truffle.getRuntime().createCallTarget(node);
+            return node.getCallTarget();
         }
         if (GetBindingsNode.EVAL_NAME.equals(contents)) {
             RootNode node = new GetBindingsNode(this);
-            return Truffle.getRuntime().createCallTarget(node);
+            return node.getCallTarget();
         }
         throw new UnsupportedOperationException("Unsupported operation. Use the language bindings to load classes e.g. context.getBindings(\"" + ID + "\").getMember(\"java.lang.Integer\")");
     }

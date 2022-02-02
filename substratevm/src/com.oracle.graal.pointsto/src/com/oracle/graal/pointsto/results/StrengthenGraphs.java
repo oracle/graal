@@ -29,6 +29,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.function.Supplier;
 
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -82,7 +83,6 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
-
 import com.oracle.svm.util.ImageBuildStatistics;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -122,7 +122,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
             graph.resetDebug(debug);
             try (DebugContext.Scope s = debug.scope("StrengthenGraphs", graph);
                             DebugContext.Activation a = debug.activate()) {
-                CanonicalizerPhase.create().copyWithCustomSimplification(new StrengthenSimplifier(method, graph)).apply(graph, bb.getProviders());
+                CanonicalizerPhase.create().copyWithCustomSimplification(new StrengthenSimplifier(PointsToAnalysis.assertPointsToAnalysisMethod(method), graph)).apply(graph, bb.getProviders());
             } catch (Throwable ex) {
                 debug.handle(ex);
             }
@@ -175,7 +175,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
 
         private final NodeBitMap createdPiNodes;
 
-        StrengthenSimplifier(AnalysisMethod method, StructuredGraph graph) {
+        StrengthenSimplifier(PointsToAnalysisMethod method, StructuredGraph graph) {
             this.graph = graph;
             this.methodFlow = method.getTypeFlow();
             this.originalFlows = methodFlow.getOriginalMethodFlows();
@@ -284,7 +284,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
         }
 
         private void handleInvoke(Invoke invoke, SimplifierTool tool) {
-            FixedNode node = invoke.asNode();
+            FixedNode node = invoke.asFixedNode();
             MethodCallTargetNode callTarget = (MethodCallTargetNode) invoke.callTarget();
 
             InvokeTypeFlow invokeFlow = originalFlows.getInvokeFlow(invoke);
@@ -359,7 +359,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                      */
                     return;
                 }
-                ParameterNode returnedCalleeParameter = callee.getTypeFlow().getReturnedParameter();
+                ParameterNode returnedCalleeParameter = PointsToAnalysis.assertPointsToAnalysisMethod(callee).getTypeFlow().getReturnedParameter();
                 if (returnedCalleeParameter == null) {
                     /* This callee does not return a parameter. */
                     return;
@@ -391,7 +391,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                 InliningUtil.nonNullReceiver(invoke);
             }
 
-            makeUnreachable(invoke.asNode(), tool, () -> "method " + graph.method().format("%H.%n(%p)") + ", node " + invoke +
+            makeUnreachable(invoke.asFixedNode(), tool, () -> "method " + graph.method().format("%H.%n(%p)") + ", node " + invoke +
                             ": empty list of callees for call to " + invoke.callTarget().targetMethod().format("%H.%n(%P)"));
         }
 
@@ -496,7 +496,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
              * stamp is already more precise than the static analysis results.
              */
             List<AnalysisType> typeStateTypes = new ArrayList<>(nodeTypeState.typesCount());
-            for (AnalysisType typeStateType : nodeTypeState.types()) {
+            for (AnalysisType typeStateType : nodeTypeState.types(bb)) {
                 if (oldType == null || (oldStamp.isExactType() ? oldType.equals(typeStateType) : oldType.isAssignableFrom(typeStateType))) {
                     typeStateTypes.add(typeStateType);
                 }

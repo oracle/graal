@@ -89,6 +89,8 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
+import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
@@ -119,8 +121,8 @@ import com.oracle.svm.hosted.FeatureImpl.CompilationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.NativeImageGenerator;
+import com.oracle.svm.hosted.ProgressReporter;
 import com.oracle.svm.hosted.analysis.Inflation;
-import com.oracle.svm.hosted.c.GraalAccess;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.CompilationInfoSupport;
 import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
@@ -392,7 +394,7 @@ public final class GraalFeature implements Feature {
                         config.getImageClassLoader(), ParsingReason.JITCompilation, ((Inflation) config.getBigBang()).getAnnotationSubstitutionProcessor(),
                         new SubstrateClassInitializationPlugin(config.getHostVM()), classInitializationSupport, ConfigurationValues.getTarget());
 
-        NativeImageGenerator.registerReplacements(debug, featureHandler, runtimeConfig, runtimeConfig.getProviders(), runtimeConfig.getSnippetReflection(), false, true);
+        NativeImageGenerator.registerReplacements(debug, featureHandler, runtimeConfig, runtimeConfig.getProviders(), false, true);
         featureHandler.forEachGraalFeature(feature -> feature.registerCodeObserver(runtimeConfig));
         Suites suites = NativeImageGenerator.createSuites(featureHandler, runtimeConfig, runtimeConfig.getSnippetReflection(), false);
         LIRSuites lirSuites = NativeImageGenerator.createLIRSuites(featureHandler, runtimeConfig.getProviders(), false);
@@ -491,7 +493,7 @@ public final class GraalFeature implements Feature {
         for (CallTreeNode node : methods.values()) {
             methodsToCompileArr[idx++] = objectReplacer.createMethod(node.implementationMethod);
         }
-        if (GraalSupport.setMethodsToCompile(methodsToCompileArr)) {
+        if (GraalSupport.setMethodsToCompile(config, methodsToCompileArr)) {
             config.requireAnalysisIteration();
         }
 
@@ -501,11 +503,11 @@ public final class GraalFeature implements Feature {
         for (NodeClass<?> nodeClass : nodeClasses) {
             metaAccess.lookupJavaType(nodeClass.getClazz()).registerAsAllocated(null);
         }
-        if (GraalSupport.setGraphEncoding(graphEncoder.getEncoding(), graphEncoder.getObjects(), nodeClasses)) {
+        if (GraalSupport.setGraphEncoding(config, graphEncoder.getEncoding(), graphEncoder.getObjects(), nodeClasses)) {
             config.requireAnalysisIteration();
         }
 
-        if (objectReplacer.updateDataDuringAnalysis(config.getMetaAccess())) {
+        if (objectReplacer.updateDataDuringAnalysis()) {
             config.requireAnalysisIteration();
         }
     }
@@ -574,7 +576,7 @@ public final class GraalFeature implements Feature {
 
         for (MethodCallTargetNode targetNode : callTargets) {
             AnalysisMethod targetMethod = (AnalysisMethod) targetNode.targetMethod();
-            AnalysisMethod callerMethod = (AnalysisMethod) targetNode.invoke().stateAfter().getMethod();
+            PointsToAnalysisMethod callerMethod = (PointsToAnalysisMethod) targetNode.invoke().stateAfter().getMethod();
             InvokeTypeFlow invokeFlow = callerMethod.getTypeFlow().getOriginalMethodFlows().getInvoke(targetNode.invoke().bci());
 
             if (invokeFlow == null) {
@@ -640,6 +642,11 @@ public final class GraalFeature implements Feature {
     }
 
     @Override
+    public void afterAnalysis(AfterAnalysisAccess access) {
+        ProgressReporter.singleton().setNumRuntimeCompiledMethods(methods.size());
+    }
+
+    @Override
     @SuppressWarnings("try")
     public void beforeCompilation(BeforeCompilationAccess c) {
         CompilationAccessImpl config = (CompilationAccessImpl) c;
@@ -647,7 +654,6 @@ public final class GraalFeature implements Feature {
         if (Options.PrintRuntimeCompileMethods.getValue()) {
             printCallTree();
         }
-        System.out.println(methods.size() + " method(s) included for runtime compilation");
 
         if (Options.PrintStaticTruffleBoundaries.getValue()) {
             printStaticTruffleBoundaries();
@@ -720,9 +726,10 @@ public final class GraalFeature implements Feature {
             }
         }
 
-        GraalSupport.setGraphEncoding(graphEncoder.getEncoding(), graphEncoder.getObjects(), graphEncoder.getNodeClasses());
+        ProgressReporter.singleton().setGraphEncodingByteLength(graphEncoder.getEncoding().length);
+        GraalSupport.setGraphEncoding(config, graphEncoder.getEncoding(), graphEncoder.getObjects(), graphEncoder.getNodeClasses());
 
-        objectReplacer.updateDataDuringAnalysis((AnalysisMetaAccess) hMetaAccess.getWrapped());
+        objectReplacer.updateDataDuringAnalysis();
     }
 
     private static void removeUnreachableInvokes(CallTreeNode node) {
@@ -735,7 +742,7 @@ public final class GraalFeature implements Feature {
                 InliningUtil.nonNullReceiver(invoke);
             }
             FixedGuardNode guard = new FixedGuardNode(LogicConstantNode.forBoolean(true, node.graph), DeoptimizationReason.UnreachedCode, DeoptimizationAction.None, true);
-            node.graph.addBeforeFixed(invoke.asNode(), node.graph.add(guard));
+            node.graph.addBeforeFixed(invoke.asFixedNode(), node.graph.add(guard));
         }
     }
 
@@ -881,7 +888,7 @@ public final class GraalFeature implements Feature {
         CompilationAccessImpl config = (CompilationAccessImpl) a;
 
         HostedMetaAccess hMetaAccess = config.getMetaAccess();
-        HostedUniverse hUniverse = (HostedUniverse) hMetaAccess.getUniverse();
+        HostedUniverse hUniverse = hMetaAccess.getUniverse();
         objectReplacer.updateSubstrateDataAfterCompilation(hUniverse, config.getProviders().getConstantFieldProvider());
 
         objectReplacer.registerImmutableObjects(config);
@@ -893,7 +900,7 @@ public final class GraalFeature implements Feature {
     public void afterHeapLayout(AfterHeapLayoutAccess a) {
         AfterHeapLayoutAccessImpl config = (AfterHeapLayoutAccessImpl) a;
         HostedMetaAccess hMetaAccess = config.getMetaAccess();
-        HostedUniverse hUniverse = (HostedUniverse) hMetaAccess.getUniverse();
+        HostedUniverse hUniverse = hMetaAccess.getUniverse();
         objectReplacer.updateSubstrateDataAfterHeapLayout(hUniverse);
     }
 }

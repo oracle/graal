@@ -14,25 +14,24 @@ environment for their workloads.
 
 ## Technologies
 
-[Native Image](/reference-manual/native-image/) - learn in detail about Native Image: GraalVM's innovative technology that can ahead-of-time compile Java code to a self-contained native executable.
+[Native Image](native-image/README.md) - learn in detail about Native Image: GraalVM's innovative technology that can ahead-of-time compile Java code to a self-contained native executable.
 
-[Compiler](/reference-manual/compiler/) - learn about the uniqueness of the GraalVM compiler and its advantages.
+[Java on Truffle](java-on-truffle/README.md) - learn how to run Java via a Java bytecode interpreter, implemented with the [Truffle framework](../../truffle/docs/README.md).
 
-[Updater](/reference-manual/graalvm-updater/) - learn how to add more capabilities and upgrade the core GraalVM installation.
+[GraalVM Updater](graalvm-updater.md) - learn how to add more capabilities and upgrade the core GraalVM installation.
 
-[Polyglot Programming](/reference-manual/polyglot-programming/) - learn how to write polyglot applications and allow languages to directly interoperate with each other in the same memory space.
+[Polyglot Programming](polyglot-programming.md) - learn how to write polyglot applications and allow languages to directly interoperate with each other in the same memory space.
 
-[Embedding Languages](/reference-manual/embed-languages/) - learn how to embed polyglot applications in Java host applications or native images.
+[Embedding Languages](embedding/embed-languages.md) - learn how to embed polyglot applications in Java host applications or native images.
 
 ## Specific Languages
 
 If you are mostly interested in the GraalVM support for a specific language, here you can find the most extensive documentation:
 
-* [Java](/reference-manual/java/)
-* [Java on Truffle](/reference-manual/java-on-truffle/)
-* [JavaScript and Node.js](/reference-manual/js/)
-* [LLVM Languages](/reference-manual/llvm/)
-* [Python](/reference-manual/python/)
-* [R](/reference-manual/r/)
-* [Ruby](/reference-manual/ruby/)
-* [WebAssembly](/reference-manual/wasm/)
+* [Java](java/README.md)
+* [JavaScript and Node.js](js/README.md)
+* [LLVM Languages](llvm/README.md)
+* [Python](python/README.md)
+* [R](r/README.md)
+* [Ruby](ruby/README.md)
+* [WebAssembly](wasm/README.md)

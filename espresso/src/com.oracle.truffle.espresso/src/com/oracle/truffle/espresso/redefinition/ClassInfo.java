@@ -58,7 +58,7 @@ public abstract class ClassInfo {
         if (matcher.matches()) {
             // fingerprints are only relevant for inner classes
             hierarchy.append(klass.getSuperClass().getTypeAsString()).append(";");
-            for (ObjectKlass itf : klass.getInterfaces()) {
+            for (Klass itf : klass.getImplementedInterfaces()) {
                 hierarchy.append(itf.getTypeAsString()).append(";");
             }
 
@@ -166,11 +166,6 @@ public abstract class ClassInfo {
     public int match(ClassInfo other) {
         if (!getClassFingerprint().equals(other.getClassFingerprint())) {
             // always mark super hierachy changes as incompatible
-            return 0;
-        }
-        if (!getFieldFingerprint().equals(other.getFieldFingerprint())) {
-            // field changed not supported yet
-            // Remove this restriction when supported
             return 0;
         }
         int score = 0;
