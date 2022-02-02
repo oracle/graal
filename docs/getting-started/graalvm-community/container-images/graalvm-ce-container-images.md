@@ -4,11 +4,10 @@ toc_group: container-images
 link_title: Container Images
 permalink: /docs/getting-started/container-images/
 ---
-
-## GraalVM Community Images
+# GraalVM Community Images
 
 Containers can simplify application deployment and development.
-To support container-based development, GraalVM Community container images for each release are published in the [GitHub Container Registry](https://github.com/orgs/graalvm/packages/container/package/graalvm-ce).
+To support container-based development, GraalVM Community container images for each release are published in the [GitHub Container Registry](https://github.com/orgs/graalvm/packages).
 Learn here how to start using GraalVM Community images for Docker containers.
 
 You can pull a package by name or by name and version tag. To install GraalVM JDK from the command line, use:
@@ -25,8 +24,8 @@ There are different GraalVM Community container images provided depending on the
 GraalVM binaries are built for Linux, macOS, and Windows platforms on x86 64-bit systems, and for Linux on ARM 64-bit systems.
 The images are multi-arch (`aarch64` or `amd64` will be pulled depending on Docker host architecture), and tagged with the format `ghcr.io/graalvm/IMAGE_NAME:version`.
 The version tag defines the level of specificity.
-It is recommended that the most specific tag be used, e.g., `java17-21.3.0` or `java17-21.3.0-b1`, where the `-b1` means the image required a patch and this specific build will never change.
-See what types of container images are available [here](https://github.com/graalvm/container).
+It is recommended that the most specific tag be used, e.g., `java17-21.3.1` or `java17-21.3.1-b1`, where the `-b1` means the image required a patch and this specific build will never change.
+See what types of container images are available [here](https://github.com/graalvm/container/packages).
 
 The images are based on Oracle Linux and has GraalVM Community downloaded, unzipped and made available.
 It means that Java, JavaScript, and the LLVM runtime are available out of the box.

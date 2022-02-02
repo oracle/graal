@@ -7,9 +7,9 @@ permalink: /reference-manual/native-image/BuildOutput/
 # Native Image Build Output
 
 This page provides documentation for the build output of GraalVM Native Image.
+Below is the example output when building a native image of the `HelloWorld` class:
 
-## HelloWorld Example Output
-```text
+```shell
 ================================================================================
 GraalVM Native Image: Generating 'helloworld'...
 ================================================================================
