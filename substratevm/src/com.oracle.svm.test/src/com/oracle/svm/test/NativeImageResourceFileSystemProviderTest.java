@@ -62,6 +62,7 @@ import org.junit.Test;
 
 import com.oracle.svm.core.configure.ResourcesRegistry;
 
+@AddExports("java.base/java.lang")
 public class NativeImageResourceFileSystemProviderTest {
 
     private static final String RESOURCE_DIR = "/resources";
@@ -571,5 +572,20 @@ public class NativeImageResourceFileSystemProviderTest {
 
         // 3. Closing file system.
         closeFileSystem(fileSystem);
+    }
+
+    @Test
+    public void moduleResourceURLAccess() {
+        URL url = Class.class.getResource("uniName.dat");
+        Assert.assertNotNull("URL for resource java.base/java/lang/uniName.dat must not be null", url);
+        try (InputStream in = url.openStream()) {
+            try {
+                Assert.assertNotEquals("uniName.dat does not seem to contain valid data", in.read(), 0);
+            } catch (IOException e) {
+                Assert.fail("IOException in in.read(): " + e.getMessage());
+            }
+        } catch (IOException e) {
+            Assert.fail("IOException in url.openStream(): " + e.getMessage());
+        }
     }
 }
