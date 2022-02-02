@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -313,8 +313,7 @@ public final class LLVMDebuggerScopeFactory {
             return LLVMDebuggerScopeEntries.EMPTY_SCOPE;
         }
 
-        final LLVMDebuggerScopeEntries vars = new LLVMDebuggerScopeEntries();
-        vars.setScopeName(getName());
+        final LLVMDebuggerScopeEntries vars = new LLVMDebuggerScopeEntries(getName());
 
         LLVMDispatchBasicBlockNode dispatchBlock = LLVMNode.getParent(node, LLVMDispatchBasicBlockNode.class);
 
