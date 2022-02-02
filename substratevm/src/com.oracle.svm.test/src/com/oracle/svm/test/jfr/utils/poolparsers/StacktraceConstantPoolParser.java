@@ -24,20 +24,28 @@
  * questions.
  */
 
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.test.jfr.utils.poolparsers;
 
-import com.oracle.svm.test.jfr.events.ThreadEvent;
-import org.junit.Test;
+import com.oracle.svm.core.jfr.JfrTypes;
+import com.oracle.svm.test.jfr.utils.RecordingInput;
 
-/**
- * Test if event ({@link TestThreadEvent}) with {@link Thread} payload is working.
- */
-public class TestThreadEvent extends JFRTest {
+import java.io.IOException;
 
-    @Test
-    public void test() throws Exception {
-        ThreadEvent event = new ThreadEvent();
-        event.thread = Thread.currentThread();
-        event.commit();
+public class StacktraceConstantPoolParser extends ConstantPoolParser {
+
+    @Override
+    public void parse(RecordingInput input) throws IOException {
+        int numberOfStackTraces = input.readInt();
+        for (int i = 0; i < numberOfStackTraces; i++) {
+            addFoundId(input.readLong()); // StackTraceId.
+            input.readBoolean(); // IsTruncated.
+            int stackTraceSize = input.readInt(); // StackFrameSize.
+            for (int j = 0; j < stackTraceSize; j++) {
+                addExpectedId(JfrTypes.Method, input.readLong()); // MethodId.
+                input.readInt(); // LineNumber.
+                input.readInt(); // Bci.
+                addExpectedId(JfrTypes.FrameType, input.readLong()); // FrameTypeId.
+            }
+        }
     }
 }

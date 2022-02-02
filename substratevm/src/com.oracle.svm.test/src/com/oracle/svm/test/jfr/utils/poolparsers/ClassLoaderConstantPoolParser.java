@@ -24,20 +24,22 @@
  * questions.
  */
 
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.test.jfr.utils.poolparsers;
 
-import com.oracle.svm.test.jfr.events.ThreadEvent;
-import org.junit.Test;
+import com.oracle.svm.core.jfr.JfrTypes;
+import com.oracle.svm.test.jfr.utils.RecordingInput;
 
-/**
- * Test if event ({@link TestThreadEvent}) with {@link Thread} payload is working.
- */
-public class TestThreadEvent extends JFRTest {
+import java.io.IOException;
 
-    @Test
-    public void test() throws Exception {
-        ThreadEvent event = new ThreadEvent();
-        event.thread = Thread.currentThread();
-        event.commit();
+public class ClassLoaderConstantPoolParser extends ConstantPoolParser {
+
+    @Override
+    public void parse(RecordingInput input) throws IOException {
+        int numberOfClassLoaders = input.readInt();
+        for (int i = 0; i < numberOfClassLoaders; i++) {
+            addFoundId(input.readLong()); // ClassLoaderId.
+            addExpectedId(JfrTypes.Class, input.readLong()); // ClassId.
+            addExpectedId(JfrTypes.Symbol, input.readLong()); // ClassLoaderName.
+        }
     }
 }
