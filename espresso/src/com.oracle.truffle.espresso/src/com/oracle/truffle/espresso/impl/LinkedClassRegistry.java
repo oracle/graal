@@ -24,6 +24,7 @@
 package com.oracle.truffle.espresso.impl;
 
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
+import com.oracle.truffle.espresso.classfile.Constants;
 import com.oracle.truffle.espresso.classfile.LinkedClassfileParser;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
@@ -41,11 +42,103 @@ import com.oracle.truffle.espresso.substitutions.JavaType;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+/**
+ * A {@link ClassRegistry} maps type names to resolved {@link Klass} instances. Each class loader is
+ * associated with a {@link ClassRegistry} and vice versa.
+ *
+ * This class is analogous to the ClassLoaderData C++ class in HotSpot.
+ */
 public abstract class LinkedClassRegistry {
+
+    /**
+     * Storage class used to propagate information in the case of special kinds of class definition
+     * (hidden, anonymous or with a specified protection domain).
+     *
+     * Regular class definitions will use the {@link #EMPTY} instance.
+     *
+     * Hidden and Unsafe anonymous classes are handled by not registering them in the class loader
+     * registry.
+     */
+    public static final class ClassDefinitionInfo {
+        public static final LinkedClassRegistry.ClassDefinitionInfo EMPTY = new LinkedClassRegistry.ClassDefinitionInfo(null, null, null, null, null, false, false);
+
+        // Constructor for regular definition, but with a specified protection domain
+        public ClassDefinitionInfo(StaticObject protectionDomain) {
+            this(protectionDomain, null, null, null, null, false, false);
+        }
+
+        // Constructor for Unsafe anonymous class definition.
+        public ClassDefinitionInfo(StaticObject protectionDomain, ObjectKlass hostKlass, StaticObject[] patches) {
+            this(protectionDomain, hostKlass, patches, null, null, false, false);
+        }
+
+        // Constructor for Hidden class definition.
+        public ClassDefinitionInfo(StaticObject protectionDomain, ObjectKlass dynamicNest, StaticObject classData, boolean isStrongHidden) {
+            this(protectionDomain, null, null, dynamicNest, classData, true, isStrongHidden);
+        }
+
+        private ClassDefinitionInfo(StaticObject protectionDomain,
+                                    ObjectKlass hostKlass,
+                                    StaticObject[] patches,
+                                    ObjectKlass dynamicNest,
+                                    StaticObject classData,
+                                    boolean isHidden,
+                                    boolean isStrongHidden) {
+            this.protectionDomain = protectionDomain;
+            this.hostKlass = hostKlass;
+            this.patches = patches;
+            this.dynamicNest = dynamicNest;
+            this.classData = classData;
+            this.isHidden = isHidden;
+            this.isStrongHidden = isStrongHidden;
+        }
+
+        public final StaticObject protectionDomain;
+
+        // Unsafe Anonymous class
+        public final ObjectKlass hostKlass;
+        public final StaticObject[] patches;
+
+        // Hidden class
+        public final ObjectKlass dynamicNest;
+        public final StaticObject classData;
+        public final boolean isHidden;
+        public final boolean isStrongHidden;
+        public int klassID = -1;
+
+        public boolean addedToRegistry() {
+            return !isAnonymousClass() && !isHidden();
+        }
+
+        public boolean isAnonymousClass() {
+            return hostKlass != null;
+        }
+
+        public boolean isHidden() {
+            return isHidden;
+        }
+
+        public boolean isStrongHidden() {
+            return isStrongHidden;
+        }
+
+        public int patchFlags(int classFlags) {
+            int flags = classFlags;
+            if (isHidden()) {
+                flags |= Constants.ACC_IS_HIDDEN_CLASS;
+            }
+            return flags;
+        }
+
+        public void initKlassID(int futureKlassID) {
+            this.klassID = futureKlassID;
+        }
+    }
 
     private static final DebugTimer KLASS_PROBE = DebugTimer.create("klass probe");
     private static final DebugTimer KLASS_DEFINE = DebugTimer.create("klass define");
@@ -63,6 +156,73 @@ public abstract class LinkedClassRegistry {
 
     public void registerOnLoadListener(DefineKlassListener listener) {
         defineKlassListener = listener;
+    }
+
+    public static final class TypeStack {
+        ClassRegistry.TypeStack.Node head;
+
+        public TypeStack() {
+        }
+
+        static final class Node {
+            Symbol<Type> entry;
+            ClassRegistry.TypeStack.Node next;
+
+            Node(Symbol<Type> entry, ClassRegistry.TypeStack.Node next) {
+                this.entry = entry;
+                this.next = next;
+            }
+        }
+
+        boolean isEmpty() {
+            return head == null;
+        }
+
+        boolean contains(Symbol<Type> type) {
+            ClassRegistry.TypeStack.Node curr = head;
+            while (curr != null) {
+                if (curr.entry == type) {
+                    return true;
+                }
+                curr = curr.next;
+            }
+            return false;
+        }
+
+        Symbol<Type> pop() {
+            if (isEmpty()) {
+                throw EspressoError.shouldNotReachHere();
+            }
+            Symbol<Type> res = head.entry;
+            head = head.next;
+            return res;
+        }
+
+        void push(Symbol<Type> type) {
+            head = new ClassRegistry.TypeStack.Node(type, head);
+        }
+    }
+
+    private final int loaderID;
+
+    private ModuleTable.ModuleEntry unnamed;
+    private final PackageTable packages;
+    private final ModuleTable modules;
+
+    public ModuleTable.ModuleEntry getUnnamedModule() {
+        return unnamed;
+    }
+
+    public final int getLoaderID() {
+        return loaderID;
+    }
+
+    public ModuleTable modules() {
+        return modules;
+    }
+
+    public PackageTable packages() {
+        return packages;
     }
 
     /**
@@ -93,17 +253,24 @@ public abstract class LinkedClassRegistry {
         }
     }
 
-    private final int loaderID;
-
-    private ModuleTable.ModuleEntry unnamed;
-    private final PackageTable packages;
-    private final ModuleTable modules;
-
     protected LinkedClassRegistry(int loaderID) {
         this.loaderID = loaderID;
         ReadWriteLock rwLock = new ReentrantReadWriteLock();
         this.packages = new PackageTable(rwLock);
         this.modules = new ModuleTable(rwLock);
+    }
+
+    public void initUnnamedModule(StaticObject unnamedModule) {
+        // TODO
+        // this.unnamed = ModuleTable.ModuleEntry.createUnnamedModuleEntry(unnamedModule, this);
+    }
+
+    public List<Klass> getLoadedKlasses() {
+        ArrayList<Klass> klasses = new ArrayList<>(classes.size());
+        for (ClassRegistries.RegistryEntry entry : classes.values()) {
+            klasses.add(entry.klass());
+        }
+        return klasses;
     }
 
     ParserKlass loadParserKlass(ClassLoadingEnv env, Symbol<Type> type, ClassRegistry.ClassDefinitionInfo info) {
@@ -395,6 +562,38 @@ public abstract class LinkedClassRegistry {
         env.getRegistries().onKlassDefined(klass);
         if (defineKlassListener != null) {
             defineKlassListener.onKlassDefined(klass);
+        }
+    }
+
+    public void onClassRenamed(ClassLoadingEnv.InContext env, ObjectKlass renamedKlass) {
+        // this method is constructed so that any existing class loader constraint
+        // for the new type is removed from the class registries first. This allows
+        // a clean addition of a new class loader constraint for the new type for a
+        // different klass object.
+
+        // The old type of the renamed klass object will not be handled within this
+        // method. There are two possible ways in which the old type is handled, 1)
+        // if another renamed class instance now has the old type, it will also go
+        // through this method directly or 2) if no klass instance has the new type
+        // the old klass instance will be marked as removed and will follow a direct
+        // path to ClassRegistries.removeUnloadedKlassConstraint().
+
+        Klass loadedKlass = findLoadedKlass(env, renamedKlass.getType());
+        if (loadedKlass != null) {
+            env.getRegistries().removeUnloadedKlassConstraint(loadedKlass, renamedKlass.getType());
+        }
+
+        classes.put(renamedKlass.getType(), new ClassRegistries.RegistryEntry(renamedKlass));
+        // record the new loading constraint
+        env.getRegistries().recordConstraint(renamedKlass.getType(), renamedKlass, renamedKlass.getDefiningClassLoader());
+    }
+
+    public void onInnerClassRemoved(ClassLoadingEnv.InContext env, Symbol<Symbol.Type> type) {
+        // "unload" the class by removing from classes
+        ClassRegistries.RegistryEntry removed = classes.remove(type);
+        // purge class loader constraint for this type
+        if (removed != null && removed.klass() != null) {
+            env.getRegistries().removeUnloadedKlassConstraint(removed.klass(), type);
         }
     }
 
