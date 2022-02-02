@@ -86,6 +86,11 @@ suite = {
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-gpl-0.13.0.jar"],
       "sha1" : "65eaca6ec6ba4c7293b82644bbdefd5cb2178825",
     },
+    
+    "RENAISSANCE_0.14.0" : {
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/renaissance/renaissance-gpl-0.14.0.jar"],
+      "sha1" : "d83a508c593a2389880936cbf9aa034bc86e7ef2",
+    },
 
     "UBENCH_AGENT_DIST" : {
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/java-ubench-agent-2e5becaf97afcf64fd8aef3ac84fc05a3157bff5.zip"],
