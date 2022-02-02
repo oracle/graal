@@ -67,6 +67,11 @@ import org.graalvm.polyglot.PolyglotException;
  * help items, prints installed engine's options.
  */
 public abstract class LanguageLauncherBase extends Launcher {
+
+    private static final String ID_HEADER = "[id]";
+    private static final String NAME_HEADER = "[name]";
+    private static final String WEBSITE_HEADER = "[website]";
+
     private static Engine tempEngine;
     private boolean seenPolyglot;
     private VersionAction versionAction = VersionAction.None;
@@ -119,11 +124,7 @@ public abstract class LanguageLauncherBase extends Launcher {
         }
         if (!Boolean.FALSE.equals(descriptor.getKey().getDefaultValue())) {
             key.append("=");
-            if (descriptor.isOptionMap()) {
-                key.append("<value>");
-            } else {
-                key.append(descriptor.getUsageSyntax());
-            }
+            key.append(descriptor.getUsageSyntax());
         }
         String help = descriptor.getHelp();
         if (descriptor.isDeprecated()) {
@@ -253,50 +254,38 @@ public abstract class LanguageLauncherBase extends Launcher {
         launcherOption("--version:graalvm", "Print GraalVM version information and exit.");
         launcherOption("--show-version:graalvm", "Print GraalVM version information and continue execution.");
         println("");
-        printInstalledLanguages();
+        printInstalledComponents();
         println("");
-        printInstalledTools();
-        println("");
-        println("Use --help:[id] for component options.");
+        println("  Use --help:[id] for component options.");
     }
 
-    private static final String ID_HEADER = "[id]";
-    private static final String NAME_HEADER = "[name]";
-    private static final String WEBSITE_HEADER = "[website]";
-
-    private void printInstalledLanguages() {
+    private void printInstalledComponents() {
         List<Language> languages = sortedLanguages(getTempEngine());
-        if (languages.isEmpty()) {
-            return;
-        }
-        println("Languages:");
         int maxId = ID_HEADER.length();
         int maxName = NAME_HEADER.length();
         for (Language language : languages) {
             maxId = Math.max(maxId, language.getId().length());
             maxName = max(maxName, language.getName().length());
         }
-        printInstalled(maxId, maxName, ID_HEADER, NAME_HEADER, WEBSITE_HEADER);
-        for (Language language : languages) {
-            printInstalled(maxId, maxName, language.getId(), language.getName(), language.getWebsite());
-        }
-    }
-
-    private void printInstalledTools() {
         List<Instrument> instruments = sortedInstruments(getTempEngine());
-        if (instruments.isEmpty()) {
-            return;
-        }
-        println("Tools:");
-        int maxId = ID_HEADER.length();
-        int maxName = NAME_HEADER.length();
         for (Instrument instrument : instruments) {
             maxId = max(maxId, instrument.getId().length());
             maxName = max(maxName, instrument.getName().length());
         }
-        printInstalled(maxId, maxName, ID_HEADER, NAME_HEADER, WEBSITE_HEADER);
-        for (Instrument instrument : instruments) {
-            printInstalled(maxId, maxName, instrument.getId(), instrument.getName(), instrument.getWebsite());
+        if (!languages.isEmpty()) {
+            println("Languages:");
+            printInstalled(maxId, maxName, ID_HEADER, NAME_HEADER, WEBSITE_HEADER);
+            for (Language language : languages) {
+                printInstalled(maxId, maxName, language.getId(), language.getName(), language.getWebsite());
+            }
+        }
+        println("");
+        if (!instruments.isEmpty()) {
+            println("Tools:");
+            printInstalled(maxId, maxName, ID_HEADER, NAME_HEADER, WEBSITE_HEADER);
+            for (Instrument instrument : instruments) {
+                printInstalled(maxId, maxName, instrument.getId(), instrument.getName(), instrument.getWebsite());
+            }
         }
     }
 
@@ -309,14 +298,14 @@ public abstract class LanguageLauncherBase extends Launcher {
         if (helpArg == null || "".equals(helpArg)) {
             return;
         }
-        final boolean all = helpArgIs("all");
-        if (all || helpArgIs("languages")) {
+        final boolean all = "all".equals(helpArg);
+        if (all || "languages".equals(helpArg)) {
             helpPrinted = printLanguageOptions(getTempEngine(), null);
         }
-        if (all || helpArgIs("tools")) {
+        if (all || "tools".equals(helpArg)) {
             helpPrinted = printInstrumentOptions(getTempEngine(), null);
         }
-        if (all || helpArgIs("engine")) {
+        if (all || "engine".equals(helpArg)) {
             helpPrinted = printEngineOptions(getTempEngine());
         }
         if (helpPrinted) {
@@ -403,6 +392,8 @@ public abstract class LanguageLauncherBase extends Launcher {
                 printCategory(options, OptionCategory.USER, "   User options:");
                 printCategory(options, OptionCategory.EXPERT, "   Expert options:");
                 printCategory(options, OptionCategory.INTERNAL, "   Internal options:");
+                println("");
+                println("   Use --help:" + instrument.getId() + ":internal to also show internal options.");
             }
             return true;
         }
@@ -433,6 +424,8 @@ public abstract class LanguageLauncherBase extends Launcher {
                 printCategory(options, OptionCategory.USER, "   User options:");
                 printCategory(options, OptionCategory.EXPERT, "   Expert options:");
                 printCategory(options, OptionCategory.INTERNAL, "   Internal options:");
+                println("");
+                println("   Use --help:" + language.getId() + ":internal to also show internal options.");
             }
             return true;
         }

@@ -109,9 +109,9 @@ public abstract class Launcher {
     private PrintStream out = System.out;
     private PrintStream err = System.err;
 
-    protected String helpArg = null;
-    protected boolean helpInternal;
-    protected boolean helpPrinted;
+    String helpArg = null;
+    boolean helpInternal;
+    boolean helpPrinted;
 
     /**
      * Path to the desired log file, or {@code null} if no log redirection is required.
@@ -604,7 +604,7 @@ public abstract class Launcher {
             printDefaultHelp(OptionCategory.EXPERT);
         }
         maybePrintAdditionalHelp(OptionCategory.EXPERT);
-        if (helpArgIs("all") || helpArgIs("vm")) {
+        if ("all".equals(helpArg) || "vm".equals(helpArg)) {
             helpPrinted = true;
             out.println("");
             if (nativeAccess == null) {
@@ -619,10 +619,6 @@ public abstract class Launcher {
         out.println("");
         out.println("See http://www.graalvm.org for more information.");
         return true;
-    }
-
-    protected boolean helpArgIs(String keyword) {
-        return keyword.equals(helpArg);
     }
 
     /**
