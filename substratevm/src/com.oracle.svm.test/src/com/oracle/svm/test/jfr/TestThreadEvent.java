@@ -26,12 +26,8 @@
 
 package com.oracle.svm.test.jfr;
 
-import static org.junit.Assert.assertNotNull;
-
+import com.oracle.svm.test.jfr.events.ThreadEvent;
 import org.junit.Test;
-
-import jdk.jfr.Recording;
-import jdk.jfr.consumer.RecordingFile;
 
 /**
  * Test if event ({@link TestThreadEvent}) with {@link Thread} payload is working.
@@ -40,18 +36,8 @@ public class TestThreadEvent extends JFRTest {
 
     @Test
     public void test() throws Exception {
-        JFR jfr = new LocalJFR();
-        Recording recording = jfr.startRecording("TestThreadEvent");
-
         ThreadEvent event = new ThreadEvent();
         event.thread = Thread.currentThread();
         event.commit();
-
-        jfr.endRecording(recording);
-        try (RecordingFile recordingFile = new RecordingFile(recording.getDestination())) {
-            assertNotNull(recordingFile);
-        } finally {
-            jfr.cleanupRecording(recording);
-        }
     }
 }

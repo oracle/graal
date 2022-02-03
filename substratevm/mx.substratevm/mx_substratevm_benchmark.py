@@ -99,7 +99,7 @@ _RENAISSANCE_EXTRA_IMAGE_BUILD_ARGS = {
                           ]
 }
 
-_renaissance_config = {
+_renaissance_pre014_config = {
     "akka-uct": {
         "group": "actors-akka",
         "legacy-group": "actors",
@@ -196,15 +196,15 @@ _renaissance_config = {
 }
 
 
-def benchmark_group(benchmark, suite_version):
+def pre014_benchmark_group(benchmark, suite_version):
     if suite_version in ["0.9.0", "0.10.0", "0.11.0"]:
-        return _renaissance_config[benchmark].get("legacy-group", _renaissance_config[benchmark]["group"])
+        return _renaissance_pre014_config[benchmark].get("legacy-group", _renaissance_pre014_config[benchmark]["group"])
     else:
-        return _renaissance_config[benchmark]["group"]
+        return _renaissance_pre014_config[benchmark]["group"]
 
 
-def requires_recompiled_harness(benchmark, suite_version):
-    requires_harness = _renaissance_config[benchmark].get("requires-recompiled-harness", False)
+def pre014_requires_recompiled_harness(benchmark, suite_version):
+    requires_harness = _renaissance_pre014_config[benchmark].get("requires-recompiled-harness", False)
     if isinstance(requires_harness, list):
         return suite_version in requires_harness
     return requires_harness
@@ -215,10 +215,10 @@ class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchma
     Building an image for a renaissance benchmark requires all libraries for the group this benchmark belongs to
     and a harness project compiled with the same scala version as the benchmark.
     Since we don't support building an image from fat-jars, we extract them to create project dependencies.
-    Depending on the benchmark's scala version we create corresponding renaissance harness and benchmark projects,
-    we set this harness project as a dependency for the benchmark project and collect project's classpath.
-    For each renaissance benchmark we store an information about the group and scala version in _renaissance-config.
-    We build an image from renaissance jar with the classpath as previously described, provided configurations and extra arguments while neccessary.
+
+    On recent renaissance versions (>= 0.14.0), it's only necessary to extract the fatjar and run the standalone jar
+    of a given benchmark. Those standalone jars define the minimal classpath and include the matching harness for the
+    scala version needed by the benchmark.
     """
 
     def name(self):
@@ -228,23 +228,34 @@ class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchma
         return 'renaissance'
 
     def renaissance_harness_lib_name(self):
+        # Before Renaissance 0.14.0, we had to cross-compile the Renaissance harness to ensure we have a matching
+        # harness for each project compiled with different scala versions.
+        # As of Renaissance 0.14.0, we use the standalone mode of renaissance which already creates a native-image
+        # friendly classpath and already bundles all harness versions needed.
         version_to_run = self.version()
-        version_end_index = str(version_to_run).rindex('.')
-        return 'RENAISSANCE_HARNESS_v' + str(version_to_run)[0:version_end_index]
+        if version_to_run in ["0.9.0", "0.10.0", "0.11.0", "0.12.0", "0.13.0"]:
+            version_end_index = str(version_to_run).rindex('.')
+            return 'RENAISSANCE_HARNESS_v' + str(version_to_run)[0:version_end_index]
+        else:
+            return None
 
     def harness_path(self):
-        lib = mx.library(self.renaissance_harness_lib_name())
-        if lib:
-            return lib.get_path(True)
+        harness_lib = self.renaissance_harness_lib_name()
+        if harness_lib is not None:
+            lib = mx.library(harness_lib)
+            if lib:
+                return lib.get_path(True)
         return None
 
-    # Before supporting new Renaissance versions, we must cross-compile Renaissance harness project
-    # with scala 11 for benchmarks compiled with this version of Scala.
     def availableSuiteVersions(self):
-        return ["0.9.0", "0.10.0", "0.11.0", "0.12.0", "0.13.0"]
+        return ["0.9.0", "0.10.0", "0.11.0", "0.12.0", "0.13.0", "0.14.0"]
 
     def renaissance_unpacked(self):
         return extract_archive(self.renaissancePath(), 'renaissance.extracted')
+
+    def standalone_jar_path(self, benchmark_name):
+        standalone_jars_directory = "single"
+        return os.path.join(self.renaissance_unpacked(), standalone_jars_directory, "{}.jar".format(benchmark_name))
 
     def renaissance_additional_lib(self, lib):
         return mx.library(lib).get_path(True)
@@ -284,20 +295,24 @@ class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchma
             self.benchmark_name = benchmarks[0]
         run_args = self.postprocessRunArgs(self.benchmarkName(), self.runArgs(bmSuiteArgs))
         vm_args = self.vmArgs(bmSuiteArgs)
-        return ['-cp', self.create_classpath(self.benchmarkName())] + vm_args + ['-jar', self.renaissancePath()] + run_args + [self.benchmarkName()]
+        if self.version() in ["0.9.0", "0.10.0", "0.11.0", "0.12.0", "0.13.0"]:
+            return ['-cp', self.create_pre014_classpath(self.benchmarkName())] + vm_args + ['-jar', self.renaissancePath()] + run_args + [self.benchmarkName()]
+        else:
+            # use renaissance standalone mode as of renaissance 0.14.0
+            return vm_args + ["-jar", self.standalone_jar_path(self.benchmarkName())] + run_args + [self.benchmarkName()]
 
     def successPatterns(self):
         return super(RenaissanceNativeImageBenchmarkSuite, self).successPatterns() + [
             _successful_stage_pattern
         ]
 
-    def create_classpath(self, benchmarkName):
-        custom_harness = requires_recompiled_harness(benchmarkName, self.version())
-        harness_project = RenaissanceNativeImageBenchmarkSuite.RenaissanceProject('harness', custom_harness, self)
-        group_project = RenaissanceNativeImageBenchmarkSuite.RenaissanceProject(benchmark_group(benchmarkName, self.version()), custom_harness, self, harness_project)
+    def create_pre014_classpath(self, benchmarkName):
+        custom_harness = pre014_requires_recompiled_harness(benchmarkName, self.version())
+        harness_project = RenaissanceNativeImageBenchmarkSuite.RenaissancePre014Project('harness', custom_harness, self)
+        group_project = RenaissanceNativeImageBenchmarkSuite.RenaissancePre014Project(pre014_benchmark_group(benchmarkName, self.version()), custom_harness, self, harness_project)
         return ':'.join([mx.classpath(harness_project), mx.classpath(group_project)])
 
-    class RenaissanceDependency(mx.ClasspathDependency):
+    class RenaissancePre014Dependency(mx.ClasspathDependency):
         def __init__(self, name, path): # pylint: disable=super-init-not-called
             mx.Dependency.__init__(self, _suite, name, None)
             self.path = path
@@ -308,7 +323,7 @@ class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchma
         def _walk_deps_visit_edges(self, *args, **kwargs):
             pass
 
-    class RenaissanceProject(mx.ClasspathDependency):
+    class RenaissancePre014Project(mx.ClasspathDependency):
         def __init__(self, group, requires_recompiled_harness, renaissance_suite, dep_project=None): # pylint: disable=super-init-not-called
             mx.Dependency.__init__(self, _suite, group, None)
             self.suite = renaissance_suite
@@ -326,17 +341,17 @@ class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchma
         def get_dependencies(self, path, group):
             deps = []
             for jar in list_jars(path):
-                deps.append(RenaissanceNativeImageBenchmarkSuite.RenaissanceDependency(os.path.basename(jar), mx.join(path, jar)))
+                deps.append(RenaissanceNativeImageBenchmarkSuite.RenaissancePre014Dependency(os.path.basename(jar), mx.join(path, jar)))
 
             if self.suite.version() in ["0.9.0", "0.10.0", "0.11.0"]:
                 if group == 'apache-spark':
                     # breeze jar is replaced with a patched jar because of IncompatibleClassChange errors due to a bug in the Scala compiler
                     invalid_bytecode_jar = 'breeze_2.11-0.11.2.jar'
-                    lib_dep = RenaissanceNativeImageBenchmarkSuite.RenaissanceDependency(invalid_bytecode_jar, mx.join(path, invalid_bytecode_jar))
+                    lib_dep = RenaissanceNativeImageBenchmarkSuite.RenaissancePre014Dependency(invalid_bytecode_jar, mx.join(path, invalid_bytecode_jar))
                     if lib_dep in deps:
                         deps.remove(lib_dep)
                     lib_path = RenaissanceNativeImageBenchmarkSuite.renaissance_additional_lib(self.suite, 'SPARK_BREEZE_PATCHED')
-                    deps.append(RenaissanceNativeImageBenchmarkSuite.RenaissanceDependency(os.path.basename(lib_path), lib_path))
+                    deps.append(RenaissanceNativeImageBenchmarkSuite.RenaissancePre014Dependency(os.path.basename(lib_path), lib_path))
             return deps
 
         def collect_group_dependencies(self, group, requires_recompiled_harness):

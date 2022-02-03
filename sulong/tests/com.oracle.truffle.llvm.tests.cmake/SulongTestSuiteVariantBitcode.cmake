@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2021, Oracle and/or its affiliates.
+# Copyright (c) 2021, 2022, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -61,7 +61,7 @@ macro(setupOptions)
     string(APPEND CMAKE_CXX_FLAGS " -emit-llvm")
 
     # set optimization levels
-    set(OPT_LEVELS "O0;O1;O2;O3")
+    set(OPT_LEVELS "O0;O1;O2;O3;Os")
     set(MISC_OPTS "-functionattrs;-instcombine;-always-inline;-jump-threading;-simplifycfg;-mem2reg")
     set(MEM2REG "-mem2reg")
 

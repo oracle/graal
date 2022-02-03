@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, 2021, Red Hat Inc. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,32 +24,21 @@
  * questions.
  */
 
-package com.oracle.svm.test.jfr;
+package com.oracle.svm.test.jfr.utils.poolparsers;
 
-import static org.junit.Assert.assertNotNull;
+import com.oracle.svm.test.jfr.utils.RecordingInput;
+import org.junit.Assert;
 
-import org.junit.Test;
+import java.io.IOException;
 
-import jdk.jfr.Recording;
-import jdk.jfr.consumer.RecordingFile;
+public class ThreadStateConstantPoolParser extends ConstantPoolParser {
 
-public class TestRecordingParsable extends JFRTest {
-
-    @Test
-    public void test() throws Exception {
-        JFR jfr = new LocalJFR();
-        Recording recording = jfr.startRecording("TestRecordingParsable");
-
-        StringEvent event = new StringEvent();
-        event.message = "Event has been generated!";
-        event.commit();
-
-        jfr.endRecording(recording);
-
-        try (RecordingFile recordingFile = new RecordingFile(recording.getDestination())) {
-            assertNotNull(recordingFile);
-        } finally {
-            jfr.cleanupRecording(recording);
+    @Override
+    public void parse(RecordingInput input) throws IOException {
+        int numberOfThreadStates = input.readInt();
+        for (int i = 0; i < numberOfThreadStates; i++) {
+            addFoundId(input.readInt()); // ThreadStateId.
+            Assert.assertFalse("ThreadStateName is empty!", input.readUTF().isEmpty()); // ThreadStateName.
         }
     }
 }
