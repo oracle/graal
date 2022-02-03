@@ -1289,7 +1289,7 @@ public class GraphDecoder {
         return false;
     }
 
-    @SuppressWarnings({"unused", "try"})
+    @SuppressWarnings("try")
     protected void readProperties(MethodScope methodScope, Node node) {
         try (DebugCloseable a = ReadPropertiesTimer.start(debug)) {
             NodeSourcePosition position = (NodeSourcePosition) readObject(methodScope);
@@ -1509,7 +1509,7 @@ public class GraphDecoder {
      * successor list, but no properties or edges are loaded yet. That is done when the successor is
      * on top of the worklist in {@link #processNextNode}.
      */
-    @SuppressWarnings({"unused", "try"})
+    @SuppressWarnings("try")
     protected void makeSuccessorStubs(MethodScope methodScope, LoopScope loopScope, Node node, boolean updatePredecessors) {
         try (DebugCloseable a = MakeSuccessorStubsTimer.start(debug)) {
             Edges edges = node.getNodeClass().getSuccessorEdges();

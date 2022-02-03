@@ -181,7 +181,7 @@ public class SimplifyingGraphDecoder extends GraphDecoder {
         }
     }
 
-    @SuppressWarnings({"unused", "try"})
+    @SuppressWarnings("try")
     @Override
     protected void handleFixedNode(MethodScope methodScope, LoopScope loopScope, int nodeOrderId, FixedNode node) {
         try (DebugCloseable a = CanonicalizeFixedNode.start(debug)) {
