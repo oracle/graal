@@ -26,7 +26,7 @@
 
 package com.oracle.svm.test.jfr.utils.poolparsers;
 
-import com.oracle.svm.core.jfr.JfrTypes;
+import com.oracle.svm.core.jfr.JfrType;
 import com.oracle.svm.test.jfr.utils.RecordingInput;
 
 import java.io.IOException;
@@ -41,10 +41,10 @@ public class StacktraceConstantPoolParser extends ConstantPoolParser {
             input.readBoolean(); // IsTruncated.
             int stackTraceSize = input.readInt(); // StackFrameSize.
             for (int j = 0; j < stackTraceSize; j++) {
-                addExpectedId(JfrTypes.Method, input.readLong()); // MethodId.
+                addExpectedId(JfrType.Method, input.readLong()); // MethodId.
                 input.readInt(); // LineNumber.
                 input.readInt(); // Bci.
-                addExpectedId(JfrTypes.FrameType, input.readLong()); // FrameTypeId.
+                addExpectedId(JfrType.FrameType, input.readLong()); // FrameTypeId.
             }
         }
     }

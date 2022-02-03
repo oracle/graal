@@ -26,7 +26,7 @@
 
 package com.oracle.svm.test.jfr.utils.poolparsers;
 
-import com.oracle.svm.core.jfr.JfrTypes;
+import com.oracle.svm.core.jfr.JfrType;
 import com.oracle.svm.test.jfr.utils.RecordingInput;
 
 import java.io.IOException;
@@ -38,8 +38,8 @@ public class PackageConstantPoolParser extends ConstantPoolParser {
         int numberOfPackages = input.readInt();
         for (int i = 0; i < numberOfPackages; i++) {
             addFoundId(input.readLong()); // PackageId.
-            addExpectedId(JfrTypes.Symbol, input.readLong()); // PackageName.
-            addExpectedId(JfrTypes.Module, input.readLong()); // ModuleId.
+            addExpectedId(JfrType.Symbol, input.readLong()); // PackageName.
+            addExpectedId(JfrType.Module, input.readLong()); // ModuleId.
             input.readBoolean(); // IsExported.
         }
     }

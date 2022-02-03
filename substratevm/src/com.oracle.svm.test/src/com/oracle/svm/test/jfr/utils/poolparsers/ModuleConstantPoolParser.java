@@ -28,7 +28,7 @@ package com.oracle.svm.test.jfr.utils.poolparsers;
 
 import java.io.IOException;
 
-import com.oracle.svm.core.jfr.JfrTypes;
+import com.oracle.svm.core.jfr.JfrType;
 import com.oracle.svm.test.jfr.utils.RecordingInput;
 
 public class ModuleConstantPoolParser extends ConstantPoolParser {
@@ -38,10 +38,10 @@ public class ModuleConstantPoolParser extends ConstantPoolParser {
         int numberOfModules = input.readInt();
         for (int i = 0; i < numberOfModules; i++) {
             addFoundId(input.readLong()); // ModuleId.
-            addExpectedId(JfrTypes.Symbol, input.readLong()); // ModuleName.
-            addExpectedId(JfrTypes.Symbol, input.readLong()); // Version.
-            addExpectedId(JfrTypes.Symbol, input.readLong()); // Location.
-            addExpectedId(JfrTypes.ClassLoader, input.readLong()); // ClassLoaderId.
+            addExpectedId(JfrType.Symbol, input.readLong()); // ModuleName.
+            addExpectedId(JfrType.Symbol, input.readLong()); // Version.
+            addExpectedId(JfrType.Symbol, input.readLong()); // Location.
+            addExpectedId(JfrType.ClassLoader, input.readLong()); // ClassLoaderId.
         }
     }
 }

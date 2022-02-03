@@ -28,7 +28,7 @@ package com.oracle.svm.test.jfr.utils.poolparsers;
 
 import java.io.IOException;
 
-import com.oracle.svm.core.jfr.JfrTypes;
+import com.oracle.svm.core.jfr.JfrType;
 import com.oracle.svm.test.jfr.utils.RecordingInput;
 import org.junit.Assert;
 
@@ -43,7 +43,7 @@ public class ThreadConstantPoolParser extends ConstantPoolParser {
             Assert.assertTrue("OSThreadId is not correct!", input.readLong() >= 0); // OSThreadId.
             input.readUTF(); // JavaThreadName.
             Assert.assertTrue("JavaThreadId is not correct!", input.readLong() >= 0); // JavaThreadId.
-            addExpectedId(JfrTypes.ThreadGroup, input.readLong()); // ThreadGroupId.
+            addExpectedId(JfrType.ThreadGroup, input.readLong()); // ThreadGroupId.
         }
     }
 }

@@ -26,7 +26,7 @@
 
 package com.oracle.svm.test.jfr.utils.poolparsers;
 
-import com.oracle.svm.core.jfr.JfrTypes;
+import com.oracle.svm.core.jfr.JfrType;
 import com.oracle.svm.test.jfr.utils.RecordingInput;
 
 import java.io.IOException;
@@ -38,7 +38,7 @@ public class ThreadGroupConstantPoolParser extends ConstantPoolParser {
         int numberOfThreadGroups = input.readInt();
         for (int i = 0; i < numberOfThreadGroups; i++) {
             addFoundId(input.readLong()); // ThreadGroupId.
-            addExpectedId(JfrTypes.ThreadGroup, input.readLong()); // ParentThreadGroupId.
+            addExpectedId(JfrType.ThreadGroup, input.readLong()); // ParentThreadGroupId.
             input.readUTF(); // ThreadGroupName.
         }
     }
