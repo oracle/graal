@@ -117,7 +117,7 @@ public class JfrSymbolRepository implements JfrConstantPool {
         if (table.getSize() == 0) {
             return EMPTY;
         }
-        writer.writeCompressedLong(JfrTypes.Symbol.getId());
+        writer.writeCompressedLong(JfrType.Symbol.getId());
         writer.writeCompressedLong(table.getSize());
 
         JfrSymbol[] entries = table.getTable();

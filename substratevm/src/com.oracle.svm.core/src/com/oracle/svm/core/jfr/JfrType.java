@@ -27,7 +27,7 @@ package com.oracle.svm.core.jfr;
 /**
  * Maps JFR types against their IDs in the JDK.
  */
-public enum JfrTypes {
+public enum JfrType {
     Class("java.lang.Class"),
     String("java.lang.String"),
     Thread("java.lang.Thread"),
@@ -43,7 +43,7 @@ public enum JfrTypes {
 
     private final long id;
 
-    JfrTypes(String name) {
+    JfrType(String name) {
         this.id = JfrMetadataTypeLibrary.lookup(name);
     }
 

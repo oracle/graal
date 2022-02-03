@@ -193,7 +193,7 @@ public final class JfrThreadRepository implements JfrConstantPool {
     private static int writeThreads(JfrChunkWriter writer, JfrThreadEpochData epochData) {
         VMError.guarantee(epochData.visitedThreads.getSize() > 0, "Thread repository must not be empty.");
 
-        writer.writeCompressedLong(JfrTypes.Thread.getId());
+        writer.writeCompressedLong(JfrType.Thread.getId());
         writer.writeCompressedInt(epochData.visitedThreads.getSize());
         writer.write(epochData.threadBuffer);
 
@@ -206,7 +206,7 @@ public final class JfrThreadRepository implements JfrConstantPool {
             return EMPTY;
         }
 
-        writer.writeCompressedLong(JfrTypes.ThreadGroup.getId());
+        writer.writeCompressedLong(JfrType.ThreadGroup.getId());
         writer.writeCompressedInt(threadGroupCount);
         writer.write(epochData.threadGroupBuffer);
 

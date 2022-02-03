@@ -106,7 +106,7 @@ public class JfrTypeRepository implements JfrConstantPool {
         if (typeInfo.getClasses().isEmpty()) {
             return EMPTY;
         }
-        writer.writeCompressedLong(JfrTypes.Class.getId());
+        writer.writeCompressedLong(JfrType.Class.getId());
         writer.writeCompressedInt(typeInfo.getClasses().size());
 
         for (Class<?> clazz : typeInfo.getClasses()) {
@@ -132,7 +132,7 @@ public class JfrTypeRepository implements JfrConstantPool {
         if (packages.isEmpty()) {
             return EMPTY;
         }
-        writer.writeCompressedLong(JfrTypes.Package.getId());
+        writer.writeCompressedLong(JfrType.Package.getId());
         writer.writeCompressedInt(packages.size());
 
         for (Map.Entry<String, PackageInfo> pkgInfo : packages.entrySet()) {
@@ -154,7 +154,7 @@ public class JfrTypeRepository implements JfrConstantPool {
         if (modules.isEmpty()) {
             return EMPTY;
         }
-        writer.writeCompressedLong(JfrTypes.Module.getId());
+        writer.writeCompressedLong(JfrType.Module.getId());
         writer.writeCompressedInt(modules.size());
 
         for (Map.Entry<Module, Long> modInfo : modules.entrySet()) {
@@ -177,7 +177,7 @@ public class JfrTypeRepository implements JfrConstantPool {
         if (classLoaders.isEmpty()) {
             return EMPTY;
         }
-        writer.writeCompressedLong(JfrTypes.ClassLoader.getId());
+        writer.writeCompressedLong(JfrType.ClassLoader.getId());
         writer.writeCompressedInt(classLoaders.size());
 
         for (Map.Entry<ClassLoader, Long> clInfo : classLoaders.entrySet()) {
