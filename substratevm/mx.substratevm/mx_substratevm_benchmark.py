@@ -71,8 +71,15 @@ _RENAISSANCE_EXTRA_IMAGE_BUILD_ARGS = {
                            '--allow-incomplete-classpath',
                            '--report-unsupported-elements-at-runtime',
                           ],
+    'finagle-chirper'   : [
+                            '--allow-incomplete-classpath',
+                            '--initialize-at-build-time=org.slf4j,org.apache.log4j',
+                            '--initialize-at-run-time=io.netty.channel.unix,io.netty.channel.epoll,io.netty.handler.codec.http2,io.netty.handler.ssl,io.netty.internal.tcnative,io.netty.util.internal.logging.Log4JLogger'
+                          ],
     'finagle-http'      : [
-                           '--allow-incomplete-classpath'
+                            '--allow-incomplete-classpath',
+                            '--initialize-at-build-time=org.slf4j,org.apache.log4j',
+                            '--initialize-at-run-time=io.netty.channel.unix,io.netty.channel.epoll,io.netty.handler.codec.http2,io.netty.handler.ssl,io.netty.internal.tcnative,io.netty.util.internal.logging.Log4JLogger'
                           ],
     'log-regression'    : [
                            '--allow-incomplete-classpath',
