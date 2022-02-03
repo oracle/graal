@@ -1107,7 +1107,7 @@ suite = {
                     "com.oracle.svm.core", # Uses of com.oracle.svm.core.TypeResult
                     "com.oracle.svm.core.util", # Uses of com.oracle.svm.core.util.VMError
                     "com.oracle.svm.core.jni", # Uses of com.oracle.svm.core.jni.JNIRuntimeAccess
-                    "com.oracle.svm.core.jfr", # Uses of com.oracle.svm.core.jfr.JfrEnabled
+                    "com.oracle.svm.core.jfr", # Uses of com.oracle.svm.core.jfr.HasJfrSupport
                     "com.oracle.svm.hosted                        to java.base",
                     "com.oracle.svm.hosted.agent                  to java.instrument",
                     "com.oracle.svm.truffle.api                   to org.graalvm.truffle",

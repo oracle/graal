@@ -25,12 +25,12 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import com.oracle.svm.core.jfr.HasJfrSupport;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jfr.JfrBuffer;
-import com.oracle.svm.core.jfr.JfrEnabled;
 import com.oracle.svm.core.jfr.JfrEvents;
 import com.oracle.svm.core.jfr.JfrNativeEventWriter;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
@@ -45,7 +45,7 @@ class JfrGCEventSupport {
     private static int currentPhase;
 
     public static long startGCPhasePause() {
-        if (!JfrEnabled.get()) {
+        if (!HasJfrSupport.get()) {
             return 0;
         }
         pushPhase();
@@ -54,7 +54,7 @@ class JfrGCEventSupport {
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     public static void emitGCPhasePauseEvent(UnsignedWord gcEpoch, String name, long startTicks) {
-        if (!JfrEnabled.get()) {
+        if (!HasJfrSupport.get()) {
             return;
         }
 

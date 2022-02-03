@@ -33,7 +33,7 @@ import com.oracle.svm.core.annotate.TargetClass;
 
 import jdk.jfr.Configuration;
 
-@TargetClass(className = "jdk.jfr.internal.jfc.JFCParser", onlyWith = JfrEnabled.class)
+@TargetClass(className = "jdk.jfr.internal.jfc.JFCParser", onlyWith = HasJfrSupport.class)
 public final class Target_jdk_jfr_internal_jfc_JFCParser {
     @Alias
     public static native Configuration createConfiguration(String name, Reader reader) throws IOException, ParseException;
