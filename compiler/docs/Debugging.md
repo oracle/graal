@@ -229,6 +229,13 @@ the IGV over a network socket with the `-Dgraal.PrintGraph=Network` option. The 
 and `-Dgraal.PrintGraphPort` options determine where the dumps are sent. By default, they are
 sent to 127.0.0.1:4445 and IGV listens on port 4445 by default.
 
+By default, the graph dumping code dumps every graph at a particular level even if the graph hasn't
+changed since the previous dump.  Internally the compiler tracks when changes are made to the edges
+of the graph and setting the flag `-Dgraal.PrintUnmodifiedGraphs=false` will cause it to elide graph
+dumps when no edges have changed since the previous dump.  This can greatly reduce the number of
+graphs dumped at high dump levels, though the resulting output can be a little harder to understand
+without the context of the other graph names.
+
 C1Visualizer output is written to `*.cfg` files. These can be opened via **File -> Open Compiled Methods...** in C1Visualizer.
 
 The IGV can be launched with `mx igv` and the C1Visualizer can be launched via `mx c1visualizer`.
