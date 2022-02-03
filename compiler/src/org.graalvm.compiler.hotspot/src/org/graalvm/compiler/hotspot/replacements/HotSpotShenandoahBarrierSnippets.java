@@ -142,11 +142,11 @@ public final class HotSpotShenandoahBarrierSnippets extends ShenandoahBarrierSni
             this.lowerer = new HotSpotShenandoahBarrierSnippets.HotspotShenandoahBarrierLowerer(config, factory);
 
             HotSpotShenandoahBarrierSnippets receiver = new HotSpotShenandoahBarrierSnippets(config, providers.getRegisters());
-            shenandoahPreWriteBarrier = snippet(ShenandoahBarrierSnippets.class, "shenandoahPreWriteBarrier", null, receiver, GC_INDEX_LOCATION, GC_LOG_LOCATION, SATB_QUEUE_MARKING_LOCATION, SATB_QUEUE_INDEX_LOCATION,
+            shenandoahPreWriteBarrier = snippet(ShenandoahBarrierSnippets.class, "shenandoahPreWriteBarrier", null, receiver, SATB_QUEUE_LOG_LOCATION, SATB_QUEUE_MARKING_ACTIVE_LOCATION, SATB_QUEUE_INDEX_LOCATION,
                     SATB_QUEUE_BUFFER_LOCATION);
-            shenandoahReferentReadBarrier = snippet(ShenandoahBarrierSnippets.class, "shenandoahReferentReadBarrier", null, receiver, GC_INDEX_LOCATION, GC_LOG_LOCATION, SATB_QUEUE_MARKING_LOCATION,
+            shenandoahReferentReadBarrier = snippet(ShenandoahBarrierSnippets.class, "shenandoahReferentReadBarrier", null, receiver, SATB_QUEUE_LOG_LOCATION, SATB_QUEUE_MARKING_ACTIVE_LOCATION,
                     SATB_QUEUE_INDEX_LOCATION, SATB_QUEUE_BUFFER_LOCATION);
-            shenandoahArrayRangePreWriteBarrier = snippet(ShenandoahBarrierSnippets.class, "shenandoahArrayRangePreWriteBarrier", null, receiver, GC_INDEX_LOCATION, GC_LOG_LOCATION, SATB_QUEUE_MARKING_LOCATION,
+            shenandoahArrayRangePreWriteBarrier = snippet(ShenandoahBarrierSnippets.class, "shenandoahArrayRangePreWriteBarrier", null, receiver, SATB_QUEUE_LOG_LOCATION, SATB_QUEUE_MARKING_ACTIVE_LOCATION,
                     SATB_QUEUE_INDEX_LOCATION, SATB_QUEUE_BUFFER_LOCATION);
             shenandoahLoadReferenceBarrier = snippet(ShenandoahBarrierSnippets.class, "shenandoahLoadReferenceBarrier", null, receiver, GC_STATE_LOCATION);
         }

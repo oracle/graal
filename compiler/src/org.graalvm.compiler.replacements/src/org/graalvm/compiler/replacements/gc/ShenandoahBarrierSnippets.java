@@ -4,6 +4,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.NodeView;
@@ -40,15 +41,13 @@ public abstract class ShenandoahBarrierSnippets extends WriteBarrierSnippets imp
 
     public static final byte HAS_FORWORDED = 1 << 0;
 
-    public static final LocationIdentity GC_LOG_LOCATION = NamedLocationIdentity.mutable("Shenandoah-GC-Log");
-    public static final LocationIdentity GC_INDEX_LOCATION = NamedLocationIdentity.mutable("Shenandoah-GC-Index");
-    public static final LocationIdentity SATB_QUEUE_MARKING_LOCATION = NamedLocationIdentity.mutable("Shenandoah-GC-Queue-Marking");
-    public static final LocationIdentity SATB_QUEUE_INDEX_LOCATION = NamedLocationIdentity.mutable("Shenandoah-GC-Queue-Index");
-    public static final LocationIdentity SATB_QUEUE_BUFFER_LOCATION = NamedLocationIdentity.mutable("GShenandoah-C-Queue-Buffer");
+    public static final LocationIdentity SATB_QUEUE_MARKING_ACTIVE_LOCATION = NamedLocationIdentity.mutable("Shenandoah-GC-SATB-Marking-Active");
+    public static final LocationIdentity SATB_QUEUE_BUFFER_LOCATION = NamedLocationIdentity.mutable("Shenandoah-GC-SATB-Queue-Buffer");
+    public static final LocationIdentity SATB_QUEUE_LOG_LOCATION = NamedLocationIdentity.mutable("Shenandoah-GC-SATB-Queue-Log");
+    public static final LocationIdentity SATB_QUEUE_INDEX_LOCATION = NamedLocationIdentity.mutable("Shenandoah-GC-SATB-Queue-Index");
     public static final LocationIdentity GC_STATE_LOCATION = NamedLocationIdentity.mutable("Shenandoah-GC-State");
 
-    protected static final LocationIdentity[] KILLED_PRE_WRITE_BARRIER_STUB_LOCATIONS = new LocationIdentity[]{SATB_QUEUE_INDEX_LOCATION, SATB_QUEUE_BUFFER_LOCATION, GC_LOG_LOCATION,
-            GC_INDEX_LOCATION};
+    protected static final LocationIdentity[] KILLED_PRE_WRITE_BARRIER_STUB_LOCATIONS = new LocationIdentity[]{SATB_QUEUE_INDEX_LOCATION, SATB_QUEUE_BUFFER_LOCATION, SATB_QUEUE_LOG_LOCATION};
 
     public static class Counters {
         Counters(SnippetCounter.Group.Factory factory) {
@@ -72,7 +71,7 @@ public abstract class ShenandoahBarrierSnippets extends WriteBarrierSnippets imp
         Word thread = getThread();
         verifyOop(object);
         Word field = Word.fromAddress(address);
-        byte markingValue = thread.readByte(satbQueueMarkingOffset(), SATB_QUEUE_MARKING_LOCATION);
+        byte markingValue = thread.readByte(satbQueueMarkingOffset(), SATB_QUEUE_MARKING_ACTIVE_LOCATION);
 
         boolean trace = isTracingActive(traceStartCycle);
         int gcCycle = 0;
@@ -93,7 +92,7 @@ public abstract class ShenandoahBarrierSnippets extends WriteBarrierSnippets imp
             // The load is always issued except the cases of CAS and referent field.
             Object previousObject;
             if (doLoad) {
-                previousObject = field.readObject(0, OnHeapMemoryAccess.BarrierType.NONE);
+                previousObject = field.readObject(0, OnHeapMemoryAccess.BarrierType.NONE, LocationIdentity.any());
                 if (trace) {
                     log(trace, "[%d] G1-Pre Thread %p Previous Object %p\n ", gcCycle, thread.rawValue(), Word.objectToTrackedPointer(previousObject).rawValue());
                     verifyOop(previousObject);
@@ -108,16 +107,14 @@ public abstract class ShenandoahBarrierSnippets extends WriteBarrierSnippets imp
                 counters.shenandoahExecutedPreWriteBarrierCounter.inc();
                 // If the thread-local SATB buffer is full issue a native call which will
                 // initialize a new one and add the entry.
-                Word indexAddress = thread.add(satbQueueIndexOffset());
-                Word indexValue = indexAddress.readWord(0, SATB_QUEUE_INDEX_LOCATION);
+                Word indexValue = thread.readWord(satbQueueIndexOffset(), SATB_QUEUE_INDEX_LOCATION);
                 if (probability(FREQUENT_PROBABILITY, indexValue.notEqual(0))) {
                     Word bufferAddress = thread.readWord(satbQueueBufferOffset(), SATB_QUEUE_BUFFER_LOCATION);
                     Word nextIndex = indexValue.subtract(wordSize());
-                    Word logAddress = bufferAddress.add(nextIndex);
+
                     // Log the object to be marked as well as update the SATB's buffer next index.
-                    Word previousOop = Word.objectToTrackedPointer(previousObject);
-                    logAddress.writeWord(0, previousOop, GC_LOG_LOCATION);
-                    indexAddress.writeWord(0, nextIndex, GC_INDEX_LOCATION);
+                    bufferAddress.writeWord(nextIndex, Word.objectToTrackedPointer(previousObject), SATB_QUEUE_LOG_LOCATION);
+                    thread.writeWord(satbQueueIndexOffset(), nextIndex, SATB_QUEUE_INDEX_LOCATION);
                 } else {
                     shenandoahPreBarrierStub(previousObject);
                 }
@@ -136,8 +133,9 @@ public abstract class ShenandoahBarrierSnippets extends WriteBarrierSnippets imp
 
     @Snippet
     public void shenandoahArrayRangePreWriteBarrier(AddressNode.Address address, int length, @Snippet.ConstantParameter int elementStride) {
+        GraalError.unimplemented();
         Word thread = getThread();
-        byte markingValue = thread.readByte(satbQueueMarkingOffset(), SATB_QUEUE_MARKING_LOCATION);
+        byte markingValue = thread.readByte(satbQueueMarkingOffset(), SATB_QUEUE_MARKING_ACTIVE_LOCATION);
         // If the concurrent marker is not enabled or the vector length is zero, return.
         if (probability(FREQUENT_PROBABILITY, markingValue == (byte) 0 || length == 0)) {
             return;
@@ -159,8 +157,8 @@ public abstract class ShenandoahBarrierSnippets extends WriteBarrierSnippets imp
                     Word logAddress = bufferAddress.add(WordFactory.unsigned(indexValue));
                     // Log the object to be marked as well as update the SATB's buffer next index.
                     Word previousOop = Word.objectToTrackedPointer(previousObject);
-                    logAddress.writeWord(0, previousOop, GC_LOG_LOCATION);
-                    indexAddress.writeWord(0, WordFactory.unsigned(indexValue), GC_INDEX_LOCATION);
+                    logAddress.writeWord(0, previousOop, SATB_QUEUE_LOG_LOCATION);
+                    indexAddress.writeWord(0, WordFactory.unsigned(indexValue), SATB_QUEUE_INDEX_LOCATION);
                 } else {
                     shenandoahPreBarrierStub(previousObject);
                 }
