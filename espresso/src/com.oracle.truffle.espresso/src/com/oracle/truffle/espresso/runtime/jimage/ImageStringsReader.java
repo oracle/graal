@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,13 +27,9 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
-/**
- * @implNote This class needs to maintain JDK 8 source compatibility.
- *
- *           It is used internally in the JDK to implement jimage/jrtfs access, but also compiled
- *           and delivered as part of the jrtfs.jar to support access to the jimage file provided by
- *           the shipped JDK by tools running on JDK 8.
- */
+import com.oracle.truffle.espresso.descriptors.ByteSequence;
+import com.oracle.truffle.espresso.descriptors.Validation;
+
 public class ImageStringsReader implements ImageStrings {
     public static final int HASH_MULTIPLIER = 0x01000193;
     public static final int POSITIVE_MASK = 0x7FFFFFFF;
@@ -107,6 +103,15 @@ public class ImageStringsReader implements ImageStrings {
             } else {
                 value = (value * HASH_MULTIPLIER) ^ (uch);
             }
+        }
+        return value;
+    }
+
+    public static int unmaskedHashCode(ByteSequence s, int seed) {
+        assert Validation.validModifiedUTF8(s);
+        int value = seed;
+        for (int i = 0; i < s.length(); i++) {
+            value = (value * HASH_MULTIPLIER) ^ (s.byteAt(i) & 0xff);
         }
         return value;
     }

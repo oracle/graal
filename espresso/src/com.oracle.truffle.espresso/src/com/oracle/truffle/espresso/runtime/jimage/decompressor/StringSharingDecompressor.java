@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,6 +22,23 @@
  */
 package com.oracle.truffle.espresso.runtime.jimage.decompressor;
 
+import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_Class;
+import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_Double;
+import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_Fieldref;
+import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_Float;
+import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_Integer;
+import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_InterfaceMethodref;
+import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_InvokeDynamic;
+import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_Long;
+import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_MethodHandle;
+import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_MethodType;
+import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_Methodref;
+import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_Module;
+import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_NameAndType;
+import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_Package;
+import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_String;
+import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_Utf8;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -33,14 +50,7 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- *
  * A Decompressor that reconstructs the constant pool of classes.
- *
- * @implNote This class needs to maintain JDK 8 source compatibility.
- *
- *           It is used internally in the JDK to implement jimage/jrtfs access, but also compiled
- *           and delivered as part of the jrtfs.jar to support access to the jimage file provided by
- *           the shipped JDK by tools running on JDK 8.
  */
 public class StringSharingDecompressor implements ResourceDecompressor {
     public static final String NAME = "compact-cp";
@@ -48,27 +58,9 @@ public class StringSharingDecompressor implements ResourceDecompressor {
     public static final int EXTERNALIZED_STRING = 23;
     public static final int EXTERNALIZED_STRING_DESCRIPTOR = 25;
 
-    private static final int CONSTANT_Utf8 = 1;
-    private static final int CONSTANT_Integer = 3;
-    private static final int CONSTANT_Float = 4;
-    private static final int CONSTANT_Long = 5;
-    private static final int CONSTANT_Double = 6;
-    private static final int CONSTANT_Class = 7;
-    private static final int CONSTANT_String = 8;
-    private static final int CONSTANT_Fieldref = 9;
-    private static final int CONSTANT_Methodref = 10;
-    private static final int CONSTANT_InterfaceMethodref = 11;
-    private static final int CONSTANT_NameAndType = 12;
-    private static final int CONSTANT_MethodHandle = 15;
-    private static final int CONSTANT_MethodType = 16;
-    private static final int CONSTANT_InvokeDynamic = 18;
-    private static final int CONSTANT_Module = 19;
-    private static final int CONSTANT_Package = 20;
-
     private static final int[] SIZES = new int[21];
 
     static {
-
         // SIZES[CONSTANT_Utf8] = XXX;
         SIZES[CONSTANT_Integer] = 4;
         SIZES[CONSTANT_Float] = 4;
@@ -87,16 +79,12 @@ public class StringSharingDecompressor implements ResourceDecompressor {
         SIZES[CONSTANT_Package] = 2;
     }
 
-    public static int[] getSizes() {
-        return SIZES.clone();
-    }
-
     @SuppressWarnings("fallthrough")
-    public static byte[] normalize(StringsProvider provider, byte[] transformed, int offset) throws IOException {
+    public static byte[] normalize(StringsProvider provider, byte[] transformed, int offset, int originalSize) throws IOException {
         DataInputStream stream = new DataInputStream(new ByteArrayInputStream(transformed, offset, transformed.length - offset));
-        ByteArrayOutputStream outStream = new ByteArrayOutputStream(transformed.length);
+        ByteArrayOutputStream outStream = new ByteArrayOutputStream(originalSize);
         DataOutputStream out = new DataOutputStream(outStream);
-        byte[] header = new byte[8]; // maginc/4, minor/2, major/2
+        byte[] header = new byte[8]; // magic/4, minor/2, major/2
         stream.readFully(header);
         out.write(header);
         int count = stream.readUnsignedShort();
@@ -227,8 +215,7 @@ public class StringSharingDecompressor implements ResourceDecompressor {
     }
 
     @Override
-    public byte[] decompress(StringsProvider reader, byte[] content,
-                    int offset, long originalSize) throws Exception {
-        return normalize(reader, content, offset);
+    public byte[] decompress(StringsProvider reader, byte[] content, int offset, long originalSize) throws Exception {
+        return normalize(reader, content, offset, Math.toIntExact(originalSize));
     }
 }

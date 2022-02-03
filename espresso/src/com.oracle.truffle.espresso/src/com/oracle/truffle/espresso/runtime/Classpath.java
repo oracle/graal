@@ -111,15 +111,6 @@ public final class Classpath {
         public abstract File file();
 
         /**
-         * Determines if a given resource can be found under this entry.
-         *
-         * @param path a file path relative to this classpath entry. This values uses the '/'
-         *            character as the path separator regardless of the
-         *            {@linkplain File#separatorChar default} for the underlying platform.
-         */
-        public abstract boolean contains(String path);
-
-        /**
          * Gets the contents of a file denoted by a given path that is relative to this classpath
          * entry. If the denoted file does not exist under this classpath entry then {@code null} is
          * returned. Any IO exception that occurs when reading is silently ignored.
@@ -145,10 +136,6 @@ public final class Classpath {
         @Override
         public String toString() {
             return path();
-        }
-
-        public ZipFile zipFile() {
-            return null;
         }
 
     }
@@ -179,12 +166,6 @@ public final class Classpath {
         public boolean isPlainFile() {
             return true;
         }
-
-        @Override
-        public boolean contains(String path) {
-            return false;
-        }
-
     }
 
     /**
@@ -221,12 +202,6 @@ public final class Classpath {
         public boolean isDirectory() {
             return true;
         }
-
-        @Override
-        public boolean contains(String path) {
-            return new File(directory, File.separatorChar == '/' ? path : path.replace('/', File.separatorChar)).exists();
-        }
-
     }
 
     /**
@@ -242,7 +217,6 @@ public final class Classpath {
             this.file = file;
         }
 
-        @Override
         public ZipFile zipFile() {
             if (zipFile == null && file != null) {
                 try {
@@ -251,15 +225,6 @@ public final class Classpath {
                 }
             }
             return zipFile;
-        }
-
-        @Override
-        public boolean contains(String path) {
-            final ZipFile zf = zipFile();
-            if (zf == null) {
-                return false;
-            }
-            return zf.getEntry(path) != null;
         }
 
         @Override
@@ -306,12 +271,6 @@ public final class Classpath {
         @Override
         public File file() {
             return file;
-        }
-
-        @Override
-        public boolean contains(String path) {
-            byte[] classBytes = helper.getClassBytes(path);
-            return classBytes != null;
         }
 
         @Override
@@ -472,20 +431,6 @@ public final class Classpath {
         newEntries.add(entry);
         newEntries.addAll(this.entries);
         return new Classpath(newEntries);
-    }
-
-    /**
-     * Searches for a class file denoted by a given class name on this classpath and returns its
-     * contents in a byte array if found. Any IO exception that occurs when reading is silently
-     * ignored.
-     *
-     * @param className a fully qualified class name (e.g. "java.lang.Class")
-     * @return the contents of the file available on the classpath whose name is computed as
-     *         {@code className.replace('.', '/')}. If no such file is available on this class path
-     *         or if reading the file produces an IO exception, then null is returned.
-     */
-    public ClasspathFile readClassFile(String className) {
-        return readFile(className, ".class");
     }
 
     /**

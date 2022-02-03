@@ -106,9 +106,8 @@ public class JavaJImageHelper implements JImageHelper {
             if (!isEmpty) {
                 offset = buffer.getInt();
                 break;
-            } else {
-                buffer.position(buffer.position() + 4);
             }
+            buffer.position(buffer.position() + 4);
         }
         // same behaviour as native code: offset = 0 will be used if nothing is found
         return reader.getString(offset);

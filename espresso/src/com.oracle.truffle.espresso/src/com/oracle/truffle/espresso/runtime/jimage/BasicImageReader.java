@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -33,13 +33,6 @@ import java.util.Objects;
 
 import com.oracle.truffle.espresso.runtime.jimage.decompressor.Decompressor;
 
-/**
- * @implNote This class needs to maintain JDK 8 source compatibility.
- *
- *           It is used internally in the JDK to implement jimage/jrtfs access, but also compiled
- *           and delivered as part of the jrtfs.jar to support access to the jimage file provided by
- *           the shipped JDK by tools running on JDK 8.
- */
 public class BasicImageReader implements AutoCloseable {
     private final ByteOrder byteOrder;
     private final String name;
@@ -153,12 +146,12 @@ public class BasicImageReader implements AutoCloseable {
         if (index < 0) {
             return null;
         }
-        long[] attributes = getAttributes(offsets.get(index));
+        ImageLocation attributes = getAttributes(offsets.get(index));
         // Make sure result is not a false positive.
-        if (!ImageLocation.verify(module, path, attributes, stringsReader)) {
+        if (!attributes.verify(module, path, stringsReader)) {
             return null;
         }
-        return new ImageLocation(attributes, stringsReader);
+        return attributes;
     }
 
     public ImageLocation findLocation(String path) {
@@ -166,11 +159,11 @@ public class BasicImageReader implements AutoCloseable {
         if (index < 0) {
             return null;
         }
-        long[] attributes = getAttributes(offsets.get(index));
-        if (!ImageLocation.verify(path, attributes, stringsReader)) {
+        ImageLocation attributes = getAttributes(offsets.get(index));
+        if (!attributes.verify(path, stringsReader)) {
             return null;
         }
-        return new ImageLocation(attributes, stringsReader);
+        return attributes;
     }
 
     // Details of the algorithm used here can be found in
@@ -205,23 +198,23 @@ public class BasicImageReader implements AutoCloseable {
         }
     }
 
-    public long[] getAttributes(int offset) {
+    public ImageLocation getAttributes(int offset) {
         if (offset < 0 || offset >= locations.limit()) {
-            throw new IndexOutOfBoundsException("offset");
+            throw new IndexOutOfBoundsException(String.format("offset out of bounds: %d not in [0, %d[", offset, locations.limit()));
         }
         return ImageLocation.decompress(locations, offset);
     }
 
     public String getString(int offset) {
         if (offset < 0 || offset >= strings.limit()) {
-            throw new IndexOutOfBoundsException("offset");
+            throw new IndexOutOfBoundsException(String.format("offset out of bounds: %d not in [0, %d[", offset, strings.limit()));
         }
         return ImageStringsReader.stringFromByteBuffer(strings, offset);
     }
 
     public int match(int offset, String string, int stringOffset) {
         if (offset < 0 || offset >= strings.limit()) {
-            throw new IndexOutOfBoundsException("offset");
+            throw new IndexOutOfBoundsException(String.format("offset out of bounds: %d not in [0, %d[", offset, strings.limit()));
         }
         return ImageStringsReader.stringFromByteBufferMatches(strings, offset, string, stringOffset);
     }
@@ -234,11 +227,11 @@ public class BasicImageReader implements AutoCloseable {
     }
 
     private ByteBuffer readBuffer(long offset, long size) {
-        if (offset < 0 || Integer.MAX_VALUE <= offset) {
+        if (offset < 0 || offset >= Integer.MAX_VALUE) {
             throw new IndexOutOfBoundsException("Bad offset: " + offset);
         }
 
-        if (size < 0 || Integer.MAX_VALUE <= size) {
+        if (size < 0 || size >= Integer.MAX_VALUE) {
             throw new IndexOutOfBoundsException("Bad size: " + size);
         }
 
@@ -262,11 +255,11 @@ public class BasicImageReader implements AutoCloseable {
         long compressedSize = loc.getCompressedSize();
         long uncompressedSize = loc.getUncompressedSize();
 
-        if (compressedSize < 0 || Integer.MAX_VALUE < compressedSize) {
+        if (compressedSize < 0 || compressedSize > Integer.MAX_VALUE) {
             throw new IndexOutOfBoundsException("Bad compressed size: " + compressedSize);
         }
 
-        if (uncompressedSize < 0 || Integer.MAX_VALUE < uncompressedSize) {
+        if (uncompressedSize < 0 || uncompressedSize > Integer.MAX_VALUE) {
             throw new IndexOutOfBoundsException("Bad uncompressed size: " + uncompressedSize);
         }
 

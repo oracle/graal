@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2016, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,14 +26,7 @@ import java.io.ByteArrayOutputStream;
 import java.util.zip.Inflater;
 
 /**
- *
  * ZIP Decompressor
- *
- * @implNote This class needs to maintain JDK 8 source compatibility.
- *
- *           It is used internally in the JDK to implement jimage/jrtfs access, but also compiled
- *           and delivered as part of the jrtfs.jar to support access to the jimage file provided by
- *           the shipped JDK by tools running on JDK 8.
  */
 final class ZipDecompressor implements ResourceDecompressor {
     public static final String NAME = "zip";
@@ -43,10 +36,10 @@ final class ZipDecompressor implements ResourceDecompressor {
         return NAME;
     }
 
-    static byte[] decompress(byte[] bytesIn, int offset) throws Exception {
+    static byte[] decompress(byte[] bytesIn, int offset, int originalSize) throws Exception {
         Inflater inflater = new Inflater();
         inflater.setInput(bytesIn, offset, bytesIn.length - offset);
-        ByteArrayOutputStream stream = new ByteArrayOutputStream(bytesIn.length - offset);
+        ByteArrayOutputStream stream = new ByteArrayOutputStream(originalSize);
         byte[] buffer = new byte[1024];
 
         while (!inflater.finished()) {
@@ -63,8 +56,7 @@ final class ZipDecompressor implements ResourceDecompressor {
     }
 
     @Override
-    public byte[] decompress(StringsProvider reader, byte[] content, int offset,
-                    long originalSize) throws Exception {
-        return decompress(content, offset);
+    public byte[] decompress(StringsProvider reader, byte[] content, int offset, long originalSize) throws Exception {
+        return decompress(content, offset, Math.toIntExact(originalSize));
     }
 }
