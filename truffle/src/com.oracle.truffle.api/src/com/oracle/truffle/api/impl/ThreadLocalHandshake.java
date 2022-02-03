@@ -99,6 +99,14 @@ public abstract class ThreadLocalHandshake {
         }
     }
 
+    public void setChangeAllowActions(TruffleSafepoint safepoint, boolean enabled) {
+        ((TruffleSafepointImpl) safepoint).setChangeAllowActions(enabled);
+    }
+
+    public boolean isAllowActions(TruffleSafepoint safepoint) {
+        return ((TruffleSafepointImpl) safepoint).isAllowActions();
+    }
+
     /**
      * If this method is invoked the thread must be guaranteed to be polled. If the thread dies and
      * {@link #poll(Node)} was not invoked then an {@link IllegalStateException} is thrown;
@@ -309,6 +317,8 @@ public abstract class ThreadLocalHandshake {
         private final ThreadLocalHandshake impl;
         private volatile boolean fastPendingSet;
         private boolean sideEffectsEnabled = true;
+        private boolean enabled = true;
+        private volatile boolean changeAllowActionsAllowed;
         private Interrupter blockedAction;
         private boolean interrupted;
 
@@ -337,6 +347,10 @@ public abstract class ThreadLocalHandshake {
                 // correct usage always needs to reset the side-effects enabled state
                 if (!this.sideEffectsEnabled) {
                     throw new AssertionError("Invalid side-effects disabled state");
+                }
+
+                if (!this.enabled) {
+                    throw new AssertionError("Invalid allow actions disabled state");
                 }
             } finally {
                 this.lock.unlock();
@@ -514,6 +528,9 @@ public abstract class ThreadLocalHandshake {
         }
 
         private List<HandshakeEntry> takeHandshakeImpl() {
+            if (!enabled) {
+                return Collections.emptyList();
+            }
             List<HandshakeEntry> toProcess = new ArrayList<>(this.handshakes.size());
             for (HandshakeEntry entry : this.handshakes) {
                 if (isPending(entry)) {
@@ -649,13 +666,41 @@ public abstract class ThreadLocalHandshake {
          */
         private boolean isPending() {
             assert lock.isHeldByCurrentThread();
-
+            if (!enabled) {
+                return false;
+            }
             for (HandshakeEntry entry : this.handshakes) {
                 if (isPending(entry)) {
                     return true;
                 }
             }
             return false;
+        }
+
+        void setChangeAllowActions(boolean changeAllowActionsAllowed) {
+            this.changeAllowActionsAllowed = changeAllowActionsAllowed;
+        }
+
+        boolean isAllowActions() {
+            return enabled;
+        }
+
+        @Override
+        @TruffleBoundary
+        public boolean setAllowActions(boolean enabled) {
+            assert impl.getCurrent() == this : "Cannot be used from a different thread.";
+            lock.lock();
+            try {
+                if (!changeAllowActionsAllowed) {
+                    throw new IllegalStateException("Using setAllowActions is only permitted during finalization of a language. See TruffleLanguage.finalizeContext(Object) for further details.");
+                }
+                boolean prev = this.enabled;
+                this.enabled = enabled;
+                updateFastPending();
+                return prev;
+            } finally {
+                lock.unlock();
+            }
         }
 
         @Override

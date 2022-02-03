@@ -2548,18 +2548,32 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
     private void finalizeContext(boolean notifyInstruments, boolean cancelOrExitOperation) {
         // we need to run finalization at least twice in case a finalization run has
         // initialized new contexts
-        boolean finalizationPerformed;
-        do {
-            finalizationPerformed = false;
-            // inverse context order is already the right order for context
-            // disposal/finalization
-            for (int i = contexts.length - 1; i >= 0; i--) {
-                PolyglotLanguageContext context = contexts[i];
-                if (context.isInitialized()) {
-                    finalizationPerformed |= context.finalizeContext(cancelOrExitOperation, notifyInstruments);
+        TruffleSafepoint safepoint = TruffleSafepoint.getCurrent();
+        PolyglotThreadLocalActions.TL_HANDSHAKE.setChangeAllowActions(safepoint, true);
+        try {
+            boolean finalizationPerformed;
+            do {
+                finalizationPerformed = false;
+                // inverse context order is already the right order for context
+                // disposal/finalization
+                for (int i = contexts.length - 1; i >= 0; i--) {
+                    PolyglotLanguageContext context = contexts[i];
+                    if (context.isInitialized()) {
+                        try {
+                            finalizationPerformed |= context.finalizeContext(cancelOrExitOperation, notifyInstruments);
+                        } finally {
+                            if (!PolyglotThreadLocalActions.TL_HANDSHAKE.isAllowActions(safepoint)) {
+                                safepoint.setAllowActions(true);
+                                throw new IllegalStateException(
+                                                "TruffleSafepoint.setAllowActions is still disabled even though finalization completed. Make sure allow actions are reset in a finally block.");
+                            }
+                        }
+                    }
                 }
-            }
-        } while (finalizationPerformed);
+            } while (finalizationPerformed);
+        } finally {
+            PolyglotThreadLocalActions.TL_HANDSHAKE.setChangeAllowActions(safepoint, false);
+        }
     }
 
     synchronized void sendInterrupt() {
