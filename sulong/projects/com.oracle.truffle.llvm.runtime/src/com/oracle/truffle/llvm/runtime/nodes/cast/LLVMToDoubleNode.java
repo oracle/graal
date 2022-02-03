@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -118,7 +118,7 @@ public abstract class LLVMToDoubleNode extends LLVMExpressionNode {
 
         @Specialization
         protected double doDouble(boolean from) {
-            return from ? 1.0 : 0.0;
+            return from ? -1.0 : 0.0;
         }
 
         @Specialization

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -116,7 +116,7 @@ public abstract class LLVMToFloatNode extends LLVMExpressionNode {
 
         @Specialization
         protected float doFloat(boolean from) {
-            return from ? 1.0f : 0.0f;
+            return from ? -1.0f : 0.0f;
         }
 
         @Specialization
