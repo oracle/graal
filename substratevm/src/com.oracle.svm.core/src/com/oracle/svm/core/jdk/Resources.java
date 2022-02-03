@@ -81,29 +81,11 @@ public final class Resources {
     }
 
     public static byte[] inputStreamToByteArray(InputStream is) {
-        // TODO: Replace this with is.readAllBytes() once Java 8 support is removed
-        byte[] arr = new byte[4096];
-        int pos = 0;
         try {
-            for (;;) {
-                if (pos == arr.length) {
-                    byte[] tmp = new byte[arr.length * 2];
-                    System.arraycopy(arr, 0, tmp, 0, arr.length);
-                    arr = tmp;
-                }
-                int len = is.read(arr, pos, arr.length - pos);
-                if (len == -1) {
-                    break;
-                }
-                pos += len;
-            }
+            return is.readAllBytes();
         } catch (IOException ex) {
             throw VMError.shouldNotReachHere(ex);
         }
-
-        byte[] data = new byte[pos];
-        System.arraycopy(arr, 0, data, 0, pos);
-        return data;
     }
 
     private static void addEntry(String moduleName, String resourceName, boolean isDirectory, byte[] data) {
