@@ -1,5 +1,9 @@
 # Version 22.1.0
 
+New Features:
+
+* Support exporting native byte buffers. See the new APIs in `graalvm/llvm/polyglot-buffer.h`.
+
 Changes:
 
 * Option `--llvm.printLifetimeAnalysisStats` is replaced by `--log.llvm.LifetimeAnalysis.level=FINER`.

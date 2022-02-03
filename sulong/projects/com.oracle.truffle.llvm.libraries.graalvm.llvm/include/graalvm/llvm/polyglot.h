@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -58,6 +58,8 @@ extern "C" {
 
 #include <stdbool.h>
 #include <stdint.h>
+
+typedef struct __polyglot_value *polyglot_value;
 
 /**
  * Import a value from the global polyglot
@@ -981,7 +983,8 @@ void *polyglot_from_MyStruct(struct MyStruct *s);
  * \see POLYGLOT_DECLARE_STRUCT
  */
 void *polyglot_from_MyStruct_array(struct MyStruct *arr, uint64_t len);
-#endif
+
+#endif // DOXYGEN
 
 /** @} */
 
