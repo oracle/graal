@@ -2304,7 +2304,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
      * Otherwise, it returns the {@link InlineInfo} that lead to the decision to not inline it, or
      * {@code null} if there is no {@link InlineInfo} for this method.
      */
-    private InlineInfo tryInline(ValueNode[] args, ResolvedJavaMethod targetMethod) {
+    protected InlineInfo tryInline(ValueNode[] args, ResolvedJavaMethod targetMethod) {
         boolean canBeInlined = forceInliningEverything || parsingIntrinsic() || targetMethod.canBeInlined();
         if (!canBeInlined) {
             return null;

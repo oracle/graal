@@ -42,10 +42,12 @@ import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.hub.AnnotatedSuperInfo;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.GenericInfo;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -93,6 +95,9 @@ public class DynamicHubInitializer {
 
     public void initializeMetaData(ImageHeapScanner heapScanner, AnalysisType type) {
         assert type.isReachable() : "Type " + type.toJavaName(true) + " is not marked as reachable.";
+        if (BuildPhaseProvider.isAnalysisFinished()) {
+            throw VMError.shouldNotReachHere("Initializing type metadata after analysis: " + type);
+        }
 
         Class<?> javaClass = type.getJavaClass();
         heapScanner.rescanObject(javaClass.getPackage());

@@ -315,7 +315,7 @@ public class ObjectScanner {
         if (obj == null) {
             return "null";
         }
-        String str = obj.getClass().getTypeName() + '@' + Integer.toHexString(System.identityHashCode(obj));
+        String str = analysisType(bb, obj).toJavaName() + '@' + Integer.toHexString(System.identityHashCode(obj));
         if (appendToString) {
             try {
                 str += ": " + limit(obj.toString(), 80).replace(System.lineSeparator(), "");
@@ -431,8 +431,8 @@ public class ObjectScanner {
     }
 
     public static class OtherReason extends ScanReason {
-        public static final ScanReason RESCAN = new OtherReason("Manually triggered rescan");
-        public static final ScanReason HUB = new OtherReason("DynamicHub scan");
+        public static final ScanReason RESCAN = new OtherReason("manually triggered rescan");
+        public static final ScanReason HUB = new OtherReason("scanning a class constant");
 
         final String reason;
 
