@@ -26,28 +26,21 @@
     },
   },
 
-  # fast is necessary here as slow machines don"t handle image builds well
-  local svm_capabilities = ["linux", "amd64", "fast"],
-
-  local svm_capabilities_base = {
-    capabilities+: svm_capabilities,
-  },
-
-  local linux_deploy = {
+  local maven = {
     packages+: {
-      maven: ">=3.3.9",
+      maven: "==3.6.3",
     },
   },
 
   builds: [
-    common.linux_amd64 + common.oraclejdk17 + gate_svm_js + svm_capabilities_base + {
+    common.linux_amd64 + common.oraclejdk17 + gate_svm_js + {
       name: "gate-svm-js",
       timelimit: "35:00",
     },
     common.darwin_amd64 + common.oraclejdk17 + gate_svm_js {
       name: "gate-svm-darwin-js",
     },
-    common.linux_amd64 + common.oraclejdk11 + svm_common + linux_deploy + svm_unittest + {
+    common.linux_amd64 + common.oraclejdk11 + svm_common + maven + svm_unittest + {
       name: "gate-svm-build-ce-11",
       timelimit: "30:00",
       downloads+: {
@@ -67,14 +60,14 @@
         svm_cmd_gate + ["build,helloworld,test,nativeimagehelp,muslcbuild"],
       ],
     },
-    common.linux_amd64 + common.oraclejdk11 + svm_common + linux_deploy + svm_unittest + {
+    common.linux_amd64 + common.oraclejdk11 + svm_common + maven + svm_unittest + {
       name: "gate-svm-modules-basic",
       timelimit: "30:00",
       run: [
         svm_cmd_gate + ["build,hellomodule,test"],
       ],
     },
-    common.linux_amd64 + common.oraclejdk17 + svm_common + common.eclipse + common.jdt + linux_deploy + svm_unittest + {
+    common.linux_amd64 + common.oraclejdk17 + svm_common + common.eclipse + common.jdt + maven + svm_unittest + {
       name: "gate-svm-style-fullbuild",
       timelimit: "45:00",
       environment+: {
