@@ -29,8 +29,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.net.URLConnection;
-import java.net.URLStreamHandler;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -47,7 +45,6 @@ import org.graalvm.nativeimage.hosted.Feature;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.jdk.resources.NativeImageResourcePath;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
-import com.oracle.svm.core.jdk.resources.ResourceURLConnection;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 
@@ -143,17 +140,11 @@ public final class Resources {
 
     private static URL createURL(String moduleName, String resourceName, int index) {
         try {
-            return new URL(JavaNetSubstitutions.RESOURCE_PROTOCOL, moduleName, -1, resourceName,
-                            new URLStreamHandler() {
-                                @Override
-                                protected URLConnection openConnection(URL url) {
-                                    return new ResourceURLConnection(url, index);
-                                }
-                            });
+            String refPart = index != 0 ? '#' + Integer.toString(index) : "";
+            return new URL(JavaNetSubstitutions.RESOURCE_PROTOCOL, moduleName, -1, '/' + resourceName + refPart);
         } catch (MalformedURLException ex) {
             throw new IllegalStateException(ex);
         }
-
     }
 
     public static URL createURL(String resourceName) {
@@ -195,18 +186,34 @@ public final class Resources {
         if (resourceName == null) {
             return null;
         }
-
         String canonicalResourceName = toCanonicalForm(resourceName);
-        ResourceStorageEntry entry = Resources.get(moduleName, canonicalResourceName);
-        if (entry == null) {
+
+        List<URL> resourcesURLs = new ArrayList<>();
+
+        /* If moduleName was unspecified we have to consider all modules in the image */
+        if (moduleName == null) {
+            for (Module module : BootModuleLayerSupport.instance().getBootLayer().modules()) {
+                ResourceStorageEntry entry = Resources.get(module.getName(), canonicalResourceName);
+                addURLEntries(resourcesURLs, entry, module.getName(), canonicalResourceName);
+            }
+        }
+        ResourceStorageEntry explicitEntry = Resources.get(moduleName, canonicalResourceName);
+        addURLEntries(resourcesURLs, explicitEntry, moduleName, canonicalResourceName);
+
+        if (resourcesURLs.isEmpty()) {
             return Collections.emptyEnumeration();
         }
+        return Collections.enumeration(resourcesURLs);
+    }
+
+    private static void addURLEntries(List<URL> resourcesURLs, ResourceStorageEntry entry, String moduleName, String canonicalResourceName) {
+        if (entry == null) {
+            return;
+        }
         int numberOfResources = entry.getData().size();
-        List<URL> resourcesURLs = new ArrayList<>(numberOfResources);
         for (int index = 0; index < numberOfResources; index++) {
             resourcesURLs.add(createURL(moduleName, canonicalResourceName, index));
         }
-        return Collections.enumeration(resourcesURLs);
     }
 }
 
