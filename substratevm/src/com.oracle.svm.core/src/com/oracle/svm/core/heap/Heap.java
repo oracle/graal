@@ -38,7 +38,6 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
@@ -200,10 +199,10 @@ public abstract class Heap {
 
     /**
      * If the automatic reference handling is disabled (see
-     * {@link SubstrateOptions.ConcealedOptions#AutomaticReferenceHandling}), then this method can
-     * be called to do the reference handling manually. On execution, the current thread will
-     * enqueue pending {@link Reference}s into their corresponding {@link ReferenceQueue}s and it
-     * will execute pending cleaners.
+     * {@link com.oracle.svm.core.SubstrateOptions.ConcealedOptions#AutomaticReferenceHandling}),
+     * then this method can be called to do the reference handling manually. On execution, the
+     * current thread will enqueue pending {@link Reference}s into their corresponding
+     * {@link ReferenceQueue}s and it will execute pending cleaners.
      *
      * This method must not be called from within a VM operation as this could result in deadlocks.
      * Furthermore, it is up to the caller to ensure that this method is only called in places where

@@ -274,10 +274,15 @@ final class TruffleToLibGraalEntryPoints {
             } finally {
                 compilable.release(env);
                 HSObject.cleanHandles(env);
+                doReferenceHandling();
             }
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
         }
+    }
+
+    private static void doReferenceHandling() {
+        // Substituted in LibGraalFeature.
     }
 
     @TruffleToLibGraal(Shutdown)

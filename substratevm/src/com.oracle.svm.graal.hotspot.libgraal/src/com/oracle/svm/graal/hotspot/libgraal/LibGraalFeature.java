@@ -863,3 +863,12 @@ final class Target_org_graalvm_compiler_core_GraalCompiler {
 @Delete("shouldn't appear in libgraal")
 final class Target_org_graalvm_compiler_hotspot_SymbolicSnippetEncoder {
 }
+
+@TargetClass(className = "org.graalvm.compiler.truffle.compiler.hotspot.libgraal.TruffleToLibGraalEntryPoints", onlyWith = LibGraalFeature.IsEnabled.class)
+final class Target_org_graalvm_compiler_truffle_compiler_hotspot_libgraal_TruffleToLibGraalEntryPoints {
+    @SuppressWarnings("unused")
+    @Substitute
+    private static void doReferenceHandling() {
+        Heap.getHeap().doReferenceHandling();
+    }
+}
