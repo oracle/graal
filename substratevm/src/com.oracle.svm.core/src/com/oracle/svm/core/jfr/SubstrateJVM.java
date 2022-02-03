@@ -82,7 +82,7 @@ public class SubstrateJVM {
 
         options = new JfrOptionSet();
 
-        int eventCount = JfrEvents.getEventCount();
+        int eventCount = JfrMetadataTypeLibrary.getPlatformEventCount();
         eventSettings = new JfrNativeEventSetting[eventCount];
         for (int i = 0; i < eventSettings.length; i++) {
             eventSettings[i] = new JfrNativeEventSetting();

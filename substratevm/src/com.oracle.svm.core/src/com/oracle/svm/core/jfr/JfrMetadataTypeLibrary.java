@@ -26,12 +26,14 @@ package com.oracle.svm.core.jfr;
 
 import java.util.HashMap;
 
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.options.OptionsParser;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.util.VMError;
 
+import jdk.jfr.internal.PlatformEventType;
 import jdk.jfr.internal.Type;
 import jdk.jfr.internal.TypeLibrary;
 
@@ -45,34 +47,55 @@ public class JfrMetadataTypeLibrary {
 
     public static void initialize() {
         for (Type type : TypeLibrary.getInstance().getTypes()) {
+            assert !types.containsKey(type.getName());
             types.put(type.getName(), type);
         }
     }
 
-    public static long lookup(String typeName) {
-        Type type = types.get(typeName);
+    public static int getPlatformEventCount() {
+        long maxEventId = 0;
+        for (Type type : types.values()) {
+            if (type instanceof PlatformEventType) {
+                maxEventId = Math.max(maxEventId, type.getId());
+            }
+        }
+        return NumUtil.safeToInt(maxEventId + 1);
+    }
+
+    public static long lookupPlatformEvent(String name) {
+        Type type = types.get(name);
+        if (type instanceof PlatformEventType) {
+            return type.getId();
+        }
+        return notFound(name);
+    }
+
+    public static long lookupType(String name) {
+        Type type = types.get(name);
         if (type != null) {
             return type.getId();
         }
+        return notFound(name);
+    }
 
-        String exceptionMessage = "Type " + typeName + " is not found!";
-        String mostSimilarType = getMostSimilarType(typeName);
-        if (mostSimilarType != null) {
-            exceptionMessage += " The most similar type is " + mostSimilarType;
+    private static long notFound(String name) {
+        String exceptionMessage = "Event/Type " + name + " was not found!";
+        Type mostSimilar = getMostSimilar(name);
+        if (mostSimilar != null) {
+            exceptionMessage += " The most similar event/type is '" + mostSimilar.getName() + "' (" + mostSimilar.getClass() + ").";
         }
-        exceptionMessage += " Take a look at 'metadata.xml' to see all available types.";
-
+        exceptionMessage += " Take a look at 'metadata.xml' to see all available events.";
         throw VMError.shouldNotReachHere(exceptionMessage);
     }
 
-    private static String getMostSimilarType(String missingTypeName) {
+    private static Type getMostSimilar(String missingTypeName) {
         float threshold = OptionsParser.FUZZY_MATCH_THRESHOLD;
-        String mostSimilar = null;
-        for (Type type : TypeLibrary.getInstance().getTypes()) {
+        Type mostSimilar = null;
+        for (Type type : types.values()) {
             float similarity = OptionsParser.stringSimilarity(type.getName(), missingTypeName);
             if (similarity > threshold) {
                 threshold = similarity;
-                mostSimilar = type.getName();
+                mostSimilar = type;
             }
         }
         return mostSimilar;

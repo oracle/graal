@@ -44,7 +44,7 @@ public enum JfrType {
     private final long id;
 
     JfrType(String name) {
-        this.id = JfrMetadataTypeLibrary.lookup(name);
+        this.id = JfrMetadataTypeLibrary.lookupType(name);
     }
 
     public long getId() {

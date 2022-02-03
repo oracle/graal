@@ -24,17 +24,10 @@
  */
 package com.oracle.svm.core.jfr;
 
-import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.options.OptionsParser;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.util.VMError;
-
-import jdk.jfr.internal.PlatformEventType;
-import jdk.jfr.internal.Type;
-import jdk.jfr.internal.TypeLibrary;
 
 /**
  * The event IDs depend on the metadata.xml and therefore vary between JDK versions.
@@ -62,60 +55,11 @@ public enum JfrEvents {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     JfrEvents(String name) {
-        this.id = getEventTypeId(name);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    private static String getMostSimilarEvent(String missingTypeName) {
-        float threshold = OptionsParser.FUZZY_MATCH_THRESHOLD;
-        String mostSimilar = null;
-        for (Type type : TypeLibrary.getInstance().getTypes()) {
-            if (type instanceof PlatformEventType) {
-                float similarity = OptionsParser.stringSimilarity(type.getName(), missingTypeName);
-                if (similarity > threshold) {
-                    threshold = similarity;
-                    mostSimilar = type.getName();
-                }
-            }
-        }
-        return mostSimilar;
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    private static long getEventTypeId(String name) {
-        try {
-            for (Type type : TypeLibrary.getInstance().getTypes()) {
-                if (type instanceof PlatformEventType && name.equals(type.getName())) {
-                    return type.getId();
-                }
-            }
-
-            String exceptionMessage = "Event " + name + " was not found!";
-            String mostSimilarEvent = getMostSimilarEvent(name);
-            if (mostSimilarEvent != null) {
-                exceptionMessage += " The most similar event is " + mostSimilarEvent + ".";
-            }
-            exceptionMessage += " Take a look at 'metadata.xml' to see all available events.";
-
-            throw VMError.shouldNotReachHere(exceptionMessage);
-        } catch (Exception ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
+        this.id = JfrMetadataTypeLibrary.lookupPlatformEvent(name);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getId() {
         return id;
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static int getEventCount() {
-        long maxEventId = 0;
-        for (Type type : TypeLibrary.getInstance().getTypes()) {
-            if (type instanceof PlatformEventType) {
-                maxEventId = Math.max(maxEventId, type.getId());
-            }
-        }
-        return NumUtil.safeToInt(maxEventId + 1);
     }
 }
