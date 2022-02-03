@@ -41,8 +41,8 @@
 suite = {
   "mxversion" : "5.309.1",
   "name" : "sdk",
-  "version" : "22.0.0.2",
-  "release" : True,
+  "version" : "22.1.0",
+  "release" : False,
   "sourceinprojectwhitelist" : [],
   "url" : "https://github.com/oracle/graal",
   "groupId" : "org.graalvm.sdk",
@@ -78,15 +78,15 @@ suite = {
   "defaultLicense" : "UPL",
   "imports": {},
   "libraries" : {
-    "WRK": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/wrk-a211dd5.tar.gz"],
-      "sha1": "6052d4452e190e707309c575fa2852a0035c5f34",
+    "WRK_MULTIARCH": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/wrk-a211dd5-multiarch.tar.gz"],
+      "sha1": "48f9df44d53b3fef8515e6d463a885aa00b5a954",
       "packedResource": True,
       "license": "Apache-2.0-wrk-a211dd5",
     },
-    "WRK2": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/wrk2.tar.gz"],
-      "sha1": "a5c417b414f72951de4eb95641808a0a5aa31445",
+    "WRK2_MULTIARCH": {
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/wrk2-multiarch.tar.gz"],
+      "sha1": "04a75fe3362e3b708c0c44db81fa73029d9fb604",
       "packedResource": True,
       "license": "Apache-2.0",
     },

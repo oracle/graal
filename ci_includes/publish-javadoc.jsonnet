@@ -1,7 +1,7 @@
 {
   local common = import '../common.jsonnet',
   local utils = import '../common-utils.libsonnet',
-  local linux_amd64 = common["linux-amd64"],
+  local linux_amd64 = common.linux_amd64,
 
   local javadoc_publisher = {
     name: 'graal-publish-javadoc-' + utils.prefixed_jdk(self.jdk_version),

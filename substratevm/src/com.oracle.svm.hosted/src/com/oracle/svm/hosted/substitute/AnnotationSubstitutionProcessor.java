@@ -47,6 +47,7 @@ import java.util.function.Predicate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.util.GuardedAnnotationAccess;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
@@ -151,8 +152,19 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         return field;
     }
 
+    public boolean isDeleted(Field field) {
+        return isDeleted(metaAccess.lookupJavaField(field));
+    }
+
     public boolean isDeleted(ResolvedJavaField field) {
-        return deleteAnnotations.get(field) != null;
+        if (deleteAnnotations.get(field) != null) {
+            return true;
+        }
+        ResolvedJavaField substitutionField = fieldSubstitutions.get(field);
+        if (substitutionField != null) {
+            return GuardedAnnotationAccess.isAnnotationPresent(substitutionField, Delete.class);
+        }
+        return false;
     }
 
     public boolean isDeleted(Class<?> clazz) {
@@ -249,7 +261,8 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                         targetFieldDeclaringType.registerAsReachable();
                         AnalysisField targetField = bb.getMetaAccess().lookupJavaField(cvField.getTargetField());
                         targetField.registerAsAccessed();
-                        targetField.registerAsUnsafeAccessed(bb.getUniverse());
+                        assert !GuardedAnnotationAccess.isAnnotationPresent(targetField, Delete.class);
+                        targetField.registerAsUnsafeAccessed();
                         break;
                 }
             }
@@ -864,7 +877,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             targetName = recomputeAnnotation.name();
             isFinal = recomputeAnnotation.isFinal();
             disableCaching = recomputeAnnotation.disableCaching();
-            guarantee(!isFinal || ComputedValueField.isFinalValid(kind), "@%s with %s can never be final during analysis: unset isFinal in the annotation on %s",
+            guarantee(!isFinal || !ComputedValueField.isOffsetRecomputation(kind), "@%s with %s can never be final during analysis: unset isFinal in the annotation on %s",
                             RecomputeFieldValue.class.getSimpleName(), kind, annotated);
             guarantee(!isFinal || !disableCaching, "@%s can not be final if caching is disabled: unset isFinal in the annotation on %s",
                             RecomputeFieldValue.class.getSimpleName(), kind, annotated);

@@ -45,6 +45,7 @@ CLSS public java.lang.Object
 cons public init()
 meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException
 meth protected void finalize() throws java.lang.Throwable
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="9")
 meth public boolean equals(java.lang.Object)
 meth public final java.lang.Class<?> getClass()
 meth public final void notify()
@@ -85,7 +86,7 @@ meth public void printStackTrace(java.io.PrintStream)
 meth public void printStackTrace(java.io.PrintWriter)
 meth public void setStackTrace(java.lang.StackTraceElement[])
 supr java.lang.Object
-hfds CAUSE_CAPTION,EMPTY_THROWABLE_ARRAY,NULL_CAUSE_MESSAGE,SELF_SUPPRESSION_MESSAGE,SUPPRESSED_CAPTION,SUPPRESSED_SENTINEL,UNASSIGNED_STACK,backtrace,cause,detailMessage,serialVersionUID,stackTrace,suppressedExceptions
+hfds CAUSE_CAPTION,EMPTY_THROWABLE_ARRAY,NULL_CAUSE_MESSAGE,SELF_SUPPRESSION_MESSAGE,SUPPRESSED_CAPTION,SUPPRESSED_SENTINEL,UNASSIGNED_STACK,backtrace,cause,depth,detailMessage,serialVersionUID,stackTrace,suppressedExceptions
 hcls PrintStreamOrWriter,SentinelHolder,WrappedPrintStream,WrappedPrintWriter
 
 CLSS public abstract interface java.lang.annotation.Annotation
@@ -164,21 +165,23 @@ CLSS public final static org.graalvm.nativeimage.Isolates$CreateIsolateParameter
  outer org.graalvm.nativeimage.Isolates
 innr public final static Builder
 meth public java.lang.String getAuxiliaryImagePath()
+meth public java.util.List<java.lang.String> getArguments()
 meth public org.graalvm.word.UnsignedWord getAuxiliaryImageReservedSpaceSize()
 meth public org.graalvm.word.UnsignedWord getReservedAddressSpaceSize()
 meth public static org.graalvm.nativeimage.Isolates$CreateIsolateParameters getDefault()
 supr java.lang.Object
-hfds DEFAULT,auxiliaryImagePath,auxiliaryImageReservedSpaceSize,reservedAddressSpaceSize
+hfds DEFAULT,arguments,auxiliaryImagePath,auxiliaryImageReservedSpaceSize,reservedAddressSpaceSize
 
 CLSS public final static org.graalvm.nativeimage.Isolates$CreateIsolateParameters$Builder
  outer org.graalvm.nativeimage.Isolates$CreateIsolateParameters
 cons public init()
 meth public org.graalvm.nativeimage.Isolates$CreateIsolateParameters build()
+meth public org.graalvm.nativeimage.Isolates$CreateIsolateParameters$Builder appendArgument(java.lang.String)
 meth public org.graalvm.nativeimage.Isolates$CreateIsolateParameters$Builder auxiliaryImagePath(java.lang.String)
 meth public org.graalvm.nativeimage.Isolates$CreateIsolateParameters$Builder auxiliaryImageReservedSpaceSize(org.graalvm.word.UnsignedWord)
 meth public org.graalvm.nativeimage.Isolates$CreateIsolateParameters$Builder reservedAddressSpaceSize(org.graalvm.word.UnsignedWord)
 supr java.lang.Object
-hfds auxiliaryImagePath,auxiliaryImageReservedSpaceSize,reservedAddressSpaceSize
+hfds arguments,auxiliaryImagePath,auxiliaryImageReservedSpaceSize,reservedAddressSpaceSize
 
 CLSS public final static org.graalvm.nativeimage.Isolates$IsolateException
  outer org.graalvm.nativeimage.Isolates
@@ -356,6 +359,7 @@ meth public static java.lang.String getObjectFile(org.graalvm.nativeimage.c.func
 meth public static java.lang.String setLocale(java.lang.String,java.lang.String)
 meth public static long getProcessID()
 meth public static long getProcessID(java.lang.Process)
+meth public static void exec(java.nio.file.Path,java.lang.String[],java.util.Map<java.lang.String,java.lang.String>)
 supr java.lang.Object
 
 CLSS public final org.graalvm.nativeimage.RuntimeOptions
@@ -930,9 +934,9 @@ supr java.lang.Object
 
 CLSS public final org.graalvm.nativeimage.hosted.RuntimeReflection
 meth public !varargs static void register(boolean,boolean,java.lang.reflect.Field[])
- anno 0 java.lang.Deprecated()
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public !varargs static void register(boolean,java.lang.reflect.Field[])
- anno 0 java.lang.Deprecated()
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public !varargs static void register(java.lang.Class<?>[])
 meth public !varargs static void register(java.lang.reflect.Executable[])
 meth public !varargs static void register(java.lang.reflect.Field[])
@@ -942,6 +946,7 @@ supr java.lang.Object
 
 CLSS public final org.graalvm.nativeimage.hosted.RuntimeSerialization
 meth public !varargs static void register(java.lang.Class<?>[])
+meth public static void registerIncludingAssociatedClasses(java.lang.Class<?>)
 meth public static void registerWithTargetConstructorClass(java.lang.Class<?>,java.lang.Class<?>)
 supr java.lang.Object
 
@@ -964,6 +969,6 @@ meth public abstract boolean isNull()
 
 CLSS public abstract interface org.graalvm.word.WordBase
 meth public abstract boolean equals(java.lang.Object)
- anno 0 java.lang.Deprecated()
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="")
 meth public abstract long rawValue()
 

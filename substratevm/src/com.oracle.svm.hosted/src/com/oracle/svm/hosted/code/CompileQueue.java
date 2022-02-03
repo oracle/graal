@@ -96,6 +96,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
 import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
@@ -114,7 +115,6 @@ import org.graalvm.compiler.phases.tiers.MidTierContext;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.GraphOrder;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.nodes.MacroInvokable;
 import org.graalvm.compiler.virtual.phases.ea.PartialEscapePhase;
 import org.graalvm.compiler.virtual.phases.ea.ReadEliminationPhase;
@@ -152,6 +152,8 @@ import com.oracle.svm.core.graal.phases.OptimizeExceptionPathsPhase;
 import com.oracle.svm.core.graal.snippets.DeoptTester;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
+import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureHandler;
@@ -175,13 +177,17 @@ import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.code.DebugInfo;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.site.Call;
+import jdk.vm.ci.code.site.ConstantReference;
+import jdk.vm.ci.code.site.DataPatch;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.code.site.InfopointReason;
+import jdk.vm.ci.code.site.Reference;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.VMConstant;
 
 public class CompileQueue {
 
@@ -265,6 +271,23 @@ public class CompileQueue {
         @Override
         public String toString() {
             return "Virtual call from " + caller.format("%r %h.%n(%p)") + ", callTarget " + callTarget.format("%r %h.%n(%p)");
+        }
+    }
+
+    public static class MethodPointerConstantReason extends CompileReason {
+
+        private final HostedMethod owner;
+        private final HostedMethod callTarget;
+
+        public MethodPointerConstantReason(HostedMethod owner, HostedMethod callTarget, CompileReason prevReason) {
+            super(prevReason);
+            this.owner = owner;
+            this.callTarget = callTarget;
+        }
+
+        @Override
+        public String toString() {
+            return "Method " + callTarget.format("%r %h.%n(%p)") + " is reachable through a method pointer from " + owner.format("%r %h.%n(%p)");
         }
     }
 
@@ -902,6 +925,14 @@ public class CompileQueue {
             ResolvedJavaMethod replacedMethod = (ResolvedJavaMethod) replaceAnalysisObjects(nsp.getMethod(), node, replacements, hUniverse);
             newReplacement = new BytecodePosition(replacedCaller, replacedMethod, nsp.getBCI());
 
+        } else if (obj.getClass() == SubstrateMethodPointerConstant.class) {
+            SubstrateMethodPointerConstant methodPointerConstant = (SubstrateMethodPointerConstant) obj;
+
+            MethodPointer methodPointer = methodPointerConstant.pointer();
+            ResolvedJavaMethod method = methodPointer.getMethod();
+            ResolvedJavaMethod replacedMethod = (ResolvedJavaMethod) replaceAnalysisObjects(method, node, replacements, hUniverse);
+            newReplacement = new SubstrateMethodPointerConstant(new MethodPointer(replacedMethod));
+
         } else {
             /* Check that we do not have a class or package name that relates to the analysis. */
             assert !obj.getClass().getName().toLowerCase().contains("analysis") : "Object " + obj + " of " + obj.getClass() + " in node " + node;
@@ -1004,7 +1035,7 @@ public class CompileQueue {
         } else {
             graph = method.buildGraph(debug, method, providers, Purpose.AOT_COMPILATION);
             if (graph == null) {
-                InvocationPlugin plugin = providers.getGraphBuilderPlugins().getInvocationPlugins().lookupInvocation(method);
+                InvocationPlugin plugin = providers.getGraphBuilderPlugins().getInvocationPlugins().lookupInvocation(method, debug.getOptions());
                 if (plugin != null && !plugin.inlineOnly()) {
                     Bytecode code = new ResolvedJavaMethodBytecode(method);
                     // DebugContext debug = new DebugContext(options,
@@ -1033,7 +1064,7 @@ public class CompileQueue {
                     graph.setGuardsStage(GuardsStage.FIXED_DEOPTS);
                 }
 
-                method.compilationInfo.graph = graph;
+                method.compilationInfo.setGraph(graph);
                 afterParse(method);
                 PhaseSuite<HighTierContext> afterParseSuite = afterParseCanonicalization();
                 afterParseSuite.apply(method.compilationInfo.graph, new HighTierContext(providers, afterParseSuite, getOptimisticOpts()));
@@ -1340,6 +1371,18 @@ public class CompileQueue {
                 }
             }
         }
+        for (DataPatch dataPatch : result.getDataPatches()) {
+            Reference reference = dataPatch.reference;
+            if (reference instanceof ConstantReference) {
+                VMConstant constant = ((ConstantReference) reference).getConstant();
+                if (constant instanceof SubstrateMethodPointerConstant) {
+                    MethodPointer pointer = ((SubstrateMethodPointerConstant) constant).pointer();
+                    final ResolvedJavaMethod method1 = pointer.getMethod();
+                    HostedMethod hMethod = (HostedMethod) method1;
+                    ensureCompiled(hMethod, new MethodPointerConstantReason(method, hMethod, reason));
+                }
+            }
+        }
     }
 
     protected void removeDeoptTargetOptimizations(Suites suites) {
@@ -1508,7 +1551,7 @@ public class CompileQueue {
                 if (((StateSplit) node).hasSideEffect() && ((StateSplit) node).stateAfter() != null) {
                     testNode.setStateAfter(((StateSplit) node).stateAfter().duplicateWithVirtualState());
                 } else {
-                    testNode.setStateAfter(SnippetTemplate.findLastFrameState((FixedNode) node).duplicateWithVirtualState());
+                    testNode.setStateAfter(GraphUtil.findLastFrameState((FixedNode) node).duplicateWithVirtualState());
                 }
             }
         }

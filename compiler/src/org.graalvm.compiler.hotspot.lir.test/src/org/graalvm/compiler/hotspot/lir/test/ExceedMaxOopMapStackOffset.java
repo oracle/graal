@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.hotspot.lir.test;
 
-import org.junit.Test;
-
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.hotspot.HotSpotBackend;
 import org.graalvm.compiler.lir.framemap.FrameMapBuilder;
@@ -36,6 +34,7 @@ import org.graalvm.compiler.nodes.SafepointNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.junit.Test;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -85,14 +84,13 @@ public class ExceedMaxOopMapStackOffset extends LIRTest {
 
     @Override
     protected GraphBuilderConfiguration editGraphBuilderConfiguration(GraphBuilderConfiguration conf) {
-        InvocationPlugin safepointPlugin = new InvocationPlugin() {
+        conf.getPlugins().getInvocationPlugins().register(getClass(), new InvocationPlugin("safepoint") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.add(new SafepointNode());
                 return true;
             }
-        };
-        conf.getPlugins().getInvocationPlugins().register(safepointPlugin, getClass(), "safepoint");
+        });
         return super.editGraphBuilderConfiguration(conf);
     }
 

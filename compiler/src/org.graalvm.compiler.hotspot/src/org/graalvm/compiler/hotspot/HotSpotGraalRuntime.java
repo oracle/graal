@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -343,8 +343,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
             }
         }
         if (selected == null) {
-            // As of JDK 9, exactly one GC flag is guaranteed to be selected.
-            // On JDK 8, the default GC is Serial when no GC flag is true.
+            // Exactly one GC flag is guaranteed to be selected.
             selected = HotSpotGC.Serial;
         }
         return selected;

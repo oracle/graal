@@ -26,9 +26,9 @@ package com.oracle.svm.junit;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
-import java.util.List;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 import java.util.Random;
 
 import org.graalvm.compiler.options.Option;
@@ -93,9 +93,7 @@ public class SVMJUnitRunner {
             StringBuilder msg = new StringBuilder("Warning: The test configuration file specified via ").append(testFileOption)
                             .append(" contains missing classes. Test execution will fail at run time. ")
                             .append("Missing classes in configuration file: ").append(missingClassesStr);
-            // Checkstyle: stop
             System.out.println(msg);
-            // Checkstyle: resume
         }
     }
 

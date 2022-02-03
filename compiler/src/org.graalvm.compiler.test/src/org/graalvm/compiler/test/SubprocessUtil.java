@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -42,7 +42,6 @@ import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.util.CollectionsUtil;
 import org.junit.Assume;
 
@@ -438,25 +437,21 @@ public final class SubprocessUtil {
         }
     }
 
-    private static final boolean isJava8OrEarlier = JavaVersionUtil.JAVA_SPEC <= 8;
-
     private static boolean hasArg(String optionName) {
         if (optionName.equals("-cp") || optionName.equals("-classpath")) {
             return true;
         }
-        if (!isJava8OrEarlier) {
-            if (optionName.equals("--version") ||
-                            optionName.equals("--show-version") ||
-                            optionName.equals("--dry-run") ||
-                            optionName.equals("--disable-@files") ||
-                            optionName.equals("--dry-run") ||
-                            optionName.equals("--help") ||
-                            optionName.equals("--help-extra")) {
-                return false;
-            }
-            if (optionName.startsWith("--")) {
-                return optionName.indexOf('=') == -1;
-            }
+        if (optionName.equals("--version") ||
+                        optionName.equals("--show-version") ||
+                        optionName.equals("--dry-run") ||
+                        optionName.equals("--disable-@files") ||
+                        optionName.equals("--dry-run") ||
+                        optionName.equals("--help") ||
+                        optionName.equals("--help-extra")) {
+            return false;
+        }
+        if (optionName.startsWith("--")) {
+            return optionName.indexOf('=') == -1;
         }
         return false;
     }
@@ -468,7 +463,7 @@ public final class SubprocessUtil {
             String s = commandLine.get(i);
             if (s.charAt(0) != '-') {
                 // https://bugs.openjdk.java.net/browse/JDK-8027634
-                if (isJava8OrEarlier || s.charAt(0) != '@') {
+                if (s.charAt(0) != '@') {
                     return i;
                 }
                 i++;

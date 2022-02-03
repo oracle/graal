@@ -185,6 +185,9 @@ final class WhiteListParser extends ConfigurationParser {
             useType = type;
         }
         Class<?> clz = imageClassLoader.findClass(useType).get();
+        if (clz == null) {
+            return null;
+        }
         verifySupportedOnActivePlatform(clz);
         return bb.getMetaAccess().lookupJavaType(clz);
     }
@@ -192,12 +195,12 @@ final class WhiteListParser extends ConfigurationParser {
     private void verifySupportedOnActivePlatform(Class<?> clz) throws UnsupportedPlatformException {
         AnalysisUniverse universe = bb.getUniverse();
         Package pkg = clz.getPackage();
-        if (pkg != null && !universe.hostVM().platformSupported(universe, pkg)) {
+        if (pkg != null && !universe.hostVM().platformSupported(pkg)) {
             throw new UnsupportedPlatformException(clz.getPackage());
         }
         Class<?> current = clz;
         do {
-            if (!universe.hostVM().platformSupported(universe, current)) {
+            if (!universe.hostVM().platformSupported(current)) {
                 throw new UnsupportedPlatformException(current);
             }
             current = current.getEnclosingClass();

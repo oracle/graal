@@ -27,10 +27,8 @@ package com.oracle.svm.methodhandles;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.lang.invoke.MethodType;
-// Checkstyle: stop
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-// Checkstyle: allow
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
@@ -42,7 +40,6 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.invoke.MethodHandleIntrinsic;
-import com.oracle.svm.core.invoke.MethodHandleUtils.MethodHandlesSupported;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -552,7 +549,7 @@ final class MethodHandleIntrinsicImpl implements MethodHandleIntrinsic {
     }
 }
 
-@TargetClass(className = "java.lang.invoke.MethodHandleImpl", innerClass = "IntrinsicMethodHandle", onlyWith = MethodHandlesSupported.class)
+@TargetClass(className = "java.lang.invoke.MethodHandleImpl", innerClass = "IntrinsicMethodHandle")
 final class Target_java_lang_invoke_MethodHandleImpl_IntrinsicMethodHandle {
     @Alias
     protected native Target_java_lang_invoke_MethodHandle getTarget();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ package org.graalvm.compiler.nodes.extended;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -69,7 +70,7 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
     }
 
     public RawLoadNode(ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity, boolean forceLocation) {
-        super(TYPE, StampFactory.forKind(accessKind.getStackKind()), object, offset, accessKind, locationIdentity, forceLocation);
+        super(TYPE, StampFactory.forKind(accessKind.getStackKind()), object, offset, accessKind, locationIdentity, forceLocation, MemoryOrderMode.PLAIN);
     }
 
     /**
@@ -77,7 +78,7 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
      * {@link org.graalvm.compiler.graph.Node.NodeIntrinsic} annotated method.
      */
     public RawLoadNode(@InjectedNodeParameter Stamp stamp, ValueNode object, ValueNode offset, LocationIdentity locationIdentity, JavaKind accessKind) {
-        super(TYPE, stamp, object, offset, accessKind, locationIdentity, false);
+        super(TYPE, stamp, object, offset, accessKind, locationIdentity, false, MemoryOrderMode.PLAIN);
     }
 
     static Stamp computeStampForArrayAccess(ValueNode object, JavaKind accessKind, Stamp oldStamp) {
@@ -99,11 +100,20 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
     }
 
     protected RawLoadNode(NodeClass<? extends RawLoadNode> c, ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity) {
-        this(c, object, offset, accessKind, locationIdentity, false);
+        this(c, object, offset, accessKind, locationIdentity, false, MemoryOrderMode.PLAIN);
     }
 
     protected RawLoadNode(NodeClass<? extends RawLoadNode> c, ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity, boolean forceLocation) {
-        super(c, computeStampForArrayAccess(object, accessKind, null), object, offset, accessKind, locationIdentity, forceLocation);
+        this(c, object, offset, accessKind, locationIdentity, forceLocation, MemoryOrderMode.PLAIN);
+    }
+
+    protected RawLoadNode(NodeClass<? extends RawLoadNode> c, ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity, MemoryOrderMode memoryOrder) {
+        this(c, object, offset, accessKind, locationIdentity, false, memoryOrder);
+    }
+
+    protected RawLoadNode(NodeClass<? extends RawLoadNode> c, ValueNode object, ValueNode offset, JavaKind accessKind, LocationIdentity locationIdentity, boolean forceLocation,
+                    MemoryOrderMode memoryOrder) {
+        super(c, computeStampForArrayAccess(object, accessKind, null), object, offset, accessKind, locationIdentity, forceLocation, memoryOrder);
     }
 
     @Override
@@ -162,11 +172,6 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
     }
 
     @Override
-    public boolean isVolatile() {
-        return false;
-    }
-
-    @Override
     public Node canonical(CanonicalizerTool tool) {
         Node canonical = super.canonical(tool);
         if (canonical != this) {
@@ -179,14 +184,14 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
     }
 
     @Override
-    protected ValueNode cloneAsFieldAccess(Assumptions assumptions, ResolvedJavaField field, boolean volatileAccess) {
-        return LoadFieldNode.create(assumptions, field.isStatic() ? null : object(), field, volatileAccess);
+    protected ValueNode cloneAsFieldAccess(Assumptions assumptions, ResolvedJavaField field, MemoryOrderMode memOrder) {
+        return LoadFieldNode.create(assumptions, field.isStatic() ? null : object(), field, memOrder);
     }
 
     @Override
-    protected ValueNode cloneAsArrayAccess(ValueNode location, LocationIdentity identity, boolean volatileAccess) {
-        if (volatileAccess) {
-            return new RawVolatileLoadNode(object(), location, accessKind(), identity);
+    protected ValueNode cloneAsArrayAccess(ValueNode location, LocationIdentity identity, MemoryOrderMode memOrder) {
+        if (MemoryOrderMode.ordersMemoryAccesses(memOrder)) {
+            return new RawOrderedLoadNode(object(), location, accessKind(), identity, memOrder);
         }
         return new RawLoadNode(object(), location, accessKind(), identity);
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -420,34 +420,24 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     @Override
     public Object getValue(com.oracle.truffle.api.frame.FrameSlot slot) {
         byte tag = getTag(slot);
-        int slotIndex = getFrameSlotIndex(slot);
-        boolean condition = (tag == BOOLEAN_TAG);
-        if (condition) {
-            return getBooleanUnsafe(slotIndex, slot, condition);
+        switch (tag) {
+            case BOOLEAN_TAG:
+                return getBoolean(slot);
+            case BYTE_TAG:
+                return getByte(slot);
+            case INT_TAG:
+                return getInt(slot);
+            case DOUBLE_TAG:
+                return getDouble(slot);
+            case LONG_TAG:
+                return getLong(slot);
+            case FLOAT_TAG:
+                return getFloat(slot);
+            case OBJECT_TAG:
+                return getObject(slot);
+            default:
+                throw CompilerDirectives.shouldNotReachHere();
         }
-        condition = (tag == BYTE_TAG);
-        if (condition) {
-            return getByteUnsafe(slotIndex, slot, condition);
-        }
-        condition = (tag == INT_TAG);
-        if (condition) {
-            return getIntUnsafe(slotIndex, slot, condition);
-        }
-        condition = (tag == DOUBLE_TAG);
-        if (condition) {
-            return getDoubleUnsafe(slotIndex, slot, condition);
-        }
-        condition = (tag == LONG_TAG);
-        if (condition) {
-            return getLongUnsafe(slotIndex, slot, condition);
-        }
-        condition = (tag == FLOAT_TAG);
-        if (condition) {
-            return getFloatUnsafe(slotIndex, slot, condition);
-        }
-        condition = tag == OBJECT_TAG;
-        assert condition;
-        return getObjectUnsafe(slotIndex, slot, condition);
     }
 
     boolean resize() {
@@ -591,34 +581,24 @@ public final class FrameWithoutBoxing implements VirtualFrame, MaterializedFrame
     @Override
     public Object getValue(int slot) {
         byte tag = getTag(slot);
-        boolean condition = (tag == BOOLEAN_TAG);
-        if (condition) {
-            return unsafeGetInt(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), condition, PRIMITIVE_LOCATION) != 0;
+        switch (tag) {
+            case BOOLEAN_TAG:
+                return getBoolean(slot);
+            case BYTE_TAG:
+                return getByte(slot);
+            case INT_TAG:
+                return getInt(slot);
+            case DOUBLE_TAG:
+                return getDouble(slot);
+            case LONG_TAG:
+                return getLong(slot);
+            case FLOAT_TAG:
+                return getFloat(slot);
+            case OBJECT_TAG:
+                return getObject(slot);
+            default:
+                throw CompilerDirectives.shouldNotReachHere();
         }
-        condition = (tag == BYTE_TAG);
-        if (condition) {
-            return (byte) unsafeGetInt(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), condition, PRIMITIVE_LOCATION);
-        }
-        condition = (tag == INT_TAG);
-        if (condition) {
-            return unsafeGetInt(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), condition, PRIMITIVE_LOCATION);
-        }
-        condition = (tag == DOUBLE_TAG);
-        if (condition) {
-            return unsafeGetDouble(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), condition, PRIMITIVE_LOCATION);
-        }
-        condition = (tag == LONG_TAG);
-        if (condition) {
-            return unsafeGetLong(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), condition, PRIMITIVE_LOCATION);
-        }
-        condition = (tag == FLOAT_TAG);
-        if (condition) {
-            return unsafeGetFloat(getIndexedPrimitiveLocals(), getPrimitiveOffset(slot), condition, PRIMITIVE_LOCATION);
-        }
-        condition = tag == OBJECT_TAG;
-        assert condition;
-        return unsafeGetObject(getIndexedLocals(), Unsafe.ARRAY_OBJECT_BASE_OFFSET + slot * (long) Unsafe.ARRAY_OBJECT_INDEX_SCALE, condition, OBJECT_LOCATION);
-
     }
 
     @SuppressWarnings("deprecation")

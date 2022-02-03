@@ -130,7 +130,7 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
         boolean useEncodedGraphs = UseEncodedGraphs.getValue(debug.getOptions());
         if (IS_IN_NATIVE_IMAGE || useEncodedGraphs) {
             HotSpotReplacementsImpl replacements = (HotSpotReplacementsImpl) providers.getReplacements();
-            InvocationPlugin plugin = replacements.getGraphBuilderPlugins().getInvocationPlugins().lookupInvocation(method);
+            InvocationPlugin plugin = replacements.getGraphBuilderPlugins().getInvocationPlugins().lookupInvocation(method, debug.getOptions());
             if (plugin instanceof MethodSubstitutionPlugin) {
                 MethodSubstitutionPlugin msp = (MethodSubstitutionPlugin) plugin;
                 if (!IS_IN_NATIVE_IMAGE && useEncodedGraphs) {
@@ -153,7 +153,7 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
         }
         boolean useEncodedGraphs = UseEncodedGraphs.getValue(options);
         if (IS_IN_NATIVE_IMAGE || useEncodedGraphs) {
-            InvocationPlugin plugin = getGraphBuilderPlugins().getInvocationPlugins().lookupInvocation(targetMethod);
+            InvocationPlugin plugin = getGraphBuilderPlugins().getInvocationPlugins().lookupInvocation(targetMethod, options);
             if (plugin instanceof MethodSubstitutionPlugin && (!plugin.inlineOnly() || invokeBci >= 0)) {
                 MethodSubstitutionPlugin msPlugin = (MethodSubstitutionPlugin) plugin;
                 if (!IS_IN_NATIVE_IMAGE && useEncodedGraphs) {

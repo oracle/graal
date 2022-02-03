@@ -105,6 +105,8 @@ import com.oracle.svm.core.handles.ThreadLocalHandles;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 
+// Checkstyle: stop method name check
+
 @SuppressWarnings("unused")
 @CHeader(value = PolyglotAPIHeader.class)
 public final class PolyglotNativeAPI {

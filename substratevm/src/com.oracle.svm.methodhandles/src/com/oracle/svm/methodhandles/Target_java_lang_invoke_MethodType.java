@@ -33,8 +33,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.invoke.MethodHandleUtils.MethodHandlesSupported;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 
 @TargetClass(java.lang.invoke.MethodType.class)
@@ -71,7 +69,6 @@ final class Target_java_lang_invoke_MethodType_ConcurrentWeakInternSet {
 @TargetClass(className = "java.lang.invoke.Invokers")
 final class Target_java_lang_invoke_Invokers {
     @Substitute
-    @TargetElement(onlyWith = MethodHandlesSupported.class)
     static void checkExactType(MethodHandle mh, MethodType expected) {
         if (!expected.equals(mh.type())) {
             throw new WrongMethodTypeException("expected " + expected + " but found " + mh.type());
@@ -79,7 +76,7 @@ final class Target_java_lang_invoke_Invokers {
     }
 }
 
-@TargetClass(className = "java.lang.invoke.InvokerBytecodeGenerator", onlyWith = MethodHandlesSupported.class)
+@TargetClass(className = "java.lang.invoke.InvokerBytecodeGenerator")
 final class Target_java_lang_invoke_InvokerBytecodeGenerator {
     @SuppressWarnings("unused")
     @Substitute

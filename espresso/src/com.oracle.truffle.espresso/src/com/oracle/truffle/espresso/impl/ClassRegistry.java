@@ -450,7 +450,7 @@ public abstract class ClassRegistry implements ContextAccess {
 
         try (DebugCloseable define = KLASS_DEFINE.scope(context.getTimers())) {
             // FIXME(peterssen): Do NOT create a LinkedKlass every time, use a global cache.
-            ContextDescription description = new ContextDescription(context.getLanguage(), context.getJavaVersion(), context.advancedRedefinitionEnabled());
+            ContextDescription description = new ContextDescription(context.getLanguage(), context.getJavaVersion());
             LinkedKlass linkedKlass = LinkedKlass.create(description, parserKlass, superKlass == null ? null : superKlass.getLinkedKlass(), linkedInterfaces);
             klass = new ObjectKlass(context, linkedKlass, superKlass, superInterfaces, getClassLoader(), info);
         }
@@ -496,10 +496,10 @@ public abstract class ClassRegistry implements ContextAccess {
         try {
             klass = loadKlass(type, StaticObject.NULL);
         } catch (EspressoException e) {
-            if (meta.java_lang_ClassNotFoundException.isAssignableFrom(e.getExceptionObject().getKlass())) {
+            if (meta.java_lang_ClassNotFoundException.isAssignableFrom(e.getGuestException().getKlass())) {
                 // NoClassDefFoundError has no <init>(Throwable cause). Set cause manually.
                 StaticObject ncdfe = Meta.initException(meta.java_lang_NoClassDefFoundError);
-                meta.java_lang_Throwable_cause.set(ncdfe, e.getExceptionObject());
+                meta.java_lang_Throwable_cause.set(ncdfe, e.getGuestException());
                 throw meta.throwException(ncdfe);
             }
             throw e;

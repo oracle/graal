@@ -25,7 +25,6 @@
 package com.oracle.graal.pointsto.meta;
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -53,9 +52,11 @@ import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.AllInstantiatedTypeFlow;
 import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 import com.oracle.graal.pointsto.flow.context.object.ConstantContextSensitiveObject;
+import com.oracle.graal.pointsto.heap.TypeData;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.AtomicUtils;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
@@ -155,6 +156,10 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     }
 
     private final AnalysisFuture<Void> initializationTask;
+    /**
+     * Additional information that is only available for types that are marked as reachable.
+     */
+    final AnalysisFuture<TypeData> typeData;
 
     AnalysisType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType, AnalysisType cloneableType) {
         this.universe = universe;
@@ -237,7 +242,11 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         }
 
         /* The registration task initializes the type. */
-        this.initializationTask = new AnalysisFuture<>(() -> universe.hostVM.initializeType(this), null);
+        this.initializationTask = new AnalysisFuture<>(() -> universe.initializeType(this), null);
+        this.typeData = new AnalysisFuture<>(() -> {
+            AnalysisError.guarantee(universe.getHeapScanner() != null, "Heap scanner is not available.");
+            return universe.getHeapScanner().computeTypeData(this);
+        });
     }
 
     private AnalysisType[] convertTypes(ResolvedJavaType[] originalTypes) {
@@ -410,7 +419,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     public boolean registerAsInHeap() {
         registerAsReachable();
         if (AtomicUtils.atomicMark(isInHeap)) {
-            registerAsInstantiated(UsageKind.InHeap);
+            universe.onTypeInstantiated(this, UsageKind.InHeap);
             return true;
         }
         return false;
@@ -422,27 +431,10 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     public boolean registerAsAllocated(Node node) {
         registerAsReachable();
         if (AtomicUtils.atomicMark(isAllocated)) {
-            registerAsInstantiated(UsageKind.Allocated);
+            universe.onTypeInstantiated(this, UsageKind.Allocated);
             return true;
         }
         return false;
-    }
-
-    /** Register the type as instantiated with all its super types. */
-    private void registerAsInstantiated(UsageKind usageKind) {
-        assert isAllocated.get() || isInHeap.get();
-        assert isArray() || (isInstanceClass() && !Modifier.isAbstract(getModifiers())) : this;
-        universe.hostVM.checkForbidden(this, usageKind);
-
-        PointsToAnalysis bb = ((PointsToAnalysis) universe.getBigbang());
-        TypeState typeState = TypeState.forExactType(bb, this, true);
-        TypeState typeStateNonNull = TypeState.forExactType(bb, this, false);
-
-        /* Register the instantiated type with its super types. */
-        forAllSuperTypes(t -> {
-            t.instantiatedTypes.addState(bb, typeState);
-            t.instantiatedTypesNonNull.addState(bb, typeStateNonNull);
-        });
     }
 
     /**
@@ -504,7 +496,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
      * reachable directly, but also through java.lang.GenericDeclaration, so it will be processed
      * twice.
      */
-    private void forAllSuperTypes(Consumer<AnalysisType> superTypeConsumer) {
+    public void forAllSuperTypes(Consumer<AnalysisType> superTypeConsumer) {
         forAllSuperTypes(superTypeConsumer, true);
     }
 
@@ -534,6 +526,11 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     private synchronized void addAssignableType(BigBang bb, TypeState typeState) {
         assignableTypesState = TypeState.forUnion(((PointsToAnalysis) bb), assignableTypesState, typeState);
         assignableTypesNonNullState = assignableTypesState.forNonNull(((PointsToAnalysis) bb));
+    }
+
+    public TypeData getOrComputeData() {
+        GraalError.guarantee(isReachable.get(), "TypeData is only available for reachable types");
+        return this.typeData.ensureDone();
     }
 
     public void ensureInitialized() {
@@ -1059,6 +1056,14 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         return wrapped.isLinked();
     }
 
+    public boolean isInHeap() {
+        return isInHeap.get();
+    }
+
+    public boolean isAllocated() {
+        return isAllocated.get();
+    }
+
     @Override
     public void link() {
         wrapped.link();
@@ -1083,6 +1088,10 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     @Override
     public ResolvedJavaType getHostClass() {
         return universe.lookup(wrapped.getHostClass());
+    }
+
+    AnalysisUniverse getUniverse() {
+        return universe;
     }
 
     @Override

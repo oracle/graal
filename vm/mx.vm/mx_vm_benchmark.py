@@ -27,7 +27,7 @@
 # ----------------------------------------------------------------------------------------------------
 import os
 import re
-from os.path import dirname, join
+from os.path import basename, dirname, getsize, join
 from traceback import print_tb
 import inspect
 import subprocess
@@ -141,7 +141,7 @@ class NativeImageVM(GraalVm):
             self.skip_agent_assertions = bm_suite.skip_agent_assertions(self.benchmark_name, args)
             self.root_dir = self.benchmark_output_dir if self.benchmark_output_dir else mx.suite('vm').get_output_root(platformDependent=False, jdkDependent=False)
             self.executable_suffix = ('-' + self.benchmark_name) if self.benchmark_name else ''
-            self.executable_name = (os.path.splitext(os.path.basename(self.executable[1]))[0] + self.executable_suffix if self.executable[0] == '-jar' else self.executable[0] + self.executable_suffix).lower()
+            self.executable_name = (os.path.splitext(basename(self.executable[1]))[0] + self.executable_suffix if self.executable[0] == '-jar' else self.executable[0] + self.executable_suffix).lower()
             self.final_image_name = self.executable_name + '-' + vm.config_name()
             self.output_dir = mx.join(os.path.abspath(self.root_dir), 'native-image-benchmarks', self.executable_name + '-' + vm.config_name())
             self.profile_path_no_extension = os.path.join(self.output_dir, self.executable_name)
@@ -151,7 +151,7 @@ class NativeImageVM(GraalVm):
             self.analysis_report_path = os.path.join(self.output_dir, self.executable_name + '-analysis.json')
             self.image_build_report_path = os.path.join(self.output_dir, self.executable_name + '-image-build-stats.json')
             self.base_image_build_args = [os.path.join(vm.home(), 'bin', 'native-image')]
-            self.base_image_build_args += ['--no-fallback', '-g', '--allow-incomplete-classpath', '-H:DeadlockWatchdogInterval=30']
+            self.base_image_build_args += ['--no-fallback', '-g', '--allow-incomplete-classpath']
             self.base_image_build_args += ['-H:+VerifyGraalGraphs', '-H:+VerifyPhases', '--diagnostics-mode'] if vm.is_gate else []
             self.base_image_build_args += ['-J-ea', '-J-esa'] if vm.is_gate and not bm_suite.skip_build_assertions(self.benchmark_name) else []
 
@@ -847,8 +847,9 @@ class AgentScriptJsBenchmarkSuite(mx_benchmark.VmBenchmarkSuite, mx_benchmark.Av
         super(AgentScriptJsBenchmarkSuite, self).__init__()
         self._benchmarks = {
             'plain' : [],
-            'triple' : ['--insight=sieve-filter1.js', '--experimental-options'],
-            'single' : ['--insight=sieve-filter2.js', '--experimental-options'],
+            'triple' : ['--insight=sieve-filter1.js'],
+            'single' : ['--insight=sieve-filter2.js'],
+            'iterate' : ['--insight=sieve-filter3.js'],
         }
 
     def group(self):
@@ -1076,8 +1077,8 @@ class PolyBenchBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
 
 
 class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
-    SZ_MSG_PATTERN = "== binary size == {} is {} bytes, path = {}"
-    SZ_RGX_PATTERN = r"== binary size == (?P<interpreter>[a-zA-Z0-9_\-]+) is (?P<value>[0-9]+) bytes, path = (?P<path>.*)"
+    SZ_MSG_PATTERN = "== binary size == {} is {} bytes, path = {}\n"
+    SZ_RGX_PATTERN = r"== binary size == (?P<image_name>[a-zA-Z0-9_\-\.:]+) is (?P<value>[0-9]+) bytes, path = (?P<path>.*)"
 
 
     def group(self):
@@ -1099,16 +1100,13 @@ class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         return _polybench_vm_registry
 
     def runAndReturnStdOut(self, benchmarks, bmSuiteArgs):
-        from mx_sdk_vm import graalvm_components, GraalVmLanguage, GraalVmJreComponent
-        from mx_sdk_vm_impl import get_native_image_locations, has_component
-
         vm = self.get_vm_registry().get_vm_from_suite_args(bmSuiteArgs)
         vm.extract_vm_info(self.vmArgs(bmSuiteArgs))
         host_vm = None
         if isinstance(vm, mx_benchmark.GuestVm):
             host_vm = vm.host_vm()
             assert host_vm
-        name = 'graalvm-ee' if has_component('svmee') else 'graalvm-ce'
+        name = 'graalvm-ee' if mx_sdk_vm_impl.has_component('svmee') else 'graalvm-ce'
         dims = {
             # the vm and host-vm fields are hardcoded to one of the accepted names of the field
             "vm": name,
@@ -1119,27 +1117,19 @@ class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
         }
 
         out = ""
-        for gcomponent in graalvm_components():
-            sz_msg = None
-            if isinstance(gcomponent, GraalVmLanguage):
-                mx.log("checking GraalVMLanguage: {}".format(gcomponent))
-                for cfg in gcomponent.launcher_configs:
-                    binary_dst = cfg.destination
-                    binary_name = os.path.split(binary_dst)[-1]
-                    pth = get_native_image_locations(gcomponent, binary_name, fatal_if_missing=False)
-                    if pth and os.path.exists(pth):
-                        sz_msg = FileSizeBenchmarkSuite.SZ_MSG_PATTERN.format(binary_name, os.path.getsize(pth), pth)
-            elif isinstance(gcomponent, GraalVmJreComponent):
-                mx.log("checking GraalVmJreComponent: {}".format(gcomponent))
-                if gcomponent.name == "LibGraal":
-                    pth = get_native_image_locations(gcomponent, 'jvmcicompiler', fatal_if_missing=False)
-                    if pth and os.path.exists(pth):
-                        sz_msg = FileSizeBenchmarkSuite.SZ_MSG_PATTERN.format(gcomponent.name, os.path.getsize(pth), pth)
+        output_root = mx_sdk_vm_impl.get_final_graalvm_distribution().get_output_root()
 
-            if sz_msg:
-                mx.log(sz_msg)
-                out += sz_msg + "\n"
+        def get_size_message(image_name, image_location):
+            return FileSizeBenchmarkSuite.SZ_MSG_PATTERN.format(image_name, getsize(join(output_root, image_location)), image_location, output_root)
 
+        for location in mx_sdk_vm_impl.get_all_native_image_locations(include_libraries=True, include_launchers=False, abs_path=False):
+            lib_name = 'lib:' + mx_sdk_vm_impl.remove_lib_prefix_suffix(basename(location))
+            out += get_size_message(lib_name, location)
+        for location in mx_sdk_vm_impl.get_all_native_image_locations(include_libraries=False, include_launchers=True, abs_path=False):
+            launcher_name = mx_sdk_vm_impl.remove_exe_suffix(basename(location))
+            out += get_size_message(launcher_name, location)
+        if out:
+            mx.log(out, end='')
         return 0, out, dims
 
     def rules(self, output, benchmarks, bmSuiteArgs):
@@ -1148,7 +1138,7 @@ class FileSizeBenchmarkSuite(mx_benchmark.VmBenchmarkSuite):
                 FileSizeBenchmarkSuite.SZ_RGX_PATTERN,
                 {
                     "bench-suite": self.name(),
-                    "benchmark": ("<interpreter>", str),
+                    "benchmark": ("<image_name>", str),
                     "benchmark-configuration": ("<path>", str),
                     "vm": "svm",
                     "metric.name": "binary-size",

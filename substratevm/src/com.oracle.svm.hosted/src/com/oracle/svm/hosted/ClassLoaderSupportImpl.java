@@ -48,12 +48,7 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.stream.Stream;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
-
 import com.oracle.svm.core.ClassLoaderSupport;
-import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.UserError;
 
@@ -74,7 +69,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
 
     @Override
     public void collectResources(ResourceCollector resourceCollector) {
-        classLoaderSupport.classpath().stream().forEach(classpathFile -> {
+        classLoaderSupport.classpath().stream().distinct().forEach(classpathFile -> {
             try {
                 if (Files.isDirectory(classpathFile)) {
                     scanDirectory(classpathFile, resourceCollector);
@@ -161,19 +156,5 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
     @Override
     public List<ResourceBundle> getResourceBundle(String bundleName, Locale locale) {
         return Collections.singletonList(ResourceBundle.getBundle(bundleName, locale, imageClassLoader));
-    }
-}
-
-@AutomaticFeature
-class ClassLoaderSupportFeature implements Feature {
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return JavaVersionUtil.JAVA_SPEC == 8;
-    }
-
-    @Override
-    public void afterRegistration(AfterRegistrationAccess a) {
-        FeatureImpl.AfterRegistrationAccessImpl access = (FeatureImpl.AfterRegistrationAccessImpl) a;
-        ImageSingletons.add(ClassLoaderSupport.class, new ClassLoaderSupportImpl(access.getImageClassLoader().classLoaderSupport));
     }
 }

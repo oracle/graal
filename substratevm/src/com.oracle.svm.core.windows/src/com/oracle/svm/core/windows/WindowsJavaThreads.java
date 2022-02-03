@@ -30,7 +30,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
@@ -53,6 +52,7 @@ import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveDetachThreadEpilogue;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.ParkEvent;
 import com.oracle.svm.core.thread.ParkEvent.ParkEventFactory;
@@ -69,12 +69,11 @@ public final class WindowsJavaThreads extends JavaThreads {
     }
 
     @Override
-    protected void doStartThread(Thread thread, long stackSize) {
+    protected boolean startOSThread(Thread thread, long stackSize) {
         int threadStackSize = (int) stackSize;
         int initFlag = Process.CREATE_SUSPENDED();
 
-        WindowsThreadStartData startData = UnmanagedMemory.malloc(SizeOf.get(WindowsThreadStartData.class));
-        prepareStartData(thread, startData);
+        WindowsThreadStartData startData = prepareStart(thread, SizeOf.get(WindowsThreadStartData.class));
 
         // If caller specified a stack size, don't commit it all at once.
         if (threadStackSize != 0) {
@@ -82,13 +81,17 @@ public final class WindowsJavaThreads extends JavaThreads {
         }
 
         CIntPointer osThreadID = StackValue.get(CIntPointer.class);
-        WinBase.HANDLE osThreadHandle = Process._beginthreadex(WordFactory.nullPointer(), threadStackSize, WindowsJavaThreads.osThreadStartRoutine.getFunctionPointer(), startData, initFlag,
-                        osThreadID);
-        VMError.guarantee(osThreadHandle.rawValue() != 0, "Could not create thread");
+        WinBase.HANDLE osThreadHandle = Process._beginthreadex(WordFactory.nullPointer(), threadStackSize,
+                        WindowsJavaThreads.osThreadStartRoutine.getFunctionPointer(), startData, initFlag, osThreadID);
+        if (osThreadHandle.isNull()) {
+            undoPrepareStartOnError(thread, startData);
+            return false;
+        }
         startData.setOSThreadHandle(osThreadHandle);
 
         // Start the thread running
         Process.ResumeThread(osThreadHandle);
+        return true;
     }
 
     /**
@@ -134,7 +137,7 @@ public final class WindowsJavaThreads extends JavaThreads {
     static WordBase osThreadStartRoutine(WindowsThreadStartData data) {
         ObjectHandle threadHandle = data.getThreadHandle();
         WinBase.HANDLE osThreadHandle = data.getOSThreadHandle();
-        UnmanagedMemory.free(data);
+        freeStartData(data);
 
         try {
             threadStartRoutine(threadHandle);
@@ -168,40 +171,62 @@ class WindowsParkEvent extends ParkEvent {
 
     @Override
     protected void reset() {
-        SynchAPI.ResetEvent(eventHandle);
+        StackOverflowCheck.singleton().makeYellowZoneAvailable();
+        try {
+            int status = SynchAPI.ResetEvent(eventHandle);
+            VMError.guarantee(status != 0, "ResetEvent failed");
+        } finally {
+            StackOverflowCheck.singleton().protectYellowZone();
+        }
     }
 
     @Override
     protected void condWait() {
-        int status = SynchAPI.WaitForSingleObject(eventHandle, SynchAPI.INFINITE());
-        if (status != SynchAPI.WAIT_OBJECT_0()) {
-            Log.log().newline().string("WindowsParkEvent.condWait failed, status returned:  ").hex(status);
-            Log.log().newline().string("GetLastError returned:  ").hex(WinBase.GetLastError()).newline();
-            throw VMError.shouldNotReachHere("WaitForSingleObject failed");
+        StackOverflowCheck.singleton().makeYellowZoneAvailable();
+        try {
+            int status = SynchAPI.WaitForSingleObject(eventHandle, SynchAPI.INFINITE());
+            if (status != SynchAPI.WAIT_OBJECT_0()) {
+                Log.log().newline().string("WindowsParkEvent.condWait failed, status returned:  ").hex(status);
+                Log.log().newline().string("GetLastError returned:  ").hex(WinBase.GetLastError()).newline();
+                throw VMError.shouldNotReachHere("WaitForSingleObject failed");
+            }
+        } finally {
+            StackOverflowCheck.singleton().protectYellowZone();
         }
     }
 
     @Override
     protected void condTimedWait(long delayNanos) {
-        final int maxTimeout = 0x10_000_000;
-        long delayMillis = Math.max(0, TimeUtils.roundUpNanosToMillis(delayNanos));
-        do { // at least once to consume potential unpark
-            int timeout = (delayMillis < maxTimeout) ? (int) delayMillis : maxTimeout;
-            int status = SynchAPI.WaitForSingleObject(eventHandle, timeout);
-            if (status == SynchAPI.WAIT_OBJECT_0()) {
-                break; // unparked
-            } else if (status != SynchAPI.WAIT_TIMEOUT()) {
-                Log.log().newline().string("WindowsParkEvent.condTimedWait failed, status returned:  ").hex(status);
-                Log.log().newline().string("GetLastError returned:  ").hex(WinBase.GetLastError()).newline();
-                throw VMError.shouldNotReachHere("WaitForSingleObject failed");
-            }
-            delayMillis -= timeout;
-        } while (delayMillis > 0);
+        StackOverflowCheck.singleton().makeYellowZoneAvailable();
+        try {
+            final int maxTimeout = 0x10_000_000;
+            long delayMillis = Math.max(0, TimeUtils.roundUpNanosToMillis(delayNanos));
+            do { // at least once to consume potential unpark
+                int timeout = (delayMillis < maxTimeout) ? (int) delayMillis : maxTimeout;
+                int status = SynchAPI.WaitForSingleObject(eventHandle, timeout);
+                if (status == SynchAPI.WAIT_OBJECT_0()) {
+                    break; // unparked
+                } else if (status != SynchAPI.WAIT_TIMEOUT()) {
+                    Log.log().newline().string("WindowsParkEvent.condTimedWait failed, status returned:  ").hex(status);
+                    Log.log().newline().string("GetLastError returned:  ").hex(WinBase.GetLastError()).newline();
+                    throw VMError.shouldNotReachHere("WaitForSingleObject failed");
+                }
+                delayMillis -= timeout;
+            } while (delayMillis > 0);
+        } finally {
+            StackOverflowCheck.singleton().protectYellowZone();
+        }
     }
 
     @Override
     protected void unpark() {
-        SynchAPI.SetEvent(eventHandle);
+        StackOverflowCheck.singleton().makeYellowZoneAvailable();
+        try {
+            int status = SynchAPI.SetEvent(eventHandle);
+            VMError.guarantee(status != 0, "SetEvent failed");
+        } finally {
+            StackOverflowCheck.singleton().protectYellowZone();
+        }
     }
 }
 

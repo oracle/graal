@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.c.libc;
 
-// Checkstyle: stop
-
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -36,8 +34,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.util.GuardedAnnotationAccess;
-
-// Checkstyle: resume
 
 public interface LibCBase {
 

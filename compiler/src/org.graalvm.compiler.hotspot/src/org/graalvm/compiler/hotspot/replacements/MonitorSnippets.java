@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,9 +24,6 @@
  */
 package org.graalvm.compiler.hotspot.replacements;
 
-import static jdk.vm.ci.code.MemoryBarriers.LOAD_STORE;
-import static jdk.vm.ci.code.MemoryBarriers.STORE_LOAD;
-import static jdk.vm.ci.code.MemoryBarriers.STORE_STORE;
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_OPTIONVALUES;
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE;
@@ -271,11 +268,13 @@ public class MonitorSnippets implements Snippets {
             // Copy this unlocked mark word into the lock slot on the stack
             lock.writeWord(lockDisplacedMarkOffset(INJECTED_VMCONFIG), unlockedMark, DISPLACED_MARK_WORD_LOCATION);
 
-            // make sure previous store does not float below compareAndSwap
-            MembarNode.memoryBarrier(STORE_STORE);
-
-            // Test if the object's mark word is unlocked, and if so, store the
-            // (address of) the lock slot into the object's mark word.
+            /*
+             * Test if the object's mark word is unlocked, and if so, store the (address of) the
+             * lock slot into the object's mark word.
+             *
+             * Since pointer cas operations are volatile accesses, previous stores cannot float
+             * below it.
+             */
             Word currentMark = objectPointer.compareAndSwapWord(markOffset(INJECTED_VMCONFIG), unlockedMark, lock, MARK_WORD_LOCATION);
             if (probability(FAST_PATH_PROBABILITY, currentMark.equal(unlockedMark))) {
                 traceObject(trace, "+lock{cas}", object, true);
@@ -580,7 +579,7 @@ public class MonitorSnippets implements Snippets {
                     // cxq == 0 && entryList == 0
                     // Nobody is waiting, success
                     // release_store
-                    memoryBarrier(LOAD_STORE | STORE_STORE);
+                    memoryBarrier(MembarNode.FenceKind.STORE_RELEASE);
                     monitor.writeWord(ownerOffset, zero());
                     traceObject(trace, "-lock{inflated:simple}", object, false);
                     counters.unlockInflatedSimple.inc();
@@ -591,10 +590,8 @@ public class MonitorSnippets implements Snippets {
                     if (probability(FREQUENT_PROBABILITY, succ.isNonNull())) {
                         // There may be a thread spinning on this monitor. Temporarily setting
                         // the monitor owner to null, and hope that the other thread will grab it.
-                        memoryBarrier(LOAD_STORE | STORE_STORE);
-                        monitor.writeWord(ownerOffset, zero());
-                        memoryBarrier(STORE_STORE | STORE_LOAD);
-                        succ = monitor.readWord(succOffset, OBJECT_MONITOR_SUCC_LOCATION);
+                        monitor.writeWordVolatile(ownerOffset, zero());
+                        succ = monitor.readWordVolatile(succOffset, OBJECT_MONITOR_SUCC_LOCATION);
                         if (probability(NOT_FREQUENT_PROBABILITY, succ.isNonNull())) {
                             // We manage to release the monitor before the other running thread even
                             // notices.

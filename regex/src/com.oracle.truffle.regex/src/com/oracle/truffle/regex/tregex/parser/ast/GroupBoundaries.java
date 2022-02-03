@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,6 +54,7 @@ import com.oracle.truffle.regex.tregex.util.json.Json;
 import com.oracle.truffle.regex.tregex.util.json.JsonArray;
 import com.oracle.truffle.regex.tregex.util.json.JsonConvertible;
 import com.oracle.truffle.regex.tregex.util.json.JsonValue;
+import com.oracle.truffle.regex.util.EmptyArrays;
 import com.oracle.truffle.regex.util.TBitSet;
 
 /**
@@ -73,29 +74,28 @@ import com.oracle.truffle.regex.util.TBitSet;
  */
 public class GroupBoundaries implements JsonConvertible {
 
-    private static final byte[] EMPTY_BYTE_ARRAY = {};
-    private static final short[] EMPTY_SHORT_ARRAY = {};
-
     private final TBitSet updateIndices;
     private final TBitSet clearIndices;
+    private final int lastGroup;
     private final int cachedHash;
     @CompilationFinal(dimensions = 1) private byte[] updateArrayByte;
     @CompilationFinal(dimensions = 1) private byte[] clearArrayByte;
     @CompilationFinal(dimensions = 1) private short[] updateArray;
     @CompilationFinal(dimensions = 1) private short[] clearArray;
 
-    GroupBoundaries(TBitSet updateIndices, TBitSet clearIndices) {
+    GroupBoundaries(TBitSet updateIndices, TBitSet clearIndices, int lastGroup) {
         this.updateIndices = updateIndices;
         this.clearIndices = clearIndices;
+        this.lastGroup = lastGroup;
         // both bit sets are immutable, and the hash is always needed immediately in
         // RegexAST#createGroupBoundaries()
-        this.cachedHash = Objects.hashCode(updateIndices) * 31 + Objects.hashCode(clearIndices);
+        this.cachedHash = (Objects.hashCode(updateIndices) * 31 + Objects.hashCode(clearIndices)) * 31 + lastGroup;
     }
 
     public static GroupBoundaries[] createCachedGroupBoundaries() {
         GroupBoundaries[] instances = new GroupBoundaries[TBitSet.getNumberOfStaticInstances()];
         for (int i = 0; i < instances.length; i++) {
-            instances[i] = new GroupBoundaries(TBitSet.getStaticInstance(i), TBitSet.getEmptyInstance());
+            instances[i] = new GroupBoundaries(TBitSet.getStaticInstance(i), TBitSet.getEmptyInstance(), -1);
         }
         return instances;
     }
@@ -118,7 +118,7 @@ public class GroupBoundaries implements JsonConvertible {
     }
 
     public boolean isEmpty() {
-        return updateIndices.isEmpty() && clearIndices.isEmpty();
+        return updateIndices.isEmpty() && clearIndices.isEmpty() && !hasLastGroup();
     }
 
     public byte[] updatesToByteArray() {
@@ -137,7 +137,7 @@ public class GroupBoundaries implements JsonConvertible {
 
     private static byte[] indicesToByteArray(TBitSet indices) {
         if (indices.isEmpty()) {
-            return EMPTY_BYTE_ARRAY;
+            return EmptyArrays.BYTE;
         }
         final byte[] array = new byte[indices.numberOfSetBits()];
         int i = 0;
@@ -157,7 +157,7 @@ public class GroupBoundaries implements JsonConvertible {
 
     private static short[] indicesToShortArray(TBitSet indices) {
         if (indices.isEmpty()) {
-            return EMPTY_SHORT_ARRAY;
+            return EmptyArrays.SHORT;
         }
         final short[] array = new short[indices.numberOfSetBits()];
         writeIndicesToArray(indices, array, 0);
@@ -198,6 +198,10 @@ public class GroupBoundaries implements JsonConvertible {
         return !clearIndices.isEmpty();
     }
 
+    public boolean hasLastGroup() {
+        return lastGroup != -1;
+    }
+
     /**
      * Updates the given {@link TBitSet}s with the values contained in this {@link GroupBoundaries}
      * object.
@@ -206,6 +210,10 @@ public class GroupBoundaries implements JsonConvertible {
         foreignUpdateIndices.union(updateIndices);
         foreignClearIndices.subtract(updateIndices);
         foreignClearIndices.union(clearIndices);
+    }
+
+    public int getLastGroup() {
+        return lastGroup;
     }
 
     @Override
@@ -217,7 +225,7 @@ public class GroupBoundaries implements JsonConvertible {
             return false;
         }
         GroupBoundaries o = (GroupBoundaries) obj;
-        return Objects.equals(updateIndices, o.updateIndices) && Objects.equals(clearIndices, o.clearIndices);
+        return Objects.equals(updateIndices, o.updateIndices) && Objects.equals(clearIndices, o.clearIndices) && lastGroup == o.lastGroup;
     }
 
     @Override
@@ -232,31 +240,44 @@ public class GroupBoundaries implements JsonConvertible {
      * @param index current index. All group boundaries contained in this object will be set to this
      *            value in the resultFactory.
      */
-    public void applyToResultFactory(PreCalculatedResultFactory resultFactory, int index) {
+    public void applyToResultFactory(PreCalculatedResultFactory resultFactory, int index, boolean trackLastGroup) {
         if (hasIndexUpdates()) {
             resultFactory.updateIndices(updateIndices, index);
+        }
+        if (hasIndexClears()) {
+            resultFactory.clearIndices(clearIndices);
+        }
+        if (trackLastGroup && hasLastGroup()) {
+            resultFactory.setLastGroup(getLastGroup());
         }
     }
 
     @ExplodeLoop
-    public void applyExploded(int[] array, int offset, int index) {
+    public void applyExploded(int[] array, int cgOffset, int lgOffset, int index, boolean trackLastGroup, boolean dontOverwriteLastGroup) {
         CompilerAsserts.partialEvaluationConstant(this);
         CompilerAsserts.partialEvaluationConstant(clearArray);
         CompilerAsserts.partialEvaluationConstant(updateArray);
+        CompilerAsserts.partialEvaluationConstant(lastGroup);
         for (int i = 0; i < clearArray.length; i++) {
-            array[offset + Short.toUnsignedInt(clearArray[i])] = -1;
+            array[cgOffset + Short.toUnsignedInt(clearArray[i])] = -1;
         }
         for (int i = 0; i < updateArray.length; i++) {
-            array[offset + Short.toUnsignedInt(updateArray[i])] = index;
+            array[cgOffset + Short.toUnsignedInt(updateArray[i])] = index;
+        }
+        if (trackLastGroup && hasLastGroup() && (!dontOverwriteLastGroup || array[lgOffset] == -1)) {
+            array[lgOffset] = getLastGroup();
         }
     }
 
-    public void apply(int[] array, int offset, int index) {
+    public void apply(int[] array, int cgOffset, int lgOffset, int index, boolean trackLastGroup) {
         for (int i = 0; i < clearArray.length; i++) {
-            array[offset + Short.toUnsignedInt(clearArray[i])] = -1;
+            array[cgOffset + Short.toUnsignedInt(clearArray[i])] = -1;
         }
         for (int i = 0; i < updateArray.length; i++) {
-            array[offset + Short.toUnsignedInt(updateArray[i])] = index;
+            array[cgOffset + Short.toUnsignedInt(updateArray[i])] = index;
+        }
+        if (trackLastGroup && hasLastGroup()) {
+            array[lgOffset] = getLastGroup();
         }
     }
 
@@ -328,7 +349,7 @@ public class GroupBoundaries implements JsonConvertible {
 
     @TruffleBoundary
     public JsonArray indexUpdateSourceSectionsToJson(RegexAST ast) {
-        if (!hasIndexUpdates()) {
+        if (!hasIndexUpdates() || !ast.getOptions().isDumpAutomataWithSourceSections()) {
             return Json.array();
         }
         return RegexAST.sourceSectionsToJson(getUpdateIndices().stream().mapToObj(x -> ast.getSourceSections(ast.getGroupByBoundaryIndex(x)).get(x & 1)));

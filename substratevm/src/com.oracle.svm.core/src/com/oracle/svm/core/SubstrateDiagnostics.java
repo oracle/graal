@@ -24,9 +24,10 @@
  */
 package com.oracle.svm.core;
 
+import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
+
 import java.util.Arrays;
 
-import com.oracle.svm.core.option.RuntimeOptionKey;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
@@ -69,6 +70,7 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicWord;
 import com.oracle.svm.core.locks.VMLockSupport;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.stack.JavaStackWalker;
@@ -245,7 +247,9 @@ public class SubstrateDiagnostics {
             fatalErrorState.invocationCount = 0;
         }
 
-        // Reset the state so that another thread can print diagnostics for a fatal error.
+        // Flush the output and reset the state so that another thread can print diagnostics for a
+        // fatal error.
+        log.flush();
         fatalErrorState.clear();
     }
 
@@ -463,6 +467,19 @@ public class SubstrateDiagnostics {
             invocationCount = 0;
 
             diagnosticThread.set(WordFactory.nullPointer());
+        }
+    }
+
+    private static class DumpCurrentTimestamp extends DiagnosticThunk {
+        @Override
+        public int maxInvocationCount() {
+            return 1;
+        }
+
+        @Override
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
+        public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
+            log.string("Current timestamp: ").unsigned(System.currentTimeMillis()).newline().newline();
         }
     }
 
@@ -927,19 +944,17 @@ public class SubstrateDiagnostics {
         private int[] initialInvocationCount;
 
         @Fold
-        /* Checkstyle: allow synchronization. */
         public static synchronized DiagnosticThunkRegistry singleton() {
             if (!ImageSingletons.contains(DiagnosticThunkRegistry.class)) {
                 ImageSingletons.add(DiagnosticThunkRegistry.class, new DiagnosticThunkRegistry());
             }
             return ImageSingletons.lookup(DiagnosticThunkRegistry.class);
         }
-        /* Checkstyle: disallow synchronization. */
 
         @Platforms(Platform.HOSTED_ONLY.class)
         DiagnosticThunkRegistry() {
-            this.diagnosticThunks = new DiagnosticThunk[]{new DumpRegisters(), new DumpInstructions(), new DumpTopOfCurrentThreadStack(), new DumpDeoptStubPointer(), new DumpTopFrame(),
-                            new DumpThreads(), new DumpCurrentThreadLocals(), new DumpCurrentVMOperation(), new DumpVMOperationHistory(), new DumpCodeCacheHistory(),
+            this.diagnosticThunks = new DiagnosticThunk[]{new DumpCurrentTimestamp(), new DumpRegisters(), new DumpInstructions(), new DumpTopOfCurrentThreadStack(), new DumpDeoptStubPointer(),
+                            new DumpTopFrame(), new DumpThreads(), new DumpCurrentThreadLocals(), new DumpCurrentVMOperation(), new DumpVMOperationHistory(), new DumpCodeCacheHistory(),
                             new DumpRuntimeCodeInfoMemory(), new DumpRecentDeoptimizations(), new DumpCounters(), new DumpCurrentThreadFrameAnchors(), new DumpCurrentThreadDecodedStackTrace(),
                             new DumpOtherStackTraces(), new VMLockSupport.DumpVMMutexes()};
 
@@ -951,7 +966,6 @@ public class SubstrateDiagnostics {
          * Register a diagnostic thunk to be called after a segfault.
          */
         @Platforms(Platform.HOSTED_ONLY.class)
-        /* Checkstyle: allow synchronization. */
         public synchronized void register(DiagnosticThunk diagnosticThunk) {
             diagnosticThunks = Arrays.copyOf(diagnosticThunks, diagnosticThunks.length + 1);
             diagnosticThunks[diagnosticThunks.length - 1] = diagnosticThunk;
@@ -959,7 +973,6 @@ public class SubstrateDiagnostics {
             initialInvocationCount = Arrays.copyOf(initialInvocationCount, initialInvocationCount.length + 1);
             initialInvocationCount[initialInvocationCount.length - 1] = 1;
         }
-        /* Checkstyle: disallow synchronization. */
 
         @Fold
         int size() {
@@ -981,7 +994,7 @@ public class SubstrateDiagnostics {
 
     public static class Options {
         @Option(help = "Execute an endless loop before printing diagnostics for a fatal error.", type = OptionType.Debug)//
-        public static final RuntimeOptionKey<Boolean> LoopOnFatalError = new RuntimeOptionKey<Boolean>(false) {
+        public static final RuntimeOptionKey<Boolean> LoopOnFatalError = new RuntimeOptionKey<>(false, RelevantForCompilationIsolates) {
             @Override
             protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
                 super.onValueUpdate(values, oldValue, newValue);

@@ -3,6 +3,12 @@
 Everything is OK!
 >[0] java -ea -cp ${TMP_DIR} EmbeddingDoubled
 Everything is OK!
+>[0] java -ea -cp .:${TMP_DIR} EmbeddingMoreContexts 2
+calling fib with 11
+result is 89
+calling fib with 12
+result is 144
+OK 2 times!
 > if [ -d $JAVA_HOME/jre ]
 >   export INSIGHT_LIBS=$JAVA_HOME/jre
 > else

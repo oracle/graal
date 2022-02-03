@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,6 +47,7 @@ import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
 import org.graalvm.compiler.lir.LIRInstruction.OperandMode;
 import org.graalvm.compiler.lir.VirtualStackSlot;
+import org.graalvm.compiler.lir.framemap.SimpleVirtualStackSlotAlias;
 
 import jdk.vm.ci.meta.Value;
 
@@ -296,21 +297,18 @@ final class FixPointIntervalBuilder {
 
     }
 
-    private StackInterval get(VirtualStackSlot stackSlot) {
-        return stackSlotMap[stackSlot.getId()];
-    }
-
-    private void put(VirtualStackSlot stackSlot, StackInterval interval) {
-        stackSlotMap[stackSlot.getId()] = interval;
-    }
-
-    private StackInterval getOrCreateInterval(VirtualStackSlot stackSlot) {
-        StackInterval interval = get(stackSlot);
-        if (interval == null) {
-            interval = new StackInterval(stackSlot, stackSlot.getValueKind());
-            put(stackSlot, interval);
+    private StackInterval getOrCreateInterval(VirtualStackSlot slot) {
+        VirtualStackSlot stackSlot;
+        if (slot instanceof SimpleVirtualStackSlotAlias) {
+            stackSlot = ((SimpleVirtualStackSlotAlias) slot).getAliasedSlot();
+        } else {
+            stackSlot = slot;
         }
-        return interval;
+
+        if (stackSlotMap[stackSlot.getId()] == null) {
+            stackSlotMap[stackSlot.getId()] = new StackInterval(stackSlot, stackSlot.getValueKind());
+        }
+        return stackSlotMap[stackSlot.getId()];
     }
 
     private StackInterval getIntervalFromStackId(int id) {

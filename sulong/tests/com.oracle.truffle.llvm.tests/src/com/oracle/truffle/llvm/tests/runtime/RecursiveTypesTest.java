@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,6 +28,8 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 package com.oracle.truffle.llvm.tests.runtime;
+
+import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -214,8 +216,10 @@ public class RecursiveTypesTest {
     public void getBitSize() throws Type.TypeOverflowException {
         try {
             type.getBitSize();
-        } catch (UnsupportedOperationException e) {
-            Assume.assumeTrue("Unpacked structs do not support getBitSize", false);
+        } catch (AssertionError e) {
+            // Unpacked structs do not support getBitSize
+            assertTrue("Unexpected exception message: " + e.getMessage(),
+                            "TargetDataLayout is necessary to compute Padding information!".equals(e.getMessage()));
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.nodes.spi;
 
+import java.util.BitSet;
+
 import org.graalvm.compiler.api.replacements.SnippetTemplateCache;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
@@ -43,8 +45,6 @@ import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-
-import java.util.BitSet;
 
 /**
  * A convenience class for overriding just a portion of the Replacements API.
@@ -141,8 +141,8 @@ public class DelegatingReplacements implements Replacements {
     }
 
     @Override
-    public boolean hasSubstitution(ResolvedJavaMethod method) {
-        return delegate.hasSubstitution(method);
+    public boolean hasSubstitution(ResolvedJavaMethod method, OptionValues options) {
+        return delegate.hasSubstitution(method, options);
     }
 
     @Override

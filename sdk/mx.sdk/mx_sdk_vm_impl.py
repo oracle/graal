@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -2679,38 +2679,45 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
         ]
         if not mx.is_windows():
             _dynamic_cflags += ['-pthread']
-        if self.jvm_launcher:
-            _graalvm_home = _get_graalvm_archive_path("")
-            _cp = NativePropertiesBuildTask.get_launcher_classpath(_dist, _graalvm_home, self.language_library_config, self.component, exclude_implicit=True)
-            _cp = [join(_dist.path_substitutions.substitute('<jdk_base>'), x) for x in _cp]
-            # path from langauge launcher to jars
-            _cp = [relpath(x, start=_exe_dir) for x in _cp]
-            if mx.is_windows():
-                _libjvm_path = join(_dist.path_substitutions.substitute('<jre_base>'), 'bin', 'server', 'jvm.dll')
-                _libjvm_path = relpath(_libjvm_path, start=_exe_dir).replace('\\', '\\\\')
-                _cp = [x.replace('\\', '\\\\') for x in _cp]
-            else:
-                if _src_jdk_version < 9 and mx.is_linux():
-                    _libjvm_path = join(_dist.path_substitutions.substitute('<jre_base>'), 'lib', mx.get_arch(), 'server', mx.add_lib_suffix("libjvm"))
-                else:
-                    _libjvm_path = join(_dist.path_substitutions.substitute('<jre_base>'), 'lib', 'server', mx.add_lib_suffix("libjvm"))
-                _libjvm_path = relpath(_libjvm_path, start=_exe_dir)
-            _dynamic_cflags += [
-                '-DJVM',
-                '-DLAUNCHER_CLASS=' + self.language_library_config.main_class,
-                '-DLAUNCHER_CLASSPATH="{\\"' + '\\", \\"'.join(_cp) + '\\"}"',
-                '-DLIBLANG_RELPATH=' + _libjvm_path,
-            ]
-            if len(self.language_library_config.option_vars) > 0:
-                _dynamic_cflags += ['-DLAUNCHER_OPTION_VARS="{\\"' + '\\", \\"'.join(self.language_library_config.option_vars) + '\\"}"']
 
+        _graalvm_home = _get_graalvm_archive_path("")
+
+        # launcher classpath for launching via jvm
+        _cp = NativePropertiesBuildTask.get_launcher_classpath(_dist, _graalvm_home, self.language_library_config, self.component, exclude_implicit=True)
+        _cp = [join(_dist.path_substitutions.substitute('<jdk_base>'), x) for x in _cp]
+        # path from langauge launcher to jars
+        _cp = [relpath(x, start=_exe_dir) for x in _cp]
+        _dynamic_cflags += [
+            '-DLAUNCHER_CLASS=' + self.language_library_config.main_class,
+            '-DLAUNCHER_CLASSPATH="{\\"' + '\\", \\"'.join(_cp) + '\\"}"',
+        ]
+
+        # path to libjvm
+        if mx.is_windows():
+            _libjvm_path = join(_dist.path_substitutions.substitute('<jre_base>'), 'bin', 'server', 'jvm.dll')
+            _libjvm_path = relpath(_libjvm_path, start=_exe_dir).replace('\\', '\\\\')
+            _cp = [x.replace('\\', '\\\\') for x in _cp]
+        else:
+            _libjvm_path = join(_dist.path_substitutions.substitute('<jre_base>'), 'lib', 'server', mx.add_lib_suffix("libjvm"))
+            _libjvm_path = relpath(_libjvm_path, start=_exe_dir)
+        _dynamic_cflags += [
+            '-DLIBJVM_RELPATH=' + _libjvm_path,
+        ]
+
+        # path to native image language library - this is set even if the library is not built, as it may be built after the fact
+        if self.jvm_launcher:
+            # since this distribution has no native library, we can only assume the default path: language_home/lib<lang>vm.so
+            _lib_path = join(_graalvm_home, "languages", self.language_library_config.language, self.default_language_home_relative_libpath())
         else:
             _lib_path = _dist.find_single_source_location('dependency:' + GraalVmLibrary.project_name(self.language_library_config))
-            # path from language launcher to library
-            _liblang_relpath = relpath(_lib_path, start=_exe_dir)
-            _dynamic_cflags += [
-                '-DLIBLANG_RELPATH=' + (_liblang_relpath.replace('\\', '\\\\') if mx.is_windows() else _liblang_relpath)
-            ]
+        _liblang_relpath = relpath(_lib_path, start=_exe_dir)
+        _dynamic_cflags += [
+            '-DLIBLANG_RELPATH=' + (_liblang_relpath.replace('\\', '\\\\') if mx.is_windows() else _liblang_relpath)
+        ]
+
+        if len(self.language_library_config.option_vars) > 0:
+            _dynamic_cflags += ['-DLAUNCHER_OPTION_VARS="{\\"' + '\\", \\"'.join(self.language_library_config.option_vars) + '\\"}"']
+
         return super(NativeLibraryLauncherProject, self).cflags + _dynamic_cflags
 
     @property
@@ -2726,6 +2733,13 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
         if not mx.is_windows():
             _dynamic_ldlibs += ['-ldl']
         return super(NativeLibraryLauncherProject, self).ldlibs + _dynamic_ldlibs
+
+    def default_language_home_relative_libpath(self):
+        name = self.language_library_config.language + "vm"
+        name = mx.add_lib_prefix(name)
+        name = mx.add_lib_suffix(name)
+        return join("lib", name)
+
 
 def has_vm_suite():
     global _vm_suite
@@ -2869,19 +2883,59 @@ def has_svm_launchers(components, fatalIfMissing=False):
     return all((has_svm_launcher(component, fatalIfMissing=fatalIfMissing) for component in components))
 
 
-def get_native_image_locations(name, image_name, fatal_if_missing=True):
-    c = name if isinstance(name, mx_sdk.GraalVmComponent) else get_component(name)
-    configs = _get_library_configs(c) + _get_launcher_configs(c)
-    libgraal_libs = [l for l in configs if image_name in basename(l.destination)]
-    if libgraal_libs:
-        library_config = libgraal_libs[0]
-        dist = get_final_graalvm_distribution()
-        source_type = 'skip' if _skip_libraries(library_config) else 'dependency'
-        source_location = dist.find_single_source_location(
-            source_type + ':' + GraalVmLibrary.project_name(library_config), fatal_if_missing=fatal_if_missing)
-        if source_location:
-            return join(graalvm_output_root(), source_location)
-    return None
+def get_native_image_locations(component, image_name, fatal_if_missing=True):
+    """
+    :type component: mx_sdk.GraalVmComponent | str
+    :type image_name: str
+    :type fatal_if_missing: bool
+    :rtype: str | None
+    """
+    def _get_library_config():
+        name = mx.add_lib_prefix(mx.add_lib_suffix(remove_lib_prefix_suffix(image_name, require_suffix_prefix=False)))
+        configs = _get_library_configs(component)
+        return _get_config(name, configs)
+
+    def _get_launcher_config():
+        name = mx.exe_suffix(remove_exe_suffix(image_name, require_suffix=False))
+        configs = _get_launcher_configs(component)
+        return _get_config(name, configs)
+
+    def _get_config(name, configs):
+        configs = [c for c in configs if basename(c.destination) == name]
+        if configs:
+            if len(configs) > 1:
+                raise mx.abort("Found multiple locations for '{}' in '{}': {}".format(image_name, component.name, configs))
+            return configs[0]
+        return None
+
+    component = component if isinstance(component, mx_sdk.GraalVmComponent) else get_component(component)
+    graalvm_dist = get_final_graalvm_distribution()
+    source_location = None
+    lib_config = _get_library_config()
+    if lib_config:
+        source_type = 'skip' if _skip_libraries(lib_config) else 'dependency'
+        source_location = graalvm_dist.find_single_source_location(source_type + ':' + GraalVmLibrary.project_name(lib_config), abort_on_multiple=True)
+    if source_location is None:
+        launcher_config = _get_launcher_config()
+        if launcher_config:
+            source_location = graalvm_dist.find_single_source_location('dependency:' + GraalVmNativeImage.project_name(launcher_config), fatal_if_missing=False, abort_on_multiple=True)
+    if source_location is None and fatal_if_missing:
+        raise mx.abort("Cannot find native image location of '{}' in '{}'".format(image_name, component.name))
+    return source_location if source_location is None else join(graalvm_output_root(), source_location)
+
+
+def get_all_native_image_locations(include_libraries=True, include_launchers=True, abs_path=False):
+    configs = []
+    for component in mx_sdk_vm.graalvm_components():
+        if include_libraries:
+            configs += [c for c in _get_library_configs(component) if not _skip_libraries(c)]
+        if include_launchers:
+            configs += [c for c in _get_launcher_configs(component) if not _force_bash_launchers(c)]
+    graalvm_dist = get_final_graalvm_distribution()
+    locations = [graalvm_dist.find_single_source_location('dependency:' + GraalVmNativeImage.project_name(config)) for config in configs]
+    if abs_path:
+        locations = [join(graalvm_output_root(), location) for location in locations]
+    return locations
 
 
 def get_component(name, fatalIfMissing=False, stage1=False):

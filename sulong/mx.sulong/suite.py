@@ -320,6 +320,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "truffle:TRUFFLE_API",
+        "truffle:TRUFFLE_NFI",
         "com.oracle.truffle.llvm.api",
         "com.oracle.truffle.llvm.spi",
         "com.oracle.truffle.llvm.toolchain.config",
@@ -673,6 +674,7 @@ suite = {
       "headers" : [
         "include/graalvm/llvm/handles.h",
         "include/graalvm/llvm/polyglot.h",
+        "include/graalvm/llvm/polyglot-buffer.h",
         "include/graalvm/llvm/toolchain-api.h",
         "include/graalvm/llvm/internal/handles-impl.h",
         "include/graalvm/llvm/internal/polyglot-impl.h",
@@ -755,33 +757,27 @@ suite = {
     "com.oracle.truffle.llvm.libraries.bitcode.libcxx" : {
       "subDir" : "projects",
       "vpath" : True,
-      "sourceDir" : "<path:sdk:LLVM_ORG_SRC>/llvm",
+      "sourceDir" : "<path:sdk:LLVM_ORG_SRC>/runtimes",
       "class" : "CMakeNinjaProject",
       # NinjaBuildTask uses only 1 job otherwise
       "max_jobs" : "8",
-      "ninja_targets" : ["<lib:c++abi>", "<lib:c++>"],
+      "ninja_targets" : ["cxxabi", "cxx"],
       "ninja_install_targets" : ["install-cxxabi", "install-cxx"],
       "results" : ["native"],
       "cmakeConfig" : {
-        "LLVM_ENABLE_PROJECTS" : "libcxx;libcxxabi",
-        "LLVM_INCLUDE_DOCS" : "NO",
-        "LLVM_INCLUDE_BENCHMARKS": "NO",
-        "LLVM_TARGETS_TO_BUILD" : "X86",
+        "LLVM_ENABLE_RUNTIMES" : "libcxx;libcxxabi",
         "LIBCXXABI_INCLUDE_TESTS": "NO",
-        "LIBCXXABI_LINK_TESTS_WITH_SHARED_LIBCXX" : "YES",
-        "LIBCXXABI_LIBCXX_INCLUDES" : "<path:sdk:LLVM_ORG_SRC>/libcxx/include",
-        "LIBCXXABI_LIBCXX_PATH" : "<path:sdk:LLVM_ORG_SRC>/libcxx",
         "LIBCXXABI_ENABLE_STATIC" : "NO",
         "LIBCXX_INCLUDE_BENCHMARKS": "NO",
         "LIBCXX_INCLUDE_TESTS": "NO",
-        # using "default" will choose the in-tree version libc++abi and add a build dependency
-        # from libc++ to libc++abi
-        "LIBCXX_CXX_ABI" : "default",
         "LIBCXX_ENABLE_STATIC" : "NO",
         "LIBCXX_ENABLE_EXPERIMENTAL_LIBRARY" : "NO",
         "CMAKE_C_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/clang",
         "CMAKE_CXX_COMPILER" : "<path:SULONG_BOOTSTRAP_TOOLCHAIN_NO_HOME>/bin/clang++",
         "CMAKE_INSTALL_PREFIX" : "native",
+        # workaround for build problem with cmake >=3.22
+        # see https://lists.llvm.org/pipermail/llvm-dev/2021-December/154144.html
+        "CMAKE_BUILD_WITH_INSTALL_RPATH" : "YES",
       },
       "buildDependencies" : [
         "sdk:LLVM_ORG_SRC",
@@ -894,6 +890,16 @@ suite = {
       "cmakeConfig" : {
         "CMAKE_EXE_LINKER_FLAGS" : "-lm",
       },
+      "dependencies" : [
+        "SULONG_TEST",
+      ],
+      "testProject" : True,
+      "defaultBuild" : False,
+    },
+    "com.oracle.truffle.llvm.tests.sulong.Os.native" : {
+      "subDir" : "tests",
+      "class" : "SulongCMakeTestSuite",
+      "variants" : ["bitcode-Os"],
       "dependencies" : [
         "SULONG_TEST",
       ],
@@ -1402,6 +1408,7 @@ suite = {
       ],
       "distDependencies" : [
         "truffle:TRUFFLE_API",
+        "truffle:TRUFFLE_NFI",
         "truffle:ANTLR4",
         "SULONG_API",
         "SULONG_TOOLCHAIN_CONFIG",
@@ -1671,6 +1678,7 @@ suite = {
         "./" : [
           "dependency:com.oracle.truffle.llvm.tests.llirtestgen.native/*",
           "dependency:com.oracle.truffle.llvm.tests.sulong.native/*",
+          "dependency:com.oracle.truffle.llvm.tests.sulong.Os.native/*",
           "dependency:com.oracle.truffle.llvm.tests.sulongavx.native/*",
           "dependency:com.oracle.truffle.llvm.tests.sulongcpp.native/*",
           "dependency:com.oracle.truffle.llvm.tests.libc.native/*",

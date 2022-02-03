@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -85,7 +85,8 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
     private final Counter.ThresholdCounter groupCount = new Counter.ThresholdCounter(TRegexOptions.TRegexMaxNumberOfCaptureGroups, "too many capture groups");
     private final Counter quantifierCount = new Counter();
     private final RegexProperties properties = new RegexProperties();
-    private Map<String, Integer> namedCaputureGroups;
+    private int realGroupCount;
+    private Map<String, Integer> namedCaptureGroups;
     private RegexASTNode[] nodes;
     /**
      * AST as parsed from the expression.
@@ -110,7 +111,7 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         this.language = language;
         this.source = source;
         this.flags = flags;
-        this.sourceSections = source.getOptions().isDumpAutomata() ? EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE) : null;
+        this.sourceSections = source.getOptions().isDumpAutomataWithSourceSections() ? EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE) : null;
     }
 
     public RegexLanguage getLanguage() {
@@ -133,12 +134,12 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         return source.getEncoding();
     }
 
-    public void setNamedCaputureGroups(Map<String, Integer> namedCaputureGroups) {
-        this.namedCaputureGroups = namedCaputureGroups;
+    public void setNamedCaptureGroups(Map<String, Integer> namedCaptureGroups) {
+        this.namedCaptureGroups = namedCaptureGroups;
     }
 
-    public Map<String, Integer> getNamedCaputureGroups() {
-        return namedCaputureGroups;
+    public Map<String, Integer> getNamedCaptureGroups() {
+        return namedCaptureGroups;
     }
 
     public Group getRoot() {
@@ -174,6 +175,14 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
      */
     public int getNumberOfCaptureGroups() {
         return groupCount.getCount();
+    }
+
+    public int getRealGroupCount() {
+        return realGroupCount;
+    }
+
+    public void setRealGroupCount(int realGroupCount) {
+        this.realGroupCount = realGroupCount;
     }
 
     public Counter getQuantifierCount() {
@@ -239,7 +248,7 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
             // The single alternative in the wrappedRoot is composed of N non-optional prefix
             // matchers, 1 group of optional matchers and the original root. By
             // taking size() - 2, we get the number of non-optional prefix matchers.
-            return wrappedRoot.getFirstAlternative().size() - 2;
+            return wrappedRoot.getFirstAlternative().size() - (flags.isSticky() ? 1 : 2);
         }
         return 0;
     }
@@ -454,23 +463,25 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         for (int i = 0; i < prefixLength; i++) {
             wrapRootSeq.add(createPrefixAnyMatcher());
         }
-        Group prevOpt = null;
-        // create optional matchers ((?:|[_any_](?:|[_any_]))...)
-        for (int i = 0; i < prefixLength; i++) {
-            Group opt = createGroup();
-            opt.setPrefix();
-            opt.add(createSequence());
-            opt.add(createSequence());
-            opt.getFirstAlternative().setPrefix();
-            opt.getAlternatives().get(1).setPrefix();
-            opt.getAlternatives().get(1).add(createPrefixAnyMatcher());
-            if (prevOpt != null) {
-                opt.getAlternatives().get(1).add(prevOpt);
+        if (!flags.isSticky()) {
+            Group prevOpt = null;
+            // create optional matchers ((?:|[_any_](?:|[_any_]))...)
+            for (int i = 0; i < prefixLength; i++) {
+                Group opt = createGroup();
+                opt.setPrefix();
+                opt.add(createSequence());
+                opt.add(createSequence());
+                opt.getFirstAlternative().setPrefix();
+                opt.getAlternatives().get(1).setPrefix();
+                opt.getAlternatives().get(1).add(createPrefixAnyMatcher());
+                if (prevOpt != null) {
+                    opt.getAlternatives().get(1).add(prevOpt);
+                }
+                prevOpt = opt;
             }
-            prevOpt = opt;
+            wrapRootSeq.add(prevOpt);
         }
         root.getSubTreeParent().setGroup(wrapRoot);
-        wrapRootSeq.add(prevOpt);
         wrapRootSeq.add(root);
         wrappedRoot = wrapRoot;
     }
@@ -487,16 +498,18 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
         }
     }
 
-    public GroupBoundaries createGroupBoundaries(TBitSet updateIndices, TBitSet clearIndices) {
-        GroupBoundaries staticInstance = GroupBoundaries.getStaticInstance(language, updateIndices, clearIndices);
-        if (staticInstance != null) {
-            return staticInstance;
+    public GroupBoundaries createGroupBoundaries(TBitSet updateIndices, TBitSet clearIndices, int lastGroup) {
+        if (!getOptions().getFlavor().usesLastGroupResultField()) {
+            GroupBoundaries staticInstance = GroupBoundaries.getStaticInstance(language, updateIndices, clearIndices);
+            if (staticInstance != null) {
+                return staticInstance;
+            }
         }
-        GroupBoundaries lookup = new GroupBoundaries(updateIndices, clearIndices);
+        GroupBoundaries lookup = new GroupBoundaries(updateIndices, clearIndices, lastGroup);
         if (groupBoundariesDeduplicationMap.containsKey(lookup)) {
             return groupBoundariesDeduplicationMap.get(lookup);
         } else {
-            GroupBoundaries gb = new GroupBoundaries(updateIndices.copy(), clearIndices.copy());
+            GroupBoundaries gb = new GroupBoundaries(updateIndices.copy(), clearIndices.copy(), lastGroup);
             groupBoundariesDeduplicationMap.put(gb, gb);
             return gb;
         }
@@ -549,17 +562,17 @@ public final class RegexAST implements StateIndex<RegexASTNode>, JsonConvertible
      * </ul>
      */
     public List<SourceSection> getSourceSections(RegexASTNode node) {
-        return getOptions().isDumpAutomata() ? sourceSections.get(node) : null;
+        return getOptions().isDumpAutomataWithSourceSections() ? sourceSections.get(node) : null;
     }
 
     public void addSourceSection(RegexASTNode node, Token token) {
-        if (getOptions().isDumpAutomata() && token != null && token.getSourceSection() != null) {
+        if (getOptions().isDumpAutomataWithSourceSections() && token != null && token.getSourceSection() != null) {
             getOrCreateSourceSections(node).add(token.getSourceSection());
         }
     }
 
     public void addSourceSections(RegexASTNode node, Collection<SourceSection> src) {
-        if (getOptions().isDumpAutomata() && src != null) {
+        if (getOptions().isDumpAutomataWithSourceSections() && src != null) {
             getOrCreateSourceSections(node).addAll(src);
         }
     }

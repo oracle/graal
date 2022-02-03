@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.reflect.hosted;
 
-// Checkstyle: allow reflection
-
 import java.lang.reflect.Executable;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -42,6 +40,10 @@ import jdk.vm.ci.meta.ResolvedJavaField;
  * @see RecomputeFieldValue
  */
 public final class ExecutableAccessorComputer implements RecomputeFieldValue.CustomFieldValueComputer {
+    @Override
+    public RecomputeFieldValue.ValueAvailability valueAvailability() {
+        return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
+    }
 
     @Override
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {

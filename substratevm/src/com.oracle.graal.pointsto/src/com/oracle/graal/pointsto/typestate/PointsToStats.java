@@ -55,7 +55,7 @@ import com.oracle.graal.pointsto.flow.ArrayElementsTypeFlow;
 import com.oracle.graal.pointsto.flow.CloneTypeFlow;
 import com.oracle.graal.pointsto.flow.DynamicNewInstanceTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldFilterTypeFlow;
-import com.oracle.graal.pointsto.flow.FieldSinkTypeFlow;
+import com.oracle.graal.pointsto.flow.ContextInsensitiveFieldTypeFlow;
 import com.oracle.graal.pointsto.flow.FieldTypeFlow;
 import com.oracle.graal.pointsto.flow.FilterTypeFlow;
 import com.oracle.graal.pointsto.flow.FormalParamTypeFlow;
@@ -495,8 +495,8 @@ public class PointsToStats {
             return "AllInstantiated(" + formatType(flow.getDeclaredType(), true) + ")";
         } else if (flow instanceof AllSynchronizedTypeFlow) {
             return "AllSynchronized";
-        } else if (flow instanceof FieldSinkTypeFlow) {
-            FieldSinkTypeFlow sink = (FieldSinkTypeFlow) flow;
+        } else if (flow instanceof ContextInsensitiveFieldTypeFlow) {
+            ContextInsensitiveFieldTypeFlow sink = (ContextInsensitiveFieldTypeFlow) flow;
             return "FieldSink(" + formatField(sink.getSource()) + ")";
         } else if (flow instanceof FieldTypeFlow) {
             FieldTypeFlow fieldFlow = (FieldTypeFlow) flow;

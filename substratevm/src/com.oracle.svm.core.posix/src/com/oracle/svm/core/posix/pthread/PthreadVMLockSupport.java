@@ -66,14 +66,14 @@ import jdk.vm.ci.meta.JavaKind;
 @AutomaticFeature
 final class PthreadVMLockFeature implements Feature {
 
-    private final ClassInstanceReplacer<VMMutex, VMMutex> mutexReplacer = new ClassInstanceReplacer<VMMutex, VMMutex>(VMMutex.class) {
+    private final ClassInstanceReplacer<VMMutex, VMMutex> mutexReplacer = new ClassInstanceReplacer<>(VMMutex.class) {
         @Override
         protected VMMutex createReplacement(VMMutex source) {
             return new PthreadVMMutex(source.getName());
         }
     };
 
-    private final ClassInstanceReplacer<VMCondition, VMCondition> conditionReplacer = new ClassInstanceReplacer<VMCondition, VMCondition>(VMCondition.class) {
+    private final ClassInstanceReplacer<VMCondition, VMCondition> conditionReplacer = new ClassInstanceReplacer<>(VMCondition.class) {
         @Override
         protected VMCondition createReplacement(VMCondition source) {
             return new PthreadVMCondition((PthreadVMMutex) mutexReplacer.apply(source.getMutex()));
@@ -96,17 +96,21 @@ final class PthreadVMLockFeature implements Feature {
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
         ObjectLayout layout = ConfigurationValues.getObjectLayout();
-        int nextIndex = 0;
+        int alignment = layout.getAlignment();
+
+        int baseOffset = layout.getArrayBaseOffset(JavaKind.Byte);
+        /* padding if first element is not object aligned */
+        int nextIndex = NumUtil.roundUp(baseOffset, alignment) - baseOffset;
 
         PthreadVMMutex[] mutexes = mutexReplacer.getReplacements().toArray(new PthreadVMMutex[0]);
-        int mutexSize = NumUtil.roundUp(SizeOf.get(Pthread.pthread_mutex_t.class), 8);
+        int mutexSize = NumUtil.roundUp(SizeOf.get(Pthread.pthread_mutex_t.class), alignment);
         for (PthreadVMMutex mutex : mutexes) {
             mutex.structOffset = WordFactory.unsigned(layout.getArrayElementOffset(JavaKind.Byte, nextIndex));
             nextIndex += mutexSize;
         }
 
         PthreadVMCondition[] conditions = conditionReplacer.getReplacements().toArray(new PthreadVMCondition[0]);
-        int conditionSize = NumUtil.roundUp(SizeOf.get(Pthread.pthread_cond_t.class), 8);
+        int conditionSize = NumUtil.roundUp(SizeOf.get(Pthread.pthread_cond_t.class), alignment);
         for (PthreadVMCondition condition : conditions) {
             condition.structOffset = WordFactory.unsigned(layout.getArrayElementOffset(JavaKind.Byte, nextIndex));
             nextIndex += conditionSize;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -155,13 +155,23 @@ class Debug {
                 return this;
             }
 
+            if (shape.isLeaf() && shape.getLastProperty() == null) {
+                // There are many leaf root shapes - don't draw them
+                return this;
+            }
+
             String prefix = "s";
             sb.append(prefix).append(getId(shape));
             sb.append(" [label=\"");
+            sb.append(getId(shape));
+            sb.append(":");
             if (shape.getLastProperty() != null) {
-                sb.append(escapeString(shape.getLastProperty().toString()));
+                for (Property property : shape.getPropertyListInternal(true)) {
+                    sb.append("\\n");
+                    sb.append(escapeString(property.toString()));
+                }
             } else {
-                sb.append("ROOT");
+                sb.append("\\nROOT");
             }
             sb.append("\"");
             sb.append(", shape=\"rectangle\"");

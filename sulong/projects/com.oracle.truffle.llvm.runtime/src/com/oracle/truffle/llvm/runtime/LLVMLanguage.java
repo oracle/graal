@@ -192,13 +192,21 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
 
     @Override
     protected void initializeContext(LLVMContext context) {
+        if (context.getEnv().isPreInitialization()) {
+            context.initializationDeferred();
+        } else {
+            context.initialize(createContextExtensions(context.getEnv()));
+        }
+    }
+
+    private ContextExtension[] createContextExtensions(Env env) {
         ContextExtension[] ctxExts = new ContextExtension[contextExtensions.length];
         for (int i = 0; i < contextExtensions.length; i++) {
             ContextExtensionKey<?> key = contextExtensions[i];
-            ContextExtension ext = key.factory.create(context.getEnv());
+            ContextExtension ext = key.factory.create(env);
             ctxExts[i] = key.clazz.cast(ext); // fail early if the factory returns a wrong class
         }
-        context.initialize(ctxExts);
+        return ctxExts;
     }
 
     /**
@@ -375,7 +383,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         if (!compatible) {
             return false;
         }
-        return context.patchContext(newEnv);
+        return context.patchContext(newEnv, createContextExtensions(newEnv));
     }
 
     @Override
@@ -529,6 +537,9 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
      */
     @Override
     protected CallTarget parse(ParsingRequest request) {
+        if (LLVMContext.get(null).getEnv().isPreInitialization()) {
+            throw new UnsupportedOperationException("Parsing not supported during context pre-initialization");
+        }
         Source source = request.getSource();
         String path = source.getPath();
         if (source.isCached()) {

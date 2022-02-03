@@ -34,7 +34,6 @@ import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.Optional;
@@ -57,11 +56,11 @@ import com.oracle.svm.core.annotate.AutomaticFeature;
 @AutomaticFeature
 public class Log4ShellFeature implements Feature {
     private static final String log4jClassName = "org.apache.logging.log4j.Logger";
-    private static final String log4jVulnerableErrorMessage = "Warning: A vulnerable version of log4j has been detected. Please update to log4j version 2.17.1 or later.\nVulnerable Method(s):";
+    private static final String log4jVulnerableErrorMessage = "Warning: A vulnerable version of log4j has been detected. Please update to log4j version 2.17.1 or later.%nVulnerable Method(s):";
     private static final String log4jUnknownVersion = "Warning: The log4j library has been detected, but the version is unavailable. Due to Log4Shell, please ensure log4j is at version 2.17.1 or later.";
 
     /* Different versions of log4j overload all these methods. */
-    private static final String[] targetMethodNames = {"debug", "error", "fatal", "info", "log", "trace", "warn"};
+    private static final Set<String> targetMethods = Set.of("debug", "error", "fatal", "info", "log", "trace", "warn");
 
     private static void warn(String warning) {
         System.err.println(warning);
@@ -98,14 +97,8 @@ public class Log4ShellFeature implements Feature {
                             })
                             .filter(properties -> {
                                 String groupId = properties.getProperty("groupId");
-                                if (groupId == null) {
-                                    return false;
-                                }
                                 String artifactId = properties.getProperty("artifactId");
-                                if (artifactId == null) {
-                                    return false;
-                                }
-                                return groupId.equals("org.apache.logging.log4j") && artifactId.equals("log4j-core");
+                                return "org.apache.logging.log4j".equals(groupId) && "log4j-core".equals(artifactId);
                             })
                             .map(properties -> properties.getProperty("version"))
                             .findFirst();
@@ -120,7 +113,7 @@ public class Log4ShellFeature implements Feature {
 
     private static boolean vulnerableLog4jOne(String[] components) {
         String minor = components[1];
-        if (minor.equals("2")) {
+        if ("2".equals(minor)) {
             return true;
         }
         return false;
@@ -156,61 +149,55 @@ public class Log4ShellFeature implements Feature {
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        try {
-            Class<?> log4jClass = access.findClassByName(log4jClassName);
+        Class<?> log4jClass = access.findClassByName(log4jClassName);
 
-            if (log4jClass == null) {
-                return;
-            }
-
-            Package log4jPackage = log4jClass.getPackage();
-            String version = log4jPackage.getImplementationVersion();
-
-            if (version == null) {
-                Optional<String> pomVersion = getPomVersion(log4jClass);
-                if (pomVersion.isPresent()) {
-                    version = pomVersion.get();
-                }
-            }
-
-            /* We were unable to get the version, do not risk raising a false positive. */
-            if (version == null) {
-                warn(log4jUnknownVersion);
-                return;
-            }
-
-            String[] components = version.split("\\.");
-
-            /* Something is wrong with the version string, stop here. */
-            if (components.length < 2) {
-                warn(log4jUnknownVersion);
-                return;
-            }
-
-            Set<String> vulnerableMethods = new HashSet<>();
-
-            if ((components[0].equals("1") && vulnerableLog4jOne(components)) || (components[0].equals("2") && vulnerableLog4jTwo(components))) {
-                Set<String> targetMethods = new HashSet<>(Arrays.asList(targetMethodNames));
-
-                for (Method method : log4jClass.getMethods()) {
-                    String methodName = method.getName();
-                    if (targetMethods.contains(methodName) && (access.isReachable(method) || (access.reachableMethodOverrides(method).size() > 0))) {
-                        vulnerableMethods.add(method.getDeclaringClass().getName() + "." + method.getName());
-                    }
-                }
-            }
-
-            if (vulnerableMethods.size() == 0) {
-                return;
-            }
-
-            String renderedErrorMessage = log4jVulnerableErrorMessage;
-            for (String method : vulnerableMethods) {
-                renderedErrorMessage += "\n" + method;
-            }
-            warn(renderedErrorMessage);
-        } catch (Throwable ex) {
-            /* Ignore all exceptions. */
+        if (log4jClass == null) {
+            return;
         }
+
+        Package log4jPackage = log4jClass.getPackage();
+        String version = log4jPackage.getImplementationVersion();
+
+        if (version == null) {
+            Optional<String> pomVersion = getPomVersion(log4jClass);
+            if (pomVersion.isPresent()) {
+                version = pomVersion.get();
+            }
+        }
+
+        /* We were unable to get the version, do not risk raising a false positive. */
+        if (version == null) {
+            warn(log4jUnknownVersion);
+            return;
+        }
+
+        String[] components = version.split("\\.");
+
+        /* Something is wrong with the version string, stop here. */
+        if (components.length < 2) {
+            warn(log4jUnknownVersion);
+            return;
+        }
+
+        Set<String> vulnerableMethods = new HashSet<>();
+
+        if (("1".equals(components[0]) && vulnerableLog4jOne(components)) || ("2".equals(components[0]) && vulnerableLog4jTwo(components))) {
+            for (Method method : log4jClass.getMethods()) {
+                String methodName = method.getName();
+                if (targetMethods.contains(methodName) && (access.isReachable(method) || (access.reachableMethodOverrides(method).size() > 0))) {
+                    vulnerableMethods.add(method.getDeclaringClass().getName() + "." + method.getName());
+                }
+            }
+        }
+
+        if (vulnerableMethods.size() == 0) {
+            return;
+        }
+
+        StringBuilder renderedErrorMessage = new StringBuilder(String.format(log4jVulnerableErrorMessage));
+        for (String method : vulnerableMethods) {
+            renderedErrorMessage.append(System.lineSeparator() + method);
+        }
+        warn(renderedErrorMessage.toString());
     }
 }

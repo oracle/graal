@@ -30,7 +30,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.InternalPlatform;
@@ -88,9 +87,7 @@ class JNIRegistrationJava extends JNIRegistrationUtil implements Feature {
         if (isWindows()) {
             JNIRuntimeAccess.register(fields(a, "java.io.FileDescriptor", "handle"));
         }
-        if (JavaVersionUtil.JAVA_SPEC >= 11) {
-            JNIRuntimeAccess.register(fields(a, "java.io.FileDescriptor", "append"));
-        }
+        JNIRuntimeAccess.register(fields(a, "java.io.FileDescriptor", "append"));
 
         /* Used by FileOutputStream.initIDs, which is called unconditionally during startup. */
         JNIRuntimeAccess.register(fields(a, "java.io.FileOutputStream", "fd"));
@@ -114,9 +111,7 @@ class JNIRegistrationJava extends JNIRegistrationUtil implements Feature {
         JNIRuntimeAccess.register(method(a, "java.lang.String", "getBytes", String.class));
         JNIRuntimeAccess.register(method(a, "java.lang.String", "getBytes"));
         JNIRuntimeAccess.register(method(a, "java.lang.String", "concat", String.class));
-        if (JavaVersionUtil.JAVA_SPEC >= 11) {
-            JNIRuntimeAccess.register(fields(a, "java.lang.String", "coder", "value"));
-        }
+        JNIRuntimeAccess.register(fields(a, "java.lang.String", "coder", "value"));
 
         a.registerReachabilityHandler(JNIRegistrationJava::registerRandomAccessFileInitIDs, method(a, "java.io.RandomAccessFile", "initIDs"));
         if (isWindows()) {
@@ -130,26 +125,20 @@ class JNIRegistrationJava extends JNIRegistrationUtil implements Feature {
                             method(a, "apple.security.KeychainStore", "_addItemToKeychain", String.class, boolean.class, byte[].class, char[].class),
                             method(a, "apple.security.KeychainStore", "_removeItemFromKeychain", long.class),
                             method(a, "apple.security.KeychainStore", "_getEncodedKeyData", long.class, char[].class));
-            if (JavaVersionUtil.JAVA_SPEC >= 11) {
-                /*
-                 * JNI method implementations depending on CoreService are present in the following
-                 * jdk classes sun.nio.fs.MacOXFileSystemProvider (9+),
-                 * sun.net.spi.DefaultProxySelector (9+)
-                 */
-                ArrayList<Method> methods = new ArrayList<>(darwinMethods);
-                methods.addAll(Arrays.asList(method(a, "sun.nio.fs.MacOSXFileSystemProvider", "getFileTypeDetector"),
-                                method(a, "sun.net.spi.DefaultProxySelector", "getSystemProxies", String.class, String.class),
-                                method(a, "sun.net.spi.DefaultProxySelector", "init")));
+            /*
+             * JNI method implementations depending on CoreService are present in the following jdk
+             * classes sun.nio.fs.MacOXFileSystemProvider (9+), sun.net.spi.DefaultProxySelector
+             * (9+)
+             */
+            ArrayList<Method> methods = new ArrayList<>(darwinMethods);
+            methods.addAll(Arrays.asList(method(a, "sun.nio.fs.MacOSXFileSystemProvider", "getFileTypeDetector"),
+                            method(a, "sun.net.spi.DefaultProxySelector", "getSystemProxies", String.class, String.class),
+                            method(a, "sun.net.spi.DefaultProxySelector", "init")));
 
-                a.registerReachabilityHandler(CORESERVICES_LINKER, methods.toArray(new Object[]{}));
-            } else {
-                a.registerReachabilityHandler(CORESERVICES_LINKER, darwinMethods.toArray(new Object[]{}));
-            }
+            a.registerReachabilityHandler(CORESERVICES_LINKER, methods.toArray(new Object[]{}));
         }
 
-        if (JavaVersionUtil.JAVA_SPEC >= 11) {
-            a.registerReachabilityHandler(JNIRegistrationJava::registerProcessHandleImplInfoInitIDs, method(a, "java.lang.ProcessHandleImpl$Info", "initIDs"));
-        }
+        a.registerReachabilityHandler(JNIRegistrationJava::registerProcessHandleImplInfoInitIDs, method(a, "java.lang.ProcessHandleImpl$Info", "initIDs"));
     }
 
     private static void registerProcessHandleImplInfoInitIDs(DuringAnalysisAccess a) {

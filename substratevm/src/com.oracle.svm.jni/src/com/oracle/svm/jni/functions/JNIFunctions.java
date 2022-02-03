@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.jni.functions;
 
-// Checkstyle: allow reflection
-
 import static com.oracle.svm.core.annotate.RestrictHeapAccess.Access.NO_ALLOCATION;
 
 import java.lang.reflect.Array;
@@ -156,7 +154,7 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = CEntryPointOptions.NoPrologue.class, epilogue = CEntryPointOptions.NoEpilogue.class, publishAs = Publish.NotPublished)
     @Uninterruptible(reason = "No need to enter the isolate and also no way to report errors if unable to.")
     static int GetVersion(JNIEnvironment env) {
-        return JNIVersion.JNI_VERSION_1_8();
+        return JNIVersion.JNI_VERSION_10();
     }
 
     /*
@@ -1039,6 +1037,23 @@ public final class JNIFunctions {
         MonitorSupport.singleton().monitorExit(obj);
         JNIThreadOwnedMonitors.exited(obj);
         return JNIErrors.JNI_OK();
+    }
+
+    /*
+     * jobject (JNICALL *GetModule) (JNIEnv* env, jclass clazz);
+     */
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnNullHandle.class, include = CEntryPoint.NotIncludedAutomatically.class)
+    @CEntryPointOptions(prologue = JNIEnvEnterPrologue.class, prologueBailout = ReturnNullHandle.class, publishAs = Publish.NotPublished)
+    static JNIObjectHandle GetModule(JNIEnvironment env, JNIObjectHandle handle) {
+        Object obj = JNIObjectHandles.getObject(handle);
+        if (obj == null) {
+            throw new NullPointerException();
+        }
+        if (!(obj instanceof Class<?>)) {
+            throw new IllegalArgumentException();
+        }
+        Module module = ((Class<?>) obj).getModule();
+        return JNIObjectHandles.createLocal(module);
     }
 
     // Checkstyle: resume

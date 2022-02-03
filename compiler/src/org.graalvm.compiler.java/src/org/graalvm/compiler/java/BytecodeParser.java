@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -409,6 +409,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPluginContext;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.InvocationPluginReceiver;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
@@ -435,7 +436,6 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.util.ValueMergeUtil;
 import org.graalvm.compiler.serviceprovider.GraalServices;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
 import org.graalvm.word.LocationIdentity;
 
@@ -2190,7 +2190,8 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     }
 
     protected boolean tryInvocationPlugin(InvokeKind invokeKind, ValueNode[] args, ResolvedJavaMethod targetMethod, JavaKind resultType) {
-        InvocationPlugin plugin = graphBuilderConfig.getPlugins().getInvocationPlugins().lookupInvocation(targetMethod, true);
+        InvocationPlugins plugins = graphBuilderConfig.getPlugins().getInvocationPlugins();
+        InvocationPlugin plugin = plugins.lookupInvocation(targetMethod, true, options);
         if (plugin != null) {
 
             if (intrinsicContext != null && intrinsicContext.isCallToOriginal(targetMethod)) {
@@ -2202,6 +2203,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                 return !plugin.isDecorator();
             }
         }
+        plugins.notifyNoPlugin(targetMethod, options);
         return false;
     }
 
@@ -2302,7 +2304,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
      * Otherwise, it returns the {@link InlineInfo} that lead to the decision to not inline it, or
      * {@code null} if there is no {@link InlineInfo} for this method.
      */
-    private InlineInfo tryInline(ValueNode[] args, ResolvedJavaMethod targetMethod) {
+    protected InlineInfo tryInline(ValueNode[] args, ResolvedJavaMethod targetMethod) {
         boolean canBeInlined = forceInliningEverything || parsingIntrinsic() || targetMethod.canBeInlined();
         if (!canBeInlined) {
             return null;
@@ -4317,46 +4319,10 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         return result;
     }
 
-    private String unresolvedMethodAssertionMessage(JavaMethod result) {
-        String message = result.format("%H.%n(%P)%R");
-        if (JavaVersionUtil.JAVA_SPEC <= 8) {
-            JavaType declaringClass = result.getDeclaringClass();
-            String className = declaringClass.getName();
-            switch (className) {
-                case "Ljava/nio/ByteBuffer;":
-                case "Ljava/nio/ShortBuffer;":
-                case "Ljava/nio/CharBuffer;":
-                case "Ljava/nio/IntBuffer;":
-                case "Ljava/nio/LongBuffer;":
-                case "Ljava/nio/FloatBuffer;":
-                case "Ljava/nio/DoubleBuffer;":
-                case "Ljava/nio/MappedByteBuffer;": {
-                    switch (result.getName()) {
-                        case "position":
-                        case "limit":
-                        case "mark":
-                        case "reset":
-                        case "clear":
-                        case "flip":
-                        case "rewind": {
-                            String returnType = result.getSignature().getReturnType(null).toJavaName();
-                            if (returnType.equals(declaringClass.toJavaName())) {
-                                message += String.format(" [Probably cause: %s was compiled with javac from JDK 9+ using " +
-                                                "`-target 8` and `-source 8` options. See https://bugs.openjdk.java.net/browse/JDK-4774077 for details.]", method.getDeclaringClass().toClassName());
-                            }
-                        }
-                    }
-                    break;
-                }
-            }
-        }
-        return message;
-    }
-
     private JavaMethod lookupMethod(int cpi, int opcode) {
         maybeEagerlyResolve(cpi, opcode);
         JavaMethod result = lookupMethodInPool(cpi, opcode);
-        assert !graphBuilderConfig.unresolvedIsError() || result instanceof ResolvedJavaMethod : unresolvedMethodAssertionMessage(result);
+        assert !graphBuilderConfig.unresolvedIsError() || result instanceof ResolvedJavaMethod : result.format("%H.%n(%P)%R");
         return result;
     }
 
@@ -4806,7 +4772,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
 
         if (resolvedField.getDeclaringClass().getName().equals("Ljava/lang/ref/Reference;") && resolvedField.getName().equals("referent")) {
             LocationIdentity referentIdentity = new FieldLocationIdentity(resolvedField);
-            append(new MembarNode(0, referentIdentity));
+            append(new MembarNode(MembarNode.FenceKind.NONE, referentIdentity));
         }
 
         JavaKind fieldKind = resolvedField.getJavaKind();

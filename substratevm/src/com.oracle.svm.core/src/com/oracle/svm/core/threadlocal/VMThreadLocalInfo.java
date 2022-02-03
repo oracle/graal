@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.threadlocal;
 
-//Checkstyle: allow reflection
-
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.util.function.IntSupplier;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,7 +39,6 @@ import org.graalvm.compiler.nodes.Cancellable;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.MethodSubstitutionPlugin;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
@@ -75,7 +74,7 @@ public class RootMethodSubstitutionTest extends GraalCompilerTest {
         Backend backend = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend();
         Providers providers = backend.getProviders();
 
-        MapCursor<String, List<InvocationPlugins.Binding>> cursor = providers.getReplacements().getGraphBuilderPlugins().getInvocationPlugins().getBindings(true).getEntries();
+        MapCursor<String, List<InvocationPlugin>> cursor = providers.getReplacements().getGraphBuilderPlugins().getInvocationPlugins().getInvocationPlugins(true).getEntries();
         MetaAccessProvider metaAccess = providers.getMetaAccess();
         while (cursor.advance()) {
             String className = cursor.getKey();
@@ -89,20 +88,20 @@ public class RootMethodSubstitutionTest extends GraalCompilerTest {
                 continue;
             }
 
-            for (InvocationPlugins.Binding binding : cursor.getValue()) {
-                if (!binding.plugin.inlineOnly()) {
+            for (InvocationPlugin plugin : cursor.getValue()) {
+                if (!plugin.inlineOnly()) {
                     ResolvedJavaMethod original = null;
-                    original = findMethod(binding, type.getDeclaredMethods());
+                    original = findMethod(plugin, type.getDeclaredMethods());
                     if (original == null) {
-                        original = findMethod(binding, type.getDeclaredConstructors());
+                        original = findMethod(plugin, type.getDeclaredConstructors());
                     }
                     if (original == null) {
                         continue;
                     }
                     if (!original.isNative()) {
                         // Make sure the plugin we found hasn't been overridden.
-                        InvocationPlugin plugin = providers.getReplacements().getGraphBuilderPlugins().getInvocationPlugins().lookupInvocation(original);
-                        if (plugin == binding.plugin) {
+                        InvocationPlugin originalPlugin = providers.getReplacements().getGraphBuilderPlugins().getInvocationPlugins().lookupInvocation(original, getInitialOptions());
+                        if (plugin == originalPlugin) {
                             ret.add(new Object[]{original, plugin});
                         }
                     }
@@ -112,16 +111,12 @@ public class RootMethodSubstitutionTest extends GraalCompilerTest {
         return ret;
     }
 
-    private static ResolvedJavaMethod findMethod(InvocationPlugins.Binding binding, ResolvedJavaMethod[] methods) {
+    private static ResolvedJavaMethod findMethod(InvocationPlugin plugin, ResolvedJavaMethod[] methods) {
         ResolvedJavaMethod original = null;
         for (ResolvedJavaMethod declared : methods) {
-            if (declared.getName().equals(binding.name)) {
-                if (declared.isStatic() == binding.isStatic) {
-                    if (declared.getSignature().toMethodDescriptor().startsWith(binding.argumentsDescriptor)) {
-                        original = declared;
-                        break;
-                    }
-                }
+            if (plugin.match(declared)) {
+                original = declared;
+                break;
             }
         }
         return original;

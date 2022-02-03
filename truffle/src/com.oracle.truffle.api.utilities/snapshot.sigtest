@@ -152,6 +152,7 @@ CLSS public java.lang.Object
 cons public init()
 meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException
 meth protected void finalize() throws java.lang.Throwable
+ anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="9")
 meth public boolean equals(java.lang.Object)
 meth public final java.lang.Class<?> getClass()
 meth public final void notify()
@@ -163,13 +164,15 @@ meth public int hashCode()
 meth public java.lang.String toString()
 
 CLSS public abstract java.lang.ref.Reference<%0 extends java.lang.Object>
+meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException
 meth public boolean enqueue()
 meth public boolean isEnqueued()
+meth public static void reachabilityFence(java.lang.Object)
 meth public void clear()
 meth public {java.lang.ref.Reference%0} get()
 supr java.lang.Object
-hfds discovered,lock,next,pending,queue,referent
-hcls Lock,ReferenceHandler
+hfds discovered,next,processPendingActive,processPendingLock,queue,referent
+hcls ReferenceHandler
 
 CLSS public java.lang.ref.WeakReference<%0 extends java.lang.Object>
 cons public init({java.lang.ref.WeakReference%0})

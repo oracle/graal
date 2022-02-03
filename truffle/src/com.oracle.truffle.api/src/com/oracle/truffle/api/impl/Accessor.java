@@ -241,6 +241,11 @@ public abstract class Accessor {
 
         public abstract Object createDefaultIterator(Object receiver);
 
+        public abstract Node createDispatchedInteropLibrary(int limit);
+
+        public abstract Node getUncachedInteropLibrary();
+
+        public abstract long unboxPointer(Node library, Object value);
     }
 
     public abstract static class HostSupport extends Support {
@@ -368,6 +373,8 @@ public abstract class Accessor {
         public abstract boolean isHostAccessAllowed(Object polyglotLanguageContext, Env env);
 
         public abstract boolean isNativeAccessAllowed(Object polyglotLanguageContext, Env env);
+
+        public abstract boolean isCurrentNativeAccessAllowed(Node node);
 
         public abstract boolean inContextPreInitialization(Object polyglotObject);
 
@@ -582,7 +589,7 @@ public abstract class Accessor {
                         Function<StackTraceElement, T> hostFrameConvertor,
                         Function<G, T> guestFrameConvertor);
 
-        public abstract Object createHostAdapterClass(Object polyglotLanguageContext, Class<?>[] types, Object classOverrides);
+        public abstract Object createHostAdapterClass(Object polyglotLanguageContext, Object[] types, Object classOverrides);
 
         public abstract OptionValues getEngineOptionValues(Object polyglotEngine);
 
@@ -667,6 +674,10 @@ public abstract class Accessor {
         public abstract Object getGuestToHostCodeCache(Object polyglotContextImpl);
 
         public abstract Object installGuestToHostCodeCache(Object polyglotContextImpl, Object cache);
+
+        public abstract boolean getNeedsAllEncodings();
+
+        public abstract boolean requireLanguageWithAllEncodings(Object encoding);
     }
 
     public abstract static class LanguageSupport extends Support {
@@ -1246,7 +1257,8 @@ public abstract class Accessor {
                         "com.oracle.truffle.api.library.LibraryAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.polyglot.enterprise.EnterpriseEngineAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.polyglot.enterprise.test.EnterpriseDispatchTestAccessor".equals(thisClassName) ||
-                        "com.oracle.truffle.api.staticobject.SomAccessor".equals(thisClassName)) {
+                        "com.oracle.truffle.api.staticobject.SomAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.api.strings.TStringAccessor".equals(thisClassName)) {
             // OK, classes allowed to use accessors
         } else {
             throw new IllegalStateException(thisClassName);

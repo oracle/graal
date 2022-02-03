@@ -27,7 +27,7 @@ package org.graalvm.compiler.graph;
 import static org.graalvm.compiler.core.common.Fields.translateInto;
 import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
 import static org.graalvm.compiler.graph.Edges.translateInto;
-import static org.graalvm.compiler.graph.Graph.isModificationCountsEnabled;
+import static org.graalvm.compiler.graph.Graph.isNodeModificationCountsEnabled;
 import static org.graalvm.compiler.graph.InputEdges.translateInto;
 import static org.graalvm.compiler.graph.Node.WithAllEdges;
 
@@ -1094,7 +1094,7 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
         private RawEdgesWithModCountIterator(Node node, long mask) {
             super(node, mask);
-            assert isModificationCountsEnabled();
+            assert isNodeModificationCountsEnabled();
             this.modCount = node.modCount();
         }
 
@@ -1128,11 +1128,11 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
     public NodeIterable<Node> getSuccessorIterable(final Node node) {
         long mask = this.successorIteration;
-        return new NodeIterable<Node>() {
+        return new NodeIterable<>() {
 
             @Override
             public Iterator<Node> iterator() {
-                if (isModificationCountsEnabled()) {
+                if (isNodeModificationCountsEnabled()) {
                     return new RawEdgesWithModCountIterator(node, mask);
                 } else {
                     return new RawEdgesIterator(node, mask);
@@ -1162,11 +1162,11 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
 
     public NodeIterable<Node> getInputIterable(final Node node) {
         long mask = this.inputsIteration;
-        return new NodeIterable<Node>() {
+        return new NodeIterable<>() {
 
             @Override
             public Iterator<Node> iterator() {
-                if (isModificationCountsEnabled()) {
+                if (isNodeModificationCountsEnabled()) {
                     return new RawEdgesWithModCountIterator(node, mask);
                 } else {
                     return new RawEdgesIterator(node, mask);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,10 +24,6 @@
  */
 package org.graalvm.compiler.lir.aarch64;
 
-import static jdk.vm.ci.code.MemoryBarriers.LOAD_LOAD;
-import static jdk.vm.ci.code.MemoryBarriers.LOAD_STORE;
-import static jdk.vm.ci.code.MemoryBarriers.STORE_LOAD;
-import static jdk.vm.ci.code.MemoryBarriers.STORE_STORE;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.CONST;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
@@ -45,6 +41,7 @@ import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGenerator;
 
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -121,10 +118,32 @@ public class AArch64AtomicMove {
             /*
              * Determining whether acquire and/or release semantics are needed.
              */
-            boolean acquire = ((memoryOrder.postWriteBarriers & (STORE_LOAD | STORE_STORE)) != 0) || ((memoryOrder.postReadBarriers & (LOAD_LOAD | LOAD_STORE)) != 0);
-            boolean release = ((memoryOrder.preWriteBarriers & (LOAD_STORE | STORE_STORE)) != 0) || ((memoryOrder.preReadBarriers & (LOAD_LOAD | STORE_LOAD)) != 0);
+            boolean acquire;
+            boolean release;
+            switch (memoryOrder) {
+                case PLAIN:
+                case OPAQUE:
+                    acquire = false;
+                    release = false;
+                    break;
+                case ACQUIRE:
+                    acquire = true;
+                    release = false;
+                    break;
+                case RELEASE:
+                    acquire = false;
+                    release = true;
+                    break;
+                case RELEASE_ACQUIRE:
+                case VOLATILE:
+                    acquire = true;
+                    release = true;
+                    break;
+                default:
+                    throw GraalError.shouldNotReachHere();
+            }
 
-            if (AArch64LIRFlags.useLSE(masm.target.arch)) {
+            if (AArch64LIRFlags.useLSE(masm)) {
                 masm.mov(Math.max(memAccessSize, 32), result, expected);
                 masm.cas(memAccessSize, result, newVal, address, acquire, release);
                 if (setConditionFlags) {
@@ -179,7 +198,7 @@ public class AArch64AtomicMove {
      * constant within the load-store conditional implementation.
      */
     public static AArch64LIRInstruction createAtomicReadAndAdd(LIRGenerator gen, AArch64Kind kind, AllocatableValue result, AllocatableValue address, Value delta) {
-        if (AArch64LIRFlags.useLSE(gen.target().arch)) {
+        if (AArch64LIRFlags.useLSE((AArch64) gen.target().arch)) {
             return new AtomicReadAndAddLSEOp(kind, result, address, gen.asAllocatable(delta));
         } else {
             return new AtomicReadAndAddOp(kind, result, address, delta);
@@ -340,7 +359,7 @@ public class AArch64AtomicMove {
             Register value = asRegister(newValue);
             Register result = asRegister(resultValue);
 
-            if (AArch64LIRFlags.useLSE(masm.target.arch)) {
+            if (AArch64LIRFlags.useLSE(masm)) {
                 masm.swp(memAccessSize, value, result, address, true, true);
             } else {
                 try (ScratchRegister scratchRegister = masm.getScratchRegister()) {

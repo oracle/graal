@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.reflect;
 
-// Checkstyle: allow reflection
-
 import java.lang.reflect.Executable;
 
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
@@ -34,8 +32,10 @@ import com.oracle.svm.core.annotate.InvokeJavaFunctionPointer;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.internal.reflect.MethodAccessor;
+
 @InternalVMMethod
-public abstract class SubstrateMethodAccessor {
+public final class SubstrateMethodAccessor implements MethodAccessor {
 
     interface MethodInvokeFunctionPointer extends CFunctionPointer {
         /** Must match the signature of {@link ReflectionAccessorHolder#invokePrototype}. */
@@ -46,11 +46,12 @@ public abstract class SubstrateMethodAccessor {
     private final Executable member;
     private final CFunctionPointer invokeFunctionPointer;
 
-    protected SubstrateMethodAccessor(Executable member, CFunctionPointer invokeFunctionPointer) {
+    public SubstrateMethodAccessor(Executable member, CFunctionPointer invokeFunctionPointer) {
         this.member = member;
         this.invokeFunctionPointer = invokeFunctionPointer;
     }
 
+    @Override
     public Object invoke(Object obj, Object[] args) {
         MethodInvokeFunctionPointer functionPointer = (MethodInvokeFunctionPointer) this.invokeFunctionPointer;
         if (functionPointer.isNull()) {

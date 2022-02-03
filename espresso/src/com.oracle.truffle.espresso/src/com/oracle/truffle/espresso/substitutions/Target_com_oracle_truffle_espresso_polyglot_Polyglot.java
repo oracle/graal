@@ -32,6 +32,7 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -101,7 +102,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                 Meta meta = getMeta();
                 throw meta.throwException(meta.java_lang_NullPointerException);
             }
-            if (StaticObject.isNull(value) || instanceOfDynamic.execute(targetClass.getMirrorKlass(), value.getKlass())) {
+            if (StaticObject.isNull(value) || instanceOfDynamic.execute(value.getKlass(), targetClass.getMirrorKlass())) {
                 return value;
             }
             return castImpl.execute(getContext(), targetClass.getMirrorKlass(), value);
@@ -145,7 +146,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                         @JavaType(Object.class) StaticObject value,
                         @Cached InstanceOf.Dynamic instanceOfDynamic,
                         @Cached BranchProfile exceptionProfile) {
-            if (isNull(value) || instanceOfDynamic.execute(targetKlass, value.getKlass())) {
+            if (isNull(value) || instanceOfDynamic.execute(value.getKlass(), targetKlass)) {
                 return value;
             }
             exceptionProfile.enter();
@@ -331,8 +332,6 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
         }
     }
 
-    // TODO(peterssen): Fix deprecation, GR-26729
-    @SuppressWarnings("deprecation")
     @Substitution
     public static @JavaType(Object.class) StaticObject eval(@JavaType(String.class) StaticObject language, @JavaType(String.class) StaticObject code, @Inject Meta meta) {
         String languageId = meta.toHostString(language);
@@ -350,7 +349,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
         try {
             evalResult = callTarget.call();
         } catch (Exception e) {
-            if (e instanceof com.oracle.truffle.api.TruffleException) {
+            if (e instanceof AbstractTruffleException) {
                 throw rethrowExceptionAsEspresso(meta.java_lang_RuntimeException, "Exception during evaluation: ", e);
             } else {
                 throw e;

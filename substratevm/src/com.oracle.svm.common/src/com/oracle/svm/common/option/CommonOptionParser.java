@@ -26,8 +26,6 @@
 
 package com.oracle.svm.common.option;
 
-// Checkstyle: allow reflection
-
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;

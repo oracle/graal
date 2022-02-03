@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.truffle;
 
-//Checkstyle: allow reflection
-
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.lang.annotation.Annotation;
@@ -44,6 +42,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
 
+import com.oracle.svm.core.configure.ResourcesRegistry;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -51,6 +50,8 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInlineOnlyInvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.phases.util.Providers;
@@ -110,6 +111,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import sun.misc.Unsafe;
 
 /**
@@ -129,9 +131,7 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
     public static final class IsCreateProcessDisabled implements BooleanSupplier {
         static boolean query() {
             try {
-                // Checkstyle: stop
                 Class<?> clazz = Class.forName("com.oracle.truffle.polyglot.PolyglotEngineImpl");
-                // Checkstyle: resume
                 final boolean allowCreateProcess = ReflectionUtil.readField(clazz, "ALLOW_CREATE_PROCESS", null);
                 return !allowCreateProcess;
             } catch (ReflectiveOperationException e) {
@@ -147,18 +147,16 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
         }
     }
 
-    /**
-     * True in the first analysis run where contexts are pre-initialized.
-     */
-    private boolean firstAnalysisRun;
-
-    // Checkstyle: stop
     private ClassLoader imageClassLoader;
     private AnalysisMetaAccess metaAccess;
     private GraalObjectReplacer graalObjectReplacer;
     private final Set<Class<?>> registeredClasses = new HashSet<>();
     private boolean profilingEnabled;
-    // Checkstyle: resume
+    private boolean needsAllEncodings;
+
+    private Field layoutInfoMapField;
+    private Field layoutMapField;
+    private Field libraryFactoryCacheField;
 
     private static void initializeTruffleReflectively(ClassLoader imageClassLoader) {
         invokeStaticMethod("com.oracle.truffle.api.impl.Accessor", "getTVMCI", Collections.emptyList());
@@ -179,9 +177,7 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
     static <T> T invokeStaticMethod(String className, String methodName, Collection<Class<?>> parameterTypes,
                     Object... args) {
         try {
-            // Checkstyle: stop
             Class<?> clazz = Class.forName(className);
-            // Checkstyle: resume
             Method method = ReflectionUtil.lookupMethod(clazz, methodName, parameterTypes.toArray(new Class<?>[0]));
             return (T) method.invoke(null, args);
         } catch (ReflectiveOperationException e) {
@@ -209,10 +205,15 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
             RuntimeClassInitialization.initializeAtBuildTime(provider.getClass());
         }
         initializeTruffleReflectively(imageClassLoader);
+        needsAllEncodings = invokeStaticMethod("com.oracle.truffle.polyglot.LanguageCache", "getNeedsAllEncodings",
+                        Collections.emptyList());
 
         // reinitialize language cache
         invokeStaticMethod("com.oracle.truffle.api.library.LibraryFactory", "reinitializeNativeImageState",
                         Collections.emptyList());
+
+        // pre-initialize TruffleLogger$LoggerCache.INSTANCE
+        invokeStaticMethod("com.oracle.truffle.api.TruffleLogger$LoggerCache", "getInstance", Collections.emptyList());
 
         profilingEnabled = false;
     }
@@ -260,7 +261,7 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
          * that we get exact types for fields that store profiles.
          */
         Registration r = new Registration(plugins.getInvocationPlugins(), Profile.class);
-        r.register0("isProfilingEnabled", new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("isProfilingEnabled") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
                 b.addPush(JavaKind.Boolean, ConstantNode.forBoolean(profilingEnabled));
@@ -295,6 +296,10 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
                         .getProviderObjectReplacements(metaAccess);
         graalObjectReplacer = new GraalObjectReplacer(config.getUniverse(), metaAccess, providerReplacements);
         access.registerObjectReplacer(this::replaceNodeFieldAccessor);
+
+        layoutInfoMapField = config.findField("com.oracle.truffle.object.DefaultLayout$LayoutInfo", "LAYOUT_INFO_MAP");
+        layoutMapField = config.findField("com.oracle.truffle.object.DefaultLayout", "LAYOUT_MAP");
+        libraryFactoryCacheField = config.findField("com.oracle.truffle.api.library.LibraryFactory$ResolvedDispatch", "CACHE");
     }
 
     @SuppressWarnings("deprecation")
@@ -329,7 +334,16 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
         config.registerSubtypeReachabilityHandler(TruffleBaseFeature::registerTruffleLibrariesAsInHeap,
                         LibraryExport.class);
 
-        firstAnalysisRun = true;
+        if (needsAllEncodings) {
+            ImageSingletons.lookup(ResourcesRegistry.class).addResources(ConfigurationCondition.alwaysTrue(), "org/graalvm/shadowed/org/jcodings/tables/.*bin$");
+        }
+    }
+
+    public static void preInitializeEngine() {
+        invokeStaticMethod("org.graalvm.polyglot.Engine$ImplHolder", "preInitializeEngine",
+                        Collections.emptyList());
+        invokeStaticMethod("com.oracle.truffle.api.impl.ThreadLocalHandshake", "resetNativeImageState",
+                        Collections.emptyList());
     }
 
     /**
@@ -346,34 +360,30 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
     }
 
     @Override
-    public void duringAnalysis(DuringAnalysisAccess access) {
-        StaticObjectSupport.duringAnalysis(access);
+    public void duringAnalysis(DuringAnalysisAccess a) {
+        DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
 
-        if (firstAnalysisRun) {
-            firstAnalysisRun = false;
-            invokeStaticMethod("org.graalvm.polyglot.Engine$ImplHolder", "preInitializeEngine",
-                            Collections.emptyList());
-            invokeStaticMethod("com.oracle.truffle.api.impl.ThreadLocalHandshake", "resetNativeImageState",
-                            Collections.emptyList());
-            access.requireAnalysisIteration();
-        }
+        StaticObjectSupport.duringAnalysis(a);
 
         for (Class<?> clazz : access.reachableSubtypes(com.oracle.truffle.api.nodes.Node.class)) {
             registerUnsafeAccess(access, clazz.asSubclass(com.oracle.truffle.api.nodes.Node.class));
 
-            AnalysisType type = ((DuringAnalysisAccessImpl) access).getMetaAccess().lookupJavaType(clazz);
+            AnalysisType type = access.getMetaAccess().lookupJavaType(clazz);
             if (type.isInstantiated()) {
                 graalObjectReplacer.createType(type);
             }
         }
 
-        for (AnalysisType type : ((DuringAnalysisAccessImpl) access).getBigBang().getUniverse().getTypes()) {
-            if (!access.isReachable(type.getJavaClass())) {
+        for (AnalysisType type : access.getBigBang().getUniverse().getTypes()) {
+            if (!a.isReachable(type.getJavaClass())) {
                 continue;
             }
             initializeTruffleLibrariesAtBuildTime(type);
             initializeDynamicObjectLayouts(type);
         }
+        access.rescanRoot(layoutInfoMapField);
+        access.rescanRoot(layoutMapField);
+        access.rescanRoot(libraryFactoryCacheField);
     }
 
     @Override
@@ -436,7 +446,9 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
     private static void initializeTruffleLibrariesAtBuildTime(AnalysisType type) {
         if (type.isAnnotationPresent(GenerateLibrary.class)) {
             /* Eagerly resolve library type. */
-            LibraryFactory.resolve(type.getJavaClass().asSubclass(Library.class));
+            LibraryFactory<? extends Library> factory = LibraryFactory.resolve(type.getJavaClass().asSubclass(Library.class));
+            /* Trigger computation of uncachedDispatch. */
+            factory.getUncached();
         }
         if (type.getDeclaredAnnotationsByType(ExportLibrary.class).length != 0) {
             /* Eagerly resolve receiver type. */
@@ -498,16 +510,10 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
             if (reason == ParsingReason.PointsToAnalysis) {
                 InvocationPlugins.Registration r = new InvocationPlugins.Registration(plugins.getInvocationPlugins(),
                                 StaticShape.Builder.class);
-                r.register3("build", InvocationPlugin.Receiver.class, Class.class, Class.class, new InvocationPlugin() {
-                    @Override
-                    public boolean inlineOnly() {
-                        // Use the plugin only during parsing.
-                        return true;
-                    }
-
+                r.register(new RequiredInlineOnlyInvocationPlugin("build", InvocationPlugin.Receiver.class, Class.class, Class.class) {
                     @Override
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod,
-                                    InvocationPlugin.Receiver receiver, ValueNode arg1, ValueNode arg2) {
+                                    Receiver receiver, ValueNode arg1, ValueNode arg2) {
                         Class<?> superClass = getArgumentClass(b, targetMethod, 1, arg1);
                         Class<?> factoryInterface = getArgumentClass(b, targetMethod, 2, arg2);
                         generate(superClass, factoryInterface, beforeAnalysisAccess);
@@ -564,9 +570,7 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
                         BeforeAnalysisAccess access) {
             try {
                 validateClasses(storageSuperClass, factoryInterface);
-                // Checkstyle: stop do not use ClassLoader objects
                 ClassLoader generatorCL = getGeneratorClassLoader(factoryInterface);
-                // Checkstyle: resume
                 getGetShapeGenerator(generatorCL, storageSuperClass, factoryInterface);
             } catch (ReflectiveOperationException e) {
                 if (e instanceof InvocationTargetException && e.getCause() instanceof IllegalArgumentException) {
@@ -581,7 +585,6 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
             VALIDATE_CLASSES.invoke(null, storageSuperClass, factoryInterface);
         }
 
-        // Checkstyle: stop do not use ClassLoader objects
         private static ClassLoader getGeneratorClassLoader(Class<?> factoryInterface) throws ReflectiveOperationException {
             ClassLoader cl = CLASS_LOADERS.get(factoryInterface);
             if (cl == null) {
@@ -593,7 +596,6 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
             }
             return cl;
         }
-        // Checkstyle: resume
 
         /*
          * Triggers shape generation.
@@ -603,7 +605,6 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
             GET_SHAPE_GENERATOR.invoke(null, null, generatorCL, storageSuperClass, factoryInterface, storageClassName);
         }
 
-        // Checkstyle: stop do not use dynamic class loading
         private static Class<?> loadClass(String name) {
             try {
                 return Class.forName(name);
@@ -611,7 +612,6 @@ public final class TruffleBaseFeature implements com.oracle.svm.core.graal.Graal
                 throw VMError.shouldNotReachHere(e);
             }
         }
-        // Checkstyle: resume
     }
 }
 
@@ -654,12 +654,15 @@ final class Target_com_oracle_truffle_api_staticobject_StaticProperty {
          * We have to use reflection to access private members instead of aliasing them in the
          * substitution class since substitutions are present only at runtime
          */
-        private static final Method GET_PROPERTY_TYPE;
 
+        private static final Method GET_PROPERTY_TYPE;
         static {
-            // Checkstyle: stop
             GET_PROPERTY_TYPE = ReflectionUtil.lookupMethod(StaticProperty.class, "getPropertyType");
-            // Checkstyle: resume
+        }
+
+        @Override
+        public RecomputeFieldValue.ValueAvailability valueAvailability() {
+            return RecomputeFieldValue.ValueAvailability.BeforeAnalysis;
         }
 
         @Override
@@ -678,9 +681,7 @@ final class Target_com_oracle_truffle_api_staticobject_StaticProperty {
 
             Class<?> propertyType;
             try {
-                // Checkstyle: stop
                 propertyType = (Class<?>) GET_PROPERTY_TYPE.invoke(receiverStaticProperty);
-                // Checkstyle: resume
             } catch (IllegalAccessException | InvocationTargetException e) {
                 throw VMError.shouldNotReachHere(e);
             }
@@ -726,13 +727,16 @@ final class Target_com_oracle_truffle_api_staticobject_ArrayBasedShapeGenerator 
         private static final Class<?> SHAPE_GENERATOR;
 
         static {
-            // Checkstyle: stop
             try {
                 SHAPE_GENERATOR = Class.forName("com.oracle.truffle.api.staticobject.ArrayBasedShapeGenerator");
             } catch (ClassNotFoundException e) {
                 throw VMError.shouldNotReachHere(e);
             }
-            // Checkstyle: resume
+        }
+
+        @Override
+        public RecomputeFieldValue.ValueAvailability valueAvailability() {
+            return RecomputeFieldValue.ValueAvailability.AfterAnalysis;
         }
 
         @Override
@@ -767,8 +771,6 @@ final class Target_com_oracle_truffle_api_staticobject_ArrayBasedShapeGenerator 
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = OffsetTransformer.class) //
     int shapeOffset;
 }
-
-// Checkstyle: stop
 
 /*
  * If allowProcess() is disabled at build time, then we ensure that ProcessBuilder is not reachable.

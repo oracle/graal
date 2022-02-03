@@ -81,7 +81,10 @@ def _run_java_truffle(args=None, cwd=None, nonZeroIsFatal=True):
 
 def _run_espresso_meta(args, nonZeroIsFatal=True):
     """Run Espresso (standalone) on Espresso (launcher)"""
-    return _run_espresso_launcher(['--vm.Xss4m'] + _espresso_standalone_command(args), nonZeroIsFatal=nonZeroIsFatal)
+    return _run_espresso_launcher([
+        '--vm.Xss4m',
+        '-Dtruffle.class.path.append=' + mx.dependency('ESPRESSO').path,  # on GraalVM the EspressoLanguageProvider must be visible to the GraalVMLocator
+    ] + _espresso_standalone_command(args), nonZeroIsFatal=nonZeroIsFatal)
 
 
 class EspressoTags:
@@ -190,7 +193,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     installable=True,
     license_files=['LICENSE_JAVAONTRUFFLE'],
     third_party_license_files=[],
-    dependencies=['Truffle', 'Truffle NFI', 'ejvm'],
+    dependencies=['Truffle', 'nfi-libffi', 'ejvm'],
     truffle_jars=['espresso:ESPRESSO'],
     support_distributions=['espresso:ESPRESSO_SUPPORT'],
     library_configs=[espresso_library_config],
@@ -305,8 +308,8 @@ mx.update_commands(_suite, {
 # Build configs
 # pylint: disable=bad-whitespace
 tools = ['cov', 'dap', 'ins', 'insight', 'insightheap', 'lsp', 'pro', 'vvm']
-mx_sdk_vm.register_vm_config('espresso-jvm',       ['java', 'ejvm', 'libpoly', 'nfi', 'sdk', 'tfl', 'cmp'                                           , 'elau'                                             ] + tools, _suite, env_file='jvm')
-mx_sdk_vm.register_vm_config('espresso-jvm-ce',    ['java', 'ejvm', 'libpoly', 'nfi', 'sdk', 'tfl', 'cmp'         , 'svm', 'svmnfi'         , 'tflm', 'elau', 'lg', 'bespresso', 'sespresso', 'spolyglot'] + tools, _suite, env_file='jvm-ce')
-mx_sdk_vm.register_vm_config('espresso-jvm-ee',    ['java', 'ejvm', 'libpoly', 'nfi', 'sdk', 'tfl', 'cmp', 'cmpee', 'svm', 'svmnfi', 'svmee', 'tflm', 'elau', 'lg', 'bespresso', 'sespresso', 'spolyglot'] + tools, _suite, env_file='jvm-ee')
-mx_sdk_vm.register_vm_config('espresso-native-ce', ['java', 'ejvm', 'libpoly', 'nfi', 'sdk', 'tfl', 'cmp'         , 'svm', 'svmnfi'         , 'tflm'                                        , 'spolyglot'] + tools, _suite, env_file='native-ce')
-mx_sdk_vm.register_vm_config('espresso-native-ee', ['java', 'ejvm', 'libpoly', 'nfi', 'sdk', 'tfl', 'cmp', 'cmpee', 'svm', 'svmnfi', 'svmee', 'tflm'                                        , 'spolyglot'] + tools, _suite, env_file='native-ee')
+mx_sdk_vm.register_vm_config('espresso-jvm',       ['java', 'ejvm', 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'tfl', 'cmp'                                           , 'elau'                                             ] + tools, _suite, env_file='jvm')
+mx_sdk_vm.register_vm_config('espresso-jvm-ce',    ['java', 'ejvm', 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'tfl', 'cmp'         , 'svm', 'svmnfi'         , 'tflm', 'elau', 'lg', 'bespresso', 'sespresso', 'spolyglot'] + tools, _suite, env_file='jvm-ce')
+mx_sdk_vm.register_vm_config('espresso-jvm-ee',    ['java', 'ejvm', 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'tfl', 'cmp', 'cmpee', 'svm', 'svmnfi', 'svmee', 'tflm', 'elau', 'lg', 'bespresso', 'sespresso', 'spolyglot'] + tools, _suite, env_file='jvm-ee')
+mx_sdk_vm.register_vm_config('espresso-native-ce', ['java', 'ejvm', 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'tfl', 'cmp'         , 'svm', 'svmnfi'         , 'tflm'                                        , 'spolyglot'] + tools, _suite, env_file='native-ce')
+mx_sdk_vm.register_vm_config('espresso-native-ee', ['java', 'ejvm', 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'tfl', 'cmp', 'cmpee', 'svm', 'svmnfi', 'svmee', 'tflm'                                        , 'spolyglot'] + tools, _suite, env_file='native-ee')

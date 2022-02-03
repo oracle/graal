@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.jdk.localization.bundles;
 
-//Checkstyle: allow reflection
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;

@@ -125,7 +125,7 @@ public final class AllocationSite {
         return className.hashCode() ^ siteName.hashCode();
     }
 
-    private static final Comparator<AllocationSite> sitesComparator = new Comparator<AllocationSite>() {
+    private static final Comparator<AllocationSite> sitesComparator = new Comparator<>() {
         @Override
         public int compare(AllocationSite o1, AllocationSite o2) {
             return Long.compare(o2.cachedSize, o1.cachedSize);
@@ -159,6 +159,12 @@ public final class AllocationSite {
         sortedSites.sort(sitesComparator);
 
         return sortedSites;
+    }
+
+    public static void dumpProfilingResultsOnShutdown(boolean isFirstIsolate) {
+        if (isFirstIsolate) {
+            dumpProfilingResults();
+        }
     }
 
     public static void dumpProfilingResults() {
@@ -209,7 +215,7 @@ class AllocationProfilingFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         if (AllocationSite.Options.AllocationProfiling.getValue()) {
-            RuntimeSupport.getRuntimeSupport().addShutdownHook(AllocationSite::dumpProfilingResults);
+            RuntimeSupport.getRuntimeSupport().addShutdownHook(AllocationSite::dumpProfilingResultsOnShutdown);
         }
     }
 }

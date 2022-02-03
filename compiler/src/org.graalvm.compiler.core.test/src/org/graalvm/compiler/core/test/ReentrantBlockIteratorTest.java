@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -212,7 +212,7 @@ public class ReentrantBlockIteratorTest extends GraalCompilerTest {
         class VoidState {
         }
         final VoidState voidState = new VoidState();
-        BlockIteratorClosure<VoidState> closure = new BlockIteratorClosure<VoidState>() {
+        BlockIteratorClosure<VoidState> closure = new BlockIteratorClosure<>() {
 
             @Override
             protected VoidState getInitialState() {

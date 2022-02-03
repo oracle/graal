@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -460,6 +460,31 @@ public abstract class TruffleLanguage<C> {
          * @since 19.0
          */
         Class<? extends TruffleFile.FileTypeDetector>[] fileTypeDetectors() default {};
+
+        /**
+         * Returns {@code true} if the language uses {@code TruffleString}s with encodings not
+         * present in the following list.
+         * <ul>
+         * <li>{@code UTF-8}</li>
+         * <li>{@code UTF-16}</li>
+         * <li>{@code UTF-32}</li>
+         * <li>{@code ISO-8859-1}</li>
+         * <li>{@code US-ASCII}</li>
+         * <li>{@code BYTES}</li>
+         * </ul>
+         *
+         * @since 22.1
+         */
+        boolean needsAllEncodings() default false;
+
+        /**
+         * A link to a website with more information about the instrument. Will be shown in the help
+         * text of GraalVM launchers.
+         *
+         * @since 22.1.0
+         * @return URL for language website.
+         */
+        String website() default "";
     }
 
     /**
@@ -597,6 +622,13 @@ public abstract class TruffleLanguage<C> {
      * for instance, finalization for standard streams should both flush and set them to unbuffered
      * mode at the end of exitContext, so that running guest code is not required to dispose the
      * streams after that point.
+     * <p>
+     * Context finalization is invoked even if a context was cancelled. In such a case, if guest
+     * code would run as part of the finalization, it would be cancelled at the next polled
+     * {@link TruffleSafepoint safepoint}. If there is guest code that always needs to run even if
+     * cancelled, e.g. to prevent resource leakage, use
+     * {@link TruffleSafepoint#setAllowActions(boolean)} to temporarily disable safepoints while
+     * executing that code.
      * <p>
      * All installed languages must remain usable after finalization. The finalization order can be
      * influenced by specifying {@link Registration#dependentLanguages() language dependencies}. By
@@ -2983,6 +3015,30 @@ public abstract class TruffleLanguage<C> {
         }
 
         /**
+         * @since 20.3.0
+         * @deprecated since 22.1; replaced by {@link #createHostAdapter(Object[])}.
+         */
+        @Deprecated
+        @TruffleBoundary
+        public Object createHostAdapterClass(Class<?>[] types) {
+            Objects.requireNonNull(types, "types");
+            return createHostAdapterClassLegacyImpl(types, null);
+        }
+
+        /**
+         * @since 20.3.0
+         * @deprecated since 22.1; replaced by
+         *             {@link #createHostAdapterWithClassOverrides(Object[], Object)}.
+         */
+        @Deprecated
+        @TruffleBoundary
+        public Object createHostAdapterClassWithStaticOverrides(Class<?>[] types, Object classOverrides) {
+            Objects.requireNonNull(types, "types");
+            Objects.requireNonNull(classOverrides, "classOverrides");
+            return createHostAdapterClassLegacyImpl(types, classOverrides);
+        }
+
+        /**
          * Creates a Java host adapter class that can be
          * {@linkplain com.oracle.truffle.api.interop.InteropLibrary#instantiate instantiated} with
          * a guest object (as the last argument) in order to create adapter instances of the
@@ -2990,7 +3046,8 @@ public abstract class TruffleLanguage<C> {
          * {@linkplain com.oracle.truffle.api.interop.InteropLibrary#isMemberInvocable invocable}
          * members. Implementations must be
          * {@linkplain org.graalvm.polyglot.HostAccess.Builder#allowImplementations(Class) allowed}
-         * for these types. The returned adapter class is also a
+         * for these types. The returned host adapter class is an instantiable
+         * {@linkplain #isHostObject(Object) host object} that is also a
          * {@linkplain com.oracle.truffle.api.interop.InteropLibrary#isMetaObject meta object}, so
          * {@link com.oracle.truffle.api.interop.InteropLibrary#isMetaInstance isMetaInstance} can
          * be used to check if an object is an instance of this adapter class. See usage example
@@ -3038,7 +3095,9 @@ public abstract class TruffleLanguage<C> {
          *
          * <pre>
          * <code>
-         * Object hostClass = env.createHostAdapterClass(new Class<?>[]{Superclass.class, Interface.class});
+         * Object hostClass = env.createHostAdapter(new Object[]{
+         *      env.asHostSymbol(Superclass.class),
+         *      env.asHostSymbol(Interface.class)});
          * // generates a class along the lines of:
          *
          * public class Adapter extends Superclass implements Interface {
@@ -3074,17 +3133,17 @@ public abstract class TruffleLanguage<C> {
          *             this runtime at all, which is currently the case for native images.
          * @throws NullPointerException if {@code types} is null
          *
-         * @see #createHostAdapterClassWithStaticOverrides(Class[], Object)
-         * @since 20.3.0
+         * @see #createHostAdapterWithClassOverrides(Object[], Object)
+         * @since 22.1
          */
         @TruffleBoundary
-        public Object createHostAdapterClass(Class<?>[] types) {
+        public Object createHostAdapter(Object[] types) {
             Objects.requireNonNull(types, "types");
             return createHostAdapterClassImpl(types, null);
         }
 
         /**
-         * Like {@link #createHostAdapterClass(Class[])} but creates a Java host adapter class with
+         * Like {@link #createHostAdapter(Object[])} but creates a Java host adapter class with
          * class-level overrides, i.e., the guest object provided as {@code classOverrides} is
          * statically bound to the class rather than instances of the class. Returns a host class
          * that can be {@linkplain com.oracle.truffle.api.interop.InteropLibrary#instantiate
@@ -3095,7 +3154,7 @@ public abstract class TruffleLanguage<C> {
          * superclass of other host adapter classes. Note that classes created with method cannot be
          * cached. Therefore, this feature should be used sparingly.
          * <p>
-         * See {@link #createHostAdapterClass(Class[])} for more details.
+         * See {@link #createHostAdapter(Object[])} for more details.
          *
          * @param types the types to extend. Must be non-null and contain at least one extensible
          *            superclass or interface, and at most one superclass. All types must be public,
@@ -3116,11 +3175,11 @@ public abstract class TruffleLanguage<C> {
          *             this runtime at all, which is currently the case for native images.
          * @throws NullPointerException if either {@code types} or {@code classOverrides} is null.
          *
-         * @see #createHostAdapterClass(Class[])
-         * @since 20.3.0
+         * @see #createHostAdapter(Object[])
+         * @since 22.1
          */
         @TruffleBoundary
-        public Object createHostAdapterClassWithStaticOverrides(Class<?>[] types, Object classOverrides) {
+        public Object createHostAdapterWithClassOverrides(Object[] types, Object classOverrides) {
             Objects.requireNonNull(types, "types");
             Objects.requireNonNull(classOverrides, "classOverrides");
             return createHostAdapterClassImpl(types, classOverrides);
@@ -3280,7 +3339,17 @@ public abstract class TruffleLanguage<C> {
             }
         }
 
-        private Object createHostAdapterClassImpl(Class<?>[] types, Object classOverrides) {
+        private Object createHostAdapterClassLegacyImpl(Class<?>[] types, Object classOverrides) {
+            checkDisposed();
+            Object[] hostTypes = new Object[types.length];
+            for (int i = 0; i < types.length; i++) {
+                Class<?> type = types[i];
+                hostTypes[i] = asHostSymbol(type);
+            }
+            return createHostAdapterClassImpl(hostTypes, classOverrides);
+        }
+
+        private Object createHostAdapterClassImpl(Object[] types, Object classOverrides) {
             checkDisposed();
             try {
                 if (types.length == 0) {

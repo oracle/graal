@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.reflect.hosted;
 
-//Checkstyle: allow reflection
-
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Constructor;
@@ -51,7 +49,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.jdk.SealedClassSupport;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
@@ -67,11 +64,13 @@ import com.oracle.svm.core.hub.AnnotationTypeSupport;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.RecordSupport;
+import com.oracle.svm.core.jdk.SealedClassSupport;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.FeatureAccessImpl;
 import com.oracle.svm.hosted.annotation.AnnotationSubstitutionType;
 import com.oracle.svm.hosted.substitute.SubstitutionReflectivityFilter;
@@ -107,6 +106,8 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private final Map<Class<?>, Set<Member>> annotationMembers = new HashMap<>();
 
     private final ReflectionDataAccessors accessors;
+
+    private static Field dynamicHubReflectionDataField;
 
     public ReflectionDataBuilder(FeatureAccessImpl access) {
         arrayReflectionData = getArrayReflectionData();
@@ -196,6 +197,10 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         if (sealed) {
             throw UserError.abort("Too late to add classes, methods, and fields for reflective access. Registration must happen in a Feature before the analysis has finished.");
         }
+    }
+
+    protected void duringSetup(DuringSetupAccessImpl access) {
+        dynamicHubReflectionDataField = access.findField(DynamicHub.class, "rd");
     }
 
     protected void duringAnalysis(DuringAnalysisAccess a) {
@@ -560,6 +565,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
                             buildRecordComponents(clazz, access));
         }
         hub.setReflectionData(reflectionData);
+        access.rescanField(hub, dynamicHubReflectionDataField);
 
         if (type.isAnnotation()) {
             /*
@@ -618,9 +624,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         }
         String messages = errors.stream().map(e -> e.getClass().getTypeName() + ": " + e.getMessage())
                         .distinct().collect(Collectors.joining(", "));
-        // Checkstyle: stop
         System.out.println("Warning: Could not register complete reflection metadata for " + clazz.getTypeName() + ". Reason(s): " + messages);
-        // Checkstyle: resume
     }
 
     protected void afterAnalysis() {
@@ -628,6 +632,11 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         if (!modifiedClasses.isEmpty()) {
             throw UserError.abort("Registration of classes, methods, and fields for reflective access during analysis must set DuringAnalysisAccess.requireAnalysisIteration().");
         }
+    }
+
+    @Override
+    public boolean requiresProcessing() {
+        return !modifiedClasses.isEmpty();
     }
 
     private static Constructor<?> nullaryConstructor(Object constructors, Set<?> reflectionMethods, DuringAnalysisAccessImpl access) {

@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.annotate;
 
-// Checkstyle: allow reflection
-
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;

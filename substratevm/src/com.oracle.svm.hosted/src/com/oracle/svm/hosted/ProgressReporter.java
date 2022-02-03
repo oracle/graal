@@ -29,6 +29,7 @@ import java.io.PrintWriter;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
 import java.lang.management.OperatingSystemMXBean;
+import java.lang.reflect.Field;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -64,17 +65,20 @@ import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.annotate.AutomaticFeature;
+import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.reflect.MethodMetadataDecoder;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.CompileQueue.CompileTask;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
 import com.oracle.svm.util.ImageBuildStatistics;
+import com.oracle.svm.util.ReflectionUtil;
 
 public class ProgressReporter {
     private static final int CHARACTERS_PER_LINE;
     private static final int PROGRESS_BAR_START = 30;
     private static final boolean IS_CI = System.console() == null || System.getenv("CI") != null;
-
+    private static final boolean IS_DUMB_TERM = isDumbTerm();
     private static final int MAX_NUM_FEATURES = 50;
     private static final int MAX_NUM_BREAKDOWN = 10;
     private static final String CODE_BREAKDOWN_TITLE = String.format("Top %d packages in code area:", MAX_NUM_BREAKDOWN);
@@ -134,6 +138,11 @@ public class ProgressReporter {
         CHARACTERS_PER_LINE = IS_CI ? ProgressReporterCHelper.MAX_CHARACTERS_PER_LINE : ProgressReporterCHelper.getTerminalWindowColumnsClamped();
     }
 
+    private static boolean isDumbTerm() {
+        String term = System.getenv("TERM");
+        return (term == null || term.equals("") || term.equals("dumb") || term.equals("unknown"));
+    }
+
     public static ProgressReporter singleton() {
         return ImageSingletons.lookup(ProgressReporter.class);
     }
@@ -146,12 +155,12 @@ public class ProgressReporter {
             Timer.disablePrinting();
         }
         usePrefix = SubstrateOptions.BuildOutputPrefix.getValue(options);
-        boolean enableColors = !IS_CI && OS.getCurrent() != OS.WINDOWS;
+        boolean enableColors = !IS_DUMB_TERM && !IS_CI && OS.getCurrent() != OS.WINDOWS;
         if (SubstrateOptions.BuildOutputColorful.hasBeenSet(options)) {
             enableColors = SubstrateOptions.BuildOutputColorful.getValue(options);
         }
         boolean loggingDisabled = DebugOptions.Log.getValue(options) == null;
-        boolean enableProgress = !IS_CI && loggingDisabled;
+        boolean enableProgress = !IS_DUMB_TERM && !IS_CI && loggingDisabled;
         if (SubstrateOptions.BuildOutputProgress.hasBeenSet(options)) {
             enableProgress = SubstrateOptions.BuildOutputProgress.getValue(options);
         }
@@ -455,6 +464,16 @@ public class ProgressReporter {
         return classNameToCodeSize;
     }
 
+    private static final Field STRING_VALUE = ReflectionUtil.lookupField(String.class, "value");
+
+    private static int getInternalByteArrayLength(String string) {
+        try {
+            return ((byte[]) STRING_VALUE.get(string)).length;
+        } catch (ReflectiveOperationException ex) {
+            throw VMError.shouldNotReachHere(ex);
+        }
+    }
+
     private Map<String, Long> calculateHeapBreakdown(Collection<ObjectInfo> heapObjects) {
         Map<String, Long> classNameToSize = new HashMap<>();
         long stringByteLength = 0;
@@ -462,7 +481,7 @@ public class ProgressReporter {
             classNameToSize.merge(o.getClazz().toJavaName(true), o.getSize(), Long::sum);
             Object javaObject = o.getObject();
             if (javaObject instanceof String) {
-                stringByteLength += StringAccess.getInternalByteArrayLength((String) javaObject);
+                stringByteLength += getInternalByteArrayLength((String) javaObject);
             }
         }
 
@@ -471,6 +490,9 @@ public class ProgressReporter {
             long remainingBytes = byteArraySize;
             classNameToSize.put(BREAKDOWN_BYTE_ARRAY_PREFIX + "java.lang.String", stringByteLength);
             remainingBytes -= stringByteLength;
+            long codeInfoSize = CodeInfoTable.getImageCodeCache().getTotalByteArraySize();
+            classNameToSize.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linePrinter.asDocLink("code metadata", "#glossary-code-metadata"), codeInfoSize);
+            remainingBytes -= codeInfoSize;
             long metadataByteLength = ImageSingletons.lookup(MethodMetadataDecoder.class).getMetadataByteLength();
             if (metadataByteLength > 0) {
                 classNameToSize.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linePrinter.asDocLink("method metadata", "#glossary-method-metadata"), metadataByteLength);
@@ -497,7 +519,7 @@ public class ProgressReporter {
                 l().a(" ").link(p).dim().a(" (").a(artifactType.name().toLowerCase()).a(")").reset().flushln();
             }
         });
-        if (ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(parsedHostedOptions)) {
+        if (generator.getBigbang() != null && ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(parsedHostedOptions)) {
             l().a(" ").link(reportImageBuildStatistics(imageName, generator.getBigbang())).flushln();
         }
         l().a(" ").link(reportBuildArtifacts(imageName, generator.getBuildArtifacts())).flushln();

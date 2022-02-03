@@ -26,21 +26,14 @@
 package org.graalvm.compiler.hotspot.replacements.arraycopy;
 
 import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FREQUENT_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.LIKELY_PROBABILITY;
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
 import org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 import org.graalvm.compiler.hotspot.word.KlassPointer;
 import org.graalvm.compiler.nodes.PiNode;
-import org.graalvm.compiler.nodes.SnippetAnchorNode;
-import org.graalvm.compiler.nodes.extended.GuardedUnsafeLoadNode;
-import org.graalvm.compiler.nodes.extended.GuardingNode;
-import org.graalvm.compiler.nodes.extended.RawStoreNode;
-import org.graalvm.compiler.replacements.ReplacementsUtil;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopyCallNode;
 import org.graalvm.compiler.replacements.arraycopy.ArrayCopySnippets;
 import org.graalvm.compiler.word.Word;
@@ -87,28 +80,6 @@ public class HotSpotArraycopySnippets extends ArrayCopySnippets {
     @Override
     protected int heapWordSize() {
         return HotSpotReplacementsUtil.getHeapWordSize(INJECTED_VMCONFIG);
-    }
-
-    @Override
-    protected void doExactArraycopyWithExpandedLoopSnippet(Object src, int srcPos, Object dest, int destPos, int length, JavaKind elementKind, LocationIdentity arrayLocation, Counters counters) {
-        int scale = ReplacementsUtil.arrayIndexScale(INJECTED_META_ACCESS, elementKind);
-        int arrayBaseOffset = ReplacementsUtil.getArrayBaseOffset(INJECTED_META_ACCESS, elementKind);
-        long sourceOffset = arrayBaseOffset + (long) srcPos * scale;
-        long destOffset = arrayBaseOffset + (long) destPos * scale;
-
-        GuardingNode anchor = SnippetAnchorNode.anchor();
-        if (probability(NOT_FREQUENT_PROBABILITY, src == dest && srcPos < destPos)) {
-            // bad aliased case so we need to copy the array from back to front
-            for (int position = length - 1; probability(FAST_PATH_PROBABILITY, position >= 0); position--) {
-                Object value = GuardedUnsafeLoadNode.guardedLoad(src, sourceOffset + ((long) position) * scale, elementKind, arrayLocation, anchor);
-                RawStoreNode.storeObject(dest, destOffset + ((long) position) * scale, value, elementKind, arrayLocation, true);
-            }
-        } else {
-            for (int position = 0; probability(FAST_PATH_PROBABILITY, position < length); position++) {
-                Object value = GuardedUnsafeLoadNode.guardedLoad(src, sourceOffset + ((long) position) * scale, elementKind, arrayLocation, anchor);
-                RawStoreNode.storeObject(dest, destOffset + ((long) position) * scale, value, elementKind, arrayLocation, true);
-            }
-        }
     }
 
     @Override

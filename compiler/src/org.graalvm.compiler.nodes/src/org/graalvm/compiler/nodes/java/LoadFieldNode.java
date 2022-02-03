@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2009, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2009, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -27,6 +27,7 @@ package org.graalvm.compiler.nodes.java;
 import static org.graalvm.compiler.graph.iterators.NodePredicates.isNotA;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
 
+import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
@@ -73,20 +74,20 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
     private final Stamp uncheckedStamp;
 
     protected LoadFieldNode(StampPair stamp, ValueNode object, ResolvedJavaField field) {
-        this(stamp, object, field, field.isVolatile());
+        this(stamp, object, field, MemoryOrderMode.getMemoryOrder(field));
     }
 
-    protected LoadFieldNode(StampPair stamp, ValueNode object, ResolvedJavaField field, boolean volatileAccess) {
-        super(TYPE, stamp.getTrustedStamp(), object, field, volatileAccess);
+    protected LoadFieldNode(StampPair stamp, ValueNode object, ResolvedJavaField field, MemoryOrderMode memoryOrder) {
+        super(TYPE, stamp.getTrustedStamp(), object, field, memoryOrder);
         this.uncheckedStamp = stamp.getUncheckedStamp();
     }
 
     public static LoadFieldNode create(Assumptions assumptions, ValueNode object, ResolvedJavaField field) {
-        return create(assumptions, object, field, field.isVolatile());
+        return create(assumptions, object, field, MemoryOrderMode.getMemoryOrder(field));
     }
 
-    public static LoadFieldNode create(Assumptions assumptions, ValueNode object, ResolvedJavaField field, boolean volatileAccess) {
-        return new LoadFieldNode(StampFactory.forDeclaredType(assumptions, field.getType(), false), object, field, volatileAccess);
+    public static LoadFieldNode create(Assumptions assumptions, ValueNode object, ResolvedJavaField field, MemoryOrderMode memoryOrder) {
+        return new LoadFieldNode(StampFactory.forDeclaredType(assumptions, field.getType(), false), object, field, memoryOrder);
     }
 
     public static ValueNode create(ConstantFieldProvider constantFields, ConstantReflectionProvider constantReflection, MetaAccessProvider metaAccess,
@@ -112,7 +113,7 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forObject) {
         NodeView view = NodeView.from(tool);
-        if (tool.allUsagesAvailable() && hasNoUsages() && !isVolatile()) {
+        if (tool.allUsagesAvailable() && hasNoUsages() && !ordersMemoryAccesses()) {
             if (isStatic() || StampTool.isPointerNonNull(forObject.stamp(view))) {
                 return null;
             }
@@ -219,7 +220,7 @@ public final class LoadFieldNode extends AccessFieldNode implements Canonicaliza
 
     @Override
     public NodeCycles estimatedNodeCycles() {
-        if (isVolatile()) {
+        if (ordersMemoryAccesses()) {
             return CYCLES_2;
         }
         return super.estimatedNodeCycles();

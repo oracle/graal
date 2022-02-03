@@ -53,7 +53,6 @@ public class GCCause {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     protected GCCause(String name, int id) {
-        /* Checkstyle: allow synchronization. */
         this.id = id;
         this.name = name;
         addGCCauseMapping();
@@ -61,7 +60,7 @@ public class GCCause {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     private void addGCCauseMapping() {
-        synchronized (HostedGCCauseList) { /* Checkstyle: disallow synchronization. */
+        synchronized (HostedGCCauseList) {
             while (HostedGCCauseList.size() <= id) {
                 HostedGCCauseList.add(null);
             }

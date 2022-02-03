@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1573,8 +1573,8 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     public void fmov(int size, Register dst, double imm) {
         assert size == 32 || size == 64;
         if (imm == 0.0) {
-            assert Double.doubleToRawLongBits(imm) == 0L : "-0.0 is no valid immediate.";
-            fmovCpu2Fpu(size, dst, zr);
+            assert Double.doubleToRawLongBits(imm) == 0L : "-0.0 is not a valid immediate.";
+            neon.moviVI(ASIMDSize.HalfReg, dst, 0);
         } else {
             super.fmov(size, dst, imm);
         }
@@ -1693,7 +1693,8 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         COMPARE_REG_BRANCH_ZERO(0x3), // (CBZ)
         TEST_BIT_BRANCH_NONZERO(0x4), // (TBNZ)
         TEST_BIT_BRANCH_ZERO(0x5), // (TBZ)
-        ADR(0x6); // (ADR)
+        ADR(0x6), // (ADR)
+        JUMP_TABLE_TARGET_OFFSET(0x7); // (signed 32-bit integer value)
 
         /**
          * Offset by which additional information encoded within the instruction to be patched must
@@ -1851,10 +1852,6 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     @Override
     public void jmp(Label label) {
         // TODO Handle case where offset is too large for a single jump instruction
-        /*
-         * Note if this code is changed to potentially generate more than a single instruction, then
-         * the JumpTable code within AArch64ControlFlow must also be altered.
-         */
         if (label.isBound()) {
             super.b(getPCRelativeOffset(label));
         } else {
@@ -1877,6 +1874,21 @@ public class AArch64MacroAssembler extends AArch64Assembler {
      */
     public void jmp() {
         super.b();
+    }
+
+    /**
+     * Emits offset to store in JumpTable for given JumpTable start ({@code jumpTable}) and jump
+     * target ({@code entryTarget}).
+     */
+    public void emitJumpTableOffset(Label jumpTable, Label entryTarget) {
+        if (entryTarget.isBound()) {
+            int targetOffset = entryTarget.position() - jumpTable.position();
+            emitInt(targetOffset);
+        } else {
+            int offsetToJumpTableBase = position() - jumpTable.position();
+            entryTarget.addPatchAt(position(), this);
+            emitInt(PatchLabelKind.encode(PatchLabelKind.JUMP_TABLE_TARGET_OFFSET, offsetToJumpTableBase));
+        }
     }
 
     /**
@@ -2034,6 +2046,13 @@ public class AArch64MacroAssembler extends AArch64Assembler {
             case ADR: {
                 Register reg = AArch64.cpuRegisters.get(extraInformation);
                 super.adr(reg, pcRelativeOffset, patchPos);
+                break;
+            }
+            case JUMP_TABLE_TARGET_OFFSET: {
+                int offsetToJumpTableBase = extraInformation;
+                int jumpTableBase = patchPos - offsetToJumpTableBase;
+                int targetOffset = jumpTarget - jumpTableBase;
+                emitInt(targetOffset, patchPos);
                 break;
             }
             default:

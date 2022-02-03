@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2018, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -210,10 +210,10 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
         Value localX = x;
         Value localY = y;
         if (localX instanceof HotSpotObjectConstant) {
-            localX = load(localX);
+            localX = asAllocatable(localX);
         }
         if (localY instanceof HotSpotObjectConstant) {
-            localY = load(localY);
+            localY = asAllocatable(localY);
         }
         super.emitCompareBranch(cmpKind, localX, localY, cond, unorderedIsTrue, trueDestination, falseDestination, trueDestinationProbability);
     }
@@ -227,7 +227,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
             if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(c)) {
                 localA = AArch64.zr.asValue(LIRKind.value(AArch64Kind.DWORD));
             } else if (c instanceof HotSpotObjectConstant) {
-                localA = load(localA);
+                localA = asAllocatable(localA);
             }
         }
         if (isConstantValue(b)) {
@@ -235,7 +235,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
             if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(c)) {
                 localB = AArch64.zr.asValue(LIRKind.value(AArch64Kind.DWORD));
             } else if (c instanceof HotSpotObjectConstant) {
-                localB = load(localB);
+                localB = asAllocatable(localB);
             }
         }
         return super.emitCompare(cmpKind, localA, localB, condition, unorderedIsTrue);
@@ -423,7 +423,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
         int bitMemoryTransferSize = value.getValueKind().getPlatformKind().getSizeInBytes() * Byte.SIZE;
         RegisterValue thread = getProviders().getRegisters().getThreadRegister().asValue(wordKind);
         AArch64AddressValue address = AArch64AddressValue.makeAddress(wordKind, bitMemoryTransferSize, thread, offset);
-        append(new StoreOp((AArch64Kind) value.getPlatformKind(), address, loadReg(value), null));
+        append(new StoreOp((AArch64Kind) value.getPlatformKind(), address, asAllocatable(value), null));
     }
 
     @Override
@@ -461,8 +461,7 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
     }
 
     @Override
-    protected StrategySwitchOp createStrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, Variable key,
-                    Function<Condition, ConditionFlag> converter) {
+    protected StrategySwitchOp createStrategySwitchOp(SwitchStrategy strategy, LabelRef[] keyTargets, LabelRef defaultTarget, AllocatableValue key, Function<Condition, ConditionFlag> converter) {
         return new AArch64HotSpotStrategySwitchOp(strategy, keyTargets, defaultTarget, key, converter);
     }
 

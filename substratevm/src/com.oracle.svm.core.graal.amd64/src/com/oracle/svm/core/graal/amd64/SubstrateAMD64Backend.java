@@ -100,6 +100,7 @@ import org.graalvm.compiler.nodes.IndirectCallTargetNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.SafepointNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -139,6 +140,7 @@ import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.heap.SubstrateReferenceMapBuilder;
 import com.oracle.svm.core.meta.CompressedNullConstant;
 import com.oracle.svm.core.meta.SharedMethod;
+import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
@@ -616,6 +618,35 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         }
 
         @Override
+        protected void prologSetParameterNodes(StructuredGraph graph, Value[] params) {
+            SubstrateCallingConvention convention = (SubstrateCallingConvention) gen.getResult().getCallingConvention();
+            for (ParameterNode param : graph.getNodes(ParameterNode.TYPE)) {
+                Value inputValue = params[param.index()];
+                Value paramValue = gen.emitMove(inputValue);
+
+                /*
+                 * In the native ABI, some parameters are not extended to the equivalent Java stack
+                 * kinds.
+                 */
+                if (inputValue.getPlatformKind().getSizeInBytes() < Integer.BYTES) {
+                    SubstrateCallingConventionType type = (SubstrateCallingConventionType) convention.getType();
+                    assert !type.outgoing && type.nativeABI();
+                    JavaKind kind = convention.getArgumentStorageKinds()[param.index()];
+                    JavaKind stackKind = kind.getStackKind();
+                    if (kind.isUnsigned()) {
+                        paramValue = gen.getArithmetic().emitZeroExtend(paramValue, kind.getBitCount(), stackKind.getBitCount());
+                    } else {
+                        paramValue = gen.getArithmetic().emitSignExtend(paramValue, kind.getBitCount(), stackKind.getBitCount());
+                    }
+                }
+
+                assert paramValue.getValueKind().equals(gen.getLIRKind(param.stamp(NodeView.DEFAULT)));
+
+                setResult(param, paramValue);
+            }
+        }
+
+        @Override
         public Value[] visitInvokeArguments(CallingConvention invokeCc, Collection<ValueNode> arguments) {
             Value[] values = super.visitInvokeArguments(invokeCc, arguments);
 
@@ -920,6 +951,8 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                 return super.createLoad(dst, getZeroConstant(dst));
             } else if (src instanceof SubstrateObjectConstant) {
                 return loadObjectConstant(dst, (SubstrateObjectConstant) src);
+            } else if (src instanceof SubstrateMethodPointerConstant) {
+                return new AMD64LoadMethodPointerConstantOp(dst, (SubstrateMethodPointerConstant) src);
             }
             return super.createLoad(dst, src);
         }
@@ -930,6 +963,8 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                 return super.createStackLoad(dst, getZeroConstant(dst));
             } else if (src instanceof SubstrateObjectConstant) {
                 return loadObjectConstant(dst, (SubstrateObjectConstant) src);
+            } else if (src instanceof SubstrateMethodPointerConstant) {
+                return new AMD64LoadMethodPointerConstantOp(dst, (SubstrateMethodPointerConstant) src);
             }
             return super.createStackLoad(dst, src);
         }
@@ -980,7 +1015,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
                 Register resultReg = getResultRegister();
                 int referenceSize = ConfigurationValues.getObjectLayout().getReferenceSize();
                 Constant inputConstant = asConstantValue(getInput()).getConstant();
-                if (masm.target.inlineObjects) {
+                if (masm.inlineObjects()) {
                     crb.recordInlineDataInCode(inputConstant);
                     if (referenceSize == 4) {
                         masm.movl(resultReg, 0xDEADDEAD, true);

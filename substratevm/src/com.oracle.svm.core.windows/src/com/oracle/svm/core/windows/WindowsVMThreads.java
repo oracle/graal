@@ -86,8 +86,9 @@ public final class WindowsVMThreads extends VMThreads {
         Process.NoTransitions.SwitchToThread();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Override
-    public boolean supportsPatientSafepoints() {
+    public boolean supportsNativeYieldAndSleep() {
         return true;
     }
 

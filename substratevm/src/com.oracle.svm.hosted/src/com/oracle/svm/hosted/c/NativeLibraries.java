@@ -50,7 +50,6 @@ import java.util.stream.Stream;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.hotspot.JVMCIVersionCheck;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
@@ -291,20 +290,18 @@ public final class NativeLibraries {
 
     private static Path getPlatformDependentJDKStaticLibraryPath() throws IOException {
         Path baseSearchPath = Paths.get(System.getProperty("java.home")).resolve("lib").toRealPath();
-        if (JavaVersionUtil.JAVA_SPEC > 8) {
-            Path staticLibPath = baseSearchPath.resolve("static");
-            Platform platform = ImageSingletons.lookup(Platform.class);
-            Path platformDependentPath = staticLibPath.resolve((platform.getOS() + "-" + platform.getArchitecture()).toLowerCase());
-            if (LibCBase.isPlatformEquivalent(Platform.LINUX.class)) {
-                platformDependentPath = platformDependentPath.resolve(LibCBase.singleton().getName());
-                if (LibCBase.singleton().requiresLibCSpecificStaticJDKLibraries()) {
-                    return platformDependentPath;
-                }
-            }
-
-            if (Files.exists(platformDependentPath)) {
+        Path staticLibPath = baseSearchPath.resolve("static");
+        Platform platform = ImageSingletons.lookup(Platform.class);
+        Path platformDependentPath = staticLibPath.resolve((platform.getOS() + "-" + platform.getArchitecture()).toLowerCase());
+        if (LibCBase.isPlatformEquivalent(Platform.LINUX.class)) {
+            platformDependentPath = platformDependentPath.resolve(LibCBase.singleton().getName());
+            if (LibCBase.singleton().requiresLibCSpecificStaticJDKLibraries()) {
                 return platformDependentPath;
             }
+        }
+
+        if (Files.exists(platformDependentPath)) {
+            return platformDependentPath;
         }
         return baseSearchPath;
     }
@@ -346,9 +343,9 @@ public final class NativeLibraries {
                 if (Platform.includedIn(Platform.LINUX.class)) {
                     libCMessage = " (target libc: " + LibCBase.singleton().getName() + ")";
                 }
-                String jdkDownloadURL = (JavaVersionUtil.JAVA_SPEC > 8 ? JVMCIVersionCheck.JVMCI11_RELEASES_URL : JVMCIVersionCheck.JVMCI8_RELEASES_URL);
+                String jdkDownloadURL = JVMCIVersionCheck.OPEN_LABSJDK_RELEASE_URL_PATTERN;
                 UserError.guarantee(!Platform.includedIn(InternalPlatform.PLATFORM_JNI.class),
-                                "Building images for %s%s requires static JDK libraries.%nUse the JDK from %s%n%s",
+                                "Building images for %s%s requires static JDK libraries.%nUse most recent JDK from %s%n%s",
                                 ImageSingletons.lookup(Platform.class).getClass().getName(),
                                 libCMessage,
                                 jdkDownloadURL,

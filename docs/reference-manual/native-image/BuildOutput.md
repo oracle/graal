@@ -7,9 +7,9 @@ permalink: /reference-manual/native-image/BuildOutput/
 # Native Image Build Output
 
 This page provides documentation for the build output of GraalVM Native Image.
+Below is the example output when building a native image of the `HelloWorld` class:
 
-## HelloWorld Example Output
-```text
+```shell
 ================================================================================
 GraalVM Native Image: Generating 'helloworld'...
 ================================================================================
@@ -33,17 +33,17 @@ GraalVM Native Image: Generating 'helloworld'...
   13.57MB in total
 --------------------------------------------------------------------------------
 Top 10 packages in code area:           Top 10 object types in image heap:
- 606.23KB java.util                        1.64MB byte[] for general heap data
- 282.34KB java.lang                      715.56KB java.lang.String
- 222.47KB java.util.regex                549.46KB java.lang.Class
- 219.55KB java.text                      451.79KB byte[] for java.lang.String
- 193.17KB com.oracle.svm.jni             363.23KB java.util.HashMap$Node
- 149.80KB java.util.concurrent           192.00KB java.util.HashMap$Node[]
- 118.07KB java.math                      139.83KB java.lang.String[]
- 103.60KB com.oracle.svm.core.reflect    139.04KB char[]
-  97.83KB sun.text.normalizer            130.59KB j.u.c.ConcurrentHashMap$Node
-  88.78KB c.oracle.svm.core.genscavenge  103.92KB s.u.l.LocaleObjec~e$CacheEntry
-      ... 111 additional packages             ... 723 additional object types
+ 607.28KB java.util                      862.66KB byte[] for general heap data
+ 288.63KB java.lang                      834.02KB byte[] for code metadata
+ 223.34KB java.util.regex                723.00KB java.lang.String
+ 220.45KB java.text                      534.05KB java.lang.Class
+ 194.21KB com.oracle.svm.jni             457.63KB byte[] for java.lang.String
+ 153.69KB java.util.concurrent           363.75KB java.util.HashMap$Node
+ 118.78KB java.math                      192.70KB java.util.HashMap$Node[]
+  99.00KB com.oracle.svm.core.reflect    140.03KB java.lang.String[]
+  98.21KB sun.text.normalizer            139.04KB char[]
+  89.95KB c.oracle.svm.core.genscavenge  132.78KB c.o.s.c.h.DynamicHubCompanion
+      ... 112 additional packages             ... 734 additional object types
                        (use GraalVM Dashboard to see all)
 --------------------------------------------------------------------------------
     0.9s (5.6% of total time) in 17 GCs | Peak RSS: 3.22GB | CPU load: 10.87
@@ -114,27 +114,34 @@ Debug info is also generated as part of this stage (if requested).
 
 #### <a name="glossary-code-area"></a>Code Area
 The code area contains machine code produced by the Graal compiler for all reachable methods.
-Therefore, reducing the number of reachable methods also reduces the size of the code area.
+Therefore, reducing the number of [reachable methods](#glossary-reachability) also reduces the size of the code area.
 
 #### <a name="glossary-image-heap"></a>Image Heap
 The image heap contains reachable objects such as static data, classes initialized at run-time, and `byte[]` for different purposes.
 
 ##### <a name="glossary-general-heap-data"></a>General Heap Data Stored in `byte[]`
-The total size of all `byte[]` objects that are neither used for `java.lang.String`, nor [graph encodings](#glossary-graph-encodings), nor [method metadata](#glossary-method-metadata).
-This typically dominates
+The total size of all `byte[]` objects that are neither used for `java.lang.String`, nor [code metadata](#glossary-code-metadata), nor [method metadata](#glossary-method-metadata), nor [graph encodings](#glossary-graph-encodings).
+Therefore, this can also include `byte[]` objects from application code.
+
+##### <a name="glossary-code-metadata"></a>Code Metadata Stored in `byte[]`
+The total size of all `byte[]` objects used for metadata for the [code area](#glossary-code-area).
+Therefore, reducing the number of [reachable methods](#glossary-reachability) also reduces the size of this metadata.
+
+##### <a name="glossary-method-metadata"></a>Method Metadata Stored in `byte[]`
+The total size of all `byte[]` objects used for method metadata, a type of reflection metadata.
+To reduce the amount of method metadata, reduce the number of [classes registered for reflection](#glossary-reflection-classes).
 
 ##### <a name="glossary-graph-encodings"></a>Graph Encodings Stored in `byte[]`
 The total size of all `byte[]` objects used for graph encodings.
 These encodings are a result of [runtime compiled methods](#glossary-runtime-methods).
 Therefore, reducing the number of such methods also reduces the size of corresponding graph encodings.
 
-##### <a name="glossary-method-metadata"></a>Method Metadata Stored in `byte[]`
-The total size of all `byte[]` objects used for method metadata, a type of reflection metadata.
-To reduce the amount of method metadata, reduce the number of [classes registered for reflection](#glossary-reflection-classes).
+#### <a name="glossary-debug-info"></a>Debug Info
+The total size of generated debug information (if enabled).
 
 #### <a name="glossary-other-data"></a>Other Data
-The amount of data in the image that is neither in the [code area](#glossary-code-area) nor in the [image heap](#glossary-image-heap).
-This data typically contains internal information for Native Image but it can also contain other information such as debug info.
+The amount of data in the image that is neither in the [code area](#glossary-code-area), nor in the [image heap](#glossary-image-heap), nor [debug info](#glossary-debug-info).
+This data typically contains internal information for Native Image and should not be dominating.
 
 ### Resource Usage Statistics
 

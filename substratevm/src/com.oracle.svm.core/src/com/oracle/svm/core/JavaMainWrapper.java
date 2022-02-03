@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core;
 
-//Checkstyle: allow reflection
-
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Method;

@@ -13,7 +13,7 @@ Follow these steps:
 1. Navigate to the [GraalVM Releases repository on GitHub](https://github.com/graalvm/graalvm-ce-builds/releases). Select Java 11 based or Java 17 based distribution for Windows, and download.
 2. Change the directory to the location where you want to install GraalVM, then move the _.zip_ archive file to it.
 3. Unzip the archive to your file system.
-4. There can be multiple JDKs installed on the machine. The next step is to configure the runtime environment. Setting environment variables via the command line will work the same way for Windows 7, 8 and 10.
+4. There can be multiple JDKs installed on the machine. The next step is to configure the runtime environment. Setting environment variables via the command line will work the same way for Windows 7, 8, and 10.
   - Point the `PATH` environment variable to the GraalVM `bin` directory:
   ```shell
   setx /M PATH "C:\Progra~1\Java\<graalvm>\bin;%PATH%"
@@ -46,12 +46,12 @@ For Oracle GraalVM Enterprise Edition users, find the installation instructions 
 
 ## Installation Note
 
-To run GraalVM Community Edition based on OpenJDK 8u292 on a Windows platform, the **MSVCR100.dll** redistributable package needs to be installed (for more details, see the issue [#3187](https://github.com/oracle/graal/issues/3187#issuecomment-784234990)).
+To run GraalVM Community Edition based on OpenJDK 8u292 on a Windows platform, the **MSVCR100.dll** redistributable package needs to be installed (for more details, see issue [#3187](https://github.com/oracle/graal/issues/3187#issuecomment-784234990)).
 
 ## Supported Functionalities
 
 The GraalVM Community distribution for Windows platforms includes OpenJDK with the GraalVM compiler enabled, the [GraalVM Updater](../../reference-manual/graalvm-updater.md) tool to install additional functionalities, the JavaScript runtime, and the developer tools (e.g., Chrome inspector based debugger, Profiler, etc.).
-Currently, the GraalVM environment on Windows can be extended with [Native Image](../../reference-manual/native-image/README.md), [Java on Trufle](../../reference-manual/java-on-truffle/README.md), WebAssembly, and Node.js support.
+Currently, the GraalVM environment on Windows can be extended with [Native Image](../../reference-manual/native-image/README.md), [Java on Truffle](../../reference-manual/java-on-truffle/README.md), WebAssembly, and Node.js support.
 
 ## Prerequisites for Using Native Image on Windows
 On Windows, Native Image requires Visual Studio Code and Microsoft Visual C++(MSVC).
@@ -61,6 +61,6 @@ There are two installation options:
 - Install Visual Studio Code with the Windows 10 SDK
 
 The last prerequisite is the proper [Developer Command Prompt](https://docs.microsoft.com/en-us/cpp/build/building-on-the-command-line?view=vs-2019#developer_command_prompt_shortcuts) for your version of [Visual Studio](https://visualstudio.microsoft.com/vs/).
-On Windows the `native-image` tool only works when it is executed from the **x64 Native Tools Command Prompt**.
+On Windows, the `native-image` tool only works when it is executed from the **x64 Native Tools Command Prompt**.
 
-Step by step instructions on installing Visual Studio Build Tools and Windows 10 SDK, and starting using Native Image can be found [here](https://medium.com/graalvm/using-graalvm-and-native-image-on-windows-10-9954dc071311).
+Step-by-step instructions on installing Visual Studio Build Tools and Windows 10 SDK, and starting using Native Image can be found [here](https://medium.com/graalvm/using-graalvm-and-native-image-on-windows-10-9954dc071311).

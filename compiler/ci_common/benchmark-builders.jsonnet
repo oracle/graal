@@ -28,11 +28,11 @@
     c.daily      + hw.x52 + jdk + cc.libgraal + bench.specjbb2015,
     c.weekly     + hw.x52 + jdk + cc.jargraal + bench.specjbb2015,
     c.weekly     + hw.x52 + jdk + cc.libgraal + bench.specjbb2015_full_machine,
-    c.on_demand  + hw.x52 + jdk + cc.jargraal + bench.specjbb2015_full_machine,
+    c.monthly    + hw.x52 + jdk + cc.jargraal + bench.specjbb2015_full_machine,
     c.weekly     + hw.x52 + jdk + cc.libgraal + bench.renaissance_0_10,
-    c.on_demand  + hw.x52 + jdk + cc.jargraal + bench.renaissance_0_10,
-    c.weekly     + hw.x52 + jdk + cc.libgraal + bench.renaissance_0_13,
-    c.on_demand  + hw.x52 + jdk + cc.jargraal + bench.renaissance_0_13,
+    c.monthly    + hw.x52 + jdk + cc.jargraal + bench.renaissance_0_10,
+    c.daily      + hw.x52 + jdk + cc.libgraal + bench.renaissance_0_13,
+    c.weekly     + hw.x52 + jdk + cc.jargraal + bench.renaissance_0_13,
     c.daily      + hw.x52 + jdk + cc.libgraal + bench.awfy,
     c.daily      + hw.x52 + jdk + cc.jargraal + bench.awfy,
     c.daily      + hw.x52 + jdk + cc.libgraal + bench.microservice_benchmarks,
@@ -78,7 +78,14 @@
   for suite in bench.groups.all_suites
   ]),
 
-  local all_builds = main_builds + weekly_forks_builds + profiling_builds + aarch64_builds,
+  local avx_builds = [
+    c.monthly + hw.x82 + jdk + cc.libgraal + avx + suite,
+  for avx in [cc.avx2_mode, cc.avx3_mode]
+  for jdk in cc.bench_jdks
+  for suite in bench.groups.main_suites
+  ],
+
+  local all_builds = main_builds + weekly_forks_builds + profiling_builds + avx_builds + aarch64_builds,
   local filtered_builds = [b for b in all_builds if b.is_jdk_supported(b.jdk_version)],
   // adds a "defined_in" field to all builds mentioning the location of this current file
   builds:: [{ defined_in: std.thisFile } + b for b in filtered_builds]

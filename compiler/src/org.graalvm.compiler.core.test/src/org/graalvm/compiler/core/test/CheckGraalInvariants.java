@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -94,7 +94,6 @@ import org.graalvm.compiler.phases.contract.VerifyNodeCosts;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.runtime.RuntimeProvider;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.word.LocationIdentity;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -155,14 +154,10 @@ public class CheckGraalInvariants extends GraalCompilerTest {
 
         protected String getClassPath() {
             String classpath;
-            if (JavaVersionUtil.JAVA_SPEC <= 8) {
-                classpath = System.getProperty("sun.boot.class.path");
-            } else {
-                classpath = JRT_CLASS_PATH_ENTRY;
-                String upgradeModulePath = System.getProperty("jdk.module.upgrade.path");
-                if (upgradeModulePath != null) {
-                    classpath += File.pathSeparator + upgradeModulePath;
-                }
+            classpath = JRT_CLASS_PATH_ENTRY;
+            String upgradeModulePath = System.getProperty("jdk.module.upgrade.path");
+            if (upgradeModulePath != null) {
+                classpath += File.pathSeparator + upgradeModulePath;
             }
 
             // Also process classes that go into the libgraal native image.
@@ -181,8 +176,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
             if (className.equals("module-info") || className.startsWith("META-INF.versions.")) {
                 return false;
             }
-            if (JavaVersionUtil.JAVA_SPEC > 8) {
-                // @formatter:off
+            // @formatter:off
                 /*
                  * Work around to prevent:
                  *
@@ -197,14 +191,10 @@ public class CheckGraalInvariants extends GraalCompilerTest {
                  * which occurs because JDK8 overlays are in modular jars. They are never used normally.
                  */
                 // @formatter:on
-                if (className.equals("org.graalvm.compiler.serviceprovider.GraalServices$Lazy")) {
-                    return false;
-                }
-            } else {
-                if (className.equals("jdk.vm.ci.services.JVMCIClassLoaderFactory")) {
-                    return false;
-                }
+            if (className.equals("org.graalvm.compiler.serviceprovider.GraalServices$Lazy")) {
+                return false;
             }
+
             return true;
         }
 
@@ -362,7 +352,6 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         verifiers.add(new VerifySystemPropertyUsage());
         verifiers.add(new VerifyInstanceOfUsage());
         verifiers.add(new VerifyGraphAddUsage());
-        verifiers.add(new VerifyBufferUsage());
         verifiers.add(new VerifyGetOptionsUsage());
         verifiers.add(new VerifyUnsafeAccess());
         verifiers.add(new VerifyVariableCasts());

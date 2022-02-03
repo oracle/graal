@@ -364,7 +364,7 @@ public final class InterpreterToVM implements ContextAccess {
     public void setArrayObject(StaticObject value, int index, StaticObject wrapper, BytecodeNode bytecodeNode) {
         if (StaticObject.isNull(value) || instanceOf(value, ((ArrayKlass) wrapper.getKlass()).getComponentType())) {
             try {
-                (wrapper.<Object[]> unwrap())[index] = value;
+                (wrapper.<StaticObject[]> unwrap())[index] = value;
             } catch (ArrayIndexOutOfBoundsException e) {
                 throwArrayIndexOutOfBoundsException(getMeta(), bytecodeNode);
             }

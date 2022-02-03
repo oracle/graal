@@ -122,13 +122,11 @@ public class NativeImageResourcePath implements Path {
                 }
             }
 
-            // Checkstyle: stop
             synchronized (this) {
                 if (offsets == null) {
                     offsets = result;
                 }
             }
-            // Checkstyle: resume
         }
     }
 
@@ -433,7 +431,7 @@ public class NativeImageResourcePath implements Path {
 
     @Override
     public Iterator<Path> iterator() {
-        return new Iterator<Path>() {
+        return new Iterator<>() {
             private int i = 0;
 
             @Override

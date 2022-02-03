@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2011, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -77,7 +77,13 @@ public interface LoweringProvider {
     boolean supportsImplicitNullChecks();
 
     /**
+     * Indicates whether all writes are ordered on this target platform.
+     */
+    boolean writesStronglyOrdered();
+
+    /**
      * Returns the target being lowered.
      */
     TargetDescription getTarget();
+
 }

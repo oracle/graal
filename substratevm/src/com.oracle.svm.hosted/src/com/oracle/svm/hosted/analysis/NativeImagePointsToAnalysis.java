@@ -29,25 +29,22 @@ import java.util.concurrent.ForkJoinPool;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.options.OptionValues;
 
-import com.oracle.graal.pointsto.ObjectScanner;
-import com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodTypeFlowBuilder;
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.hosted.HostedConfiguration;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inflation {
@@ -59,11 +56,11 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
 
     public NativeImagePointsToAnalysis(OptionValues options, AnalysisUniverse universe, HostedProviders providers, AnnotationSubstitutionProcessor annotationSubstitutionProcessor,
                     ForkJoinPool executor, Runnable heartbeatCallback, UnsupportedFeatures unsupportedFeatures) {
-        super(options, universe, providers, universe.hostVM(), executor, heartbeatCallback, new SubstrateUnsupportedFeatures(), SubstrateOptions.parseOnce());
+        super(options, universe, providers, universe.hostVM(), executor, heartbeatCallback, unsupportedFeatures, SubstrateOptions.parseOnce());
         this.annotationSubstitutionProcessor = annotationSubstitutionProcessor;
 
-        dynamicHubInitializer = new DynamicHubInitializer(universe, metaAccess, unsupportedFeatures, providers.getConstantReflection());
-        unknownFieldHandler = new PointsToUnknownFieldHandler(metaAccess);
+        dynamicHubInitializer = new DynamicHubInitializer(metaAccess, unsupportedFeatures, providers.getConstantReflection());
+        unknownFieldHandler = new PointsToUnknownFieldHandler(this, metaAccess);
         callChecker = new CallChecker();
     }
 
@@ -75,15 +72,6 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
     @Override
     public MethodTypeFlowBuilder createMethodTypeFlowBuilder(PointsToAnalysis bb, MethodTypeFlow methodFlow) {
         return HostedConfiguration.instance().createMethodTypeFlowBuilder(bb, methodFlow);
-    }
-
-    @Override
-    protected void checkObjectGraph(ObjectScanner objectScanner) {
-        universe.getFields().forEach(field -> unknownFieldHandler.handleUnknownValueField(this, field));
-        universe.getTypes().stream().filter(AnalysisType::isReachable).forEach(dynamicHubInitializer::initializeMetaData);
-
-        /* Scan hubs of all types that end up in the native image. */
-        universe.getTypes().stream().filter(AnalysisType::isReachable).forEach(type -> scanHub(objectScanner, type));
     }
 
     @Override
@@ -108,10 +96,18 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
         return annotationSubstitutionProcessor;
     }
 
-    private void scanHub(ObjectScanner objectScanner, AnalysisType type) {
-        SVMHost svmHost = (SVMHost) hostVM;
-        JavaConstant hubConstant = SubstrateObjectConstant.forObject(svmHost.dynamicHub(type));
-        objectScanner.scanConstant(hubConstant, ScanReason.HUB);
+    @Override
+    public void onFieldAccessed(AnalysisField field) {
+        unknownFieldHandler.handleUnknownValueField(field);
+    }
+
+    @Override
+    public void onTypeInitialized(AnalysisType type) {
+        postTask(debug -> initializeMetaData(type));
+    }
+
+    public void initializeMetaData(AnalysisType type) {
+        dynamicHubInitializer.initializeMetaData(universe.getHeapScanner(), type);
     }
 
     public static ResolvedJavaType toWrappedType(ResolvedJavaType type) {

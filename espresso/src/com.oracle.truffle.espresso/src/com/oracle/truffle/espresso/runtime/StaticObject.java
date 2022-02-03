@@ -148,6 +148,7 @@ public class StaticObject implements TruffleObject, Cloneable {
         assert array != null;
         assert !(array instanceof StaticObject);
         assert array.getClass().isArray();
+        assert klass.getComponentType().isPrimitive() || array instanceof StaticObject[];
         StaticObject newObj = klass.getEspressoLanguage().getArrayShape().getFactory().create(klass);
         EspressoLanguage.getArrayProperty().setObject(newObj, array);
         return trackAllocation(klass, newObj);
@@ -182,7 +183,9 @@ public class StaticObject implements TruffleObject, Cloneable {
         assert foreignObject != null;
         StaticObject newObj = lang.getForeignShape().getFactory().create(klass, true);
         EspressoLanguage.getForeignProperty().setObject(newObj, foreignObject);
-        assert klass == null || klass.isInitializedOrInitializing();
+        if (klass != null) {
+            klass.safeInitialize();
+        }
         return trackAllocation(klass, newObj);
     }
 
@@ -392,13 +395,9 @@ public class StaticObject implements TruffleObject, Cloneable {
         }
         StringBuilder str = new StringBuilder(getKlass().getType().toString());
         for (Field f : ((ObjectKlass) getKlass()).getFieldTable()) {
-            // Also prints hidden fields except for the extension field
-            if (!f.isHidden() && !f.isRemoved()) {
+            // Also prints hidden fields
+            if (!f.isRemoved()) {
                 str.append("\n    ").append(f.getName()).append(": ").append(f.get(this).toString());
-            } else {
-                if (f != getKlass().getMeta().HIDDEN_OBJECT_EXTENSION_FIELD) {
-                    str.append("\n    ").append(f.getName()).append(": ").append((f.getHiddenObject(this)).toString());
-                }
             }
         }
         return str.toString();

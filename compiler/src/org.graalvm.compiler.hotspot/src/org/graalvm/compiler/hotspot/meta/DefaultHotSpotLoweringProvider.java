@@ -180,7 +180,6 @@ import org.graalvm.compiler.replacements.nodes.AssertionNode;
 import org.graalvm.compiler.replacements.nodes.CStringConstant;
 import org.graalvm.compiler.replacements.nodes.LogNode;
 import org.graalvm.compiler.serviceprovider.GraalServices;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.code.TargetDescription;
@@ -308,9 +307,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         objectCloneSnippets = new ObjectCloneSnippets.Templates(options, providers);
         foreignCallSnippets = new ForeignCallSnippets.Templates(options, providers);
         registerFinalizerSnippets = new RegisterFinalizerSnippets.Templates(options, providers);
-        if (JavaVersionUtil.JAVA_SPEC >= 11) {
-            objectSnippets = new ObjectSnippets.Templates(options, providers);
-        }
+        objectSnippets = new ObjectSnippets.Templates(options, providers);
         unsafeSnippets = new UnsafeSnippets.Templates(options, providers);
 
         initializeExtensions(options, factories, providers, config);
@@ -494,9 +491,6 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         } else if (n instanceof KlassBeingInitializedCheckNode) {
             getAllocationSnippets().lower((KlassBeingInitializedCheckNode) n, tool);
         } else if (n instanceof FastNotifyNode) {
-            if (JavaVersionUtil.JAVA_SPEC < 11) {
-                throw GraalError.shouldNotReachHere("FastNotify is not support prior to 11");
-            }
             if (graph.getGuardsStage() == GuardsStage.AFTER_FSA) {
                 objectSnippets.lower(n, tool);
             }

@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.classinitialization;
 
-// Checkstyle: stop
-
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -42,7 +40,6 @@ import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.util.VMError;
 
 import sun.misc.Unsafe;
-// Checkstyle: resume
 
 /**
  * Information about the runtime class initialization state of a {@link DynamicHub class}, and

@@ -50,6 +50,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.library.Message;
 import com.oracle.truffle.api.library.ReflectionLibrary;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.test.wrapper.HostEntryPoint.GuestExceptionPointer;
 import com.oracle.truffle.api.test.wrapper.HostEntryPoint.HostValuePointer;
 import com.oracle.truffle.api.utilities.TriState;
@@ -101,7 +102,8 @@ class HostGuestValue implements TruffleObject {
     }
 
     static boolean isGuestPrimitive(Object result) {
-        return result instanceof String || result instanceof Boolean || result instanceof Integer || result instanceof TriState || result instanceof ExceptionType || result instanceof SourceSection;
+        return result instanceof String || result instanceof TruffleString || result instanceof Boolean || result instanceof Integer || result instanceof TriState || result instanceof ExceptionType ||
+                        result instanceof SourceSection;
     }
 
     static Object[] marshalToRemote(HostEntryPoint hostToGuest, Object[] args) {

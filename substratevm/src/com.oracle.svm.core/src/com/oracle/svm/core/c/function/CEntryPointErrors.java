@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.c.function;
 
-// Checkstyle: stop
-
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -36,8 +34,6 @@ import java.util.Arrays;
 import org.graalvm.util.DirectAnnotationAccess;
 
 import com.oracle.svm.core.util.VMError;
-
-// Checkstyle: resume
 
 /**
  * Errors returned by {@link CEntryPointActions} and {@link CEntryPointNativeFunctions} and their

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -39,5 +39,13 @@ public class StringSubstitutions {
     /**
      * Will be intrinsified with an {@link InvocationPlugin} to a {@link LoadFieldNode}.
      */
-    public static native char[] getValue(String s);
+    public static native byte[] getValue(String s);
+
+    public static native byte getByte(byte[] value, int i);
+
+    public static native int getCoder(String s);
+
+    public static boolean isCompactString(String s) {
+        return getCoder(s) == 0;
+    }
 }

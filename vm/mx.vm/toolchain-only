@@ -1,5 +1,5 @@
 DYNAMIC_IMPORTS=/compiler,/sdk,/substratevm,/sulong,/truffle
-COMPONENTS=cmp,llp,llrc,llrn,nfi,sdk,svm,svmnfi,tfl,tflm
+COMPONENTS=cmp,llp,llrc,llrn,nfi-libffi,sdk,svm,svmnfi,tfl,tflm
 EXCLUDE_COMPONENTS=libpoly
 NATIVE_IMAGES=graalvm-native-binutil,graalvm-native-clang,graalvm-native-clang++,graalvm-native-ld
 DISABLE_INSTALLABLES=False

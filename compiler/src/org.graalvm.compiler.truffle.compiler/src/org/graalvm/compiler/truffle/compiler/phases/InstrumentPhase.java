@@ -158,7 +158,7 @@ public abstract class InstrumentPhase extends BasePhase<CoreProviders> {
     }
 
     public static class Instrumentation {
-        private Comparator<Point> pointsComparator = new Comparator<Point>() {
+        private Comparator<Point> pointsComparator = new Comparator<>() {
             @Override
             public int compare(Point x, Point y) {
                 long diff = y.getHotness() - x.getHotness();
@@ -171,7 +171,7 @@ public abstract class InstrumentPhase extends BasePhase<CoreProviders> {
                 }
             }
         };
-        private Comparator<Map.Entry<String, Point>> entriesComparator = new Comparator<Map.Entry<String, Point>>() {
+        private Comparator<Map.Entry<String, Point>> entriesComparator = new Comparator<>() {
             @Override
             public int compare(Map.Entry<String, Point> x, Map.Entry<String, Point> y) {
                 long diff = y.getValue().getHotness() - x.getValue().getHotness();

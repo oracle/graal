@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -37,7 +37,7 @@ import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
@@ -124,14 +124,14 @@ final class StaticFieldsFeature implements GraalFeature {
     @Override
     public void registerInvocationPlugins(Providers providers, SnippetReflectionProvider snippetReflection, Plugins plugins, ParsingReason reason) {
         Registration r = new Registration(plugins.getInvocationPlugins(), StaticFieldsSupport.class);
-        r.register0("getStaticObjectFields", new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("getStaticObjectFields") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused) {
                 b.addPush(JavaKind.Object, new StaticFieldBaseNode(false));
                 return true;
             }
         });
-        r.register0("getStaticPrimitiveFields", new InvocationPlugin() {
+        r.register(new RequiredInvocationPlugin("getStaticPrimitiveFields") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver unused) {
                 b.addPush(JavaKind.Object, new StaticFieldBaseNode(true));

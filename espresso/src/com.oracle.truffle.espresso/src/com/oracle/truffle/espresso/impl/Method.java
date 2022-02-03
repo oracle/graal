@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -130,6 +130,9 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     @CompilationFinal private volatile MethodVersion methodVersion;
 
     private boolean removedByRedefinition;
+
+    private MethodHook[] hooks = MethodHook.EMPTY;
+    private final Field.StableBoolean hasActiveHook = new Field.StableBoolean(false);
 
     Method(Method method) {
         this(method, method.getCodeAttribute());
@@ -308,8 +311,13 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return getMethodVersion().getCallTarget();
     }
 
-    public CallTarget getCallTargetNoInit() {
-        return getMethodVersion().getCallTargetNoInit();
+    /**
+     * Exposed to Interop API, to ensure that VM calls to guest classes properly initialize guest
+     * classes prior to the calls.
+     */
+    public CallTarget getCallTargetForceInit() {
+        getDeclaringKlass().safeInitialize();
+        return getCallTarget();
     }
 
     /**
@@ -446,7 +454,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
         final Object[] filteredArgs;
         if (isStatic()) {
-            // clinit done when obtaining call target
+            getDeclaringKlass().safeInitialize();
             filteredArgs = new Object[args.length];
             for (int i = 0; i < filteredArgs.length; ++i) {
                 filteredArgs[i] = getMeta().toGuestBoxed(args[i]);
@@ -472,7 +480,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         getContext().getJNI().clearPendingException();
         if (isStatic()) {
             assert args.length == Signatures.parameterCount(getParsedSignature(), false);
-            // clinit performed on obtaining call target
+            getDeclaringKlass().safeInitialize();
             return getCallTarget().call(args);
         } else {
             assert args.length + 1 /* self */ == Signatures.parameterCount(getParsedSignature(), !isStatic());
@@ -890,10 +898,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         return genericSignature;
     }
 
-    private final Field.StableBoolean hasActiveHook = new Field.StableBoolean(false);
-
-    private MethodHook[] hooks = new MethodHook[0];
-
     public boolean hasActiveHook() {
         return hasActiveHook.get();
     }
@@ -904,11 +908,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     public synchronized void addMethodHook(MethodHook info) {
         hasActiveHook.set(true);
-        if (hooks.length == 0) {
-            hooks = new MethodHook[]{info};
-            return;
-        }
-
         hooks = Arrays.copyOf(hooks, hooks.length + 1);
         hooks[hooks.length - 1] = info;
     }
@@ -926,7 +925,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         if (hooks.length == 1) {
             // make sure it's the right hook
             if (hooks[0].getRequestId() == requestId) {
-                hooks = new MethodHook[0];
+                hooks = MethodHook.EMPTY;
                 hasActiveHook.set(false);
                 removed = true;
             }
@@ -959,7 +958,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
         if (hooks.length == 1) {
             // make sure it's the right hook
             if (hooks[0] == hook) {
-                hooks = new MethodHook[0];
+                hooks = MethodHook.EMPTY;
                 hasActiveHook.set(false);
                 removed = true;
             }
@@ -1285,14 +1284,6 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             return pool;
         }
 
-        public CallTarget getCallTarget() {
-            return getCallTarget(true);
-        }
-
-        public CallTarget getCallTargetNoInit() {
-            return getCallTarget(false);
-        }
-
         private CallTarget getCallTargetNoSubstitution() {
             CompilerAsserts.neverPartOfCompilation();
             EspressoError.guarantee(getSubstitutions().hasSubstitutionFor(getMethod()),
@@ -1300,21 +1291,11 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
             return findCallTarget();
         }
 
-        private CallTarget getCallTarget(boolean initKlass) {
+        public CallTarget getCallTarget() {
             if (callTarget == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 Meta meta = getMeta();
                 checkPoisonPill(meta);
-                if (initKlass) {
-                    /*
-                     * Initializing a class costs a lock, do it outside of this method's lock to
-                     * avoid congestion. Note that requesting a call target is immediately followed
-                     * by a call to the method, before advancing BCI. This ensures that we are
-                     * respecting the specs, saying that a class must be initialized before a method
-                     * is called, while saving a call to safeInitialize after a method lookup.
-                     */
-                    declaringKlass.safeInitialize();
-                }
                 synchronized (this) {
                     if (callTarget != null) {
                         return callTarget;

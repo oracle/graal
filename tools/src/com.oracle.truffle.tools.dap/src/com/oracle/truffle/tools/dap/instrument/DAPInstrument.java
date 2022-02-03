@@ -44,7 +44,7 @@ import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.tools.dap.server.DebugProtocolServerImpl;
 import com.oracle.truffle.tools.dap.server.ExecutionContext;
 
-@Registration(id = DAPInstrument.ID, name = "Debug Protocol Server", version = "0.1")
+@Registration(id = DAPInstrument.ID, name = "Debug Protocol Server", version = "0.1", website = "https://www.graalvm.org/tools/dap/")
 public final class DAPInstrument extends TruffleInstrument {
 
     public static final String ID = "dap";
@@ -62,23 +62,23 @@ public final class DAPInstrument extends TruffleInstrument {
         }
     }, (Consumer<HostAndPort>) (address) -> address.verify());
 
-    @Option(name = "", help = "Start the Debug Protocol Server on [[host:]port]. (default: <loopback address>:" + DEFAULT_PORT +
-                    ")", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(name = "", help = "Start the Debug Protocol Server on [[host:]port] (default: <loopback address>:" + DEFAULT_PORT +
+                    ")", usageSyntax = "[[<host>:]<port>]", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<HostAndPort> Dap = new OptionKey<>(DEFAULT_ADDRESS, ADDRESS_OR_BOOLEAN);
 
-    @Option(help = "Suspend the execution at first executed source line. (default:true)", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(help = "Suspend the execution at first executed source line (default: true).", usageSyntax = "true|false", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Boolean> Suspend = new OptionKey<>(true);
 
-    @Option(help = "Do not execute any source code until debugger client is attached. (default:false)", category = OptionCategory.USER, stability = OptionStability.STABLE) //
+    @Option(help = "Do not execute any source code until debugger client is attached.", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Boolean> WaitAttached = new OptionKey<>(false);
 
-    @Option(help = "Debug internal sources. (default:false)", category = OptionCategory.INTERNAL) //
+    @Option(help = "Debug internal sources.", category = OptionCategory.INTERNAL) //
     static final OptionKey<Boolean> Internal = new OptionKey<>(false);
 
-    @Option(help = "Debug language initialization. (default:false)", category = OptionCategory.INTERNAL) //
+    @Option(help = "Debug language initialization.", category = OptionCategory.INTERNAL) //
     static final OptionKey<Boolean> Initialization = new OptionKey<>(false);
 
-    @Option(help = "Requested maximum length of the Socket queue of incoming connections. (default: -1)", category = OptionCategory.EXPERT) //
+    @Option(help = "Requested maximum length of the Socket queue of incoming connections (default: unspecified).", usageSyntax = "[0, inf)", category = OptionCategory.EXPERT) //
     static final OptionKey<Integer> SocketBacklogSize = new OptionKey<>(-1);
 
     @Override
@@ -230,6 +230,11 @@ public final class DAPInstrument extends TruffleInstrument {
                 ia = inetAddress;
             }
             return new InetSocketAddress(ia, port);
+        }
+
+        @Override
+        public String toString() {
+            return (host != null ? host : "<loopback address>") + ":" + port;
         }
     }
 }
