@@ -25,8 +25,6 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.UnsignedWord;
 
@@ -43,18 +41,14 @@ import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.util.VMError;
 
 class JfrGCEventSupport {
-    public static final int MAX_PHASE_LEVEL = 4;
+    private static final int MAX_PHASE_LEVEL = 4;
     private static int currentPhase;
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public JfrGCEventSupport() {
-    }
 
     public static long startGCPhasePause() {
         if (!JfrEnabled.get()) {
             return 0;
         }
-        pushPausePhaseLevel();
+        pushPhase();
         return JfrTicks.elapsedTicks();
     }
 
@@ -64,7 +58,7 @@ class JfrGCEventSupport {
             return;
         }
 
-        int level = popPausePhaseLevel();
+        int level = popPhase();
         JfrEvents event = getGCPhasePauseEvent(level);
         if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(event)) {
             long end = JfrTicks.elapsedTicks();
@@ -97,19 +91,18 @@ class JfrGCEventSupport {
             case 4:
                 return JfrEvents.GCPhasePauseLevel4Event;
             default:
-                throw VMError.shouldNotReachHere("At most " + MAX_PHASE_LEVEL + " levels");
+                throw VMError.shouldNotReachHere("GC phase pause level must be between 0 and 4.");
         }
     }
-    
-    private static void pushPausePhaseLevel() {
+
+    private static void pushPhase() {
         assert currentPhase < MAX_PHASE_LEVEL;
         currentPhase++;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static int popPausePhaseLevel() {
+    private static int popPhase() {
         assert currentPhase > 0;
-        currentPhase--;
-        return currentPhase;
+        return --currentPhase;
     }
 }
