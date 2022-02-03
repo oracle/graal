@@ -254,7 +254,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         Parallel(true, JDK >= 11, "UseParallelGC", true, "UseParallelOldGC", JDK < 15, "UseParNewGC", JDK < 10),
         CMS(true, JDK >= 11 && JDK <= 14, "UseConcMarkSweepGC", JDK < 14),
         G1(true, JDK >= 11, "UseG1GC", true),
-        Shenandoah(true, JDK >= 11, "UseShenandoahGC", true),
+        Shenandoah(true, JDK >= 11, "UseShenandoahGC", JDK >= 11),
 
         // Unsupported GCs
         Epsilon(false, JDK >= 11, "UseEpsilonGC", JDK >= 11),

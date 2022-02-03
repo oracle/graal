@@ -51,10 +51,14 @@ import org.graalvm.compiler.nodes.type.StampTool;
 public class ShenandoahBarrierSet implements BarrierSet {
     private final ResolvedJavaType objectArrayType;
     private final ResolvedJavaField referentField;
+    private final boolean useLRB;
+    private final boolean useSATB;
 
-    public ShenandoahBarrierSet(GraalHotSpotVMConfig config, ResolvedJavaType objectArrayType, ResolvedJavaField referentField) {
+    public ShenandoahBarrierSet(boolean useSATB, boolean useLRB, ResolvedJavaType objectArrayType, ResolvedJavaField referentField) {
         this.objectArrayType = objectArrayType;
         this.referentField = referentField;
+        this.useSATB = useSATB;
+        this.useLRB = useLRB;
     }
 
     @Override
@@ -68,18 +72,20 @@ public class ShenandoahBarrierSet implements BarrierSet {
             LoweredAtomicReadAndWriteNode atomic = (LoweredAtomicReadAndWriteNode) n;
             addWriteBarriers(atomic, atomic.getNewValue(), null, true, atomic.getNullCheck());
         } else if (n instanceof AbstractCompareAndSwapNode) {
+            GraalError.unimplemented();
             AbstractCompareAndSwapNode cmpSwap = (AbstractCompareAndSwapNode) n;
             addWriteBarriers(cmpSwap, cmpSwap.getNewValue(), cmpSwap.getExpectedValue(), false, false);
         } else if (n instanceof ArrayRangeWrite) {
+            GraalError.unimplemented();
             addArrayRangeBarriers((ArrayRangeWrite) n);
         } else {
             GraalError.guarantee(n.getBarrierType() == BarrierType.NONE, "missed a node that requires a GC barrier: %s", n.getClass());
         }
     }
 
-    private static void addReadNodeBarriers(ReadNode node) {
+    private void addReadNodeBarriers(ReadNode node) {
         ValueNode value = node;
-        if (node.getBarrierType() != BarrierType.NONE) {
+        if (node.getBarrierType() != BarrierType.NONE && useLRB) {
             StructuredGraph graph = node.graph();
             ShenandoahLoadReferenceBarrier lrb = graph.add(new ShenandoahLoadReferenceBarrier(node));
             value = lrb;
@@ -105,7 +111,7 @@ public class ShenandoahBarrierSet implements BarrierSet {
                 if (isObjectValue(writtenValue)) {
                     StructuredGraph graph = node.graph();
                     boolean init = node.getLocationIdentity().isInit();
-                    if (!init) {
+                    if (!init && useSATB) {
                         // The pre barrier does nothing if the value being read is null, so it can
                         // be explicitly skipped when this is an initializing store.
                         addPreWriteBarrier(node, node.getAddress(), expectedValue, doLoad, nullCheck, graph);

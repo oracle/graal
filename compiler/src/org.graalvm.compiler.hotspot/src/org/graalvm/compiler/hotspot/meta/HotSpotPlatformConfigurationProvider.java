@@ -76,7 +76,7 @@ public class HotSpotPlatformConfigurationProvider implements PlatformConfigurati
                 }
             };
         } else if (config.useShenandoahGC) {
-            return new ShenandoahBarrierSet(config, objectArrayType, referentField);
+            return new ShenandoahBarrierSet(config.shenandoahSATBBarrier, config.shenandoahLoadRefBarrier, objectArrayType, referentField);
         } else {
             return new CardTableBarrierSet(objectArrayType) {
                 @Override

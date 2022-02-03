@@ -172,10 +172,10 @@ public abstract class ShenandoahBarrierSnippets extends WriteBarrierSnippets imp
     public Object shenandoahLoadReferenceBarrier(Object value) {
         Word thread = getThread();
         verifyOop(value);
-        byte gcStateValue = thread.readByte(gcStateOffset(), GC_STATE_LOCATION);
-        if (probability(NOT_FREQUENT_PROBABILITY, (gcStateValue & HAS_FORWORDED) != (byte) 0)) {
-            return shenandoahLoadReferenceBarrierStub(value);
-        }
+//        byte gcStateValue = thread.readByte(gcStateOffset(), GC_STATE_LOCATION);
+//        if (probability(NOT_FREQUENT_PROBABILITY, (gcStateValue & HAS_FORWORDED) != (byte) 0)) {
+//            return shenandoahLoadReferenceBarrierStub(value);
+//        }
         return value;
     }
 
