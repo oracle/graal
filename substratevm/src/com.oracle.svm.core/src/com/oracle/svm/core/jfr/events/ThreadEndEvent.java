@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.jfr.events;
 
-import com.oracle.svm.core.jfr.JfrEvents;
+import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrNativeEventWriter;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.SubstrateJVM;
@@ -39,12 +39,12 @@ public class ThreadEndEvent {
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     public static void emit(IsolateThread isolateThread) {
-        if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvents.ThreadEnd)) {
+        if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(JfrEvent.ThreadEnd)) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
             JfrNativeEventWriter.beginEventWrite(data, false);
-            JfrNativeEventWriter.putLong(data, JfrEvents.ThreadEnd.getId());
+            JfrNativeEventWriter.putLong(data, JfrEvent.ThreadEnd.getId());
             JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
             JfrNativeEventWriter.putEventThread(data);
             JfrNativeEventWriter.putThread(data, isolateThread);

@@ -360,7 +360,7 @@ public class SubstrateJVM {
     /** See {@link JVM#setMethodSamplingInterval}. */
     public void setMethodSamplingInterval(long type, long intervalMillis) {
         long millis = intervalMillis;
-        if (type != JfrEvents.ExecutionSample.getId()) {
+        if (type != JfrEvent.ExecutionSample.getId()) {
             // JFR is currently only supporting ExecutionSample event, but this method is called
             // during JFR startup, so we can't throw an error.
             return;
@@ -376,8 +376,8 @@ public class SubstrateJVM {
 
     /** See {@link JVM#setSampleThreads}. */
     public void setSampleThreads(boolean sampleThreads) {
-        setEnabled(JfrEvents.ExecutionSample.getId(), sampleThreads);
-        setEnabled(JfrEvents.NativeMethodSample.getId(), sampleThreads);
+        setEnabled(JfrEvent.ExecutionSample.getId(), sampleThreads);
+        setEnabled(JfrEvent.NativeMethodSample.getId(), sampleThreads);
     }
 
     /** See {@link JVM#setCompressedIntegers}. */
@@ -495,7 +495,7 @@ public class SubstrateJVM {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean isEnabled(JfrEvents event) {
+    public boolean isEnabled(JfrEvent event) {
         return eventSettings[(int) event.getId()].isEnabled();
     }
 

@@ -32,7 +32,7 @@ import com.oracle.svm.core.annotate.Uninterruptible;
 /**
  * The event IDs depend on the metadata.xml and therefore vary between JDK versions.
  */
-public enum JfrEvents {
+public enum JfrEvent {
     ThreadStart("jdk.ThreadStart"),
     ThreadEnd("jdk.ThreadEnd"),
     DataLoss("jdk.DataLoss"),
@@ -54,7 +54,7 @@ public enum JfrEvents {
     private final long id;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    JfrEvents(String name) {
+    JfrEvent(String name) {
         this.id = JfrMetadataTypeLibrary.lookupPlatformEvent(name);
     }
 

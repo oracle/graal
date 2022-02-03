@@ -31,7 +31,7 @@ import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.jfr.JfrBuffer;
-import com.oracle.svm.core.jfr.JfrEvents;
+import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrNativeEventWriter;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
@@ -59,7 +59,7 @@ class JfrGCEventSupport {
         }
 
         int level = popPhase();
-        JfrEvents event = getGCPhasePauseEvent(level);
+        JfrEvent event = getGCPhasePauseEvent(level);
         if (SubstrateJVM.isRecording() && SubstrateJVM.get().isEnabled(event)) {
             long end = JfrTicks.elapsedTicks();
             JfrBuffer buffer = ((JfrThreadLocal) SubstrateJVM.getThreadLocal()).getNativeBuffer();
@@ -78,18 +78,18 @@ class JfrGCEventSupport {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static JfrEvents getGCPhasePauseEvent(int level) {
+    private static JfrEvent getGCPhasePauseEvent(int level) {
         switch (level) {
             case 0:
-                return JfrEvents.GCPhasePauseEvent;
+                return JfrEvent.GCPhasePauseEvent;
             case 1:
-                return JfrEvents.GCPhasePauseLevel1Event;
+                return JfrEvent.GCPhasePauseLevel1Event;
             case 2:
-                return JfrEvents.GCPhasePauseLevel2Event;
+                return JfrEvent.GCPhasePauseLevel2Event;
             case 3:
-                return JfrEvents.GCPhasePauseLevel3Event;
+                return JfrEvent.GCPhasePauseLevel3Event;
             case 4:
-                return JfrEvents.GCPhasePauseLevel4Event;
+                return JfrEvent.GCPhasePauseLevel4Event;
             default:
                 throw VMError.shouldNotReachHere("GC phase pause level must be between 0 and 4.");
         }

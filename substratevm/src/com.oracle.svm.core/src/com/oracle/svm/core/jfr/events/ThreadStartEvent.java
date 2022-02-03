@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.jfr.events;
 
-import com.oracle.svm.core.jfr.JfrEvents;
+import com.oracle.svm.core.jfr.JfrEvent;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.StackValue;
 
@@ -40,15 +40,15 @@ public class ThreadStartEvent {
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     public static void emit(IsolateThread isolateThread) {
         SubstrateJVM svm = SubstrateJVM.get();
-        if (SubstrateJVM.isRecording() && svm.isEnabled(JfrEvents.ThreadStart)) {
+        if (SubstrateJVM.isRecording() && svm.isEnabled(JfrEvent.ThreadStart)) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
             JfrNativeEventWriter.beginEventWrite(data, false);
-            JfrNativeEventWriter.putLong(data, JfrEvents.ThreadStart.getId());
+            JfrNativeEventWriter.putLong(data, JfrEvent.ThreadStart.getId());
             JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
             JfrNativeEventWriter.putEventThread(data);
-            JfrNativeEventWriter.putLong(data, svm.getStackTraceId(JfrEvents.ThreadStart.getId(), 0));
+            JfrNativeEventWriter.putLong(data, svm.getStackTraceId(JfrEvent.ThreadStart.getId(), 0));
             JfrNativeEventWriter.putThread(data, isolateThread);
             JfrNativeEventWriter.putLong(data, SubstrateJVM.getParentThreadId(isolateThread));
             JfrNativeEventWriter.endEventWrite(data, false);
