@@ -82,7 +82,7 @@ public abstract class AbstractVirtualInvokeTypeFlow extends InvokeTypeFlow {
         return false;
     }
 
-    /** The context insensitive virual invoke returns all the locations where it is swapped in. */
+    /** The context insensitive virtual invoke returns all the locations where it is swapped in. */
     public Collection<BytecodePosition> getInvokeLocations() {
         if (isContextInsensitive) {
             return getElements(this, INVOKE_LOCATIONS_UPDATER);
