@@ -104,7 +104,14 @@ suite = {
                 "mx:JUNIT",
                 "org.graalvm.component.installer"
             ],
-            "javaCompliance" : "1.8+",
+            "requires" : ["java.logging"],  # required by several tests
+            "requiresConcealed" : {
+                "java.base" : [
+                    "jdk.internal.loader",  # required by ComponentInstallerTest
+                    "sun.net",  # required by DirectoryStorageTest
+                ],
+            },
+            "javaCompliance" : "11+",
             "checkstyle": "org.graalvm.component.installer",
             "license" : "GPLv2-CPE",
         },

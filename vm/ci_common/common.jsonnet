@@ -362,8 +362,6 @@ local devkits = common_json.devkits;
   svm_common_linux_amd64:        { environment+: common_json.svm.deps.common.environment, logs+: common_json.svm.deps.common.logs} + common_json.svm.deps.linux_amd64,
   svm_common_linux_aarch64:      { environment+: common_json.svm.deps.common.environment, logs+: common_json.svm.deps.common.logs} + common_json.svm.deps.linux_aarch64,
   svm_common_darwin:             { environment+: common_json.svm.deps.common.environment, logs+: common_json.svm.deps.common.logs} + common_json.svm.deps.darwin,
-  svm_common_windows_openjdk8:   { environment+: common_json.svm.deps.common.environment, logs+: common_json.svm.deps.common.logs} + common_json.svm.deps.windows       + common_json.devkits['windows-openjdk8'],
-  svm_common_windows_oraclejdk8: { environment+: common_json.svm.deps.common.environment, logs+: common_json.svm.deps.common.logs} + common_json.svm.deps.windows       + common_json.devkits['windows-oraclejdk8'],
   svm_common_windows_jdk11:      { environment+: common_json.svm.deps.common.environment, logs+: common_json.svm.deps.common.logs} + common_json.svm.deps.windows       + common_json.devkits['windows-jdk11'],
   svm_common_windows_jdk17:      { environment+: common_json.svm.deps.common.environment, logs+: common_json.svm.deps.common.logs} + common_json.svm.deps.windows       + common_json.devkits['windows-jdk17'],
 
