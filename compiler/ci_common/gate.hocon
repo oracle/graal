@@ -17,6 +17,12 @@ gateTest : {
     ${gateCmd} ["build,test"]
   ]
 }
+compilerUnittest : {
+  environment : {
+    "MX_TEST_RESULTS_PATTERN" : "./es-XXX.json"
+    "MX_TEST_RESULT_TAGS": "compiler"
+  }
+}
 
 gateCoverage : {
   environment : {
@@ -79,6 +85,15 @@ gateTestCTW : {
   ]
 }
 
+gateTestCTWEconomy : {
+  environment : {
+    EXTRA_VM_ARGS : "-Dgraal.CompilerConfiguration=economy"
+  }
+  run : [
+    ["mx"] ${gateCmdSuffix} ["build,ctweconomy"]
+  ]
+}
+
 gateTestCTWWeekly : {
   environment : {
     # GR-23372
@@ -132,6 +147,15 @@ gateBootstrapFullVerify : {
   }
   run : [
     ${gateCmd} ["build,bootstrapfullverify"]
+  ]
+}
+
+gateBootstrapEconomy : {
+  environment : {
+    EXTRA_VM_ARGS : "-Dgraal.CompilerConfiguration=economy"
+  }
+  run : [
+    ${gateCmd} ["build,bootstrapeconomy"]
   ]
 }
 

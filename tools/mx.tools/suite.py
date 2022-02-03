@@ -26,8 +26,8 @@ suite = {
     "defaultLicense" : "GPLv2-CPE",
 
     "groupId" : "org.graalvm.tools",
-    "version" : "22.0.0",
-    "release" : False,
+    "version" : "22.0.0.2",
+    "release" : True,
     "url" : "http://openjdk.java.net/projects/graal",
     "developer" : {
         "name" : "GraalVM Development",
@@ -315,31 +315,31 @@ suite = {
           "sourceSha1" : "298db2b3c573f9e76a5a7a60a49c7ceb5ddd35f7",
         },
         "VISUALVM_COMMON" : {
-            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-1072.tar.gz"],
-            "sha1" : "4e5b87aab697b2961b25c1a6eaaa30a5952bde58",
+            "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-22.0-1.tar.gz"],
+            "sha1" : "b604c30571b7dd92de4a04f873951403e3b86091",
         },
         "VISUALVM_PLATFORM_SPECIFIC" : {
             "os_arch" : {
                 "linux" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-1072-linux-amd64.tar.gz"],
-                        "sha1" : "d93d9d0cc752f9acf2ae0a93741078a41e74450c",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-22.0-1-linux-amd64.tar.gz"],
+                        "sha1" : "ef6d2d252088f89f8e6911e48429b1b33c46ef90",
                     },
                     "aarch64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-1072-linux-aarch64.tar.gz"],
-                        "sha1" : "2a676fca5e4bec1afa8eeef83a6cd27e53e4835e",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-22.0-1-linux-aarch64.tar.gz"],
+                        "sha1" : "adeee7ac363ea1bb994aaf615a7d23e4a0922bb6",
                     }
                 },
                 "darwin" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-1072-macosx-x86_64.tar.gz"],
-                        "sha1" : "6bd0c10ba7128bbc9903a1dee089bbe572971cc9",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-22.0-1-macosx-x86_64.tar.gz"],
+                        "sha1" : "ef89711c056c6e4f26d0d4227efdc8a95b938ba7",
                     }
                 },
                 "windows" : {
                     "amd64" : {
-                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-1072-windows-amd64.tar.gz"],
-                        "sha1" : "7fa3b6581f7ba0bf8a28635f95271ecb2c1c4adb",
+                        "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/visualvm/visualvm-22.0-1-windows-amd64.tar.gz"],
+                        "sha1" : "6451d5262d84be278782415ece0d68fef29b1d43",
                     }
                 },
             }

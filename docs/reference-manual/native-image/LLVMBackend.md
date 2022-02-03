@@ -54,8 +54,8 @@ _([Implementation of statepoints for AArch64](https://reviews.llvm.org/D66012))_
 
 ### Object File Support
 
-The data section for programs created with the LLVM backend of the GraalVM compiler is currently emitted independently from the code, which is handled by LLVM.
-This means that the GraalVM compiler needs an understanding of object file relocations for the target architecture to be able to link the LLVM-compiled code with the GraalVM-generated data section.
+The data section for programs created with the LLVM backend of the Graal compiler is currently emitted independently from the code, which is handled by LLVM.
+This means that the Graal compiler needs an understanding of object file relocations for the target architecture to be able to link the LLVM-compiled code with the GraalVM-generated data section.
 Emitting the data section with the code as LLVM bitcode is our next priority for the LLVM backend, so this should not be an issue for future targets.
 
 _(see `ELFMachine$ELFAArch64Relocations` for an example)_

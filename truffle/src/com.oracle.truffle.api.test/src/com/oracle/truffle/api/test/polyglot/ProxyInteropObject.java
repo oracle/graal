@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.api.test.polyglot;
 
+import java.util.Objects;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -51,7 +54,6 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
 
 /**
  * Helper class for tests to simplify the declaration of interop objects.
@@ -368,9 +370,10 @@ public abstract class ProxyInteropObject implements TruffleObject {
     }
 
     @ExportMessage
+    @TruffleBoundary
     protected Object toDisplayString(boolean allowSideEffects) {
         if (allowSideEffects) {
-            return ProxyLanguage.get(null).toString(LanguageContext.get(null), this);
+            return Objects.toString(this);
         } else {
             return getClass().getTypeName() + "@" + Integer.toHexString(System.identityHashCode(this));
         }

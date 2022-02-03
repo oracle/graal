@@ -35,7 +35,6 @@ import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.common.TruffleInliningData;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
-import org.graalvm.compiler.truffle.runtime.GraalCompilerDirectives;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
@@ -47,7 +46,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -62,7 +61,6 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
     @SuppressWarnings("unused") private static final SubClass object3 = new SubClass();
     @SuppressWarnings("unused") private static final L9a object4 = new L9a();
     @SuppressWarnings("unused") private static final L9b object5 = new L9b();
-    @SuppressWarnings("unused") private static final Boolean inFirstTier = GraalCompilerDirectives.hasNextTier();
 
     private ByteArrayOutputStream outContent;
 
@@ -121,8 +119,8 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
     }
 
     @Test
-    public void testFrameClear() {
-        testHelper(new RootNodeClearFrameClass(new FrameDescriptor("test")), true, "perf warn");
+    public void testFrameAccessVerification() {
+        testHelper(new RootNodeFrameAccessVerification(), true, "perf warn");
     }
 
     @SuppressWarnings("try")
@@ -259,7 +257,7 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
     private static class L9b extends L8 {
     }
 
-    private abstract class TestRootNode extends RootNode {
+    private abstract static class TestRootNode extends RootNode {
 
         private TestRootNode() {
             super(null);
@@ -413,19 +411,29 @@ public class PerformanceWarningTest extends TruffleCompilerImplTest {
         }
     }
 
-    private final class RootNodeClearFrameClass extends TestRootNode {
-        final FrameSlot slot;
+    private static final class RootNodeFrameAccessVerification extends TestRootNode {
 
-        RootNodeClearFrameClass(FrameDescriptor fd) {
-            super(fd);
-            this.slot = fd.addFrameSlot("test");
+        private static final int SLOT = 0;
+
+        RootNodeFrameAccessVerification() {
+            super(createFrameDescriptor());
+        }
+
+        private static FrameDescriptor createFrameDescriptor() {
+            FrameDescriptor.Builder builder = FrameDescriptor.newBuilder();
+            int slot = builder.addSlot(FrameSlotKind.Illegal, null, null);
+            assert SLOT == slot;
+            return builder.build();
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
             Object[] args = frame.getArguments();
+
             if ((boolean) args[0]) {
-                frame.clear(slot);
+                frame.setDouble(0, 5);
+            } else {
+                frame.setInt(0, 1);
             }
             // Expected Perf warn
             boundary();

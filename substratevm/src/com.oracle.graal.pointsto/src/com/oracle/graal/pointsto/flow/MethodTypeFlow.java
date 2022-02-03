@@ -34,6 +34,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
@@ -59,14 +60,14 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
     protected final ConcurrentMap<AnalysisContext, MethodFlowsGraph> clonedMethodFlows;
     private int localCallingContextDepth;
 
-    private final AnalysisMethod method;
+    private final PointsToAnalysisMethod method;
 
     private volatile boolean typeFlowCreated;
     private InvokeTypeFlow parsingReason;
 
     private ParameterNode returnedParameter;
 
-    public MethodTypeFlow(OptionValues options, AnalysisMethod method) {
+    public MethodTypeFlow(OptionValues options, PointsToAnalysisMethod method) {
         super(method, null);
         this.method = method;
         this.localCallingContextDepth = PointstoOptions.MaxCallingContextDepth.getValue(options);
@@ -74,7 +75,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
         this.clonedMethodFlows = new ConcurrentHashMap<>(4, 0.75f, 1);
     }
 
-    public AnalysisMethod getMethod() {
+    public PointsToAnalysisMethod getMethod() {
         return method;
     }
 
@@ -86,9 +87,12 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
         List<StackTraceElement> parsingContext = new ArrayList<>();
         InvokeTypeFlow invokeFlow = parsingReason;
 
-        while (invokeFlow != null) {
+        /* Defend against cycles in the parsing context. GR-35744 should fix this properly. */
+        int maxSize = 100;
+
+        while (invokeFlow != null && parsingContext.size() < maxSize) {
             parsingContext.add(invokeFlow.getSource().getMethod().asStackTraceElement(invokeFlow.getSource().getBCI()));
-            invokeFlow = ((AnalysisMethod) invokeFlow.getSource().getMethod()).getTypeFlow().parsingReason;
+            invokeFlow = ((PointsToAnalysisMethod) invokeFlow.getSource().getMethod()).getTypeFlow().parsingReason;
         }
         return parsingContext.toArray(new StackTraceElement[parsingContext.size()]);
     }

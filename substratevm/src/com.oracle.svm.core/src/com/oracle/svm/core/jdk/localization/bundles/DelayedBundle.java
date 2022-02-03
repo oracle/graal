@@ -24,19 +24,32 @@
  */
 package com.oracle.svm.core.jdk.localization.bundles;
 
-import com.oracle.svm.util.ReflectionUtil;
-
 //Checkstyle: allow reflection
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.ResourceBundle;
+
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ReflectionUtil;
 
 public class DelayedBundle implements StoredBundle {
 
     private final Method getContents;
 
     public DelayedBundle(Class<?> clazz) {
-        getContents = ReflectionUtil.lookupMethod(clazz, "getContents");
+        getContents = findGetContentsMethod(clazz);
+    }
+
+    private static Method findGetContentsMethod(Class<?> clazz) {
+        /* The `getContents` method can be declared in a super class, so we search the hierarchy. */
+        for (Class<?> c = clazz; ResourceBundle.class.isAssignableFrom(c); c = c.getSuperclass()) {
+            Method method = ReflectionUtil.lookupMethod(true, c, "getContents");
+            if (method != null) {
+                return method;
+            }
+        }
+        throw VMError.shouldNotReachHere("Failed to find method `getContents` in " + clazz);
     }
 
     @Override

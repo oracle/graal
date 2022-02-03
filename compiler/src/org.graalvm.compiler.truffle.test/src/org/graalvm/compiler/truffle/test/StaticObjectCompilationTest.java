@@ -30,6 +30,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.nodes.extended.RawStoreNode;
+import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.java.StoreFieldNode;
@@ -146,7 +147,7 @@ public class StaticObjectCompilationTest extends PartialEvaluationTest {
             assertNoInvokes(graph);
             if (te.isArrayBased()) {
                 // The array that stores primitive fields
-                assertCount(graph, VirtualArrayNode.class, 1);
+                assertCount(graph, VirtualArrayNode.class, 2);
             }
             assertCount(graph, VirtualInstanceNode.class, 1);
         } finally {
@@ -239,6 +240,20 @@ public class StaticObjectCompilationTest extends PartialEvaluationTest {
         }
     }
 
+    @Test
+    public void allocateSetAndGetString() {
+        te.context.enter();
+        try {
+            StructuredGraph graph = partialEval(new AllocateSetAndGetStringNode(te));
+            assertNoInvokes(graph);
+            if (te.isFieldBased()) {
+                assertNoNodes(graph, InstanceOfNode.class);
+            }
+        } finally {
+            te.context.leave();
+        }
+    }
+
     private StructuredGraph partialEval(StaticObjectAbstractNode node) {
         RootNode rootNode = new StaticObjectRootNode(te.testLanguage, new FrameDescriptor(), node);
         StructuredGraph graph = partialEval(rootNode);
@@ -251,18 +266,29 @@ public class StaticObjectCompilationTest extends PartialEvaluationTest {
         }
     }
 
+    private static void assertNoNodes(StructuredGraph graph, Class<? extends org.graalvm.compiler.graph.Node> nodeClass) {
+        for (org.graalvm.compiler.graph.Node node : graph.getNodes()) {
+            if (nodeClass.isAssignableFrom(node.getClass())) {
+                Assert.fail("Found invalid node of type: " + nodeClass.getName());
+            }
+        }
+    }
+
     private static void assertCount(StructuredGraph graph, Class<? extends org.graalvm.compiler.graph.Node> nodeClass, int expected) {
         Assert.assertEquals(expected, graph.getNodes().filter(nodeClass).count());
     }
 
     private abstract static class StaticObjectAbstractNode extends Node {
         final StaticShape<DefaultStaticObjectFactory> shape;
-        final StaticProperty property;
+        final StaticProperty intProperty;
+        final StaticProperty stringProperty;
 
         StaticObjectAbstractNode(StaticObjectTestEnvironment te) {
             StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
-            property = new DefaultStaticProperty("property");
-            builder.property(property, int.class, false);
+            intProperty = new DefaultStaticProperty("intProperty");
+            stringProperty = new DefaultStaticProperty("stringProperty");
+            builder.property(intProperty, int.class, false);
+            builder.property(stringProperty, String.class, false);
             shape = builder.build();
         }
 
@@ -290,7 +316,7 @@ public class StaticObjectCompilationTest extends PartialEvaluationTest {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            return property.getInt(staticObject);
+            return intProperty.getInt(staticObject);
         }
     }
 
@@ -304,9 +330,9 @@ public class StaticObjectCompilationTest extends PartialEvaluationTest {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            int a = property.getInt(staticObject);
-            int b = property.getInt(staticObject);
-            int c = property.getInt(staticObject);
+            int a = intProperty.getInt(staticObject);
+            int b = intProperty.getInt(staticObject);
+            int c = intProperty.getInt(staticObject);
             return a + b + c;
         }
     }
@@ -321,7 +347,7 @@ public class StaticObjectCompilationTest extends PartialEvaluationTest {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            property.setInt(staticObject, 42);
+            intProperty.setInt(staticObject, 42);
             return null;
         }
     }
@@ -336,9 +362,9 @@ public class StaticObjectCompilationTest extends PartialEvaluationTest {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            property.setInt(staticObject, 42);
-            property.setInt(staticObject, 42);
-            property.setInt(staticObject, 42);
+            intProperty.setInt(staticObject, 42);
+            intProperty.setInt(staticObject, 42);
+            intProperty.setInt(staticObject, 42);
             return null;
         }
     }
@@ -351,8 +377,24 @@ public class StaticObjectCompilationTest extends PartialEvaluationTest {
         @Override
         public Object execute(VirtualFrame frame) {
             Object staticObject = shape.getFactory().create();
-            property.setInt(staticObject, 42);
-            return property.getInt(staticObject) == 42;
+            intProperty.setInt(staticObject, 42);
+            return intProperty.getInt(staticObject) == 42;
+        }
+    }
+
+    private static class AllocateSetAndGetStringNode extends StaticObjectAbstractNode {
+        final Object staticObject;
+
+        AllocateSetAndGetStringNode(StaticObjectTestEnvironment te) {
+            super(te);
+            staticObject = shape.getFactory().create();
+            stringProperty.setObject(staticObject, "value");
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            String str = (String) stringProperty.getObject(staticObject);
+            return str.length();
         }
     }
 

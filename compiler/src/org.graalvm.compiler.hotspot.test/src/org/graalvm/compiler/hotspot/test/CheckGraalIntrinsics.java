@@ -299,6 +299,7 @@ public class CheckGraalIntrinsics extends GraalTest {
             // Compact string support - HotSpot MacroAssembler-based intrinsic or complex C2 logic.
             add(toBeInvestigated,
                             "java/lang/StringCoding.hasNegatives([BII)Z",
+                            "java/lang/StringCoding.implEncodeAsciiArray([CI[BII)I",
                             "java/lang/StringCoding.implEncodeISOArray([BI[BII)I");
             add(ignore,
                             // handled through an intrinsic for String.equals itself
@@ -353,11 +354,16 @@ public class CheckGraalIntrinsics extends GraalTest {
             if (arch instanceof AMD64) {
                 add(toBeInvestigated,
                                 "java/lang/Math.abs(I)I",
-                                "java/lang/Math.abs(J)J",
-                                "java/lang/Math.max(DD)D",
-                                "java/lang/Math.max(FF)F",
-                                "java/lang/Math.min(DD)D",
-                                "java/lang/Math.min(FF)F");
+                                "java/lang/Math.abs(J)J");
+
+                if (!((AMD64) arch).getFeatures().contains(CPUFeature.AVX)) {
+                    add(ignore,
+                                    "java/lang/Math.max(DD)D",
+                                    "java/lang/Math.max(FF)F",
+                                    "java/lang/Math.min(DD)D",
+                                    "java/lang/Math.min(FF)F");
+                }
+
                 if (!((AMD64) arch).getFeatures().contains(CPUFeature.AVX512VL)) {
                     add(ignore,
                                     "java/lang/Math.copySign(DD)D",
@@ -380,11 +386,23 @@ public class CheckGraalIntrinsics extends GraalTest {
             if (!(arch instanceof AArch64)) {
                 add(toBeInvestigated,
                                 "java/lang/Math.abs(I)I",
-                                "java/lang/Math.abs(J)J",
-                                "java/lang/Math.max(DD)D",
-                                "java/lang/Math.max(FF)F",
-                                "java/lang/Math.min(DD)D",
-                                "java/lang/Math.min(FF)F");
+                                "java/lang/Math.abs(J)J");
+
+                if (arch instanceof AMD64) {
+                    if (!((AMD64) arch).getFeatures().contains(CPUFeature.AVX)) {
+                        add(ignore,
+                                        "java/lang/Math.max(DD)D",
+                                        "java/lang/Math.max(FF)F",
+                                        "java/lang/Math.min(DD)D",
+                                        "java/lang/Math.min(FF)F");
+                    }
+                } else {
+                    add(toBeInvestigated,
+                                    "java/lang/Math.max(DD)D",
+                                    "java/lang/Math.max(FF)F",
+                                    "java/lang/Math.min(DD)D",
+                                    "java/lang/Math.min(FF)F");
+                }
             }
         }
 

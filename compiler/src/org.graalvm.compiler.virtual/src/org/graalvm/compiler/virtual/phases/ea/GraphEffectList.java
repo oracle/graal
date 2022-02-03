@@ -48,6 +48,7 @@ import org.graalvm.compiler.nodes.debug.WeakCounterNode;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.EscapeObjectState;
+import org.graalvm.compiler.nodes.virtual.VirtualObjectState;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 
 public final class GraphEffectList extends EffectList {
@@ -168,8 +169,8 @@ public final class GraphEffectList extends EffectList {
     }
 
     /**
-     * Adds a virtual object's state to the given frame state. If the given reusedVirtualObjects set
-     * contains the virtual object then old states for this object will be removed.
+     * Adds a virtual object's state to the given frame state. If the given frame state contains the
+     * virtual object then old states for this object will be removed.
      *
      * @param node The frame state to which the state should be added.
      * @param state The virtual object state to add.
@@ -187,6 +188,29 @@ public final class GraphEffectList extends EffectList {
                         }
                     }
                     stateAfter.addVirtualObjectMapping(graph.addOrUniqueWithInputs(state));
+                }
+            }
+
+            @Override
+            public boolean isVisible() {
+                return false;
+            }
+        });
+    }
+
+    /**
+     * Update a virtual object mapping for the given {@link VirtualObjectState} with a new value.
+     *
+     * @param state The virtual state previously constructed.
+     * @param field The field to update its value.
+     * @param newValue The new value of the field.
+     */
+    public void updateVirtualMapping(VirtualObjectState state, int field, ValueNode newValue) {
+        add("add virtual mapping", new Effect() {
+            @Override
+            public void apply(StructuredGraph graph, ArrayList<Node> obsoleteNodes) {
+                if (state.isAlive()) {
+                    state.values().set(field, graph.addOrUniqueWithInputs(newValue));
                 }
             }
 

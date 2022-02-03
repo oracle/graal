@@ -40,13 +40,24 @@
  */
 package com.oracle.truffle.api.test.interop.impl;
 
-import com.oracle.truffle.api.impl.ReadOnlyArrayList;
+import static org.junit.Assert.assertEquals;
+
 import java.util.ArrayList;
 import java.util.List;
-import static org.junit.Assert.assertEquals;
+
+import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.oracle.truffle.api.impl.ReadOnlyArrayList;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
+
 public class ReadOnlyArrayListTest {
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
+
     @Test
     public void testToString() {
         List<String> readOnly = ReadOnlyArrayList.asList(new String[]{"Hello", "from", "Truffle!"}, 0, 3);

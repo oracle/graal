@@ -26,11 +26,9 @@ package com.oracle.svm.core.graal.meta;
 
 import java.util.Map;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
@@ -47,7 +45,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 
 public interface SubstrateLoweringProvider extends LoweringProvider {
 
-    void setConfiguration(RuntimeConfiguration runtimeConfig, OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection);
+    void setConfiguration(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers);
 
     Map<Class<? extends Node>, NodeLoweringProvider<?>> getLowerings();
 

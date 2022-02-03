@@ -101,7 +101,6 @@ import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
@@ -113,6 +112,7 @@ import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.nodes.asserts.NeverPartOfCompilationNode;
 import org.graalvm.compiler.truffle.compiler.substitutions.KnownTruffleTypes;
@@ -209,9 +209,9 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
 
     @Override
     @SuppressWarnings("unused")
-    public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
-                    SnippetReflectionProvider snippetReflection, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
-        new SubstrateThreadLocalHandshakeSnippets(options, factories, providers, snippetReflection, lowerings);
+    public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers,
+                    Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
+        new SubstrateThreadLocalHandshakeSnippets(options, providers, lowerings);
     }
 
     @Override
@@ -340,7 +340,7 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
             graalFeature.prepareMethodForRuntimeCompilation(method, config);
         }
 
-        initializeMethodBlocklist(config.getMetaAccess());
+        initializeMethodBlocklist(config.getMetaAccess(), access);
 
         /*
          * Stack frames that are visited by Truffle-level stack walking must have full frame
@@ -447,7 +447,7 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
         } else if (implementationMethod.hasNeverInlineDirective()) {
             /* Ensure that NeverInline methods are also never inlined during Truffle compilation. */
             return false;
-        } else if (uninterruptibleAnnotation != null && !uninterruptibleAnnotation.mayBeInlined()) {
+        } else if (Uninterruptible.Utils.isUninterruptible(implementationMethod) && (uninterruptibleAnnotation == null || !uninterruptibleAnnotation.mayBeInlined())) {
             /* The semantics of Uninterruptible would get lost during partial evaluation. */
             return false;
         } else if (implementationMethod.getAnnotation(TruffleCallBoundary.class) != null) {
@@ -496,7 +496,7 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
         return truffleBoundary != null && truffleBoundary.transferToInterpreterOnException();
     }
 
-    private void initializeMethodBlocklist(MetaAccessProvider metaAccess) {
+    private void initializeMethodBlocklist(MetaAccessProvider metaAccess, FeatureAccess featureAccess) {
         blocklistMethod(metaAccess, Object.class, "clone");
         blocklistMethod(metaAccess, Object.class, "equals", Object.class);
         blocklistMethod(metaAccess, Object.class, "hashCode");
@@ -530,6 +530,8 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
         allowlistMethod(metaAccess, BigInteger.class, "signum");
         allowlistMethod(metaAccess, ReentrantLock.class, "isLocked");
         allowlistMethod(metaAccess, ReentrantLock.class, "isHeldByCurrentThread");
+        allowlistMethod(metaAccess, ReentrantLock.class, "getOwner");
+        allowlistMethod(metaAccess, ReentrantLock.class, "<init>");
 
         /* Methods with synchronization are currently not supported as deoptimization targets. */
         blocklistAllMethods(metaAccess, StringBuffer.class);
@@ -581,6 +583,11 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
         blocklistAllMethods(metaAccess, ToLongFunction.class);
         blocklistAllMethods(metaAccess, UnaryOperator.class);
 
+        /* Block list string concatenation. */
+        if (JavaVersionUtil.JAVA_SPEC >= 11) {
+            blocklistAllMethods(metaAccess, featureAccess.findClassByName("java.lang.StringConcatHelper"));
+        }
+
         /*
          * Core Substrate VM classes that very certainly should not be reachable for runtime
          * compilation. Warn when they get reachable to detect explosion of reachable methods.
@@ -612,7 +619,13 @@ public class TruffleFeature implements com.oracle.svm.core.graal.GraalFeature {
      */
     private void allowlistMethod(MetaAccessProvider metaAccess, Class<?> clazz, String name, Class<?>... parameterTypes) {
         try {
-            if (!blocklistMethods.remove(metaAccess.lookupJavaMethod(clazz.getDeclaredMethod(name, parameterTypes)))) {
+            Executable method;
+            if ("<init>".equals(name)) {
+                method = clazz.getDeclaredConstructor(parameterTypes);
+            } else {
+                method = clazz.getDeclaredMethod(name, parameterTypes);
+            }
+            if (!blocklistMethods.remove(metaAccess.lookupJavaMethod(method))) {
                 throw VMError.shouldNotReachHere();
             }
         } catch (NoSuchMethodException ex) {

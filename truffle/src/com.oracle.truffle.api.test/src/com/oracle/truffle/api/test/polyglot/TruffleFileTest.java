@@ -115,9 +115,11 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.test.OSUtils;
+import com.oracle.truffle.api.test.TestAPIAccessor;
 import com.oracle.truffle.api.test.polyglot.FileSystemsTest.ForwardingFileSystem;
 import com.oracle.truffle.api.test.polyglot.TruffleFileTest.DuplicateMimeTypeLanguage1.Language1Detector;
 import com.oracle.truffle.api.test.polyglot.TruffleFileTest.DuplicateMimeTypeLanguage2.Language2Detector;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class TruffleFileTest extends AbstractPolyglotTest {
 
@@ -126,6 +128,11 @@ public class TruffleFileTest extends AbstractPolyglotTest {
     private static Path stdLib;
     private static Path stdLibFile;
     private static Path nonLanguageHomeFile;
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     @BeforeClass
     public static void setUpClass() throws Exception {
@@ -142,10 +149,12 @@ public class TruffleFileTest extends AbstractPolyglotTest {
 
     @AfterClass
     public static void tearDownClass() throws Exception {
-        System.getProperties().remove("org.graalvm.language.InternalTruffleFileTestLanguage.home");
-        resetLanguageHomes();
-        delete(languageHome);
-        delete(nonLanguageHomeFile);
+        if (languageHome != null) {
+            System.getProperties().remove("org.graalvm.language.InternalTruffleFileTestLanguage.home");
+            resetLanguageHomes();
+            delete(languageHome);
+            delete(nonLanguageHomeFile);
+        }
     }
 
     private static final Predicate<TruffleFile> FAILING_RECOGNIZER = (tf) -> {
@@ -153,6 +162,10 @@ public class TruffleFileTest extends AbstractPolyglotTest {
     };
 
     private static final Predicate<TruffleFile> ALL_FILES_RECOGNIZER = (tf) -> true;
+
+    public TruffleFileTest() {
+        needsLanguageEnv = true;
+    }
 
     @Before
     public void setUp() throws Exception {

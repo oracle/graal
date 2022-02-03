@@ -71,7 +71,7 @@ public final class PolyglotCompilerOptions {
         VIRTUAL_RUNTIME_CALL("call", "Enables virtual call warnings"),
         VIRTUAL_INSTANCEOF("instanceof", "Enables virtual instanceof warnings"),
         VIRTUAL_STORE("store", "Enables virtual store warnings"),
-        FRAME_CLEAR_PHI("clear", "Enables frame clears introducing phi nodes warnings"),
+        FRAME_INCOMPATIBLE_MERGE("frame_merge", "Enables warnings about deopts inserted for incompatible frame slot merges"),
         TRIVIAL_FAIL("trivial", "Enables trivial fail warnings");
 
         private static final EconomicMap<String, PerformanceWarningKind> kindByName;
@@ -500,7 +500,7 @@ public final class PolyglotCompilerOptions {
     public static final OptionKey<Integer> EncodedGraphCachePurgeDelay = new OptionKey<>(10_000);
 
     @Option(help = "Forces the frame clearing mechanism to be executed, even if Frame.clear() is not used.",
-            category = OptionCategory.EXPERT)
+            category = OptionCategory.EXPERT,deprecated = true, deprecationMessage = "The analysis is now always executed, irrespective of this option")
     public static final OptionKey<Boolean> ForceFrameLivenessAnalysis = new OptionKey<>(false);
 
     // Compilation queue

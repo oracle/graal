@@ -41,10 +41,13 @@ import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PauseNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.CopySignNode;
 import org.graalvm.compiler.nodes.calc.LeftShiftNode;
+import org.graalvm.compiler.nodes.calc.MaxNode;
+import org.graalvm.compiler.nodes.calc.MinNode;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.extended.JavaReadNode;
@@ -70,8 +73,8 @@ import org.graalvm.compiler.replacements.nodes.ArrayCompareToNode;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
 import org.graalvm.compiler.replacements.nodes.BitCountNode;
-import org.graalvm.compiler.replacements.nodes.BitScanForwardNode;
-import org.graalvm.compiler.replacements.nodes.BitScanReverseNode;
+import org.graalvm.compiler.replacements.nodes.CountLeadingZerosNode;
+import org.graalvm.compiler.replacements.nodes.CountTrailingZerosNode;
 import org.graalvm.compiler.replacements.nodes.FusedMultiplyAddNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
@@ -134,32 +137,14 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
         r.register1("numberOfLeadingZeros", type, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
-                if (arch.getFeatures().contains(AMD64.CPUFeature.LZCNT) && arch.getFlags().contains(AMD64.Flag.UseCountLeadingZerosInstruction)) {
-                    b.addPush(JavaKind.Int, new AMD64CountLeadingZerosNode(arg));
-                } else {
-                    try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                        // if (arg == 0) return kind.getBitCount();
-                        // return new kind.getBitCount() - 1 - BitScanReverseNode(arg);
-                        helper.emitReturnIf(arg, Condition.EQ, ConstantNode.forIntegerKind(kind, 0), ConstantNode.forInt(kind.getBitCount()), GraalDirectives.UNLIKELY_PROBABILITY);
-                        helper.emitFinalReturn(JavaKind.Int, helper.sub(ConstantNode.forInt(kind.getBitCount() - 1), new BitScanReverseNode(arg)));
-                    }
-                }
+                b.addPush(JavaKind.Int, CountLeadingZerosNode.create(arg));
                 return true;
             }
         });
         r.register1("numberOfTrailingZeros", type, new InvocationPlugin() {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
-                if (arch.getFeatures().contains(AMD64.CPUFeature.BMI1) && arch.getFlags().contains(AMD64.Flag.UseCountTrailingZerosInstruction)) {
-                    b.addPush(JavaKind.Int, new AMD64CountTrailingZerosNode(arg));
-                } else {
-                    try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                        // if (arg == 0) return kind.getBitCount();
-                        // return new BitScanForwardNode(arg);
-                        helper.emitReturnIf(arg, Condition.EQ, ConstantNode.forIntegerKind(kind, 0), ConstantNode.forInt(kind.getBitCount()), GraalDirectives.UNLIKELY_PROBABILITY);
-                        helper.emitFinalReturn(JavaKind.Int, b.add(new BitScanForwardNode(arg)));
-                    }
-                }
+                b.addPush(JavaKind.Int, CountTrailingZerosNode.create(arg));
                 return true;
             }
         });
@@ -186,6 +171,10 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
 
         if (JavaVersionUtil.JAVA_SPEC > 8) {
             registerFMA(r, useFMAIntrinsics && arch.getFeatures().contains(CPUFeature.FMA));
+        }
+
+        if (arch.getFeatures().contains(CPUFeature.AVX)) {
+            registerMinMax(r);
         }
 
         if (arch.getFeatures().contains(CPUFeature.AVX512VL)) {
@@ -259,6 +248,26 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 return true;
             }
         });
+    }
+
+    private static void registerMinMax(Registration r) {
+        JavaKind[] supportedKinds = {JavaKind.Float, JavaKind.Double};
+        for (JavaKind kind : supportedKinds) {
+            r.register2("max", kind.toJavaClass(), kind.toJavaClass(), new InvocationPlugin() {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
+                    b.push(kind, b.append(MaxNode.create(x, y, NodeView.DEFAULT)));
+                    return true;
+                }
+            });
+            r.register2("min", kind.toJavaClass(), kind.toJavaClass(), new InvocationPlugin() {
+                @Override
+                public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
+                    b.push(kind, b.append(MinNode.create(x, y, NodeView.DEFAULT)));
+                    return true;
+                }
+            });
+        }
     }
 
     private static void registerStringPlugins(InvocationPlugins plugins, Replacements replacements) {

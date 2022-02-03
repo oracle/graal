@@ -38,8 +38,7 @@ import java.lang.annotation.Target;
 public @interface RestrictHeapAccess {
     enum Access {
         UNRESTRICTED,
-        NO_ALLOCATION,
-        NO_HEAP_ACCESS;
+        NO_ALLOCATION;
 
         public boolean isMoreRestrictiveThan(Access other) {
             return ordinal() > other.ordinal();
@@ -48,14 +47,8 @@ public @interface RestrictHeapAccess {
 
     Access access();
 
-    /**
-     * When {@link #overridesCallers} is enabled and this method is (transitively) called from a
-     * caller with restricted heap access, override the caller's restrictions with those of this
-     * method from {@link #access}.
-     */
+    // Unnecessary, will be removed in GR-34779.
     boolean overridesCallers() default false;
 
     String reason();
-
-    boolean mayBeInlined() default false;
 }

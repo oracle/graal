@@ -26,19 +26,17 @@ package com.oracle.svm.core.graal.nodes;
 
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.Simplifiable;
-import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
+import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.DeoptimizingFixedWithNextNode;
 import org.graalvm.compiler.nodes.DeoptimizingNode.DeoptBefore;
+import org.graalvm.compiler.nodes.EndNode;
+import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.MergeNode;
@@ -46,8 +44,11 @@ import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.FixedValueAnchorNode;
+import org.graalvm.compiler.nodes.java.InstanceOfDynamicNode;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
+import org.graalvm.compiler.nodes.spi.Simplifiable;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.c.function.CEntryPointActions;
@@ -119,16 +120,19 @@ public class CEntryPointLeaveNode extends DeoptimizingFixedWithNextNode implemen
      * The {@link CEntryPointLeaveNode} performs the thread state transition from JAVA to NATIVE
      * state. After that transition, no more normal Java code must be executed. Therefore we need to
      * ensure that the return value of the method is scheduled before the transition, by anchoring
-     * it to the control flow before this node. We do this here after the graph has been built
-     * instead of during bytecode parsing when the node is allocated because there are too many code
-     * paths, including node intrinsics, that allocate a {@link CEntryPointLeaveNode} and so
-     * providing the return value everywhere would be tedious.
+     * it to the control flow before this node. Without proper anchoring, floating nodes such as
+     * {@link InstanceOfDynamicNode} could be scheduled after the transition.
+     *
+     * We do this here after the graph has been built instead of during bytecode parsing when the
+     * node is allocated because there are too many code paths, including node intrinsics, that
+     * allocate a {@link CEntryPointLeaveNode} and so providing the return value everywhere would be
+     * tedious.
      *
      * We walk the control flow graph down from this node to control flow sinks. Because we know and
      * require that {@link CEntryPointLeaveNode} are inserted shortly before the {@link ReturnNode},
      * only few control flow operations need to be considered. In particular, we disallow
-     * {@link MergeNode control flow joins} and instead require the users of the node to adapt their
-     * code if this constraint is violated.
+     * non-trivial {@link MergeNode control flow joins} and instead require the users of the node to
+     * adapt their code if this constraint is violated.
      */
     private void anchorReturnValue() {
         if (graph().method().getSignature().getReturnKind() == JavaKind.Void) {
@@ -140,29 +144,16 @@ public class CEntryPointLeaveNode extends DeoptimizingFixedWithNextNode implemen
             return;
         }
 
-        List<ReturnNode> returns = new ArrayList<>(1);
-        collectReturns(this, returns);
-        if (returns.size() == 1) {
-            ReturnNode returnNode = returns.get(0);
-            ValueNode returnValue = returnNode.result();
-            assert returnValue != null : "methods with return type void are already excluded";
-            if (returnValue == this) {
-                /* Returning the status value produced by this node. */
-            } else {
-                FixedValueAnchorNode anchoredReturnValue = graph().add(new FixedValueAnchorNode(returnValue));
-                graph().addBeforeFixed(this, anchoredReturnValue);
-                returnNode.replaceAllInputs(returnValue, anchoredReturnValue);
-            }
-
-        } else if (leaveAction == LeaveAction.ExceptionAbort) {
-            VMError.guarantee(returns.size() == 0, "Must not have a ReturnNode when aborting with an exception");
+        int nodesAnchored = anchorNodes(this);
+        if (leaveAction == LeaveAction.ExceptionAbort) {
+            VMError.guarantee(nodesAnchored == 0, "Unexpected values were anchored in method " + graph().method().format("%H.%n(%p)") + " as ExceptionAbort must not have any return value.");
         } else {
-            throw VMError.shouldNotReachHere("Unexpected number of ReturnNode found: " + returns.size() +
-                            " in method " + graph().method().format("%H.%n(%p)"));
+            VMError.guarantee(nodesAnchored == 1, "An unexpected number of values was anchored in method " + graph().method().format("%H.%n(%p)"));
         }
     }
 
-    private static void collectReturns(Node n, List<ReturnNode> returns) {
+    private int anchorNodes(Node n) {
+        int anchoredNodes = 0;
         Node cur = n;
         while (true) {
             if (cur instanceof FixedWithNextNode) {
@@ -170,18 +161,39 @@ public class CEntryPointLeaveNode extends DeoptimizingFixedWithNextNode implemen
             } else {
                 if (cur instanceof IfNode) {
                     for (Node sux : cur.successors()) {
-                        collectReturns(sux, returns);
+                        anchoredNodes += anchorNodes(sux);
                     }
                 } else if (cur instanceof ReturnNode) {
-                    returns.add((ReturnNode) cur);
+                    ReturnNode returnNode = (ReturnNode) cur;
+                    anchorValue(returnNode, returnNode.result());
+                    anchoredNodes++;
                 } else if (cur instanceof LoweredDeadEndNode) {
                     /* Ignore fatal errors, they are a VM exit. */
+                } else if (cur instanceof EndNode && isAllowedMerge(((EndNode) cur).merge())) {
+                    MergeNode merge = (MergeNode) ((EndNode) cur).merge();
+                    anchorValue(merge, merge.phis().first());
+                    anchoredNodes++;
                 } else {
                     throw VMError.shouldNotReachHere("Unexpected control flow structure after CEntryPointLeaveNode. Disallowed node " + cur +
                                     " in method " + ((StructuredGraph) cur.graph()).method().format("%H.%n(%p)"));
                 }
-                return;
+                return anchoredNodes;
             }
+        }
+    }
+
+    private static boolean isAllowedMerge(AbstractMergeNode merge) {
+        return merge instanceof MergeNode && merge.phis().count() == 1 && merge.next() instanceof ReturnNode;
+    }
+
+    private void anchorValue(FixedNode parent, ValueNode value) {
+        assert value != null : "methods with return type void are already excluded";
+        if (value == this) {
+            /* Returning the status value produced by this node. */
+        } else {
+            FixedValueAnchorNode anchoredValue = graph().add(new FixedValueAnchorNode(value));
+            graph().addBeforeFixed(this, anchoredValue);
+            parent.replaceAllInputs(value, anchoredValue);
         }
     }
 }

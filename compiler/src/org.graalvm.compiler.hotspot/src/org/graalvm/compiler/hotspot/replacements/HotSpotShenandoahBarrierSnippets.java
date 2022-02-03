@@ -140,8 +140,8 @@ public final class HotSpotShenandoahBarrierSnippets extends ShenandoahBarrierSni
 
         private final ShenandoahBarrierLowerer lowerer;
 
-        public Templates(OptionValues options, Iterable<DebugHandlersFactory> factories, SnippetCounter.Group.Factory factory, HotSpotProviders providers, TargetDescription target, GraalHotSpotVMConfig config) {
-            super(options, factories, providers, providers.getSnippetReflection(), target);
+        public Templates(OptionValues options, SnippetCounter.Group.Factory factory, HotSpotProviders providers, GraalHotSpotVMConfig config) {
+            super(options, providers);
             this.lowerer = new HotSpotShenandoahBarrierSnippets.HotspotShenandoahBarrierLowerer(config, factory);
 
             HotSpotShenandoahBarrierSnippets receiver = new HotSpotShenandoahBarrierSnippets(config, providers.getRegisters());

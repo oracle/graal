@@ -56,7 +56,7 @@ public @interface Snippet {
     }
 
     /**
-     * Denotes a snippet parameter that will bound to a constant value during snippet template
+     * Denotes a snippet parameter that will be bound to a constant value during snippet template
      * instantiation.
      */
     @Retention(RetentionPolicy.RUNTIME)
@@ -65,7 +65,7 @@ public @interface Snippet {
     }
 
     /**
-     * Denotes a snippet parameter that will bound to a non-null value during snippet template
+     * Denotes a snippet parameter that will be bound to a non-null value during snippet template
      * instantiation.
      */
     @Retention(RetentionPolicy.RUNTIME)

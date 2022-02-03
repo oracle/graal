@@ -126,11 +126,6 @@ public class HexCodeFileDisassemblerProvider implements DisassemblerProvider {
         hcf.addOperandComment(pos, comment);
     }
 
-    @Override
-    public boolean isAvailable(OptionValues options) {
-        return HexCodeFileDisTool.processMethod != null;
-    }
-
     /**
      * Interface to the tool for disassembling an {@link HexCodeFile#toEmbeddedString() embedded}
      * {@link HexCodeFile}.

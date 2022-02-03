@@ -30,17 +30,22 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.source.Source;
+import java.util.Collections;
+import java.util.Map;
+import java.util.WeakHashMap;
 import java.util.function.Predicate;
 
 final class InsightSourceFilter implements Predicate<Source> {
     private final InsightInstrument insight;
     private final ThreadLocal<Boolean> querying;
+    private final Map<Source, Boolean> cache;
     private final InsightInstrument.Key key;
 
     InsightSourceFilter(InsightInstrument insight, InsightInstrument.Key key) {
         this.insight = insight;
         this.key = key;
         this.querying = new ThreadLocal<>();
+        this.cache = Collections.synchronizedMap(new WeakHashMap<>());
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -49,9 +54,23 @@ final class InsightSourceFilter implements Predicate<Source> {
         if (src == null) {
             return false;
         }
+        Boolean previous = cache.get(src);
+        if (previous != null) {
+            return previous;
+        } else {
+            boolean now = realCheck(src);
+            cache.put(src, now);
+            return now;
+        }
+    }
+
+    private boolean realCheck(Source src) {
         Boolean prev = this.querying.get();
         try {
             if (Boolean.TRUE.equals(prev)) {
+                return false;
+            }
+            if (key.isClosed()) {
                 return false;
             }
             this.querying.set(true);
@@ -78,11 +97,7 @@ final class InsightSourceFilter implements Predicate<Source> {
         Object res;
         try {
             res = iop.execute(data.sourceFilterFn, srcObj);
-        } catch (UnsupportedTypeException ex) {
-            return false;
-        } catch (ArityException ex) {
-            return false;
-        } catch (UnsupportedMessageException ex) {
+        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException ex) {
             return false;
         }
         final boolean is = Boolean.TRUE.equals(res);

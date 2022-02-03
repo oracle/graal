@@ -71,18 +71,11 @@ public abstract class AbstractCopyingImageHeapProvider extends AbstractImageHeap
         // Copy the memory to the reserved address space.
         Word imageHeapBegin = IMAGE_HEAP_BEGIN.get();
         UnsignedWord imageHeapSizeInFile = getImageHeapSizeInFile();
-
         Pointer imageHeap = heapBase.add(Heap.getHeap().getImageHeapOffsetInAddressSpace());
-        imageHeap = VirtualMemoryProvider.get().commit(imageHeap, imageHeapSizeInFile, VirtualMemoryProvider.Access.READ | VirtualMemoryProvider.Access.WRITE);
-        if (imageHeap.isNull()) {
+        int result = commitAndCopyMemory(imageHeapBegin, imageHeapSizeInFile, imageHeap);
+        if (result != CEntryPointErrors.NO_ERROR) {
             freeImageHeap(allocatedMemory);
-            return CEntryPointErrors.RESERVE_ADDRESS_SPACE_FAILED;
-        }
-
-        int copyResult = copyMemory(imageHeapBegin, imageHeapSizeInFile, imageHeap);
-        if (copyResult != CEntryPointErrors.NO_ERROR) {
-            freeImageHeap(allocatedMemory);
-            return copyResult;
+            return result;
         }
 
         // Protect the read-only parts at the start of the image heap.
@@ -91,7 +84,7 @@ public abstract class AbstractCopyingImageHeapProvider extends AbstractImageHeap
         Pointer firstPartOfReadOnlyImageHeap = imageHeap.add(nullRegionSize);
         UnsignedWord writableBeginPageOffset = UnsignedUtils.roundDown(IMAGE_HEAP_WRITABLE_BEGIN.get().subtract(imageHeapBegin.add(nullRegionSize)), pageSize);
         if (writableBeginPageOffset.aboveThan(0)) {
-            if (VirtualMemoryProvider.get().protect(firstPartOfReadOnlyImageHeap, writableBeginPageOffset, VirtualMemoryProvider.Access.READ) != 0) {
+            if (VirtualMemoryProvider.get().protect(firstPartOfReadOnlyImageHeap, writableBeginPageOffset, Access.READ) != 0) {
                 freeImageHeap(allocatedMemory);
                 return CEntryPointErrors.PROTECT_HEAP_FAILED;
             }
@@ -102,7 +95,7 @@ public abstract class AbstractCopyingImageHeapProvider extends AbstractImageHeap
         if (writableEndPageOffset.belowThan(imageHeapSizeInFile)) {
             Pointer afterWritableBoundary = imageHeap.add(writableEndPageOffset);
             UnsignedWord afterWritableSize = imageHeapSizeInFile.subtract(writableEndPageOffset);
-            if (VirtualMemoryProvider.get().protect(afterWritableBoundary, afterWritableSize, VirtualMemoryProvider.Access.READ) != 0) {
+            if (VirtualMemoryProvider.get().protect(afterWritableBoundary, afterWritableSize, Access.READ) != 0) {
                 freeImageHeap(allocatedMemory);
                 return CEntryPointErrors.PROTECT_HEAP_FAILED;
             }
@@ -121,6 +114,14 @@ public abstract class AbstractCopyingImageHeapProvider extends AbstractImageHeap
             endPointer.write(roundUp(imageHeap.add(imageHeapSizeInFile), pageSize));
         }
         return CEntryPointErrors.NO_ERROR;
+    }
+
+    @Uninterruptible(reason = "Called during isolate initialization.")
+    protected int commitAndCopyMemory(Pointer loadedImageHeap, UnsignedWord imageHeapSize, Pointer newImageHeap) {
+        if (VirtualMemoryProvider.get().commit(newImageHeap, imageHeapSize, Access.READ | Access.WRITE).isNull()) {
+            return CEntryPointErrors.RESERVE_ADDRESS_SPACE_FAILED;
+        }
+        return copyMemory(loadedImageHeap, imageHeapSize, newImageHeap);
     }
 
     @Uninterruptible(reason = "Called during isolate initialization.")

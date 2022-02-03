@@ -274,17 +274,16 @@ public class Linker {
                                 "The module '" + function.importedModuleName() + "', referenced by the import '" + function.importedFunctionName() + "' in the module '" + instance.name() +
                                                 "', does not exist.");
             }
-            WasmFunction importedFunction;
-            importedFunction = importedInstance.module().exportedFunctions().get(function.importedFunctionName());
+            WasmFunction importedFunction = importedInstance.module().exportedFunctions().get(function.importedFunctionName());
             if (importedFunction == null) {
                 throw WasmException.create(Failure.UNKNOWN_IMPORT, "The imported function '" + function.importedFunctionName() + "', referenced in the module '" + instance.name() +
                                 "', does not exist in the imported module '" + function.importedModuleName() + "'.");
             }
-            final CallTarget target = importedInstance.target(importedFunction.index());
-            final WasmFunctionInstance functionInstance = importedInstance.functionInstance(importedFunction.index());
             if (!function.type().equals(importedFunction.type())) {
                 throw WasmException.create(Failure.INCOMPATIBLE_IMPORT_TYPE);
             }
+            final CallTarget target = importedInstance.target(importedFunction.index());
+            final WasmFunctionInstance functionInstance = importedInstance.functionInstance(importedFunction);
             instance.setTarget(function.index(), target);
             instance.setFunctionInstance(function.index(), functionInstance);
         };
@@ -302,7 +301,7 @@ public class Linker {
         final Runnable resolveAction = () -> block.resolveCallNode(controlTableOffset);
         final Sym[] dependencies = new Sym[]{
                         function.isImported() ? new ImportFunctionSym(instance.name(), function.importDescriptor(), function.index()) : new CodeEntrySym(instance.name(), function.index())};
-        resolutionDag.resolveLater(new CallsiteSym(instance.name(), block.startOfset(), controlTableOffset), dependencies, resolveAction);
+        resolutionDag.resolveLater(new CallsiteSym(instance.name(), block.startOffset(), controlTableOffset), dependencies, resolveAction);
     }
 
     void resolveCodeEntry(WasmModule module, int functionIndex) {

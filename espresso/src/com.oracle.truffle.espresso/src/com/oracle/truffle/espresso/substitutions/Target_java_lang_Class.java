@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,8 +40,6 @@ import com.oracle.truffle.espresso.runtime.StaticObject;
  */
 @EspressoSubstitutions
 public final class Target_java_lang_Class {
-    // region perf substitutions
-
     /**
      * Determines if the specified {@code Object} is assignment-compatible with the object
      * represented by this {@code Class}. This method is the dynamic equivalent of the Java language

@@ -318,40 +318,44 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
             return;
         }
 
-        if (falseSuccessor().hasNoUsages() && (!(falseSuccessor() instanceof LoopExitNode)) && falseSuccessor().next() instanceof IfNode &&
-                        !(((IfNode) falseSuccessor().next()).falseSuccessor() instanceof LoopExitNode)) {
-            AbstractBeginNode intermediateBegin = falseSuccessor();
-            IfNode nextIf = (IfNode) intermediateBegin.next();
-            double probabilityB = (1.0 - this.getTrueSuccessorProbability()) * nextIf.getTrueSuccessorProbability();
-            if (this.getTrueSuccessorProbability() < probabilityB) {
-                // Reordering of those two if statements is beneficial from the point of view of
-                // their probabilities.
-                if (prepareForSwap(tool, condition(), nextIf.condition())) {
-                    // Reordering is allowed from (if1 => begin => if2) to (if2 => begin => if1).
-                    assert intermediateBegin.next() == nextIf;
-                    AbstractBeginNode bothFalseBegin = nextIf.falseSuccessor();
-                    nextIf.setFalseSuccessor(null);
-                    intermediateBegin.setNext(null);
-                    this.setFalseSuccessor(null);
+        if (tool.finalCanonicalization()) {
+            if (falseSuccessor().hasNoUsages() && (!(falseSuccessor() instanceof LoopExitNode)) && falseSuccessor().next() instanceof IfNode &&
+                            !(((IfNode) falseSuccessor().next()).falseSuccessor() instanceof LoopExitNode)) {
+                AbstractBeginNode intermediateBegin = falseSuccessor();
+                IfNode nextIf = (IfNode) intermediateBegin.next();
+                double probabilityB = (1.0 - this.getTrueSuccessorProbability()) * nextIf.getTrueSuccessorProbability();
+                if (this.getTrueSuccessorProbability() < probabilityB) {
+                    // Reordering of those two if statements is beneficial from the point of view of
+                    // their probabilities.
+                    if (prepareForSwap(tool, condition(), nextIf.condition())) {
+                        // @formatter:off
+                        // Reordering is allowed from (if1 => begin => if2) to (if2 => begin => if1).
+                        // @formatter:on
+                        assert intermediateBegin.next() == nextIf;
+                        AbstractBeginNode bothFalseBegin = nextIf.falseSuccessor();
+                        nextIf.setFalseSuccessor(null);
+                        intermediateBegin.setNext(null);
+                        this.setFalseSuccessor(null);
 
-                    this.replaceAtPredecessor(nextIf);
-                    nextIf.setFalseSuccessor(intermediateBegin);
-                    intermediateBegin.setNext(this);
-                    this.setFalseSuccessor(bothFalseBegin);
+                        this.replaceAtPredecessor(nextIf);
+                        nextIf.setFalseSuccessor(intermediateBegin);
+                        intermediateBegin.setNext(this);
+                        this.setFalseSuccessor(bothFalseBegin);
 
-                    NodeSourcePosition intermediateBeginPosition = intermediateBegin.getNodeSourcePosition();
-                    intermediateBegin.setNodeSourcePosition(bothFalseBegin.getNodeSourcePosition());
-                    bothFalseBegin.setNodeSourcePosition(intermediateBeginPosition);
+                        NodeSourcePosition intermediateBeginPosition = intermediateBegin.getNodeSourcePosition();
+                        intermediateBegin.setNodeSourcePosition(bothFalseBegin.getNodeSourcePosition());
+                        bothFalseBegin.setNodeSourcePosition(intermediateBeginPosition);
 
-                    ProfileSource combinedSource = profileData.getProfileSource().combine(nextIf.profileData.getProfileSource());
-                    nextIf.setTrueSuccessorProbability(BranchProbabilityData.create(probabilityB, combinedSource));
-                    if (probabilityB == 1.0) {
-                        this.setTrueSuccessorProbability(BranchProbabilityData.create(0.0, combinedSource));
-                    } else {
-                        double newProbability = this.getTrueSuccessorProbability() / (1.0 - probabilityB);
-                        this.setTrueSuccessorProbability(BranchProbabilityData.create(Math.min(1.0, newProbability), combinedSource));
+                        ProfileSource combinedSource = profileData.getProfileSource().combine(nextIf.profileData.getProfileSource());
+                        nextIf.setTrueSuccessorProbability(BranchProbabilityData.create(probabilityB, combinedSource));
+                        if (probabilityB == 1.0) {
+                            this.setTrueSuccessorProbability(BranchProbabilityData.create(0.0, combinedSource));
+                        } else {
+                            double newProbability = this.getTrueSuccessorProbability() / (1.0 - probabilityB);
+                            this.setTrueSuccessorProbability(BranchProbabilityData.create(Math.min(1.0, newProbability), combinedSource));
+                        }
+                        return;
                     }
-                    return;
                 }
             }
         }

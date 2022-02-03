@@ -28,8 +28,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
@@ -85,16 +83,16 @@ class HeapFeature implements GraalFeature {
     }
 
     @Override
-    public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
-                    SnippetReflectionProvider snippetReflection, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
+    public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers,
+                    Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
         if (SubstrateOptions.useRememberedSet()) {
             // Even though I don't hold on to this instance, it is preserved because it becomes the
             // enclosing instance for the lowerings registered within it.
-            BarrierSnippets barrierSnippets = new BarrierSnippets(options, factories, providers, snippetReflection);
+            BarrierSnippets barrierSnippets = new BarrierSnippets(options, providers);
             barrierSnippets.registerLowerings(lowerings);
         }
 
-        GenScavengeAllocationSnippets.registerLowering(options, factories, providers, snippetReflection, lowerings);
+        GenScavengeAllocationSnippets.registerLowering(options, providers, lowerings);
     }
 
     @Override

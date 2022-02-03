@@ -109,8 +109,10 @@ public class AnalysisUniverse implements Universe {
     private final MetaAccessProvider originalMetaAccess;
     private final SnippetReflectionProvider originalSnippetReflection;
     private final SnippetReflectionProvider snippetReflection;
+    private final AnalysisFactory analysisFactory;
 
     private AnalysisType objectClass;
+    private AnalysisType cloneableClass;
     private final JavaKind wordKind;
     private AnalysisPolicy analysisPolicy;
     private BigBang bb;
@@ -122,7 +124,7 @@ public class AnalysisUniverse implements Universe {
     @SuppressWarnings("unchecked")
     public AnalysisUniverse(HostVM hostVM, JavaKind wordKind, AnalysisPolicy analysisPolicy, SubstitutionProcessor substitutions, MetaAccessProvider originalMetaAccess,
                     SnippetReflectionProvider originalSnippetReflection,
-                    SnippetReflectionProvider snippetReflection) {
+                    SnippetReflectionProvider snippetReflection, AnalysisFactory analysisFactory) {
         this.hostVM = hostVM;
         this.wordKind = wordKind;
         this.analysisPolicy = analysisPolicy;
@@ -130,6 +132,7 @@ public class AnalysisUniverse implements Universe {
         this.originalMetaAccess = originalMetaAccess;
         this.originalSnippetReflection = originalSnippetReflection;
         this.snippetReflection = snippetReflection;
+        this.analysisFactory = analysisFactory;
 
         sealed = false;
         objectReplacers = (Function<Object, Object>[]) new Function<?, ?>[0];
@@ -260,7 +263,7 @@ public class AnalysisUniverse implements Universe {
 
         try {
             JavaKind storageKind = getStorageKind(type, originalMetaAccess);
-            AnalysisType newValue = new AnalysisType(this, type, storageKind, objectClass);
+            AnalysisType newValue = new AnalysisType(this, type, storageKind, objectClass, cloneableClass);
 
             synchronized (this) {
                 /*
@@ -277,9 +280,10 @@ public class AnalysisUniverse implements Universe {
                 assert typesById[newValue.getId()] == null;
                 typesById[newValue.getId()] = newValue;
 
-                if (newValue.isJavaLangObject()) {
-                    assert objectClass == null;
+                if (objectClass == null && newValue.isJavaLangObject()) {
                     objectClass = newValue;
+                } else if (cloneableClass == null && newValue.toJavaName(true).equals(Cloneable.class.getName())) {
+                    cloneableClass = newValue;
                 }
             }
 
@@ -427,7 +431,7 @@ public class AnalysisUniverse implements Universe {
         if (sealed) {
             return null;
         }
-        AnalysisMethod newValue = new AnalysisMethod(this, method);
+        AnalysisMethod newValue = analysisFactory.createMethod(this, method);
         AnalysisMethod oldValue = methods.putIfAbsent(method, newValue);
         return oldValue != null ? oldValue : newValue;
     }
@@ -575,7 +579,6 @@ public class AnalysisUniverse implements Universe {
 
     private void collectMethodImplementations() {
         for (AnalysisMethod method : methods.values()) {
-
             Set<AnalysisMethod> implementations = getMethodImplementations(bb, method, false);
             method.implementations = implementations.toArray(new AnalysisMethod[implementations.size()]);
         }
@@ -584,7 +587,7 @@ public class AnalysisUniverse implements Universe {
     public static Set<AnalysisMethod> getMethodImplementations(BigBang bb, AnalysisMethod method, boolean includeInlinedMethods) {
         Set<AnalysisMethod> implementations = new LinkedHashSet<>();
         if (method.wrapped.canBeStaticallyBound() || method.isConstructor()) {
-            if (method.isImplementationInvoked()) {
+            if (includeInlinedMethods ? method.isReachable() : method.isImplementationInvoked()) {
                 implementations.add(method);
             }
         } else {
@@ -613,7 +616,13 @@ public class AnalysisUniverse implements Universe {
          * method. The method cannot be marked as invoked.
          */
         if (holderOrSubtypeInstantiated || method.isIntrinsicMethod()) {
-            AnalysisMethod aResolved = holder.resolveConcreteMethod(method, null);
+            AnalysisMethod aResolved;
+            try {
+                aResolved = holder.resolveConcreteMethod(method, null);
+            } catch (UnsupportedFeatureException e) {
+                /* An unsupported overriding method is not reachable. */
+                aResolved = null;
+            }
             if (aResolved != null) {
                 /*
                  * aResolved == null means that the method in the base class was called, but never

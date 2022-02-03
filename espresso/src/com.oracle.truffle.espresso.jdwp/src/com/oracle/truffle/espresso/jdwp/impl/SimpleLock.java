@@ -26,11 +26,11 @@ public class SimpleLock {
 
     private volatile boolean locked;
 
-    public synchronized void acquire() {
+    public void acquire() {
         locked = true;
     }
 
-    public synchronized void release() {
+    public void release() {
         locked = false;
     }
 

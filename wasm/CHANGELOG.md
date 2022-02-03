@@ -2,6 +2,9 @@
 
 This changelog summarizes major changes to the WebAssembly engine implemented in GraalVM (GraalWasm).
 
+## Version 22.0.0
+* GraalWasm adopted the new Frame API.
+
 ## Version 21.3.0
 
 * (GR-32924) Added support for importing and exporting mutable globals to GraalWasm,

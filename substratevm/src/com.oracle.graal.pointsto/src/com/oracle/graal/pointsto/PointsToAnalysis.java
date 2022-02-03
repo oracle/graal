@@ -45,6 +45,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.function.Function;
 
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
@@ -52,7 +53,6 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.Indent;
-import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
@@ -318,12 +318,6 @@ public abstract class PointsToAnalysis implements BigBang {
         return true;
     }
 
-    /** You can blacklist certain callees here. */
-    @SuppressWarnings("unused")
-    public boolean isCallAllowed(PointsToAnalysis bb, AnalysisMethod caller, AnalysisMethod target, NodeSourcePosition srcPosition) {
-        return true;
-    }
-
     @Override
     public void cleanupAfterAnalysis() {
         allSynchronizedTypeFlow = null;
@@ -444,7 +438,7 @@ public abstract class PointsToAnalysis implements BigBang {
         }
         aMethod.registerAsRootMethod();
 
-        final MethodTypeFlow methodFlow = aMethod.getTypeFlow();
+        final MethodTypeFlow methodFlow = assertPointsToAnalysisMethod(aMethod).getTypeFlow();
         try (Indent indent = debug.logAndIndent("add root method %s", aMethod.getName())) {
             boolean isStatic = Modifier.isStatic(aMethod.getModifiers());
             int paramCount = aMethod.getSignature().getParameterCount(!isStatic);
@@ -475,6 +469,11 @@ public abstract class PointsToAnalysis implements BigBang {
         });
 
         return aMethod;
+    }
+
+    public static PointsToAnalysisMethod assertPointsToAnalysisMethod(AnalysisMethod aMethod) {
+        assert aMethod instanceof PointsToAnalysisMethod : "Only points-to analysis methods are supported";
+        return ((PointsToAnalysisMethod) aMethod);
     }
 
     @Override

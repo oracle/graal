@@ -203,6 +203,9 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
                         config.warmupIterations = 0;
                         config.iterations = 1;
                         break;
+                    case "allocated-bytes":
+                        config.metric = new AllocatedBytesMetric();
+                        break;
                     default:
                         throw new IllegalArgumentException("Unknown metric: " + value);
                 }
@@ -310,6 +313,13 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
                     List<String> runOptionsToParse = runOptionsMap.computeIfAbsent(runOption.runIndex, (i) -> new ArrayList<>());
                     runOptionsToParse.add(runOption.name + "=" + runOption.value);
                 }
+            } else if (isAOT() && "--jvm".equals(option)) {
+                /*
+                 * We're AOT compiled and we see the "--jvm" option: This means we didn't switch to
+                 * JVM mode yet. Just abort, this code is going to be called again later in JVM
+                 * mode.
+                 */
+                return;
             } else {
                 // The engine options must be separated and used later when building a context
                 if (option.startsWith("--engine.")) {
@@ -488,14 +498,17 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
             contextBuilder.logHandler(handler);
         }
 
-        switch (getExtension(config.path)) {
-            // Set Java class path before spawning context.
-            case "jar":
-                contextBuilder.option("java.Classpath", config.path);
-                break;
-            case "wasm":
-                contextBuilder.option("wasm.Builtins", "wasi_snapshot_preview1");
-                break;
+        String extension = getExtension(config.path);
+        if (extension != null) {
+            switch (extension) {
+                // Set Java class path before spawning context.
+                case "jar":
+                    contextBuilder.option("java.Classpath", config.path);
+                    break;
+                case "wasm":
+                    contextBuilder.option("wasm.Builtins", "wasi_snapshot_preview1");
+                    break;
+            }
         }
 
         try (Context context = contextBuilder.build()) {

@@ -110,6 +110,11 @@ public final class ArrayKlass extends Klass {
     }
 
     @Override
+    public Method.MethodVersion[] getDeclaredMethodVersions() {
+        return Method.EMPTY_VERSION_ARRAY;
+    }
+
+    @Override
     public Field[] getDeclaredFields() {
         return Field.EMPTY_ARRAY;
     }

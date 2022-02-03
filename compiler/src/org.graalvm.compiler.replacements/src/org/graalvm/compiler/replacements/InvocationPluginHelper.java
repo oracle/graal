@@ -183,13 +183,18 @@ public class InvocationPluginHelper implements DebugCloseable {
     }
 
     public ValueNode length(ValueNode x) {
-        assert StampTool.typeOrNull(x) != null && StampTool.typeOrNull(x).isArray() : x.stamp(NodeView.DEFAULT);
+        // The visible type of the stamp should either be array type or Object. It's sometimes
+        // Object because of cycles that hide the underlying type.
+        ResolvedJavaType type = StampTool.typeOrNull(x);
+        assert type == null || type.isArray() || type.isJavaLangObject() : x.stamp(NodeView.DEFAULT);
         return b.add(new ArrayLengthNode(x));
     }
 
     public ValueNode arrayElementPointer(ValueNode array, JavaKind kind, ValueNode index) {
-        assert StampTool.typeOrNull(array) != null && StampTool.typeOrNull(array).isArray() : array.stamp(NodeView.DEFAULT);
-        assert StampTool.typeOrNull(array).getComponentType().getJavaKind() == kind : array.stamp(NodeView.DEFAULT);
+        // The visible type of the stamp should either be array type or Object. It's sometimes
+        // Object because of cycles that hide the underlying type.
+        ResolvedJavaType type = StampTool.typeOrNull(array);
+        assert type == null || (type.isArray() && type.getComponentType().getJavaKind() == kind) || type.isJavaLangObject() : array.stamp(NodeView.DEFAULT);
         int arrayBaseOffset = b.getMetaAccess().getArrayBaseOffset(kind);
         ValueNode offset = ConstantNode.forInt(arrayBaseOffset);
         if (index != null) {

@@ -46,11 +46,11 @@ import org.graalvm.compiler.nodes.spi.NodeValueMap;
 import org.graalvm.compiler.nodes.spi.NodeWithState;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.EscapeObjectState;
+import org.graalvm.compiler.nodes.virtual.MaterializedObjectState;
 import org.graalvm.compiler.nodes.virtual.VirtualBoxingNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
+import org.graalvm.compiler.nodes.virtual.VirtualObjectState;
 import org.graalvm.compiler.serviceprovider.GraalServices;
-import org.graalvm.compiler.virtual.nodes.MaterializedObjectState;
-import org.graalvm.compiler.virtual.nodes.VirtualObjectState;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.RegisterValue;

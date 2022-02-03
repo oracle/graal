@@ -970,16 +970,16 @@ public class EspressoInterop extends BaseInterop {
         ObjectKlass k = getInteropKlass(receiver);
 
         for (Field f : k.getFieldTable()) {
-            if (f.isPublic()) {
+            if (f.isPublic() && !f.isRemoved()) {
                 members.add(f.getNameAsString());
             }
         }
 
-        for (Method m : k.getVTable()) {
-            if (LookupVirtualMethodNode.isCandidate(m)) {
+        for (Method.MethodVersion m : k.getVTable()) {
+            if (LookupVirtualMethodNode.isCandidate(m.getMethod())) {
                 // Note: If there are overloading, the same key may appear twice.
                 // TODO: Cache the keys array in the Klass.
-                members.add(m.getInteropString());
+                members.add(m.getMethod().getInteropString());
             }
         }
         // SVM does not like ArrayList.toArray(). Do manual copy.

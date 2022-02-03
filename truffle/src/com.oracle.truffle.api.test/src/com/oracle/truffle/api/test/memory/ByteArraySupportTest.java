@@ -41,13 +41,22 @@
 
 package com.oracle.truffle.api.test.memory;
 
-import com.oracle.truffle.api.memory.ByteArraySupport;
-import org.junit.Assert;
-import org.junit.Test;
-
 import java.nio.charset.StandardCharsets;
 
+import org.junit.Assert;
+import org.junit.BeforeClass;
+import org.junit.Test;
+
+import com.oracle.truffle.api.memory.ByteArraySupport;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
+
 public class ByteArraySupportTest {
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
+
     @Test
     public void putByteBigEndian() {
         byte[] buffer = new byte[1];

@@ -43,7 +43,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.code.CodeInfoDecoder;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.reflect.hosted.ExecutableAccessorComputer;
 
@@ -113,35 +112,37 @@ public final class Target_java_lang_reflect_Constructor {
         Target_java_lang_reflect_Constructor holder = ReflectionHelper.getHolder(this);
         if (holder.annotatedReceiverType != null) {
             return holder.annotatedReceiverType;
-        } else {
-            Class<?> thisDeclClass = getDeclaringClass();
-            Class<?> enclosingClass = thisDeclClass.getEnclosingClass();
+        }
+        Class<?> thisDeclClass = getDeclaringClass();
+        Class<?> enclosingClass = thisDeclClass.getEnclosingClass();
 
-            if (enclosingClass == null) {
-                // A Constructor for a top-level class
-                return null;
-            }
+        if (enclosingClass == null) {
+            // A Constructor for a top-level class
+            return null;
+        }
 
-            Class<?> outerDeclaringClass = thisDeclClass.getDeclaringClass();
-            if (outerDeclaringClass == null) {
-                // A constructor for a local or anonymous class
-                return null;
-            }
+        Class<?> outerDeclaringClass = thisDeclClass.getDeclaringClass();
+        if (outerDeclaringClass == null) {
+            // A constructor for a local or anonymous class
+            return null;
+        }
 
-            // Either static nested or inner class
-            if (Modifier.isStatic(thisDeclClass.getModifiers())) {
-                // static nested
-                return null;
-            }
+        // Either static nested or inner class
+        if (Modifier.isStatic(thisDeclClass.getModifiers())) {
+            // static nested
+            return null;
+        }
 
+        if (MethodMetadataDecoderImpl.hasQueriedMethods()) {
             // A Constructor for an inner class
             return Target_sun_reflect_annotation_TypeAnnotationParser.buildAnnotatedType(SubstrateUtil.cast(holder, Target_java_lang_reflect_Executable.class).typeAnnotations,
-                            CodeInfoDecoder.getMetadataPseudoConstantPool(),
+                            new Target_jdk_internal_reflect_ConstantPool(),
                             SubstrateUtil.cast(this, AnnotatedElement.class),
                             thisDeclClass,
                             enclosingClass,
                             TypeAnnotation.TypeAnnotationTarget.METHOD_RECEIVER);
         }
+        throw VMError.shouldNotReachHere();
     }
 
     /**

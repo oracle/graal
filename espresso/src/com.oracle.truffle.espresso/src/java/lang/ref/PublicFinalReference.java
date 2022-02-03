@@ -27,8 +27,7 @@ import com.oracle.truffle.espresso.substitutions.Target_java_lang_ref_Reference;
 
 /**
  * Open {@link FinalReference}; implementation detail for a meta-circular implementation of
- * {@link Object#finalize() finalization}. If the host supports FinalReference(s), so does the
- * guest.
+ * finalization. If the host supports FinalReference(s), so does the guest.
  *
  * <p>
  * This class is just a placeholder, not usable as-is. A modified version without the throwing

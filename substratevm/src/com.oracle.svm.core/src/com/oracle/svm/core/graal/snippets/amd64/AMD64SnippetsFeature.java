@@ -27,8 +27,6 @@ package com.oracle.svm.core.graal.snippets.amd64;
 import java.util.Map;
 import java.util.function.Predicate;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
@@ -49,16 +47,16 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 class AMD64SnippetsFeature implements GraalFeature {
 
     @Override
-    public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
-                    SnippetReflectionProvider snippetReflection, Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
+    public void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers,
+                    Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
 
         Predicate<ResolvedJavaMethod> mustNotAllocatePredicate = null;
         if (hosted) {
             mustNotAllocatePredicate = method -> ImageSingletons.lookup(RestrictHeapAccessCallees.class).mustNotAllocate(method);
         }
 
-        AMD64ArithmeticSnippets.registerLowerings(options, factories, providers, snippetReflection, lowerings);
-        AMD64NonSnippetLowerings.registerLowerings(runtimeConfig, mustNotAllocatePredicate, options, factories, providers, snippetReflection, lowerings);
-        PosixAMD64VaListSnippets.registerLowerings(options, factories, providers, snippetReflection, lowerings);
+        AMD64ArithmeticSnippets.registerLowerings(options, providers, lowerings);
+        AMD64NonSnippetLowerings.registerLowerings(runtimeConfig, mustNotAllocatePredicate, options, providers, lowerings);
+        PosixAMD64VaListSnippets.registerLowerings(options, providers, lowerings);
     }
 }

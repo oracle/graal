@@ -67,10 +67,10 @@ public class ShenandoahBarrierSet implements BarrierSet {
             addReadNodeBarriers((ReadNode) n);
         } else if (n instanceof WriteNode) {
             WriteNode write = (WriteNode) n;
-            addWriteBarriers(write, write.value(), null, true, write.getNullCheck());
+            addWriteBarriers(write, write.value(), null, true, write.getUsedAsNullCheck());
         } else if (n instanceof LoweredAtomicReadAndWriteNode) {
             LoweredAtomicReadAndWriteNode atomic = (LoweredAtomicReadAndWriteNode) n;
-            addWriteBarriers(atomic, atomic.getNewValue(), null, true, atomic.getNullCheck());
+            addWriteBarriers(atomic, atomic.getNewValue(), null, true, atomic.getUsedAsNullCheck());
         } else if (n instanceof AbstractCompareAndSwapNode) {
             GraalError.unimplemented();
             AbstractCompareAndSwapNode cmpSwap = (AbstractCompareAndSwapNode) n;
@@ -138,7 +138,7 @@ public class ShenandoahBarrierSet implements BarrierSet {
     private static void addPreWriteBarrier(FixedAccessNode node, AddressNode address, ValueNode value, boolean doLoad, boolean nullCheck, StructuredGraph graph) {
         ShenandoahPreWriteBarrier preBarrier = graph.add(new ShenandoahPreWriteBarrier(address, value, doLoad, nullCheck));
         preBarrier.setStateBefore(node.stateBefore());
-        node.setNullCheck(false);
+        node.setUsedAsNullCheck(false);
         node.setStateBefore(null);
         graph.addBeforeFixed(node, preBarrier);
     }

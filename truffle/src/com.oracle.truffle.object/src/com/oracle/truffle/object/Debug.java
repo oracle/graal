@@ -125,65 +125,6 @@ class Debug {
         }
     }
 
-    private static void dumpIGV() {
-        com.oracle.truffle.api.nodes.GraphPrintVisitor printer = new com.oracle.truffle.api.nodes.GraphPrintVisitor();
-        printer.beginGroup("shapes");
-        IGVShapeVisitor visitor = new IGVShapeVisitor(printer);
-        for (ShapeImpl shape : getAllShapes()) {
-            if (isRootShape(shape)) {
-                printer.beginGraph(getId(shape) + " (" + calcShapeGraphSize(shape) + ") (" + shape.getDynamicType() + ")");
-                visitor.visitShape(shape);
-                printer.endGraph();
-            }
-        }
-        printer.beginGraph("all shapes");
-        for (ShapeImpl shape : getAllShapes()) {
-            if (isRootShape(shape)) {
-                visitor.visitShape(shape);
-            }
-        }
-        printer.endGraph();
-        printer.endGroup();
-        printer.printToNetwork(false);
-    }
-
-    private static String calcShapeGraphSize(ShapeImpl shape) {
-        class Visitor implements DebugShapeVisitor<Integer> {
-            final Set<Shape> visitedShapes = new HashSet<>();
-            int invalidShapeCount;
-            int branchCount = 1;
-            int leafCount;
-
-            @Override
-            public Integer visitShape(ShapeImpl s, Map<? extends Transition, ? extends ShapeImpl> transitions) {
-                if (!visitedShapes.add(s)) {
-                    return 0;
-                }
-                int shapeCount = 1;
-                if (!s.isValid()) {
-                    invalidShapeCount++;
-                }
-                if (s.isLeaf()) {
-                    leafCount++;
-                }
-                branchCount += Math.max(0, transitions.size() - 1);
-                for (Map.Entry<? extends Transition, ? extends ShapeImpl> entry : transitions.entrySet()) {
-                    shapeCount += this.visitShape(entry.getValue());
-                }
-                return shapeCount;
-            }
-        }
-
-        Visitor v = new Visitor();
-        int shapeCount = v.visitShape(shape);
-        assert shapeCount == v.visitedShapes.size();
-        return shapeCount + (v.invalidShapeCount != 0 ? (", " + INVALID + v.invalidShapeCount) : "") + ", " + BRANCH + v.branchCount + ", " + LEAF + v.leafCount;
-    }
-
-    private static boolean isRootShape(ShapeImpl shape) {
-        return shape.getParent() == null;
-    }
-
     private static File getOutputFile(String extension) {
         return Paths.get(ObjectStorageOptions.DumpShapesPath, "shapes." + extension).toFile();
     }
@@ -198,51 +139,6 @@ class Debug {
         }
 
         R visitShape(ShapeImpl shape, Map<? extends Transition, ? extends ShapeImpl> transitions);
-    }
-
-    static class IGVShapeVisitor implements DebugShapeVisitor<IGVShapeVisitor> {
-        private final com.oracle.truffle.api.nodes.GraphPrintVisitor graphPrinter;
-
-        IGVShapeVisitor(com.oracle.truffle.api.nodes.GraphPrintVisitor printer) {
-            this.graphPrinter = printer;
-        }
-
-        @Override
-        public IGVShapeVisitor visitShape(final ShapeImpl shape, final Map<? extends Transition, ? extends ShapeImpl> transitions) {
-            graphPrinter.visit(shape, new com.oracle.truffle.api.nodes.GraphPrintVisitor.GraphPrintHandler() {
-                public void visit(Object node, com.oracle.truffle.api.nodes.GraphPrintVisitor.GraphPrintAdapter printer) {
-                    if (!printer.visited(node)) {
-                        ShapeImpl s = (ShapeImpl) node;
-                        printer.createElementForNode(s);
-                        String name;
-                        if (isRootShape(s)) {
-                            name = ("ROOT(" + s.getDynamicType() + ")");
-                        } else {
-                            name = s.getTransitionFromParent().toString();
-                            if (!s.isValid()) {
-                                name = INVALID + name;
-                            }
-                        }
-                        printer.setNodeProperty(s, "name", name);
-                        printer.setNodeProperty(s, "valid", s.isValid());
-                        printer.setNodeProperty(s, "leaf", s.isLeaf());
-                        printer.setNodeProperty(s, "identityHashCode", Integer.toHexString(System.identityHashCode(s)));
-                        printer.setNodeProperty(s, "dynamicType", s.getDynamicType());
-                        printer.setNodeProperty(s, "flags", s.getFlags());
-                        printer.setNodeProperty(s, "shared", s.isShared());
-
-                        for (Entry<? extends Transition, ? extends ShapeImpl> entry : transitions.entrySet()) {
-                            ShapeImpl dst = entry.getValue();
-                            IGVShapeVisitor.this.visitShape((dst));
-                            assert printer.visited(dst);
-                            printer.connectNodes(s, dst, entry.getKey().toString());
-                        }
-                    }
-                }
-            });
-
-            return this;
-        }
     }
 
     static class GraphvizShapeVisitor implements DebugShapeVisitor<GraphvizShapeVisitor> {
@@ -308,9 +204,6 @@ class Debug {
                     try {
                         if (ObjectStorageOptions.DumpShapesDOT) {
                             dumpDOT();
-                        }
-                        if (ObjectStorageOptions.DumpShapesIGV) {
-                            dumpIGV();
                         }
                     } catch (FileNotFoundException | UnsupportedEncodingException e) {
                         throw new RuntimeException(e);

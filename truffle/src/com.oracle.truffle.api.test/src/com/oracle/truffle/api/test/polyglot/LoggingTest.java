@@ -69,6 +69,7 @@ import org.graalvm.polyglot.Engine;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Assume;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -85,8 +86,14 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.GCUtils;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class LoggingTest {
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     @After
     public void tearDown() {
@@ -697,6 +704,40 @@ public class LoggingTest {
                 Assert.assertEquals(expected, handler.getLog());
                 expected = new ArrayList<>();
                 expected.addAll(createExpectedLog(LoggingLanguageFirst.ID, defaultLevel, Collections.emptyMap()));
+                Assert.assertEquals(expected, handler2.getLog());
+            }
+        }
+    }
+
+    @Test
+    public void testDefaultLevelMultipleContexts() {
+        String parentLoggerName = "testDefaultLevelMultipleContexts";
+        String childLoggerName = String.format("%s.child", parentLoggerName);
+        Map<String, Level> setLevelsMap = new HashMap<>();
+        setLevelsMap.put(parentLoggerName, Level.FINE);
+        setLevelsMap.put(childLoggerName, Level.SEVERE);
+        Context.Builder builder = newContextBuilder();
+        for (Map.Entry<String, Level> levelsMapEntry : setLevelsMap.entrySet()) {
+            builder.options(createLoggingOptions(LoggingLanguageFirst.ID, levelsMapEntry.getKey(), levelsMapEntry.getValue().toString()));
+        }
+        TestHandler handler = new TestHandler();
+        TruffleLogger parentLogger = TruffleLogger.getLogger(LoggingLanguageFirst.ID, parentLoggerName);
+        TruffleLogger childLogger = TruffleLogger.getLogger(LoggingLanguageFirst.ID, childLoggerName);
+        AbstractLoggingLanguage.action = (loggingContext, defaultLoggers) -> {
+            parentLogger.log(Level.INFO, parentLogger.getName());
+            childLogger.log(Level.INFO, childLogger.getName());
+            return false;
+        };
+        try (Context ctx = builder.logHandler(handler).build()) {
+            TestHandler handler2 = new TestHandler();
+            try (Context ctx2 = newContextBuilder().logHandler(handler2).build()) {
+                ctx.eval(LoggingLanguageFirst.ID, "");
+                ctx2.eval(LoggingLanguageFirst.ID, "");
+                List<Map.Entry<Level, String>> expected = Arrays.asList(new AbstractMap.SimpleEntry<>(Level.INFO, String.format("%s.%s", LoggingLanguageFirst.ID, parentLoggerName)));
+                Assert.assertEquals(expected, handler.getLog());
+                expected = new ArrayList<>();
+                expected.add(new AbstractMap.SimpleEntry<>(Level.INFO, String.format("%s.%s", LoggingLanguageFirst.ID, parentLoggerName)));
+                expected.add(new AbstractMap.SimpleEntry<>(Level.INFO, String.format("%s.%s", LoggingLanguageFirst.ID, childLoggerName)));
                 Assert.assertEquals(expected, handler2.getLog());
             }
         }

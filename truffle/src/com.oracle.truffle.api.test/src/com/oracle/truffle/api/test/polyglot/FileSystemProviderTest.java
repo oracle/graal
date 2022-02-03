@@ -55,13 +55,22 @@ import java.nio.file.attribute.FileTime;
 import java.util.EnumSet;
 import java.util.Optional;
 import java.util.stream.StreamSupport;
+
+import org.graalvm.polyglot.io.FileSystem;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
-import org.graalvm.polyglot.io.FileSystem;
+
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class FileSystemProviderTest {
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     private Path workDir;
     private Path invalidWorkDir;

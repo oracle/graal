@@ -105,7 +105,10 @@
     # enforce self.arch (useful for generating job names)
     arch:: error "self.arch not set",
     capabilities +: [],
-    catch_files +: common_json.catch_files
+    catch_files +: common_json.catch_files,
+    logs : [
+      "*/es-*.json"
+    ]
   },
 
   linux:: deps.linux + self.common + {

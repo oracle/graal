@@ -24,10 +24,6 @@
  */
 package com.oracle.svm.hosted.meta;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
 import com.oracle.graal.pointsto.meta.AnalysisType;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -35,14 +31,15 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 
 public class HostedInstanceClass extends HostedClass {
 
-    protected HostedField[] instanceFields;
+    protected HostedField[] instanceFieldsWithoutSuper;
+    protected HostedField[] instanceFieldsWithSuper;
     protected int afterFieldsOffset;
     protected int instanceSize;
     protected boolean monitorFieldNeeded = false;
     protected int monitorFieldOffset = 0;
 
-    public HostedInstanceClass(HostedUniverse universe, AnalysisType wrapped, JavaKind kind, JavaKind storageKind, HostedClass superClass, HostedInterface[] interfaces, boolean isCloneable) {
-        super(universe, wrapped, kind, storageKind, superClass, interfaces, isCloneable);
+    public HostedInstanceClass(HostedUniverse universe, AnalysisType wrapped, JavaKind kind, JavaKind storageKind, HostedClass superClass, HostedInterface[] interfaces) {
+        super(universe, wrapped, kind, storageKind, superClass, interfaces);
     }
 
     @Override
@@ -74,27 +71,16 @@ public class HostedInstanceClass extends HostedClass {
 
     @Override
     public HostedField[] getInstanceFields(boolean includeSuperclasses) {
-        assert instanceFields != null;
-
-        if (includeSuperclasses && getSuperclass() != null) {
-            List<HostedField> fields = new ArrayList<>();
-            fields.addAll(Arrays.asList(getSuperclass().getInstanceFields(true)));
-            fields.addAll(Arrays.asList(instanceFields));
-            return fields.toArray(new HostedField[fields.size()]);
-        }
-        return instanceFields;
+        return includeSuperclasses ? instanceFieldsWithSuper : instanceFieldsWithoutSuper;
     }
 
     @Override
     public ResolvedJavaField findInstanceFieldWithOffset(long offset, JavaKind expectedKind) {
         assert offset >= 0;
-        for (HostedField field : instanceFields) {
+        for (HostedField field : instanceFieldsWithSuper) {
             if (field.getLocation() == offset && (expectedKind == null || field.getStorageKind() == expectedKind)) {
                 return field;
             }
-        }
-        if (getSuperclass() != null) {
-            return getSuperclass().findInstanceFieldWithOffset(offset, expectedKind);
         }
         return null;
     }

@@ -63,6 +63,8 @@ public class InstrumentOptionsTest extends AbstractPolyglotTest {
 
     public InstrumentOptionsTest() {
         cleanupOnSetup = false; // allow multiple contexts active
+        needsLanguageEnv = true;
+        needsInstrumentEnv = true;
     }
 
     static class TestInstrument extends ProxyInstrument {

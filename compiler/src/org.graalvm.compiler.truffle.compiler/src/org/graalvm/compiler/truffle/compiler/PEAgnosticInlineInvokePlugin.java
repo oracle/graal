@@ -72,16 +72,12 @@ public final class PEAgnosticInlineInvokePlugin implements InlineInvokePlugin {
     @Override
     public void notifyNotInlined(GraphBuilderContext b, ResolvedJavaMethod original, Invoke invoke) {
         if (original.equals(partialEvaluator.callDirectMethod)) {
-            if (lastDirectCallNode == null) {
-                if (indirectCall) {
-                    indirectCall = false;
-                    indirectInvokes.add(invoke);
-                }
-                return;
-            }
             TruffleCallNode truffleCallNode = truffleInliningData.findCallNode(lastDirectCallNode);
             invokeToTruffleCallNode.put(invoke, truffleCallNode);
             lastDirectCallNode = null;
+        } else if (lastDirectCallNode == null && indirectCall) {
+            indirectCall = false;
+            indirectInvokes.add(invoke);
         }
     }
 

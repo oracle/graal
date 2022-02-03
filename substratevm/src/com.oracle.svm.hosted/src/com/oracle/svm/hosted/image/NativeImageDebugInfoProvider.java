@@ -660,7 +660,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
 
             @Override
             public String valueType() {
-                return hostedMethod.getSignature().getReturnType(null).toJavaName();
+                return toJavaName((HostedType) hostedMethod.getSignature().getReturnType(null));
             }
 
             @Override
@@ -669,7 +669,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
                 int parameterCount = signature.getParameterCount(false);
                 List<String> paramTypes = new ArrayList<>(parameterCount);
                 for (int i = 0; i < parameterCount; i++) {
-                    paramTypes.add(signature.getParameterType(i, null).toJavaName());
+                    paramTypes.add(toJavaName((HostedType) signature.getParameterType(i, null)));
                 }
                 return paramTypes;
             }
@@ -1278,7 +1278,7 @@ class NativeImageDebugInfoProvider implements DebugInfoProvider {
     }
 
     private boolean acceptObjectInfo(ObjectInfo objectInfo) {
-        /* This condiiton rejects filler partition objects. */
+        /* This condition rejects filler partition objects. */
         return (objectInfo.getPartition().getStartOffset() > 0);
     }
 

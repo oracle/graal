@@ -47,7 +47,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -460,7 +459,7 @@ public abstract class SLScopedNode extends Node {
             SLWriteLocalVariableNode[] writeNodes = root.getDeclaredArguments();
             for (int i = 0; i < writeNodes.length; i++) {
                 SLWriteLocalVariableNode writeNode = writeNodes[i];
-                if (member.equals(writeNode.getSlot().getIdentifier())) {
+                if (member.equals(writeNode.getSlotName())) {
                     return i;
                 }
             }
@@ -682,7 +681,7 @@ public abstract class SLScopedNode extends Node {
             static Object doCached(VariablesObject receiver, String member,
                             @Cached("member") String cachedMember,
                             // We cache the member's frame slot for fast-path access
-                            @Cached("receiver.findSlot(member)") FrameSlot slot) throws UnknownIdentifierException {
+                            @Cached("receiver.findSlot(member)") int slot) throws UnknownIdentifierException {
                 return doRead(receiver, cachedMember, slot);
             }
 
@@ -692,12 +691,12 @@ public abstract class SLScopedNode extends Node {
             @Specialization(replaces = "doCached")
             @TruffleBoundary
             static Object doGeneric(VariablesObject receiver, String member) throws UnknownIdentifierException {
-                FrameSlot slot = receiver.findSlot(member);
+                int slot = receiver.findSlot(member);
                 return doRead(receiver, member, slot);
             }
 
-            private static Object doRead(VariablesObject receiver, String member, FrameSlot slot) throws UnknownIdentifierException {
-                if (slot == null) {
+            private static Object doRead(VariablesObject receiver, String member, int slot) throws UnknownIdentifierException {
+                if (slot == -1) {
                     throw UnknownIdentifierException.create(member);
                 }
                 if (receiver.frame != null) {
@@ -771,12 +770,12 @@ public abstract class SLScopedNode extends Node {
             return findWriteNode(member) != null;
         }
 
-        FrameSlot findSlot(String member) {
+        int findSlot(String member) {
             SLWriteLocalVariableNode writeNode = findWriteNode(member);
             if (writeNode != null) {
                 return writeNode.getSlot();
             } else {
-                return null;
+                return -1;
             }
         }
 
@@ -792,13 +791,13 @@ public abstract class SLScopedNode extends Node {
             int index = getVisibleVariablesIndex();
             for (int i = 0; i < index; i++) {
                 SLWriteLocalVariableNode writeNode = writeNodes[i];
-                if (member.equals(writeNode.getSlot().getIdentifier())) {
+                if (member.equals(writeNode.getSlotName())) {
                     return writeNode;
                 }
             }
             for (int i = parentBlockIndex; i < writeNodes.length; i++) {
                 SLWriteLocalVariableNode writeNode = writeNodes[i];
-                if (member.equals(writeNode.getSlot().getIdentifier())) {
+                if (member.equals(writeNode.getSlotName())) {
                     return writeNode;
                 }
             }
@@ -892,8 +891,8 @@ public abstract class SLScopedNode extends Node {
         @ExportMessage
         @TruffleBoundary
         String asString() {
-            // FrameSlot's identifier object is not safe to convert to String on fast-path.
-            return writeNode.getSlot().getIdentifier().toString();
+            // frame slot's identifier object is not safe to convert to String on fast-path.
+            return writeNode.getSlotName();
         }
 
         @ExportMessage

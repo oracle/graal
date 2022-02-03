@@ -39,6 +39,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import org.graalvm.compiler.nodes.Invoke;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
@@ -51,7 +52,7 @@ public class MethodFlowsGraph {
 
     protected final int id;
 
-    private final AnalysisMethod method;
+    private final PointsToAnalysisMethod method;
     private AnalysisContext context;
     private boolean isClone;
 
@@ -80,7 +81,7 @@ public class MethodFlowsGraph {
      * Constructor for the 'original' method flows graph. This is used as a source for creating
      * clones. It has a <code>null</code> context and <code>null</code> original method flows.
      */
-    public MethodFlowsGraph(AnalysisMethod analysisMethod) {
+    public MethodFlowsGraph(PointsToAnalysisMethod analysisMethod) {
 
         id = TypeFlow.nextId.incrementAndGet();
 
@@ -114,7 +115,7 @@ public class MethodFlowsGraph {
         nonUniqueBcis = new HashSet<>();
     }
 
-    public MethodFlowsGraph(AnalysisMethod method, AnalysisContext context) {
+    public MethodFlowsGraph(PointsToAnalysisMethod method, AnalysisContext context) {
         this.id = TypeFlow.nextId.incrementAndGet();
         this.context = context;
         this.method = method;
@@ -338,7 +339,7 @@ public class MethodFlowsGraph {
         return context;
     }
 
-    public AnalysisMethod getMethod() {
+    public PointsToAnalysisMethod getMethod() {
         return method;
     }
 
@@ -473,7 +474,7 @@ public class MethodFlowsGraph {
          */
         List<MethodFlowsGraph> callers = new ArrayList<>();
         for (AnalysisMethod caller : method.getCallers()) {
-            for (MethodFlowsGraph callerFlowGraph : caller.getTypeFlow().getFlows()) {
+            for (MethodFlowsGraph callerFlowGraph : PointsToAnalysis.assertPointsToAnalysisMethod(caller).getTypeFlow().getFlows()) {
                 for (InvokeTypeFlow callerInvoke : callerFlowGraph.getInvokeFlows()) {
                     InvokeTypeFlow invoke = callerInvoke;
                     if (InvokeTypeFlow.isContextInsensitiveVirtualInvoke(callerInvoke)) {

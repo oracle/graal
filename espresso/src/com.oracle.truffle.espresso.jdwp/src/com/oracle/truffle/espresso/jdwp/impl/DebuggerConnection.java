@@ -275,7 +275,7 @@ public final class DebuggerConnection implements Commands {
                                     result = JDWP.VirtualMachine.CAPABILITIES_NEW.createReply(packet);
                                     break;
                                 case JDWP.VirtualMachine.REDEFINE_CLASSES.ID:
-                                    result = JDWP.VirtualMachine.REDEFINE_CLASSES.createReply(packet, context);
+                                    result = JDWP.VirtualMachine.REDEFINE_CLASSES.createReply(packet, controller);
                                     break;
                                 case JDWP.VirtualMachine.SET_DEFAULT_STRATUM.ID:
                                     result = JDWP.VirtualMachine.SET_DEFAULT_STRATUM.createReply(packet);

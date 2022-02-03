@@ -52,11 +52,13 @@ public class AbstractKnownTruffleTypes {
 
     static class FieldsCache {
         final ResolvedJavaType declaringClass;
-        final ResolvedJavaField[] fields;
+        final ResolvedJavaField[] instanceFields;
+        final ResolvedJavaField[] staticFields;
 
-        FieldsCache(ResolvedJavaType declaringClass, ResolvedJavaField[] fields) {
+        FieldsCache(ResolvedJavaType declaringClass, ResolvedJavaField[] instanceFields, ResolvedJavaField[] staticFields) {
             this.declaringClass = declaringClass;
-            this.fields = fields;
+            this.instanceFields = instanceFields;
+            this.staticFields = staticFields;
         }
     }
 
@@ -65,10 +67,15 @@ public class AbstractKnownTruffleTypes {
     protected ResolvedJavaField findField(ResolvedJavaType declaringClass, String name) {
         FieldsCache fc = fieldsCache;
         if (fc == null || !fc.declaringClass.equals(declaringClass)) {
-            fc = new FieldsCache(declaringClass, declaringClass.getInstanceFields(false));
+            fc = new FieldsCache(declaringClass, declaringClass.getInstanceFields(false), declaringClass.getStaticFields());
             fieldsCache = fc;
         }
-        for (ResolvedJavaField f : fc.fields) {
+        for (ResolvedJavaField f : fc.instanceFields) {
+            if (f.getName().equals(name)) {
+                return f;
+            }
+        }
+        for (ResolvedJavaField f : fc.staticFields) {
             if (f.getName().equals(name)) {
                 return f;
             }

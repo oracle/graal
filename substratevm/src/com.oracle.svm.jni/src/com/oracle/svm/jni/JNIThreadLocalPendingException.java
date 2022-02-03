@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.jni;
 
+import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 
@@ -37,6 +38,7 @@ public class JNIThreadLocalPendingException {
         return pendingException.get();
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void set(Throwable t) {
         pendingException.set(t);
     }

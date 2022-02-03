@@ -83,6 +83,7 @@ import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.HostedConfiguration;
@@ -226,8 +227,7 @@ public class UniverseBuilder {
         } else if (aType.isInstanceClass()) {
             assert !aType.isInterface() && !aType.isArray();
             HostedInstanceClass superClass = (HostedInstanceClass) makeType(aType.getSuperclass());
-            boolean isCloneable = aMetaAccess.lookupJavaType(Cloneable.class).isAssignableFrom(aType);
-            hType = new HostedInstanceClass(hUniverse, aType, kind, storageKind, superClass, sInterfaces, isCloneable);
+            hType = new HostedInstanceClass(hUniverse, aType, kind, storageKind, superClass, sInterfaces);
 
             if (superClass == null) {
                 hUniverse.kindToType.put(JavaKind.Object, hType);
@@ -407,10 +407,10 @@ public class UniverseBuilder {
     }
 
     private void layoutInstanceFields() {
-        layoutInstanceFields(hUniverse.getObjectClass(), ConfigurationValues.getObjectLayout().getFirstFieldOffset());
+        layoutInstanceFields(hUniverse.getObjectClass(), ConfigurationValues.getObjectLayout().getFirstFieldOffset(), new HostedField[0]);
     }
 
-    private void layoutInstanceFields(HostedInstanceClass clazz, int superSize) {
+    private void layoutInstanceFields(HostedInstanceClass clazz, int superSize, HostedField[] superFields) {
         ArrayList<HostedField> rawFields = new ArrayList<>();
         ArrayList<HostedField> orderedFields = new ArrayList<>();
         ObjectLayout layout = ConfigurationValues.getObjectLayout();
@@ -484,9 +484,18 @@ public class UniverseBuilder {
             nextOffset += referenceFieldAlignmentAndSize;
         }
 
-        clazz.instanceFields = orderedFields.toArray(new HostedField[orderedFields.size()]);
+        clazz.instanceFieldsWithoutSuper = orderedFields.toArray(new HostedField[orderedFields.size()]);
         clazz.instanceSize = layout.alignUp(nextOffset);
         clazz.afterFieldsOffset = nextOffset;
+
+        if (clazz.instanceFieldsWithoutSuper.length == 0) {
+            clazz.instanceFieldsWithSuper = superFields;
+        } else if (superFields.length == 0) {
+            clazz.instanceFieldsWithSuper = clazz.instanceFieldsWithoutSuper;
+        } else {
+            clazz.instanceFieldsWithSuper = Arrays.copyOf(superFields, superFields.length + clazz.instanceFieldsWithoutSuper.length);
+            System.arraycopy(clazz.instanceFieldsWithoutSuper, 0, clazz.instanceFieldsWithSuper, superFields.length, clazz.instanceFieldsWithoutSuper.length);
+        }
 
         for (HostedType subClass : clazz.subTypes) {
             if (subClass.isInstanceClass()) {
@@ -496,7 +505,7 @@ public class UniverseBuilder {
                  * possible because each class that needs a synthetic field gets its own synthetic
                  * field at the end of its instance fields.
                  */
-                layoutInstanceFields((HostedInstanceClass) subClass, endOfFieldsOffset);
+                layoutInstanceFields((HostedInstanceClass) subClass, endOfFieldsOffset, clazz.instanceFieldsWithSuper);
             }
         }
     }

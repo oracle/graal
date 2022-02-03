@@ -32,6 +32,7 @@ import static org.graalvm.compiler.lir.LIRValueUtil.isJavaConstant;
 
 import java.util.function.Function;
 
+import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.calc.Condition;
@@ -73,6 +74,7 @@ import org.graalvm.compiler.lir.aarch64.AArch64ZapStackOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ZeroMemoryOp;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGenerator;
+import org.graalvm.compiler.lir.gen.MoveFactory;
 import org.graalvm.compiler.phases.util.Providers;
 
 import jdk.vm.ci.aarch64.AArch64;
@@ -93,21 +95,6 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
     public AArch64LIRGenerator(LIRKindTool lirKindTool, AArch64ArithmeticLIRGenerator arithmeticLIRGen, MoveFactory moveFactory, Providers providers, LIRGenerationResult lirGenRes) {
         super(lirKindTool, arithmeticLIRGen, moveFactory, providers, lirGenRes);
-    }
-
-    /**
-     * Checks whether the supplied constant can be used without loading it into a register for store
-     * operations, i.e., on the right hand side of a memory access.
-     *
-     * @param c The constant to check.
-     * @return True if the constant can be used directly, false if the constant needs to be in a
-     *         register.
-     */
-    protected static final boolean canStoreConstant(JavaConstant c) {
-        // Our own code never calls this since we can't make a definite statement about whether or
-        // not we can inline a constant without knowing what kind of operation we execute. Let's be
-        // optimistic here and fix up mistakes later.
-        return true;
     }
 
     /**
@@ -138,7 +125,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
     @Override
     public void emitNullCheck(Value address, LIRFrameState state) {
-        append(new AArch64Move.NullCheckOp(asAddressValue(address), state));
+        append(new AArch64Move.NullCheckOp(asAddressValue(address, AArch64Address.ANY_SIZE), state));
     }
 
     @Override
@@ -148,12 +135,13 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         return result;
     }
 
-    public AArch64AddressValue asAddressValue(Value address) {
+    public AArch64AddressValue asAddressValue(Value address, int bitTransferSize) {
+        assert address.getPlatformKind() == AArch64Kind.QWORD;
+
         if (address instanceof AArch64AddressValue) {
             return (AArch64AddressValue) address;
         } else {
-            int size = address.getValueKind().getPlatformKind().getSizeInBytes() * Byte.SIZE;
-            return AArch64AddressValue.makeAddress(address.getValueKind(), size, asAllocatable(address));
+            return AArch64AddressValue.makeAddress(address.getValueKind(), bitTransferSize, asAllocatable(address));
         }
     }
 
@@ -596,7 +584,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
 
     @Override
     public void emitCacheWriteback(Value address) {
-        append(new AArch64CacheWritebackOp(asAddressValue(address)));
+        append(new AArch64CacheWritebackOp(asAddressValue(address, AArch64Address.ANY_SIZE)));
     }
 
     @Override

@@ -104,7 +104,7 @@ public class JfrTypeRepository implements JfrConstantPool {
 
     public int writeClasses(JfrChunkWriter writer, TypeInfo typeInfo) {
         if (typeInfo.getClasses().isEmpty()) {
-            return 0;
+            return EMPTY;
         }
         writer.writeCompressedLong(JfrTypes.Class.getId());
         writer.writeCompressedInt(typeInfo.getClasses().size());
@@ -112,7 +112,7 @@ public class JfrTypeRepository implements JfrConstantPool {
         for (Class<?> clazz : typeInfo.getClasses()) {
             writeClass(writer, typeInfo, clazz);
         }
-        return 1;
+        return NON_EMPTY;
     }
 
     private static void writeClass(JfrChunkWriter writer, TypeInfo typeInfo, Class<?> clazz) {
@@ -130,7 +130,7 @@ public class JfrTypeRepository implements JfrConstantPool {
     private static int writePackages(JfrChunkWriter writer, TypeInfo typeInfo) {
         Map<String, PackageInfo> packages = typeInfo.getPackages();
         if (packages.isEmpty()) {
-            return 0;
+            return EMPTY;
         }
         writer.writeCompressedLong(JfrTypes.Package.getId());
         writer.writeCompressedInt(packages.size());
@@ -138,7 +138,7 @@ public class JfrTypeRepository implements JfrConstantPool {
         for (Map.Entry<String, PackageInfo> pkgInfo : packages.entrySet()) {
             writePackage(writer, typeInfo, pkgInfo.getKey(), pkgInfo.getValue());
         }
-        return 1;
+        return NON_EMPTY;
     }
 
     private static void writePackage(JfrChunkWriter writer, TypeInfo typeInfo, String pkgName, PackageInfo pkgInfo) {
@@ -152,7 +152,7 @@ public class JfrTypeRepository implements JfrConstantPool {
     private static int writeModules(JfrChunkWriter writer, TypeInfo typeInfo) {
         Map<Module, Long> modules = typeInfo.getModules();
         if (modules.isEmpty()) {
-            return 0;
+            return EMPTY;
         }
         writer.writeCompressedLong(JfrTypes.Module.getId());
         writer.writeCompressedInt(modules.size());
@@ -160,7 +160,7 @@ public class JfrTypeRepository implements JfrConstantPool {
         for (Map.Entry<Module, Long> modInfo : modules.entrySet()) {
             writeModule(writer, typeInfo, modInfo.getKey(), modInfo.getValue());
         }
-        return 1;
+        return NON_EMPTY;
     }
 
     private static void writeModule(JfrChunkWriter writer, TypeInfo typeInfo, Module module, long id) {
@@ -175,7 +175,7 @@ public class JfrTypeRepository implements JfrConstantPool {
     private static int writeClassLoaders(JfrChunkWriter writer, TypeInfo typeInfo) {
         Map<ClassLoader, Long> classLoaders = typeInfo.getClassLoaders();
         if (classLoaders.isEmpty()) {
-            return 0;
+            return EMPTY;
         }
         writer.writeCompressedLong(JfrTypes.ClassLoader.getId());
         writer.writeCompressedInt(classLoaders.size());
@@ -183,7 +183,7 @@ public class JfrTypeRepository implements JfrConstantPool {
         for (Map.Entry<ClassLoader, Long> clInfo : classLoaders.entrySet()) {
             writeClassLoader(writer, clInfo.getKey(), clInfo.getValue());
         }
-        return 1;
+        return NON_EMPTY;
     }
 
     private static void writeClassLoader(JfrChunkWriter writer, ClassLoader cl, long id) {

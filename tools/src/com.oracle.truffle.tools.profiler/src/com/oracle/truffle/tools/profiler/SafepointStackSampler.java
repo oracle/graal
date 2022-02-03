@@ -36,6 +36,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
@@ -62,13 +63,12 @@ final class SafepointStackSampler {
     private final ConcurrentLinkedQueue<StackVisitor> stackVisitorCache = new ConcurrentLinkedQueue<>();
     private final AtomicReference<SampleAction> cachedAction = new AtomicReference<>();
     private final ThreadLocal<SyntheticFrame> syntheticFrameThreadLocal = ThreadLocal.withInitial(() -> null);
-    private final long period;
     private volatile boolean overflowed;
+    private final AtomicLong sampleIndex = new AtomicLong(0);
 
-    SafepointStackSampler(int stackLimit, SourceSectionFilter sourceSectionFilter, long period) {
+    SafepointStackSampler(int stackLimit, SourceSectionFilter sourceSectionFilter) {
         this.stackLimit = stackLimit;
         this.sourceSectionFilter = sourceSectionFilter;
-        this.period = period;
     }
 
     private StackVisitor fetchStackVisitor() {
@@ -79,13 +79,19 @@ final class SafepointStackSampler {
         return visitor;
     }
 
-    List<StackSample> sample(Env env, TruffleContext context, CPUSampler.MutableSamplerData mutableSamplerData, boolean useSyntheticFrames) {
+    List<StackSample> sample(Env env, TruffleContext context, CPUSampler.MutableSamplerData mutableSamplerData, boolean useSyntheticFrames, long timeout, TimeUnit timeoutUnit) {
         if (context.isClosed()) {
             return Collections.emptyList();
         }
         SampleAction action = cachedAction.getAndSet(null);
         if (action == null) {
-            action = new SampleAction();
+            long index = sampleIndex.getAndIncrement();
+            if (index < 0) {
+                // handle overflow gracefully
+                index = 0;
+                sampleIndex.set(0);
+            }
+            action = new SampleAction(index);
         }
         action.useSyntheticFrames = useSyntheticFrames;
 
@@ -98,7 +104,7 @@ final class SafepointStackSampler {
             return Collections.emptyList();
         }
         try {
-            future.get(period, TimeUnit.MILLISECONDS);
+            future.get(timeout, timeoutUnit);
         } catch (InterruptedException | ExecutionException e) {
             env.getLogger(getClass()).log(Level.SEVERE, "Sampling failed", e);
             return null;
@@ -244,8 +250,11 @@ final class SafepointStackSampler {
         final ConcurrentHashMap<Thread, CollectionResult> completed = new ConcurrentHashMap<>();
         boolean useSyntheticFrames = true;
 
-        protected SampleAction() {
+        private long index;
+
+        protected SampleAction(long index) {
             super(false, false);
+            this.index = index;
         }
 
         @Override
@@ -264,6 +273,11 @@ final class SafepointStackSampler {
 
         List<CollectionResult> getStacks() {
             return new ArrayList<>(completed.values());
+        }
+
+        @Override
+        public String toString() {
+            return "StackSampleAction[index=" + index + "]";
         }
 
         void reset() {

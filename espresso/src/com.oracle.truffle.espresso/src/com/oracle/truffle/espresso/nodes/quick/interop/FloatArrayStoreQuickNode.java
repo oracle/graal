@@ -46,10 +46,10 @@ public final class FloatArrayStoreQuickNode extends QuickNode {
     }
 
     @Override
-    public int execute(VirtualFrame frame, long[] primitives, Object[] refs) {
-        float value = BytecodeNode.popFloat(primitives, top - 1);
-        int index = BytecodeNode.popInt(primitives, top - 2);
-        StaticObject array = nullCheck(BytecodeNode.popObject(refs, top - 3));
+    public int execute(VirtualFrame frame) {
+        float value = BytecodeNode.popFloat(frame, top - 1);
+        int index = BytecodeNode.popInt(frame, top - 2);
+        StaticObject array = nullCheck(BytecodeNode.popObject(frame, top - 3));
         floatArrayStore.execute(array, index, value);
         return stackEffectOf_FASTORE;
     }

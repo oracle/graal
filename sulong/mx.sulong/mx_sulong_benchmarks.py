@@ -481,7 +481,7 @@ class SulongVm(CExecutionEnvironmentMixin, GuestVm):
             props, launcher_args = _filter_properties(launcher_args)
             sulongCmdLine = self.launcher_vm_args() + \
                             props + \
-                            ['-XX:-UseJVMCIClassLoader', self.launcherClass()]
+                            [self.launcherClass()]
             result = self.host_vm().run(cwd, sulongCmdLine + launcher_args)
 
         ret_code, out, vm_dims = result
@@ -566,7 +566,7 @@ class PolybenchVm(CExecutionEnvironmentMixin, GuestVm):
             props, launcher_args = _filter_properties(launcher_args)
             sulongCmdLine = self.launcher_vm_args() + \
                             props + \
-                            ['-XX:-UseJVMCIClassLoader', self.launcherClass(), '--path']  + bench_file + launcher_args
+                            [self.launcherClass(), '--path']  + bench_file + launcher_args
             result = self.host_vm().run(cwd, sulongCmdLine)
 
         ret_code, out, vm_dims = result

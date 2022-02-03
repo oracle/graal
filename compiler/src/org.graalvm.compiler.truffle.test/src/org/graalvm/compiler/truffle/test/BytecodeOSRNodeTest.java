@@ -26,8 +26,8 @@ package org.graalvm.compiler.truffle.test;
 
 import java.util.concurrent.TimeUnit;
 
+import org.graalvm.compiler.test.GraalTest;
 import org.graalvm.compiler.truffle.runtime.BytecodeOSRMetadata;
-import org.graalvm.compiler.truffle.runtime.FrameWithoutBoxing;
 import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
 import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.junit.Assert;
@@ -35,7 +35,6 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TestRule;
-import org.junit.rules.Timeout;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -47,21 +46,21 @@ import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.impl.FrameWithoutBoxing;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
+@SuppressWarnings("deprecation")
 public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
 
     private static final GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
 
-    // 20s timeout
-    @Rule public TestRule timeout = new Timeout(30, TimeUnit.SECONDS);
+    @Rule public TestRule timeout = GraalTest.createTimeout(30, TimeUnit.SECONDS);
 
     private int osrThreshold;
 
@@ -503,7 +502,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
             return (BytecodeOSRMetadata) getOSRMetadata();
         }
 
-        protected int getInt(Frame frame, FrameSlot frameSlot) {
+        protected int getInt(Frame frame, com.oracle.truffle.api.frame.FrameSlot frameSlot) {
             try {
                 return frame.getInt(frameSlot);
             } catch (FrameSlotTypeException e) {
@@ -511,7 +510,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
             }
         }
 
-        protected void setInt(Frame frame, FrameSlot frameSlot, int value) {
+        protected void setInt(Frame frame, com.oracle.truffle.api.frame.FrameSlot frameSlot, int value) {
             frame.setInt(frameSlot, value);
         }
 
@@ -553,8 +552,8 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
     }
 
     public static class FixedIterationLoop extends BytecodeOSRTestNode {
-        @CompilationFinal FrameSlot indexSlot;
-        @CompilationFinal FrameSlot numIterationsSlot;
+        @CompilationFinal com.oracle.truffle.api.frame.FrameSlot indexSlot;
+        @CompilationFinal com.oracle.truffle.api.frame.FrameSlot numIterationsSlot;
 
         static final String OSR_RESULT = "osr result";
         static final String NORMAL_RESULT = "normal result";
@@ -972,13 +971,13 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
     }
 
     public static class FrameTransferringNode extends BytecodeOSRTestNode {
-        @CompilationFinal FrameSlot booleanSlot;
-        @CompilationFinal FrameSlot byteSlot;
-        @CompilationFinal FrameSlot doubleSlot;
-        @CompilationFinal FrameSlot floatSlot;
-        @CompilationFinal FrameSlot intSlot;
-        @CompilationFinal FrameSlot longSlot;
-        @CompilationFinal FrameSlot objectSlot;
+        @CompilationFinal com.oracle.truffle.api.frame.FrameSlot booleanSlot;
+        @CompilationFinal com.oracle.truffle.api.frame.FrameSlot byteSlot;
+        @CompilationFinal com.oracle.truffle.api.frame.FrameSlot doubleSlot;
+        @CompilationFinal com.oracle.truffle.api.frame.FrameSlot floatSlot;
+        @CompilationFinal com.oracle.truffle.api.frame.FrameSlot intSlot;
+        @CompilationFinal com.oracle.truffle.api.frame.FrameSlot longSlot;
+        @CompilationFinal com.oracle.truffle.api.frame.FrameSlot objectSlot;
         @CompilationFinal Object o1;
         @CompilationFinal Object o2;
 
@@ -1182,8 +1181,8 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
     }
 
     public static class FrameChangingNode extends BytecodeOSRTestNode {
-        @CompilationFinal FrameSlot intSlot;
-        @CompilationFinal FrameSlot longSlot;
+        @CompilationFinal com.oracle.truffle.api.frame.FrameSlot intSlot;
+        @CompilationFinal com.oracle.truffle.api.frame.FrameSlot longSlot;
 
         public int osrCount = 0;
 
@@ -1274,7 +1273,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
 
     public static class BytecodeNode extends BytecodeOSRTestNode implements BytecodeOSRNode {
         @CompilationFinal(dimensions = 1) private final byte[] bytecodes;
-        @CompilationFinal(dimensions = 1) private final FrameSlot[] regs;
+        @CompilationFinal(dimensions = 1) private final com.oracle.truffle.api.frame.FrameSlot[] regs;
 
         boolean compiled;
 
@@ -1288,7 +1287,7 @@ public class BytecodeOSRNodeTest extends TestWithSynchronousCompiling {
 
         public BytecodeNode(int numLocals, FrameDescriptor frameDescriptor, byte[] bytecodes) {
             this.bytecodes = bytecodes;
-            this.regs = new FrameSlot[numLocals];
+            this.regs = new com.oracle.truffle.api.frame.FrameSlot[numLocals];
             for (int i = 0; i < numLocals; i++) {
                 this.regs[i] = frameDescriptor.addFrameSlot("$" + i, FrameSlotKind.Int);
             }

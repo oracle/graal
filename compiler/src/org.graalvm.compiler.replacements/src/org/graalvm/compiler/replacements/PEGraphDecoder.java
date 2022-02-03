@@ -352,7 +352,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
         @Override
         public boolean isParsingInvocationPlugin() {
-            throw GraalError.shouldNotReachHere();
+            return false;
         }
 
         /**
@@ -449,6 +449,15 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
         @Override
         public ResolvedJavaMethod getMethod() {
+            if (isParsingInvocationPlugin()) {
+                /*
+                 * While processing an invocation plugin, it is required to return the method that
+                 * calls the intrinsified method. But our methodScope object is for the callee,
+                 * i.e., the intrinsified method itself, for various other reasons. So we need to
+                 * compensate for that.
+                 */
+                return methodScope.caller.method;
+            }
             return methodScope.method;
         }
 
@@ -574,7 +583,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                         withExceptionNode.setExceptionEdge(exceptionEdge);
                     }
                     if (withExceptionNode.next() == null) {
-                        AbstractBeginNode nextBegin = graph.add(withExceptionNode.createNextBegin());
+                        AbstractBeginNode nextBegin = graph.add(new BeginNode());
                         withExceptionNode.setNext(nextBegin);
                         lastInstr = nextBegin;
                     } else {
@@ -707,7 +716,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                 if (withExceptionNode instanceof MemoryKill) {
                     /* Insert the correct memory killing begin node at the next edge. */
                     GraalError.guarantee(next instanceof BeginNode, "Not a BeginNode %s", next);
-                    AbstractBeginNode beginNode = graph.add(withExceptionNode.createNextBegin());
+                    AbstractBeginNode beginNode = graph.add(new BeginNode());
                     withExceptionNode.setNext(beginNode);
                     beginNode.setNext(next);
                 }
@@ -811,6 +820,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             recordGraphElements(encodedGraph);
             PEMethodScope methodScope = createMethodScope(graph, null, null, encodedGraph, method, null, 0, null);
             decode(createInitialLoopScope(methodScope, null));
+            debug.dump(DebugContext.VERBOSE_LEVEL, graph, "Before graph cleanup");
             cleanupGraph(methodScope);
 
             debug.dump(DebugContext.VERBOSE_LEVEL, graph, "After graph cleanup");
@@ -1073,7 +1083,11 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                     }
                     registerNode(loopScope, invokeData.invokeOrderId, graphBuilderContext.pushedNode, true, true);
                     invoke.asNode().replaceAtUsages(graphBuilderContext.pushedNode);
-                    graphBuilderContext.lastInstr.setNext(nodeAfterInvoke(methodScope, loopScope, invokeData, AbstractBeginNode.prevBegin(graphBuilderContext.lastInstr)));
+                    BeginNode begin = graphBuilderContext.lastInstr instanceof BeginNode ? (BeginNode) graphBuilderContext.lastInstr : null;
+                    FixedNode afterInvoke = nodeAfterInvoke(methodScope, loopScope, invokeData, begin);
+                    if (afterInvoke != graphBuilderContext.lastInstr) {
+                        graphBuilderContext.lastInstr.setNext(afterInvoke);
+                    }
                     deleteInvoke(invoke);
                 } else {
                     assert graphBuilderContext.pushedNode == null : "Why push a node when the invoke does not return anyway?";
@@ -1253,7 +1267,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                                 null, unwindNode -> unwindNode.exception());
                 unwindMergeNode.setNext(unwindReplacement);
                 ensureExceptionStateDecoded(inlineScope);
-                unwindMergeNode.setStateAfter(inlineScope.exceptionState.duplicateModified(JavaKind.Object, JavaKind.Object, exceptionValue));
+                unwindMergeNode.setStateAfter(inlineScope.exceptionState.duplicateModified(JavaKind.Object, JavaKind.Object, exceptionValue, null));
             }
             if (invoke instanceof InvokeWithExceptionNode) {
                 /*
@@ -1282,13 +1296,13 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         } else if (returnNodeCount == 1) {
             ReturnNode returnNode = getSingleMatchingNode(returnAndUnwindNodes, unwindNodeCount > 0, ReturnNode.class);
             returnValue = returnNode.result();
-            FixedNode n = nodeAfterInvoke(methodScope, loopScope, invokeData, AbstractBeginNode.prevBegin(returnNode));
+            FixedNode n = nodeAfterInvoke(methodScope, loopScope, invokeData, null);
             returnNode.replaceAndDelete(n);
         } else {
             AbstractMergeNode merge = graph.add(new MergeNode());
             merge.setStateAfter((FrameState) ensureNodeCreated(methodScope, loopScope, invokeData.stateAfterOrderId));
             returnValue = InliningUtil.mergeReturns(merge, getMatchingNodes(returnAndUnwindNodes, unwindNodeCount > 0, ReturnNode.class, returnNodeCount));
-            FixedNode n = nodeAfterInvoke(methodScope, loopScope, invokeData, merge);
+            FixedNode n = nodeAfterInvoke(methodScope, loopScope, invokeData, null);
             merge.setNext(n);
         }
         invokeNode.replaceAtUsages(returnValue);
@@ -1374,16 +1388,18 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         throw new PermanentBailoutException(msg.toString());
     }
 
-    public FixedNode nodeAfterInvoke(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData, AbstractBeginNode lastBlock) {
-        assert lastBlock.isAlive();
-        FixedNode n;
+    public FixedNode nodeAfterInvoke(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData, BeginNode prevBegin) {
+        assert prevBegin == null || prevBegin.isAlive();
         if (invokeData.invoke instanceof InvokeWithExceptionNode) {
-            registerNode(loopScope, invokeData.nextOrderId, lastBlock, false, false);
-            n = makeStubNode(methodScope, loopScope, invokeData.nextNextOrderId);
-        } else {
-            n = makeStubNode(methodScope, loopScope, invokeData.nextOrderId);
+            if (prevBegin != null && getNodeClass(methodScope, loopScope, invokeData.nextOrderId) == prevBegin.getNodeClass()) {
+                // Reuse the previous Node but mark it in nodesToProcess so that the decoding loop
+                // continues decoding.
+                loopScope.nodesToProcess.set(invokeData.nextOrderId);
+                registerNode(loopScope, invokeData.nextOrderId, prevBegin, false, false);
+                return prevBegin;
+            }
         }
-        return n;
+        return makeStubNode(methodScope, loopScope, invokeData.nextOrderId);
     }
 
     private static void deleteInvoke(Invoke invoke) {
@@ -1560,7 +1576,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             }
 
             JavaKind invokeReturnKind = methodScope.invokeData.invoke.asNode().getStackKind();
-            FrameState outerState = stateAtReturn.duplicateModified(graph, methodScope.invokeData.invoke.bci(), stateAtReturn.rethrowException(), true, invokeReturnKind, null, null);
+            FrameState outerState = stateAtReturn.duplicateModified(graph, methodScope.invokeData.invoke.bci(), stateAtReturn.rethrowException(), true, invokeReturnKind, null, null, null);
 
             /*
              * When the encoded graph has methods inlining, we can already have a proper caller

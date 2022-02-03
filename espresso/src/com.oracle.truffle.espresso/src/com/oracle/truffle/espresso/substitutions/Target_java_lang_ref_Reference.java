@@ -95,6 +95,22 @@ public final class Target_java_lang_ref_Reference {
         }
     }
 
+    @Substitution(hasReceiver = true)
+    abstract static class GetFromInactiveFinalReference extends SubstitutionNode {
+        abstract @JavaType(Object.class) StaticObject execute(@JavaType(java.lang.ref.Reference.class) StaticObject self);
+
+        @Specialization
+        @JavaType(Object.class)
+        StaticObject doCached(@JavaType(java.lang.ref.Reference.class) StaticObject self,
+                        @Bind("getContext()") EspressoContext context,
+                        @Cached("create(context.getMeta().java_lang_ref_Reference_getFromInactiveFinalReference.getCallTargetNoSubstitution())") DirectCallNode original) {
+            // Call original to possibly trigger guest assertion.
+            original.call(self);
+            // Ignore result, and return the actual result.
+            return get(self, context.getMeta());
+        }
+    }
+
     @SuppressWarnings("rawtypes")
     @Substitution(hasReceiver = true)
     public static void clear(@JavaType(java.lang.ref.Reference.class) StaticObject self,
@@ -115,9 +131,26 @@ public final class Target_java_lang_ref_Reference {
         }
     }
 
+    @Substitution(hasReceiver = true)
+    abstract static class ClearInactiveFinalReference extends SubstitutionNode {
+
+        abstract void execute(@JavaType(java.lang.ref.Reference.class) StaticObject self);
+
+        @Specialization
+        void doCached(@JavaType(java.lang.ref.Reference.class) StaticObject self,
+                        @Bind("getContext()") EspressoContext context,
+                        @Cached("create(context.getMeta().java_lang_ref_Reference_clearInactiveFinalReference.getCallTargetNoSubstitution())") DirectCallNode original) {
+            // Call original to possibly trigger guest assertion.
+            original.call(self);
+            // Ignore result, and actually clear.
+            clear(self, context.getMeta());
+        }
+    }
+
     @SuppressWarnings("rawtypes")
     @Substitution(hasReceiver = true)
     abstract static class Enqueue extends SubstitutionNode {
+
         abstract boolean execute(@JavaType(java.lang.ref.Reference.class) StaticObject self);
 
         @Specialization
@@ -142,5 +175,7 @@ public final class Target_java_lang_ref_Reference {
             }
             return (boolean) originalEnqueue.call(self);
         }
+
     }
+
 }

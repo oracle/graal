@@ -61,7 +61,6 @@ import com.oracle.graal.pointsto.util.AtomicUtils;
 import com.oracle.graal.pointsto.util.ConcurrentLightHashSet;
 import com.oracle.svm.util.UnsafePartitionKind;
 
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
@@ -110,6 +109,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
     private final int id;
 
     private final JavaKind storageKind;
+    private final boolean isCloneableWithAllocation;
 
     /** The unique context insensitive analysis object for this type. */
     private AnalysisObject contextInsensitiveAnalysisObject;
@@ -156,7 +156,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
 
     private final AnalysisFuture<Void> initializationTask;
 
-    AnalysisType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType) {
+    AnalysisType(AnalysisUniverse universe, ResolvedJavaType javaType, JavaKind storageKind, AnalysisType objectType, AnalysisType cloneableType) {
         this.universe = universe;
         this.wrapped = javaType;
         isArray = wrapped.isArray();
@@ -229,6 +229,12 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
         this.contextInsensitiveAnalysisObject = new AnalysisObject(universe, this);
 
         assert getSuperclass() == null || getId() > getSuperclass().getId();
+
+        if (isJavaLangObject() || isInterface()) {
+            this.isCloneableWithAllocation = false;
+        } else {
+            this.isCloneableWithAllocation = cloneableType.isAssignableFrom(this);
+        }
 
         /* The registration task initializes the type. */
         this.initializationTask = new AnalysisFuture<>(() -> universe.hostVM.initializeType(this), null);
@@ -1070,7 +1076,7 @@ public class AnalysisType implements WrappedJavaType, OriginalClassProvider, Com
 
     @Override
     public boolean isCloneableWithAllocation() {
-        throw JVMCIError.unimplemented();
+        return isCloneableWithAllocation;
     }
 
     @SuppressWarnings("deprecation")

@@ -202,7 +202,7 @@ public class EncodedSnippets {
         EncodedGraph encodedGraph = new SymbolicEncodedGraph(snippetEncoding, data.getStartOffset(null), snippetObjects, snippetNodeClasses,
                         methodKey(original), accessingClass, original.getDeclaringClass());
 
-        try (DebugContext debug = replacements.openSnippetDebugContext("LibGraal", original, options)) {
+        try (DebugContext debug = replacements.openDebugContext("LibGraal", original, options)) {
             StructuredGraph result = new StructuredGraph.Builder(options, debug, allowAssumptions).cancellable(cancellable).method(original).setIsSubstitution(true).build();
             try (DebugContext.Scope scope = debug.scope("LibGraal.DecodeMethodSubstitution", result)) {
                 PEGraphDecoder graphDecoder = new SubstitutionGraphDecoder(providers, result, replacements, null, original, contextToUse, encodedGraph, true);
@@ -321,7 +321,7 @@ public class EncodedSnippets {
             parameterPlugin = new ConstantBindingParameterPlugin(args, meta, snippetReflection);
         }
 
-        try (DebugContext debug = replacements.openSnippetDebugContext("LibGraal", method, options)) {
+        try (DebugContext debug = replacements.openDebugContext("LibGraal", method, options)) {
             // @formatter:off
             boolean isSubstitution = true;
             StructuredGraph result = new StructuredGraph.Builder(options, debug, allowAssumptions)

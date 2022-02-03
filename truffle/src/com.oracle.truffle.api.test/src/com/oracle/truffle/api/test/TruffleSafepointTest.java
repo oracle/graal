@@ -111,6 +111,7 @@ import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyInstrument;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class TruffleSafepointTest {
 
@@ -128,6 +129,11 @@ public class TruffleSafepointTest {
      * debugging failures in this class.
      */
     private static final boolean RERUN_THREAD_CONFIG_ASYNC = true;
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+    }
 
     @Rule public TestName name = new TestName();
 
@@ -221,7 +227,7 @@ public class TruffleSafepointTest {
     public void testEnterSlowPathFallback() throws ExecutionException, InterruptedException {
         ExecutorService executorService = Executors.newFixedThreadPool(1);
         try {
-            for (int itNo = 0; itNo < 10000; itNo++) {
+            for (int itNo = 0; itNo < 1000; itNo++) {
                 CountDownLatch enterLeaveLoopLatch = new CountDownLatch(1);
                 AtomicReference<Env> envAtomicReference = new AtomicReference<>();
                 AtomicReference<Context> contextAtomicReference = new AtomicReference<>();
@@ -242,7 +248,7 @@ public class TruffleSafepointTest {
                     enterLeaveLoopLatch.countDown();
                     TruffleContext truffleContext = envAtomicReference.get().getContext();
                     try {
-                        for (int i = 0; i < 1000000; i++) {
+                        for (int i = 0; i < 100000; i++) {
                             Object prev = truffleContext.enter(INVALID_NODE);
                             truffleContext.leave(INVALID_NODE, prev);
                         }

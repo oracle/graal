@@ -144,6 +144,9 @@ public final class LLVMContext {
     // Source cache (for reusing bitcode IDs).
     protected final EconomicMap<BitcodeID, Source> sourceCache = EconomicMap.create();
 
+    // Calltarget Cache for SOName.
+    protected final EconomicMap<String, CallTarget> calltargetCache = EconomicMap.create();
+
     // signals
     private final LLVMNativePointer sigDfl;
     private final LLVMNativePointer sigIgn;
@@ -679,6 +682,18 @@ public final class LLVMContext {
         }
     }
 
+    @TruffleBoundary
+    public void addCalltargetForCache(String soName, CallTarget callTarget) {
+        if (!calltargetCache.containsKey(soName)) {
+            calltargetCache.put(soName, callTarget);
+        }
+    }
+
+    @TruffleBoundary
+    public CallTarget getCalltargetFromCache(String soName) {
+        return calltargetCache.get(soName);
+    }
+
     public LLVMLanguage getLanguage() {
         return language;
     }
@@ -828,8 +843,6 @@ public final class LLVMContext {
             int index = bitcodeID.getId();
             assert symbolDynamicStorage == symbolFinalStorage;
             if (index < symbolDynamicStorage.length && symbolDynamicStorage[index] != null) {
-                // throw new IllegalStateException("Registering a new symbol table for an existing
-                // id.");
                 return;
             }
             if (index >= symbolDynamicStorage.length) {

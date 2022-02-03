@@ -69,6 +69,8 @@ import com.oracle.svm.util.ReflectionUtil;
 // Checkstyle: stop
 import sun.security.jca.ProviderList;
 import sun.security.util.SecurityConstants;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 // Checkstyle: resume
 
 // Checkstyle: allow reflection
@@ -86,7 +88,7 @@ final class Target_java_security_AccessController {
         try {
             return action.run();
         } catch (Throwable ex) {
-            throw AccessControllerUtil.wrapCheckedException(ex);
+            throw AccessControllerUtil.wrapCheckedExceptionForPrivilegedAction(ex);
         }
     }
 
@@ -95,7 +97,7 @@ final class Target_java_security_AccessController {
         try {
             return action.run();
         } catch (Throwable ex) {
-            throw AccessControllerUtil.wrapCheckedException(ex);
+            throw AccessControllerUtil.wrapCheckedExceptionForPrivilegedAction(ex);
         }
     }
 
@@ -104,7 +106,7 @@ final class Target_java_security_AccessController {
         try {
             return action.run();
         } catch (Throwable ex) {
-            throw AccessControllerUtil.wrapCheckedException(ex);
+            throw AccessControllerUtil.wrapCheckedExceptionForPrivilegedAction(ex);
         }
     }
 
@@ -113,7 +115,7 @@ final class Target_java_security_AccessController {
         try {
             return action.run();
         } catch (Throwable ex) {
-            throw AccessControllerUtil.wrapCheckedException(ex);
+            throw AccessControllerUtil.wrapCheckedExceptionForPrivilegedAction(ex);
         }
     }
 
@@ -188,6 +190,13 @@ class AccessControllerUtil {
             return ex;
         }
     }
+
+    static Throwable wrapCheckedExceptionForPrivilegedAction(Throwable ex) {
+        if (JavaVersionUtil.JAVA_SPEC <= 11) {
+            return wrapCheckedException(ex);
+        }
+        return ex;
+    }
 }
 
 @AutomaticFeature
@@ -203,12 +212,6 @@ class AccessControlContextFeature implements Feature {
         }
         return obj;
     }
-}
-
-@TargetClass(java.security.AccessControlContext.class)
-final class Target_java_security_AccessControlContext {
-
-    @Alias protected boolean isPrivileged;
 }
 
 @TargetClass(SecurityManager.class)
@@ -237,9 +240,38 @@ final class Target_javax_crypto_CryptoAllPermission {
     static Target_javax_crypto_CryptoAllPermission INSTANCE;
 }
 
-@Platforms(Platform.WINDOWS.class)
+@TargetClass(value = java.security.Provider.class, innerClass = "ServiceKey")
+final class Target_java_security_Provider_ServiceKey {
+
+}
+
 @TargetClass(value = java.security.Provider.class)
 final class Target_java_security_Provider {
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ServiceKeyComputer.class) //
+    private static Target_java_security_Provider_ServiceKey previousKey;
+}
+
+@Platforms(Platform.HOSTED_ONLY.class)
+class ServiceKeyComputer implements RecomputeFieldValue.CustomFieldValueComputer {
+
+    @Override
+    public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
+        try {
+            // Checkstyle: stop do not use dynamic class loading
+            Class<?> serviceKey = Class.forName("java.security.Provider$ServiceKey");
+            // Checkstyle: resume
+            Constructor<?> constructor = ReflectionUtil.lookupConstructor(serviceKey, String.class, String.class, boolean.class);
+            return constructor.newInstance("", "", false);
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException | ClassNotFoundException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+    }
+}
+
+@Platforms(Platform.WINDOWS.class)
+@TargetClass(value = java.security.Provider.class)
+final class Target_java_security_Provider_Windows {
+
     @Alias //
     private transient boolean initialized;
 
@@ -264,7 +296,7 @@ final class Target_java_security_Provider {
 final class ProviderUtil {
     private static volatile boolean initialized = false;
 
-    static void initialize(Target_java_security_Provider provider) {
+    static void initialize(Target_java_security_Provider_Windows provider) {
         if (initialized) {
             return;
         }
@@ -330,6 +362,10 @@ final class Target_javax_crypto_JceSecurity {
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = VerificationCacheTransformer.class, disableCaching = true) //
     private static Map<Object, Object> verificationResults;
+
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    private static Map<Provider, Object> verifyingProviders;
 
     @Substitute
     @TargetElement(onlyWith = JDK8OrEarlier.class)

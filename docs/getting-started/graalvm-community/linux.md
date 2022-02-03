@@ -41,9 +41,9 @@ Tools/Utilities:
 
 Runtimes:
 * [Java on Truffle](../../reference-manual/java-on-truffle/README.md) -- a Java Virtual Machine implementation based on a Truffle interpreter for GraalVM
-* [Node.js](../../reference-manual/js/README.md) -- Node.js v14.17.6 compatible
+* [Node.js](../../reference-manual/js/README.md) -- Node.js v14.18.1 compatible
 * [Python](../../reference-manual/python/README.md) -- Python 3.8.5 compatible
-* [Ruby](../../reference-manual/ruby/README.md) -- Ruby 2.7.2 compatible
+* [Ruby](../../reference-manual/ruby/README.md) -- Ruby 3.0.2 compatible
 * [R](/../../reference-manual/r/README.md) -- GNU R 4.0.3 compatible
 * [Wasm](../../reference-manual/wasm/README.md) -- WebAssembly (Wasm)
 ​

@@ -331,7 +331,7 @@ final class SVGSamplerOutput {
                     Thread thread = node.getKey();
                     // Output the thread node itself...
                     // Optput the samples under that node...
-                    totalSamples = threadSampleData(thread, node.getValue(), tasks, children, totalSamples);
+                    totalSamples += threadSampleData(thread, node.getValue(), tasks, children, totalSamples);
                 }
             }
             root.put("h", totalSamples);
@@ -539,7 +539,7 @@ final class SVGSamplerOutput {
 
         private long threadSampleData(Thread thread, Collection<ProfilerNode<CPUSampler.Payload>> samples, ArrayDeque<Task> tasks, JSONArray siblings, long x) {
             JSONObject threadSample = new JSONObject();
-            long totalSamples = x;
+            long totalSamples = 0;
             int id = sampleId++;
             threadSample.put("k", indexForSampleKey(thread.getName(), "<none>", 0));
             threadSample.put("id", id);
@@ -552,7 +552,7 @@ final class SVGSamplerOutput {
             JSONArray children = new JSONArray();
             long childCount = 0;
             for (ProfilerNode<CPUSampler.Payload> sample : samples) {
-                tasks.addLast(new Task(sample, children, totalSamples, id));
+                tasks.addLast(new Task(sample, children, totalSamples + x, id));
                 totalSamples += sample.getPayload().getHitCount();
                 childCount++;
             }

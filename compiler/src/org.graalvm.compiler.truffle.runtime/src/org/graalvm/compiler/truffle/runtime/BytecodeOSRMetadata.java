@@ -24,21 +24,22 @@
  */
 package org.graalvm.compiler.truffle.runtime;
 
+import java.util.Arrays;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.impl.FrameWithoutBoxing;
+import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.BytecodeOSRNode;
-
-import java.util.Arrays;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Represents the metadata required to perform OSR compilation on Graal. An instance of this class
@@ -52,6 +53,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * it is published; the non-final + non-volatile fields (e.g., the back edge counter) may not be,
  * but we tolerate this inaccuracy in order to avoid volatile accesses in the hot path.
  */
+@SuppressWarnings("deprecation")
 public final class BytecodeOSRMetadata {
     // Marker object to indicate that OSR is disabled.
     public static final BytecodeOSRMetadata DISABLED = new BytecodeOSRMetadata(null, Integer.MAX_VALUE);
@@ -67,8 +69,9 @@ public final class BytecodeOSRMetadata {
         private final Map<Integer, OptimizedCallTarget> compilationMap;
         @CompilationFinal private FrameDescriptor frameDescriptor;
         @CompilationFinal private Assumption frameVersion;
-        @CompilationFinal(dimensions = 1) private FrameSlot[] frameSlots;
+        @CompilationFinal(dimensions = 1) private com.oracle.truffle.api.frame.FrameSlot[] frameSlots;
         @CompilationFinal(dimensions = 1) private byte[] frameTags;
+        @CompilationFinal(dimensions = 1) private byte[] indexedFrameTags;
 
         LazyState(Map<Integer, OptimizedCallTarget> compilationMap) {
             this.compilationMap = compilationMap;
@@ -78,6 +81,7 @@ public final class BytecodeOSRMetadata {
             this.frameVersion = null;
             this.frameSlots = null;
             this.frameTags = null;
+            this.indexedFrameTags = null;
         }
     }
 
@@ -113,7 +117,7 @@ public final class BytecodeOSRMetadata {
                 // between, and we might obtain the new (valid) assumption, despite our slots
                 // actually being stale. Get the assumption first to avoid this race.
                 state.frameVersion = frameDescriptor.getVersion();
-                state.frameSlots = frameDescriptor.getSlots().toArray(new FrameSlot[0]);
+                state.frameSlots = frameDescriptor.getSlots().toArray(new com.oracle.truffle.api.frame.FrameSlot[0]);
             }
             // The concrete frame can have different tags from the descriptor (e.g., when a slot is
             // uninitialized), so we use the frame's tags to avoid deoptimizing during transfer.
@@ -121,6 +125,10 @@ public final class BytecodeOSRMetadata {
             // The tags array lazily grows when new slots are initialized, so it could be smaller
             // than the number of slots. Copy it into an array with the correct size.
             state.frameTags = Arrays.copyOf(tags, state.frameSlots.length);
+            state.indexedFrameTags = new byte[state.frameDescriptor.getNumberOfSlots()];
+            for (int i = 0; i < state.indexedFrameTags.length; i++) {
+                state.indexedFrameTags[i] = frame.getTag(i);
+            }
         });
     }
 
@@ -189,8 +197,7 @@ public final class BytecodeOSRMetadata {
      */
     private OptimizedCallTarget createOSRTarget(int target, Object interpreterState, FrameDescriptor frameDescriptor) {
         TruffleLanguage<?> language = GraalRuntimeAccessor.NODES.getLanguage(((Node) osrNode).getRootNode());
-        return GraalTruffleRuntime.getRuntime().createOSRCallTarget(
-                        new BytecodeOSRRootNode(language, frameDescriptor, osrNode, target, interpreterState));
+        return (OptimizedCallTarget) new BytecodeOSRRootNode(language, frameDescriptor, osrNode, target, interpreterState).getCallTarget();
 
     }
 
@@ -227,52 +234,95 @@ public final class BytecodeOSRMetadata {
         }
 
         byte[] sourceTags = source.getTags();
-        if (sourceTags.length != state.frameSlots.length) {
-            // In rare scenarios, slots might be added to the descriptor but the frame's tags array
-            // has not been expanded (since it is resized lazily).
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            source.resize();
-            sourceTags = source.getTags();
+        for (int i = 0; i < state.frameSlots.length; i++) {
+            com.oracle.truffle.api.frame.FrameSlot slot = state.frameSlots[i];
+            byte expectedTag = state.frameTags[i];
+
+            while (true) {
+                try {
+                    switch (expectedTag) {
+                        case FrameWithoutBoxing.BOOLEAN_TAG:
+                            target.setBoolean(slot, source.getBoolean(slot));
+                            break;
+                        case FrameWithoutBoxing.BYTE_TAG:
+                            target.setByte(slot, source.getByte(slot));
+                            break;
+                        case FrameWithoutBoxing.DOUBLE_TAG:
+                            target.setDouble(slot, source.getDouble(slot));
+                            break;
+                        case FrameWithoutBoxing.FLOAT_TAG:
+                            target.setFloat(slot, source.getFloat(slot));
+                            break;
+                        case FrameWithoutBoxing.INT_TAG:
+                            target.setInt(slot, source.getInt(slot));
+                            break;
+                        case FrameWithoutBoxing.LONG_TAG:
+                            target.setLong(slot, source.getLong(slot));
+                            break;
+                        case FrameWithoutBoxing.OBJECT_TAG:
+                            target.setObject(slot, source.getObject(slot));
+                            break;
+                        default:
+                            // illegal slots don't need to be transferred
+                    }
+                } catch (FrameSlotTypeException e) {
+                    // The tag for this slot may have changed; if so, deoptimize and update it.
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    byte actualTag = sourceTags[i];
+                    assert expectedTag != actualTag;
+                    state.frameTags[i] = actualTag;
+                    expectedTag = actualTag;
+                    continue;
+                }
+                break;
+            }
         }
 
-        for (int i = 0; i < state.frameSlots.length; i++) {
-            FrameSlot slot = state.frameSlots[i];
-            byte expectedTag = state.frameTags[i];
-            byte actualTag = sourceTags[i];
+        for (int slot = 0; slot < state.indexedFrameTags.length; slot++) {
+            byte expectedTag = state.indexedFrameTags[slot];
 
-            // The tag for this slot may have changed; if so, deoptimize and update it.
-            boolean tagsCondition = expectedTag == actualTag;
-            if (!tagsCondition) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                state.frameTags[i] = actualTag;
-                expectedTag = actualTag;
-            }
-            switch (expectedTag) {
-                case FrameWithoutBoxing.BOOLEAN_TAG:
-                    target.setBoolean(slot, source.getBooleanUnsafe(i, slot, tagsCondition));
-                    break;
-                case FrameWithoutBoxing.BYTE_TAG:
-                    target.setByte(slot, source.getByteUnsafe(i, slot, tagsCondition));
-                    break;
-                case FrameWithoutBoxing.DOUBLE_TAG:
-                    target.setDouble(slot, source.getDoubleUnsafe(i, slot, tagsCondition));
-                    break;
-                case FrameWithoutBoxing.FLOAT_TAG:
-                    target.setFloat(slot, source.getFloatUnsafe(i, slot, tagsCondition));
-                    break;
-                case FrameWithoutBoxing.INT_TAG:
-                    target.setInt(slot, source.getIntUnsafe(i, slot, tagsCondition));
-                    break;
-                case FrameWithoutBoxing.LONG_TAG:
-                    target.setLong(slot, source.getLongUnsafe(i, slot, tagsCondition));
-                    break;
-                case FrameWithoutBoxing.OBJECT_TAG:
-                    target.setObject(slot, source.getObjectUnsafe(i, slot, tagsCondition));
-                    break;
-                default:
+            while (true) {
+                try {
+                    switch (expectedTag) {
+                        case FrameWithoutBoxing.BOOLEAN_TAG:
+                            target.setBoolean(slot, source.getBoolean(slot));
+                            break;
+                        case FrameWithoutBoxing.BYTE_TAG:
+                            target.setByte(slot, source.getByte(slot));
+                            break;
+                        case FrameWithoutBoxing.DOUBLE_TAG:
+                            target.setDouble(slot, source.getDouble(slot));
+                            break;
+                        case FrameWithoutBoxing.FLOAT_TAG:
+                            target.setFloat(slot, source.getFloat(slot));
+                            break;
+                        case FrameWithoutBoxing.INT_TAG:
+                            target.setInt(slot, source.getInt(slot));
+                            break;
+                        case FrameWithoutBoxing.LONG_TAG:
+                            target.setLong(slot, source.getLong(slot));
+                            break;
+                        case FrameWithoutBoxing.OBJECT_TAG:
+                            target.setObject(slot, source.getObject(slot));
+                            break;
+                        default:
+                            // illegal slots don't need to be transferred
+                    }
+                } catch (FrameSlotTypeException e) {
+                    // The tag for this slot may have changed; if so, deoptimize and update it.
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    throw new IllegalStateException("Defined frame slot " + slot + " is illegal. Please initialize frame slot with a FrameSlotKind.");
+                    byte actualTag = source.getTag(slot);
+                    assert expectedTag != actualTag;
+                    state.indexedFrameTags[slot] = actualTag;
+                    expectedTag = actualTag;
+                    continue;
+                }
+                break;
             }
+        }
+
+        for (int slot = 0; slot < state.frameDescriptor.getNumberOfAuxiliarySlots(); slot++) {
+            target.setAuxiliarySlot(slot, source.getAuxiliarySlot(slot));
         }
     }
 

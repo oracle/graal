@@ -28,7 +28,6 @@ package com.oracle.svm.core.jdk.resources;
 import java.io.InputStream;
 import java.util.Arrays;
 
-import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
 import com.oracle.svm.core.jdk.Resources;
@@ -38,12 +37,8 @@ public final class NativeImageResourceFileSystemUtil {
     private NativeImageResourceFileSystemUtil() {
     }
 
-    public static MapCursor<String, ResourceStorageEntry> iterator() {
-        return Resources.singleton().resources().getEntries();
-    }
-
     public static byte[] getBytes(String resourceName, boolean readOnly) {
-        ResourceStorageEntry entry = Resources.singleton().resources().get(resourceName);
+        ResourceStorageEntry entry = Resources.get(resourceName);
         if (entry == null) {
             return new byte[0];
         }
@@ -56,7 +51,7 @@ public final class NativeImageResourceFileSystemUtil {
     }
 
     public static int getSize(String resourceName) {
-        ResourceStorageEntry entry = Resources.singleton().resources().get(resourceName);
+        ResourceStorageEntry entry = Resources.get(resourceName);
         if (entry == null) {
             return 0;
         } else {

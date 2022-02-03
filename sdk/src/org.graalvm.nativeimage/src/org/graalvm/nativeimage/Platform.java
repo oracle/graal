@@ -162,7 +162,7 @@ public interface Platform {
          * @since 21.0
          */
         default String getOS() {
-            return "linux";
+            return LINUX.class.getSimpleName().toLowerCase();
         }
     }
 
@@ -179,7 +179,7 @@ public interface Platform {
          * @since 21.0
          */
         default String getOS() {
-            return "android";
+            return ANDROID.class.getSimpleName().toLowerCase();
         }
     }
 
@@ -196,7 +196,7 @@ public interface Platform {
          * @since 21.0
          */
         default String getOS() {
-            return "darwin";
+            return DARWIN.class.getSimpleName().toLowerCase();
         }
     }
 
@@ -213,7 +213,7 @@ public interface Platform {
          * @since 21.0
          */
         default String getOS() {
-            return "ios";
+            return IOS.class.getSimpleName().toLowerCase();
         }
     }
 
@@ -230,7 +230,7 @@ public interface Platform {
          * @since 21.0
          */
         default String getOS() {
-            return "windows";
+            return WINDOWS.class.getSimpleName().toLowerCase();
         }
     }
 
@@ -365,6 +365,23 @@ public interface Platform {
          * @since 19.0
          */
         public WINDOWS_AMD64() {
+        }
+
+    }
+
+    /**
+     * Supported leaf platform: Windows on AArch 64-bit.
+     *
+     * @since 22.0
+     */
+    final class WINDOWS_AARCH64 implements WINDOWS, AARCH64 {
+
+        /**
+         * Instantiates a marker instance of this platform.
+         *
+         * @since 22.0
+         */
+        public WINDOWS_AARCH64() {
         }
 
     }

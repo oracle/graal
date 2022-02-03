@@ -37,7 +37,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.FrameSlotTypeException;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -50,6 +49,7 @@ import com.oracle.truffle.api.nodes.RootNode;
  * Collection of tests that penetrate the partial evaluation logic to produce {@linkplain ProxyNode}
  * nodes.
  */
+@SuppressWarnings("deprecation")
 public class MergeExplodeProxyTest extends PartialEvaluationTest {
     public static class Bytecode {
         public static final byte CONST = 0;
@@ -69,15 +69,15 @@ public class MergeExplodeProxyTest extends PartialEvaluationTest {
     public static class LoopControlVariableProxy extends RootNode {
         private final String name;
         @CompilationFinal(dimensions = 1) private final byte[] bytecodes;
-        @CompilationFinal(dimensions = 1) private final FrameSlot[] locals;
-        @CompilationFinal(dimensions = 1) private final FrameSlot[] stack;
+        @CompilationFinal(dimensions = 1) private final com.oracle.truffle.api.frame.FrameSlot[] locals;
+        @CompilationFinal(dimensions = 1) private final com.oracle.truffle.api.frame.FrameSlot[] stack;
 
         public LoopControlVariableProxy(String name, byte[] bytecodes, int maxLocals, int maxStack) {
             super(null);
             this.name = name;
             this.bytecodes = bytecodes;
-            locals = new FrameSlot[maxLocals];
-            stack = new FrameSlot[maxStack];
+            locals = new com.oracle.truffle.api.frame.FrameSlot[maxLocals];
+            stack = new com.oracle.truffle.api.frame.FrameSlot[maxStack];
             for (int i = 0; i < maxLocals; ++i) {
                 locals[i] = this.getFrameDescriptor().addFrameSlot("local" + i);
                 this.getFrameDescriptor().setFrameSlotKind(locals[i], FrameSlotKind.Int);
@@ -222,15 +222,15 @@ public class MergeExplodeProxyTest extends PartialEvaluationTest {
     public static class WrongLoopExitMerge extends RootNode {
         private final String name;
         @CompilationFinal(dimensions = 1) private final byte[] bytecodes;
-        @CompilationFinal(dimensions = 1) private final FrameSlot[] locals;
-        @CompilationFinal(dimensions = 1) private final FrameSlot[] stack;
+        @CompilationFinal(dimensions = 1) private final com.oracle.truffle.api.frame.FrameSlot[] locals;
+        @CompilationFinal(dimensions = 1) private final com.oracle.truffle.api.frame.FrameSlot[] stack;
 
         public WrongLoopExitMerge(String name, byte[] bytecodes, int maxLocals, int maxStack) {
             super(null);
             this.name = name;
             this.bytecodes = bytecodes;
-            locals = new FrameSlot[maxLocals];
-            stack = new FrameSlot[maxStack];
+            locals = new com.oracle.truffle.api.frame.FrameSlot[maxLocals];
+            stack = new com.oracle.truffle.api.frame.FrameSlot[maxStack];
             for (int i = 0; i < maxLocals; ++i) {
                 locals[i] = this.getFrameDescriptor().addFrameSlot("local" + i);
                 this.getFrameDescriptor().setFrameSlotKind(locals[i], FrameSlotKind.Int);
@@ -443,15 +443,15 @@ public class MergeExplodeProxyTest extends PartialEvaluationTest {
     public static class ProxySameValueOnce extends RootNode {
         private final String name;
         @CompilationFinal(dimensions = 1) private final byte[] bytecodes;
-        @CompilationFinal(dimensions = 1) private final FrameSlot[] locals;
-        @CompilationFinal(dimensions = 1) private final FrameSlot[] stack;
+        @CompilationFinal(dimensions = 1) private final com.oracle.truffle.api.frame.FrameSlot[] locals;
+        @CompilationFinal(dimensions = 1) private final com.oracle.truffle.api.frame.FrameSlot[] stack;
 
         public ProxySameValueOnce(String name, byte[] bytecodes, int maxLocals, int maxStack) {
             super(null);
             this.name = name;
             this.bytecodes = bytecodes;
-            locals = new FrameSlot[maxLocals];
-            stack = new FrameSlot[maxStack];
+            locals = new com.oracle.truffle.api.frame.FrameSlot[maxLocals];
+            stack = new com.oracle.truffle.api.frame.FrameSlot[maxStack];
             for (int i = 0; i < maxLocals; ++i) {
                 locals[i] = this.getFrameDescriptor().addFrameSlot("local" + i);
                 this.getFrameDescriptor().setFrameSlotKind(locals[i], FrameSlotKind.Int);
@@ -668,15 +668,15 @@ public class MergeExplodeProxyTest extends PartialEvaluationTest {
     public static class NoneLiveNoProxyTest extends RootNode {
         private final String name;
         @CompilationFinal(dimensions = 1) private final byte[] bytecodes;
-        @CompilationFinal(dimensions = 1) private final FrameSlot[] locals;
-        @CompilationFinal(dimensions = 1) private final FrameSlot[] stack;
+        @CompilationFinal(dimensions = 1) private final com.oracle.truffle.api.frame.FrameSlot[] locals;
+        @CompilationFinal(dimensions = 1) private final com.oracle.truffle.api.frame.FrameSlot[] stack;
 
         public NoneLiveNoProxyTest(String name, byte[] bytecodes, int maxLocals, int maxStack) {
             super(null);
             this.name = name;
             this.bytecodes = bytecodes;
-            locals = new FrameSlot[maxLocals];
-            stack = new FrameSlot[maxStack];
+            locals = new com.oracle.truffle.api.frame.FrameSlot[maxLocals];
+            stack = new com.oracle.truffle.api.frame.FrameSlot[maxStack];
             for (int i = 0; i < maxLocals; ++i) {
                 locals[i] = this.getFrameDescriptor().addFrameSlot("local" + i);
                 this.getFrameDescriptor().setFrameSlotKind(locals[i], FrameSlotKind.Int);

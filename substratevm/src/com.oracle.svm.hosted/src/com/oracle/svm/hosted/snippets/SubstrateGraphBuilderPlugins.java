@@ -29,9 +29,7 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Proxy;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
@@ -69,12 +67,16 @@ import org.graalvm.compiler.nodes.java.DynamicNewInstanceNode;
 import org.graalvm.compiler.nodes.java.InstanceOfDynamicNode;
 import org.graalvm.compiler.nodes.java.NewArrayNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
-import org.graalvm.compiler.nodes.java.ValidateNewInstanceClassNode;
 import org.graalvm.compiler.nodes.spi.ArrayLengthProvider;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.type.NarrowOopStamp;
+import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
+import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
+import org.graalvm.compiler.nodes.virtual.VirtualArrayNode;
+import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -312,7 +314,12 @@ public class SubstrateGraphBuilderPlugins {
      * will not change.
      */
     static Class<?>[] extractClassArray(SnippetReflectionProvider snippetReflection, AnnotationSubstitutionProcessor annotationSubstitutions, ValueNode arrayNode) {
-        return extractClassArray(annotationSubstitutions, snippetReflection, arrayNode, false);
+        Class<?>[] classes = extractClassArray(annotationSubstitutions, snippetReflection, arrayNode, false);
+        /*
+         * If any of the element is null just bailout, this is probably a situation where the array
+         * will be filled in later and we don't track that.
+         */
+        return classes == null ? null : Stream.of(classes).allMatch(Objects::nonNull) ? classes : null;
     }
 
     /**
@@ -334,13 +341,41 @@ public class SubstrateGraphBuilderPlugins {
              * The array is a constant, however that doesn't make the array immutable, i.e., its
              * elements can still be changed. We assume that will not happen.
              */
-            Class<?>[] classes = snippetReflection.asObject(Class[].class, originalArrayNode.asJavaConstant());
+            return snippetReflection.asObject(Class[].class, originalArrayNode.asJavaConstant());
 
-            /*
-             * If any of the element is null just bailout, this is probably a situation where the
-             * array will be filled in later and we don't track that.
-             */
-            return classes == null ? null : Stream.of(classes).allMatch(Objects::nonNull) ? classes : null;
+        } else if (originalArrayNode instanceof AllocatedObjectNode && StampTool.isAlwaysArray(originalArrayNode)) {
+            AllocatedObjectNode allocatedObjectNode = (AllocatedObjectNode) originalArrayNode;
+            CommitAllocationNode commitAllocationNode = allocatedObjectNode.getCommit();
+            if (skipBeginNodes(commitAllocationNode.next()) != null) {
+                /* Nodes after the array materialization could interfere with the array. */
+                return null;
+            }
+
+            int objectStartIndex = 0;
+            for (VirtualObjectNode virtualObject : commitAllocationNode.getVirtualObjects()) {
+                if (virtualObject == allocatedObjectNode.getVirtualObject()) {
+                    /* We found the begin of the object we were looking for. */
+                    assert virtualObject instanceof VirtualArrayNode : virtualObject;
+
+                    Class<?>[] result = new Class<?>[virtualObject.entryCount()];
+                    for (int i = 0; i < result.length; i++) {
+                        ValueNode valueNode = commitAllocationNode.getValues().get(objectStartIndex + i);
+                        if (!valueNode.isJavaConstant()) {
+                            return null;
+                        }
+                        Class<?> clazz = snippetReflection.asObject(Class.class, valueNode.asJavaConstant());
+                        /*
+                         * It is possible that the returned class is a substitution class, e.g.,
+                         * DynamicHub returned for a Class.class constant. Get the target class of
+                         * the substitution class.
+                         */
+                        result[i] = annotationSubstitutions == null || clazz == null ? clazz : annotationSubstitutions.getTargetClass(clazz);
+                    }
+                    return result;
+                }
+                objectStartIndex += virtualObject.entryCount();
+            }
+            throw VMError.shouldNotReachHere("Must have found the virtual object");
 
         } else if (originalArrayNode instanceof NewArrayNode) {
             /*
@@ -358,53 +393,55 @@ public class SubstrateGraphBuilderPlugins {
                 return null;
             }
             assert newArrayLengthNode.asJavaConstant().getJavaKind() == JavaKind.Int;
+            int newArrayLength = newArrayLengthNode.asJavaConstant().asInt();
 
             /*
              * Walk down the control flow successor as long as we find StoreIndexedNode. Those are
              * values written in the array.
              */
-            List<Class<?>> classList = new ArrayList<>();
+            Class<?>[] result = new Class<?>[newArrayLength];
             FixedNode successor = unwrapNode(newArray.next());
-            /*
-             * In a case when we are creating a proxy, which contains a method with a class
-             * (initialized at runtime) as a parameter, a successor node will not be StoreIndexNode,
-             * so we need to skip initialization nodes.
-             */
-            if (successor instanceof EnsureClassInitializedNode) {
-                AbstractBeginNode classInitializedNode = ((EnsureClassInitializedNode) successor).next();
-                VMError.guarantee(classInitializedNode != null);
-                successor = classInitializedNode.next();
-            }
             while (successor instanceof StoreIndexedNode) {
                 StoreIndexedNode store = (StoreIndexedNode) successor;
                 if (getDeoptProxyOriginalValue(store.array()).equals(newArray)) {
-                    ValueNode valueNode = store.value();
-                    if (valueNode.isConstant() && !valueNode.isNullConstant()) {
-                        Class<?> clazz = snippetReflection.asObject(Class.class, valueNode.asJavaConstant());
-                        /*
-                         * It is possible that the returned class is a substitution class, e.g.,
-                         * DynamicHub returned for a Class.class constant. Get the target class of
-                         * the substitution class.
-                         */
-                        classList.add(annotationSubstitutions == null ? clazz : annotationSubstitutions.getTargetClass(clazz));
-                    } else {
-                        /* If not all classes are non-null constants we bail out. */
-                        classList = null;
-                        break;
+                    if (!store.index().isJavaConstant()) {
+                        return null;
                     }
+                    int index = store.index().asJavaConstant().asInt();
+                    ValueNode valueNode = store.value();
+                    if (!valueNode.isJavaConstant()) {
+                        return null;
+                    }
+                    Class<?> clazz = snippetReflection.asObject(Class.class, valueNode.asJavaConstant());
+                    /*
+                     * It is possible that the returned class is a substitution class, e.g.,
+                     * DynamicHub returned for a Class.class constant. Get the target class of the
+                     * substitution class.
+                     */
+                    result[index] = annotationSubstitutions == null || clazz == null ? clazz : annotationSubstitutions.getTargetClass(clazz);
                 }
                 successor = unwrapNode(store.next());
             }
 
-            /*
-             * Check that all array elements are filled, i.e., the number of writes matches the size
-             * of the array.
-             */
-            int newArrayLength = newArrayLengthNode.asJavaConstant().asInt();
-
-            return classList != null && classList.size() == newArrayLength ? classList.toArray(new Class<?>[0]) : null;
+            if (successor != null && exact) {
+                /* Nodes after the array store could interfere with the array. */
+                return null;
+            }
+            return result;
         }
         return null;
+    }
+
+    /**
+     * The graph decoding used for inlining before static analysis creates unnecessary block begin
+     * nodes. We can just ignore them.
+     */
+    private static FixedNode skipBeginNodes(FixedNode node) {
+        FixedNode cur = node;
+        while (cur instanceof AbstractBeginNode) {
+            cur = ((AbstractBeginNode) cur).next();
+        }
+        return cur;
     }
 
     private static ValueNode getDeoptProxyOriginalValue(ValueNode node) {
@@ -416,20 +453,26 @@ public class SubstrateGraphBuilderPlugins {
     }
 
     /**
-     * Unwrap FullInfopointNode and DeoptEntryNode since they are not important for the Class[]
-     * elements analysis.
+     * Ignore nodes in the control flow graph that are not important for the Class[] elements
+     * analysis.
      */
     private static FixedNode unwrapNode(FixedNode node) {
         FixedNode successor = node;
-        while (successor instanceof FullInfopointNode || successor instanceof DeoptEntryNode) {
-            assert !(successor instanceof DeoptEntryNode) || ((HostedMethod) successor.graph().method()).isDeoptTarget();
-            if (successor instanceof FullInfopointNode) {
+        while (true) {
+            if (successor instanceof EnsureClassInitializedNode) {
+                successor = ((EnsureClassInitializedNode) successor).next();
+            } else if (successor instanceof FullInfopointNode) {
                 successor = ((FullInfopointNode) successor).next();
-            } else {
+            } else if (successor instanceof DeoptEntryNode) {
+                assert ((HostedMethod) successor.graph().method()).isDeoptTarget();
                 successor = ((DeoptEntryNode) successor).next();
+            } else if (successor instanceof AbstractBeginNode) {
+                /* Useless block begins can occur during parsing or graph decoding. */
+                successor = ((AbstractBeginNode) successor).next();
+            } else {
+                return successor;
             }
         }
-        return successor;
     }
 
     private static void registerAtomicUpdaterPlugins(MetaAccessProvider metaAccess, SnippetReflectionProvider snippetReflection, InvocationPlugins plugins, ParsingReason reason) {
@@ -617,8 +660,7 @@ public class SubstrateGraphBuilderPlugins {
                  */
                 ValueNode clazzNonNull = b.nullCheckedValue(clazz, DeoptimizationAction.None);
                 b.add(new EnsureClassInitializedNode(clazzNonNull));
-                ValueNode clazzLegal = b.add(new ValidateNewInstanceClassNode(clazzNonNull));
-                b.addPush(JavaKind.Object, new DynamicNewInstanceNode(clazzLegal, true));
+                DynamicNewInstanceNode.createAndPush(b, clazzNonNull);
                 return true;
             }
         });

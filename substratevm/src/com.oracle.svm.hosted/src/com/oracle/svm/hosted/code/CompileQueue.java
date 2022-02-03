@@ -52,6 +52,7 @@ import org.graalvm.compiler.code.DataSection;
 import org.graalvm.compiler.core.GraalCompiler;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.CompilationIdentifier.Verbosity;
+import org.graalvm.compiler.core.common.Fields;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.spi.CodeGenProviders;
 import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
@@ -90,10 +91,15 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
+import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedFoldInvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
+import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
+import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
+import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
+import org.graalvm.compiler.nodes.virtual.VirtualObjectState;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
@@ -115,13 +121,14 @@ import org.graalvm.compiler.virtual.phases.ea.ReadEliminationPhase;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.infrastructure.GraphProvider.Purpose;
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.phases.SubstrateIntrinsicGraphBuilder;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
 import com.oracle.graal.pointsto.util.Timer;
-import com.oracle.graal.pointsto.util.Timer.StopTimer;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AlwaysInlineAllCallees;
 import com.oracle.svm.core.annotate.AlwaysInlineSelectCallees;
@@ -150,7 +157,10 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureHandler;
 import com.oracle.svm.hosted.NativeImageGenerator;
 import com.oracle.svm.hosted.NativeImageOptions;
+import com.oracle.svm.hosted.ProgressReporter;
+import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.phases.DevirtualizeCallsPhase;
 import com.oracle.svm.hosted.phases.HostedGraphBuilderPhase;
@@ -168,9 +178,8 @@ import jdk.vm.ci.code.site.Call;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.code.site.InfopointReason;
 import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.JavaField;
-import jdk.vm.ci.meta.JavaMethod;
-import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -189,6 +198,7 @@ public class CompileQueue {
     protected CompletionExecutor executor;
     protected final ConcurrentMap<HostedMethod, CompileTask> compilations;
     protected final RuntimeConfiguration runtimeConfig;
+    protected final MetaAccessProvider metaAccess;
     private Suites regularSuites = null;
     private Suites deoptTargetSuites = null;
     private LIRSuites regularLIRSuites = null;
@@ -338,6 +348,7 @@ public class CompileQueue {
         this.universe = universe;
         this.compilations = new ConcurrentHashMap<>();
         this.runtimeConfig = runtimeConfigBuilder.getRuntimeConfig();
+        this.metaAccess = runtimeConfigBuilder.metaAccess;
         this.deoptimizeAll = deoptimizeAll;
         this.dataCache = new ConcurrentHashMap<>();
         this.executor = new CompletionExecutor(universe.getBigBang(), executorService, universe.getBigBang().getHeartbeatCallback());
@@ -352,14 +363,15 @@ public class CompileQueue {
     }
 
     protected void callForReplacements(DebugContext debug, @SuppressWarnings("hiding") RuntimeConfiguration runtimeConfig) {
-        NativeImageGenerator.registerReplacements(debug, featureHandler, runtimeConfig, runtimeConfig.getProviders(), snippetReflection, true, true);
+        NativeImageGenerator.registerReplacements(debug, featureHandler, runtimeConfig, runtimeConfig.getProviders(), true, true);
     }
 
     @SuppressWarnings("try")
     public void finish(DebugContext debug) {
+        ProgressReporter reporter = ProgressReporter.singleton();
         try {
             String imageName = universe.getBigBang().getHostVM().getImageName();
-            try (StopTimer t = new Timer(imageName, "(parse)").start()) {
+            try (ProgressReporter.ReporterClosable ac = reporter.printParsing(new Timer(imageName, "(parse)"))) {
                 parseAll();
             }
             // Checking @Uninterruptible annotations does not take long enough to justify a timer.
@@ -378,14 +390,16 @@ public class CompileQueue {
             }
 
             if (SubstrateOptions.AOTInline.getValue() && SubstrateOptions.AOTTrivialInline.getValue()) {
-                try (StopTimer ignored = new Timer(imageName, "(inline)").start()) {
+                try (ProgressReporter.ReporterClosable ac = reporter.printInlining(new Timer(imageName, "(inline)"))) {
                     inlineTrivialMethods(debug);
                 }
+            } else {
+                reporter.printInliningSkipped();
             }
 
             assert suitesNotCreated();
             createSuites();
-            try (StopTimer t = new Timer(imageName, "(compile)").start()) {
+            try (ProgressReporter.ReporterClosable ac = reporter.printCompiling(new Timer(imageName, "(compile)"))) {
                 compileAll();
             }
         } catch (InterruptedException ie) {
@@ -518,13 +532,13 @@ public class CompileQueue {
     private void parseAheadOfTimeCompiledMethods() {
         universe.getMethods().stream()
                         .filter(method -> method.isEntryPoint() || CompilationInfoSupport.singleton().isForcedCompilation(method))
-                        .forEach(method -> ensureParsed(method, new EntryPointReason()));
+                        .forEach(method -> ensureParsed(method, null, new EntryPointReason()));
 
         SubstrateForeignCallsProvider foreignCallsProvider = (SubstrateForeignCallsProvider) runtimeConfig.getProviders().getForeignCalls();
         foreignCallsProvider.getForeignCalls().values().stream()
                         .map(linkage -> (HostedMethod) linkage.getDescriptor().findMethod(runtimeConfig.getProviders().getMetaAccess()))
                         .filter(method -> method.wrapped.isRootMethod())
-                        .forEach(method -> ensureParsed(method, new EntryPointReason()));
+                        .forEach(method -> ensureParsed(method, null, new EntryPointReason()));
     }
 
     private void parseDeoptimizationTargetMethods() {
@@ -534,7 +548,7 @@ public class CompileQueue {
          */
         universe.getMethods().stream()
                         .filter(method -> CompilationInfoSupport.singleton().isDeoptTarget(method))
-                        .forEach(method -> ensureParsed(universe.createDeoptTarget(method), new EntryPointReason()));
+                        .forEach(method -> ensureParsed(universe.createDeoptTarget(method), null, new EntryPointReason()));
 
         /*
          * Deoptimization target code for deoptimization testing: all methods that are not
@@ -549,7 +563,7 @@ public class CompileQueue {
 
     private void ensureParsedForDeoptTesting(HostedMethod method) {
         method.compilationInfo.canDeoptForTesting = true;
-        ensureParsed(universe.createDeoptTarget(method), new EntryPointReason());
+        ensureParsed(universe.createDeoptTarget(method), null, new EntryPointReason());
     }
 
     protected void checkTrivial(HostedMethod method) {
@@ -573,6 +587,7 @@ public class CompileQueue {
 
         int round = 0;
         do {
+            ProgressReporter.singleton().printStageProgress();
             inliningProgress = false;
             round++;
             try (Indent ignored = debug.logAndIndent("==== Trivial Inlining  round %d\n", round)) {
@@ -686,7 +701,7 @@ public class CompileQueue {
          * more inlining restrictions and this code can be removed.
          */
         RestrictHeapAccess annotation = method.getAnnotation(RestrictHeapAccess.class);
-        return annotation != null && annotation.access() == RestrictHeapAccess.Access.NO_ALLOCATION && !annotation.mayBeInlined();
+        return annotation != null && annotation.access() == RestrictHeapAccess.Access.NO_ALLOCATION;
     }
 
     public static boolean callerAnnotatedWith(Invoke invoke, Class<? extends Annotation> annotationClass) {
@@ -727,7 +742,13 @@ public class CompileQueue {
         return false;
     }
 
-    protected void ensureParsed(HostedMethod method, CompileReason reason) {
+    protected void ensureParsed(HostedMethod method, HostedMethod callerMethod, CompileReason reason) {
+        if (!(NativeImageOptions.AllowFoldMethods.getValue() || method.getAnnotation(Fold.class) == null ||
+                        metaAccess.lookupJavaType(GeneratedFoldInvocationPlugin.class).isAssignableFrom(callerMethod.getDeclaringClass()))) {
+            throw VMError.shouldNotReachHere("Parsing method annotated with @" + Fold.class.getSimpleName() + ": " +
+                            method.format("%H.%n(%p)") +
+                            ". Make sure you have used Graal annotation processors on the parent-project of the method's declaring class.");
+        }
         if (!method.compilationInfo.inParseQueue.getAndSet(true)) {
             executor.execute(new ParseTask(method, reason));
         }
@@ -761,6 +782,8 @@ public class CompileQueue {
          */
         boolean trackNodeSourcePosition = GraalOptions.TrackNodeSourcePosition.getValue(options);
         StructuredGraph graph = aGraph.copy(universe.lookup(aGraph.method()), options, debug, trackNodeSourcePosition);
+
+        transplantEscapeAnalysisState(graph);
 
         IdentityHashMap<Object, Object> replacements = new IdentityHashMap<>();
         for (Node node : graph.getNodes()) {
@@ -801,12 +824,12 @@ public class CompileQueue {
         if (obj instanceof Node) {
             throw VMError.shouldNotReachHere("Must not replace a Graal graph nodes, only data objects referenced from a node");
 
-        } else if (obj instanceof JavaType) {
-            newReplacement = hUniverse.lookup((JavaType) obj);
-        } else if (obj instanceof JavaMethod) {
-            newReplacement = hUniverse.lookup((JavaMethod) obj);
-        } else if (obj instanceof JavaField) {
-            newReplacement = hUniverse.lookup((JavaField) obj);
+        } else if (obj instanceof AnalysisType) {
+            newReplacement = hUniverse.lookup((AnalysisType) obj);
+        } else if (obj instanceof AnalysisMethod) {
+            newReplacement = hUniverse.lookup((AnalysisMethod) obj);
+        } else if (obj instanceof AnalysisField) {
+            newReplacement = hUniverse.lookup((AnalysisField) obj);
 
         } else if (obj.getClass() == ObjectStamp.class) {
             ObjectStamp stamp = (ObjectStamp) obj;
@@ -890,12 +913,84 @@ public class CompileQueue {
         return newReplacement;
     }
 
+    /**
+     * The nodes produced by escape analysis need some manual patching: escape analysis requires
+     * that {@link ResolvedJavaType#getInstanceFields} is stable and uses the index of a field in
+     * that array also to index its own data structures. But {@link AnalysisType} and
+     * {@link HostedType} cannot return fields in the same order: Fields that are not seen as
+     * reachable by the static analysis are removed from the hosted type; and the layout of objects,
+     * i.e., the field order, is only decided after static analysis. Therefore, we need to fix up
+     * all the nodes that implicitly use the field index.
+     */
+    private void transplantEscapeAnalysisState(StructuredGraph graph) {
+        for (CommitAllocationNode node : graph.getNodes().filter(CommitAllocationNode.class)) {
+            List<ValueNode> values = node.getValues();
+            List<ValueNode> aValues = new ArrayList<>(values);
+            values.clear();
+
+            int aObjectStartIndex = 0;
+            for (VirtualObjectNode virtualObject : node.getVirtualObjects()) {
+                transplantVirtualObjectState(virtualObject, aValues, values, aObjectStartIndex);
+                aObjectStartIndex += virtualObject.entryCount();
+            }
+            assert aValues.size() == aObjectStartIndex;
+        }
+
+        for (VirtualObjectState node : graph.getNodes().filter(VirtualObjectState.class)) {
+            List<ValueNode> values = node.values();
+            List<ValueNode> aValues = new ArrayList<>(values);
+            values.clear();
+
+            transplantVirtualObjectState(node.object(), aValues, values, 0);
+        }
+
+        for (VirtualInstanceNode node : graph.getNodes(VirtualInstanceNode.TYPE)) {
+            AnalysisType aType = (AnalysisType) node.type();
+            ResolvedJavaField[] aFields = node.getFields();
+            assert Arrays.equals(aFields, aType.getInstanceFields(true));
+            HostedField[] hFields = universe.lookup(aType).getInstanceFields(true);
+            /*
+             * We cannot directly write the final field `VirtualInstanceNode.fields`. So we rely on
+             * the NodeClass mechanism, which is also used to transplant all other fields.
+             */
+            Fields nodeClassDataFields = node.getNodeClass().getData();
+            for (int i = 0; i < nodeClassDataFields.getCount(); i++) {
+                if (nodeClassDataFields.get(node, i) == aFields) {
+                    nodeClassDataFields.putObjectChecked(node, i, hFields);
+                }
+            }
+        }
+    }
+
+    private void transplantVirtualObjectState(VirtualObjectNode virtualObject, List<ValueNode> aValues, List<ValueNode> hValues, int aObjectStartIndex) {
+        AnalysisType aType = (AnalysisType) virtualObject.type();
+        if (aType.isArray()) {
+            /* For arrays, there is no change between analysis and hosted elements. */
+            for (int i = 0; i < virtualObject.entryCount(); i++) {
+                hValues.add(aValues.get(aObjectStartIndex + i));
+            }
+        } else {
+            /*
+             * For instance fields, we need to add fields in the order of the hosted fields.
+             * `AnalysisField.getPosition` gives us the index of the field in the analysis-level
+             * list of field values.
+             */
+            assert virtualObject.entryCount() == aType.getInstanceFields(true).length;
+            HostedField[] hFields = universe.lookup(aType).getInstanceFields(true);
+            for (HostedField hField : hFields) {
+                int aPosition = hField.wrapped.getPosition();
+                assert hField.wrapped.equals(aType.getInstanceFields(true)[aPosition]);
+                hValues.add(aValues.get(aObjectStartIndex + aPosition));
+            }
+        }
+    }
+
     private final boolean parseOnce = SubstrateOptions.parseOnce();
 
     @SuppressWarnings("try")
     private void defaultParseFunction(DebugContext debug, HostedMethod method, CompileReason reason, RuntimeConfiguration config) {
-        if ((!NativeImageOptions.AllowFoldMethods.getValue() && method.getAnnotation(Fold.class) != null) || method.getAnnotation(NodeIntrinsic.class) != null) {
-            throw VMError.shouldNotReachHere("Parsing method annotated with @" + Fold.class.getSimpleName() + " or " + NodeIntrinsic.class.getSimpleName() + ": " +
+        if (method.getAnnotation(NodeIntrinsic.class) != null) {
+            throw VMError.shouldNotReachHere("Parsing method annotated with @" + NodeIntrinsic.class.getSimpleName() + ": " +
                             method.format("%H.%n(%p)") +
                             ". Make sure you have used Graal annotation processors on the parent-project of the method's declaring class.");
         }
@@ -980,7 +1075,7 @@ public class CompileQueue {
         if (isIndirect) {
             for (HostedMethod invokeImplementation : invokeTarget.getImplementations()) {
                 handleSpecialization(method, targetNode, invokeTarget, invokeImplementation);
-                ensureParsed(invokeImplementation, new VirtualCallReason(method, invokeImplementation, reason));
+                ensureParsed(invokeImplementation, method, new VirtualCallReason(method, invokeImplementation, reason));
             }
         } else {
             /*
@@ -995,7 +1090,7 @@ public class CompileQueue {
              */
             if (invokeTarget.wrapped.isSimplyImplementationInvoked()) {
                 handleSpecialization(method, targetNode, invokeTarget, invokeTarget);
-                ensureParsed(invokeTarget, new DirectCallReason(method, reason));
+                ensureParsed(invokeTarget, method, new DirectCallReason(method, reason));
             }
         }
     }
@@ -1350,7 +1445,7 @@ public class CompileQueue {
         if (method.wrapped.isIntrinsicMethod()) {
             return false;
         }
-        if (method.getAnnotation(Uninterruptible.class) != null) {
+        if (Uninterruptible.Utils.isUninterruptible(method)) {
             return false;
         }
         if (method.getAnnotation(RestrictHeapAccess.class) != null) {

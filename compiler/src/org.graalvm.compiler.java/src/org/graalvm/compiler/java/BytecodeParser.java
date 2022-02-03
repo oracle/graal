@@ -3019,7 +3019,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             withExceptionNode.setExceptionEdge(exceptionEdge);
         }
         assert withExceptionNode.next() == null : "new WithExceptionNode with existing next";
-        AbstractBeginNode nextBegin = graph.add(withExceptionNode.createNextBegin());
+        AbstractBeginNode nextBegin = graph.add(new BeginNode());
         withExceptionNode.setNext(nextBegin);
         return nextBegin;
     }

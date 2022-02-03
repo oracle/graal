@@ -43,7 +43,7 @@ public final class CoverageData {
         return frame;
     }
 
-    public URI getCovarageUri() {
+    public URI getCoverageUri() {
         return coverageUri;
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2019, Oracle and/or its affiliates.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -32,7 +32,6 @@ package com.oracle.truffle.llvm.runtime.nodes.asm.support;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.NodeField;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
@@ -40,38 +39,38 @@ import com.oracle.truffle.llvm.runtime.nodes.api.LLVMStatementNode;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
 @NodeChild(value = "value", type = LLVMExpressionNode.class)
-@NodeField(name = "slot", type = FrameSlot.class)
+@NodeField(name = "slot", type = int.class)
 public abstract class LLVMAMD64WriteAddressRegisterNode extends LLVMStatementNode {
 
-    public abstract FrameSlot getSlot();
+    public abstract int getSlot();
 
     @Specialization
     protected void doI8(VirtualFrame frame, byte value) {
-        frame.getFrameDescriptor().setFrameSlotKind(getSlot(), FrameSlotKind.Long);
+        frame.getFrameDescriptor().setSlotKind(getSlot(), FrameSlotKind.Long);
         frame.setLong(getSlot(), value);
     }
 
     @Specialization
     protected void doI16(VirtualFrame frame, short value) {
-        frame.getFrameDescriptor().setFrameSlotKind(getSlot(), FrameSlotKind.Long);
+        frame.getFrameDescriptor().setSlotKind(getSlot(), FrameSlotKind.Long);
         frame.setLong(getSlot(), value);
     }
 
     @Specialization
     protected void doI32(VirtualFrame frame, int value) {
-        frame.getFrameDescriptor().setFrameSlotKind(getSlot(), FrameSlotKind.Long);
+        frame.getFrameDescriptor().setSlotKind(getSlot(), FrameSlotKind.Long);
         frame.setLong(getSlot(), value);
     }
 
     @Specialization
     protected void doI64(VirtualFrame frame, long value) {
-        frame.getFrameDescriptor().setFrameSlotKind(getSlot(), FrameSlotKind.Long);
+        frame.getFrameDescriptor().setSlotKind(getSlot(), FrameSlotKind.Long);
         frame.setLong(getSlot(), value);
     }
 
     @Specialization
     protected void doAddress(VirtualFrame frame, LLVMPointer value) {
-        frame.getFrameDescriptor().setFrameSlotKind(getSlot(), FrameSlotKind.Object);
+        frame.getFrameDescriptor().setSlotKind(getSlot(), FrameSlotKind.Object);
         frame.setObject(getSlot(), value);
     }
 }

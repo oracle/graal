@@ -1021,7 +1021,8 @@ public class TypeDescriptorTest {
                         TypeDescriptor.OBJECT, TypeDescriptor.ARRAY, TypeDescriptor.EXECUTABLE, TypeDescriptor.INSTANTIABLE,
                         TypeDescriptor.ITERABLE, TypeDescriptor.ITERATOR, TypeDescriptor.DATE, TypeDescriptor.TIME,
                         TypeDescriptor.TIME_ZONE, TypeDescriptor.DURATION, TypeDescriptor.META_OBJECT, TypeDescriptor.EXCEPTION);
-        try (Context ctx = Context.newBuilder().allowAllAccess(true).build()) {
+        try (TestContext testContext = new TestContext(TypeDescriptorTest.class)) {
+            Context ctx = testContext.getContext();
             Value v = ctx.asValue(1);
             Assert.assertTrue(TypeDescriptor.NUMBER.isAssignable(TypeDescriptor.forValue(v)));
             v = ctx.asValue(true);

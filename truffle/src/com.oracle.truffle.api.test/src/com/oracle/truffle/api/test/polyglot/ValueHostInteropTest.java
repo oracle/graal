@@ -53,7 +53,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.junit.Assume.assumeTrue;
 
-import java.awt.Color;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.lang.reflect.Method;
 import java.util.AbstractList;
@@ -81,7 +81,9 @@ import org.hamcrest.CoreMatchers;
 import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Ignore;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TestName;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -93,6 +95,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class ValueHostInteropTest extends AbstractPolyglotTest {
 
@@ -117,8 +120,14 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
         }
     }
 
+    @Rule public TestName testName = new TestName();
+
     @Before
     public void initObjects() {
+        if ("testAccessInvisibleAPIDirect".equals(testName.getMethodName())) {
+            TruffleTestAssumptions.assumeWeakEncapsulation();
+            needsLanguageEnv = true;
+        }
         setupEnv();
     }
 

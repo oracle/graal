@@ -68,7 +68,7 @@ public final class DebuggerController implements ContextsListener {
     private static final StepConfig STEP_CONFIG = StepConfig.newBuilder().suspendAnchors(SourceElement.ROOT, SuspendAnchor.AFTER).build();
 
     // justification for all of the hash maps is that lookups only happen when at a breakpoint
-    private final Map<Object, SimpleLock> suspendLocks = new HashMap<>();
+    private final Map<Object, SimpleLock> suspendLocks = Collections.synchronizedMap(new HashMap<>());
     private final Map<Object, SuspendedInfo> suspendedInfos = Collections.synchronizedMap(new HashMap<>());
     private final Map<Object, SteppingInfo> commandRequestIds = new HashMap<>();
     private final Map<Object, ThreadJob<?>> threadJobs = new HashMap<>();
@@ -240,7 +240,7 @@ public final class DebuggerController implements ContextsListener {
             // record the location that we'll land on after the step out completes
             MethodRef method = context.getMethodFromRootNode(callerRoot);
             if (method != null) {
-                KlassRef klass = method.getDeclaringKlass();
+                KlassRef klass = method.getDeclaringKlassRef();
                 steppingInfo.setStepOutBCI(context.getIds().getIdAsLong(klass), context.getIds().getIdAsLong(method), stepOutBCI);
             }
         }
@@ -446,7 +446,7 @@ public final class DebuggerController implements ContextsListener {
         }
     }
 
-    private SimpleLock getSuspendLock(Object thread) {
+    private synchronized SimpleLock getSuspendLock(Object thread) {
         SimpleLock lock = suspendLocks.get(thread);
         if (lock == null) {
             lock = new SimpleLock();
@@ -549,7 +549,10 @@ public final class DebuggerController implements ContextsListener {
         // before sending any events to debugger, make sure to mark
         // the thread lock as locked, in case a resume command happens
         // shortly thereafter, with the risk of a race (lost notify)
-        getSuspendLock(thread).acquire();
+        SimpleLock suspendLock = getSuspendLock(thread);
+        synchronized (suspendLock) {
+            suspendLock.acquire();
+        }
 
         switch (suspendPolicy) {
             case SuspendStrategy.NONE:
@@ -615,11 +618,10 @@ public final class DebuggerController implements ContextsListener {
 
     private void lockThread(Object thread) {
         SimpleLock lock = getSuspendLock(thread);
-
+        // in case a thread job is already posted on this thread
+        checkThreadJobsAndRun(thread);
         synchronized (lock) {
             try {
-                // in case a thread job is already posted on this thread
-                checkThreadJobsAndRun(thread);
                 while (lock.isLocked()) {
                     JDWP.LOGGER.fine(() -> "lock.wait() for thread: " + getThreadName(thread));
                     lock.wait();
@@ -640,7 +642,10 @@ public final class DebuggerController implements ContextsListener {
         if (threadJobs.containsKey(thread)) {
             // re-acquire the thread lock after completing
             // the job, to avoid the thread resuming.
-            getSuspendLock(thread).acquire();
+            SimpleLock suspendLock = getSuspendLock(thread);
+            synchronized (suspendLock) {
+                suspendLock.acquire();
+            }
             // a thread job was posted on this thread
             // only wake up to perform the job a go back to sleep
             ThreadJob<?> job = threadJobs.remove(thread);
@@ -648,7 +653,7 @@ public final class DebuggerController implements ContextsListener {
 
             if (suspensionStrategy == SuspendStrategy.ALL) {
                 Object[] allThreads = context.getAllGuestThreads();
-                // resume all threads during invocation og method to avoid potential deadlocks
+                // resume all threads during invocation of method to avoid potential deadlocks
                 for (Object activeThread : allThreads) {
                     if (activeThread != thread) {
                         resume(activeThread, false);
@@ -665,7 +670,6 @@ public final class DebuggerController implements ContextsListener {
             } else {
                 job.runJob();
             }
-
             lockThread(thread);
         }
     }
@@ -695,7 +699,7 @@ public final class DebuggerController implements ContextsListener {
                     return null;
                 }
 
-                klass = method.getDeclaringKlass();
+                klass = method.getDeclaringKlassRef();
                 long klassId = ids.getIdAsLong(klass);
                 long methodId = ids.getIdAsLong(method);
                 byte typeTag = TypeTag.getKind(klass);
@@ -1021,7 +1025,7 @@ public final class DebuggerController implements ContextsListener {
 
                 Frame rawFrame = frame.getRawFrame(context.getLanguageClass(), FrameInstance.FrameAccess.READ_WRITE);
                 MethodRef method = context.getMethodFromRootNode(root);
-                KlassRef klass = method.getDeclaringKlass();
+                KlassRef klass = method.getDeclaringKlassRef();
 
                 klassId = ids.getIdAsLong(klass);
                 methodId = ids.getIdAsLong(method);

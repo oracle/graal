@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -132,7 +132,12 @@ final class HostContext {
     }
 
     GuestToHostCodeCache getGuestToHostCache() {
-        return language.getGuestToHostCache();
+        GuestToHostCodeCache cache = (GuestToHostCodeCache) HostAccessor.ENGINE.getGuestToHostCodeCache(internalContext);
+        if (cache == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            cache = (GuestToHostCodeCache) HostAccessor.ENGINE.installGuestToHostCodeCache(internalContext, new GuestToHostCodeCache(language));
+        }
+        return cache;
     }
 
     @TruffleBoundary

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -155,7 +155,7 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
         return (AArch64Kind) gen.getLIRKind(((ValueNode) access).stamp(NodeView.DEFAULT)).getPlatformKind();
     }
 
-    private static boolean isSupportedExtendedAddSubShift(IntegerConvertNode<?, ?> node, int clampedShiftAmt) {
+    private static boolean isSupportedExtendedAddSubShift(IntegerConvertNode<?> node, int clampedShiftAmt) {
         assert clampedShiftAmt >= 0;
         if (clampedShiftAmt <= 4) {
             switch (node.getInputBits()) {
@@ -317,7 +317,7 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
     public ComplexMatchResult mergeSignExtendByShiftIntoAddSub(BinaryNode op, LeftShiftNode lshift, ValueNode ext, ValueNode x, ValueNode y) {
         assert isNumericInteger(lshift);
         int shiftAmt = getClampedShiftAmt(lshift);
-        if (!isSupportedExtendedAddSubShift((IntegerConvertNode<?, ?>) ext, shiftAmt)) {
+        if (!isSupportedExtendedAddSubShift((IntegerConvertNode<?>) ext, shiftAmt)) {
             return null;
         }
         ExtendType extType;
@@ -885,7 +885,7 @@ public class AArch64NodeMatchRules extends NodeMatchRules {
     @MatchRule("(Add=op x (ZeroExtend=ext y))")
     @MatchRule("(Sub=op x (ZeroExtend=ext y))")
     public ComplexMatchResult mergeSignExtendIntoAddSub(BinaryNode op, UnaryNode ext, ValueNode x, ValueNode y) {
-        if (!isSupportedExtendedAddSubShift((IntegerConvertNode<?, ?>) ext, 0)) {
+        if (!isSupportedExtendedAddSubShift((IntegerConvertNode<?>) ext, 0)) {
             return null;
         }
 

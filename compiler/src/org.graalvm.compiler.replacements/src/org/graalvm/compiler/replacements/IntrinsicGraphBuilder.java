@@ -178,7 +178,7 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
 
             } else if (fixedNode instanceof WithExceptionNode) {
                 WithExceptionNode withExceptionNode = (WithExceptionNode) fixedNode;
-                AbstractBeginNode normalSuccessor = graph.add(withExceptionNode.createNextBegin());
+                AbstractBeginNode normalSuccessor = graph.add(new BeginNode());
                 ExceptionObjectNode exceptionSuccessor = graph.add(new ExceptionObjectNode(getMetaAccess()));
                 setExceptionState(exceptionSuccessor);
                 exceptionSuccessor.setNext(graph.add(new UnwindNode(exceptionSuccessor)));
@@ -218,7 +218,7 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
      * Currently unimplemented here, but implemented in subclasses that need it.
      */
     protected void mergeUnwinds() {
-        if (getGraph().getNodes().filter(UnwindNode.class).count() > 1) {
+        if (getGraph().getNodes(UnwindNode.TYPE).snapshot().size() > 1) {
             throw GraalError.shouldNotReachHere("mergeUnwinds unsupported by this IntrinsicGraphBuilder");
         }
     }
@@ -284,7 +284,15 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
 
     @Override
     public ResolvedJavaMethod getMethod() {
-        return method;
+        /*
+         * Invocation plugins expect to get the caller method that triggers the intrinsification.
+         * Since we are compiling the intrinsic on its own, we do not have any such caller method.
+         *
+         * In particular, returning `method` would be misleading because it is the method that is
+         * intrinsified, not the caller. The invocation plugin gets that method passed in as the
+         * `targetMethod` already.
+         */
+        return null;
     }
 
     @Override

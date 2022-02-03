@@ -138,15 +138,30 @@ public final class SubprocessUtil {
      * Gets the command line used to start the current Java VM, including all VM arguments, but not
      * including the main class or any Java arguments. This can be used to spawn an identical VM,
      * but running different Java code.
+     *
+     * @param removeDebuggerArguments if {@code true}, pre-process the returned list with
+     *            {@link #withoutDebuggerArguments(List)}
+     * @return {@code null} if the command line for the current process cannot be accessed
      */
-    public static List<String> getVMCommandLine() {
+    public static List<String> getVMCommandLine(boolean removeDebuggerArguments) {
         List<String> args = getProcessCommandLine();
         if (args == null) {
             return null;
         } else {
             int index = findMainClassIndex(args);
-            return args.subList(0, index);
+            args = args.subList(0, index);
+            if (removeDebuggerArguments) {
+                args = withoutDebuggerArguments(args);
+            }
+            return args;
         }
+    }
+
+    /**
+     * Shortcut for {@link #getVMCommandLine(boolean) getVMCommandLine(false)}.
+     */
+    public static List<String> getVMCommandLine() {
+        return getVMCommandLine(false);
     }
 
     /**

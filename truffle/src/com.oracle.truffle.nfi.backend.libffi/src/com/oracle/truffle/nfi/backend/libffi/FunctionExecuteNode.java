@@ -92,16 +92,16 @@ abstract class FunctionExecuteNode extends Node {
     static final class SignatureExecuteNode extends RootNode {
 
         final CachedSignatureInfo signatureInfo;
-        @Children NativeArgumentLibrary[] argLibs;
+        @Children SerializeArgumentNode[] argNodes;
 
         SignatureExecuteNode(LibFFILanguage language, CachedSignatureInfo signatureInfo) {
             super(language);
             this.signatureInfo = signatureInfo;
 
             CachedTypeInfo[] argTypes = signatureInfo.getArgTypes();
-            this.argLibs = new NativeArgumentLibrary[argTypes.length];
+            this.argNodes = new SerializeArgumentNode[argTypes.length];
             for (int i = 0; i < argTypes.length; i++) {
-                argLibs[i] = NativeArgumentLibrary.getFactory().create(argTypes[i]);
+                argNodes[i] = argTypes[i].createSerializeArgumentNode();
             }
         }
 
@@ -112,17 +112,17 @@ abstract class FunctionExecuteNode extends Node {
             Object[] args = (Object[]) frame.getArguments()[1];
             LibFFISignature signature = (LibFFISignature) frame.getArguments()[2];
 
-            if (args.length != argLibs.length) {
-                throw silenceException(RuntimeException.class, ArityException.create(argLibs.length, argLibs.length, args.length));
+            if (args.length != argNodes.length) {
+                throw silenceException(RuntimeException.class, ArityException.create(argNodes.length, argNodes.length, args.length));
             }
 
             NativeArgumentBuffer.Array buffer = signatureInfo.prepareBuffer();
             try {
                 CachedTypeInfo[] types = signatureInfo.getArgTypes();
-                assert argLibs.length == types.length;
+                assert argNodes.length == types.length;
 
-                for (int i = 0; i < argLibs.length; i++) {
-                    argLibs[i].serialize(types[i], buffer, args[i]);
+                for (int i = 0; i < argNodes.length; i++) {
+                    argNodes[i].serialize(args[i], buffer);
                 }
             } catch (UnsupportedTypeException ex) {
                 throw silenceException(RuntimeException.class, ex);

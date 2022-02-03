@@ -37,7 +37,7 @@ import jdk.vm.ci.meta.JavaKind;
 public class HostedInterface extends HostedType {
 
     public HostedInterface(HostedUniverse universe, AnalysisType wrapped, JavaKind kind, JavaKind storageKind, HostedInterface[] interfaces) {
-        super(universe, wrapped, kind, storageKind, null, interfaces, false);
+        super(universe, wrapped, kind, storageKind, null, interfaces);
     }
 
     @Override

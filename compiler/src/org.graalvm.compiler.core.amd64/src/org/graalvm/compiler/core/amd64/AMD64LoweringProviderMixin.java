@@ -28,9 +28,16 @@ package org.graalvm.compiler.core.amd64;
 import static org.graalvm.compiler.core.common.memory.MemoryOrderMode.VOLATILE;
 
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
+import org.graalvm.compiler.nodes.LogicNode;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.ConditionalNode;
+import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
+import org.graalvm.compiler.nodes.calc.SubNode;
 import org.graalvm.compiler.nodes.gc.WriteBarrier;
 import org.graalvm.compiler.nodes.java.AbstractCompareAndSwapNode;
 import org.graalvm.compiler.nodes.memory.AbstractWriteNode;
@@ -43,6 +50,13 @@ import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.replacements.amd64.AMD64ArrayIndexOfWithMaskNode;
 import org.graalvm.compiler.replacements.amd64.AMD64ArrayRegionEqualsWithMaskNode;
 import org.graalvm.compiler.replacements.amd64.AMD64TruffleArrayUtilsWithMaskSnippets;
+import org.graalvm.compiler.replacements.nodes.BitScanForwardNode;
+import org.graalvm.compiler.replacements.nodes.BitScanReverseNode;
+import org.graalvm.compiler.replacements.nodes.CountLeadingZerosNode;
+import org.graalvm.compiler.replacements.nodes.CountTrailingZerosNode;
+
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.meta.JavaKind;
 
 public interface AMD64LoweringProviderMixin extends LoweringProvider {
 
@@ -80,6 +94,36 @@ public interface AMD64LoweringProviderMixin extends LoweringProvider {
                 WriteNode add = graph.add(new WriteNode(write.getAddress(), write.getLocationIdentity(), write.value(), write.getBarrierType()));
                 add.setLastLocationAccess(write.getLastLocationAccess());
                 graph.replaceFixedWithFixed(write, add);
+                return true;
+            }
+        }
+        if (n instanceof CountLeadingZerosNode) {
+            AMD64 arch = (AMD64) getTarget().arch;
+            CountLeadingZerosNode count = (CountLeadingZerosNode) n;
+            if (!arch.getFeatures().contains(AMD64.CPUFeature.LZCNT) || !arch.getFlags().contains(AMD64.Flag.UseCountLeadingZerosInstruction)) {
+                StructuredGraph graph = count.graph();
+                JavaKind kind = count.getValue().getStackKind();
+                ValueNode zero = ConstantNode.forIntegerKind(kind, 0, graph);
+                LogicNode compare = IntegerEqualsNode.create(count.getValue(), zero, NodeView.DEFAULT);
+                ValueNode result = new SubNode(ConstantNode.forIntegerKind(JavaKind.Int, kind.getBitCount() - 1), new BitScanReverseNode(count.getValue()));
+                ValueNode conditional = ConditionalNode.create(compare, ConstantNode.forInt(kind.getBitCount()), result, NodeView.DEFAULT);
+                graph.addOrUniqueWithInputs(conditional);
+                count.replaceAndDelete(conditional);
+                return true;
+            }
+        }
+
+        if (n instanceof CountTrailingZerosNode) {
+            AMD64 arch = (AMD64) getTarget().arch;
+            CountTrailingZerosNode count = (CountTrailingZerosNode) n;
+            if (!arch.getFeatures().contains(AMD64.CPUFeature.BMI1) || !arch.getFlags().contains(AMD64.Flag.UseCountTrailingZerosInstruction)) {
+                StructuredGraph graph = count.graph();
+                JavaKind kind = count.getValue().getStackKind();
+                ValueNode zero = ConstantNode.forIntegerKind(kind, 0, graph);
+                LogicNode compare = IntegerEqualsNode.create(count.getValue(), zero, NodeView.DEFAULT);
+                ValueNode conditional = ConditionalNode.create(compare, ConstantNode.forInt(kind.getBitCount()), new BitScanForwardNode(count.getValue()), NodeView.DEFAULT);
+                graph.addOrUniqueWithInputs(conditional);
+                count.replaceAndDelete(conditional);
                 return true;
             }
         }

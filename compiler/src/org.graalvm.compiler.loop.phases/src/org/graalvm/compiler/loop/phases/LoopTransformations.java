@@ -55,6 +55,7 @@ import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.LoopExitNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.PhiNode;
+import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.SafepointNode;
 import org.graalvm.compiler.nodes.StateSplit;
@@ -62,7 +63,6 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.GuardsStage;
 import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.ProfileData.BranchProbabilityData;
 import org.graalvm.compiler.nodes.VirtualState.NodePositionClosure;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.CompareNode;
@@ -90,7 +90,7 @@ public abstract class LoopTransformations {
         // does not need to be instantiated
     }
 
-    public static void peel(LoopEx loop) {
+    public static LoopFragmentInside peel(LoopEx loop) {
         loop.detectCounted();
         double frequencyBefore = -1D;
         AbstractBeginNode countedExit = null;
@@ -98,11 +98,13 @@ public abstract class LoopTransformations {
             frequencyBefore = loop.localLoopFrequency();
             countedExit = loop.counted().getCountedExit();
         }
-        loop.inside().duplicate().insertBefore(loop);
+        LoopFragmentInside inside = loop.inside().duplicate();
+        inside.insertBefore(loop);
         loop.loopBegin().incrementPeelings();
         if (countedExit != null) {
             adaptCountedLoopExitProbability(countedExit, frequencyBefore - 1D);
         }
+        return inside;
     }
 
     @SuppressWarnings("try")

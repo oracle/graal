@@ -32,9 +32,17 @@ package org.graalvm.libgraal;
  */
 public class LibGraalObject {
 
+    private static volatile boolean exiting;
+
     static {
         if (LibGraal.isAvailable()) {
             LibGraal.registerNativeMethods(LibGraalObject.class);
+            Runtime.getRuntime().addShutdownHook(new Thread() {
+                @Override
+                public void run() {
+                    exiting = true;
+                }
+            });
         }
     }
 
@@ -62,11 +70,16 @@ public class LibGraalObject {
     /**
      * Gets the raw JNI handle wrapped by this object.
      *
-     * @throw {@link IllegalArgumentException} if the isolate context for the handle has destroyed.
+     * @throw {@link DestroyedIsolateException} if the isolate context for the handle has destroyed.
      */
     public long getHandle() {
         if (!isolate.isValid()) {
-            throw new IllegalArgumentException(toString());
+            // During VM exit the Truffle compiler threads are not stopped before the
+            // LibGraalIsolate is invalidated by libgraal shutdown routine. There may still be
+            // active compilations accessing LibGraal objects with invalidated LibGraalIsolate. In
+            // this case we throw DestroyedIsolateException with exitVM set to true to allow
+            // LibGraalTruffleRuntime to recognize this situation and ignore the exception.
+            throw new DestroyedIsolateException(toString(), exiting);
         }
         return handle;
     }

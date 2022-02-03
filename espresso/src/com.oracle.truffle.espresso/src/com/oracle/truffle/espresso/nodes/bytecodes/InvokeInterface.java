@@ -22,7 +22,9 @@
  */
 package com.oracle.truffle.espresso.nodes.bytecodes;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import static com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import static com.oracle.truffle.api.CompilerDirectives.transferToInterpreterAndInvalidate;
+
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -33,11 +35,15 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.espresso.analysis.hierarchy.AssumptionGuardedValue;
+import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyAssumption;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.redefinition.ClassRedefinition;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 /**
@@ -76,7 +82,6 @@ public abstract class InvokeInterface extends Node {
         return (StaticObject) args[0];
     }
 
-    @ReportPolymorphism
     @ImportStatic(InvokeInterface.class)
     @NodeInfo(shortName = "INVOKEINTERFACE !nullcheck")
     public abstract static class WithoutNullCheck extends Node {
@@ -91,14 +96,57 @@ public abstract class InvokeInterface extends Node {
 
         public abstract Object execute(Object[] args);
 
+        protected ClassHierarchyAssumption getNoImplementorsAssumption() {
+            return EspressoContext.get(this).getClassHierarchyOracle().hasNoImplementors(resolutionSeed.getDeclaringKlass());
+        }
+
+        protected AssumptionGuardedValue<ObjectKlass> readSingleImplementor() {
+            return EspressoContext.get(this).getClassHierarchyOracle().readSingleImplementor(resolutionSeed.getDeclaringKlass());
+        }
+
+        @TruffleBoundary
+        EspressoException reportNotAnImplementor(Klass receiverKlass) {
+            ObjectKlass interfaceKlass = resolutionSeed.getDeclaringKlass();
+
+            // check that receiver's klass indeed does not implement the interface
+            assert !interfaceKlass.checkInterfaceSubclassing(receiverKlass);
+
+            Meta meta = receiverKlass.getMeta();
+            throw meta.throwExceptionWithMessage(meta.java_lang_IncompatibleClassChangeError, "Class %s does not implement interface %s", receiverKlass.getName(), interfaceKlass.getName());
+        }
+
+        // The implementor assumption might be invalidated right between the assumption check and
+        // the value retrieval. To ensure that the single implementor value is safe to use, check
+        // that it's not null.
+        @Specialization(assumptions = {"maybeSingleImplementor.hasValue()", "resolvedMethod.getRedefineAssumption()"}, guards = "implementor != null")
+        Object callSingleImplementor(Object[] args,
+                        @Bind("getReceiver(args)") StaticObject receiver,
+                        @SuppressWarnings("unused") @Cached("readSingleImplementor()") AssumptionGuardedValue<ObjectKlass> maybeSingleImplementor,
+                        @Cached("maybeSingleImplementor.get()") ObjectKlass implementor,
+                        @Cached("methodLookup(resolutionSeed, implementor)") Method.MethodVersion resolvedMethod,
+                        @Cached("create(resolvedMethod.getMethod().getCallTargetNoInit())") DirectCallNode directCallNode,
+                        @Cached BranchProfile notAnImplementorProfile) {
+            assert args[0] == receiver;
+            assert !StaticObject.isNull(receiver);
+            // the receiver's klass is not the single implementor, i.e. does not implement the
+            // interface
+            if (receiver.getKlass() != implementor) {
+                notAnImplementorProfile.enter();
+                throw reportNotAnImplementor(receiver.getKlass());
+            }
+
+            assert resolvedMethod.getMethod().getDeclaringKlass().isInitializedOrInitializing();
+            return directCallNode.call(args);
+        }
+
         @SuppressWarnings("unused")
         @Specialization(limit = "LIMIT", //
                         guards = "receiver.getKlass() == cachedKlass", //
-                        assumptions = "resolvedMethod.getAssumption()")
+                        assumptions = "resolvedMethod.getRedefineAssumption()")
         Object callDirect(Object[] args,
                         @Bind("getReceiver(args)") StaticObject receiver,
                         @Cached("receiver.getKlass()") Klass cachedKlass,
-                        @Cached("methodLookup(resolutionSeed, receiver)") Method.MethodVersion resolvedMethod,
+                        @Cached("methodLookup(resolutionSeed, cachedKlass)") Method.MethodVersion resolvedMethod,
                         @Cached("create(resolvedMethod.getMethod().getCallTargetNoInit())") DirectCallNode directCallNode) {
             assert !StaticObject.isNull(receiver);
             assert resolvedMethod.getMethod().getDeclaringKlass().isInitializedOrInitializing() : resolvedMethod.getMethod().getDeclaringKlass();
@@ -112,27 +160,27 @@ public abstract class InvokeInterface extends Node {
             StaticObject receiver = (StaticObject) args[0];
             assert !StaticObject.isNull(receiver);
             // itable lookup.
-            Method.MethodVersion target = methodLookup(resolutionSeed, receiver);
+            Method.MethodVersion target = methodLookup(resolutionSeed, receiver.getKlass());
             assert target.getMethod().getDeclaringKlass().isInitializedOrInitializing() : target.getMethod().getDeclaringKlass();
             return indirectCallNode.call(target.getCallTarget(), args);
         }
     }
 
-    static Method.MethodVersion methodLookup(Method resolutionSeed, StaticObject receiver) {
-        assert !receiver.getKlass().isArray();
+    static Method.MethodVersion methodLookup(Method resolutionSeed, Klass receiverKlass) {
+        assert !receiverKlass.isArray();
         if (resolutionSeed.isRemovedByRedefition()) {
             /*
              * Accept a slow path once the method has been removed put method behind a boundary to
              * avoid a deopt loop
              */
-            return ClassRedefinition.handleRemovedMethod(resolutionSeed, receiver.getKlass()).getMethodVersion();
+            return resolutionSeed.getContext().getClassRedefinition().handleRemovedMethod(resolutionSeed, receiverKlass).getMethodVersion();
         }
 
         int iTableIndex = resolutionSeed.getITableIndex();
-        Method method = ((ObjectKlass) receiver.getKlass()).itableLookup(resolutionSeed.getDeclaringKlass(), iTableIndex);
+        Method method = ((ObjectKlass) receiverKlass).itableLookup(resolutionSeed.getDeclaringKlass(), iTableIndex);
         if (!method.isPublic()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            Meta meta = receiver.getKlass().getMeta();
+            transferToInterpreterAndInvalidate();
+            Meta meta = receiverKlass.getMeta();
             throw meta.throwException(meta.java_lang_IllegalAccessError);
         }
         return method.getMethodVersion();
@@ -156,7 +204,6 @@ public abstract class InvokeInterface extends Node {
         }
 
         @GenerateUncached
-        @ReportPolymorphism
         @NodeInfo(shortName = "INVOKEINTERFACE dynamic !nullcheck")
         public abstract static class WithoutNullCheck extends Node {
 
@@ -178,7 +225,7 @@ public abstract class InvokeInterface extends Node {
                             @Cached IndirectCallNode indirectCallNode) {
                 StaticObject receiver = (StaticObject) args[0];
                 assert !StaticObject.isNull(receiver);
-                Method.MethodVersion target = methodLookup(resolutionSeed, receiver);
+                Method.MethodVersion target = methodLookup(resolutionSeed, receiver.getKlass());
                 assert target.getMethod().getDeclaringKlass().isInitializedOrInitializing() : target.getMethod().getDeclaringKlass();
                 return indirectCallNode.call(target.getCallTarget(), args);
             }

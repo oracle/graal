@@ -43,13 +43,10 @@ package org.graalvm.wasm.memory;
 import static java.lang.Integer.compareUnsigned;
 import static java.lang.StrictMath.addExact;
 import static java.lang.StrictMath.multiplyExact;
-import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_DECLARATION_SIZE;
-import static org.graalvm.wasm.constants.Sizes.MAX_MEMORY_INSTANCE_SIZE;
 import static org.graalvm.wasm.constants.Sizes.MEMORY_PAGE_SIZE;
 
 import java.nio.ByteBuffer;
 
-import org.graalvm.wasm.constants.Sizes;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
@@ -59,50 +56,25 @@ import com.oracle.truffle.api.memory.ByteArraySupport;
 import com.oracle.truffle.api.nodes.Node;
 
 public final class ByteArrayWasmMemory extends WasmMemory {
-    /**
-     * @see #declaredMinSize()
-     */
-    private final int declaredMinSize;
-
-    /**
-     * @see #declaredMaxSize()
-     */
-    private final int declaredMaxSize;
-
-    /**
-     * The maximum practical size of this memory instance (measured in number of
-     * {@link Sizes#MEMORY_PAGE_SIZE pages}).
-     * <p>
-     * It is the minimum between {@link #declaredMaxSize the limit defined in the module binary},
-     * {@link Sizes#MAX_MEMORY_INSTANCE_SIZE the GraalWasm limit} and any additional limit (the JS
-     * API for example has lower limits).
-     * <p>
-     * This is different from {@link #declaredMaxSize()}, which can be higher.
-     */
-    private final int maxAllowedSize;
 
     private byte[] buffer;
 
     private ByteArrayWasmMemory(int declaredMinSize, int declaredMaxSize, int initialSize, int maxAllowedSize) {
-        assert compareUnsigned(declaredMinSize, initialSize) <= 0;
-        assert compareUnsigned(initialSize, maxAllowedSize) <= 0;
-        assert compareUnsigned(maxAllowedSize, declaredMaxSize) <= 0;
-        assert compareUnsigned(maxAllowedSize, MAX_MEMORY_INSTANCE_SIZE) <= 0;
-        assert compareUnsigned(declaredMaxSize, MAX_MEMORY_DECLARATION_SIZE) <= 0;
-
-        this.declaredMinSize = declaredMinSize;
-        this.declaredMaxSize = declaredMaxSize;
-        this.maxAllowedSize = maxAllowedSize;
-        try {
-            this.buffer = new byte[initialSize * MEMORY_PAGE_SIZE];
-        } catch (OutOfMemoryError error) {
-            CompilerDirectives.transferToInterpreter();
-            throw WasmException.create(Failure.MEMORY_ALLOCATION_FAILED);
-        }
+        super(declaredMinSize, declaredMaxSize, initialSize, maxAllowedSize);
+        this.buffer = allocateBuffer(initialSize * MEMORY_PAGE_SIZE);
     }
 
     public ByteArrayWasmMemory(int declaredMinSize, int declaredMaxSize, int maxAllowedSize) {
         this(declaredMinSize, declaredMaxSize, declaredMinSize, maxAllowedSize);
+    }
+
+    @TruffleBoundary
+    private static byte[] allocateBuffer(final int byteSize) {
+        try {
+            return new byte[byteSize];
+        } catch (OutOfMemoryError error) {
+            throw WasmException.create(Failure.MEMORY_ALLOCATION_FAILED);
+        }
     }
 
     private int validateAddress(Node node, long address, int length) {
@@ -135,34 +107,21 @@ public final class ByteArrayWasmMemory extends WasmMemory {
     }
 
     @Override
-    public int declaredMinSize() {
-        return declaredMinSize;
-    }
-
-    @Override
-    public int declaredMaxSize() {
-        return declaredMaxSize;
-    }
-
-    @Override
     @TruffleBoundary
     public synchronized boolean grow(int extraPageSize) {
         if (extraPageSize == 0) {
             invokeGrowCallback();
             return true;
         } else if (compareUnsigned(extraPageSize, maxAllowedSize) <= 0 && compareUnsigned(size() + extraPageSize, maxAllowedSize) <= 0) {
-            try {
-                // Condition above and limit on maxPageSize (see ModuleLimits#MAX_MEMORY_SIZE)
-                // ensure computation of targetByteSize does not overflow.
-                final int targetByteSize = multiplyExact(addExact(size(), extraPageSize), MEMORY_PAGE_SIZE);
-                final byte[] newBuffer = new byte[targetByteSize];
-                System.arraycopy(buffer, 0, newBuffer, 0, buffer.length);
-                buffer = newBuffer;
-                invokeGrowCallback();
-                return true;
-            } catch (OutOfMemoryError error) {
-                throw WasmException.create(Failure.MEMORY_ALLOCATION_FAILED);
-            }
+            // Condition above and limit on maxPageSize (see ModuleLimits#MAX_MEMORY_SIZE)
+            // ensure computation of targetByteSize does not overflow.
+            final int targetByteSize = multiplyExact(addExact(size(), extraPageSize), MEMORY_PAGE_SIZE);
+            final int sourceByteSize = buffer.length;
+            final byte[] newBuffer = allocateBuffer(targetByteSize);
+            System.arraycopy(buffer, 0, newBuffer, 0, sourceByteSize);
+            buffer = newBuffer;
+            invokeGrowCallback();
+            return true;
         } else {
             return false;
         }
@@ -170,7 +129,7 @@ public final class ByteArrayWasmMemory extends WasmMemory {
 
     @Override
     public void reset() {
-        buffer = new byte[declaredMinSize * MEMORY_PAGE_SIZE];
+        buffer = allocateBuffer(declaredMinSize * MEMORY_PAGE_SIZE);
     }
 
     @Override

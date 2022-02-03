@@ -24,11 +24,7 @@
  */
 package com.oracle.svm.util;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.util.NoSuchElementException;
-import java.util.function.BiConsumer;
-import java.util.function.Predicate;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
@@ -89,21 +85,5 @@ public final class ModuleSupport extends ModuleSupportBase {
     public static String getModuleName(Class<?> clazz) {
         assert JavaVersionUtil.JAVA_SPEC <= 8;
         return null;
-    }
-
-    /**
-     * In the modules of the boot module layer, filters all resources that match the given
-     * predicate, and calls the operation on the matched resources. This is a temporary solution
-     * until we fully support modules in native-image
-     *
-     * @param resourceNameFilter predicate applied to all resource names in the module
-     * @param operation a function to process matched resources, it receives the name of the
-     *            resources as the first argument and an open stream as the second argument
-     */
-    @SuppressWarnings("unused")
-    public static void findResourcesInModules(Predicate<String> resourceNameFilter, BiConsumer<String, InputStream> operation) throws IOException {
-        /* Nothing to do in JDK 8 version. JDK 11 version provides a proper implementation. */
-        assert JavaVersionUtil.JAVA_SPEC <= 8;
-        throw new IOException("find resources in modules can not be called in java 8 or less");
     }
 }

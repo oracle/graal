@@ -247,6 +247,37 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
     }
 
     @Test
+    @SuppressWarnings("rawtypes")
+    public void privateClass() throws NoSuchFieldException {
+        Class<?> privateType = VisibilityTest.getPrivateClass();
+        testPrivatePropertyType(config, privateType);
+    }
+
+    @Test
+    public void packagePrivateClass() throws NoSuchFieldException, ClassNotFoundException {
+        Class<?> privateType = Class.forName("com.oracle.truffle.api.staticobject.test.external.PrivateClass");
+        testPrivatePropertyType(config, privateType);
+    }
+
+    private static void testPrivatePropertyType(TestConfiguration config, Class<?> privateType) throws NoSuchFieldException {
+        try (TestEnvironment te = new TestEnvironment(config)) {
+            Assume.assumeTrue(te.isFieldBased());
+            // We run unit tests with Graal on a GraalJDK with disabled Locator and the Truffle API
+            // jar in the boot class path. As a consequence, generated classes do not have
+            // visibility of classes loaded by the application class loader.
+            Assume.assumeNotNull(DefaultStaticObjectFactory.class.getClassLoader());
+            StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
+            Class<?> propertyType = privateType;
+            StaticProperty property = new DefaultStaticProperty("property");
+            builder.property(property, propertyType, false);
+            StaticShape<DefaultStaticObjectFactory> shape = builder.build();
+            Object object = shape.getFactory().create();
+
+            Assert.assertEquals(propertyType, object.getClass().getField(guessGeneratedFieldName(property)).getType());
+        }
+    }
+
+    @Test
     public void maxProperties() {
         try (TestEnvironment te = new TestEnvironment(config)) {
             StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
@@ -260,6 +291,22 @@ public class BuilderPropertyTest extends StaticObjectModelTest {
                 }
             }
             Assert.fail();
+        }
+    }
+
+    @Test
+    public void propertyOfArrayType() throws NoSuchFieldException {
+        try (TestEnvironment te = new TestEnvironment(config)) {
+            Assume.assumeTrue(te.isFieldBased());
+            StaticShape.Builder builder = StaticShape.newBuilder(te.testLanguage);
+            DefaultStaticProperty arrayProperty = new DefaultStaticProperty("intArray");
+            builder.property(arrayProperty, int[].class, false);
+            StaticShape<DefaultStaticObjectFactory> shape = builder.build();
+            Object staticObject = shape.getFactory().create();
+            staticObject.getClass().getField("intArray").getType().getName().equals("[I");
+            int[] intArray = new int[10];
+            arrayProperty.setObject(staticObject, intArray);
+            Assert.assertEquals(intArray, arrayProperty.getObject(staticObject));
         }
     }
 }

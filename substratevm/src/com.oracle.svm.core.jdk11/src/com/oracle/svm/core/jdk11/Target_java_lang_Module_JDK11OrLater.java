@@ -27,6 +27,7 @@ package com.oracle.svm.core.jdk11;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Objects;
 
 import com.oracle.svm.core.annotate.Alias;
@@ -43,17 +44,12 @@ import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
 @TargetClass(value = java.lang.Module.class, onlyWith = JDK11OrLater.class)
 public final class Target_java_lang_Module_JDK11OrLater {
 
-    @SuppressWarnings({"unused", "static-method"})
-    @Substitute
-    public boolean isReflectivelyExportedOrOpen(String pn, Module other, boolean open) {
-        // This workaround should be removed once GR-34444 is fixed.
-        return true;
-    }
+    @Alias private String name;
 
     @SuppressWarnings("static-method")
     @Substitute
-    public InputStream getResourceAsStream(String name) {
-        ResourceStorageEntry res = Resources.get(name);
+    public InputStream getResourceAsStream(String resourceName) {
+        ResourceStorageEntry res = Resources.get(name, resourceName);
         return res == null ? null : new ByteArrayInputStream(res.getData().get(0));
     }
 
@@ -96,6 +92,13 @@ public final class Target_java_lang_Module_JDK11OrLater {
 
     @TargetClass(className = "java.lang.Module", innerClass = "ReflectionData", onlyWith = JDK11OrLater.class) //
     private static final class Target_java_lang_Module_ReflectionData {
+
+        @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "java.lang.WeakPairMap") //
+        static Target_java_lang_WeakPairMap<Module, Module, Boolean> reads;
+
+        @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "java.lang.WeakPairMap") //
+        static Target_java_lang_WeakPairMap<Module, Module, Map<String, Boolean>> exports;
+
         @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClassName = "java.lang.WeakPairMap") //
         static Target_java_lang_WeakPairMap<Module, Class<?>, Boolean> uses;
     }

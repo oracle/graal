@@ -73,6 +73,7 @@ import org.graalvm.compiler.lir.VirtualStackSlot;
 import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
+import org.graalvm.compiler.lir.gen.MoveFactory;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -165,6 +166,8 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
     private final LIRKindTool lirKindTool;
     private final DebugInfoPrinter debugInfoPrinter;
 
+    private final ResolvedJavaType prologueType;
+
     private final String functionName;
     private final boolean isEntryPoint;
     private final boolean canModifySpecialRegisters;
@@ -188,6 +191,8 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         this.arithmetic = new ArithmeticLLVMGenerator();
         this.lirKindTool = new LLVMUtils.LLVMKindTool(builder);
         this.debugInfoPrinter = new DebugInfoPrinter(this, debugLevel);
+
+        this.prologueType = providers.getMetaAccess().lookupJavaType(CEntryPointOptions.Prologue.class);
 
         this.functionName = SubstrateUtil.uniqueShortName(method);
         this.isEntryPoint = isEntryPoint(method);
@@ -303,7 +308,8 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
 
     private boolean canModifySpecialRegisters(ResolvedJavaMethod method) {
         CEntryPointOptions entryPointOptions = GuardedAnnotationAccess.getAnnotation(method, CEntryPointOptions.class);
-        return (entryPointOptions != null) && entryPointOptions.prologue() == CEntryPointOptions.NoPrologue.class ||
+        return prologueType.isAssignableFrom(method.getDeclaringClass()) ||
+                        entryPointOptions != null && entryPointOptions.prologue() == CEntryPointOptions.NoPrologue.class ||
                         method.getDeclaringClass().equals(getMetaAccess().lookupJavaType(CEntryPointSnippets.class)) ||
                         method.getDeclaringClass().equals(getMetaAccess().lookupJavaType(CEntryPointNativeFunctions.class)) ||
                         method.getDeclaringClass().equals(getMetaAccess().lookupJavaType(CEntryPointBuiltins.class));
@@ -728,18 +734,18 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
 
     @Override
     public Variable emitLogicCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, Value trueValue, Value falseValue, MemoryOrderMode memoryOrder) {
-        LLVMValueRef success = buildCmpxchg(getVal(address), getVal(expectedValue), getVal(newValue), false);
+        LLVMValueRef success = buildCmpxchg(getVal(address), getVal(expectedValue), getVal(newValue), memoryOrder, false);
         LLVMValueRef result = builder.buildSelect(success, getVal(trueValue), getVal(falseValue));
         return new LLVMVariable(result);
     }
 
     @Override
     public Value emitValueCompareAndSwap(LIRKind accessKind, Value address, Value expectedValue, Value newValue, MemoryOrderMode memoryOrder) {
-        LLVMValueRef result = buildCmpxchg(getVal(address), getVal(expectedValue), getVal(newValue), true);
+        LLVMValueRef result = buildCmpxchg(getVal(address), getVal(expectedValue), getVal(newValue), memoryOrder, true);
         return new LLVMVariable(result);
     }
 
-    private LLVMValueRef buildCmpxchg(LLVMValueRef address, LLVMValueRef expectedValue, LLVMValueRef newValue, boolean returnValue) {
+    private LLVMValueRef buildCmpxchg(LLVMValueRef address, LLVMValueRef expectedValue, LLVMValueRef newValue, MemoryOrderMode memoryOrder, boolean returnValue) {
         LLVMTypeRef expectedType = LLVMIRBuilder.typeOf(expectedValue);
         LLVMTypeRef newType = LLVMIRBuilder.typeOf(newValue);
         assert LLVMIRBuilder.compatibleTypes(expectedType, newType) : dumpValues("invalid cmpxchg arguments", expectedValue, newValue);
@@ -751,7 +757,21 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
         } else {
             castedAddress = builder.buildBitcast(address, builder.pointerType(expectedType, trackedAddress, false));
         }
-        return builder.buildCmpxchg(castedAddress, expectedValue, newValue, returnValue);
+
+        boolean convertResult = LLVMIRBuilder.isFloatType(expectedType) || LLVMIRBuilder.isDoubleType(expectedType);
+        LLVMValueRef castedExpectedValue = expectedValue;
+        LLVMValueRef castedNewValue = newValue;
+        if (convertResult) {
+            LLVMTypeRef cmpxchgType = LLVMIRBuilder.isFloatType(expectedType) ? builder.intType() : builder.longType();
+            castedExpectedValue = builder.buildFPToSI(expectedValue, cmpxchgType);
+            castedNewValue = builder.buildFPToSI(newValue, cmpxchgType);
+        }
+        LLVMValueRef result = builder.buildCmpxchg(castedAddress, castedExpectedValue, castedNewValue, memoryOrder, returnValue);
+        if (returnValue && convertResult) {
+            return builder.buildSIToFP(result, expectedType);
+        } else {
+            return result;
+        }
     }
 
     @Override
@@ -1215,7 +1235,7 @@ public class LLVMGenerator implements LIRGeneratorTool, SubstrateLIRGenerator {
                  * accept this in the case of a method that doesn't do anything Java-related, and
                  * therefore doesn't need the actual value of its special registers.
                  */
-                assert GuardedAnnotationAccess.isAnnotationPresent(targetMethod, Uninterruptible.class);
+                assert Uninterruptible.Utils.isUninterruptible(targetMethod);
                 specialRegisterArg = builder.constantNull(builder.pointerType(builder.wordType()));
             }
         } else if (isEntryPoint || canModifySpecialRegisters) {

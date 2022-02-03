@@ -803,10 +803,25 @@ _daCapoSizes = {
     "pmd":          ["default", "small", "large"],
     "sunflow":      ["default", "small", "large"],
     "tomcat":       ["default", "small", "large", "huge"],
-    "tradebeans":   ["default", "small", "large", "huge"],
+    "tradebeans":   ["small", "large", "huge"],
     "tradesoap":    ["default", "small", "large", "huge"],
     "xalan":        ["default", "small", "large"]
 }
+
+
+def _is_batik_supported(jdk):
+    """
+    Determines if Batik runs on the given jdk. Batik's JPEGRegistryEntry contains a reference
+    to TruncatedFileException, which is specific to the Sun/Oracle JDK. On a different JDK,
+    this results in a NoClassDefFoundError: com/sun/image/codec/jpeg/TruncatedFileException
+    """
+    import subprocess
+    try:
+        subprocess.check_output([jdk.javap, 'com.sun.image.codec.jpeg.TruncatedFileException'])
+        return True
+    except subprocess.CalledProcessError:
+        mx.warn('Batik uses Sun internal class com.sun.image.codec.jpeg.TruncatedFileException which is not present in ' + jdk.home)
+        return False
 
 
 class DaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-many-ancestors
@@ -856,13 +871,16 @@ class DaCapoBenchmarkSuite(BaseDaCapoBenchmarkSuite): #pylint: disable=too-many-
             # Stopped working as of 8u92 on the initial release
             del iterations["tomcat"]
 
-        if mx.get_jdk().javaCompliance >= '9' and self.version() in ["9.12-bach", "9.12-MR1-bach"]:
-            if "batik" in iterations:
-                # batik crashes on JDK9+. This is fixed in the dacapo chopin release only
+        if self.version() in ["9.12-bach", "9.12-MR1-bach"]:
+            if mx.get_jdk().javaCompliance >= '9':
+                if "batik" in iterations:
+                    # batik crashes on JDK9+. This is fixed in the dacapo chopin release only
+                    del iterations["batik"]
+                if "tradesoap" in iterations:
+                    # validation fails transiently but frequently in the first iteration in JDK9+
+                    del iterations["tradesoap"]
+            elif not _is_batik_supported(java_home_jdk()):
                 del iterations["batik"]
-            if "tradesoap" in iterations:
-                # validation fails transiently but frequently in the first iteration in JDK9+
-                del iterations["tradesoap"]
 
         if self.workloadSize() == "small":
             # Ensure sufficient warmup by doubling the number of default iterations for the small configuration
@@ -1185,6 +1203,14 @@ class ScalaDacapoLargeBenchmarkSuite(ScalaDaCapoBenchmarkSuite):
 
     def workloadSize(self):
         return "large"
+
+    def flakySkipPatterns(self, benchmarks, bmSuiteArgs):
+        skip_patterns = super(ScalaDaCapoBenchmarkSuite, self).flakySuccessPatterns()
+        if "specs" in benchmarks:
+            skip_patterns += [
+                re.escape(r"Line count validation failed for stdout.log, expecting 1996 found 1997"),
+            ]
+        return skip_patterns
 
 
 class ScalaDacapoHugeBenchmarkSuite(ScalaDaCapoBenchmarkSuite):
@@ -1897,6 +1923,16 @@ class RenaissanceBenchmarkSuite(mx_benchmark.JavaBenchmarkSuite, mx_benchmark.Av
                 return remaining
             else:
                 return ["-r", str(iterations)] + remaining
+
+    def vmArgs(self, bmSuiteArgs):
+        vm_args = super(RenaissanceBenchmarkSuite, self).vmArgs(bmSuiteArgs)
+        # The --add-opens flag will be available in the next Renaissance release (> 0.13.0).
+        if java_home_jdk().javaCompliance > '16' and self.version() in ["0.9.0", "0.10.0", "0.11.0", "0.12.0",
+                                                                        "0.13.0"]:
+            vm_args += ["--add-opens", "java.management/sun.management=ALL-UNNAMED"]
+            vm_args += ["--add-opens", "java.management/sun.management.counter=ALL-UNNAMED"]
+            vm_args += ["--add-opens", "java.management/sun.management.counter.perf=ALL-UNNAMED"]
+        return vm_args
 
     def createCommandLineArgs(self, benchmarks, bmSuiteArgs):
         benchArg = ""

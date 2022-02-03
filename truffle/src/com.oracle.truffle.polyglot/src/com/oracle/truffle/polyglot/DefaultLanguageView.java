@@ -40,15 +40,12 @@
  */
 package com.oracle.truffle.polyglot;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * Default implementation for the instrumentation view in {@link TruffleLanguage}. Should be removed
@@ -59,33 +56,11 @@ import com.oracle.truffle.api.source.SourceSection;
 final class DefaultLanguageView<C> implements TruffleObject {
 
     private final TruffleLanguage<C> language;
-    private final C context;
     protected final Object delegate;
-    protected final Object unwrapped;
 
-    DefaultLanguageView(TruffleLanguage<C> language, C context, Object delegate) {
+    DefaultLanguageView(TruffleLanguage<C> language, Object delegate) {
         this.language = language;
-        this.context = context;
         this.delegate = delegate;
-        this.unwrapped = EngineAccessor.INTEROP.unwrapLegacyMetaObjectWrapper(delegate);
-    }
-
-    @ExportMessage
-    @TruffleBoundary
-    boolean hasSourceLocation(@CachedLibrary("this.delegate") InteropLibrary delegateLib) {
-        return EngineAccessor.LANGUAGE.legacyFindSourceLocation(language, context, unwrapped) != null || delegateLib.hasSourceLocation(this.delegate);
-    }
-
-    @ExportMessage
-    @TruffleBoundary
-    SourceSection getSourceLocation(@CachedLibrary("this.delegate") InteropLibrary delegateLib) throws UnsupportedMessageException {
-        SourceSection location = EngineAccessor.LANGUAGE.legacyFindSourceLocation(language, context,
-                        unwrapped);
-        if (location != null) {
-            return location;
-        } else {
-            return delegateLib.getSourceLocation(this.delegate);
-        }
     }
 
     @ExportMessage
@@ -94,33 +69,14 @@ final class DefaultLanguageView<C> implements TruffleObject {
     }
 
     @ExportMessage
-    @TruffleBoundary
-    Object toDisplayString(@SuppressWarnings("unused") boolean config) {
-        String result = EngineAccessor.LANGUAGE.legacyToString(language, context, unwrapped);
-        return result;
+    Object toDisplayString(boolean allowSideEffects, @CachedLibrary("this.delegate") InteropLibrary delegateLibrary) {
+        return delegateLibrary.toDisplayString(delegate, allowSideEffects);
     }
 
     @SuppressWarnings("unchecked")
     @ExportMessage
     Class<? extends TruffleLanguage<?>> getLanguage() {
         return (Class<? extends TruffleLanguage<?>>) language.getClass();
-    }
-
-    @ExportMessage
-    @TruffleBoundary
-    boolean hasMetaObject() {
-        return EngineAccessor.LANGUAGE.legacyFindMetaObject(language, context, unwrapped) != null;
-    }
-
-    @ExportMessage
-    @TruffleBoundary
-    Object getMetaObject() throws UnsupportedMessageException {
-        Object result = EngineAccessor.LANGUAGE.legacyFindMetaObject(language, context, unwrapped);
-        if (result != null) {
-            return EngineAccessor.INTEROP.createLegacyMetaObjectWrapper(this, result);
-        } else {
-            throw UnsupportedMessageException.create();
-        }
     }
 
 }

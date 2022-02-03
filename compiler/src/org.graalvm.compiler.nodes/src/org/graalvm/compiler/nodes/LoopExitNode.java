@@ -32,10 +32,10 @@ import org.graalvm.compiler.graph.IterableNodeType;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
-import org.graalvm.compiler.nodes.spi.Simplifiable;
-import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.StructuredGraph.FrameStateVerificationFeature;
+import org.graalvm.compiler.nodes.spi.Simplifiable;
+import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 
 @NodeInfo(allowedUsageTypes = {Association}, cycles = CYCLES_0, size = SIZE_4)
@@ -58,6 +58,11 @@ public final class LoopExitNode extends BeginStateSplitNode implements IterableN
 
     public LoopBeginNode loopBegin() {
         return (LoopBeginNode) loopBegin;
+    }
+
+    public void setLoopBegin(AbstractBeginNode loopBegin) {
+        updateUsages(this.loopBegin, loopBegin);
+        this.loopBegin = loopBegin;
     }
 
     @Override
@@ -118,9 +123,14 @@ public final class LoopExitNode extends BeginStateSplitNode implements IterableN
         Node prev = this.predecessor();
         while (tool.allUsagesAvailable() && prev instanceof BeginNode && prev.hasNoUsages()) {
             AbstractBeginNode begin = (AbstractBeginNode) prev;
-            this.setNodeSourcePosition(begin.getNodeSourcePosition());
-            prev = prev.predecessor();
-            graph().removeFixed(begin);
+            // Keep a single BeginNode in between LoopExitNodes and InvokeWithExceptionNodes
+            if (!(prev.predecessor() instanceof InvokeWithExceptionNode)) {
+                this.setNodeSourcePosition(begin.getNodeSourcePosition());
+                graph().removeFixed(begin);
+                prev = prev.predecessor();
+            } else {
+                break;
+            }
         }
     }
 
@@ -132,6 +142,11 @@ public final class LoopExitNode extends BeginStateSplitNode implements IterableN
          * state assignment, thus we only verify them until their removal
          */
         assert !this.graph().getFrameStateVerification().implies(FrameStateVerificationFeature.LOOP_EXITS) || this.stateAfter != null : "Loop exit must have a state until FSA " + this;
+
+        // Because the scheduler doesn't schedule ProxyNodes, the inputs to the ProxyNode can end up
+        // in the wrong place in the earliest local schedule. Ensuring there's a BeginNode before
+        // the LoopExitNode creates an earlier location where those nodes can be scheduled.
+        assert !(predecessor() instanceof InvokeWithExceptionNode);
         return super.verify();
     }
 }

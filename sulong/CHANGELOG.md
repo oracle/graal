@@ -1,3 +1,9 @@
+# Version 22.0.0
+
+Changes:
+
+* Sulong adopted the new Frame API.
+
 # Version 21.3.0
 
 Changes:

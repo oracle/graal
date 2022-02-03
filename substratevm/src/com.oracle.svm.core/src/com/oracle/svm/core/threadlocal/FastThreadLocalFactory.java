@@ -41,18 +41,21 @@ import org.graalvm.word.WordBase;
  * faster than regular Java {@link ThreadLocal} variables. However, there are several restrictions:
  * <ul>
  * <li>The thread local object must be created during native image generation. Otherwise, the size
- * of the {@link IsolateThread} data structure would not be a compile time constant.
+ * of the {@link IsolateThread} data structure would not be a compile time constant.</li>
  * <li>It is not possible to access the value of a thread local variable during native image
- * generation. Attempts to do so will result in an error during native image generation.
+ * generation. Attempts to do so will result in an error during native image generation.</li>
  * <li>The initial value of a thread local variable is 0 or {@code null} for every newly created
- * thread. There is no possibility to specify an initial value.
+ * thread. There is no possibility to specify an initial value.</li>
  * <li>A thread local variable created by this factory must be assigned to one {@code static final}
  * field. The name of that field is used as the name of the local variable. The name is used to sort
  * the variables in the {@link IsolateThread} data structure, to make the layout deterministic and
- * reproducible.
+ * reproducible.</li>
  * <li>When accessing the value, the thread local variable must be a compile time constant. This is
  * fulfilled when the value is accessed from the {@code static final} field, which is the intended
- * use case.
+ * use case.</li>
+ * <li>Thread locals of other threads may only be accessed at a safepoint. This restriction is
+ * necessary as the other thread could otherwise exit at any time, which frees the memory of the
+ * thread locals.</li>
  * </ul>
  * <p>
  * The implementation of fast thread local variables and the way the data is stored is

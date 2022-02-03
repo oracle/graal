@@ -136,7 +136,8 @@ public class NodeLimitTest extends PartialEvaluationTest {
     }
 
     private void expectAllOK(Supplier<RootNode> rootNodeFactory) {
-        peRootNode(getBaselineGraphNodeCount(rootNodeFactory.get()) * 2, rootNodeFactory);
+        int adjust = 3; // account for reduction in base graph size by GR-34551
+        peRootNode((getBaselineGraphNodeCount(rootNodeFactory.get()) + adjust) * 2, rootNodeFactory);
     }
 
     private int getBaselineGraphNodeCount(RootNode rootNode) {

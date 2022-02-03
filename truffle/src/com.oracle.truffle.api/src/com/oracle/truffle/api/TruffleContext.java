@@ -704,26 +704,30 @@ class TruffleContextSnippets {
     // BEGIN: TruffleContextSnippets#executeInContext
     final class MyNode extends Node {
         void executeInContext(Env env) {
-            MyContext outerLangContext = getContext();
+            MyContext outerLangContext = getContext(this);
 
             TruffleContext innerContext = env.newContextBuilder().build();
             Object p = innerContext.enter(this);
             try {
-                MyContext innerLangContext = getContext();
+                /*
+                 * Here the this node cannot be passed otherwise an
+                 * invalid sharing error would occur.
+                 */
+                MyContext innerLangContext = getContext(null);
 
                 assert outerLangContext != innerLangContext;
             } finally {
                 innerContext.leave(this, p);
             }
-            assert outerLangContext == getContext();
+            assert outerLangContext == getContext(this);
             innerContext.close();
         }
     }
     private static ContextReference<MyContext> REFERENCE
                  = ContextReference.create(MyLanguage.class);
 
-    private static MyContext getContext() {
-        return REFERENCE.get(null);
+    private static MyContext getContext(Node node) {
+        return REFERENCE.get(node);
     }
     // END: TruffleContextSnippets#executeInContext
     // @formatter:on

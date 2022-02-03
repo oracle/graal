@@ -83,28 +83,26 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     /**
      * The different stages of the compilation of a {@link Graph} regarding the status of
-     * {@link GuardNode guards}, {@link DeoptimizingNode deoptimizations} and {@link FrameState
-     * frame states}. The stage of a graph progresses monotonously.
+     * {@link GuardNode}s, {@link DeoptimizingNode}s and {@link FrameState}s. The stage of a graph
+     * progresses monotonously.
      */
     public enum GuardsStage {
         /**
-         * During this stage, there can be {@link FloatingNode floating} {@link DeoptimizingNode}
-         * such as {@link GuardNode GuardNodes}. New {@link DeoptimizingNode DeoptimizingNodes} can
-         * be introduced without constraints. {@link FrameState} nodes are associated with
-         * {@link StateSplit} nodes.
+         * During this stage, there can be {@link FloatingNode floating} {@link DeoptimizingNode}s
+         * such as {@link GuardNode}s. New {@link DeoptimizingNode}s can be introduced without
+         * constraints. {@link FrameState}s are associated with {@link StateSplit} nodes.
          */
         FLOATING_GUARDS,
         /**
-         * During this stage, all {@link DeoptimizingNode DeoptimizingNodes} must be
-         * {@link FixedNode fixed} but new {@link DeoptimizingNode DeoptimizingNodes} can still be
-         * introduced. {@link FrameState} nodes are still associated with {@link StateSplit} nodes.
+         * During this stage, all {@link DeoptimizingNode}s must be {@link FixedNode fixed} but new
+         * {@link DeoptimizingNode}s can still be introduced. {@link FrameState}s are still
+         * associated with {@link StateSplit} nodes.
          */
         FIXED_DEOPTS,
         /**
-         * During this stage, all {@link DeoptimizingNode DeoptimizingNodes} must be
-         * {@link FixedNode fixed}. New {@link DeoptimizingNode DeoptimizingNodes} can not be
-         * introduced any more. {@link FrameState} nodes are now associated with
-         * {@link DeoptimizingNode} nodes.
+         * During this stage, all {@link DeoptimizingNode}s must be {@link FixedNode fixed}. New
+         * {@link DeoptimizingNode}s cannot be introduced. {@link FrameState}s are now associated
+         * with {@link DeoptimizingNode}s.
          */
         AFTER_FSA;
 
@@ -158,12 +156,14 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
      */
     public enum StageFlag {
         PARTIAL_ESCAPE,
-        HIGH_TIER,
+        HIGH_TIER_LOWERING,
         FLOATING_READS,
         GUARD_MOVEMENT,
-        FIXED_READS,
         VALUE_PROXY_REMOVAL,
+        MID_TIER_LOWERING,
+        LOW_TIER_LOWERING,
         EXPAND_LOGIC,
+        FIXED_READS,
         FINAL_CANONICALIZATION
     }
 
@@ -362,6 +362,8 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     private GuardsStage guardsStage = GuardsStage.FLOATING_GUARDS;
     private EnumSet<StageFlag> stageFlags = EnumSet.noneOf(StageFlag.class);
     private FrameStateVerification frameStateVerification;
+    /** Flag to indicate {@link #clearAllStateAfterForTestingOnly()} was called. */
+    private boolean stateAfterClearedForTesting = false;
 
     /**
      * Different node types verified during {@linkplain FrameStateVerification}. See
@@ -532,6 +534,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     public void getDebugProperties(Map<Object, Object> properties) {
         super.getDebugProperties(properties);
         properties.put("compilationIdentifier", compilationId());
+        properties.put("modificationCount", getModificationCount());
         properties.put("assumptions", String.valueOf(getAssumptions()));
     }
 
@@ -1187,6 +1190,10 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         return frameStateVerification;
     }
 
+    public boolean isStateAfterClearedForTesting() {
+        return stateAfterClearedForTesting;
+    }
+
     public void weakenFrameStateVerification(FrameStateVerification newFrameStateVerification) {
         if (frameStateVerification == FrameStateVerification.NONE) {
             return;
@@ -1208,7 +1215,11 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         weakenFrameStateVerification(FrameStateVerification.NONE);
     }
 
-    public void clearAllStateAfter() {
+    /**
+     * For use in tests to clear all stateAfter frame states.
+     */
+    public void clearAllStateAfterForTestingOnly() {
+        stateAfterClearedForTesting = true;
         weakenFrameStateVerification(FrameStateVerification.NONE);
         for (Node node : getNodes()) {
             if (node instanceof StateSplit) {

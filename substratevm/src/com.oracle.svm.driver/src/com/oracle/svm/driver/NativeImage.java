@@ -64,7 +64,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.svm.common.option.CommonOptions;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
@@ -72,6 +71,7 @@ import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.reports.ReportUtils;
+import com.oracle.svm.common.option.CommonOptions;
 import com.oracle.svm.core.FallbackExecutor;
 import com.oracle.svm.core.FallbackExecutor.Options;
 import com.oracle.svm.core.OS;
@@ -257,6 +257,7 @@ public class NativeImage {
     private LinkedHashSet<EnabledOption> enabledLanguages;
 
     private final List<ExcludeConfig> excludedConfigs = new ArrayList<>();
+    private final LinkedHashSet<String> addModules = new LinkedHashSet<>();
 
     protected static class BuildConfiguration {
 
@@ -361,6 +362,7 @@ public class NativeImage {
          * @return true if Java modules system should be used
          */
         public boolean useJavaModules() {
+            /* GR-33851: Once Java 8 support is gone, this should be constant-folded to true. */
             try {
                 Class.forName("java.lang.Module");
             } catch (ClassNotFoundException e) {
@@ -795,7 +797,6 @@ public class NativeImage {
         if (!"0".equals(xmxVal)) {
             addImageBuilderJavaArgs(oXmx + xmxVal);
         }
-        addImageBuilderJavaArgs("-Duser.country=US", "-Duser.language=en");
         /* Prevent JVM that runs the image builder to steal focus */
         if (OS.getCurrent() != OS.WINDOWS || JavaVersionUtil.JAVA_SPEC > 8) {
             /* Conditional because of https://bugs.openjdk.java.net/browse/JDK-8159956 */
@@ -1161,6 +1162,10 @@ public class NativeImage {
             return 2;
         }
 
+        if (!addModules.isEmpty()) {
+            imageBuilderJavaArgs.add("-D" + ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES + "=" + String.join(",", addModules));
+        }
+
         List<String> finalImageBuilderJavaArgs = Stream.concat(config.getBuilderJavaArgs().stream(), imageBuilderJavaArgs.stream()).collect(Collectors.toList());
         return buildImage(finalImageBuilderJavaArgs, imageBuilderBootClasspath, imageBuilderClasspath, imageBuilderModulePath, imageBuilderArgs, finalImageClasspath, finalImageModulePath);
     }
@@ -1506,6 +1511,10 @@ public class NativeImage {
 
     public void addImageBuilderModulePath(Path modulePathEntry) {
         imageBuilderModulePath.add(canonicalize(modulePathEntry));
+    }
+
+    public void addAddedModules(String addModulesArg) {
+        addModules.addAll(Arrays.asList(SubstrateUtil.split(addModulesArg, ",")));
     }
 
     void addImageBuilderClasspath(Path classpath) {

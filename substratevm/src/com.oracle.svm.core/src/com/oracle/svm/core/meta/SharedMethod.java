@@ -24,12 +24,7 @@
  */
 package com.oracle.svm.core.meta;
 
-import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.function.InvokeCFunctionPointer;
-import org.graalvm.util.DirectAnnotationAccess;
-
 import com.oracle.svm.core.annotate.ExplicitCallingConvention;
-import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 
@@ -79,36 +74,4 @@ public interface SharedMethod extends ResolvedJavaMethod {
 
     int getDeoptOffsetInImage();
 
-    /**
-     * Returns whether the method is {@link Uninterruptible}, either by explicit annotation of the
-     * method or implicitly due to other annotations or flags.
-     */
-    default boolean isUninterruptible() {
-        if (DirectAnnotationAccess.isAnnotationPresent(this, Uninterruptible.class)) {
-            /* Explicit annotated method, so definitely uninterruptible. */
-            return true;
-        }
-
-        CFunction cFunctionAnnotation = DirectAnnotationAccess.getAnnotation(this, CFunction.class);
-        InvokeCFunctionPointer cFunctionPointerAnnotation = DirectAnnotationAccess.getAnnotation(this, InvokeCFunctionPointer.class);
-        if ((cFunctionAnnotation != null && cFunctionAnnotation.transition() == CFunction.Transition.NO_TRANSITION) ||
-                        (cFunctionPointerAnnotation != null && cFunctionPointerAnnotation.transition() == CFunction.Transition.NO_TRANSITION)) {
-            /*
-             * If a method transfers from Java to C without a transition, then it is implicitly
-             * treated as uninterruptible. This avoids annotating many methods with multiple
-             * annotations.
-             */
-            return true;
-        }
-
-        if (isEntryPoint()) {
-            /*
-             * The synthetic graphs for C-to-Java transition set up the the fixed registers used for
-             * safepoint an stack overflow checks, so they must be uninterruptible themselves.
-             */
-            return true;
-        }
-
-        return false;
-    }
 }

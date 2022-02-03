@@ -961,11 +961,10 @@ public final class Context implements AutoCloseable {
     }
 
     /**
-     * Creates a context with default configuration.
+     * Creates a context with default configuration. This method is a shortcut for
+     * {@link #newBuilder(String...) newBuilder(permittedLanuages).build()}.
      *
-     * @param permittedLanguages names of languages permitted in this context. If no languages are
-     *            provided, then all installed languages will be permitted.
-     * @return a new context
+     * @see #newBuilder(String...)
      * @since 19.0
      */
     public static Context create(String... permittedLanguages) {
@@ -976,7 +975,12 @@ public final class Context implements AutoCloseable {
      * Creates a builder for constructing a context with custom configuration.
      *
      * @param permittedLanguages names of languages permitted in the context. If no languages are
-     *            provided, then all installed languages will be permitted.
+     *            provided, then all installed languages will be permitted. If an explicit
+     *            {@link Builder#engine(Engine) engine} was specified then only those languages may
+     *            be used that were installed and {@link Engine#newBuilder(String...) permitted} by
+     *            the specified engine. Languages are validated when the context is
+     *            {@link Builder#build() built}. If {@link IllegalArgumentException} will be thrown
+     *            when an unknown or a language denied by the engine was used.
      * @return a builder that can create a context
      * @since 19.0
      */
@@ -1015,7 +1019,7 @@ public final class Context implements AutoCloseable {
     public final class Builder {
 
         private Engine sharedEngine;
-        private String[] onlyLanguages;
+        private String[] permittedLanguages;
 
         private OutputStream out;
         private OutputStream err;
@@ -1046,12 +1050,12 @@ public final class Context implements AutoCloseable {
         private ClassLoader hostClassLoader;
         private boolean useSystemExit;
 
-        Builder(String... onlyLanguages) {
-            Objects.requireNonNull(onlyLanguages);
-            for (String onlyLanguage : onlyLanguages) {
-                Objects.requireNonNull(onlyLanguage);
+        Builder(String... permittedLanguages) {
+            Objects.requireNonNull(permittedLanguages);
+            for (String language : permittedLanguages) {
+                Objects.requireNonNull(language);
             }
-            this.onlyLanguages = onlyLanguages;
+            this.permittedLanguages = permittedLanguages;
         }
 
         /**
@@ -1788,7 +1792,7 @@ public final class Context implements AutoCloseable {
             InputStream contextIn;
             Map<String, String> contextOptions;
             if (engine == null) {
-                org.graalvm.polyglot.Engine.Builder engineBuilder = Engine.newBuilder().options(options == null ? Collections.emptyMap() : options);
+                org.graalvm.polyglot.Engine.Builder engineBuilder = Engine.newBuilder(permittedLanguages).options(options == null ? Collections.emptyMap() : options);
                 // for bound engines we just pass all the options to the engine so they can be
                 // processed in one step.
                 contextOptions = Collections.emptyMap();
@@ -1828,7 +1832,7 @@ public final class Context implements AutoCloseable {
             ctx = engine.dispatch.createContext(engine.receiver, contextOut, contextErr, contextIn, hostClassLookupEnabled, hostAccess, polyglotAccess, nativeAccess, createThread,
                             io, hostClassLoading, experimentalOptions,
                             localHostLookupFilter, contextOptions, arguments == null ? Collections.emptyMap() : arguments,
-                            onlyLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment, zone, limits,
+                            permittedLanguages, customFileSystem, customLogHandler, createProcess, processHandler, environmentAccess, environment, zone, limits,
                             localCurrentWorkingDirectory, hostClassLoader, allowValueSharing, useSystemExit);
             return ctx;
         }

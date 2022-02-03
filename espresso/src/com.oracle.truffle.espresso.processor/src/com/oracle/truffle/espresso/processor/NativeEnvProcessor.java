@@ -22,6 +22,10 @@
  */
 package com.oracle.truffle.espresso.processor;
 
+import com.oracle.truffle.espresso.processor.builders.ClassBuilder;
+import com.oracle.truffle.espresso.processor.builders.MethodBuilder;
+import com.oracle.truffle.espresso.processor.builders.ModifierBuilder;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -59,8 +63,6 @@ public final class NativeEnvProcessor extends EspressoProcessor {
     private static final String SUBSTITUTOR = "CallableFromNative";
 
     private static final String ENV_ARG_NAME = "env";
-    private static final String INVOKE = "invoke(Object " + ENV_ARG_NAME + ", Object[] " + ARGS_NAME + ") {\n";
-    private static final String INVOKEDIRECT = "invokeDirect(Object " + ENV_ARG_NAME + ", Object[] " + ARGS_NAME + ") {\n";
 
     private static final String GENERATE_INTRISIFICATION = "com.oracle.truffle.espresso.substitutions.GenerateNativeEnv";
 
@@ -363,16 +365,16 @@ public final class NativeEnvProcessor extends EspressoProcessor {
         return signature.toArray(new NativeType[0]);
     }
 
-    String extractArg(int index, String clazz, boolean fromHandles, int startAt, String tabulation) {
-        String decl = tabulation + clazz + " " + ARG_NAME + index + " = ";
+    String extractArg(int index, String clazz, boolean fromHandles, int startAt) {
+        String decl = clazz + " " + ARG_NAME + index + " = ";
         String obj = ARGS_NAME + "[" + (index + startAt) + "]";
         if (fromHandles) {
             if (!clazz.equals("StaticObject")) {
-                return decl + castTo(obj, clazz) + ";\n";
+                return decl + castTo(obj, clazz) + ";";
             }
-            return decl + envName + ".getHandles().get(Math.toIntExact((long) " + obj + "))" + ";\n";
+            return decl + envName + ".getHandles().get(Math.toIntExact((long) " + obj + "));";
         }
-        return decl + castTo(obj, clazz) + ";\n";
+        return decl + castTo(obj, clazz) + ";";
     }
 
     @Override
@@ -433,73 +435,72 @@ public final class NativeEnvProcessor extends EspressoProcessor {
     }
 
     @Override
-    String generateFactoryConstructorAndBody(String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
-        StringBuilder str = new StringBuilder();
+    ClassBuilder generateFactoryConstructor(ClassBuilder factoryBuilder, String className, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
         IntrinsincsHelper h = (IntrinsincsHelper) helper;
-        str.append(TAB_3).append("super(\n");
-        str.append(TAB_4).append(ProcessorUtils.stringify(targetMethodName)).append(",\n");
-        str.append(TAB_4).append(generateNativeSignature(h.jniNativeSignature)).append(",\n");
-        str.append(TAB_4).append(parameterTypeName.size()).append(",\n");
-        str.append(TAB_4).append(h.prependEnv).append("\n");
-        str.append(TAB_3).append(");\n");
-        str.append(TAB_2).append("}\n");
-        return str.toString();
+        MethodBuilder factoryConstructor = new MethodBuilder(FACTORY) //
+                        .asConstructor() //
+                        .withModifiers(new ModifierBuilder().asPublic()) //
+                        .addBodyLine("super(") //
+                        .addIndentedBodyLine(1, ProcessorUtils.stringify(targetMethodName), ',') //
+                        .addIndentedBodyLine(1, generateNativeSignature(h.jniNativeSignature), ',') //
+                        .addIndentedBodyLine(1, parameterTypeName.size(), ',') //
+                        .addIndentedBodyLine(1, h.prependEnv) //
+                        .addBodyLine(");");
+        factoryBuilder.withMethod(factoryConstructor);
+        return factoryBuilder;
     }
 
     @Override
-    String generateInvoke(String className, String targetMethodName, List<String> parameterTypes, SubstitutionHelper helper) {
-        return generateInvokeFromNative(className, parameterTypes, helper) + "\n\n" + generateInvokeDirect(className, parameterTypes, helper);
-    }
-
-    private String generateInvokeFromNative(String className, List<String> parameterTypes, SubstitutionHelper helper) {
+    ClassBuilder generateInvoke(ClassBuilder classBuilder, String className, String targetMethodName, List<String> parameterTypes, SubstitutionHelper helper) {
         IntrinsincsHelper h = (IntrinsincsHelper) helper;
-        StringBuilder str = new StringBuilder();
-        str.append(TAB_1).append(PUBLIC_FINAL_OBJECT).append(INVOKE);
+        MethodBuilder invoke = new MethodBuilder("invoke") //
+                        .withOverrideAnnotation() //
+                        .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
+                        .withReturnType("Object") //
+                        .withParams("Object " + ENV_ARG_NAME, "Object[] " + ARGS_NAME);
         if (h.needsHandlify || !h.isStatic) {
-            str.append(TAB_2).append(envClassName).append(" ").append(envName).append(" = ").append("(").append(envClassName).append(") " + ENV_ARG_NAME + ";\n");
+            invoke.addBodyLine(envClassName, ' ', envName, " = (", envClassName, ") ", ENV_ARG_NAME, ';');
         }
         int argIndex = 0;
         for (String type : parameterTypes) {
             boolean isNonPrimitive = h.referenceTypes.get(argIndex);
-            str.append(extractArg(argIndex++, type, isNonPrimitive, h.prependEnv ? 1 : 0, TAB_2));
+            invoke.addBodyLine(extractArg(argIndex++, type, isNonPrimitive, h.prependEnv ? 1 : 0));
         }
         switch (h.jniNativeSignature[0]) {
             case VOID:
-                str.append(TAB_2).append(extractInvocation(className, argIndex, h.isStatic, helper)).append(";\n");
-                str.append(TAB_2).append("return ").append(STATIC_OBJECT_NULL).append(";\n");
+                invoke.addBodyLine(extractInvocation(className, argIndex, h.isStatic, helper), ';');
+                invoke.addBodyLine("return ", STATIC_OBJECT_NULL, ';');
                 break;
             case OBJECT:
-                str.append(TAB_2).append("return ").append(
-                                "(long) " + envName + ".getHandles().createLocal(" + extractInvocation(className, argIndex, h.isStatic, helper) + ")").append(";\n");
+                invoke.addBodyLine("return (long) ", envName, ".getHandles().createLocal(", extractInvocation(className, argIndex, h.isStatic, helper), ");");
                 break;
             default:
-                str.append(TAB_2).append("return ").append(extractInvocation(className, argIndex, h.isStatic, helper)).append(";\n");
+                invoke.addBodyLine("return ", extractInvocation(className, argIndex, h.isStatic, helper), ";");
         }
-        str.append(TAB_1).append("}\n");
-        return str.toString();
-    }
+        classBuilder.withMethod(invoke);
 
-    private String generateInvokeDirect(String className, List<String> parameterTypes, SubstitutionHelper helper) {
-        IntrinsincsHelper h = (IntrinsincsHelper) helper;
-        StringBuilder str = new StringBuilder();
         if (h.reachableForAutoSubstitution) {
-            str.append(TAB_1).append(OVERRIDE).append("\n");
-            str.append(TAB_1).append(PUBLIC_FINAL_OBJECT).append(INVOKEDIRECT);
+            MethodBuilder invokeDirect = new MethodBuilder("invokeDirect") //
+                            .withOverrideAnnotation() //
+                            .withModifiers(new ModifierBuilder().asPublic().asFinal()) //
+                            .withReturnType("Object") //
+                            .withParams("Object " + ENV_ARG_NAME, "Object[] " + ARGS_NAME);
             if (!h.isStatic) {
-                str.append(TAB_2).append(envClassName).append(" ").append(envName).append(" = ").append("(").append(envClassName).append(") " + ENV_ARG_NAME + ";\n");
+                invokeDirect.addBodyLine(envClassName, ' ', envName, " = (", envClassName, ") ", ENV_ARG_NAME, ';');
             }
-            int argIndex = 0;
+            argIndex = 0;
             for (String type : parameterTypes) {
-                str.append(extractArg(argIndex++, type, false, 0, TAB_2));
+                invokeDirect.addBodyLine(extractArg(argIndex++, type, false, 0));
             }
             if (h.jniNativeSignature[0] == NativeType.VOID) {
-                str.append(TAB_2).append(extractInvocation(className, argIndex, h.isStatic, helper)).append(";\n");
-                str.append(TAB_2).append("return ").append(STATIC_OBJECT_NULL).append(";\n");
+                invokeDirect.addBodyLine(extractInvocation(className, argIndex, h.isStatic, helper), ';');
+                invokeDirect.addBodyLine("return ", STATIC_OBJECT_NULL, ';');
             } else {
-                str.append(TAB_2).append("return ").append(extractInvocation(className, argIndex, h.isStatic, helper)).append(";\n");
+                invokeDirect.addBodyLine("return ", extractInvocation(className, argIndex, h.isStatic, helper), ";");
             }
-            str.append(TAB_1).append("}\n");
+            classBuilder.withMethod(invokeDirect);
         }
-        return str.toString();
+
+        return classBuilder;
     }
 }

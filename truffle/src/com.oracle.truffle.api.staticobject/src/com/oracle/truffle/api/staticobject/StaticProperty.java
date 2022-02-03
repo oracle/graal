@@ -74,9 +74,11 @@ import sun.misc.Unsafe;
 @SuppressWarnings("cast") // make ecj happy
 public abstract class StaticProperty {
     private static final Unsafe UNSAFE = getUnsafe();
-    private static final byte STORE_AS_FINAL = (byte) (1 << 7);
+
     @CompilationFinal //
-    private byte flags;
+    private boolean storeAsFinal;
+    @CompilationFinal //
+    private Class<?> type;
     @CompilationFinal //
     private StaticShape<?> shape;
     // The offset is the actual position in the field array of an actual instance.
@@ -91,10 +93,9 @@ public abstract class StaticProperty {
     protected StaticProperty() {
     }
 
-    void init(StaticPropertyKind kind, boolean storeAsFinal) {
-        byte internalKind = getInternalKind(kind);
-        assert (internalKind & STORE_AS_FINAL) == 0;
-        flags = (byte) (storeAsFinal ? STORE_AS_FINAL | internalKind : internalKind);
+    void init(Class<?> clazz, boolean isFinal) {
+        type = clazz;
+        storeAsFinal = isFinal;
     }
 
     /**
@@ -108,49 +109,16 @@ public abstract class StaticProperty {
     protected abstract String getId();
 
     final boolean storeAsFinal() {
-        return (flags & STORE_AS_FINAL) == STORE_AS_FINAL;
+        return storeAsFinal;
     }
 
-    private static byte getInternalKind(StaticPropertyKind kind) {
-        return kind.toByte();
-    }
-
-    final byte getInternalKind() {
-        return (byte) (flags & ~STORE_AS_FINAL);
-    }
-
-    final String getInternalKindName() {
-        return toInternalKindName(getInternalKind());
-    }
-
-    final String toInternalKindName(byte kind) {
-        switch (kind) {
-            case 0:
-                return "long";
-            case 1:
-                return "double";
-            case 2:
-                return "int";
-            case 3:
-                return "float";
-            case 4:
-                return "short";
-            case 5:
-                return "char";
-            case 6:
-                return "byte";
-            case 7:
-                return "boolean";
-            case 8:
-                return "Object";
-            default:
-                throw new IllegalStateException("Illegal internal kind: " + getInternalKind());
-        }
+    final Class<?> getPropertyType() {
+        return type;
     }
 
     final void initOffset(int o) {
         if (this.offset != 0) {
-            throw new IllegalStateException("Attempt to reinitialize the offset of static property '" + getId() + "' of type '" + getInternalKindName() + "'.\n" +
+            throw new IllegalStateException("Attempt to reinitialize the offset of static property '" + getId() + "' of type '" + type.getName() + "'.\n" +
                             "Was it added to more than one builder or multiple times to the same builder?");
         }
         this.offset = o;
@@ -158,17 +126,36 @@ public abstract class StaticProperty {
 
     final void initShape(StaticShape<?> s) {
         if (this.shape != null) {
-            throw new IllegalStateException("Attempt to reinitialize the shape of static property '" + getId() + "' of type '" + getInternalKindName() + "'.\n" +
+            throw new IllegalStateException("Attempt to reinitialize the shape of static property '" + getId() + "' of type '" + type.getName() + "'.\n" +
                             "Was it added to more than one builder or multiple times to the same builder?");
         }
         this.shape = s;
     }
 
-    private void checkKind(StaticPropertyKind kind) {
-        byte internalKind = getInternalKind();
-        if (internalKind != getInternalKind(kind)) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw new IllegalArgumentException("Static property '" + getId() + "' of type '" + getInternalKindName() + "' cannot be accessed as '" + toInternalKindName(getInternalKind(kind)) + "'");
+    private void throwIllegalArgumentException(Class<?> accessType) {
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw new IllegalArgumentException("Static property '" + getId() + "' of type '" + type.getName() + "' cannot be accessed as '" + (accessType == null ? "null" : accessType.getName()) + "'");
+    }
+
+    private void checkObjectGetAccess() {
+        if (type.isPrimitive()) {
+            throwIllegalArgumentException(Object.class);
+        }
+    }
+
+    private void checkObjectSetAccess(Object value) {
+        if (value == null) {
+            if (type.isPrimitive()) {
+                throwIllegalArgumentException(null);
+            }
+        } else if (!type.isInstance(value)) {
+            throwIllegalArgumentException(value.getClass());
+        }
+    }
+
+    private void checkPrimitiveAccess(Class<?> accessType) {
+        if (type != accessType) {
+            throwIllegalArgumentException(accessType);
         }
     }
 
@@ -180,13 +167,12 @@ public abstract class StaticProperty {
      *
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Object} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is primitive, or obj does not
+     *             have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final Object getObject(Object obj) {
-        checkKind(StaticPropertyKind.Object);
+        checkObjectGetAccess();
         return UNSAFE.getObject(shape.getStorage(obj, false), (long) offset);
     }
 
@@ -197,13 +183,12 @@ public abstract class StaticProperty {
      *
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Object} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is primitive, or obj does not
+     *             have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final Object getObjectVolatile(Object obj) {
-        checkKind(StaticPropertyKind.Object);
+        checkObjectGetAccess();
         return UNSAFE.getObjectVolatile(shape.getStorage(obj, false), offset);
     }
 
@@ -214,13 +199,13 @@ public abstract class StaticProperty {
      *
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Object} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not assignable from
+     *             {@link Object#getClass() the type of value}, or obj does not have a
+     *             {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final void setObject(Object obj, Object value) {
-        checkKind(StaticPropertyKind.Object);
+        checkObjectSetAccess(value);
         UNSAFE.putObject(shape.getStorage(obj, false), (long) offset, value);
     }
 
@@ -231,13 +216,13 @@ public abstract class StaticProperty {
      *
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Object} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not assignable from
+     *             {@link Object#getClass() the type of value}, or obj does not have a
+     *             {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final void setObjectVolatile(Object obj, Object value) {
-        checkKind(StaticPropertyKind.Object);
+        checkObjectSetAccess(value);
         UNSAFE.putObjectVolatile(shape.getStorage(obj, false), offset, value);
     }
 
@@ -251,13 +236,13 @@ public abstract class StaticProperty {
      * @param update the new value
      * @return {@code true} if successful. False return indicates that the actual value was not
      *         equal to the expected value.
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Object} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not assignable from
+     *             {@link Object#getClass() the type of value}, or obj does not have a
+     *             {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final boolean compareAndSwapObject(Object obj, Object expect, Object update) {
-        checkKind(StaticPropertyKind.Object);
+        checkObjectSetAccess(update);
         return UNSAFE.compareAndSwapObject(shape.getStorage(obj, false), offset, expect, update);
     }
 
@@ -268,13 +253,13 @@ public abstract class StaticProperty {
      * @param obj the static object that stores the static property value
      * @param value the new value
      * @return the previous value
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Object} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not assignable from
+     *             {@link Object#getClass() the type of value}, or obj does not have a
+     *             {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final Object getAndSetObject(Object obj, Object value) {
-        checkKind(StaticPropertyKind.Object);
+        checkObjectSetAccess(value);
         return UNSAFE.getAndSetObject(shape.getStorage(obj, false), offset, value);
     }
 
@@ -287,13 +272,13 @@ public abstract class StaticProperty {
      * @param expect the expected value
      * @param update the new value
      * @return the witness value, which will be the same as the expected value if successful
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Object} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not assignable from
+     *             {@link Object#getClass() the type of value}, or obj does not have a
+     *             {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final Object compareAndExchangeObject(Object obj, Object expect, Object update) {
-        checkKind(StaticPropertyKind.Object);
+        checkObjectSetAccess(update);
         return CASSupport.compareAndExchangeObject(shape.getStorage(obj, false), offset, expect, update);
     }
 
@@ -305,13 +290,12 @@ public abstract class StaticProperty {
      *
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Boolean} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the boolean class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final boolean getBoolean(Object obj) {
-        checkKind(StaticPropertyKind.Boolean);
+        checkPrimitiveAccess(boolean.class);
         return UNSAFE.getBoolean(shape.getStorage(obj, true), (long) offset);
     }
 
@@ -322,13 +306,12 @@ public abstract class StaticProperty {
      *
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Boolean} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the boolean class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final boolean getBooleanVolatile(Object obj) {
-        checkKind(StaticPropertyKind.Boolean);
+        checkPrimitiveAccess(boolean.class);
         return UNSAFE.getBooleanVolatile(shape.getStorage(obj, true), offset);
     }
 
@@ -339,13 +322,12 @@ public abstract class StaticProperty {
      *
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Boolean} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the boolean class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final void setBoolean(Object obj, boolean value) {
-        checkKind(StaticPropertyKind.Boolean);
+        checkPrimitiveAccess(boolean.class);
         UNSAFE.putBoolean(shape.getStorage(obj, true), (long) offset, value);
     }
 
@@ -356,13 +338,12 @@ public abstract class StaticProperty {
      *
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Boolean} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the boolean class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final void setBooleanVolatile(Object obj, boolean value) {
-        checkKind(StaticPropertyKind.Boolean);
+        checkPrimitiveAccess(boolean.class);
         UNSAFE.putBooleanVolatile(shape.getStorage(obj, true), offset, value);
     }
 
@@ -376,13 +357,12 @@ public abstract class StaticProperty {
      * @param update the new value
      * @return {@code true} if successful. False return indicates that the actual value was not
      *         equal to the expected value.
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Boolean} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the boolean class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final boolean compareAndSwapBoolean(Object obj, boolean expect, boolean update) {
-        checkKind(StaticPropertyKind.Boolean);
+        checkPrimitiveAccess(boolean.class);
         return CASSupport.compareAndSetBoolean(shape.getStorage(obj, true), offset, expect, update);
     }
 
@@ -395,13 +375,12 @@ public abstract class StaticProperty {
      * @param expect the expected value
      * @param update the new value
      * @return the witness value, which will be the same as the expected value if successful
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Boolean} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the boolean class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final boolean compareAndExchangeBoolean(Object obj, boolean expect, boolean update) {
-        checkKind(StaticPropertyKind.Boolean);
+        checkPrimitiveAccess(boolean.class);
         return CASSupport.compareAndExchangeBoolean(shape.getStorage(obj, true), offset, expect, update);
     }
 
@@ -413,13 +392,12 @@ public abstract class StaticProperty {
      *
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Byte} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the byte class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final byte getByte(Object obj) {
-        checkKind(StaticPropertyKind.Byte);
+        checkPrimitiveAccess(byte.class);
         return UNSAFE.getByte(shape.getStorage(obj, true), (long) offset);
     }
 
@@ -430,13 +408,12 @@ public abstract class StaticProperty {
      *
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Byte} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the byte class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final byte getByteVolatile(Object obj) {
-        checkKind(StaticPropertyKind.Byte);
+        checkPrimitiveAccess(byte.class);
         return UNSAFE.getByteVolatile(shape.getStorage(obj, true), offset);
     }
 
@@ -447,13 +424,12 @@ public abstract class StaticProperty {
      *
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Byte} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the byte class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final void setByte(Object obj, byte value) {
-        checkKind(StaticPropertyKind.Byte);
+        checkPrimitiveAccess(byte.class);
         UNSAFE.putByte(shape.getStorage(obj, true), (long) offset, value);
     }
 
@@ -464,13 +440,12 @@ public abstract class StaticProperty {
      *
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Byte} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the byte class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final void setByteVolatile(Object obj, byte value) {
-        checkKind(StaticPropertyKind.Byte);
+        checkPrimitiveAccess(byte.class);
         UNSAFE.putByteVolatile(shape.getStorage(obj, true), offset, value);
     }
 
@@ -483,13 +458,12 @@ public abstract class StaticProperty {
      * @param update the new value
      * @return {@code true} if successful. False return indicates that the actual value was not
      *         equal to the expected value.
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Byte} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the byte class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final boolean compareAndSwapByte(Object obj, byte expect, byte update) {
-        checkKind(StaticPropertyKind.Byte);
+        checkPrimitiveAccess(byte.class);
         return CASSupport.compareAndSetByte(shape.getStorage(obj, true), offset, expect, update);
     }
 
@@ -502,13 +476,12 @@ public abstract class StaticProperty {
      * @param expect the expected value
      * @param update the new value
      * @return the witness value, which will be the same as the expected value if successful
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Byte} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the byte class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final byte compareAndExchangeByte(Object obj, byte expect, byte update) {
-        checkKind(StaticPropertyKind.Byte);
+        checkPrimitiveAccess(byte.class);
         return CASSupport.compareAndExchangeByte(shape.getStorage(obj, true), offset, expect, update);
     }
 
@@ -520,13 +493,12 @@ public abstract class StaticProperty {
      *
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Char} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the char class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final char getChar(Object obj) {
-        checkKind(StaticPropertyKind.Char);
+        checkPrimitiveAccess(char.class);
         return UNSAFE.getChar(shape.getStorage(obj, true), (long) offset);
     }
 
@@ -537,13 +509,12 @@ public abstract class StaticProperty {
      *
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Char} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the char class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final char getCharVolatile(Object obj) {
-        checkKind(StaticPropertyKind.Char);
+        checkPrimitiveAccess(char.class);
         return UNSAFE.getCharVolatile(shape.getStorage(obj, true), offset);
     }
 
@@ -554,13 +525,12 @@ public abstract class StaticProperty {
      *
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Char} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the char class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final void setChar(Object obj, char value) {
-        checkKind(StaticPropertyKind.Char);
+        checkPrimitiveAccess(char.class);
         UNSAFE.putChar(shape.getStorage(obj, true), (long) offset, value);
     }
 
@@ -571,13 +541,12 @@ public abstract class StaticProperty {
      *
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Char} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the char class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final void setCharVolatile(Object obj, char value) {
-        checkKind(StaticPropertyKind.Char);
+        checkPrimitiveAccess(char.class);
         UNSAFE.putCharVolatile(shape.getStorage(obj, true), offset, value);
     }
 
@@ -590,13 +559,12 @@ public abstract class StaticProperty {
      * @param update the new value
      * @return {@code true} if successful. False return indicates that the actual value was not
      *         equal to the expected value.
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Char} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the char class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final boolean compareAndSwapChar(Object obj, char expect, char update) {
-        checkKind(StaticPropertyKind.Char);
+        checkPrimitiveAccess(char.class);
         return CASSupport.compareAndSetChar(shape.getStorage(obj, true), offset, expect, update);
     }
 
@@ -609,13 +577,12 @@ public abstract class StaticProperty {
      * @param expect the expected value
      * @param update the new value
      * @return the witness value, which will be the same as the expected value if successful
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Char} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the char class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final char compareAndExchangeChar(Object obj, char expect, char update) {
-        checkKind(StaticPropertyKind.Char);
+        checkPrimitiveAccess(char.class);
         return CASSupport.compareAndExchangeChar(shape.getStorage(obj, true), offset, expect, update);
     }
 
@@ -627,13 +594,12 @@ public abstract class StaticProperty {
      *
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Double} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the double class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final double getDouble(Object obj) {
-        checkKind(StaticPropertyKind.Double);
+        checkPrimitiveAccess(double.class);
         return UNSAFE.getDouble(shape.getStorage(obj, true), (long) offset);
     }
 
@@ -644,13 +610,12 @@ public abstract class StaticProperty {
      *
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Double} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the double class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final double getDoubleVolatile(Object obj) {
-        checkKind(StaticPropertyKind.Double);
+        checkPrimitiveAccess(double.class);
         return UNSAFE.getDoubleVolatile(shape.getStorage(obj, true), offset);
     }
 
@@ -661,13 +626,12 @@ public abstract class StaticProperty {
      *
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Double} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the double class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final void setDouble(Object obj, double value) {
-        checkKind(StaticPropertyKind.Double);
+        checkPrimitiveAccess(double.class);
         UNSAFE.putDouble(shape.getStorage(obj, true), (long) offset, value);
     }
 
@@ -678,13 +642,12 @@ public abstract class StaticProperty {
      *
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Double} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the double class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final void setDoubleVolatile(Object obj, double value) {
-        checkKind(StaticPropertyKind.Double);
+        checkPrimitiveAccess(double.class);
         UNSAFE.putDoubleVolatile(shape.getStorage(obj, true), offset, value);
     }
 
@@ -698,13 +661,12 @@ public abstract class StaticProperty {
      * @param update the new value
      * @return {@code true} if successful. False return indicates that the actual value was not
      *         equal to the expected value.
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Double} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the double class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final boolean compareAndSwapDouble(Object obj, double expect, double update) {
-        checkKind(StaticPropertyKind.Double);
+        checkPrimitiveAccess(double.class);
         return CASSupport.compareAndSetDouble(shape.getStorage(obj, true), offset, expect, update);
     }
 
@@ -717,13 +679,12 @@ public abstract class StaticProperty {
      * @param expect the expected value
      * @param update the new value
      * @return the witness value, which will be the same as the expected value if successful
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Double} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the double class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final double compareAndExchangeDouble(Object obj, double expect, double update) {
-        checkKind(StaticPropertyKind.Double);
+        checkPrimitiveAccess(double.class);
         return CASSupport.compareAndExchangeDouble(shape.getStorage(obj, true), offset, expect, update);
     }
 
@@ -735,13 +696,12 @@ public abstract class StaticProperty {
      *
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Float} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the float class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final float getFloat(Object obj) {
-        checkKind(StaticPropertyKind.Float);
+        checkPrimitiveAccess(float.class);
         return UNSAFE.getFloat(shape.getStorage(obj, true), (long) offset);
     }
 
@@ -752,13 +712,12 @@ public abstract class StaticProperty {
      *
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Float} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the float class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final float getFloatVolatile(Object obj) {
-        checkKind(StaticPropertyKind.Float);
+        checkPrimitiveAccess(float.class);
         return UNSAFE.getFloatVolatile(shape.getStorage(obj, true), offset);
     }
 
@@ -769,13 +728,12 @@ public abstract class StaticProperty {
      *
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Float} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the float class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final void setFloat(Object obj, float value) {
-        checkKind(StaticPropertyKind.Float);
+        checkPrimitiveAccess(float.class);
         UNSAFE.putFloat(shape.getStorage(obj, true), (long) offset, value);
     }
 
@@ -786,13 +744,12 @@ public abstract class StaticProperty {
      *
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Float} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the float class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final void setFloatVolatile(Object obj, float value) {
-        checkKind(StaticPropertyKind.Float);
+        checkPrimitiveAccess(float.class);
         UNSAFE.putFloatVolatile(shape.getStorage(obj, true), offset, value);
     }
 
@@ -806,13 +763,12 @@ public abstract class StaticProperty {
      * @param update the new value
      * @return {@code true} if successful. False return indicates that the actual value was not
      *         equal to the expected value.
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Float} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the float class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final boolean compareAndSwapFloat(Object obj, float expect, float update) {
-        checkKind(StaticPropertyKind.Float);
+        checkPrimitiveAccess(float.class);
         return CASSupport.compareAndSetFloat(shape.getStorage(obj, true), offset, expect, update);
     }
 
@@ -825,13 +781,12 @@ public abstract class StaticProperty {
      * @param expect the expected value
      * @param update the new value
      * @return the witness value, which will be the same as the expected value if successful
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Float} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the float class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final float compareAndExchangeFloat(Object obj, float expect, float update) {
-        checkKind(StaticPropertyKind.Float);
+        checkPrimitiveAccess(float.class);
         return CASSupport.compareAndExchangeFloat(shape.getStorage(obj, true), offset, expect, update);
     }
 
@@ -843,13 +798,12 @@ public abstract class StaticProperty {
      *
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Int} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the int class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final int getInt(Object obj) {
-        checkKind(StaticPropertyKind.Int);
+        checkPrimitiveAccess(int.class);
         return UNSAFE.getInt(shape.getStorage(obj, true), (long) offset);
     }
 
@@ -860,13 +814,12 @@ public abstract class StaticProperty {
      *
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Int} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the int class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final int getIntVolatile(Object obj) {
-        checkKind(StaticPropertyKind.Int);
+        checkPrimitiveAccess(int.class);
         return UNSAFE.getIntVolatile(shape.getStorage(obj, true), offset);
     }
 
@@ -877,13 +830,12 @@ public abstract class StaticProperty {
      *
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Int} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the int class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final void setInt(Object obj, int value) {
-        checkKind(StaticPropertyKind.Int);
+        checkPrimitiveAccess(int.class);
         UNSAFE.putInt(shape.getStorage(obj, true), (long) offset, value);
     }
 
@@ -894,13 +846,12 @@ public abstract class StaticProperty {
      *
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Int} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the int class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final void setIntVolatile(Object obj, int value) {
-        checkKind(StaticPropertyKind.Int);
+        checkPrimitiveAccess(int.class);
         UNSAFE.putIntVolatile(shape.getStorage(obj, true), offset, value);
     }
 
@@ -913,13 +864,12 @@ public abstract class StaticProperty {
      * @param update the new value
      * @return {@code true} if successful. False return indicates that the actual value was not
      *         equal to the expected value.
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Int} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the int class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final boolean compareAndSwapInt(Object obj, int expect, int update) {
-        checkKind(StaticPropertyKind.Int);
+        checkPrimitiveAccess(int.class);
         return UNSAFE.compareAndSwapInt(shape.getStorage(obj, true), offset, expect, update);
     }
 
@@ -935,7 +885,7 @@ public abstract class StaticProperty {
      * @since 21.3.0
      */
     public final int compareAndExchangeInt(Object obj, int expect, int update) {
-        checkKind(StaticPropertyKind.Int);
+        checkPrimitiveAccess(int.class);
         return CASSupport.compareAndExchangeInt(shape.getStorage(obj, true), offset, expect, update);
     }
 
@@ -946,13 +896,12 @@ public abstract class StaticProperty {
      * @param obj the static object that stores the static property value
      * @param delta the value to add
      * @return the previous value
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Int} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the int class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final int getAndAddInt(Object obj, int delta) {
-        checkKind(StaticPropertyKind.Int);
+        checkPrimitiveAccess(int.class);
         return UNSAFE.getAndAddInt(shape.getStorage(obj, true), offset, delta);
     }
 
@@ -963,13 +912,12 @@ public abstract class StaticProperty {
      * @param obj the static object that stores the static property value
      * @param value the new value
      * @return the previous value
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Int} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the int class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final int getAndSetInt(Object obj, int value) {
-        checkKind(StaticPropertyKind.Int);
+        checkPrimitiveAccess(int.class);
         return UNSAFE.getAndSetInt(shape.getStorage(obj, true), offset, value);
     }
 
@@ -981,13 +929,12 @@ public abstract class StaticProperty {
      *
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Long} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the long class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final long getLong(Object obj) {
-        checkKind(StaticPropertyKind.Long);
+        checkPrimitiveAccess(long.class);
         return UNSAFE.getLong(shape.getStorage(obj, true), (long) offset);
     }
 
@@ -998,13 +945,12 @@ public abstract class StaticProperty {
      *
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Long} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the long class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final long getLongVolatile(Object obj) {
-        checkKind(StaticPropertyKind.Long);
+        checkPrimitiveAccess(long.class);
         return UNSAFE.getLongVolatile(shape.getStorage(obj, true), offset);
     }
 
@@ -1015,13 +961,12 @@ public abstract class StaticProperty {
      *
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Long} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the long class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final void setLong(Object obj, long value) {
-        checkKind(StaticPropertyKind.Long);
+        checkPrimitiveAccess(long.class);
         UNSAFE.putLong(shape.getStorage(obj, true), (long) offset, value);
     }
 
@@ -1032,13 +977,12 @@ public abstract class StaticProperty {
      *
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Long} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the long class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final void setLongVolatile(Object obj, long value) {
-        checkKind(StaticPropertyKind.Long);
+        checkPrimitiveAccess(long.class);
         UNSAFE.putLongVolatile(shape.getStorage(obj, true), offset, value);
     }
 
@@ -1051,13 +995,12 @@ public abstract class StaticProperty {
      * @param update the new value
      * @return {@code true} if successful. False return indicates that the actual value was not
      *         equal to the expected value.
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Long} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the long class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final boolean compareAndSwapLong(Object obj, long expect, long update) {
-        checkKind(StaticPropertyKind.Long);
+        checkPrimitiveAccess(long.class);
         return UNSAFE.compareAndSwapLong(shape.getStorage(obj, true), offset, expect, update);
     }
 
@@ -1070,13 +1013,12 @@ public abstract class StaticProperty {
      * @param expect the expected value
      * @param update the new value
      * @return the witness value, which will be the same as the expected value if successful
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Long} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the long class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final long compareAndExchangeLong(Object obj, long expect, long update) {
-        checkKind(StaticPropertyKind.Long);
+        checkPrimitiveAccess(long.class);
         return CASSupport.compareAndExchangeLong(shape.getStorage(obj, true), offset, expect, update);
     }
 
@@ -1087,13 +1029,12 @@ public abstract class StaticProperty {
      * @param obj the static object that stores the static property value
      * @param delta the value to add
      * @return the previous value
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Long} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the long class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final long getAndAddLong(Object obj, long delta) {
-        checkKind(StaticPropertyKind.Long);
+        checkPrimitiveAccess(long.class);
         return UNSAFE.getAndAddLong(shape.getStorage(obj, true), offset, delta);
     }
 
@@ -1104,13 +1045,12 @@ public abstract class StaticProperty {
      * @param obj the static object that stores the static property value
      * @param value the new value
      * @return the previous value
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Long} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the long class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final long getAndSetLong(Object obj, long value) {
-        checkKind(StaticPropertyKind.Long);
+        checkPrimitiveAccess(long.class);
         return UNSAFE.getAndSetLong(shape.getStorage(obj, true), offset, value);
     }
 
@@ -1122,13 +1062,12 @@ public abstract class StaticProperty {
      *
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Short} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the short class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final short getShort(Object obj) {
-        checkKind(StaticPropertyKind.Short);
+        checkPrimitiveAccess(short.class);
         return UNSAFE.getShort(shape.getStorage(obj, true), (long) offset);
     }
 
@@ -1139,13 +1078,12 @@ public abstract class StaticProperty {
      *
      * @param obj the static object that stores the static property value
      * @return the value of the static property stored in static object obj
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Short} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the short class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final short getShortVolatile(Object obj) {
-        checkKind(StaticPropertyKind.Short);
+        checkPrimitiveAccess(short.class);
         return UNSAFE.getShortVolatile(shape.getStorage(obj, true), offset);
     }
 
@@ -1156,13 +1094,12 @@ public abstract class StaticProperty {
      *
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Short} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the short class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final void setShort(Object obj, short value) {
-        checkKind(StaticPropertyKind.Short);
+        checkPrimitiveAccess(short.class);
         UNSAFE.putShort(shape.getStorage(obj, true), (long) offset, value);
     }
 
@@ -1173,13 +1110,12 @@ public abstract class StaticProperty {
      *
      * @param obj the static object that stores the static property value
      * @param value the new static property value, to be stored in static object obj
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Short} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the short class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final void setShortVolatile(Object obj, short value) {
-        checkKind(StaticPropertyKind.Short);
+        checkPrimitiveAccess(short.class);
         UNSAFE.putShortVolatile(shape.getStorage(obj, true), offset, value);
     }
 
@@ -1193,13 +1129,12 @@ public abstract class StaticProperty {
      * @param update the new value
      * @return {@code true} if successful. False return indicates that the actual value was not
      *         equal to the expected value.
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Short} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the short class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final boolean compareAndSwapShort(Object obj, short expect, short update) {
-        checkKind(StaticPropertyKind.Short);
+        checkPrimitiveAccess(short.class);
         return CASSupport.compareAndSetShort(shape.getStorage(obj, true), offset, expect, update);
     }
 
@@ -1212,13 +1147,12 @@ public abstract class StaticProperty {
      * @param expect the expected value
      * @param update the new value
      * @return the witness value, which will be the same as the expected value if successful
-     * @throws IllegalArgumentException if the static property kind is not
-     *             {@link StaticPropertyKind#Short} or obj does not have a {@link StaticShape}
-     *             compatible with this static property
+     * @throws IllegalArgumentException if the static property type is not the short class, or obj
+     *             does not have a {@link StaticShape} compatible with this static property
      * @since 21.3.0
      */
     public final short compareAndExchangeShort(Object obj, short expect, short update) {
-        checkKind(StaticPropertyKind.Short);
+        checkPrimitiveAccess(short.class);
         return CASSupport.compareAndExchangeShort(shape.getStorage(obj, true), offset, expect, update);
     }
 

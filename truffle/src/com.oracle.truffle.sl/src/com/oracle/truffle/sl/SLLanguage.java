@@ -374,16 +374,6 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         return SLLanguageView.create(value);
     }
 
-    /*
-     * Still necessary for the old SL TCK to pass. We should remove with the old TCK. New language
-     * should not override this.
-     */
-    @SuppressWarnings("deprecation")
-    @Override
-    protected Object findExportedSymbol(SLContext context, String globalName, boolean onlyExplicit) {
-        return context.getFunctionRegistry().lookup(globalName, false);
-    }
-
     @Override
     protected boolean isVisible(SLContext context, Object value) {
         return !InteropLibrary.getFactory().getUncached(value).isNull(value);

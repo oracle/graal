@@ -30,8 +30,6 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.SnippetTemplate.AbstractTemplates;
@@ -41,7 +39,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.LocationIdentity;
 
-import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.nodes.SubstrateFieldLocationIdentity;
 import com.oracle.svm.core.util.Counter;
 import com.oracle.svm.core.util.VMError;
@@ -52,8 +49,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class SubstrateTemplates extends AbstractTemplates {
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    protected SubstrateTemplates(OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers, SnippetReflectionProvider snippetReflection) {
-        super(options, factories, providers, snippetReflection, ConfigurationValues.getTarget());
+    protected SubstrateTemplates(OptionValues options, Providers providers) {
+        super(options, providers);
     }
 
     @Override

@@ -42,12 +42,12 @@ import org.graalvm.word.SignedWord;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.CErrorNumber;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.Uninterruptible;
 import com.oracle.svm.core.c.libc.LibCBase;
+import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.posix.headers.Dlfcn;
 import com.oracle.svm.core.posix.headers.Errno;
 import com.oracle.svm.core.posix.headers.Locale;
@@ -130,7 +130,7 @@ public class PosixUtils {
 
     /** Return the error string for the last error, or a default message. */
     public static String lastErrorString(String defaultMsg) {
-        int errno = CErrorNumber.getCErrorNumber();
+        int errno = LibC.errno();
         return errorString(errno, defaultMsg);
     }
 
@@ -176,9 +176,10 @@ public class PosixUtils {
     public static int waitForProcessExit(int ppid) {
         CIntPointer statusptr = StackValue.get(CIntPointer.class);
         while (Wait.waitpid(ppid, statusptr, 0) < 0) {
-            if (CErrorNumber.getCErrorNumber() == Errno.ECHILD()) {
+            int errno = LibC.errno();
+            if (errno == Errno.ECHILD()) {
                 return 0;
-            } else if (CErrorNumber.getCErrorNumber() == Errno.EINTR()) {
+            } else if (errno == Errno.EINTR()) {
                 break;
             } else {
                 return -1;
@@ -210,7 +211,7 @@ public class PosixUtils {
 
             SignedWord n = Unistd.write(fd, curBuf, curLen);
             if (n.equal(-1)) {
-                if (CErrorNumber.getCErrorNumber() == Errno.EINTR()) {
+                if (LibC.errno() == Errno.EINTR()) {
                     // Retry the write if it was interrupted before any bytes were written.
                     continue;
                 }
@@ -256,7 +257,7 @@ public class PosixUtils {
         if (readOffset < bufferLen) {
             do {
                 readBytes = (int) Unistd.NoTransitions.read(fd, buffer.addressOf(readOffset), WordFactory.unsigned(bufferLen - readOffset)).rawValue();
-            } while (readBytes == -1 && CErrorNumber.getCErrorNumber() == Errno.EINTR());
+            } while (readBytes == -1 && LibC.errno() == Errno.EINTR());
         }
         return readBytes;
     }

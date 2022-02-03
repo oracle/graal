@@ -33,14 +33,14 @@ import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.Canonicalizable;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.ReinterpretNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
+import org.graalvm.compiler.nodes.memory.ReadNode;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.Virtualizable;
 import org.graalvm.compiler.nodes.spi.VirtualizerTool;
@@ -50,11 +50,8 @@ import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.Assumptions;
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
-import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
  * Load of a value from a location specified as an offset relative to an object. No null check is
@@ -88,13 +85,11 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
         // Loads from instances will generally be raised into a LoadFieldNode and end up with a
         // precise stamp but array accesses will not, so manually compute a better stamp from
         // the underlying object.
-        if (accessKind.isObject() && type != null && type.getType().isArray()) {
-            TypeReference oldType = StampTool.typeReferenceOrNull(oldStamp);
+        if (accessKind.isObject() && type != null && type.getType().isArray() && type.getType().getComponentType().getJavaKind().isObject()) {
             TypeReference componentType = TypeReference.create(object.graph().getAssumptions(), type.getType().getComponentType());
+            Stamp newStamp = StampFactory.object(componentType);
             // Don't allow the type to get worse
-            if (oldType == null || oldType.getType().isAssignableFrom(componentType.getType())) {
-                return StampFactory.object(componentType);
-            }
+            return oldStamp == null ? newStamp : oldStamp.improveWith(newStamp);
         }
         if (oldStamp != null) {
             return oldStamp;
@@ -173,40 +168,14 @@ public class RawLoadNode extends UnsafeAccessNode implements Lowerable, Virtuali
 
     @Override
     public Node canonical(CanonicalizerTool tool) {
-        if (!isLocationForced()) {
-            ValueNode targetObject = object();
-            if (offset().isConstant() && targetObject.isConstant() && !targetObject.isNullConstant()) {
-                ConstantNode objectConstant = (ConstantNode) targetObject;
-                ResolvedJavaType type = StampTool.typeOrNull(objectConstant);
-                if (type != null) {
-                    JavaConstant javaConstant = objectConstant.asJavaConstant();
-                    if (javaConstant != null) {
-                        int stableDimension = objectConstant.getStableDimension();
-                        if (locationIdentity.isImmutable() || (type.isArray() && stableDimension > 0)) {
-                            NodeView view = NodeView.from(tool);
-                            long constantOffset = offset().asJavaConstant().asLong();
-                            Constant constant = stamp(view).readConstant(tool.getConstantReflection().getMemoryAccessProvider(), javaConstant, constantOffset);
-                            boolean isDefaultStable = objectConstant.isDefaultStable();
-                            if (constant != null && (isDefaultStable || !constant.isDefaultForKind())) {
-                                /*
-                                 * Of note here: This might be able to fold a volatile access for
-                                 * Truffle interpreters, as the framework allow "final volatile"
-                                 * field through the use of the compilation final annotation.
-                                 *
-                                 * Even though the access might be volatile, we do not need to
-                                 * insert a memory barrier here, as the memory considerations for
-                                 * truffle final volatile accesses are to be taken as ordering the
-                                 * accesses for building the AST during PE, and should not enforce
-                                 * ordering on language side accesses.
-                                 */
-                                return ConstantNode.forConstant(stamp(view), constant, Math.max(stableDimension - 1, 0), isDefaultStable, tool.getMetaAccess());
-                            }
-                        }
-                    }
-                }
-            }
+        Node canonical = super.canonical(tool);
+        if (canonical != this) {
+            return canonical;
         }
-        return super.canonical(tool);
+        if (!isLocationForced()) {
+            return ReadNode.canonicalizeRead(this, tool, accessKind, object, offset, locationIdentity);
+        }
+        return this;
     }
 
     @Override

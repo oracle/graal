@@ -189,7 +189,7 @@ public class HostLanguageService extends AbstractHostService {
     }
 
     @Override
-    public boolean isHostException(Throwable exception) {
+    public boolean isHostException(Object exception) {
         return exception instanceof HostException;
     }
 

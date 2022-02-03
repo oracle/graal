@@ -69,6 +69,12 @@ final class PolyglotSourceDispatch extends AbstractSourceDispatch {
     }
 
     @Override
+    public boolean isCached(Object impl) {
+        com.oracle.truffle.api.source.Source source = (com.oracle.truffle.api.source.Source) impl;
+        return source.isCached();
+    }
+
+    @Override
     public boolean isInteractive(Object impl) {
         com.oracle.truffle.api.source.Source source = (com.oracle.truffle.api.source.Source) impl;
         return source.isInteractive();

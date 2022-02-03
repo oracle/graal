@@ -24,6 +24,9 @@
  */
 package com.oracle.truffle.tools.profiler.impl;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -32,6 +35,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 
@@ -55,25 +59,82 @@ class CPUSamplerCLI extends ProfilerCLI {
 
     public static final long MILLIS_TO_NANOS = 1_000_000L;
     public static final double MAX_OVERHEAD_WARNING_THRESHOLD = 0.2;
+    public static final String DEFAULT_FLAMEGRAPH_FILE = "flamegraph.svg";
 
     enum Output {
         HISTOGRAM,
         CALLTREE,
         JSON,
-        FLAMEGRAPH,
+        FLAMEGRAPH;
+
+        private static String valueList() {
+            StringBuilder message = new StringBuilder();
+            Output[] values = Output.values();
+            for (int i = 0; i < values.length; i++) {
+                Output value = values[i];
+                message.append(value.name().toLowerCase());
+                message.append(i < values.length - 1 ? ", " : "");
+            }
+            return message.toString();
+        }
+
+        private static Output fromString(String s) {
+            try {
+                return Output.valueOf(s.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new IllegalArgumentException("Output can be: " + Output.valueList() + ".");
+            }
+        }
+
     }
 
-    static final OptionType<Output> CLI_OUTPUT_TYPE = new OptionType<>("Output",
-                    new Function<String, Output>() {
-                        @Override
-                        public Output apply(String s) {
-                            try {
-                                return Output.valueOf(s.toUpperCase());
-                            } catch (IllegalArgumentException e) {
-                                throw new IllegalArgumentException("Output can be: histogram, calltree or json");
+    static final OptionType<EnableOptionData> ENABLE_OPTION_TYPE = new OptionType<>("Enable",
+                    s -> {
+                        switch (s) {
+                            case "":
+                            case "true":
+                                return new EnableOptionData(true, null);
+                            case "false":
+                                return new EnableOptionData(false, null);
+                            default: {
+                                try {
+                                    Output output = Output.fromString(s);
+                                    return new EnableOptionData(true, output);
+                                } catch (IllegalArgumentException e) {
+                                    throw new IllegalArgumentException("CPUSampler can be configured with the following values: true, false, " + Output.valueList() + ".");
+                                }
                             }
                         }
                     });
+
+    static final class EnableOptionData {
+        final boolean enabled;
+        final Output output;
+
+        private EnableOptionData(boolean enabled, Output output) {
+            this.enabled = enabled;
+            this.output = output;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            EnableOptionData that = (EnableOptionData) o;
+            return enabled == that.enabled && output == that.output;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(enabled, output);
+        }
+    }
+
+    static final OptionType<Output> CLI_OUTPUT_TYPE = new OptionType<>("Output", Output::fromString);
 
     static final OptionType<int[]> SHOW_TIERS_OUTPUT_TYPE = new OptionType<>("ShowTiers",
                     new Function<String, int[]>() {
@@ -99,26 +160,9 @@ class CPUSamplerCLI extends ProfilerCLI {
                         }
                     });
 
-    @SuppressWarnings("deprecation") static final OptionType<CPUSampler.Mode> CLI_MODE_TYPE = new OptionType<>("Mode",
-                    new Function<String, CPUSampler.Mode>() {
-                        @Override
-                        public CPUSampler.Mode apply(String s) {
-                            try {
-                                return CPUSampler.Mode.valueOf(s.toUpperCase());
-                            } catch (IllegalArgumentException e) {
-                                throw new IllegalArgumentException("Mode can be: compiled, roots or statements.");
-                            }
-                        }
-                    });
-
     @Option(name = "", help = "Enable the CPU sampler.", category = OptionCategory.USER, stability = OptionStability.STABLE) //
-    static final OptionKey<Boolean> ENABLED = new OptionKey<>(false);
+    static final OptionKey<EnableOptionData> ENABLED = new OptionKey<>(new EnableOptionData(false, null), ENABLE_OPTION_TYPE);
 
-    // @formatter:off
-    @SuppressWarnings("deprecation")
-    @Option(name = "Mode", help = "Deprecated. Has no effect.", category = OptionCategory.USER, stability = OptionStability.STABLE)
-    static final OptionKey<CPUSampler.Mode> MODE = new OptionKey<>(CPUSampler.Mode.EXCLUDE_INLINED_ROOTS, CLI_MODE_TYPE);
-    // @formatter:on
     @Option(name = "Period", help = "Period in milliseconds to sample the stack.", category = OptionCategory.USER, stability = OptionStability.STABLE) //
     static final OptionKey<Long> SAMPLE_PERIOD = new OptionKey<>(10L);
 
@@ -166,10 +210,10 @@ class CPUSamplerCLI extends ProfilerCLI {
     static final OptionKey<Boolean> SAMPLE_CONTEXT_INITIALIZATION = new OptionKey<>(false);
 
     static void handleOutput(TruffleInstrument.Env env, CPUSampler sampler) {
-        PrintStream out = chooseOutputStream(env, OUTPUT_FILE);
+        PrintStream out = chooseOutputStream(env);
         Map<TruffleContext, CPUSamplerData> data = sampler.getData();
         OptionValues options = env.getOptions();
-        switch (options.get(OUTPUT)) {
+        switch (chooseOutput(options)) {
             case HISTOGRAM:
                 printWarnings(sampler, out);
                 printSamplingHistogram(out, options, data);
@@ -184,6 +228,42 @@ class CPUSamplerCLI extends ProfilerCLI {
             case FLAMEGRAPH:
                 SVGSamplerOutput.printSamplingFlameGraph(out, data);
         }
+    }
+
+    private static PrintStream chooseOutputStream(TruffleInstrument.Env env) {
+        OptionValues options = env.getOptions();
+        final String outputPath = getOutputPath(env, options);
+        if (outputPath != null) {
+            try {
+                final File file = new File(outputPath);
+                new PrintStream(env.out()).println("Printing output to " + file.getAbsolutePath());
+                return new PrintStream(new FileOutputStream(file));
+            } catch (FileNotFoundException e) {
+                throw handleFileNotFound();
+            }
+        }
+        return new PrintStream(env.out());
+    }
+
+    private static String getOutputPath(TruffleInstrument.Env env, OptionValues options) {
+        if (OUTPUT_FILE.hasBeenSet(options)) {
+            return OUTPUT_FILE.getValue(env.getOptions());
+        }
+        if (ENABLED.getValue(options).output == Output.FLAMEGRAPH) {
+            return DEFAULT_FLAMEGRAPH_FILE;
+        }
+        return null;
+    }
+
+    private static Output chooseOutput(OptionValues options) {
+        if (OUTPUT.hasBeenSet(options)) {
+            return options.get(OUTPUT);
+        }
+        EnableOptionData enabled = ENABLED.getValue(options);
+        if (enabled.output != null) {
+            return enabled.output;
+        }
+        return OUTPUT.getDefaultValue();
     }
 
     private static void printSamplingCallTree(PrintStream out, OptionValues options, Map<TruffleContext, CPUSamplerData> data) {

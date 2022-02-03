@@ -27,7 +27,6 @@ package com.oracle.svm.core.graal;
 import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.options.OptionValues;
@@ -75,17 +74,14 @@ public interface GraalFeature extends Feature {
     /**
      * Called to register lowering providers for static analysis, ahead-of-time compilation, and
      * runtime compilation.
-     *
+     * 
      * @param runtimeConfig The runtime configuration.
      * @param options The initial option values.
-     * @param factories The {@link DebugHandlersFactory}s
      * @param providers Providers that the lowering can use.
-     * @param snippetReflection Snippet reflection providers.
      * @param lowerings The lowering provider registry to add to.
      * @param hosted True if registering for ahead-of-time compilation, false if registering for
      */
-    default void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Iterable<DebugHandlersFactory> factories, Providers providers,
-                    SnippetReflectionProvider snippetReflection,
+    default void registerLowerings(RuntimeConfiguration runtimeConfig, OptionValues options, Providers providers,
                     Map<Class<? extends Node>, NodeLoweringProvider<?>> lowerings, boolean hosted) {
     }
 

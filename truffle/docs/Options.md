@@ -18,12 +18,12 @@ Or, for options only relevant for Truffle language implementers:
 language-launcher --help:internal
 ```
 
-In addition, the GraalVM compiler options can be listed with:
+In addition, the Graal Compiler options can be listed with:
 
 ```shell
 language-launcher --jvm --vm.XX:+JVMCIPrintProperties
 ```
-See [graalvm_ce_jdk8_options](https://chriswhocodes.com/graalvm_ce_jdk8_options.html) for a list of GraalVM compiler options.
+See [graalvm_ce_jdk8_options](https://chriswhocodes.com/graalvm_ce_jdk8_options.html) for a list of Graal Compiler options.
 
 ## Default Language Launcher Options
 
