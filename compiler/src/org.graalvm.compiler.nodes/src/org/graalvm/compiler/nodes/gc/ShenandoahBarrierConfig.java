@@ -28,10 +28,13 @@ package org.graalvm.compiler.nodes.gc;
 public class ShenandoahBarrierConfig {
     private final boolean useLRB;
     private final boolean useSATB;
+    private final boolean useCASBarrier;
 
-    public ShenandoahBarrierConfig(boolean useLRB, boolean useSATB) {
+    public ShenandoahBarrierConfig(boolean useLRB, boolean useSATB, boolean useCASBarrier) {
         this.useLRB = useLRB;
         this.useSATB = useSATB;
+        this.useCASBarrier = useCASBarrier;
+        System.out.println("ShenandoahBarrierConfig: useLRB: " + useLRB + ", useSATB: " + useSATB + ", useCASBarrier: " + useCASBarrier);
     }
 
     boolean useLRB() {
@@ -40,5 +43,9 @@ public class ShenandoahBarrierConfig {
 
     boolean useSATB() {
         return useLRB;
+    }
+
+    boolean isUseCASBarrier() {
+        return useCASBarrier;
     }
 }

@@ -210,6 +210,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final boolean useShenandoahGC = getFlag("UseShenandoahGC", Boolean.class);
     public final boolean shenandoahLoadRefBarrier = getFlag("ShenandoahLoadRefBarrier", Boolean.class);
     public final boolean shenandoahSATBBarrier = getFlag("ShenandoahSATBBarrier", Boolean.class);
+    public final boolean shenandoahCASBarrier = getFlag("ShenandoahCASBarrier", Boolean.class);
 
     public final int allocatePrefetchStyle = getFlag("AllocatePrefetchStyle", Integer.class);
     public final int allocatePrefetchInstr = getFlag("AllocatePrefetchInstr", Integer.class);

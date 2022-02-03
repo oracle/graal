@@ -67,9 +67,11 @@ public class ShenandoahBarrierSet implements BarrierSet {
             LoweredAtomicReadAndWriteNode atomic = (LoweredAtomicReadAndWriteNode) n;
             addWriteBarriers(atomic, atomic.getNewValue(), null, true, atomic.getUsedAsNullCheck());
         } else if (n instanceof AbstractCompareAndSwapNode) {
-            GraalError.unimplemented();
-            AbstractCompareAndSwapNode cmpSwap = (AbstractCompareAndSwapNode) n;
-            addWriteBarriers(cmpSwap, cmpSwap.getNewValue(), cmpSwap.getExpectedValue(), false, false);
+            if (config.isUseCASBarrier()) {
+                GraalError.unimplemented();
+                AbstractCompareAndSwapNode cmpSwap = (AbstractCompareAndSwapNode) n;
+                addWriteBarriers(cmpSwap, cmpSwap.getNewValue(), cmpSwap.getExpectedValue(), false, false);
+            }
         } else if (n instanceof ArrayRangeWrite) {
             GraalError.unimplemented();
             addArrayRangeBarriers((ArrayRangeWrite) n);
