@@ -2407,10 +2407,6 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                 other_comp_names.append('svm')
             if 'svmee' in [c.short_name for c in registered_graalvm_components(stage1=True)]:
                 other_comp_names.append('svmee')
-        for _component in involved_components:
-            other_comp_names += _component.extra_installable_qualifiers
-
-        other_comp_names = sorted(other_comp_names)
 
         self.main_comp_dir_name = component.dir_name
 
