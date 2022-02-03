@@ -32,6 +32,7 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.gc.BarrierSet;
 import org.graalvm.compiler.nodes.gc.CardTableBarrierSet;
 import org.graalvm.compiler.nodes.gc.G1BarrierSet;
+import org.graalvm.compiler.nodes.gc.ShenandoahBarrierConfig;
 import org.graalvm.compiler.nodes.gc.ShenandoahBarrierSet;
 import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
 import org.graalvm.compiler.nodes.memory.FixedAccessNode;
@@ -76,7 +77,8 @@ public class HotSpotPlatformConfigurationProvider implements PlatformConfigurati
                 }
             };
         } else if (config.useShenandoahGC) {
-            return new ShenandoahBarrierSet(config.shenandoahSATBBarrier, config.shenandoahLoadRefBarrier, objectArrayType, referentField);
+            ShenandoahBarrierConfig shenandoahConfig = new ShenandoahBarrierConfig(config.shenandoahSATBBarrier, config.shenandoahLoadRefBarrier);
+            return new ShenandoahBarrierSet(shenandoahConfig, objectArrayType, referentField);
         } else {
             return new CardTableBarrierSet(objectArrayType) {
                 @Override
