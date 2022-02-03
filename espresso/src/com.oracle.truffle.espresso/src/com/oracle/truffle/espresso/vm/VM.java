@@ -2190,15 +2190,14 @@ public final class VM extends NativeEnv {
     }
 
     @VmImpl
-    public void JVM_Halt(int code) {
-        getContext().doExit(code);
+    public void JVM_Halt(int code, @Inject SubstitutionProfiler location) {
+        getContext().getEnv().getContext().closeExited(location, code);
     }
 
     @VmImpl
-    public void JVM_Exit(int code) {
-        getContext().doExit(code);
-        // System.exit(code);
-        // Unlike Halt, runs finalizers
+    public void JVM_Exit(int code, @Inject SubstitutionProfiler location) {
+        // Unlike Halt, finalizers were ran before in guest code.
+        getContext().getEnv().getContext().closeExited(location, code);
     }
 
     // endregion halting

@@ -130,9 +130,11 @@ final class EspressoShutdownHandler implements ContextAccess {
             System.exit(getExitStatus());
             throw EspressoError.shouldNotReachHere();
         } else {
-            // At this point, the exit code given should have been registered. If not, this means
-            // that
-            // another closing was started before us, and we should use the previous' exit code.
+            /*
+             * At this point, the exit code given should have been registered. If not, this means
+             * that another closing was started before us, and we should use the previous' exit
+             * code.
+             */
             throw new EspressoExitException(getExitStatus());
         }
     }
@@ -144,7 +146,10 @@ final class EspressoShutdownHandler implements ContextAccess {
      * <li>If all threads have terminated, and no other thread called an exit method, then:
      * <li>This calls guest {@code java.lang.Shutdown#shutdown()}
      * <li>Proceeds to teardown leftover daemon threads.
+     * <li>Softly exits the context by throwing an {@link EspressoExitException}.
      * </ol>
+     * 
+     * Note that this espresso context will be unable to run guest code once this method returns.
      * 
      * @param killThreads
      */

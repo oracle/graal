@@ -495,6 +495,8 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
         int rc = 1;
 
         contextBuilder.allowCreateThread(true);
+        // We use the host system exit for compatibility with the reference implementation.
+        contextBuilder.useSystemExit(true);
 
         try (Context context = contextBuilder.build()) {
 
@@ -557,16 +559,6 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                     }
                 }
             }
-            /*
-             * We abruptly exit the host system for compatibility with the reference implementation,
-             * and because we have no control over un-registering thread from Truffle, which
-             * sometimes leads to getting an exception on exit when trying to close a context with a
-             * rogue thread in native.
-             * 
-             * Note that since the launcher thread and the main thread are the same, a rogue native
-             * main means we may never return.
-             */
-            System.exit(rc);
         }
     }
 

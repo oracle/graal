@@ -168,6 +168,7 @@ public final class EspressoContext {
     @CompilationFinal private boolean modulesInitialized = false;
     @CompilationFinal private boolean metaInitialized = false;
     private boolean initialized = false;
+    private boolean disposeCalled = false;
     private Classpath bootClasspath;
     // endregion InitControl
 
@@ -759,6 +760,13 @@ public final class EspressoContext {
     }
 
     public void disposeContext() {
+        synchronized (this) {
+            if (disposeCalled) {
+                getLogger().warning("Context is being disposed multiple times");
+                return;
+            }
+            disposeCalled = true;
+        }
         if (initialized) {
             getVM().dispose();
             getJNI().dispose();
@@ -857,13 +865,13 @@ public final class EspressoContext {
         if (guestThread == null) {
             return;
         }
-        if (hostThread != Thread.currentThread()) {
-            String guestName = threads.getThreadName(guestThread);
-            getLogger().warning("unimplemented: disposeThread for non-current thread: " + hostThread + " / " + guestName);
-            return;
-        }
         // Cannot run guest code after finalizeContext was called (GR-35712).
         if (isFinalized()) {
+            return;
+        }
+        if (hostThread != Thread.currentThread()) {
+            String guestName = threads.getThreadName(guestThread);
+            getLogger().warning("unimplemented: disposeThread for non-current thread: " + hostThread + " / " + guestName + ". Called from thread: " + Thread.currentThread());
             return;
         }
         if (vm.DetachCurrentThread(this) != JNI_OK) {
