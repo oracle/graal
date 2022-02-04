@@ -13,32 +13,38 @@ In this guide you will learn how to debug a Java application compiled into a nat
 
 To learn how to debug Java from GDB, see the dedicated [Native Image Debug Info Feature reference manual](../../../reference-manual/native-image/DebugInfo.md).
 
-## Demo Part
+## Get Started
 
 You can debug a native image process the same way as debugging a regular Java application: when your native executable is running, the debugger attaches to the application process, the Java source file is opened, letting you debug it. You can perform regular debugging actions like setting breakpoints, creating watches, inspecting the state of your application, etc.
-Attaching of the debugger is enabled by adding a separate configuration, **Native Image: launch**, into the _launch.json_ file.
+Debugger attachment is enabled by adding a separate configuration, **Native Image: launch**, into the _launch.json_ file.
 
-> Note: To debug a native image from within VS Code, you must install GraalVM Enterprise.
+  > Note: To debug a native image from within VS Code, you must install GraalVM Enterprise.
 
 ### Prerequisities
+
 1. Linux OS with GDB 10.1
-2. [Visual Studio Code](https://code.visualstudio.com/)
-3. [GraalVM Extension Pack for Java](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm-pack): Open VS Code and navigate to **Extensions** in the left-hand side activity bar (or use the _Ctrl+Shift+X_ keys combination). Search for “GraalVM” in the search field, find "GraalVM Extension Pack for Java" and press **Install**. Reload when required.
-4. [GraalVM Enterprise](https://www.graalvm.org/downloads) runtime environment: Navigate to **Gr** activity panel in VS Code and install some of the latest **GraalVM Enterprise** editions available from the list.
-5. [Native Image](../../../reference-manual/native-image/README.md): Upon GraalVM's installation completion, the **Install Optional GraalVM Components** window will pop up in the right bottom corner. Install Native Image.
+2. [VS Code](https://code.visualstudio.com/)
+3. [GraalVM Extension Pack for Java](https://marketplace.visualstudio.com/items?itemName=oracle-labs-graalvm.graalvm-pack) installed in VS Code
+4. [GraalVM Enterprise](https://www.graalvm.org/downloads) [set as a default Java runtime environment in VS Code](index.md#graalvm-installation-wizard)
+5. [Native Image plugin](../../../reference-manual/native-image/README.md) added to GraalVM's installation
 
 ### Create and Build the Demo
 
 The demo is a simple Maven-based Java factorial calculator that uses the [Native Build Tools for GraalVM Native Image](https://graalvm.github.io/native-build-tools/latest/index.html).
+[The Native Build Tools project provides the Maven plugin](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html) which adds support for building and testing native images using Apache Maven™.
+This plugin first checks if you have GraalVM and Native Image installed properly, and then makes use of Maven profiles to enable building and testing.
 
 The Maven _pom.xml_ file is extended with a native profile, which makes building a native executable easier (read more about Maven Profiles [here](https://maven.apache.org/guides/introduction/introduction-to-profiles.html)).
-To add debug information, the <buildArg> tags are used in the native profile configuration to pass parameters to the `native-image` build process:
+To add debug information, the `<buildArg>` tags are used in the native profile configuration to pass parameters to the `native-image` build process:
 
 ```xml
  <buildArg>-g</buildArg>
  <buildArg>-O0</buildArg>
 ```
-Where `-g` instructs the `native-image` builder to generate debug information, and `-O0` specifies to not perform any optimizations.
+
+The `-g` flag instructs `native-image` to generate debug information in a format the GNU Debugger (GDB) understands.
+Then `-O0` specifies that no compiler optimizations should be performed.
+Disabling all optimizations is not required, but in general it makes the debugging experience better.
 
 1. Clone the [demos repository from GitHub](https://github.com/graalvm/graalvm-demos) and open the `javagdbnative` folder in VS Code:
 
@@ -51,8 +57,8 @@ Where `-g` instructs the `native-image` builder to generate debug information, a
   ```shell
   mvn -Pnative -DskipTests package
   ```
-  This command packages a Java application into a runnable JAR file, and then builds a native image of it.
-  Once you have your executable with debug symbols generated, the next step is to add the Native Image debugger configuration,  **Native Image: launch**, into the _launch.json_ file in VS Code.
+  This command compiles and packages a Java application into a runnable JAR file and then uses GraalVM Native Image to generate a native executable from it.
+  Once you have your executable with debug symbols generated, the next step is to add the Native Image debugger configuration, **Native Image: launch**, into the _launch.json_ file in VS Code.
 
 3. Select **Run | Add Configuration…** and then select **Native Image: Launch** from the list of available configurations. It will add the following code to _launch.json_:
 
@@ -66,7 +72,7 @@ Where `-g` instructs the `native-image` builder to generate debug information, a
   ```
    The value of the `nativeImagePath` property has to match the executable name and the location specified in the _pom.xml_, so change the last line of the configuration to `"nativeImagePath": "${workspaceFolder}/target/javagdb"`.
 
-4. Add some argument to specify the number that you want to calculate the factorial, for example, `“args”: “100”`. Your configuration should look like this:
+4. Add an argument to specify the number that you want to calculate the factorial, for example, `“args”: “100”`. Your configuration should look like this:
   ```JSON
   {
    “type”: “nativeimage”,
