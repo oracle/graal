@@ -160,8 +160,12 @@ public class ProgressReporter {
         if (SubstrateOptions.BuildOutputColorful.hasBeenSet(options)) {
             enableColors = SubstrateOptions.BuildOutputColorful.getValue(options);
         }
-        boolean loggingDisabled = DebugOptions.Log.getValue(options) == null;
-        boolean enableProgress = !IS_DUMB_TERM && !IS_CI && loggingDisabled;
+        /*
+         * When logging is enabled, progress cannot be reported as logging works around
+         * NativeImageSystemIOWrappers to access stdio handles.
+         */
+        boolean loggingEnabled = DebugOptions.Log.getValue(options) != null;
+        boolean enableProgress = !IS_DUMB_TERM && !IS_CI && !loggingEnabled;
         if (SubstrateOptions.BuildOutputProgress.hasBeenSet(options)) {
             enableProgress = SubstrateOptions.BuildOutputProgress.getValue(options);
         }
