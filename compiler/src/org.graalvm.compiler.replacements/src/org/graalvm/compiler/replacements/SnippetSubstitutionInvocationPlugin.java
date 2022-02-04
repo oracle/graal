@@ -30,6 +30,7 @@ import java.lang.reflect.Type;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
@@ -40,18 +41,18 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 /**
  * A generic plugin used to implement substitution of methods by snippets.
  */
-public abstract class SnippetSubstitutionInvocationPlugin extends InvocationPlugin.InlineOnlyInvocationPlugin {
+public abstract class SnippetSubstitutionInvocationPlugin<T extends SnippetTemplate.AbstractTemplates> extends InvocationPlugin.InlineOnlyInvocationPlugin {
 
     private final boolean hasSideEffect;
+    private final Class<T> templateClass;
 
-    public SnippetSubstitutionInvocationPlugin(boolean hasSideEffect, String name, Type... argumentTypes) {
+    public SnippetSubstitutionInvocationPlugin(Class<T> templateClass, boolean hasSideEffect, String name, Type... argumentTypes) {
         super(name, argumentTypes);
         this.hasSideEffect = hasSideEffect;
+        this.templateClass = templateClass;
     }
 
-    public abstract SnippetTemplate.SnippetInfo getSnippet();
-
-    public abstract SnippetTemplate.AbstractTemplates getTemplates();
+    public abstract SnippetTemplate.SnippetInfo getSnippet(T templates);
 
     @Override
     public boolean execute(GraphBuilderContext b, ResolvedJavaMethod targetMethod, InvocationPlugin.Receiver receiver, ValueNode[] args) {
@@ -63,10 +64,14 @@ public abstract class SnippetSubstitutionInvocationPlugin extends InvocationPlug
             ValueNode r = receiver.get();
             assert args[0] == r;
         }
+
+        // Build the appropriate node to represent snippet until it's lowered
         Stamp stamp = b.getInvokeReturnStamp(b.getAssumptions()).getTrustedStamp();
         SnippetSubstitutionNode node;
-        SnippetTemplate.SnippetInfo snippet = getSnippet();
-        SnippetTemplate.AbstractTemplates templates = getTemplates();
+
+        T templates = b.getReplacements().getSnippetTemplateCache(templateClass);
+        GraalError.guarantee(templates != null, "Missing templates for " + templateClass);
+        SnippetTemplate.SnippetInfo snippet = getSnippet(templates);
         if (hasSideEffect) {
             SnippetSubstitutionStateSplitNode split = new SnippetSubstitutionStateSplitNode(templates, snippet, targetMethod, stamp, args);
             split.setBci(b.bci());
@@ -74,7 +79,10 @@ public abstract class SnippetSubstitutionInvocationPlugin extends InvocationPlug
         } else {
             node = new SnippetSubstitutionNode(templates, snippet, targetMethod, stamp, args);
         }
+
+        // Transfer any extra constant arguments required for the lowering
         node.setConstantArguments(getConstantArguments(targetMethod));
+
         JavaKind returnKind = targetMethod.getSignature().getReturnKind();
         if (returnKind != JavaKind.Void) {
             b.addPush(returnKind, node);

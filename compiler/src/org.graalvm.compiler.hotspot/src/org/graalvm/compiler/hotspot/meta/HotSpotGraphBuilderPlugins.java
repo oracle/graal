@@ -776,21 +776,11 @@ public class HotSpotGraphBuilderPlugins {
 
     private static void registerBigIntegerPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
         Registration r = new Registration(plugins, BigInteger.class, replacements);
-        r.registerConditional(config.useMultiplyToLenIntrinsic(), new SnippetSubstitutionInvocationPlugin(true, "implMultiplyToLen", int[].class, int.class, int[].class, int.class, int[].class) {
-            BigIntegerSnippets.Templates templates;
-
+        r.registerConditional(config.useMultiplyToLenIntrinsic(), new SnippetSubstitutionInvocationPlugin<>(BigIntegerSnippets.Templates.class, true,
+                        "implMultiplyToLen", int[].class, int.class, int[].class, int.class, int[].class) {
             @Override
-            public SnippetTemplate.SnippetInfo getSnippet() {
-                return getTemplates().implMultiplyToLen;
-            }
-
-            @Override
-            public BigIntegerSnippets.Templates getTemplates() {
-                if (templates == null) {
-                    templates = replacements.getSnippetTemplateCache(BigIntegerSnippets.Templates.class);
-                    assert templates != null;
-                }
-                return templates;
+            public SnippetTemplate.SnippetInfo getSnippet(BigIntegerSnippets.Templates templates) {
+                return templates.implMultiplyToLen;
             }
         });
         r.registerConditional(config.useMulAddIntrinsic(), new InvocationPlugin("implMulAdd", int[].class, int[].class, int.class, int.class, int.class) {
@@ -889,9 +879,8 @@ public class HotSpotGraphBuilderPlugins {
 
         boolean implCompressMultiBlock0Enabled = isIntrinsicName(config, "sun/security/provider/DigestBase", "implCompressMultiBlock0") && (useSha1 || useSha256 || useSha512);
         Registration r = new Registration(plugins, "sun.security.provider.DigestBase", replacements);
-        r.registerConditional(implCompressMultiBlock0Enabled, new SnippetSubstitutionInvocationPlugin(true, "implCompressMultiBlock0", Receiver.class, byte[].class, int.class, int.class) {
-            DigestBaseSnippets.Templates templates;
-
+        r.registerConditional(implCompressMultiBlock0Enabled, new SnippetSubstitutionInvocationPlugin<>(DigestBaseSnippets.Templates.class, true,
+                        "implCompressMultiBlock0", Receiver.class, byte[].class, int.class, int.class) {
             @Override
             protected Object[] getConstantArguments(ResolvedJavaMethod targetMethod) {
                 Object[] constantArguments = new Object[4];
@@ -904,17 +893,8 @@ public class HotSpotGraphBuilderPlugins {
             }
 
             @Override
-            public SnippetTemplate.SnippetInfo getSnippet() {
-                return getTemplates().implCompressMultiBlock0;
-            }
-
-            @Override
-            public DigestBaseSnippets.Templates getTemplates() {
-                if (templates == null) {
-                    templates = replacements.getSnippetTemplateCache(DigestBaseSnippets.Templates.class);
-                    assert templates != null;
-                }
-                return templates;
+            public SnippetTemplate.SnippetInfo getSnippet(DigestBaseSnippets.Templates templates) {
+                return templates.implCompressMultiBlock0;
             }
         });
 

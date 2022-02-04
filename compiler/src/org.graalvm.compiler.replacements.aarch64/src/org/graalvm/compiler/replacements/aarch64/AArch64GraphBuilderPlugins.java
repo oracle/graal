@@ -289,21 +289,11 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
         r.setAllowOverwrite(true);
         r.register(new ArrayCompareToPlugin(JavaKind.Byte, JavaKind.Byte, "compareTo", byte[].class, byte[].class));
         r.register(new ArrayCompareToPlugin(JavaKind.Byte, JavaKind.Char, "compareToUTF16", byte[].class, byte[].class));
-        r.register(new SnippetSubstitutionInvocationPlugin(false, "indexOf", byte[].class, int.class, byte[].class, int.class, int.class) {
-            StringLatin1Snippets.Templates templates;
-
+        r.register(new SnippetSubstitutionInvocationPlugin<>(StringLatin1Snippets.Templates.class, false,
+                        "indexOf", byte[].class, int.class, byte[].class, int.class, int.class) {
             @Override
-            public SnippetTemplate.SnippetInfo getSnippet() {
-                return getTemplates().indexOf;
-            }
-
-            @Override
-            public StringLatin1Snippets.Templates getTemplates() {
-                if (templates == null) {
-                    templates = replacements.getSnippetTemplateCache(StringLatin1Snippets.Templates.class);
-                    assert templates != null;
-                }
-                return templates;
+            public SnippetTemplate.SnippetInfo getSnippet(StringLatin1Snippets.Templates templates) {
+                return templates.indexOf;
             }
         });
         r.register(new StringLatin1IndexOfCharPlugin());
@@ -314,21 +304,11 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
         r.setAllowOverwrite(true);
         r.register(new ArrayCompareToPlugin(JavaKind.Char, JavaKind.Char, "compareTo", byte[].class, byte[].class));
         r.register(new ArrayCompareToPlugin(JavaKind.Char, JavaKind.Byte, true, "compareToLatin1", byte[].class, byte[].class));
-        r.register(new SnippetSubstitutionInvocationPlugin(false, "indexOfUnsafe", byte[].class, int.class, byte[].class, int.class, int.class) {
-            StringUTF16Snippets.Templates templates;
-
+        r.register(new SnippetSubstitutionInvocationPlugin<>(StringUTF16Snippets.Templates.class, false,
+                        "indexOfUnsafe", byte[].class, int.class, byte[].class, int.class, int.class) {
             @Override
-            public SnippetTemplate.SnippetInfo getSnippet() {
-                return getTemplates().indexOfUnsafe;
-            }
-
-            @Override
-            public StringUTF16Snippets.Templates getTemplates() {
-                if (templates == null) {
-                    templates = replacements.getSnippetTemplateCache(StringUTF16Snippets.Templates.class);
-                    assert templates != null;
-                }
-                return templates;
+            public SnippetTemplate.SnippetInfo getSnippet(StringUTF16Snippets.Templates templates) {
+                return templates.indexOfUnsafe;
             }
         });
         r.register(new InvocationPlugin("indexOfCharUnsafe", byte[].class, int.class, int.class, int.class) {
