@@ -850,14 +850,19 @@ public final class EspressoContext {
     }
 
     /**
-     * Creates a new guest thread from the host thread, and adds it to the main thread group.
+     * Creates a new guest thread from the host thread, and adds it to the main thread group. This
+     * thread is not in Espresso's control.
      */
     public StaticObject createThread(Thread hostThread) {
-        return threadRegistry.createGuestThreadFromHost(hostThread, meta, vm);
+        return createThread(hostThread, getMainThreadGroup(), null, false);
     }
 
     public StaticObject createThread(Thread hostThread, StaticObject group, String name) {
-        return threadRegistry.createGuestThreadFromHost(hostThread, meta, vm, name, group);
+        return createThread(hostThread, group, name, true);
+    }
+
+    public StaticObject createThread(Thread hostThread, StaticObject group, String name, boolean managedByEspresso) {
+        return threadRegistry.createGuestThreadFromHost(hostThread, meta, vm, name, group, managedByEspresso);
     }
 
     public void disposeThread(@SuppressWarnings("unused") Thread hostThread) {

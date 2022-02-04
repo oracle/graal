@@ -23,11 +23,14 @@
 
 package com.oracle.truffle.espresso.runtime;
 
+import java.util.Iterator;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.espresso.impl.ContextAccess;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.threads.EspressoThreadRegistry;
+import com.oracle.truffle.espresso.threads.ThreadsAccess;
 
 final class EspressoShutdownHandler implements ContextAccess {
 
@@ -121,7 +124,7 @@ final class EspressoShutdownHandler implements ContextAccess {
                     throw new EspressoExitException(getExitStatus());
                 }
                 beginClose(code);
-                // Wake up spinning main thread.
+                // Wake up spinning natural exiting thread if needed.
                 sync.notifyAll();
             }
             teardown(!context.ExitHost);
@@ -200,7 +203,7 @@ final class EspressoShutdownHandler implements ContextAccess {
     }
 
     private boolean hasActiveNonDaemon(Thread initiating) {
-        for (StaticObject guest : threadManager.activeThreads()) {
+        for (StaticObject guest : getManagedThreads()) {
             Thread host = getThreadAccess().getHost(guest);
             if (host != initiating && !host.isDaemon()) {
                 if (host.isAlive()) {
@@ -264,7 +267,7 @@ final class EspressoShutdownHandler implements ContextAccess {
      * threads, giving them a chance to gracefully exit.
      */
     private void teardownPhase1(Thread initiatingThread) {
-        for (StaticObject guest : threadManager.activeThreads()) {
+        for (StaticObject guest : getManagedThreads()) {
             Thread t = getThreadAccess().getHost(guest);
             if (t.isAlive() && t != initiatingThread) {
                 if (t.isDaemon()) {
@@ -280,7 +283,7 @@ final class EspressoShutdownHandler implements ContextAccess {
      * leftover threads a chance to terminate in guest code (running finaly blocks).
      */
     private void teardownPhase2(Thread initiatingThread) {
-        for (StaticObject guest : threadManager.activeThreads()) {
+        for (StaticObject guest : getManagedThreads()) {
             Thread t = getThreadAccess().getHost(guest);
             if (t.isAlive() && t != initiatingThread) {
                 context.getThreadAccess().stop(guest, null);
@@ -295,7 +298,7 @@ final class EspressoShutdownHandler implements ContextAccess {
      * will be executed. Still, monitors entered through the monitorenter bytecode will be unlocked.
      */
     private void teardownPhase3(Thread initiatingThread) {
-        for (StaticObject guest : threadManager.activeThreads()) {
+        for (StaticObject guest : getManagedThreads()) {
             Thread t = getThreadAccess().getHost(guest);
             if (t.isAlive() && t != initiatingThread) {
                 /*
@@ -313,7 +316,7 @@ final class EspressoShutdownHandler implements ContextAccess {
      * All threads still alive by that point are considered rogue, and we have no control over them.
      */
     private void teardownPhase4(Thread initiatingThread) {
-        for (StaticObject guest : threadManager.activeThreads()) {
+        for (StaticObject guest : getManagedThreads()) {
             Thread t = getThreadAccess().getHost(guest);
             if (t.isAlive() && t != initiatingThread) {
                 // TODO(garcia): Tell truffle to forget about this thread
@@ -336,7 +339,7 @@ final class EspressoShutdownHandler implements ContextAccess {
             if (time > MAX_KILL_PHASE_WAIT) {
                 return false;
             }
-            for (StaticObject guest : threadManager.activeThreads()) {
+            for (StaticObject guest : getManagedThreads()) {
                 Thread t = getThreadAccess().getHost(guest);
                 if (t != initiatingThread && t != referenceDrainer.drainHostThread() /*- drain thread gets a custom shutdown */) {
                     if (t.isAlive()) {
@@ -345,6 +348,69 @@ final class EspressoShutdownHandler implements ContextAccess {
                 }
             }
             return true;
+        }
+    }
+
+    private Iterable<StaticObject> getManagedThreads() {
+        return new ManagedThreadsIterable(threadManager.activeThreads(), getThreadAccess());
+    }
+
+    private static class ManagedThreadsIterable implements Iterable<StaticObject> {
+        private final StaticObject[] thrds;
+        private final ThreadsAccess access;
+
+        ManagedThreadsIterable(StaticObject[] thrds, ThreadsAccess access) {
+            this.thrds = thrds;
+            this.access = access;
+        }
+
+        @Override
+        public Iterator<StaticObject> iterator() {
+            return new ManagedThreadsIterator(thrds, access);
+        }
+    }
+
+    private static class ManagedThreadsIterator implements Iterator<StaticObject> {
+        private final ThreadsAccess access;
+        private final StaticObject[] thrds;
+        int pos;
+
+        ManagedThreadsIterator(StaticObject[] thrds, ThreadsAccess access) {
+            this.thrds = thrds;
+            this.access = access;
+            this.pos = -1;
+            consume();
+        }
+
+        @Override
+        public boolean hasNext() {
+            return hasElement() && currentIsManaged();
+        }
+
+        @Override
+        public StaticObject next() {
+            StaticObject res = thrds[pos];
+            consume();
+            return res;
+        }
+
+        // skip to next managed thread
+        private void consume() {
+            pos++;
+            while (hasElement() && !currentIsManaged()) {
+                pos++;
+            }
+        }
+
+        private boolean currentIsManaged() {
+            if (!hasElement()) {
+                return false;
+            }
+            return access.isManaged(thrds[pos]);
+        }
+
+        private boolean hasElement() {
+            return pos >= 0 && pos < thrds.length;
         }
     }
 }

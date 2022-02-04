@@ -265,6 +265,32 @@ public final class ThreadsAccess extends GuestInterrupter<StaticObject> implemen
         return state == State.RUNNABLE.value;
     }
 
+    public boolean isManaged(StaticObject guest) {
+        return meta.HIDDEN_ESPRESSO_MANAGED.getBoolean(guest, true);
+    }
+
+    /**
+     * Creates a thread for the given guest thread. This thread will be ready to be started.
+     */
+    public Thread createJavaThread(StaticObject guest, DirectCallNode exit, DirectCallNode dispatch) {
+        Thread host = context.getEnv().createThread(new GuestRunnable(context, guest, exit, dispatch));
+        // Link guest to host
+        meta.HIDDEN_HOST_THREAD.setHiddenObject(guest, host);
+        meta.HIDDEN_ESPRESSO_MANAGED.setBoolean(guest, true, true);
+        // Prepare host thread
+        host.setDaemon(meta.java_lang_Thread_daemon.getBoolean(guest));
+        host.setPriority(meta.java_lang_Thread_priority.getInt(guest));
+        if (isInterrupted(guest, false)) {
+            host.interrupt();
+        }
+        String guestName = context.getThreadAccess().getThreadName(guest);
+        host.setName(guestName);
+        // Make the thread known to the context
+        context.registerThread(host, guest);
+        meta.java_lang_Thread_threadStatus.setInt(guest, State.RUNNABLE.value);
+        return host;
+    }
+
     // endregion thread control
 
     // region deprecated methods support
@@ -307,27 +333,6 @@ public final class ThreadsAccess extends GuestInterrupter<StaticObject> implemen
     public void kill(StaticObject guest) {
         DeprecationSupport support = getDeprecationSupport(guest, true);
         support.kill();
-    }
-
-    /**
-     * Creates a thread for the given guest thread. This thread will be ready to be started.
-     */
-    public Thread createJavaThread(StaticObject guest, DirectCallNode exit, DirectCallNode dispatch) {
-        Thread host = context.getEnv().createThread(new GuestRunnable(context, guest, exit, dispatch));
-        // Link guest to host
-        meta.HIDDEN_HOST_THREAD.setHiddenObject(guest, host);
-        // Prepare host thread
-        host.setDaemon(meta.java_lang_Thread_daemon.getBoolean(guest));
-        host.setPriority(meta.java_lang_Thread_priority.getInt(guest));
-        if (isInterrupted(guest, false)) {
-            host.interrupt();
-        }
-        String guestName = context.getThreadAccess().getThreadName(guest);
-        host.setName(guestName);
-        // Make the thread known to the context
-        context.registerThread(host, guest);
-        context.getThreadAccess().setState(guest, State.RUNNABLE.value);
-        return host;
     }
 
     /**

@@ -250,11 +250,7 @@ public final class EspressoThreadRegistry implements ContextAccess {
         return guestMainThread;
     }
 
-    public StaticObject createGuestThreadFromHost(Thread hostThread, Meta meta, VM vm) {
-        return createGuestThreadFromHost(hostThread, meta, vm, null, mainThreadGroup);
-    }
-
-    public StaticObject createGuestThreadFromHost(Thread hostThread, Meta meta, VM vm, String name, StaticObject threadGroup) {
+    public StaticObject createGuestThreadFromHost(Thread hostThread, Meta meta, VM vm, String name, StaticObject threadGroup, boolean managedByEspresso) {
         if (meta == null) {
             // initial thread used to initialize the context and spawn the VM.
             // Don't attempt guest thread creation
@@ -271,6 +267,7 @@ public final class EspressoThreadRegistry implements ContextAccess {
             // Allow guest Thread.currentThread() to work.
             meta.java_lang_Thread_priority.setInt(guestThread, Thread.NORM_PRIORITY);
             meta.HIDDEN_HOST_THREAD.setHiddenObject(guestThread, Thread.currentThread());
+            meta.HIDDEN_ESPRESSO_MANAGED.setBoolean(guestThread, managedByEspresso, true);
 
             // register the new guest thread
             registerThread(hostThread, guestThread);
