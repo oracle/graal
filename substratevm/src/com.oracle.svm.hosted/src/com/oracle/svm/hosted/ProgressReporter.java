@@ -176,7 +176,11 @@ public class ProgressReporter {
         } else {
             linePrinter = new ColorlessLinePrinter(enableProgress);
         }
-        showLinks = SubstrateOptions.BuildOutputColorful.getValue(options);
+        if (SubstrateOptions.BuildOutputLinks.hasBeenSet(options)) {
+            showLinks = SubstrateOptions.BuildOutputLinks.getValue(options);
+        } else {
+            showLinks = enableColors;
+        }
     }
 
     private LinePrinter l() {
