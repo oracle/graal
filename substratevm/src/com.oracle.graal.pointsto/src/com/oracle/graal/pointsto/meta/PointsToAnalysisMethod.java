@@ -113,7 +113,7 @@ public class PointsToAnalysisMethod extends AnalysisMethod {
 
     /**
      * Unique, per method, context insensitive invoke. The context insensitive invoke uses the
-     * receiver type of the method, i.e., its declaring class. Therefore this invoke will link with
+     * receiver type of the method, i.e., its declaring-class. Therefore, this invoke will link with
      * all possible callees.
      */
     private final AtomicReference<InvokeTypeFlow> contextInsensitiveInvoke = new AtomicReference<>();
