@@ -115,7 +115,7 @@ public class ConditionalConfigurationWriter extends ConfigurationWithOriginsResu
         List<ConfigurationSet> newNodeConfiguration = new ArrayList<>();
         boolean hasNonEmptyNode = false;
         for (CallNodeWithConfig node : callNodes) {
-            ConfigurationSet callParentConfig = node.configurationSet.subtract(commonConfig);
+            ConfigurationSet callParentConfig = node.configurationSet.copyAndSubtract(commonConfig);
             if (!callParentConfig.isEmpty()) {
                 hasNonEmptyNode = true;
             }
@@ -132,7 +132,7 @@ public class ConditionalConfigurationWriter extends ConfigurationWithOriginsResu
             CallNodeWithConfig node = callNodes.get(i);
             ConfigurationSet uniqueNodeConfig = newNodeConfiguration.get(i);
             node.configurationSet = new ConfigurationSet(commonConfig);
-            node.parent.configurationSet = node.parent.configurationSet.merge(uniqueNodeConfig);
+            node.parent.configurationSet = node.parent.configurationSet.copyAndMerge(uniqueNodeConfig);
             affectedNodes.add(node.parent.node.methodInfo);
         }
 
@@ -145,7 +145,7 @@ public class ConditionalConfigurationWriter extends ConfigurationWithOriginsResu
             if (config == null) {
                 config = node.configurationSet;
             } else {
-                config = config.intersectWith(node.configurationSet);
+                config = config.copyAndintersectWith(node.configurationSet);
             }
         }
         return config;
@@ -214,6 +214,7 @@ public class ConditionalConfigurationWriter extends ConfigurationWithOriginsResu
          * Iteratively propagate configuration from children to parent calls until an iteration
          * doesn't produce any changes.
          */
+
         Set<MethodInfo> methodsToHandle = methodCallNodes.keySet();
         while (methodsToHandle.size() != 0) {
             Set<MethodInfo> nextIterationMethodsToHandle = new HashSet<>();
@@ -227,7 +228,7 @@ public class ConditionalConfigurationWriter extends ConfigurationWithOriginsResu
 
     @Override
     protected String getConfigFileSuffix() {
-        return "-conditional-config.json";
+        return ConfigurationFile.DEFAULT_FILE_NAME_SUFFIX;
     }
 
     private boolean methodOriginatesFromApplicationPackage(MethodInfo methodInfo) {

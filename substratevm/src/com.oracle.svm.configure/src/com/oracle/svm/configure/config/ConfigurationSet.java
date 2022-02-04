@@ -24,7 +24,9 @@
  */
 package com.oracle.svm.configure.config;
 
+import java.io.IOException;
 import java.nio.file.Path;
+import java.util.function.Function;
 
 
 import com.oracle.svm.configure.ConfigurationBase;
@@ -60,6 +62,12 @@ public class ConfigurationSet {
                         processor.getSerializationConfiguration(), processor.getPredefinedClassesConfiguration());
     }
 
+    public ConfigurationSet(ConfigurationFileCollection configurationFileCollection, Function<IOException, Exception> exceptionHandler) throws Exception {
+        this(configurationFileCollection.loadReflectConfig(exceptionHandler), configurationFileCollection.loadJniConfig(exceptionHandler),
+                        configurationFileCollection.loadResourceConfig(exceptionHandler), configurationFileCollection.loadProxyConfig(exceptionHandler),
+                        configurationFileCollection.loadSerializationConfig(exceptionHandler), configurationFileCollection.loadPredefinedClassesConfig(new Path[0], null, exceptionHandler));
+    }
+
     public ConfigurationSet(ConfigurationSet other) {
         this(new TypeConfiguration(other.reflectionConfiguration), new TypeConfiguration(other.jniConfiguration), new ResourceConfiguration(other.resourceConfiguration),
                         new ProxyConfiguration(other.proxyConfiguration), new SerializationConfiguration(other.serializationConfiguration),
@@ -81,15 +89,15 @@ public class ConfigurationSet {
         return new ConfigurationSet(reflectionConfiguration, jniConfiguration, resourceConfiguration, proxyConfiguration, serializationConfiguration, predefinedClassesConfiguration);
     }
 
-    public ConfigurationSet merge(ConfigurationSet other) {
+    public ConfigurationSet copyAndMerge(ConfigurationSet other) {
         return mutate(other, ConfigurationBase::copyAndMerge);
     }
 
-    public ConfigurationSet subtract(ConfigurationSet other) {
+    public ConfigurationSet copyAndSubtract(ConfigurationSet other) {
         return mutate(other, ConfigurationBase::copyAndSubtract);
     }
 
-    public ConfigurationSet intersectWith(ConfigurationSet other) {
+    public ConfigurationSet copyAndintersectWith(ConfigurationSet other) {
         return mutate(other, ConfigurationBase::copyAndIntersect);
     }
 

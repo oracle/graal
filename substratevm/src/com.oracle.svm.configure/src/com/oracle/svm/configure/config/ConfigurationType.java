@@ -76,7 +76,7 @@ public class ConfigurationType implements JsonPrintable {
         assert type.getCondition().equals(toIntersect.getCondition());
         assert type.getQualifiedJavaName().equals(toIntersect.getQualifiedJavaName());
         copy.intersectWith(toIntersect);
-        return copy.isEmpty() ? null : copy;
+        return copy;
     }
 
     static ConfigurationType copyAndMerge(ConfigurationType type, ConfigurationType toMerge) {

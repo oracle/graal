@@ -68,7 +68,7 @@ public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration
     }
 
     @Override
-    protected void subtract(TypeConfiguration other) {
+    public void subtract(TypeConfiguration other) {
         types.forEach((key, type) -> {
             ConfigurationType subtractType = other.types.get(key);
             types.compute(key, (k, v) -> ConfigurationType.copyAndSubtract(type, subtractType));
@@ -81,6 +81,8 @@ public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration
             ConfigurationType intersectedType = other.types.get(key);
             if (intersectedType != null) {
                 types.compute(key, (k, v) -> ConfigurationType.copyAndIntersect(type, intersectedType));
+            } else {
+                types.remove(key);
             }
         });
     }
