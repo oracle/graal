@@ -275,36 +275,39 @@ public class ProgressReporter {
                 timer.stop();
                 printProgressEnd();
                 printStageEnd(bb.getAnalysisTimer());
-                String actualVsTotalFormat = "%,8d (%5.2f%%) of %,6d";
-                long reachableClasses = bb.getUniverse().getTypes().stream().filter(t -> t.isReachable()).count();
-                long totalClasses = bb.getUniverse().getTypes().size();
-                l().a(actualVsTotalFormat, reachableClasses, reachableClasses / (double) totalClasses * 100, totalClasses)
-                                .a(" classes ").doclink("reachable", "#glossary-reachability").flushln();
-                Collection<AnalysisField> fields = bb.getUniverse().getFields();
-                long reachableFields = fields.stream().filter(f -> f.isAccessed()).count();
-                int totalFields = fields.size();
-                l().a(actualVsTotalFormat, reachableFields, reachableFields / (double) totalFields * 100, totalFields)
-                                .a(" fields ").doclink("reachable", "#glossary-reachability").flushln();
-                Collection<AnalysisMethod> methods = bb.getUniverse().getMethods();
-                long reachableMethods = methods.stream().filter(m -> m.isReachable()).count();
-                int totalMethods = methods.size();
-                l().a(actualVsTotalFormat, reachableMethods, reachableMethods / (double) totalMethods * 100, totalMethods)
-                                .a(" methods ").doclink("reachable", "#glossary-reachability").flushln();
-                if (numRuntimeCompiledMethods >= 0) {
-                    l().a(actualVsTotalFormat, numRuntimeCompiledMethods, numRuntimeCompiledMethods / (double) totalMethods * 100, totalMethods)
-                                    .a(" methods included for ").doclink("runtime compilation", "#glossary-runtime-methods").flushln();
-                }
-                String classesFieldsMethodFormat = "%,8d classes, %,5d fields, and %,5d methods ";
-                RuntimeReflectionSupport rs = ImageSingletons.lookup(RuntimeReflectionSupport.class);
-                l().a(classesFieldsMethodFormat, rs.getReflectionClassesCount(), rs.getReflectionFieldsCount(), rs.getReflectionMethodsCount())
-                                .doclink("registered for reflection", "#glossary-reflection-registrations").flushln();
-                if (numJNIClasses > 0) {
-                    l().a(classesFieldsMethodFormat, numJNIClasses, numJNIFields, numJNIMethods)
-                                    .doclink("registered for JNI access", "#glossary-jni-access-registrations").flushln();
-                }
+                printAnalysisStatistics(bb.getUniverse());
             }
         };
+    }
 
+    private void printAnalysisStatistics(AnalysisUniverse universe) {
+        String actualVsTotalFormat = "%,8d (%5.2f%%) of %,6d";
+        long reachableClasses = universe.getTypes().stream().filter(t -> t.isReachable()).count();
+        long totalClasses = universe.getTypes().size();
+        l().a(actualVsTotalFormat, reachableClasses, reachableClasses / (double) totalClasses * 100, totalClasses)
+                        .a(" classes ").doclink("reachable", "#glossary-reachability").flushln();
+        Collection<AnalysisField> fields = universe.getFields();
+        long reachableFields = fields.stream().filter(f -> f.isAccessed()).count();
+        int totalFields = fields.size();
+        l().a(actualVsTotalFormat, reachableFields, reachableFields / (double) totalFields * 100, totalFields)
+                        .a(" fields ").doclink("reachable", "#glossary-reachability").flushln();
+        Collection<AnalysisMethod> methods = universe.getMethods();
+        long reachableMethods = methods.stream().filter(m -> m.isReachable()).count();
+        int totalMethods = methods.size();
+        l().a(actualVsTotalFormat, reachableMethods, reachableMethods / (double) totalMethods * 100, totalMethods)
+                        .a(" methods ").doclink("reachable", "#glossary-reachability").flushln();
+        if (numRuntimeCompiledMethods >= 0) {
+            l().a(actualVsTotalFormat, numRuntimeCompiledMethods, numRuntimeCompiledMethods / (double) totalMethods * 100, totalMethods)
+                            .a(" methods included for ").doclink("runtime compilation", "#glossary-runtime-methods").flushln();
+        }
+        String classesFieldsMethodFormat = "%,8d classes, %,5d fields, and %,5d methods ";
+        RuntimeReflectionSupport rs = ImageSingletons.lookup(RuntimeReflectionSupport.class);
+        l().a(classesFieldsMethodFormat, rs.getReflectionClassesCount(), rs.getReflectionFieldsCount(), rs.getReflectionMethodsCount())
+                        .doclink("registered for reflection", "#glossary-reflection-registrations").flushln();
+        if (numJNIClasses > 0) {
+            l().a(classesFieldsMethodFormat, numJNIClasses, numJNIFields, numJNIMethods)
+                            .doclink("registered for JNI access", "#glossary-jni-access-registrations").flushln();
+        }
     }
 
     public ReporterClosable printUniverse(Timer timer) {
@@ -527,7 +530,7 @@ public class ProgressReporter {
 
     public void printEpilog(String imageName, NativeImageGenerator generator, boolean wasSuccessfulBuild, Timer totalTimer, OptionValues parsedHostedOptions) {
         l().printLineSeparator();
-        printResourceStats();
+        printResourceStatistics();
         l().printLineSeparator();
 
         l().yellowBold().a("Produced artifacts:").reset().flushln();
@@ -584,7 +587,7 @@ public class ProgressReporter {
         return ReportUtils.report("build artifacts", buildDir.resolve(imageName + ".build_artifacts.txt"), writerConsumer, !isEnabled);
     }
 
-    private void printResourceStats() {
+    private void printResourceStatistics() {
         double totalProcessTimeSeconds = millisToSeconds(System.currentTimeMillis() - ManagementFactory.getRuntimeMXBean().getStartTime());
         GCStats gcStats = getCurrentGCStats();
         double gcSeconds = millisToSeconds(gcStats.totalTimeMillis);
