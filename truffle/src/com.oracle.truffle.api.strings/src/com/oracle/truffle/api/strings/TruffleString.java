@@ -5312,8 +5312,8 @@ public final class TruffleString extends AbstractTruffleString {
         }
 
         static boolean isCompatibleAndNotCompacted(AbstractTruffleString a, Encoding expectedEncoding, Encoding targetEncoding) {
-            return a.encoding() == targetEncoding.id ||
-                            expectedEncoding.naturalStride == targetEncoding.naturalStride && a.stride() == targetEncoding.naturalStride && a.isCompatibleTo(targetEncoding);
+            return expectedEncoding.naturalStride == targetEncoding.naturalStride &&
+                            (a.encoding() == targetEncoding.id || a.stride() == targetEncoding.naturalStride && a.isCompatibleTo(targetEncoding));
         }
 
         /**

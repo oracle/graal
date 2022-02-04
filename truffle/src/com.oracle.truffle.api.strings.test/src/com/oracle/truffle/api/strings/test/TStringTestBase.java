@@ -405,6 +405,27 @@ public class TStringTestBase {
         }) {
             test.run(string, array, codeRange, isValid, encoding, codepoints, byteIndices);
         }
+        if (codeRange == TruffleString.CodeRange.ASCII && isAsciiCompatible(encoding)) {
+            byte[] bytesUTF16 = new byte[(codepoints.length + 1) * 2];
+            for (int i = 0; i < codepoints.length; i++) {
+                TStringTestUtil.writeValue(bytesUTF16, 1, i, codepoints[i]);
+            }
+            TStringTestUtil.writeValue(bytesUTF16, 1, codepoints.length, 0xffff);
+            TruffleString string = TruffleString.fromByteArrayUncached(bytesUTF16, 0, bytesUTF16.length, UTF_16, false).substringByteIndexUncached(0, bytesUTF16.length - 2, UTF_16,
+                            true).switchEncodingUncached(encoding);
+            test.run(string, array, codeRange, isValid, encoding, codepoints, byteIndices);
+        }
+
+        if (codeRange == TruffleString.CodeRange.ASCII && isAsciiCompatible(encoding) || codeRange == TruffleString.CodeRange.LATIN_1 && isUTF16(encoding)) {
+            byte[] bytesUTF32 = new byte[(codepoints.length + 1) * 4];
+            for (int i = 0; i < codepoints.length; i++) {
+                TStringTestUtil.writeValue(bytesUTF32, 2, i, codepoints[i]);
+            }
+            TStringTestUtil.writeValue(bytesUTF32, 2, codepoints.length, 0x10ffff);
+            TruffleString string = TruffleString.fromByteArrayUncached(bytesUTF32, 0, bytesUTF32.length, UTF_32, false).substringByteIndexUncached(0, bytesUTF32.length - 4, UTF_32,
+                            true).switchEncodingUncached(encoding);
+            test.run(string, array, codeRange, isValid, encoding, codepoints, byteIndices);
+        }
     }
 
     protected static void checkAsciiString(String string, TestStrings test) throws Exception {
@@ -622,5 +643,4 @@ public class TStringTestBase {
         }
         return 0;
     }
-
 }
