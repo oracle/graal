@@ -46,6 +46,7 @@ import static org.graalvm.nativebridge.BinaryOutput.bufferSize;
 
 public abstract class BinaryInput implements Closeable {
 
+    public static final Object UNKNOWN_TYPE = new Object();
     private static final int EOF = -1;
 
     private byte[] byteBuffer;
@@ -136,8 +137,6 @@ public abstract class BinaryInput implements Closeable {
     }
 
     public abstract int read();
-
-    public abstract int peek();
 
     public abstract int read(byte[] b, int off, int len);
 
@@ -245,22 +244,24 @@ public abstract class BinaryInput implements Closeable {
         return new String(charBuffer, 0, charCount);
     }
 
-    public final int getPosition() {
-        return pos;
-    }
-
-    public final void setPosition(int position) {
-        if (position < 0 || position > length) {
-            throw new IllegalArgumentException(String.format("Invalid position %d for input with length %d.", position, length));
-        }
-        pos = position;
-    }
-
     @Override
     public final void close() {
     }
 
+    public final Object tryReadTypedValue() throws EOFException, UTFDataFormatException {
+        return readTypedValueImpl();
+    }
+
     public final Object readTypedValue() throws EOFException, UTFDataFormatException {
+        Object res = readTypedValueImpl();
+        if (res == UNKNOWN_TYPE) {
+            byte tag = readByte();
+            throw new IllegalArgumentException(String.format("Unknown tag %d", tag));
+        }
+        return res;
+    }
+
+    private Object readTypedValueImpl() throws EOFException, UTFDataFormatException {
         byte tag = readByte();
         switch (tag) {
             case ARRAY:
@@ -291,7 +292,8 @@ public abstract class BinaryInput implements Closeable {
             case STRING:
                 return readUTF();
             default:
-                throw new IllegalArgumentException(String.format("Unknown tag %d", tag));
+                pos--;
+                return UNKNOWN_TYPE;
         }
     }
 
@@ -321,14 +323,6 @@ public abstract class BinaryInput implements Closeable {
         }
 
         @Override
-        public int peek() {
-            if (pos >= length) {
-                return EOF;
-            }
-            return (buffer[pos] & 0xff);
-        }
-
-        @Override
         public int read(byte[] b, int off, int len) {
             if (pos >= length) {
                 return EOF;
@@ -355,14 +349,6 @@ public abstract class BinaryInput implements Closeable {
                 return EOF;
             }
             return (address.read(pos++) & 0xff);
-        }
-
-        @Override
-        public int peek() {
-            if (pos >= length) {
-                return EOF;
-            }
-            return (address.read(pos) & 0xff);
         }
 
         @Override
