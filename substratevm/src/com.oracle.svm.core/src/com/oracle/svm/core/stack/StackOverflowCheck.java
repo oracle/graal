@@ -145,6 +145,15 @@ public interface StackOverflowCheck {
      */
     int yellowAndRedZoneSize();
 
+    /** @see #setState */
+    int getState();
+
+    /**
+     * Restore the specified state of the stack overflow checks obtained from {@link #getState}.
+     * This is intended for yielding and resuming continuations on a thread.
+     */
+    void setState(int state);
+
     /**
      * Disables all stack overflow checks for this thread. This operation is not reversible, i.e.,
      * it must only be called in the case of a fatal error where the VM is going to exit soon and

@@ -49,5 +49,5 @@ public class NewStoredContinuationNode extends AbstractNewObjectNode implements 
     }
 
     @NodeIntrinsic
-    public static native StoredContinuation allocate(long size);
+    public static native StoredContinuation allocate(int size);
 }

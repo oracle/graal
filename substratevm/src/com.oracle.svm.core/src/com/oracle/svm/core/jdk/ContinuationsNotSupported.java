@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,30 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.image;
+package com.oracle.svm.core.jdk;
 
-import java.util.concurrent.ForkJoinPool;
+import java.util.function.BooleanSupplier;
 
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
+import com.oracle.svm.core.thread.Continuation;
 
-import com.oracle.svm.core.annotate.AutomaticFeature;
-import com.oracle.svm.core.heap.StoredContinuation;
-import com.oracle.svm.core.thread.JavaContinuations;
-import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.util.ReflectionUtil;
-
-@AutomaticFeature
-@Platforms(Platform.HOSTED_ONLY.class)
-public class LoomContinuationFeature implements Feature {
+public class ContinuationsNotSupported implements BooleanSupplier {
     @Override
-    public void beforeAnalysis(BeforeAnalysisAccess arg) {
-        if (JavaContinuations.useLoom()) {
-            FeatureImpl.BeforeAnalysisAccessImpl access = (FeatureImpl.BeforeAnalysisAccessImpl) arg;
-            access.registerAsInHeap(StoredContinuation.class);
-            RuntimeReflection.register(ReflectionUtil.lookupMethod(ForkJoinPool.class, "compensatedBlock", ForkJoinPool.ManagedBlocker.class));
-        }
+    public boolean getAsBoolean() {
+        return !Continuation.isSupported();
     }
 }

@@ -59,6 +59,7 @@ import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.util.Counter;
 
 import jdk.vm.ci.code.Architecture;
@@ -164,7 +165,7 @@ public class JavaMainWrapper {
             /*
              * Shutdown sequence: First wait for all non-daemon threads to exit.
              */
-            JavaThreads.singleton().joinAllNonDaemons();
+            PlatformThreads.singleton().joinAllNonDaemons();
             /*
              * Run shutdown hooks (both our own hooks and application-registered hooks. Note that
              * this can start new non-daemon threads. We are not responsible to wait until they have

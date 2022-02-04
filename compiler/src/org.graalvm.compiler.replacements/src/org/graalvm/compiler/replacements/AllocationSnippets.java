@@ -63,7 +63,7 @@ public abstract class AllocationSnippets implements Snippets {
             result = formatObject(hub, prototypeMarkWord, size, top, fillContents, emitMemoryBarrier, constantSize, profilingData.snippetCounters);
         } else {
             profilingData.snippetCounters.stub.inc();
-            result = callNewInstanceStub(hub, size);
+            result = callNewInstanceStub(hub);
         }
         profileAllocation(profilingData, size);
         return verifyOop(result);
@@ -276,9 +276,7 @@ public abstract class AllocationSnippets implements Snippets {
         } else if (REPLACEMENTS_ASSERTIONS_ENABLED && fillContents == FillContent.WITH_GARBAGE_IF_ASSERTIONS_ENABLED) {
             fillWithGarbage(memory, headerSize, size, constantSize, false, false, snippetCounters);
         }
-        if (emitMemoryBarrier) {
-            MembarNode.memoryBarrier(MembarNode.FenceKind.ALLOCATION_INIT, LocationIdentity.init());
-        }
+        emitMemoryBarrierIf(emitMemoryBarrier);
         return memory.toObjectNonNull();
     }
 
@@ -306,10 +304,14 @@ public abstract class AllocationSnippets implements Snippets {
         } else if (REPLACEMENTS_ASSERTIONS_ENABLED && fillContents == FillContent.WITH_GARBAGE_IF_ASSERTIONS_ENABLED) {
             fillWithGarbage(memory, fillStartOffset, allocationSize, false, maybeUnroll, supportsOptimizedFilling, snippetCounters);
         }
+        emitMemoryBarrierIf(emitMemoryBarrier);
+        return memory.toObjectNonNull();
+    }
+
+    protected void emitMemoryBarrierIf(boolean emitMemoryBarrier) {
         if (emitMemoryBarrier) {
             MembarNode.memoryBarrier(MembarNode.FenceKind.ALLOCATION_INIT, LocationIdentity.init());
         }
-        return memory.toObjectNonNull();
     }
 
     public void emitPrefetchAllocate(Word address, boolean isArray) {
@@ -350,11 +352,6 @@ public abstract class AllocationSnippets implements Snippets {
     protected abstract int instanceHeaderSize();
 
     public abstract void initializeObjectHeader(Word memory, Word hub, Word prototypeMarkWord, boolean isArray);
-
-    @SuppressWarnings("unused")
-    protected Object callNewInstanceStub(Word hub, UnsignedWord size) {
-        return callNewInstanceStub(hub);
-    }
 
     protected abstract Object callNewInstanceStub(Word hub);
 

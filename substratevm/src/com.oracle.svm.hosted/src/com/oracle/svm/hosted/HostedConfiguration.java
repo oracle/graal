@@ -102,8 +102,8 @@ public class HostedConfiguration {
      * The layout of instance objects is:
      * <ul>
      * <li>hub (reference)</li>
+     * <li>identity hashcode (int)</li>
      * <li>instance fields (references, primitives)</li>
-     * <li>optional: identity hashcode (int)</li>
      * </ul>
      * The hashcode is appended after instance fields and is only present if the identity hashcode
      * is used for that type.
@@ -111,8 +111,8 @@ public class HostedConfiguration {
      * The layout of array objects is:
      * <ul>
      * <li>hub (reference)</li>
-     * <li>array length (int)</li>
      * <li>identity hashcode (int)</li>
+     * <li>array length (int)</li>
      * <li>array elements (length * reference or primitive)</li>
      * </ul>
      * The hashcode is always present in arrays. Note that on 64-bit targets it does not impose any

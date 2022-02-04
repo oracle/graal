@@ -324,7 +324,7 @@ public abstract class VMThreads {
 
         // read thread local data (can't be accessed further below as the IsolateThread is freed)
         OSThreadHandle nextOsThreadToCleanup = WordFactory.nullPointer();
-        if (JavaThreads.wasStartedByCurrentIsolate(thread)) {
+        if (PlatformThreads.wasStartedByCurrentIsolate(thread)) {
             nextOsThreadToCleanup = OSThreadHandleTL.get(thread);
         }
 
@@ -401,7 +401,7 @@ public abstract class VMThreads {
 
     @Uninterruptible(reason = "Thread is detaching and holds the THREAD_MUTEX.")
     private static void detachThreadInSafeContext(IsolateThread thread) {
-        JavaThreads.detachThread(thread);
+        PlatformThreads.detachThread(thread);
         removeFromThreadList(thread);
         // Signal that the VMThreads list has changed.
         THREAD_LIST_CONDITION.broadcast();
@@ -451,7 +451,7 @@ public abstract class VMThreads {
 
     @Uninterruptible(reason = "Called from uninterruptible code, but still safe at this point.", calleeMustBe = false, mayBeInlined = true)
     private static void cleanupBeforeDetach(IsolateThread thread) {
-        JavaThreads.cleanupBeforeDetach(thread);
+        PlatformThreads.cleanupBeforeDetach(thread);
     }
 
     /**
@@ -469,8 +469,8 @@ public abstract class VMThreads {
             while (thread.isNonNull()) {
                 IsolateThread next = nextThread(thread);
                 if (thread.notEqual(currentThread)) {
-                    Thread javaThread = JavaThreads.fromVMThread(thread);
-                    if (!JavaThreads.wasStartedByCurrentIsolate(javaThread)) {
+                    Thread javaThread = PlatformThreads.fromVMThread(thread);
+                    if (!PlatformThreads.wasStartedByCurrentIsolate(javaThread)) {
                         detachThreadInSafeContext(thread);
                         releaseThread(thread);
                     }

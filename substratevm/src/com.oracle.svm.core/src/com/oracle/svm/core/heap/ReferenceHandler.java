@@ -28,7 +28,7 @@ import java.lang.ref.Reference;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.stack.StackOverflowCheck;
-import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.util.VMError;
 
@@ -80,7 +80,7 @@ public final class ReferenceHandler {
          * synchronization (because it can deadlock when a lock is held outside the VMOperation).
          * Similar restrictions apply if we are too early in the attach sequence of a thread.
          */
-        return !VMOperation.isInProgress() && JavaThreads.currentJavaThreadInitialized();
+        return !VMOperation.isInProgress() && PlatformThreads.isCurrentAssigned();
     }
 
     private ReferenceHandler() {

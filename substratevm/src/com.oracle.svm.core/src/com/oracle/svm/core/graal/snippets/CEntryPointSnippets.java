@@ -97,7 +97,7 @@ import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
-import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.Safepoint;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.thread.VMThreads;
@@ -225,7 +225,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             return error;
         }
 
-        JavaThreads.singleton().initializeIsolate();
+        PlatformThreads.singleton().initializeIsolate();
 
         return CEntryPointErrors.NO_ERROR;
     }
@@ -407,7 +407,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @SubstrateForeignCallTarget(stubCallingConvention = false)
     private static void ensureJavaThread() {
-        JavaThreads.ensureJavaThread();
+        PlatformThreads.ensureCurrentAssigned();
     }
 
     @Snippet
@@ -445,7 +445,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     private static int tearDownIsolate() {
         try {
             RuntimeSupport.executeTearDownHooks();
-            if (!JavaThreads.singleton().tearDown()) {
+            if (!PlatformThreads.singleton().tearDown()) {
                 return CEntryPointErrors.UNSPECIFIED;
             }
 

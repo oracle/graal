@@ -132,7 +132,7 @@ class ThreadStatusRecomputation implements RecomputeFieldValue.CustomFieldValueC
             return ThreadStatus.TERMINATED;
         }
         assert thread.getState() == Thread.State.NEW : "All threads are in NEW state during image generation";
-        if (thread == JavaThreads.singleton().mainThread) {
+        if (thread == PlatformThreads.singleton().mainThread) {
             /* The main thread is recomputed as running. */
             return ThreadStatus.RUNNABLE;
         } else {
@@ -155,7 +155,7 @@ class ThreadGroupNUnstartedThreadsRecomputation implements RecomputeFieldValue.C
         int result = 0;
         for (Thread thread : JavaThreadsFeature.singleton().reachableThreads.keySet()) {
             /* The main thread is recomputed as running and therefore not counted as unstarted. */
-            if (thread.getThreadGroup() == group && thread != JavaThreads.singleton().mainThread) {
+            if (thread.getThreadGroup() == group && thread != PlatformThreads.singleton().mainThread) {
                 result++;
             }
         }
@@ -174,7 +174,7 @@ class ThreadGroupNThreadsRecomputation implements RecomputeFieldValue.CustomFiel
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
         ThreadGroup group = (ThreadGroup) receiver;
 
-        if (group == JavaThreads.singleton().mainGroup) {
+        if (group == PlatformThreads.singleton().mainGroup) {
             /* The main group contains the main thread, which we recompute as running. */
             return 1;
         } else {
@@ -195,9 +195,9 @@ class ThreadGroupThreadsRecomputation implements RecomputeFieldValue.CustomField
     public Object compute(MetaAccessProvider metaAccess, ResolvedJavaField original, ResolvedJavaField annotated, Object receiver) {
         ThreadGroup group = (ThreadGroup) receiver;
 
-        if (group == JavaThreads.singleton().mainGroup) {
+        if (group == PlatformThreads.singleton().mainGroup) {
             /* The main group contains the main thread, which we recompute as running. */
-            return JavaThreads.singleton().mainGroupThreadsArray;
+            return PlatformThreads.singleton().mainGroupThreadsArray;
         } else {
             /* No other thread group has a thread running at startup. */
             return null;

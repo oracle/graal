@@ -48,7 +48,7 @@ import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescripto
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
-import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
@@ -112,7 +112,7 @@ public class DeoptTester {
                             ThreadingSupportImpl.isRecurringCallbackPaused() ||
                             VMOperation.isInProgress() ||
                             SafepointBehavior.ignoresSafepoints() ||
-                            !JavaThreads.currentJavaThreadInitialized()) {
+                            !PlatformThreads.isCurrentAssigned()) {
                 return; // Thread or VM is not in a safe (or sane) state for deoptimization
             }
             Pointer startSp = KnownIntrinsics.readCallerStackPointer();

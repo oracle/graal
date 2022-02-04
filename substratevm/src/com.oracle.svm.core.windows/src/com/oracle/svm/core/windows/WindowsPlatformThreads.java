@@ -53,9 +53,9 @@ import com.oracle.svm.core.c.function.CEntryPointOptions.Publish;
 import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveDetachThreadEpilogue;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.stack.StackOverflowCheck;
-import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.ParkEvent;
 import com.oracle.svm.core.thread.ParkEvent.ParkEventFactory;
+import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.windows.headers.Process;
@@ -63,13 +63,13 @@ import com.oracle.svm.core.windows.headers.SynchAPI;
 import com.oracle.svm.core.windows.headers.WinBase;
 
 @Platforms(Platform.WINDOWS.class)
-public final class WindowsJavaThreads extends JavaThreads {
+public final class WindowsPlatformThreads extends PlatformThreads {
     @Platforms(HOSTED_ONLY.class)
-    WindowsJavaThreads() {
+    WindowsPlatformThreads() {
     }
 
     @Override
-    protected boolean startOSThread(Thread thread, long stackSize) {
+    protected boolean doStartThread(Thread thread, long stackSize) {
         int threadStackSize = (int) stackSize;
         int initFlag = Process.CREATE_SUSPENDED();
 
@@ -82,7 +82,7 @@ public final class WindowsJavaThreads extends JavaThreads {
 
         CIntPointer osThreadID = StackValue.get(CIntPointer.class);
         WinBase.HANDLE osThreadHandle = Process._beginthreadex(WordFactory.nullPointer(), threadStackSize,
-                        WindowsJavaThreads.osThreadStartRoutine.getFunctionPointer(), startData, initFlag, osThreadID);
+                        WindowsPlatformThreads.osThreadStartRoutine.getFunctionPointer(), startData, initFlag, osThreadID);
         if (osThreadHandle.isNull()) {
             undoPrepareStartOnError(thread, startData);
             return false;
@@ -103,7 +103,7 @@ public final class WindowsJavaThreads extends JavaThreads {
     }
 
     @Override
-    protected void yield() {
+    protected void yieldCurrent() {
         Process.SwitchToThread();
     }
 
@@ -117,7 +117,7 @@ public final class WindowsJavaThreads extends JavaThreads {
         void setOSThreadHandle(WinBase.HANDLE osHandle);
     }
 
-    private static final CEntryPointLiteral<CFunctionPointer> osThreadStartRoutine = CEntryPointLiteral.create(WindowsJavaThreads.class, "osThreadStartRoutine", WindowsThreadStartData.class);
+    private static final CEntryPointLiteral<CFunctionPointer> osThreadStartRoutine = CEntryPointLiteral.create(WindowsPlatformThreads.class, "osThreadStartRoutine", WindowsThreadStartData.class);
 
     private static class OSThreadStartRoutinePrologue implements CEntryPointOptions.Prologue {
         private static final CGlobalData<CCharPointer> errorMessage = CGlobalDataFactory.createCString("Failed to attach a newly launched thread.");
@@ -243,7 +243,7 @@ class WindowsParkEventFactory implements ParkEventFactory {
 class WindowsThreadsFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(JavaThreads.class, new WindowsJavaThreads());
+        ImageSingletons.add(PlatformThreads.class, new WindowsPlatformThreads());
         ImageSingletons.add(ParkEventFactory.class, new WindowsParkEventFactory());
     }
 }
