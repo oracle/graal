@@ -92,6 +92,8 @@ public final class LLVMContext {
     private static final Level LL_DEBUG_VERBOSE_LOGGER_LEVEL = Level.FINER;
     private static final Level LL_DEBUG_WARNING_LOGGER_LEVEL = Level.WARNING;
     private static final Level TRACE_IR_LOGGER_LEVEL = Level.FINER;
+    private static final Level PRINT_STACKTRACE_LEVEL = Level.INFO;
+    private static final Level PRINT_AST_LOGGING_LEVEL = Level.FINEST;
 
     private final List<Path> libraryPaths = new ArrayList<>();
     private final Object libraryPathsLock = new Object();
@@ -1170,6 +1172,30 @@ public final class LLVMContext {
 
     public static void traceIRLog(String message) {
         traceIRLogger.log(TRACE_IR_LOGGER_LEVEL, message);
+    }
+
+    private static final TruffleLogger printAstLogger = TruffleLogger.getLogger("llvm", "AST");
+
+    public static TruffleLogger printAstLogger() {
+        return printAstLogger;
+    }
+
+    public static boolean printAstEnabled() {
+        return printAstLogger.isLoggable(PRINT_AST_LOGGING_LEVEL);
+    }
+
+    public static void printAstLog(String message) {
+        printAstLogger.log(PRINT_AST_LOGGING_LEVEL, message);
+    }
+
+    private static final TruffleLogger stackTraceLogger = TruffleLogger.getLogger("llvm", "StackTrace");
+
+    public static boolean stackTraceEnabled() {
+        return stackTraceLogger.isLoggable(PRINT_STACKTRACE_LEVEL);
+    }
+
+    public static void stackTraceLog(String message) {
+        stackTraceLogger.log(PRINT_STACKTRACE_LEVEL, message);
     }
 
     /**
