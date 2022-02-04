@@ -27,7 +27,7 @@ import java.io.File;
 import com.oracle.truffle.espresso.runtime.Classpath.Entry;
 
 /**
- * Encapulates the contents of a file loaded from an {@linkplain Entry entry} on a
+ * Encapsulates the contents of a file loaded from an {@linkplain Entry entry} on a
  * {@linkplain Classpath classpath}.
  */
 public final class ClasspathFile {

@@ -41,11 +41,6 @@ public class ImageStringsReader implements ImageStrings {
     }
 
     @Override
-    public String get(int offset) {
-        return reader.getString(offset);
-    }
-
-    @Override
     public int match(int offset, String string, int stringOffset) {
         return reader.match(offset, string, stringOffset);
     }

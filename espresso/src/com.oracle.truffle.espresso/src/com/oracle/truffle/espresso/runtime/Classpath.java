@@ -29,7 +29,6 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -66,10 +65,6 @@ public final class Classpath {
         }
         return new PlainFile(pathFile);
     }
-
-    private static final List<Entry> EMPTY_LIST = Collections.emptyList();
-
-    public static final Classpath EMPTY = new Classpath(EMPTY_LIST);
 
     private final List<Entry> entries;
 
@@ -296,32 +291,6 @@ public final class Classpath {
      */
     public Classpath(String paths) {
         this(paths.split(File.pathSeparator));
-    }
-
-    /**
-     * Gets a new classpath obtained by prepending a given classpath to this class classpath.
-     *
-     * @param classpath the classpath to prepend to this classpath
-     * @return the result of prepending {@code classpath} to this classpath
-     */
-    public Classpath prepend(Classpath classpath) {
-        ArrayList<Entry> newEntries = new ArrayList<>(this.entries.size() + classpath.entries.size());
-        newEntries.addAll(classpath.entries);
-        newEntries.addAll(this.entries);
-        return new Classpath(newEntries);
-    }
-
-    /**
-     * Gets a new classpath obtained by prepending a given entry to this class classpath.
-     *
-     * @param entry the entry to prepend to this classpath
-     * @return the result of prepending {@code classpath} to this classpath
-     */
-    public Classpath prepend(String entry) {
-        ArrayList<Entry> newEntries = new ArrayList<>(this.entries.size());
-        newEntries.add(createEntry(entry));
-        newEntries.addAll(this.entries);
-        return new Classpath(newEntries);
     }
 
     /**
