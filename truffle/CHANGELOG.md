@@ -16,6 +16,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-10128 Added the `website` property to the [TruffleLanguage.Registration](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/TruffleLanguage.Registration.html#website--) and [TruffleInstrument.Registration](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/instrumentation/TruffleInstrument.Registration.html#website--) allowing language and instrument developers to specify a URL for a web site with further information about their language/tool.
 * GR-10128 Added the `usageSyntax` property to the [Option](https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/Option.html#usageSyntax--) allowing developers to specify the syntax their option expects. See the javadoc for more information.
 * Added `TruffleSafepoint.setAllowActions` to disable thread local actions temporarily for trusted internal guest code. Currently only allowed during the finalization of a context in `TruffleLanguage.finalizeContext(Object)`.
+* Added `FrameDescriptor.getInfo()` and `FrameDescriptor.Builder.info()` to associate a user-defined object with a frame descriptor.
 
 ## Version 22.0.0
 * Truffle DSL generated code now inherits all annotations on constructor parameters to the static create factory method.
