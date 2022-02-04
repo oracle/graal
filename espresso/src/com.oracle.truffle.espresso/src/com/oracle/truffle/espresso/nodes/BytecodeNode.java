@@ -1255,7 +1255,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     case DRETURN: // fall through
                     case ARETURN: // fall through
                     case RETURN : {
-                        if (loopCount[0] > 0) {
+                        if (CompilerDirectives.hasNextTier() && loopCount[0] > 0) {
                             LoopNode.reportLoopCount(this, loopCount[0]);
                         }
                         Object returnValue = getReturnValueAsObject(frame, top);
@@ -1425,7 +1425,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     if (instrument != null) {
                         instrument.notifyExceptionAt(frame, wrappedStackOverflowError, statementIndex);
                     }
-                    if (loopCount[0] > 0) {
+                    if (CompilerDirectives.hasNextTier() && loopCount[0] > 0) {
                         LoopNode.reportLoopCount(this, loopCount[0]);
                     }
                     throw wrappedStackOverflowError;
@@ -1489,7 +1489,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     }
                 }
             } catch (EspressoOSRReturnException e) {
-                if (loopCount[0] > 0) {
+                if (CompilerDirectives.hasNextTier() && loopCount[0] > 0) {
                     LoopNode.reportLoopCount(this, loopCount[0]);
                 }
                 return e.getResult();
@@ -1745,7 +1745,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         int nextStatementIndex = (instrument == null) ? 0 : instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
         if (targetBCI <= curBCI) {
             checkDeprecation();
-            if (++loopCount[0] >= REPORT_LOOP_STRIDE) {
+            if (CompilerDirectives.hasNextTier() && ++loopCount[0] >= REPORT_LOOP_STRIDE) {
                 LoopNode.reportLoopCount(this, REPORT_LOOP_STRIDE);
                 loopCount[0] = 0;
             }
