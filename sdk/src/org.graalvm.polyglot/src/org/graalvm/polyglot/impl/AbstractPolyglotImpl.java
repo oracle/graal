@@ -1085,6 +1085,10 @@ public abstract class AbstractPolyglotImpl {
         return getNext().newDefaultProcessHandler();
     }
 
+    public boolean isDefaultProcessHandler(ProcessHandler processHandler) {
+        return getNext().isDefaultProcessHandler(processHandler);
+    }
+
     public ThreadScope createThreadScope() {
         return getNext().createThreadScope();
     }
@@ -1114,9 +1118,22 @@ public abstract class AbstractPolyglotImpl {
         return OptionDescriptors.EMPTY;
     }
 
-    public interface ThreadScope extends AutoCloseable {
+    public final AbstractPolyglotImpl getRootImpl() {
+        AbstractPolyglotImpl current = this;
+        while (current.prev != null) {
+            current = current.prev;
+        }
+        return current;
+    }
+
+    public abstract static class ThreadScope implements AutoCloseable {
+
+        protected ThreadScope(AbstractPolyglotImpl engineImpl) {
+            Objects.requireNonNull(engineImpl);
+        }
+
         @Override
-        void close();
+        public abstract void close();
     }
 
 }

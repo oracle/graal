@@ -51,7 +51,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
-import com.oracle.truffle.api.impl.InternalProcessHandler;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.ThreadScope;
 import org.graalvm.polyglot.io.ProcessHandler;
 
@@ -65,6 +65,10 @@ final class ProcessHandlers {
         return new DefaultProcessHandler();
     }
 
+    static boolean isDefault(ProcessHandler handler) {
+        return handler instanceof DefaultProcessHandler;
+    }
+
     static Process decorate(PolyglotLanguageContext owner, List<? extends String> cmd, Process process,
                     OutputStream out, OutputStream err) {
         ProcessDecorator decorator = new ProcessDecorator(owner, cmd.get(0), process, out, err);
@@ -74,12 +78,7 @@ final class ProcessHandlers {
         return decorator;
     }
 
-    private static final class DefaultProcessHandler implements InternalProcessHandler {
-
-        @Override
-        public boolean isDefault() {
-            return true;
-        }
+    private static final class DefaultProcessHandler implements ProcessHandler {
 
         @Override
         public Process start(ProcessCommand command) throws IOException {
@@ -126,8 +125,8 @@ final class ProcessHandlers {
             this.owner = new WeakReference<>(owner);
             this.command = command;
             this.delegate = delegate;
-            this.outCopier = out == null ? null : new CopierThread(createThreadName(owner, command, "stdout"), delegate.getInputStream(), out);
-            this.errCopier = err == null ? null : new CopierThread(createThreadName(owner, command, "stderr"), delegate.getErrorStream(), err);
+            this.outCopier = out == null ? null : new CopierThread(owner.getImpl(), createThreadName(owner, command, "stdout"), delegate.getInputStream(), out);
+            this.errCopier = err == null ? null : new CopierThread(owner.getImpl(), createThreadName(owner, command, "stderr"), delegate.getErrorStream(), err);
             if (outCopier != null) {
                 outCopier.start();
             }
@@ -238,15 +237,18 @@ final class ProcessHandlers {
 
         private static final int BUFSIZE = 8192;
 
+        private final AbstractPolyglotImpl polyglot;
         private final InputStream in;
         private final OutputStream out;
         private final byte[] buffer;
 
-        CopierThread(String name, InputStream in, OutputStream out) {
+        CopierThread(AbstractPolyglotImpl polyglot, String name, InputStream in, OutputStream out) {
+            Objects.requireNonNull(polyglot, "Polyglot must be non null.");
             Objects.requireNonNull(name, "Name must be non null.");
             Objects.requireNonNull(in, "In must be non null.");
             Objects.requireNonNull(out, "Out must be non null.");
             setName(name);
+            this.polyglot = polyglot;
             this.in = in;
             this.out = out;
             this.buffer = new byte[BUFSIZE];
@@ -255,7 +257,7 @@ final class ProcessHandlers {
         @Override
         @SuppressWarnings("try")
         public void run() {
-            try (ThreadScope scope = PolyglotImpl.getActivePolyglot().createThreadScope()) {
+            try (ThreadScope scope = polyglot.getRootImpl().createThreadScope()) {
                 while (true) {
                     if (isInterrupted()) {
                         return;

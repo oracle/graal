@@ -1734,7 +1734,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                 if (!ALLOW_CREATE_PROCESS) {
                     throw PolyglotEngineException.illegalArgument("Cannot allowCreateProcess() because the privilege is removed at image build time");
                 }
-                useProcessHandler = processHandler != null ? processHandler : ProcessHandlers.newDefaultProcessHandler();
+                useProcessHandler = processHandler != null ? processHandler : getImpl().newDefaultProcessHandler();
             } else {
                 useProcessHandler = null;
             }

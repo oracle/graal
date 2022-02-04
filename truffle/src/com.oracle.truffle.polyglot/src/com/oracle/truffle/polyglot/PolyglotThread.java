@@ -132,7 +132,7 @@ final class PolyglotThread extends Thread {
         private static Object executeImpl(PolyglotLanguageContext languageContext, PolyglotThread thread, PolyglotThreadRunnable run) {
             Object[] prev = languageContext.enterThread(thread);
             assert prev == null; // is this assertion correct?
-            try (ThreadScope scope = PolyglotImpl.getActivePolyglot().createThreadScope()) {
+            try (ThreadScope scope = languageContext.getImpl().getRootImpl().createThreadScope()) {
                 run.execute();
             } catch (CancelExecution cancel) {
                 if (PolyglotEngineOptions.TriggerUncaughtExceptionHandlerForCancel.getValue(languageContext.context.engine.getEngineOptionValues())) {

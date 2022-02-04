@@ -130,7 +130,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
         return 0; // default priority
     }
 
-    static AbstractPolyglotImpl getActivePolyglot() {
+    private static AbstractPolyglotImpl getImpl() {
         AbstractPolyglotImpl local = abstractImpl;
         if (local == null) {
             try {
@@ -146,7 +146,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     }
 
     static PolyglotImpl getInstance() {
-        AbstractPolyglotImpl polyglot = getActivePolyglot();
+        AbstractPolyglotImpl polyglot = getImpl();
         while (polyglot != null && !(polyglot instanceof PolyglotImpl)) {
             polyglot = polyglot.getNext();
         }
@@ -460,6 +460,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     @Override
     public ProcessHandler newDefaultProcessHandler() {
         return ProcessHandlers.newDefaultProcessHandler();
+    }
+
+    @Override
+    public boolean isDefaultProcessHandler(ProcessHandler processHandler) {
+        return ProcessHandlers.isDefault(processHandler);
     }
 
     @Override

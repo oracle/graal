@@ -1026,6 +1026,16 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public boolean isDefaultProcessHandler(ProcessHandler processHandler) {
+            return false;
+        }
+
+        @Override
+        public ThreadScope createThreadScope() {
+            return null;
+        }
+
+        @Override
         public <S, T> Object newTargetTypeMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> acceptsValue, Function<S, T> convertValue, TargetMappingPrecedence precedence) {
             return new Object();
         }
