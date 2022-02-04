@@ -105,7 +105,7 @@ public class SignedRemNode extends IntegerDivRemNode implements LIRLowerable {
                 return null;
             }
         }
-        if (self != null && GraalOptions.FloatingDivNodes.getValue(self.getOptions())) {
+        if (tool != null && GraalOptions.FloatingDivNodes.getValue(tool.getOptions())) {
             IntegerStamp yStamp = (IntegerStamp) forY.stamp(view);
             // a: devision of a/0 traps
             // b: division of Integer.MIN_VALUE / -1 overflows

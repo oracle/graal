@@ -38,6 +38,7 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph.StageFlag;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.extended.GuardedNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 
 /**
@@ -46,7 +47,7 @@ import org.graalvm.compiler.nodes.extended.GuardingNode;
  * additional guard node.
  */
 @NodeInfo(cycles = CYCLES_32, size = SIZE_1)
-public abstract class NonTrappingIntegerDivRemNode<OP> extends BinaryArithmeticNode<OP> implements IterableNodeType {
+public abstract class NonTrappingIntegerDivRemNode<OP> extends BinaryArithmeticNode<OP> implements IterableNodeType, GuardedNode {
 
     @SuppressWarnings("rawtypes") public static final NodeClass<NonTrappingIntegerDivRemNode> TYPE = NodeClass.create(NonTrappingIntegerDivRemNode.class);
 
@@ -57,10 +58,12 @@ public abstract class NonTrappingIntegerDivRemNode<OP> extends BinaryArithmeticN
 
     @OptionalInput(InputType.Guard) protected GuardingNode guard;
 
+    @Override
     public GuardingNode getGuard() {
         return guard;
     }
 
+    @Override
     public void setGuard(GuardingNode guard) {
         updateUsagesInterface(this.guard, guard);
         this.guard = guard;

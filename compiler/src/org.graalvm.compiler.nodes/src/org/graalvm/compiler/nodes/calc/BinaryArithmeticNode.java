@@ -45,6 +45,7 @@ import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
+import org.graalvm.compiler.nodes.extended.GuardedNode;
 import org.graalvm.compiler.nodes.spi.ArithmeticLIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeValueMap;
 
@@ -408,6 +409,10 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
         if (isExactMathOperation(node)) {
             return node;
         }
+        if (node instanceof GuardedNode && ((GuardedNode) node).getGuard() != null) {
+            // cannot re-associate guarded nodes
+            return node;
+        }
         ValueNode otherValue = match1.getOtherValue(node);
         boolean addSub = false;
         boolean subAdd = false;
@@ -476,6 +481,10 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
             return MaxNode.create(a, MaxNode.create(m1, m2, view), view);
         } else if (node instanceof MinNode) {
             return MinNode.create(a, MinNode.create(m1, m2, view), view);
+        } else if (node instanceof FloatingIntegerDivNode) {
+            return FloatingIntegerDivNode.create(a, FloatingIntegerDivNode.create(m1, m2, view, null), view, null);
+        } else if (node instanceof FloatingIntegerRemNode) {
+            return FloatingIntegerRemNode.create(a, FloatingIntegerRemNode.create(m1, m2, view, null), view, null);
         } else {
             throw GraalError.shouldNotReachHere();
         }
