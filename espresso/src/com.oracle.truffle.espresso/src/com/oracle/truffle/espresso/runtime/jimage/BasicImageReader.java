@@ -31,9 +31,13 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Objects;
 
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.espresso.runtime.jimage.decompressor.Decompressor;
+import com.oracle.truffle.espresso.runtime.jimage.decompressor.ResourceDecompressor;
 
-public class BasicImageReader implements AutoCloseable {
+public class BasicImageReader implements AutoCloseable, ResourceDecompressor.StringsProvider {
+    public static final TruffleLogger LOGGER = TruffleLogger.getLogger("java", BasicImageReader.class);
+
     private final ByteOrder byteOrder;
     private final String name;
     private final ByteBuffer memoryMap;
@@ -47,8 +51,7 @@ public class BasicImageReader implements AutoCloseable {
     private final ImageStringsReader stringsReader;
     private final Decompressor decompressor;
 
-    protected BasicImageReader(Path path, ByteOrder byteOrder)
-                    throws IOException {
+    protected BasicImageReader(Path path, ByteOrder byteOrder) throws IOException {
         Path imagePath = Objects.requireNonNull(path);
         this.byteOrder = Objects.requireNonNull(byteOrder);
         this.name = imagePath.toString();
@@ -212,6 +215,13 @@ public class BasicImageReader implements AutoCloseable {
         return ImageStringsReader.stringFromByteBuffer(strings, offset);
     }
 
+    public ByteBuffer getRawString(int offset) {
+        if (offset < 0 || offset >= strings.limit()) {
+            throw new IndexOutOfBoundsException(String.format("offset out of bounds: %d not in [0, %d[", offset, strings.limit()));
+        }
+        return ImageStringsReader.rawStringFromByteBuffer(strings, offset);
+    }
+
     public int match(int offset, String string, int stringOffset) {
         if (offset < 0 || offset >= strings.limit()) {
             throw new IndexOutOfBoundsException(String.format("offset out of bounds: %d not in [0, %d[", offset, strings.limit()));
@@ -267,17 +277,7 @@ public class BasicImageReader implements AutoCloseable {
             return readBuffer(offset, uncompressedSize);
         } else {
             ByteBuffer buffer = readBuffer(offset, compressedSize);
-
-            byte[] bytesIn = getBufferBytes(buffer);
-            byte[] bytesOut;
-
-            try {
-                bytesOut = decompressor.decompressResource(byteOrder, this::getString, bytesIn);
-            } catch (IOException ex) {
-                throw new RuntimeException(ex);
-            }
-
-            return ByteBuffer.wrap(bytesOut).order(byteOrder);
+            return decompressor.decompressResource(byteOrder, this, buffer);
         }
     }
 }

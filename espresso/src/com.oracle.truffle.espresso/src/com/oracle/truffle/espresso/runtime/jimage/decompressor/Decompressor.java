@@ -24,12 +24,15 @@ package com.oracle.truffle.espresso.runtime.jimage.decompressor;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Properties;
+
+import com.oracle.truffle.espresso.meta.EspressoError;
 
 /**
  * Entry point to decompress resources.
@@ -49,40 +52,38 @@ public final class Decompressor {
      * @param content The resource content to uncompress.
      * @return A fully uncompressed resource.
      */
-    public byte[] decompressResource(ByteOrder order, ResourceDecompressor.StringsProvider provider, byte[] content) throws IOException {
+    public ByteBuffer decompressResource(ByteOrder order, ResourceDecompressor.StringsProvider provider, ByteBuffer content) {
         Objects.requireNonNull(order);
         Objects.requireNonNull(provider);
         Objects.requireNonNull(content);
         CompressedResourceHeader header;
-        byte[] currentContent = content;
+        ByteBuffer currentContent = content;
         do {
-            header = CompressedResourceHeader.readFromResource(order, currentContent);
+            header = CompressedResourceHeader.readFromResource(currentContent);
             if (header != null) {
                 ResourceDecompressor decompressor = pluginsCache.get(header.getDecompressorNameOffset());
                 if (decompressor == null) {
                     String pluginName = provider.getString(header.getDecompressorNameOffset());
                     if (pluginName == null) {
-                        throw new IOException("Plugin name not found");
+                        throw new EspressoError("Decompressor plugin name not found");
                     }
                     String storedContent = header.getStoredContent(provider);
                     Properties props = new Properties();
                     if (storedContent != null) {
                         try (ByteArrayInputStream stream = new ByteArrayInputStream(storedContent.getBytes(StandardCharsets.UTF_8))) {
                             props.loadFromXML(stream);
+                        } catch (IOException e) {
+                            throw new EspressoError("Error while loading decompressor properties", e);
                         }
                     }
                     decompressor = ResourceDecompressorRepository.newResourceDecompressor(props, pluginName);
                     if (decompressor == null) {
-                        throw new IOException("Plugin not found: " + pluginName);
+                        throw new EspressoError("Plugin not found: " + pluginName);
                     }
 
                     pluginsCache.put(header.getDecompressorNameOffset(), decompressor);
                 }
-                try {
-                    currentContent = decompressor.decompress(provider, currentContent, CompressedResourceHeader.getSize(), header.getUncompressedSize());
-                } catch (Exception ex) {
-                    throw new IOException(ex);
-                }
+                currentContent = decompressor.decompress(provider, currentContent, header.getUncompressedSize());
             }
         } while (header != null);
         return currentContent;

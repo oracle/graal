@@ -718,7 +718,7 @@ public final class EspressoContext {
             JImageLibrary library = jimageLibrary();
             TruffleObject image = library.open(jimagePath);
             if (InteropLibrary.getUncached().isNull(image)) {
-                logger.warning("jimage native library returned null?");
+                logger.severe("jimage native library returned null?");
                 return null;
             }
             return new NativeJImageHelper(library, image);
@@ -727,7 +727,7 @@ public final class EspressoContext {
             try {
                 return new JavaJImageHelper(BasicImageReader.open(Paths.get(jimagePath)), this);
             } catch (IOException e) {
-                logger.log(Level.WARNING, "failed to open jimage", e);
+                logger.log(Level.SEVERE, "failed to open jimage", e);
                 return null;
             }
         }

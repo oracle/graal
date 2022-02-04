@@ -185,6 +185,21 @@ public class ImageStringsReader implements ImageStrings {
         throw new InternalError("No terminating zero byte for modified UTF-8 byte sequence");
     }
 
+    static ByteBuffer rawStringFromByteBuffer(ByteBuffer buffer, int startOffset) {
+        int limit = buffer.limit();
+        int currentOffset = startOffset;
+        while (currentOffset < limit) {
+            byte ch = buffer.get(currentOffset++);
+            if (ch == 0) {
+                break;
+            }
+        }
+        ByteBuffer stringBuffer = buffer.duplicate();
+        stringBuffer.position(startOffset);
+        stringBuffer.limit(currentOffset);
+        return stringBuffer;
+    }
+
     /* package-private */
     static String stringFromByteBuffer(ByteBuffer buffer, int startOffset) {
         int offset = startOffset;

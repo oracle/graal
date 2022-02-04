@@ -22,7 +22,9 @@
  */
 package com.oracle.truffle.espresso.runtime.jimage.decompressor;
 
-import java.io.ByteArrayOutputStream;
+import com.oracle.truffle.espresso.runtime.jimage.BasicImageReader;
+
+import java.nio.ByteBuffer;
 import java.util.zip.Inflater;
 
 /**
@@ -36,27 +38,20 @@ final class ZipDecompressor implements ResourceDecompressor {
         return NAME;
     }
 
-    static byte[] decompress(byte[] bytesIn, int offset, int originalSize) throws Exception {
-        Inflater inflater = new Inflater();
-        inflater.setInput(bytesIn, offset, bytesIn.length - offset);
-        ByteArrayOutputStream stream = new ByteArrayOutputStream(originalSize);
-        byte[] buffer = new byte[1024];
-
-        while (!inflater.finished()) {
-            int count = inflater.inflate(buffer);
-            stream.write(buffer, 0, count);
-        }
-
-        stream.close();
-
-        byte[] bytesOut = stream.toByteArray();
-        inflater.end();
-
-        return bytesOut;
-    }
-
     @Override
-    public byte[] decompress(StringsProvider reader, byte[] content, int offset, long originalSize) throws Exception {
-        return decompress(content, offset, Math.toIntExact(originalSize));
+    public ByteBuffer decompress(StringsProvider reader, ByteBuffer content, long originalSize) {
+        Inflater inflater = new Inflater();
+        inflater.setInput(content);
+        ByteBuffer output = ByteBuffer.allocate(Math.toIntExact(originalSize)).order(content.order());
+        inflater.inflate(output);
+        boolean finished = inflater.finished();
+        inflater.end();
+        if (!finished) {
+            throw new RuntimeException("Unexpected end of zip data");
+        }
+        if (output.hasRemaining()) {
+            BasicImageReader.LOGGER.warning("ZipDecompressor output was smaller than expected: " + output.remaining() + "bytes of output remaining");
+        }
+        return output.flip();
     }
 }

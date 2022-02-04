@@ -22,33 +22,20 @@
  */
 package com.oracle.truffle.espresso.runtime.jimage.decompressor;
 
-import java.io.DataInputStream;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.nio.ByteBuffer;
 
 /**
- * Index compressor. Use the minimal amount of bytes required to store an integer.
+ * Compressed indexes reader.
  */
-public class CompressIndexes {
+public class CompressedIndexes {
     private static final int COMPRESSED_FLAG = 1 << (Byte.SIZE - 1);
     private static final int HEADER_WIDTH = 3;
     private static final int HEADER_SHIFT = Byte.SIZE - HEADER_WIDTH;
+    private static final int HEADER_VALUE_MASK = (1 << HEADER_SHIFT) - 1;
 
-    public static List<Integer> decompressFlow(byte[] values) {
-        List<Integer> lst = new ArrayList<>();
-
-        for (int i = 0; i < values.length; i += getHeaderLength(values[i])) {
-            int decompressed = decompress(values, i);
-            lst.add(decompressed);
-        }
-
-        return lst;
-    }
-
-    public static int readInt(DataInputStream cr) throws IOException {
+    public static int readInt(ByteBuffer cr) {
         // Get header byte.
-        byte header = cr.readByte();
+        byte header = cr.get();
         // Determine size.
         int size = getHeaderLength(header);
         // Prepare result.
@@ -58,7 +45,7 @@ public class CompressIndexes {
         for (int i = 1; i < size; i++) {
             // Merge byte value.
             result <<= Byte.SIZE;
-            result |= cr.readByte() & 0xFF;
+            result |= cr.get() & 0xFF;
         }
 
         return result;
@@ -69,29 +56,10 @@ public class CompressIndexes {
     }
 
     private static int getHeaderLength(byte b) {
-        return isCompressed(b) ? (b >> HEADER_SHIFT) & 3 : Integer.BYTES;
+        return isCompressed(b) ? (b >> HEADER_SHIFT) & HEADER_WIDTH : Integer.BYTES;
     }
 
     private static int getHeaderValue(byte b) {
-        return isCompressed(b) ? b & (1 << HEADER_SHIFT) - 1 : b;
+        return isCompressed(b) ? b & HEADER_VALUE_MASK : b;
     }
-
-    public static int decompress(byte[] value, int offset) {
-        // Get header byte.
-        byte header = value[offset];
-        // Determine size.
-        int size = getHeaderLength(header);
-        // Prepare result.
-        int result = getHeaderValue(header);
-
-        // For each value byte
-        for (int i = 1; i < size; i++) {
-            // Merge byte value.
-            result <<= Byte.SIZE;
-            result |= value[offset + i] & 0xFF;
-        }
-
-        return result;
-    }
-
 }

@@ -22,12 +22,18 @@
  */
 package com.oracle.truffle.espresso.runtime.jimage.decompressor;
 
+import java.nio.ByteBuffer;
+
 /**
  * JLink Image Decompressor.
  */
 public interface ResourceDecompressor {
 
     interface StringsProvider {
+        /**
+         * Provides the raw modified-utf8 string at the given offset
+         */
+        ByteBuffer getRawString(int offset);
         String getString(int offset);
     }
 
@@ -43,9 +49,8 @@ public interface ResourceDecompressor {
      * 
      * @param strings The String provider
      * @param content The resource content
-     * @param offset Resource content offset
      * @param originalSize Uncompressed size
      * @return Uncompressed resource
      */
-    byte[] decompress(StringsProvider strings, byte[] content, int offset, long originalSize) throws Exception;
+    ByteBuffer decompress(StringsProvider strings, ByteBuffer content, long originalSize);
 }

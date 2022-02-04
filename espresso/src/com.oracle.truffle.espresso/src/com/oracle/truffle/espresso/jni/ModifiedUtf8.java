@@ -37,11 +37,14 @@ public final class ModifiedUtf8 {
     }
 
     public static int utfLength(String str) {
-        int strlen = str.length();
+        return utfLength(str, 0, str.length());
+    }
+
+    public static int utfLength(String str, int start, int len) {
         int utflen = 0;
 
         /* use charAt instead of copying String to char array */
-        for (int i = 0; i < strlen; i++) {
+        for (int i = start; i < len; i++) {
             int c = str.charAt(i);
             if ((c >= 0x0001) && (c <= 0x007F)) {
                 utflen++;
@@ -59,27 +62,13 @@ public final class ModifiedUtf8 {
     }
 
     public static byte[] asUtf(String str, int start, int len, boolean append0) {
-        int utflen = 0;
-        int c = 0;
-        int count = 0;
-
-        /* use charAt instead of copying String to char array */
-        for (int i = 0; i < len; i++) {
-            c = str.charAt(start + i);
-            if ((c >= 0x0001) && (c <= 0x007F)) {
-                utflen++;
-            } else if (c > 0x07FF) {
-                utflen += 3;
-            } else {
-                utflen += 2;
-            }
-        }
-
+        int utflen = utfLength(str, start, len);
         byte[] bytearr = new byte[utflen + (append0 ? 1 : 0)]; // 0 terminated, even if empty.
 
+        int count = 0;
         int i = 0;
         for (i = 0; i < len; i++) {
-            c = str.charAt(start + i);
+            int c = str.charAt(start + i);
             if (!((c >= 0x0001) && (c <= 0x007F))) {
                 break;
             }
@@ -87,7 +76,7 @@ public final class ModifiedUtf8 {
         }
 
         for (; i < len; i++) {
-            c = str.charAt(start + i);
+            int c = str.charAt(start + i);
             if ((c >= 0x0001) && (c <= 0x007F)) {
                 bytearr[count++] = (byte) c;
 

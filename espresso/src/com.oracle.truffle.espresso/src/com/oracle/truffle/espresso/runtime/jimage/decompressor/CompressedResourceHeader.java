@@ -23,7 +23,6 @@
 package com.oracle.truffle.espresso.runtime.jimage.decompressor;
 
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.util.Objects;
 
 /**
@@ -78,23 +77,20 @@ public final class CompressedResourceHeader {
         return SIZE;
     }
 
-    public static CompressedResourceHeader readFromResource(ByteOrder order, byte[] resource) {
-        Objects.requireNonNull(order);
+    public static CompressedResourceHeader readFromResource(ByteBuffer resource) {
         Objects.requireNonNull(resource);
-        if (resource.length < getSize()) {
+        if (resource.remaining() < getSize()) {
             return null;
         }
-        ByteBuffer buffer = ByteBuffer.wrap(resource, 0, SIZE);
-        buffer.order(order);
-        int magic = buffer.getInt();
+        int magic = resource.getInt();
         if (magic != MAGIC) {
             return null;
         }
-        long size = buffer.getLong();
-        long uncompressedSize = buffer.getLong();
-        int decompressorNameOffset = buffer.getInt();
-        int contentIndex = buffer.getInt();
-        byte isTerminal = buffer.get();
-        return new CompressedResourceHeader(size, uncompressedSize, decompressorNameOffset, contentIndex, isTerminal == 1);
+        long compressedSize = resource.getLong();
+        long uncompressedSize = resource.getLong();
+        int decompressorNameOffset = resource.getInt();
+        int contentIndex = resource.getInt();
+        byte isTerminal = resource.get();
+        return new CompressedResourceHeader(compressedSize, uncompressedSize, decompressorNameOffset, contentIndex, isTerminal == 1);
     }
 }

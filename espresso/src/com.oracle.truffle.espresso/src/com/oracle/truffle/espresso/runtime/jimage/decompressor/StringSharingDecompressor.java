@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.runtime.jimage.decompressor;
 
+import com.oracle.truffle.espresso.runtime.jimage.BasicImageReader;
+
 import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_Class;
 import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_Double;
 import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_Fieldref;
@@ -39,15 +41,7 @@ import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_Packag
 import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_String;
 import static com.oracle.truffle.espresso.classfile.ConstantPool.CONSTANT_Utf8;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.util.Arrays;
-import java.util.List;
 
 /**
  * A Decompressor that reconstructs the constant pool of classes.
@@ -58,151 +52,155 @@ public class StringSharingDecompressor implements ResourceDecompressor {
     public static final int EXTERNALIZED_STRING = 23;
     public static final int EXTERNALIZED_STRING_DESCRIPTOR = 25;
 
-    private static final int[] SIZES = new int[21];
-
-    static {
-        // SIZES[CONSTANT_Utf8] = XXX;
-        SIZES[CONSTANT_Integer] = 4;
-        SIZES[CONSTANT_Float] = 4;
-        SIZES[CONSTANT_Long] = 8;
-        SIZES[CONSTANT_Double] = 8;
-        SIZES[CONSTANT_Class] = 2;
-        SIZES[CONSTANT_String] = 2;
-        SIZES[CONSTANT_Fieldref] = 4;
-        SIZES[CONSTANT_Methodref] = 4;
-        SIZES[CONSTANT_InterfaceMethodref] = 4;
-        SIZES[CONSTANT_NameAndType] = 4;
-        SIZES[CONSTANT_MethodHandle] = 3;
-        SIZES[CONSTANT_MethodType] = 2;
-        SIZES[CONSTANT_InvokeDynamic] = 4;
-        SIZES[CONSTANT_Module] = 2;
-        SIZES[CONSTANT_Package] = 2;
+    private static void transfert(ByteBuffer from, ByteBuffer to, int len) {
+        // in 16, use java.nio.ByteBuffer#put(int, java.nio.ByteBuffer, int, int)
+        ByteBuffer dup = from.duplicate();
+        int newFromPosition = from.position() + len;
+        dup.limit(newFromPosition);
+        to.put(dup);
+        from.position(newFromPosition);
     }
 
-    @SuppressWarnings("fallthrough")
-    public static byte[] normalize(StringsProvider provider, byte[] transformed, int offset, int originalSize) throws IOException {
-        DataInputStream stream = new DataInputStream(new ByteArrayInputStream(transformed, offset, transformed.length - offset));
-        ByteArrayOutputStream outStream = new ByteArrayOutputStream(originalSize);
-        DataOutputStream out = new DataOutputStream(outStream);
-        byte[] header = new byte[8]; // magic/4, minor/2, major/2
-        stream.readFully(header);
-        out.write(header);
-        int count = stream.readUnsignedShort();
-        out.writeShort(count);
+    private static void transfert(ByteBuffer from, int fromPosition, ByteBuffer to, int len) {
+        // in 16, use java.nio.ByteBuffer#put(int, java.nio.ByteBuffer, int, int)
+        ByteBuffer dup = from.duplicate();
+        dup.position(fromPosition);
+        dup.limit(dup.position() + len);
+        to.put(dup);
+    }
+
+    public static ByteBuffer normalize(StringsProvider provider, ByteBuffer input, int originalSize) {
+        ByteBuffer output = ByteBuffer.allocate(originalSize);
+        output.putLong(input.getLong());  // magic/4, minor/2, major/2
+        char count = input.getChar();
+        output.putChar(count);
         for (int i = 1; i < count; i++) {
-            int tag = stream.readUnsignedByte();
-            byte[] arr;
+            byte tag = input.get();
             switch (tag) {
                 case CONSTANT_Utf8: {
-                    out.write(tag);
-                    String utf = stream.readUTF();
-                    out.writeUTF(utf);
+                    output.put(tag);
+                    char len = input.getChar();
+                    output.putChar(len);
+                    transfert(input, output, len);
                     break;
                 }
-
                 case EXTERNALIZED_STRING: {
-                    int index = CompressIndexes.readInt(stream);
-                    String orig = provider.getString(index);
-                    out.write(CONSTANT_Utf8);
-                    out.writeUTF(orig);
+                    int index = CompressedIndexes.readInt(input);
+                    ByteBuffer orig = provider.getRawString(index);
+                    output.put(CONSTANT_Utf8);
+                    output.put(orig);
                     break;
                 }
-
                 case EXTERNALIZED_STRING_DESCRIPTOR: {
-                    String orig = reconstruct(provider, stream);
-                    out.write(CONSTANT_Utf8);
-                    out.writeUTF(orig);
+                    ByteBuffer orig = reconstruct(provider, input);
+                    output.put(CONSTANT_Utf8);
+                    output.put(orig);
                     break;
                 }
                 case CONSTANT_Long:
                 case CONSTANT_Double: {
                     i++;
+                    output.put(tag);
+
+                    break;
+                }
+                case CONSTANT_Integer:
+                case CONSTANT_Float:
+                case CONSTANT_Fieldref:
+                case CONSTANT_Methodref:
+                case CONSTANT_InterfaceMethodref:
+                case CONSTANT_NameAndType:
+                case CONSTANT_InvokeDynamic: {
+                    output.put(tag);
+                    output.putInt(input.getInt());
+                    break;
+                }
+                case CONSTANT_MethodHandle: {
+                    output.put(tag);
+                    output.put(input.get());
+                    output.put(input.get());
+                    output.put(input.get());
+                    break;
+                }
+                case CONSTANT_Class:
+                case CONSTANT_String:
+                case CONSTANT_MethodType:
+                case CONSTANT_Module:
+                case CONSTANT_Package: {
+                    output.put(tag);
+                    output.putShort(input.getShort());
+                    break;
                 }
                 default: {
-                    out.write(tag);
-                    int size = SIZES[tag];
-                    arr = new byte[size];
-                    stream.readFully(arr);
-                    out.write(arr);
+                    throw new RuntimeException("Unexpected tag: " + (tag & 0xff));
                 }
             }
         }
-        out.write(transformed, transformed.length - stream.available(),
-                        stream.available());
-        out.flush();
-
-        return outStream.toByteArray();
+        if (output.hasRemaining()) {
+            BasicImageReader.LOGGER.warning("StringSharingDecompressor output was smaller than expected: " + output.remaining() + "bytes of output remaining");
+        }
+        return output.flip();
     }
 
-    private static String reconstruct(StringsProvider reader, DataInputStream cr) throws IOException {
-        int descIndex = CompressIndexes.readInt(cr);
-        String desc = reader.getString(descIndex);
-        byte[] encodedDesc = getEncoded(desc);
-        int indexes_length = CompressIndexes.readInt(cr);
-        byte[] bytes = new byte[indexes_length];
-        cr.readFully(bytes);
-        List<Integer> indices = CompressIndexes.decompressFlow(bytes);
-        ByteBuffer buffer = ByteBuffer.allocate(encodedDesc.length * 2);
-        buffer.order(ByteOrder.BIG_ENDIAN);
-        int argIndex = 0;
-        for (byte c : encodedDesc) {
+    private static ByteBuffer reconstruct(StringsProvider reader, ByteBuffer cr) {
+        ByteBuffer desc = reader.getRawString(CompressedIndexes.readInt(cr));
+        int availableIndices = CompressedIndexes.readInt(cr);
+        ByteBuffer buffer = ByteBuffer.allocate(desc.remaining() * 2);
+        int runStart = 0; // consecutive run of non-L descriptor chars
+        for (int i = desc.position(); i < desc.limit(); i++) {
+            byte c = desc.get(i);
             if (c == 'L') {
-                buffer = safeAdd(buffer, c);
-                int index = indices.get(argIndex);
-                argIndex += 1;
-                String pkg = reader.getString(index);
-                if (!pkg.isEmpty()) {
-                    pkg = pkg + "/";
-                    byte[] encoded = getEncoded(pkg);
-                    buffer = safeAdd(buffer, encoded);
+                // copy previous run
+                int runLength = i - runStart;
+                if (runLength > 0) {
+                    buffer = ensureRemaining(buffer, runLength);
+                    transfert(desc, runStart, buffer, runLength);
+                    runStart = i + 1;
                 }
-                int classIndex = indices.get(argIndex);
-                argIndex += 1;
-                String clazz = reader.getString(classIndex);
-                byte[] encoded = getEncoded(clazz);
-                buffer = safeAdd(buffer, encoded);
-            } else {
-                buffer = safeAdd(buffer, c);
+                // unpack type
+                if (availableIndices < 2) {
+                    throw new RuntimeException("Missing indices");
+                }
+                availableIndices -= 2;
+                ByteBuffer pkg = reader.getRawString(CompressedIndexes.readInt(cr));
+                ByteBuffer clazz = reader.getRawString(CompressedIndexes.readInt(cr));
+                // 'L' (pkg '/')? clazz
+                int typeLength = 1 + clazz.remaining();
+                if (pkg.hasRemaining()) {
+                    typeLength += 1 + pkg.remaining();
+                }
+                buffer = ensureRemaining(buffer, typeLength);
+                buffer.put((byte) 'L');
+                if (pkg.hasRemaining()) {
+                    buffer.put(pkg);
+                    buffer.put((byte) '/');
+                }
+                buffer.put(clazz);
             }
         }
-
-        byte[] encoded = buffer.array();
-        ByteBuffer result = ByteBuffer.allocate(encoded.length + 2);
-        result.order(ByteOrder.BIG_ENDIAN);
-        result.putShort((short) buffer.position());
-        result.put(encoded, 0, buffer.position());
-        ByteArrayInputStream stream = new ByteArrayInputStream(result.array());
-        DataInputStream inStream = new DataInputStream(stream);
-        return inStream.readUTF();
-    }
-
-    public static byte[] getEncoded(String pre) throws IOException {
-        ByteArrayOutputStream resultStream = new ByteArrayOutputStream();
-        DataOutputStream resultOut = new DataOutputStream(resultStream);
-        resultOut.writeUTF(pre);
-        byte[] content = resultStream.toByteArray();
-        // first 2 items are length;
-        if (content.length <= 2) {
-            return new byte[0];
+        if (runStart < desc.limit()) {
+            // copy last run
+            int runLength = desc.limit() - runStart;
+            buffer = ensureRemaining(buffer, runLength);
+            transfert(desc, runStart, buffer, runLength);
         }
-        return Arrays.copyOfRange(content, 2, content.length);
-    }
-
-    private static ByteBuffer safeAdd(ByteBuffer current, byte b) {
-        byte[] bytes = {b};
-        return safeAdd(current, bytes);
-    }
-
-    private static ByteBuffer safeAdd(ByteBuffer start, byte[] bytes) {
-        ByteBuffer current = start;
-        if (current.remaining() < bytes.length) {
-            ByteBuffer newBuffer = ByteBuffer.allocate((current.capacity() + bytes.length) * 2);
-            newBuffer.order(ByteOrder.BIG_ENDIAN);
-            newBuffer.put(current.array(), 0, current.position());
-            current = newBuffer;
+        if (availableIndices > 0) {
+            BasicImageReader.LOGGER.warning("StringSharingDecompressor: " + availableIndices + " indices remain unused after reconstructing descriptor");
+            do {
+                CompressedIndexes.readInt(cr);
+            } while (--availableIndices > 0);
         }
-        current.put(bytes);
-        return current;
+        return buffer;
+    }
+
+    private static ByteBuffer ensureRemaining(ByteBuffer bb, int length) {
+        if (bb.remaining() < length) {
+            bb.flip();
+            ByteBuffer newBuffer = ByteBuffer.allocate((bb.capacity() + length) * 2);
+            newBuffer.put(bb);
+            return newBuffer;
+        }
+        return bb;
     }
 
     @Override
@@ -215,7 +213,7 @@ public class StringSharingDecompressor implements ResourceDecompressor {
     }
 
     @Override
-    public byte[] decompress(StringsProvider reader, byte[] content, int offset, long originalSize) throws Exception {
-        return normalize(reader, content, offset, Math.toIntExact(originalSize));
+    public ByteBuffer decompress(StringsProvider reader, ByteBuffer content, long originalSize) {
+        return normalize(reader, content, Math.toIntExact(originalSize));
     }
 }
