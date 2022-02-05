@@ -1171,7 +1171,8 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public boolean hasDefaultProcessHandler(Object polyglotLanguageContext) {
-            return ProcessHandlers.isDefault(((PolyglotLanguageContext) polyglotLanguageContext).context.config.processHandler);
+            PolyglotLanguageContext context = (PolyglotLanguageContext) polyglotLanguageContext;
+            return context.getImpl().getRootImpl().isDefaultProcessHandler(context.context.config.processHandler);
         }
 
         @Override
@@ -1618,6 +1619,11 @@ final class EngineAccessor extends Accessor {
         @Override
         public Object installGuestToHostCodeCache(Object polyglotContextImpl, Object cache) {
             return ((PolyglotContextImpl) polyglotContextImpl).getHostContext().getLanguageInstance().installGuestToHostCodeCache(cache);
+        }
+
+        @Override
+        public AutoCloseable createPolyglotThreadScope() {
+            return PolyglotImpl.getInstance().getRootImpl().createThreadScope();
         }
     }
 
