@@ -88,12 +88,6 @@ public class ProgressReporter {
     private static final double EXCESSIVE_GC_RATIO = 0.5;
     private static final String BREAKDOWN_BYTE_ARRAY_PREFIX = "byte[] for ";
 
-    private static final double MILLIS_TO_SECONDS = 1000d;
-    private static final double NANOS_TO_SECONDS = 1000d * 1000d * 1000d;
-    private static final double BYTES_TO_KiB = 1024d;
-    private static final double BYTES_TO_MiB = 1024d * 1024d;
-    private static final double BYTES_TO_GiB = 1024d * 1024d * 1024d;
-
     private final NativeImageSystemIOWrappers builderIO;
 
     private final boolean isEnabled;
@@ -106,7 +100,7 @@ public class ProgressReporter {
 
     private int numStageChars = 0;
     private long lastGCCheckTimeMillis = System.currentTimeMillis();
-    private GCStats lastGCStats = getCurrentGCStats();
+    private GCStats lastGCStats = GCStats.getCurrent();
     private long numRuntimeCompiledMethods = -1;
     private long graphEncodingByteLength = 0;
     private int numJNIClasses = -1;
@@ -388,23 +382,23 @@ public class ProgressReporter {
         printStageEnd(creationTimer.getTotalTime() + writeTimer.getTotalTime());
         creationStageEndCompleted = true;
         String format = "%9s (%5.2f%%) for ";
-        l().a(format, bytesToHuman(codeCacheSize), codeCacheSize / (double) imageSize * 100)
+        l().a(format, Utils.bytesToHuman(codeCacheSize), codeCacheSize / (double) imageSize * 100)
                         .doclink("code area", "#glossary-code-area").a(":%,9d compilation units", numCompilations).flushln();
         long numInstantiatedClasses = universe.getTypes().stream().filter(t -> t.isInstantiated()).count();
-        l().a(format, bytesToHuman(imageHeapSize), imageHeapSize / (double) imageSize * 100)
+        l().a(format, Utils.bytesToHuman(imageHeapSize), imageHeapSize / (double) imageSize * 100)
                         .doclink("image heap", "#glossary-image-heap").a(":%,8d classes and %,d objects", numInstantiatedClasses, numHeapObjects).flushln();
         if (debugInfoSize > 0) {
-            LinePrinter l = l().a(format, bytesToHuman(debugInfoSize), debugInfoSize / (double) imageSize * 100)
+            LinePrinter l = l().a(format, Utils.bytesToHuman(debugInfoSize), debugInfoSize / (double) imageSize * 100)
                             .doclink("debug info", "#glossary-debug-info");
             if (debugInfoTimer != null) {
-                l.a(" generated in %.1fs", millisToSeconds(debugInfoTimer.getTotalTime()));
+                l.a(" generated in %.1fs", Utils.millisToSeconds(debugInfoTimer.getTotalTime()));
             }
             l.flushln();
         }
         long otherBytes = imageSize - codeCacheSize - imageHeapSize - debugInfoSize;
-        l().a(format, bytesToHuman(otherBytes), otherBytes / (double) imageSize * 100)
+        l().a(format, Utils.bytesToHuman(otherBytes), otherBytes / (double) imageSize * 100)
                         .doclink("other data", "#glossary-other-data").flushln();
-        l().a("%9s in total", bytesToHuman(imageSize)).flushln();
+        l().a("%9s in total", Utils.bytesToHuman(imageSize)).flushln();
     }
 
     public void ensureCreationStageEndCompleted() {
@@ -439,7 +433,7 @@ public class ProgressReporter {
             if (packagesBySize.hasNext()) {
                 Entry<String, Long> e = packagesBySize.next();
                 String className = truncateClassOrPackageName(e.getKey());
-                codeSizePart = String.format("%9s %s", bytesToHuman(e.getValue()), className);
+                codeSizePart = String.format("%9s %s", Utils.bytesToHuman(e.getValue()), className);
                 printedCodeSizeEntries.add(e);
             }
 
@@ -451,7 +445,7 @@ public class ProgressReporter {
                 if (!className.startsWith(BREAKDOWN_BYTE_ARRAY_PREFIX)) {
                     className = truncateClassOrPackageName(className);
                 }
-                heapSizePart = String.format("%9s %s", bytesToHuman(e.getValue()), className);
+                heapSizePart = String.format("%9s %s", Utils.bytesToHuman(e.getValue()), className);
                 printedHeapSizeEntries.add(e);
             }
             if (codeSizePart.isEmpty() && heapSizePart.isEmpty()) {
@@ -546,7 +540,7 @@ public class ProgressReporter {
 
         l().printHeadlineSeparator();
 
-        double totalSeconds = millisToSeconds(totalTimer.getTotalTime());
+        double totalSeconds = Utils.millisToSeconds(totalTimer.getTotalTime());
         String timeStats;
         if (totalSeconds < 60) {
             timeStats = String.format("%.1fs", totalSeconds);
@@ -588,19 +582,19 @@ public class ProgressReporter {
     }
 
     private void printResourceStatistics() {
-        double totalProcessTimeSeconds = millisToSeconds(System.currentTimeMillis() - ManagementFactory.getRuntimeMXBean().getStartTime());
-        GCStats gcStats = getCurrentGCStats();
-        double gcSeconds = millisToSeconds(gcStats.totalTimeMillis);
+        double totalProcessTimeSeconds = Utils.millisToSeconds(System.currentTimeMillis() - ManagementFactory.getRuntimeMXBean().getStartTime());
+        GCStats gcStats = GCStats.getCurrent();
+        double gcSeconds = Utils.millisToSeconds(gcStats.totalTimeMillis);
         LinePrinter l = l().a("%.1fs (%.1f%% of total time) in %d ", gcSeconds, gcSeconds / totalProcessTimeSeconds * 100, gcStats.totalCount)
                         .doclink("GCs", "#glossary-garbage-collections");
         long peakRSS = ProgressReporterCHelper.getPeakRSS();
         if (peakRSS >= 0) {
-            l.a(" | ").doclink("Peak RSS", "#glossary-peak-rss").a(": ").a("%.2fGB", bytesToGiB(peakRSS));
+            l.a(" | ").doclink("Peak RSS", "#glossary-peak-rss").a(": ").a("%.2fGB", Utils.bytesToGiB(peakRSS));
         }
         OperatingSystemMXBean osMXBean = ManagementFactory.getOperatingSystemMXBean();
         long processCPUTime = ((com.sun.management.OperatingSystemMXBean) osMXBean).getProcessCpuTime();
         if (processCPUTime > 0) {
-            l.a(" | ").doclink("CPU load", "#glossary-cpu-load").a(": ").a("%.2f", nanosToSeconds(processCPUTime) / totalProcessTimeSeconds);
+            l.a(" | ").doclink("CPU load", "#glossary-cpu-load").a(": ").a("%.2f", Utils.nanosToSeconds(processCPUTime) / totalProcessTimeSeconds);
         }
         l.flushCenteredln();
     }
@@ -661,7 +655,7 @@ public class ProgressReporter {
 
     private void printStageEnd(double totalTime) {
         assert numStageChars >= 0;
-        String suffix = String.format("(%.1fs @ %.2fGB)", millisToSeconds(totalTime), getUsedMemory());
+        String suffix = String.format("(%.1fs @ %.2fGB)", Utils.millisToSeconds(totalTime), getUsedMemory());
         String padding = stringFilledWith(Math.max(0, CHARACTERS_PER_LINE - numStageChars - suffix.length()), " ");
         linePrinter.a(padding).dim().a(suffix).reset().flushln(false);
         numStageChars = 0;
@@ -676,15 +670,15 @@ public class ProgressReporter {
         long current = System.currentTimeMillis();
         long timeDeltaMillis = current - lastGCCheckTimeMillis;
         lastGCCheckTimeMillis = current;
-        GCStats currentGCStats = getCurrentGCStats();
+        GCStats currentGCStats = GCStats.getCurrent();
         long gcTimeDeltaMillis = currentGCStats.totalTimeMillis - lastGCStats.totalTimeMillis;
         double ratio = gcTimeDeltaMillis / (double) timeDeltaMillis;
         if (gcTimeDeltaMillis > EXCESSIVE_GC_MIN_THRESHOLD_MILLIS && ratio > EXCESSIVE_GC_RATIO) {
             l().redBold().a("GC warning").reset()
                             .a(": %.1fs spent in %d GCs during the last stage, taking up %.2f%% of the time.",
-                                            millisToSeconds(gcTimeDeltaMillis), currentGCStats.totalCount - lastGCStats.totalCount, ratio * 100)
+                                            Utils.millisToSeconds(gcTimeDeltaMillis), currentGCStats.totalCount - lastGCStats.totalCount, ratio * 100)
                             .flushln();
-            l().a("            Please ensure more than %.2fGB of memory is available for Native Image", bytesToGiB(ProgressReporterCHelper.getPeakRSS())).flushln();
+            l().a("            Please ensure more than %.2fGB of memory is available for Native Image", Utils.bytesToGiB(ProgressReporterCHelper.getPeakRSS())).flushln();
             l().a("            to reduce GC overhead and improve image build time.").flushln();
         }
         lastGCStats = currentGCStats;
@@ -736,64 +730,72 @@ public class ProgressReporter {
     }
 
     private static double getUsedMemory() {
-        return bytesToGiB(Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory());
+        return Utils.bytesToGiB(Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory());
     }
 
-    private static String bytesToHuman(long bytes) {
-        return bytesToHuman("%4.2f", bytes);
-    }
+    static class Utils {
+        private static final double MILLIS_TO_SECONDS = 1000d;
+        private static final double NANOS_TO_SECONDS = 1000d * 1000d * 1000d;
+        private static final double BYTES_TO_KiB = 1024d;
+        private static final double BYTES_TO_MiB = 1024d * 1024d;
+        private static final double BYTES_TO_GiB = 1024d * 1024d * 1024d;
 
-    private static String bytesToHuman(String format, long bytes) {
-        if (bytes < BYTES_TO_KiB) {
-            return String.format(format, (double) bytes) + "B";
-        } else if (bytes < BYTES_TO_MiB) {
-            return String.format(format, bytesToKiB(bytes)) + "KB";
-        } else if (bytes < BYTES_TO_GiB) {
-            return String.format(format, bytesToMiB(bytes)) + "MB";
-        } else {
-            return String.format(format, bytesToGiB(bytes)) + "GB";
+        private static String bytesToHuman(long bytes) {
+            return bytesToHuman("%4.2f", bytes);
         }
-    }
 
-    private static double bytesToKiB(long bytes) {
-        return bytes / BYTES_TO_KiB;
-    }
-
-    private static double bytesToGiB(long bytes) {
-        return bytes / BYTES_TO_GiB;
-    }
-
-    private static double bytesToMiB(long bytes) {
-        return bytes / BYTES_TO_MiB;
-    }
-
-    private static double millisToSeconds(double millis) {
-        return millis / MILLIS_TO_SECONDS;
-    }
-
-    private static double nanosToSeconds(double nanos) {
-        return nanos / NANOS_TO_SECONDS;
-    }
-
-    private static GCStats getCurrentGCStats() {
-        long totalCount = 0;
-        long totalTime = 0;
-        for (GarbageCollectorMXBean bean : ManagementFactory.getGarbageCollectorMXBeans()) {
-            long collectionCount = bean.getCollectionCount();
-            if (collectionCount > 0) {
-                totalCount += collectionCount;
-            }
-            long collectionTime = bean.getCollectionTime();
-            if (collectionTime > 0) {
-                totalTime += collectionTime;
+        private static String bytesToHuman(String format, long bytes) {
+            if (bytes < BYTES_TO_KiB) {
+                return String.format(format, (double) bytes) + "B";
+            } else if (bytes < BYTES_TO_MiB) {
+                return String.format(format, bytesToKiB(bytes)) + "KB";
+            } else if (bytes < BYTES_TO_GiB) {
+                return String.format(format, bytesToMiB(bytes)) + "MB";
+            } else {
+                return String.format(format, bytesToGiB(bytes)) + "GB";
             }
         }
-        return new GCStats(totalCount, totalTime);
+
+        private static double bytesToKiB(long bytes) {
+            return bytes / BYTES_TO_KiB;
+        }
+
+        private static double bytesToGiB(long bytes) {
+            return bytes / BYTES_TO_GiB;
+        }
+
+        private static double bytesToMiB(long bytes) {
+            return bytes / BYTES_TO_MiB;
+        }
+
+        private static double millisToSeconds(double millis) {
+            return millis / MILLIS_TO_SECONDS;
+        }
+
+        private static double nanosToSeconds(double nanos) {
+            return nanos / NANOS_TO_SECONDS;
+        }
     }
 
     private static class GCStats {
         private final long totalCount;
         private final long totalTimeMillis;
+
+        private static GCStats getCurrent() {
+            long totalCount = 0;
+            long totalTime = 0;
+            for (GarbageCollectorMXBean bean : ManagementFactory.getGarbageCollectorMXBeans()) {
+                long collectionCount = bean.getCollectionCount();
+                if (collectionCount > 0) {
+                    totalCount += collectionCount;
+                }
+                long collectionTime = bean.getCollectionTime();
+                if (collectionTime > 0) {
+                    totalTime += collectionTime;
+                }
+            }
+            return new GCStats(totalCount, totalTime);
+        }
 
         GCStats(long totalCount, long totalTime) {
             this.totalCount = totalCount;
