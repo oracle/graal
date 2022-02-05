@@ -64,12 +64,14 @@ _RENAISSANCE_EXTRA_IMAGE_BUILD_ARGS = {
     'als'               : [
                            '--allow-incomplete-classpath',
                            '--report-unsupported-elements-at-runtime',
-                           '--initialize-at-build-time=org.slf4j,org.apache.log4j', # mis-initialized from netty
-                           '--initialize-at-run-time=io.netty.channel.unix.IovArray,io.netty.channel.epoll.EpollEventLoop,io.netty.channel.unix.Errors,io.netty.channel.unix.Socket,io.netty.channel.unix.Limits'
+                           '--initialize-at-build-time=org.slf4j,org.apache.log4j',  # mis-initialized from netty
+                           '--initialize-at-run-time=io.netty.channel.unix,io.netty.channel.epoll,io.netty.handler.codec.http2,io.netty.handler.ssl,io.netty.internal.tcnative,io.netty.util.internal.logging.Log4JLogger'
                           ],
     'chi-square'        : [
                            '--allow-incomplete-classpath',
                            '--report-unsupported-elements-at-runtime',
+                           '--initialize-at-build-time=org.slf4j,org.apache.log4j',
+                           '--initialize-at-run-time=io.netty.channel.unix,io.netty.channel.epoll,io.netty.handler.codec.http2,io.netty.handler.ssl,io.netty.internal.tcnative,io.netty.util.internal.logging.Log4JLogger'
                           ],
     'finagle-chirper'   : [
                             '--allow-incomplete-classpath',
@@ -84,6 +86,8 @@ _RENAISSANCE_EXTRA_IMAGE_BUILD_ARGS = {
     'log-regression'    : [
                            '--allow-incomplete-classpath',
                            '--report-unsupported-elements-at-runtime',
+                           '--initialize-at-build-time=org.slf4j,org.apache.log4j',
+                           '--initialize-at-run-time=io.netty.channel.unix,io.netty.channel.epoll,io.netty.handler.codec.http2,io.netty.handler.ssl,io.netty.internal.tcnative,io.netty.util.internal.logging.Log4JLogger'
                           ],
     'movie-lens'        : [
                            '--allow-incomplete-classpath',
@@ -92,15 +96,27 @@ _RENAISSANCE_EXTRA_IMAGE_BUILD_ARGS = {
     'dec-tree'          : [
                            '--allow-incomplete-classpath',
                            '--report-unsupported-elements-at-runtime',
+                           '--initialize-at-build-time=org.slf4j,org.apache.log4j',
+                           '--initialize-at-run-time=io.netty.channel.unix,io.netty.channel.epoll,io.netty.handler.codec.http2,io.netty.handler.ssl,io.netty.internal.tcnative,io.netty.util.internal.logging.Log4JLogger'
                           ],
     'page-rank'         : [
                            '--allow-incomplete-classpath',
-                           '--report-unsupported-elements-at-runtime'
+                           '--report-unsupported-elements-at-runtime',
+                           '--initialize-at-build-time=org.slf4j,org.apache.log4j',
+                           '--initialize-at-run-time=io.netty.channel.unix,io.netty.channel.epoll,io.netty.handler.codec.http2,io.netty.handler.ssl,io.netty.internal.tcnative,io.netty.util.internal.logging.Log4JLogger'
                           ],
     'naive-bayes'       : [
                             '--allow-incomplete-classpath',
-                            '--report-unsupported-elements-at-runtime'
+                            '--report-unsupported-elements-at-runtime',
+                            '--initialize-at-build-time=org.slf4j,org.apache.log4j',
+                            '--initialize-at-run-time=io.netty.channel.unix,io.netty.channel.epoll,io.netty.handler.codec.http2,io.netty.handler.ssl,io.netty.internal.tcnative,io.netty.util.internal.logging.Log4JLogger'
                           ],
+    'gauss-mix'       :   [
+                            '--allow-incomplete-classpath',
+                            '--report-unsupported-elements-at-runtime',
+                            '--initialize-at-build-time=org.slf4j,org.apache.log4j',
+                            '--initialize-at-run-time=io.netty.channel.unix,io.netty.channel.epoll,io.netty.handler.codec.http2,io.netty.handler.ssl,io.netty.internal.tcnative,io.netty.util.internal.logging.Log4JLogger'
+    ],
     'dotty'             : [
                             '-H:+AllowJRTFileSystem'
                           ]
