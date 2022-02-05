@@ -181,7 +181,6 @@ final class NumberConversion {
             if (firstChar == '-') {
                 negative = true;
                 limit = min;
-                i++;
             } else if (firstChar != '+') {
                 errorProfile.enter();
                 throw numberFormatException();
@@ -190,6 +189,7 @@ final class NumberConversion {
                 errorProfile.enter();
                 throw numberFormatException();
             }
+            i++;
         }
         long multmin = limit / radix;
         while (i < a.length()) {
