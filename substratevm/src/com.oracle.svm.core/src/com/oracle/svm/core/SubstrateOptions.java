@@ -54,6 +54,7 @@ import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.APIOptionGroup;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.ImmutableRuntimeOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.RuntimeOptionKey;
@@ -175,9 +176,13 @@ public class SubstrateOptions {
         return parseOptimizationLevel(Optimize.getValue());
     }
 
+    public static boolean useEconomyCompilerConfig(OptionValues options) {
+        return "b".equals(Optimize.getValue(options));
+    }
+
     @Fold
     public static boolean useEconomyCompilerConfig() {
-        return Optimize.getValue().equals("b");
+        return useEconomyCompilerConfig(HostedOptionValues.singleton());
     }
 
     public interface ValueUpdateHandler {

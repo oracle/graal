@@ -184,11 +184,8 @@ public class ProgressReporter {
             showLinks = SubstrateOptions.BuildOutputLinks.getValue(options);
         }
         linkStrategy = showLinks ? new LinkyStrategy() : new LinklessStrategy();
-        /*
-         * Cannot use SubstrateOptions.useEconomyCompilerConfig() as image singletons haven't been
-         * initialized yet.
-         */
-        if ("b".equals(SubstrateOptions.Optimize.getValue(options))) {
+
+        if (SubstrateOptions.useEconomyCompilerConfig(options)) {
             l().redBold().a("You enabled -Ob for this image build. This will disable some optimizations to reduce build time.").println();
             l().redBold().a("This feature should only be used during development and never for deployment.").reset().println();
         }
