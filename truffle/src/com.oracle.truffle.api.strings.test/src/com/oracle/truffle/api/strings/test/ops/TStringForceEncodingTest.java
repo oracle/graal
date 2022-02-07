@@ -78,9 +78,6 @@ public class TStringForceEncodingTest extends TStringTestBase {
                 } else {
                     TruffleString b = node.execute(a, encoding, targetEncoding);
                     MutableTruffleString bMutable = nodeMutable.execute(a, encoding, targetEncoding);
-                    if (a instanceof TruffleString && encoding == targetEncoding) {
-                        Assert.assertSame(a, b);
-                    }
                     if (a instanceof MutableTruffleString && encoding == targetEncoding) {
                         Assert.assertSame(a, bMutable);
                     }

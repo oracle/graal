@@ -26,7 +26,7 @@ package com.oracle.svm.core.jfr.events;
 
 import java.util.concurrent.TimeUnit;
 
-import com.oracle.svm.core.jfr.JfrEvent;
+import com.oracle.svm.core.jfr.JfrEvents;
 import com.oracle.svm.core.jfr.JfrNativeEventWriter;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
@@ -40,8 +40,14 @@ import org.graalvm.nativeimage.Threading;
 import org.graalvm.nativeimage.impl.ThreadingSupport;
 
 import com.oracle.svm.core.annotate.Uninterruptible;
-import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.jfr.JfrEvents;
+import com.oracle.svm.core.jfr.JfrNativeEventWriter;
+import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
+import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
+import com.oracle.svm.core.jfr.JfrThreadState;
 import com.oracle.svm.core.jfr.JfrTicks;
+import com.oracle.svm.core.jfr.SubstrateJVM;
+import com.oracle.svm.core.thread.PlatformThreads;
 
 public final class ExecutionSampleEvent {
 
@@ -81,7 +87,7 @@ public final class ExecutionSampleEvent {
         @Override
         public void run(Threading.RecurringCallbackAccess access) {
             IsolateThread isolateThread = CurrentIsolate.getCurrentThread();
-            Thread javaThread = JavaThreads.fromVMThread(isolateThread);
+            Thread javaThread = PlatformThreads.fromVMThread(isolateThread);
             ExecutionSampleEvent.writeExecutionSample(isolateThread, javaThread.getState());
         }
     }

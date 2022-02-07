@@ -484,6 +484,11 @@ def graalvm_components(opt_limit_to_suite=False):
         return list(_graalvm_components.values())
 
 
+def graalvm_home(fatalIfMissing=False):
+    import mx_sdk_vm_impl
+    return mx_sdk_vm_impl.graalvm_home(fatalIfMissing=fatalIfMissing)
+
+
 def add_graalvm_hostvm_config(name, java_args=None, launcher_args=None, priority=0):
     """
     :type name: str

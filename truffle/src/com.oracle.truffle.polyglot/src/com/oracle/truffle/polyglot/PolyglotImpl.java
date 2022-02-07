@@ -76,6 +76,7 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
+import org.graalvm.polyglot.io.ProcessHandler;
 import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -454,6 +455,21 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     @Override
     public FileSystem newDefaultFileSystem() {
         return FileSystems.newDefaultFileSystem();
+    }
+
+    @Override
+    public ProcessHandler newDefaultProcessHandler() {
+        return ProcessHandlers.newDefaultProcessHandler();
+    }
+
+    @Override
+    public boolean isDefaultProcessHandler(ProcessHandler processHandler) {
+        return ProcessHandlers.isDefault(processHandler);
+    }
+
+    @Override
+    public ThreadScope createThreadScope() {
+        return null;
     }
 
     @Override

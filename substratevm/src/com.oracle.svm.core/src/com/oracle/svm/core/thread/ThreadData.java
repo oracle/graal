@@ -204,7 +204,7 @@ public final class ThreadData extends UnacquiredThreadData {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private boolean isForCurrentThread() {
-        return this == JavaThreads.getCurrentThreadData();
+        return this == PlatformThreads.getCurrentThreadData();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

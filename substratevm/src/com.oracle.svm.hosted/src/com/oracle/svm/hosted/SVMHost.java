@@ -83,6 +83,7 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
 import com.oracle.graal.pointsto.util.GraalAccess;
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
@@ -271,6 +272,9 @@ public class SVMHost implements HostVM {
     public void initializeType(AnalysisType analysisType) {
         if (!analysisType.isReachable()) {
             throw VMError.shouldNotReachHere("Registering and initializing a type that was not yet marked as reachable: " + analysisType);
+        }
+        if (BuildPhaseProvider.isAnalysisFinished()) {
+            throw VMError.shouldNotReachHere("Initializing type after analysis: " + analysisType);
         }
 
         /* Decide when the type should be initialized. */

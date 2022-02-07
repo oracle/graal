@@ -27,11 +27,11 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
-#!/bin/sh
+#!/bin/bash
 
 . ./gep-vector-header.sh
 
-for VECLEN in {1..16}
+for VECLEN in $(seq 1 16)
 do
 	for VECTYPE in i1 i8 i16 i32 i64 float double
 	do
@@ -42,7 +42,7 @@ done
 
 echo "define void @run(i8*,i8*,i8*) {"
 
-for VECLEN in {1..16}
+for VECLEN in $(seq 1 16)
 do
 	for VECTYPE in i1 i8 i16 i32 i64 float double
 	do

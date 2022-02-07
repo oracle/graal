@@ -131,7 +131,7 @@ public class ArrayRegionCompareToNode extends FixedWithNextNode implements Canon
                     JavaKind strideA,
                     JavaKind strideB,
                     LocationIdentity locationIdentity) {
-        super(c, StampFactory.forKind(JavaKind.Boolean));
+        super(c, StampFactory.forKind(JavaKind.Int));
         this.strideA = strideA;
         this.strideB = strideB;
         this.locationIdentity = locationIdentity;

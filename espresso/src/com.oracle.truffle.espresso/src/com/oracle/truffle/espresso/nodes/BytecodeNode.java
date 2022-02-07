@@ -750,6 +750,13 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
 
     // endregion OSR support
 
+    /**
+     * Smaller than int[1], does not kill int[] on write and doesn't need bounds checks.
+     */
+    private static final class Counter {
+        int value;
+    }
+
     @Override
     Object executeBody(VirtualFrame frame) {
         int startTop = EspressoFrame.VALUES_START + getMethodVersion().getMaxLocals();
@@ -771,7 +778,8 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         if (!frame.isInt(EspressoFrame.BCI_SLOT)) {
             initializeBody(frame);
         }
-        final int[] loopCount = new int[1];
+
+        final Counter loopCount = new Counter();
 
         setBCI(frame, curBCI);
 
@@ -1255,8 +1263,8 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     case DRETURN: // fall through
                     case ARETURN: // fall through
                     case RETURN : {
-                        if (loopCount[0] > 0) {
-                            LoopNode.reportLoopCount(this, loopCount[0]);
+                        if (CompilerDirectives.hasNextTier() && loopCount.value > 0) {
+                            LoopNode.reportLoopCount(this, loopCount.value);
                         }
                         Object returnValue = getReturnValueAsObject(frame, top);
                         if (instrument != null) {
@@ -1425,8 +1433,8 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     if (instrument != null) {
                         instrument.notifyExceptionAt(frame, wrappedStackOverflowError, statementIndex);
                     }
-                    if (loopCount[0] > 0) {
-                        LoopNode.reportLoopCount(this, loopCount[0]);
+                    if (CompilerDirectives.hasNextTier() && loopCount.value > 0) {
+                        LoopNode.reportLoopCount(this, loopCount.value);
                     }
                     throw wrappedStackOverflowError;
 
@@ -1482,15 +1490,15 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                         if (instrument != null) {
                             instrument.notifyExceptionAt(frame, wrappedException, statementIndex);
                         }
-                        if (loopCount[0] > 0) {
-                            LoopNode.reportLoopCount(this, loopCount[0]);
+                        if (CompilerDirectives.hasNextTier() && loopCount.value > 0) {
+                            LoopNode.reportLoopCount(this, loopCount.value);
                         }
                         throw e;
                     }
                 }
             } catch (EspressoOSRReturnException e) {
-                if (loopCount[0] > 0) {
-                    LoopNode.reportLoopCount(this, loopCount[0]);
+                if (CompilerDirectives.hasNextTier() && loopCount.value > 0) {
+                    LoopNode.reportLoopCount(this, loopCount.value);
                 }
                 return e.getResult();
             }
@@ -1740,14 +1748,14 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
         refArrayStoreNode.arrayStore(getContext(), popObject(frame, top - 1), index, array);
     }
 
-    private int beforeJumpChecks(VirtualFrame frame, int curBCI, int targetBCI, int top, int statementIndex, InstrumentationSupport instrument, int[] loopCount) {
+    private int beforeJumpChecks(VirtualFrame frame, int curBCI, int targetBCI, int top, int statementIndex, InstrumentationSupport instrument, Counter loopCount) {
         CompilerAsserts.partialEvaluationConstant(targetBCI);
         int nextStatementIndex = (instrument == null) ? 0 : instrument.getStatementIndexAfterJump(statementIndex, curBCI, targetBCI);
         if (targetBCI <= curBCI) {
             checkDeprecation();
-            if (++loopCount[0] >= REPORT_LOOP_STRIDE) {
+            if (CompilerDirectives.hasNextTier() && ++loopCount.value >= REPORT_LOOP_STRIDE) {
                 LoopNode.reportLoopCount(this, REPORT_LOOP_STRIDE);
-                loopCount[0] = 0;
+                loopCount.value = 0;
             }
             if (CompilerDirectives.inInterpreter() && BytecodeOSRNode.pollOSRBackEdge(this)) {
                 Runnable beforeTransfer;

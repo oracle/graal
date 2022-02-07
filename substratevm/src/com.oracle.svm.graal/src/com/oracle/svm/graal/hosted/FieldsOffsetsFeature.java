@@ -45,6 +45,8 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.api.DefaultUnsafePartition;
+import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.graal.GraalEdgeUnsafePartition;
 import com.oracle.svm.core.util.VMError;
@@ -162,6 +164,9 @@ public class FieldsOffsetsFeature implements Feature {
     /* Invoked once for every class that is reachable in the native image. */
     private static void classReachabilityListener(DuringAnalysisAccess a, Class<?> newlyReachableClass) {
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
+        if (BuildPhaseProvider.isAnalysisFinished()) {
+            throw VMError.shouldNotReachHere("New class reachable after analysis: " + newlyReachableClass);
+        }
 
         if (Node.class.isAssignableFrom(newlyReachableClass) && newlyReachableClass != Node.class) {
             FieldsOffsetsFeature.<NodeClass<?>> registerClass(newlyReachableClass, GraalSupport.get().nodeClasses, NodeClass::get, false, access);
@@ -214,7 +219,9 @@ public class FieldsOffsetsFeature implements Feature {
         getReplacements().put(fields.getOffsets(), new FieldsOffsetsReplacement(fields));
 
         for (int i = 0; i < fields.getCount(); i++) {
-            config.registerAsUnsafeAccessed(config.getMetaAccess().lookupJavaField(findField(fields, i)), partitionKind);
+            AnalysisField aField = config.getMetaAccess().lookupJavaField(findField(fields, i));
+            aField.getType().registerAsReachable();
+            config.registerAsUnsafeAccessed(aField, partitionKind);
         }
     }
 

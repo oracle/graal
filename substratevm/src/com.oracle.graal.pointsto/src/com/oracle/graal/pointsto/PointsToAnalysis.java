@@ -718,6 +718,7 @@ public abstract class PointsToAnalysis implements BigBang {
                     }
                     /* Outer analysis loop is done. Check if heap verification modifies analysis. */
                     if (!analysisModified()) {
+                        assert universe.getHeapVerifier().checkTypes();
                         return;
                     }
                 }

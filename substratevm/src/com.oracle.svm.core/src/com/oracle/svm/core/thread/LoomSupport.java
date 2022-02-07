@@ -36,91 +36,39 @@ import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.NeverInline;
-import com.oracle.svm.core.heap.StoredContinuationImpl;
-import com.oracle.svm.core.monitor.MonitorSupport;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
 import sun.misc.Unsafe;
 
-public class JavaContinuations {
-    public static final int YIELDING = -2;
+public final class LoomSupport {
     public static final int YIELD_SUCCESS = 0;
     public static final int PINNED_CRITICAL_SECTION = 1;
     public static final int PINNED_NATIVE = 2;
-    public static final int PINNED_MONITOR = 3;
 
     @Fold
-    public static boolean useLoom() {
-        return SubstrateOptions.UseLoom.getValue();
+    public static boolean isEnabled() {
+        return Continuation.isSupported() && SubstrateOptions.UseLoom.getValue();
     }
 
-    @NeverInline("access stack pointer")
-    public static Integer yield(Target_java_lang_Continuation cont) {
-        Pointer leafSP = KnownIntrinsics.readCallerStackPointer();
-        Pointer rootSP = cont.sp;
-        CodePointer leafIP = KnownIntrinsics.readReturnAddress();
-        CodePointer rootIP = cont.ip;
-
-        int preemptStatus = StoredContinuationImpl.allocateFromCurrentStack(cont, rootSP, leafSP, leafIP);
-        if (preemptStatus != 0) {
-            return preemptStatus;
-        }
-
-        cont.sp = leafSP;
-        cont.ip = leafIP;
-
-        KnownIntrinsics.farReturn(0, rootSP, rootIP, false);
-        throw VMError.shouldNotReachHere("value should be returned by `farReturn`");
+    public static int yield(Target_java_lang_Continuation cont) {
+        return convertInternalYieldResult(cont.internal.yield());
     }
 
-    public static int tryPreempt(Target_java_lang_Continuation cont, Thread thread) {
-        TryPreemptThunk thunk = new TryPreemptThunk(cont, thread);
-        JavaVMOperation.enqueueBlockingSafepoint("tryForceYield0", thunk);
-        return thunk.preemptStatus;
-    }
-
-    private static class TryPreemptThunk implements SubstrateUtil.Thunk {
-        int preemptStatus = YIELD_SUCCESS;
-
-        final Target_java_lang_Continuation cont;
-        final Thread thread;
-
-        TryPreemptThunk(Target_java_lang_Continuation cont, Thread thread) {
-            this.cont = cont;
-            this.thread = thread;
-        }
-
-        @Override
-        public void invoke() {
-            IsolateThread vmThread = JavaThreads.getIsolateThread(thread);
-            Pointer rootSP = cont.sp;
-            CodePointer rootIP = cont.ip;
-            preemptStatus = StoredContinuationImpl.allocateFromForeignStack(cont, rootSP, vmThread);
-            if (preemptStatus == 0) {
-                VMThreads.ActionOnExitSafepointSupport.setSwitchStack(vmThread);
-                VMThreads.ActionOnExitSafepointSupport.setSwitchStackTarget(vmThread, rootSP, rootIP);
-            }
-        }
+    static int convertInternalYieldResult(int value) {
+        return value; // ideally, the values are the same
     }
 
     public static int isPinned(Target_java_lang_Thread thread, Target_java_lang_ContinuationScope scope, boolean isCurrentThread) {
         Target_java_lang_Continuation cont = thread.getContinuation();
 
-        IsolateThread vmThread = isCurrentThread ? CurrentIsolate.getCurrentThread() : JavaThreads.getIsolateThread(SubstrateUtil.cast(thread, Thread.class));
+        IsolateThread vmThread = isCurrentThread ? CurrentIsolate.getCurrentThread() : PlatformThreads.getIsolateThread(SubstrateUtil.cast(thread, Thread.class));
 
         if (cont != null) {
-            int threadMonitorCount = MonitorSupport.singleton().countThreadLock(vmThread);
-
             while (true) {
                 if (cont.cs > 0) {
                     return PINNED_CRITICAL_SECTION;
-                } else if (threadMonitorCount > cont.monitorBefore) {
-                    return PINNED_MONITOR;
                 }
 
                 if (cont.getParent() != null && cont.getScope() != scope) {
@@ -131,7 +79,7 @@ public class JavaContinuations {
             }
 
             JavaFrameAnchor anchor = JavaFrameAnchors.getFrameAnchor(vmThread);
-            if (anchor.isNonNull() && cont.sp.aboveThan(anchor.getLastJavaSP())) {
+            if (anchor.isNonNull() && cont.internal.sp.aboveThan(anchor.getLastJavaSP())) {
                 return PINNED_NATIVE;
             }
         }
@@ -143,15 +91,11 @@ public class JavaContinuations {
     }
 
     public static Pointer getSP(Target_java_lang_Continuation cont) {
-        return cont.sp;
+        return cont.internal.sp;
     }
 
     public static CodePointer getIP(Target_java_lang_Continuation cont) {
-        return cont.ip;
-    }
-
-    public static void setIP(Target_java_lang_Continuation cont, CodePointer ip) {
-        cont.ip = ip;
+        return cont.internal.ip;
     }
 
     /**
@@ -166,21 +110,21 @@ public class JavaContinuations {
         return thread.cont;
     }
 
-    public static final class LoomCompatibilityUtil {
+    public static class CompatibilityUtil {
         private static final Unsafe UNSAFE = GraalUnsafeAccess.getUnsafe();
-        private static final Field FIELDHOLDER_STATUS_FIELD = (ImageInfo.inImageCode() && useLoom()) ? ReflectionUtil.lookupField(Target_java_lang_Thread_FieldHolder.class, "threadStatus") : null;
-        private static final Field THREAD_STATUS_FIELD = (ImageInfo.inImageCode() && useLoom()) ? null : ReflectionUtil.lookupField(Target_java_lang_Thread.class, "threadStatus");
+        private static final Field FIELDHOLDER_STATUS_FIELD = (ImageInfo.inImageCode() && isEnabled()) ? ReflectionUtil.lookupField(Target_java_lang_Thread_FieldHolder.class, "threadStatus") : null;
+        private static final Field THREAD_STATUS_FIELD = (ImageInfo.inImageCode() && !isEnabled()) ? ReflectionUtil.lookupField(Target_java_lang_Thread.class, "threadStatus") : null;
 
         static long getStackSize(Target_java_lang_Thread tjlt) {
-            return useLoom() ? tjlt.holder.stackSize : tjlt.stackSize;
+            return isEnabled() ? tjlt.holder.stackSize : tjlt.stackSize;
         }
 
         static int getThreadStatus(Target_java_lang_Thread tjlt) {
-            return useLoom() ? tjlt.holder.threadStatus : tjlt.threadStatus;
+            return isEnabled() ? tjlt.holder.threadStatus : tjlt.threadStatus;
         }
 
         static void setThreadStatus(Target_java_lang_Thread tjlt, int threadStatus) {
-            if (useLoom()) {
+            if (isEnabled()) {
                 tjlt.holder.threadStatus = threadStatus;
             } else {
                 tjlt.threadStatus = threadStatus;
@@ -188,7 +132,7 @@ public class JavaContinuations {
         }
 
         static boolean compareAndSetThreadStatus(Target_java_lang_Thread tjlt, int expectedStatus, int newStatus) {
-            if (useLoom()) {
+            if (isEnabled()) {
                 return UNSAFE.compareAndSwapInt(tjlt.holder, UNSAFE.objectFieldOffset(FIELDHOLDER_STATUS_FIELD), expectedStatus, newStatus);
             } else {
                 return UNSAFE.compareAndSwapInt(tjlt, UNSAFE.objectFieldOffset(THREAD_STATUS_FIELD), expectedStatus, newStatus);
@@ -196,7 +140,7 @@ public class JavaContinuations {
         }
 
         static int getPriority(Target_java_lang_Thread tjlt) {
-            if (useLoom()) {
+            if (isEnabled()) {
                 return tjlt.holder.priority;
             } else {
                 return tjlt.priority;
@@ -204,7 +148,7 @@ public class JavaContinuations {
         }
 
         static void setPriority(Target_java_lang_Thread tjlt, int priority) {
-            if (useLoom()) {
+            if (isEnabled()) {
                 tjlt.holder.priority = priority;
             } else {
                 tjlt.priority = priority;
@@ -212,7 +156,7 @@ public class JavaContinuations {
         }
 
         static void setStackSize(Target_java_lang_Thread tjlt, long stackSize) {
-            if (useLoom()) {
+            if (isEnabled()) {
                 tjlt.holder.stackSize = stackSize;
             } else {
                 tjlt.stackSize = stackSize;
@@ -220,7 +164,7 @@ public class JavaContinuations {
         }
 
         static void setDaemon(Target_java_lang_Thread tjlt, boolean isDaemon) {
-            if (useLoom()) {
+            if (isEnabled()) {
                 tjlt.holder.daemon = isDaemon;
             } else {
                 tjlt.daemon = isDaemon;
@@ -228,7 +172,7 @@ public class JavaContinuations {
         }
 
         static void setGroup(Target_java_lang_Thread tjlt, ThreadGroup group) {
-            if (useLoom()) {
+            if (isEnabled()) {
                 tjlt.holder.group = group;
             } else {
                 tjlt.group = group;
@@ -236,7 +180,7 @@ public class JavaContinuations {
         }
 
         static void setTarget(Target_java_lang_Thread tjlt, Runnable target) {
-            if (useLoom()) {
+            if (isEnabled()) {
                 tjlt.holder.task = target;
             } else {
                 tjlt.target = target;
@@ -244,7 +188,7 @@ public class JavaContinuations {
         }
 
         static void initThreadFields(Target_java_lang_Thread tjlt, ThreadGroup group, Runnable target, long stackSize, int priority, boolean daemon, int threadStatus) {
-            if (useLoom()) {
+            if (isEnabled()) {
                 tjlt.holder = new Target_java_lang_Thread_FieldHolder(null, null, 0, 0, false);
             }
             setGroup(tjlt, group);
@@ -252,16 +196,16 @@ public class JavaContinuations {
             setPriority(tjlt, priority);
             setDaemon(tjlt, daemon);
 
-            JavaContinuations.LoomCompatibilityUtil.setTarget(tjlt, target);
+            CompatibilityUtil.setTarget(tjlt, target);
             tjlt.setPriority(priority);
 
             /* Stash the specified stack size in case the VM cares */
-            JavaContinuations.LoomCompatibilityUtil.setStackSize(tjlt, stackSize);
+            CompatibilityUtil.setStackSize(tjlt, stackSize);
 
-            JavaContinuations.LoomCompatibilityUtil.setThreadStatus(tjlt, threadStatus);
+            CompatibilityUtil.setThreadStatus(tjlt, threadStatus);
         }
+    }
 
-        private LoomCompatibilityUtil() {
-        }
+    private LoomSupport() {
     }
 }

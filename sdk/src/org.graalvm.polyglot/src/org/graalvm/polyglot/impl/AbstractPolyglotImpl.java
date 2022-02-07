@@ -1081,6 +1081,18 @@ public abstract class AbstractPolyglotImpl {
         return getNext().newDefaultFileSystem();
     }
 
+    public ProcessHandler newDefaultProcessHandler() {
+        return getNext().newDefaultProcessHandler();
+    }
+
+    public boolean isDefaultProcessHandler(ProcessHandler processHandler) {
+        return getNext().isDefaultProcessHandler(processHandler);
+    }
+
+    public ThreadScope createThreadScope() {
+        return getNext().createThreadScope();
+    }
+
     /**
      * Creates a union of all available option descriptors including prev implementations. This
      * allows to validate the full set of options.
@@ -1104,6 +1116,24 @@ public abstract class AbstractPolyglotImpl {
      */
     protected OptionDescriptors createEngineOptionDescriptors() {
         return OptionDescriptors.EMPTY;
+    }
+
+    public final AbstractPolyglotImpl getRootImpl() {
+        AbstractPolyglotImpl current = this;
+        while (current.prev != null) {
+            current = current.prev;
+        }
+        return current;
+    }
+
+    public abstract static class ThreadScope implements AutoCloseable {
+
+        protected ThreadScope(AbstractPolyglotImpl engineImpl) {
+            Objects.requireNonNull(engineImpl);
+        }
+
+        @Override
+        public abstract void close();
     }
 
 }

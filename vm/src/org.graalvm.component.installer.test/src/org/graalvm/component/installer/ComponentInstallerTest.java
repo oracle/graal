@@ -45,6 +45,8 @@ import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import jdk.internal.loader.URLClassPath;
 import org.junit.Assert;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -504,13 +506,17 @@ public class ComponentInstallerTest extends CommandTestBase {
         Files.copy(origInstaller, targetInstaller);
         Files.copy(origTest, targetTest);
 
-        URLClassLoader myLoader = (URLClassLoader) getClass().getClassLoader();
+        ClassLoader cl = getClass().getClassLoader();
+        assertEquals(cl.getClass().getName(), "jdk.internal.loader.ClassLoaders$AppClassLoader");
+        Field ucp = cl.getClass().getDeclaredField("ucp");
+        ucp.setAccessible(true);
+        URLClassPath urlClassPath = (URLClassPath) ucp.get(cl);
         List<URL> urls = new ArrayList<>();
 
         urls.add(targetInstaller.toUri().toURL());
         urls.add(targetTest.toUri().toURL());
 
-        Arrays.asList(myLoader.getURLs()).stream().filter(u -> !(locInstaller.equals(u) || locTest.equals(u))).collect(Collectors.toCollection(() -> urls));
+        Arrays.asList(urlClassPath.getURLs()).stream().filter(u -> !(locInstaller.equals(u) || locTest.equals(u))).collect(Collectors.toCollection(() -> urls));
 
         URLClassLoader ldr = new URLClassLoader(
                         urls.toArray(new URL[urls.size()]),
