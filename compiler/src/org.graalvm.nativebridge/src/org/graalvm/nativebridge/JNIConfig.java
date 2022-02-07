@@ -349,6 +349,31 @@ public final class JNIConfig {
             return this;
         }
 
+        public <T> Builder registerMarshaller(Class<T> type, BinaryMarshaller<T> marshaller) {
+            Objects.requireNonNull(type, "Type must be non null.");
+            Objects.requireNonNull(marshaller, "Marshaller must be non null.");
+            registerHotSpotMarshaller(type, new JNIHotSpotMarshallerAdapter<>(marshaller));
+            registerNativeMarshaller(type, new JNINativeMarshallerAdapter<>(marshaller));
+            return this;
+        }
+
+        public <T> Builder registerMarshaller(TypeLiteral<T> type, BinaryMarshaller<T> marshaller) {
+            Objects.requireNonNull(type, "Type must be non null.");
+            Objects.requireNonNull(marshaller, "Marshaller must be non null.");
+            registerHotSpotMarshaller(type, new JNIHotSpotMarshallerAdapter<>(marshaller));
+            registerNativeMarshaller(type, new JNINativeMarshallerAdapter<>(marshaller));
+            return this;
+        }
+
+        public <T> Builder registerMarshaller(Class<T> type, Class<? extends Annotation> annotationType, BinaryMarshaller<T> marshaller) {
+            Objects.requireNonNull(type, "Type must be non null.");
+            Objects.requireNonNull(annotationType, "AnnotationType must be non null.");
+            Objects.requireNonNull(marshaller, "Marshaller must be non null.");
+            registerHotSpotMarshaller(type, annotationType, new JNIHotSpotMarshallerAdapter<>(marshaller));
+            registerNativeMarshaller(type, annotationType, new JNINativeMarshallerAdapter<>(marshaller));
+            return this;
+        }
+
         private static <T> void insert(Map<Class<? extends Annotation>, List<Pair<Class<?>, T>>> into, Class<?> type, Class<? extends Annotation> annotationType, T marshaller) {
             List<Pair<Class<?>, T>> types = into.computeIfAbsent(annotationType, (k) -> new LinkedList<>());
             Pair<Class<?>, T> toInsert = Pair.create(type, marshaller);
