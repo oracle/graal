@@ -782,7 +782,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64LIRInstruction {
             // check if first vector is ascii
             ptest(asm, avxSize, vecArray, vecMask);
             // not ascii, go to scalar loop
-            asm.jccb(Zero, returnAscii);
+            asm.jcc(Zero, returnAscii);
             utf8SubtractContinuationBytes(asm, ret, vecArray, tmp, vecMask, vecMaskCB);
             asm.jmp(returnValid);
         } else {
@@ -925,7 +925,7 @@ public final class AMD64CalcStringAttributesOp extends AMD64LIRInstruction {
 
         asm.bind(labelScalarTail);
         asm.leaq(arr, new AMD64Address(arr, lengthTail, scale));
-        asm.testqAndJcc(lengthTail, lengthTail, Zero, returnAscii, true);
+        asm.testqAndJcc(lengthTail, lengthTail, Zero, returnAscii, false);
         asm.negq(lengthTail);
 
         // scalar ascii loop
