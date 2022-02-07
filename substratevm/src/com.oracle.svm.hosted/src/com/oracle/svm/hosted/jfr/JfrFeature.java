@@ -173,7 +173,6 @@ public class JfrFeature implements Feature {
         // Initialize some parts of JFR/JFC at image build time.
         List<Configuration> knownConfigurations = JFC.getConfigurations();
         JVM.getJVM().createNativeJFR();
-        JfrMetadataTypeLibrary.initialize();
 
         ImageSingletons.add(JfrManager.class, new JfrManager(hostedEnabled));
         ImageSingletons.add(SubstrateJVM.class, new SubstrateJVM(knownConfigurations));

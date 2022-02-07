@@ -45,16 +45,19 @@ import jdk.jfr.internal.TypeLibrary;
 public class JfrMetadataTypeLibrary {
     private static final HashMap<String, Type> types = new HashMap<>();
 
-    public static void initialize() {
-        for (Type type : TypeLibrary.getInstance().getTypes()) {
-            assert !types.containsKey(type.getName());
-            types.put(type.getName(), type);
+    private static synchronized HashMap<String, Type> getTypes() {
+        if (types.isEmpty()) {
+            for (Type type : TypeLibrary.getInstance().getTypes()) {
+                assert !types.containsKey(type.getName());
+                types.put(type.getName(), type);
+            }
         }
+        return types;
     }
 
     public static int getPlatformEventCount() {
         long maxEventId = 0;
-        for (Type type : types.values()) {
+        for (Type type : getTypes().values()) {
             if (type instanceof PlatformEventType) {
                 maxEventId = Math.max(maxEventId, type.getId());
             }
@@ -63,7 +66,7 @@ public class JfrMetadataTypeLibrary {
     }
 
     public static long lookupPlatformEvent(String name) {
-        Type type = types.get(name);
+        Type type = getTypes().get(name);
         if (type instanceof PlatformEventType) {
             return type.getId();
         }
@@ -71,7 +74,7 @@ public class JfrMetadataTypeLibrary {
     }
 
     public static long lookupType(String name) {
-        Type type = types.get(name);
+        Type type = getTypes().get(name);
         if (type != null) {
             return type.getId();
         }
@@ -91,7 +94,7 @@ public class JfrMetadataTypeLibrary {
     private static Type getMostSimilar(String missingTypeName) {
         float threshold = OptionsParser.FUZZY_MATCH_THRESHOLD;
         Type mostSimilar = null;
-        for (Type type : types.values()) {
+        for (Type type : getTypes().values()) {
             float similarity = OptionsParser.stringSimilarity(type.getName(), missingTypeName);
             if (similarity > threshold) {
                 threshold = similarity;
