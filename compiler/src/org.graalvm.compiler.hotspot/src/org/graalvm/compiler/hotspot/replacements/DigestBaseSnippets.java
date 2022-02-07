@@ -40,6 +40,7 @@ import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.ReplacementsUtil;
 import org.graalvm.compiler.replacements.SnippetTemplate;
 import org.graalvm.compiler.replacements.Snippets;
+import org.graalvm.compiler.replacements.nodes.FallbackInvokeWithExceptionNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.WordFactory;
@@ -58,7 +59,7 @@ public class DigestBaseSnippets implements Snippets {
         public final SnippetTemplate.SnippetInfo implCompressMultiBlock0 = snippet(DigestBaseSnippets.class, "implCompressMultiBlock0");
     }
 
-    @Snippet(allowPartialIntrinsicArgumentMismatch = true)
+    @Snippet
     static int implCompressMultiBlock0(Object receiver, byte[] buf, int ofs, int limit,
                     @Snippet.ConstantParameter ResolvedJavaType receiverType,
                     @Snippet.ConstantParameter ResolvedJavaType sha1type,
@@ -83,9 +84,7 @@ public class DigestBaseSnippets implements Snippets {
             Word stateAddr = WordFactory.unsigned(ComputeObjectAddressNode.get(state, ReplacementsUtil.getArrayBaseOffset(INJECTED_METAACCESS, JavaKind.Int)));
             return HotSpotBackend.sha5ImplCompressMBStub(bufAddr, stateAddr, ofs, limit);
         } else {
-            // This will be replaced by an invoke of original method with the extra
-            // ConstantParameter arguments removed.
-            return implCompressMultiBlock0(receiver, buf, ofs, limit, receiverType, sha1type, sha256type, sha512type);
+            return FallbackInvokeWithExceptionNode.fallbackFunctionCallInt();
         }
     }
 

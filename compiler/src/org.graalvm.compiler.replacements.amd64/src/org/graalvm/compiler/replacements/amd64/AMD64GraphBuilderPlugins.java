@@ -362,7 +362,7 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             }
         });
 
-        r.register(new SnippetSubstitutionInvocationPlugin<>(StringLatin1Snippets.Templates.class, false,
+        r.register(new SnippetSubstitutionInvocationPlugin<>(StringLatin1Snippets.Templates.class,
                         "indexOf", byte[].class, int.class, byte[].class, int.class, int.class) {
             @Override
             public SnippetTemplate.SnippetInfo getSnippet(StringLatin1Snippets.Templates templates) {
@@ -453,14 +453,14 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             }
         });
 
-        r.register(new SnippetSubstitutionInvocationPlugin<>(StringUTF16Snippets.Templates.class, false,
+        r.register(new SnippetSubstitutionInvocationPlugin<>(StringUTF16Snippets.Templates.class,
                         "indexOfUnsafe", byte[].class, int.class, byte[].class, int.class, int.class) {
             @Override
             public SnippetTemplate.SnippetInfo getSnippet(StringUTF16Snippets.Templates templates) {
                 return templates.indexOfUnsafe;
             }
         });
-        r.register(new SnippetSubstitutionInvocationPlugin<>(StringUTF16Snippets.Templates.class, false,
+        r.register(new SnippetSubstitutionInvocationPlugin<>(StringUTF16Snippets.Templates.class,
                         "indexOfLatin1Unsafe", byte[].class, int.class, byte[].class, int.class, int.class) {
             @Override
             public SnippetTemplate.SnippetInfo getSnippet(StringUTF16Snippets.Templates templates) {

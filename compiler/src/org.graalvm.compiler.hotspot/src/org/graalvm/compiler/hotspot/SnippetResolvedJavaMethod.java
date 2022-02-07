@@ -107,7 +107,7 @@ public final class SnippetResolvedJavaMethod implements ResolvedJavaMethod {
 
     @Override
     public boolean isBridge() {
-        return false;
+        throw new UnsupportedOperationException();
     }
 
     @Override

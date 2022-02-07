@@ -29,11 +29,11 @@ import java.lang.reflect.Type;
 
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
-import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.replacements.nodes.MacroNode;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -43,12 +43,10 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public abstract class SnippetSubstitutionInvocationPlugin<T extends SnippetTemplate.AbstractTemplates> extends InvocationPlugin.InlineOnlyInvocationPlugin {
 
-    private final boolean hasSideEffect;
     private final Class<T> templateClass;
 
-    public SnippetSubstitutionInvocationPlugin(Class<T> templateClass, boolean hasSideEffect, String name, Type... argumentTypes) {
+    public SnippetSubstitutionInvocationPlugin(Class<T> templateClass, String name, Type... argumentTypes) {
         super(name, argumentTypes);
-        this.hasSideEffect = hasSideEffect;
         this.templateClass = templateClass;
     }
 
@@ -65,20 +63,11 @@ public abstract class SnippetSubstitutionInvocationPlugin<T extends SnippetTempl
             assert args[0] == r;
         }
 
-        // Build the appropriate node to represent snippet until it's lowered
-        Stamp stamp = b.getInvokeReturnStamp(b.getAssumptions()).getTrustedStamp();
-        SnippetSubstitutionNode node;
-
         T templates = b.getReplacements().getSnippetTemplateCache(templateClass);
-        GraalError.guarantee(templates != null, "Missing templates for " + templateClass);
+        GraalError.guarantee(templates != null, "Missing templates for ", templateClass);
         SnippetTemplate.SnippetInfo snippet = getSnippet(templates);
-        if (hasSideEffect) {
-            SnippetSubstitutionStateSplitNode split = new SnippetSubstitutionStateSplitNode(templates, snippet, targetMethod, stamp, args);
-            split.setBci(b.bci());
-            node = split;
-        } else {
-            node = new SnippetSubstitutionNode(templates, snippet, targetMethod, stamp, args);
-        }
+        MacroNode.MacroParams params = MacroNode.MacroParams.of(b, targetMethod, args);
+        SnippetSubstitutionNode node = new SnippetSubstitutionNode(templates, snippet, params);
 
         // Transfer any extra constant arguments required for the lowering
         node.setConstantArguments(getConstantArguments(targetMethod));

@@ -28,56 +28,31 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_IGNORED;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_IGNORED;
 
 import org.graalvm.collections.UnmodifiableEconomicMap;
-import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.NodeInputList;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.FixedNode;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.nodes.util.GraphUtil;
-
-import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.compiler.replacements.nodes.FallbackInvokeWithExceptionNode;
+import org.graalvm.compiler.replacements.nodes.MacroNode;
+import org.graalvm.compiler.replacements.nodes.MacroWithExceptionNode;
 
 /**
  * A node that lowers a non-side effecting snippet.
  */
 @NodeInfo(nameTemplate = "SnippetSubstitution#{p#snippet/s}", cycles = CYCLES_IGNORED, size = SIZE_IGNORED)
-public class SnippetSubstitutionNode extends FixedWithNextNode implements Lowerable {
+public class SnippetSubstitutionNode extends MacroWithExceptionNode implements Lowerable {
     public static final NodeClass<SnippetSubstitutionNode> TYPE = NodeClass.create(SnippetSubstitutionNode.class);
-
-    @Input protected NodeInputList<ValueNode> arguments;
 
     protected Object[] constantArguments;
 
     protected final SnippetTemplate.SnippetInfo snippet;
     protected final SnippetTemplate.AbstractTemplates templates;
-    protected final ResolvedJavaMethod targetMethod;
 
-    public SnippetSubstitutionNode(SnippetTemplate.AbstractTemplates templates, SnippetTemplate.SnippetInfo snippet, ResolvedJavaMethod targetMethod,
-                    Stamp stamp, ValueNode... arguments) {
-        this(TYPE, templates, snippet, targetMethod, stamp, arguments);
-    }
-
-    protected SnippetSubstitutionNode(NodeClass<? extends SnippetSubstitutionNode> c, SnippetTemplate.AbstractTemplates templates, SnippetTemplate.SnippetInfo snippet, ResolvedJavaMethod targetMethod,
-                    Stamp stamp, ValueNode... arguments) {
-        super(c, stamp);
-        this.arguments = new NodeInputList<>(this, arguments);
+    public <T extends SnippetTemplate.AbstractTemplates> SnippetSubstitutionNode(T templates, SnippetTemplate.SnippetInfo snippet, MacroNode.MacroParams params) {
+        super(TYPE, params);
         this.snippet = snippet;
         this.templates = templates;
-        this.targetMethod = targetMethod;
-    }
-
-    public ValueNode getArgument(int i) {
-        return arguments.get(i);
-    }
-
-    public int getArgumentCount() {
-        return arguments.size();
     }
 
     public void setConstantArguments(Object[] arguments) {
@@ -98,20 +73,14 @@ public class SnippetSubstitutionNode extends FixedWithNextNode implements Lowera
             }
         }
         SnippetTemplate template = templates.template(this, args);
-        UnmodifiableEconomicMap<Node, Node> duplicates = template.instantiate(tool.getMetaAccess(), this, SnippetTemplate.DEFAULT_REPLACER, args, false);
-        fixupNodes(tool, template, duplicates);
-        GraphUtil.killCFG(this);
+        UnmodifiableEconomicMap<Node, Node> duplicates = template.instantiate(tool.getMetaAccess(), this, SnippetTemplate.DEFAULT_REPLACER, args, true);
+        for (Node original : duplicates.getKeys()) {
+            if (original instanceof FallbackInvokeWithExceptionNode) {
+                Node replacement = duplicates.get(original);
+                if (replacement instanceof Lowerable) {
+                    tool.getLowerer().lower(replacement, tool);
+                }
+            }
+        }
     }
-
-    /**
-     * Perform any fixup required after instantiating the snippet.
-     *
-     * @param tool
-     * @param template the template for the snippet
-     * @param duplicates the map returned from
-     *            {@link SnippetTemplate.AbstractTemplates#instantiate(MetaAccessProvider, FixedNode, SnippetTemplate.UsageReplacer, SnippetTemplate.Arguments, boolean)}
-     */
-    protected void fixupNodes(LoweringTool tool, SnippetTemplate template, UnmodifiableEconomicMap<Node, Node> duplicates) {
-    }
-
 }
