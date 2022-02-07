@@ -91,15 +91,6 @@ public final class ReferenceHandler {
         }
     }
 
-    public static boolean isReferenceHandlingAllowed() {
-        /*
-         * Inside a VMOperation, we are not allowed to do certain things, e.g., perform
-         * synchronization (because it can deadlock when a lock is held outside the VMOperation).
-         * Similar restrictions apply if we are too early in the attach sequence of a thread.
-         */
-        return !VMOperation.isInProgress() && JavaThreads.currentJavaThreadInitialized();
-    }
-
     private ReferenceHandler() {
     }
 }

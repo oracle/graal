@@ -29,7 +29,6 @@ import static com.oracle.svm.core.snippets.KnownIntrinsics.readReturnAddress;
 
 import java.lang.ref.Reference;
 
-import com.oracle.svm.core.thread.JavaThreads;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
@@ -85,6 +84,7 @@ import com.oracle.svm.core.stack.ThreadStackPrinter;
 import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.NativeVMOperation;
 import com.oracle.svm.core.thread.NativeVMOperationData;
+import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.TimeUtils;
@@ -1058,7 +1058,7 @@ public final class GCImpl implements GC {
 
     // This method will be removed as soon as possible, see GR-36676.
     static void doReferenceHandlingInRegularThread() {
-        if (ReferenceHandler.useRegularJavaThread() && !VMOperation.isInProgress() && JavaThreads.currentJavaThreadInitialized()) {
+        if (ReferenceHandler.useRegularJavaThread() && !VMOperation.isInProgress() && PlatformThreads.isCurrentAssigned()) {
             doReferenceHandling();
         }
     }
@@ -1070,7 +1070,7 @@ public final class GCImpl implements GC {
      */
     static void doReferenceHandling() {
         assert !VMOperation.isInProgress() : "could result in deadlocks";
-        assert JavaThreads.currentJavaThreadInitialized() : "thread is not fully initialized yet";
+        assert PlatformThreads.isCurrentAssigned() : "thread is not fully initialized yet";
         /* Most of the time, we won't have a pending reference list. So, we do that check first. */
         if (HeapImpl.getHeapImpl().hasReferencePendingListUnsafe()) {
             long startTime = System.nanoTime();
