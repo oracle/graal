@@ -257,6 +257,13 @@ class RenaissanceNativeImageBenchmarkSuite(mx_java_benchmarks.RenaissanceBenchma
         standalone_jars_directory = "single"
         return os.path.join(self.renaissance_unpacked(), standalone_jars_directory, "{}.jar".format(benchmark_name))
 
+    def extra_run_arg(self, benchmark, args, image_run_args):
+        run_args = super(RenaissanceNativeImageBenchmarkSuite, self).extra_run_arg(benchmark, args, image_run_args)
+        if benchmark == "dotty":
+            return ["-Djava.class.path={}".format(self.standalone_jar_path(self.benchmarkName()))] + run_args
+        else:
+            return run_args
+
     def renaissance_additional_lib(self, lib):
         return mx.library(lib).get_path(True)
 
