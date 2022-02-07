@@ -36,6 +36,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.ObjectScanner.ArrayScan;
 import com.oracle.graal.pointsto.ObjectScanner.EmbeddedRootScan;
@@ -101,9 +102,11 @@ public abstract class ImageHeapScanner {
     }
 
     public void scanEmbeddedRoot(JavaConstant root, BytecodePosition position) {
-        AnalysisType type = metaAccess.lookupJavaType(root);
-        type.registerAsReachable();
-        getOrCreateConstantReachableTask(root, new EmbeddedRootScan(position, root), null).ensureDone();
+        if (isNonNullObjectConstant(root)) {
+            AnalysisType type = metaAccess.lookupJavaType(root);
+            type.registerAsReachable();
+            getOrCreateConstantReachableTask(root, new EmbeddedRootScan(position, root), null).ensureDone();
+        }
     }
 
     public void onFieldRead(AnalysisField field) {
@@ -161,7 +164,7 @@ public abstract class ImageHeapScanner {
     }
 
     JavaConstant markConstantReachable(JavaConstant constant, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
-        if (constant.getJavaKind() == JavaKind.Object && constant.isNonNull()) {
+        if (isNonNullObjectConstant(constant)) {
             return getOrCreateConstantReachableTask(constant, reason, onAnalysisModified).ensureDone().getObject();
         }
 
@@ -173,7 +176,7 @@ public abstract class ImageHeapScanner {
     }
 
     protected ImageHeapObject toImageHeapObject(JavaConstant constant, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
-        assert constant != null && constant.getJavaKind() == JavaKind.Object && constant.isNonNull();
+        assert constant != null && isNonNullObjectConstant(constant);
         return getOrCreateConstantReachableTask(constant, reason, onAnalysisModified).ensureDone();
     }
 
@@ -362,15 +365,31 @@ public abstract class ImageHeapScanner {
         return elementValue;
     }
 
+    private boolean isNonNullObjectConstant(JavaConstant constant) {
+        return constant.getJavaKind() == JavaKind.Object && constant.isNonNull() && !isWordType(constant);
+    }
+
+    private boolean isWordType(JavaConstant rawElementValue) {
+        Object obj = snippetReflection.asObject(Object.class, rawElementValue);
+        return obj instanceof WordBase;
+    }
+
     private boolean notifyAnalysis(JavaConstant array, AnalysisType arrayType, JavaConstant elementValue, int elementIndex, ScanReason reason) {
         boolean analysisModified;
         if (elementValue.isNull()) {
             analysisModified = scanningObserver.forNullArrayElement(array, arrayType, elementIndex, reason);
         } else {
+            if (isWordType(elementValue)) {
+                return false;
+            }
             AnalysisType elementType = metaAccess.lookupJavaType(elementValue);
             analysisModified = scanningObserver.forNonNullArrayElement(array, arrayType, elementValue, elementType, elementIndex, reason);
         }
         return analysisModified;
+    }
+
+    protected JavaConstant interceptArrayElement(JavaConstant elementValue) {
+        return elementValue;
     }
 
     void onObjectReachable(ImageHeapObject imageHeapObject) {
@@ -513,7 +532,7 @@ public abstract class ImageHeapScanner {
     }
 
     void doScan(JavaConstant constant, ScanReason reason) {
-        if (constant.getJavaKind() == JavaKind.Object && constant.isNonNull()) {
+        if (isNonNullObjectConstant(constant)) {
             getOrCreateConstantReachableTask(constant, reason, null);
         }
     }
