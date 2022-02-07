@@ -62,61 +62,58 @@ def list_jars(path):
 
 _RENAISSANCE_EXTRA_IMAGE_BUILD_ARGS = {
     'als'               : [
-                           '--allow-incomplete-classpath',
                            '--report-unsupported-elements-at-runtime',
                            '--initialize-at-build-time=org.slf4j,org.apache.log4j',  # mis-initialized from netty
                            '--initialize-at-run-time=io.netty.channel.unix,io.netty.channel.epoll,io.netty.handler.codec.http2,io.netty.handler.ssl,io.netty.internal.tcnative,io.netty.util.internal.logging.Log4JLogger'
                           ],
     'chi-square'        : [
-                           '--allow-incomplete-classpath',
                            '--report-unsupported-elements-at-runtime',
                            '--initialize-at-build-time=org.slf4j,org.apache.log4j',
                            '--initialize-at-run-time=io.netty.channel.unix,io.netty.channel.epoll,io.netty.handler.codec.http2,io.netty.handler.ssl,io.netty.internal.tcnative,io.netty.util.internal.logging.Log4JLogger'
                           ],
     'finagle-chirper'   : [
-                            '--allow-incomplete-classpath',
                             '--initialize-at-build-time=org.slf4j,org.apache.log4j',
                             '--initialize-at-run-time=io.netty.channel.unix,io.netty.channel.epoll,io.netty.handler.codec.http2,io.netty.handler.ssl,io.netty.internal.tcnative,io.netty.util.internal.logging.Log4JLogger'
                           ],
     'finagle-http'      : [
-                            '--allow-incomplete-classpath',
                             '--initialize-at-build-time=org.slf4j,org.apache.log4j',
                             '--initialize-at-run-time=io.netty.channel.unix,io.netty.channel.epoll,io.netty.handler.codec.http2,io.netty.handler.ssl,io.netty.internal.tcnative,io.netty.util.internal.logging.Log4JLogger'
                           ],
     'log-regression'    : [
-                           '--allow-incomplete-classpath',
                            '--report-unsupported-elements-at-runtime',
                            '--initialize-at-build-time=org.slf4j,org.apache.log4j',
                            '--initialize-at-run-time=io.netty.channel.unix,io.netty.channel.epoll,io.netty.handler.codec.http2,io.netty.handler.ssl,io.netty.internal.tcnative,io.netty.util.internal.logging.Log4JLogger'
                           ],
     'movie-lens'        : [
-                           '--allow-incomplete-classpath',
                            '--report-unsupported-elements-at-runtime',
+                           '--initialize-at-build-time=org.slf4j,org.apache.log4j',
+                           '--initialize-at-run-time=io.netty.channel.unix,io.netty.channel.epoll,io.netty.handler.codec.http2,io.netty.handler.ssl,io.netty.internal.tcnative,io.netty.util.internal.logging.Log4JLogger'
                           ],
     'dec-tree'          : [
-                           '--allow-incomplete-classpath',
                            '--report-unsupported-elements-at-runtime',
                            '--initialize-at-build-time=org.slf4j,org.apache.log4j',
                            '--initialize-at-run-time=io.netty.channel.unix,io.netty.channel.epoll,io.netty.handler.codec.http2,io.netty.handler.ssl,io.netty.internal.tcnative,io.netty.util.internal.logging.Log4JLogger'
                           ],
     'page-rank'         : [
-                           '--allow-incomplete-classpath',
                            '--report-unsupported-elements-at-runtime',
                            '--initialize-at-build-time=org.slf4j,org.apache.log4j',
                            '--initialize-at-run-time=io.netty.channel.unix,io.netty.channel.epoll,io.netty.handler.codec.http2,io.netty.handler.ssl,io.netty.internal.tcnative,io.netty.util.internal.logging.Log4JLogger'
                           ],
     'naive-bayes'       : [
-                            '--allow-incomplete-classpath',
                             '--report-unsupported-elements-at-runtime',
                             '--initialize-at-build-time=org.slf4j,org.apache.log4j',
                             '--initialize-at-run-time=io.netty.channel.unix,io.netty.channel.epoll,io.netty.handler.codec.http2,io.netty.handler.ssl,io.netty.internal.tcnative,io.netty.util.internal.logging.Log4JLogger'
                           ],
     'gauss-mix'       :   [
-                            '--allow-incomplete-classpath',
                             '--report-unsupported-elements-at-runtime',
                             '--initialize-at-build-time=org.slf4j,org.apache.log4j',
                             '--initialize-at-run-time=io.netty.channel.unix,io.netty.channel.epoll,io.netty.handler.codec.http2,io.netty.handler.ssl,io.netty.internal.tcnative,io.netty.util.internal.logging.Log4JLogger'
-    ],
+                          ],
+    'neo4j-analytics':    [
+                            '--report-unsupported-elements-at-runtime',
+                            '--initialize-at-build-time=org.slf4j,org.apache.log4j',
+                            '--initialize-at-run-time=io.netty.channel.unix,io.netty.channel.epoll,io.netty.handler.codec.http2,io.netty.handler.ssl,io.netty.internal.tcnative,io.netty.util.internal.logging.Log4JLogger'
+                          ],
     'dotty'             : [
                             '-H:+AllowJRTFileSystem'
                           ]
