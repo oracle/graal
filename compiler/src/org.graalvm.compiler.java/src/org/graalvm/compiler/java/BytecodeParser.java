@@ -949,7 +949,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         this.optimisticOpts = graphBuilderInstance.optimisticOpts;
         assert code.getCode() != null : method;
         this.stream = new BytecodeStream(code.getCode());
-        this.profilingInfo = graph.useProfilingInfo() ? code.getProfilingInfo() : null;
+        this.profilingInfo = graph.getProfilingInfo(method);
         this.constantPool = code.getConstantPool();
         this.intrinsicContext = intrinsicContext;
         this.entryBCI = entryBCI;
@@ -3501,21 +3501,20 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     }
 
     protected BranchProbabilityData getProfileData(boolean negate) {
-        if (profilingInfo == null) {
+        if (profilingInfo == null || !profilingInfo.isMature()) {
             return BranchProbabilityData.unknown();
         }
 
         assert assertAtIfBytecode();
         double probability = profilingInfo.getBranchTakenProbability(bci());
-
         if (probability < 0) {
             assert probability == -1 : "invalid probability";
             debug.log("missing probability in %s at bci %d", code, bci());
             return BranchProbabilityData.unknown();
         }
+
         probability = clampProbability(probability);
-        ProfileSource source = profilingInfo.isMature() ? ProfileSource.PROFILED : ProfileSource.UNKNOWN;
-        BranchProbabilityData profileData = BranchProbabilityData.create(probability, source);
+        BranchProbabilityData profileData = BranchProbabilityData.create(probability, ProfileSource.PROFILED);
 
         if (negate) {
             // the probability coming from profile is about the original condition
