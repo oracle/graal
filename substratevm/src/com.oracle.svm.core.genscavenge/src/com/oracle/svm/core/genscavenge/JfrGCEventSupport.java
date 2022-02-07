@@ -77,6 +77,11 @@ class JfrGCEventSupport {
         }
     }
 
+    /**
+     * GCPhasePause events are used to group GC phases into a hierarchy. They don't have any
+     * predefined meaning as they are used in a GC-specific way. The most descriptive part is the
+     * phase name that the GC emits as part of those JFR events.
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static JfrEvent getGCPhasePauseEvent(int level) {
         switch (level) {
