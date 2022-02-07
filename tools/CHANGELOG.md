@@ -2,6 +2,10 @@
 
 This changelog summarizes major changes between Truffle Tools versions.
 
+## Version 21.3.2
+* Dumping JavaScript `Array` as `Object[]` into the `.hprof` file
+* [HeapDump.newArray](https://www.graalvm.org/tools/javadoc/org/graalvm/tools/insight/heap/HeapDump.html) to start building an array
+
 ## Version 21.3.0
 * Reimplemented CPUSampler to use the Truffle language safepoints thus deprecating several API functions.
 * Added new option `--cpusampler.SampleContextInitialization` which includes code executed during context initialization in the general sampling profile instead of grouping it into a single entry.
