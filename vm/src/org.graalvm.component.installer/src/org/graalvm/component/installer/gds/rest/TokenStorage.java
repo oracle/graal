@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,49 +22,38 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.component.installer.gds;
 
+package org.graalvm.component.installer.gds.rest;
+
+import static org.graalvm.component.installer.CommonConstants.PATH_USER_CREDENTIALS;
+import static org.graalvm.component.installer.CommonConstants.PATH_USER_GRAALVM;
+import static org.graalvm.component.installer.CommonConstants.SYSPROP_USER_HOME;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Properties;
-import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.Feedback;
-import org.graalvm.component.installer.SystemUtils;
-import org.graalvm.component.installer.model.ComponentRegistry;
-import java.util.regex.Pattern;
+import java.util.Map;
 
 /**
  *
- * @author sdedic
+ * @author odouda
  */
-public class MailStorage {
-    static final Path PROPERTIES_PATH = SystemUtils.fromCommonRelative(CommonConstants.PATH_COMPONENT_STORAGE +
-                    "/gds/gds.properties");
-    static final String PROP_LAST_EMAIL = "last.email"; // NOI18N
-
-    private final ComponentRegistry localRegistry;
+public class TokenStorage {
     private final Feedback feedback;
+    private final Path propertiesPath;
 
     private Properties properties;
-    private Path propertiesPath;
-    private Path storagePath;
     private boolean changed;
 
-    public MailStorage(ComponentRegistry localRegistry, Feedback feedback) {
-        this.localRegistry = localRegistry;
+    public TokenStorage(Feedback feedback) {
         this.feedback = feedback;
-    }
-
-    public void setStorage(Path storage) {
-        this.storagePath = storage;
-        propertiesPath = storagePath.resolve(PROPERTIES_PATH);
+        propertiesPath = Path.of(System.getProperty(SYSPROP_USER_HOME), PATH_USER_GRAALVM, PATH_USER_CREDENTIALS);
     }
 
     private Properties load() {
-        localRegistry.getManagementStorage();
         if (properties != null) {
             return properties;
         }
@@ -83,28 +72,27 @@ public class MailStorage {
         return properties;
     }
 
-    public String getEmailAddress() {
+    public Map.Entry<String, String> getToken() {
         load();
-        return properties.getProperty(PROP_LAST_EMAIL);
+        for (Map.Entry<Object, Object> entry : properties.entrySet()) {
+            return Map.entry((String) entry.getKey(), (String) entry.getValue());
+        }
+        return null;
     }
 
-    public void setEmailAddress(String mailAddress) {
-        Properties props = load();
-
-        if (mailAddress == null) {
-            if (props.containsKey(PROP_LAST_EMAIL)) {
-                props.remove(PROP_LAST_EMAIL);
-                changed = true;
-            } else {
-                return;
-            }
-        } else {
-            String p = getEmailAddress();
-            if (mailAddress.equals(p)) {
-                return;
-            }
-            props.setProperty(PROP_LAST_EMAIL, mailAddress);
+    public void setToken(Map.Entry<String, String> token) {
+        if (token == null) {
+            throw new IllegalArgumentException("Download Token cannot be null.");
         }
+        Properties props = load();
+        Map.Entry<String, String> p = getToken();
+        if (token.equals(p)) {
+            return;
+        }
+        if (p != null) {
+            props.remove(p);
+        }
+        props.setProperty(token.getKey(), token.getValue());
         changed = true;
     }
 
@@ -121,29 +109,5 @@ public class MailStorage {
         try (OutputStream os = Files.newOutputStream(propertiesPath)) {
             properties.store(os, null);
         }
-    }
-
-    /**
-     * Simple regexp pattern for verifying an e-mail. Definition taken from
-     * https://www.w3.org/TR/html52/sec-forms.html#valid-e-mail-address; does not support
-     * internationalized domains well.
-     */
-    private static final Pattern EMAIL_PATTERN = Pattern
-                    .compile("^[a-zA-Z0-9.!#$%&'*+\\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$");
-
-    public static String checkEmailAddress(String mail, Feedback fb) {
-        String m;
-        if (mail == null) {
-            return null;
-        } else {
-            m = mail.trim();
-        }
-        if ("".equals(m)) {
-            return null;
-        }
-        if (!EMAIL_PATTERN.matcher(m).matches()) {
-            throw fb.failure("ERR_EmailNotValid", null, m);
-        }
-        return mail;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@
 package org.graalvm.component.installer.remote;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.ConnectException;
 import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
@@ -45,6 +44,8 @@ import java.util.function.Consumer;
 import java.util.regex.Pattern;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.URLConnectionFactory;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 
 /**
  * Creates URLConnections to the given destination. Caches the decision about proxy. For the first
@@ -235,6 +236,8 @@ public class ProxyConnectionFactory implements URLConnectionFactory {
         synchronized IOException getConnectException() {
             if (exDirect != null) {
                 return exDirect;
+            } else if (exProxy != null) {
+                return exProxy;
             }
             return new ConnectException(feedback.l10n("EXC_TimeoutConnectTo", url));
         }
@@ -373,19 +376,12 @@ public class ProxyConnectionFactory implements URLConnectionFactory {
                     // the appropriate exception out.
                     if (rcode >= HttpURLConnection.HTTP_BAD_REQUEST) {
                         // force the exception, should fail with IOException
-                        InputStream stm = test.getInputStream();
                         try {
-                            stm.close();
+                            htest.getInputStream().close();
                         } catch (IOException ex) {
-                            // let the exception through for direct connections, maybe better error
-                            // message
-                            // will come out.
-                            if (isDirect()) {
-                                throw ex;
-                            }
-                            // swallow, we want to report just proxy failed.
+                            throw new HttpConnectionException(ex.getMessage(), ex, isDirect(), htest);
                         }
-                        if (!isDirect()) {
+                        if (!isDirect()) { // this should not happen
                             throw new IOException(feedback.l10n("EXC_ProxyFailed", rcode));
                         }
                     }
@@ -400,6 +396,46 @@ public class ProxyConnectionFactory implements URLConnectionFactory {
                     }
                 }
             }
+        }
+    }
+
+    public static class HttpConnectionException extends IOException {
+        private static final long serialVersionUID = 1L;
+        private final boolean isDirect;
+        private final int retCode;
+        private final URL connectionUrl;
+        private final String response;
+
+        public HttpConnectionException(String message, IOException cause, boolean isDirect, HttpURLConnection connection) throws IOException {
+            super(message, cause);
+            this.response = parseErrorResponse(connection);
+            this.retCode = connection.getResponseCode();
+            this.connectionUrl = connection.getURL();
+            this.isDirect = isDirect;
+        }
+
+        private static String parseErrorResponse(HttpURLConnection connection) {
+            try (BufferedReader br = new BufferedReader(new InputStreamReader(connection.getErrorStream()))) {
+                return br.lines().reduce((s1, s2) -> s1 + "\n" + s2).orElse("");
+            } catch (IOException t) {
+                return t.getLocalizedMessage();
+            }
+        }
+
+        public int getRetCode() {
+            return retCode;
+        }
+
+        public String getResponse() {
+            return response;
+        }
+
+        public URL getConnectionUrl() {
+            return connectionUrl;
+        }
+
+        public boolean isProxy() {
+            return isDirect;
         }
     }
 
