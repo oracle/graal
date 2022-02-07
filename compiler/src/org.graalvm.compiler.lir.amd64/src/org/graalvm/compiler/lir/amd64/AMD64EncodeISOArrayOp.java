@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -54,8 +54,8 @@ import jdk.vm.ci.meta.Value;
 
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86.cpp",
-        lineStart = 5461,
-        lineEnd   = 5619,
+        lineStart = 5498,
+        lineEnd   = 5656,
         commit    = "7719a74cec8c47fd036226b520a5fce7887386da",
         sha1      = "28e9e817bee0afd9e5b698c5bff3ed519e09e410")
 // @formatter:on

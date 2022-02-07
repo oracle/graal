@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,9 +24,6 @@
  */
 package org.graalvm.compiler.replacements.test;
 
-import java.util.HashMap;
-
-import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -34,7 +31,7 @@ import org.graalvm.compiler.test.AddExports;
 import org.junit.Test;
 
 import jdk.vm.ci.code.InstalledCode;
-import sun.nio.cs.ISO_8859_1;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @AddExports({"java.base/java.lang", "java.base/sun.nio.cs"})
 public class EncodeISOArrayTest extends GraalCompilerTest {

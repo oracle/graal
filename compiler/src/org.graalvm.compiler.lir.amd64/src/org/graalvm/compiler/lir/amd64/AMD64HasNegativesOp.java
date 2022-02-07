@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -57,8 +57,8 @@ import jdk.vm.ci.meta.Value;
 
 // @formatter:off
 @StubPort(path      = "src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp",
-        lineStart = 3415,
-        lineEnd   = 3631,
+        lineStart = 3356,
+        lineEnd   = 3572,
         commit    = "7719a74cec8c47fd036226b520a5fce7887386da",
         sha1      = "bb0a5ceba73bfeeec91bd96f738a48b5275ac51e")
 // @formatter:on
@@ -203,7 +203,7 @@ public final class AMD64HasNegativesOp extends AMD64LIRInstruction {
                 masm.bind(labelCompareWideVectors);
                 masm.vmovdqu(vec1, new AMD64Address(ary1, len, Scale.Times1));
                 masm.vptest(vec1, vec2);
-                masm.jccb(ConditionFlag.NotZero, labelTrue);
+                masm.jcc(ConditionFlag.NotZero, labelTrue);
                 masm.addqAndJcc(len, 32, ConditionFlag.NotZero, labelCompareWideVectors, false);
 
                 masm.testlAndJcc(result, result, ConditionFlag.Zero, labelFalse, true);
