@@ -610,7 +610,7 @@ public class CompileQueue {
 
         int round = 0;
         do {
-            ProgressReporter.singleton().printStageProgress();
+            ProgressReporter.singleton().reportStageProgress();
             inliningProgress = false;
             round++;
             try (Indent ignored = debug.logAndIndent("==== Trivial Inlining  round %d\n", round)) {
