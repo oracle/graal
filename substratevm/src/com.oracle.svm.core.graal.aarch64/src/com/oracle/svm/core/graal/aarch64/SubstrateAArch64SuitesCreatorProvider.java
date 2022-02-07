@@ -35,7 +35,7 @@ import java.util.Arrays;
 
 public class SubstrateAArch64SuitesCreatorProvider extends SubstrateSuitesCreatorProvider {
     public SubstrateAArch64SuitesCreatorProvider() {
-        super(new AArch64SuitesCreator(getCompilerConfiguration(), Arrays.asList(SchedulePhase.class)),
+        super(new AArch64SuitesCreator(getHostedCompilerConfiguration(), Arrays.asList(SchedulePhase.class)),
                         new AArch64SuitesCreator(new EconomyCompilerConfiguration(), Arrays.asList(SchedulePhase.class)));
     }
 }

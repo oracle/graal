@@ -38,7 +38,7 @@ public class SubstrateSuitesCreatorProvider {
 
     private final SuitesCreator firstTierSuitesCreator;
 
-    public static CompilerConfiguration getCompilerConfiguration() {
+    protected static CompilerConfiguration getHostedCompilerConfiguration() {
         if (SubstrateOptions.useEconomyCompilerConfig()) {
             return new EconomyCompilerConfiguration();
         } else {
@@ -52,7 +52,7 @@ public class SubstrateSuitesCreatorProvider {
     }
 
     public SubstrateSuitesCreatorProvider() {
-        this(new DefaultSuitesCreator(getCompilerConfiguration()), new DefaultSuitesCreator(new EconomyCompilerConfiguration()));
+        this(new DefaultSuitesCreator(getHostedCompilerConfiguration()), new DefaultSuitesCreator(new EconomyCompilerConfiguration()));
     }
 
     public final SuitesCreator getSuitesCreator() {
