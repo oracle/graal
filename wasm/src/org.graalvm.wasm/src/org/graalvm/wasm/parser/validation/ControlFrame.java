@@ -70,22 +70,55 @@ public abstract class ControlFrame {
         this.unconditionalBranches = new IntArrayList();
     }
 
-    public abstract byte[] getLabelTypes();
+    /**
+     * @return The types that must be on the value stack when branching to this frame.
+     */
+    abstract byte[] getLabelTypes();
 
-    public abstract void enterElse(ParserState state, ExtraDataList extraData, int offset);
+    /**
+     * Performs checks and actions when entering an else branch.
+     * 
+     * @param state The current parser state.
+     * @param extraData The current extra data array.
+     * @param offset The offset of the else branch in the wasm binary.
+     */
+    abstract void enterElse(ParserState state, ExtraDataList extraData, int offset);
 
-    public abstract void exit(ExtraDataList extraData, int offset);
+    /**
+     * Performs checks and actions when exiting a frame.
+     * 
+     * @param extraData The current extra data array.
+     * @param offset The offset of the end instruction in the wasm binary.
+     */
+    abstract void exit(ExtraDataList extraData, int offset);
 
-    public void addConditionalBranch(ExtraDataList extraData) {
+    /**
+     * Adds a conditional branch to this frame.
+     * 
+     * @param extraData The current extra data array.
+     */
+    void addConditionalBranch(ExtraDataList extraData) {
         conditionalBranches.add(extraData.addConditionalBranchLocation());
     }
 
-    public void addUnconditionalBranch(ExtraDataList extraData) {
+    /**
+     * Adds an unconditional branch to this frame.
+     * 
+     * @param extraData The current extra data array.
+     */
+    void addUnconditionalBranch(ExtraDataList extraData) {
         unconditionalBranches.add(extraData.addUnconditionalBranchLocation());
     }
 
-    public void addUnconditionalBranchTableEntry(ExtraDataList extraData, int location, int index) {
-        unconditionalBranches.add(extraData.addBranchTableEntry(location, index));
+    /**
+     * Adds a conditional branch from a branch table entry to this fraem.
+     * 
+     * @param extraData The current extra data array.
+     * @param location The location of the branch table in the extra data array.
+     * @param index The index of the entry in the branch table.
+     */
+    void addBranchTableEntry(ExtraDataList extraData, int location, int index) {
+        conditionalBranches.add(extraData.getBranchTableEntryLocation(location, index));
     }
 
     protected int[] conditionalBranches() {
@@ -118,5 +151,9 @@ public abstract class ControlFrame {
 
     boolean isUnreachable() {
         return unreachable;
+    }
+
+    protected void resetUnreachable() {
+        this.unreachable = false;
     }
 }

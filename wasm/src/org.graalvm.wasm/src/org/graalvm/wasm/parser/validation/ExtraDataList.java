@@ -65,20 +65,28 @@ import static org.graalvm.wasm.constants.ExtraDataOffsets.STACK_INFO_RETURN_LENG
 import static org.graalvm.wasm.constants.ExtraDataOffsets.STACK_INFO_STACK_SIZE_MASK;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_LENGTH;
 
-public class ExtraDataList {
-
+/**
+ * Representation of the extra data array during module validation. Used to build up the extra data
+ * array.
+ */
+class ExtraDataList {
     private static final int[] EMPTY_EXTRA_DATA = new int[0];
 
     private int[] extraData;
 
     private int extraDataCount;
 
-    public ExtraDataList() {
+    ExtraDataList() {
         this.extraData = new int[4];
         this.extraDataCount = 0;
     }
 
-    public int addIfLocation() {
+    /**
+     * Allocates space for if information.
+     * 
+     * @return The location of the if information in the extra data array.
+     */
+    int addIfLocation() {
         ensureExtraDataSize(IF_LENGTH);
         // initializes condition profile to 0.
         int location = extraDataCount;
@@ -86,24 +94,48 @@ public class ExtraDataList {
         return location;
     }
 
-    public void setIfTarget(int location, int target, int extraTarget) {
+    /**
+     * Sets the if information for the given location.
+     * 
+     * @param location The location of the if information.
+     * @param target The branch target in the wasm binary.
+     * @param extraTarget The branch target in the extra data array.
+     */
+    void setIfTarget(int location, int target, int extraTarget) {
         extraData[location + IF_BYTECODE_INDEX] = target;
         extraData[location + IF_EXTRA_INDEX] = extraTarget;
     }
 
-    public int addElseLocation() {
+    /**
+     * Allocates space for else information.
+     * 
+     * @return The location of the else information in the extra data array.
+     */
+    int addElseLocation() {
         ensureExtraDataSize(ELSE_LENGTH);
         int location = extraDataCount;
         extraDataCount += ELSE_LENGTH;
         return location;
     }
 
-    public void setElseTarget(int location, int target, int extraTarget) {
+    /**
+     * Sets the else information for the given location.
+     * 
+     * @param location The location of the else information.
+     * @param target The branch target in the wasm binary.
+     * @param extraTarget The branch target in the extra data array.
+     */
+    void setElseTarget(int location, int target, int extraTarget) {
         extraData[location + ELSE_BYTECODE_INDEX] = target;
         extraData[location + ELSE_EXTRA_INDEX] = extraTarget;
     }
 
-    public int addConditionalBranchLocation() {
+    /**
+     * Allocates space for conditional branch information.
+     * 
+     * @return The location of the conditional branch information in the extra data array.
+     */
+    int addConditionalBranchLocation() {
         ensureExtraDataSize(BR_IF_LENGTH);
         // initializes condition profile with 0.
         int location = extraDataCount;
@@ -111,55 +143,103 @@ public class ExtraDataList {
         return location;
     }
 
-    public void setConditionalBranchTarget(int location, int target, int extraTarget, int stackSize, int returnLength) {
+    /**
+     * Sets the conditional branch information for the given location.
+     * 
+     * @param location The location of the conditional branch information.
+     * @param target The branch target in the wasm binary.
+     * @param extraTarget The branch target in the extra data array.
+     * @param stackSize The stack size after the branch.
+     * @param returnLength The number of return values returned by the current block.
+     */
+    void setConditionalBranchTarget(int location, int target, int extraTarget, int stackSize, int returnLength) {
         extraData[location + BR_IF_BYTECODE_INDEX] = target;
         extraData[location + BR_IF_EXTRA_INDEX] = extraTarget;
         extraData[location + BR_IF_STACK_INFO] = (stackSize & STACK_INFO_STACK_SIZE_MASK) + (returnLength << STACK_INFO_RETURN_LENGTH_SHIFT);
     }
 
-    public int addUnconditionalBranchLocation() {
+    /**
+     * Allocates space for unconditional branch information.
+     * 
+     * @return The location of the unconditional branch information in the extra data array.
+     */
+    int addUnconditionalBranchLocation() {
         ensureExtraDataSize(BR_LENGTH);
         int location = extraDataCount;
         extraDataCount += BR_LENGTH;
         return location;
     }
 
-    public void setUnconditionalBranchTarget(int location, int target, int extraTarget, int stackSize, int returnLength) {
+    /**
+     * Sets the unconditional branch information for the given location.
+     * 
+     * @param location The location of the unconditional branch information.
+     * @param target The branch target in the wasm binary.
+     * @param extraTarget The branch target in the extra data array.
+     * @param stackSize The stack size after the branch.
+     * @param returnLength The number of return values returned by the current block.
+     */
+    void setUnconditionalBranchTarget(int location, int target, int extraTarget, int stackSize, int returnLength) {
         extraData[location + BR_BYTECODE_INDEX] = target;
         extraData[location + BR_EXTRA_INDEX] = extraTarget;
         extraData[location + BR_STACK_INFO] = (stackSize & STACK_INFO_STACK_SIZE_MASK) + (returnLength << STACK_INFO_RETURN_LENGTH_SHIFT);
     }
 
-    public int addBranchTableLocation(int size) {
+    /**
+     * Allocates space for branch table information.
+     * 
+     * @param size The number of entries in the branch table.
+     * @return The location of the branch table information in the extra data array.
+     */
+    int addBranchTableLocation(int size) {
         ensureExtraDataSize(BR_TABLE_ENTRY_OFFSET + BR_TABLE_ENTRY_LENGTH * size);
         extraData[extraDataCount + BR_TABLE_SIZE] = size;
+        // initializes branch table count with 0.
         int location = extraDataCount;
         extraDataCount += BR_TABLE_ENTRY_OFFSET + BR_TABLE_ENTRY_LENGTH * size;
         return location;
     }
 
-    public int addBranchTableEntry(int location, int index) {
+    /**
+     * @param location The branch table location.
+     * @param index The entry index.
+     * @return The location of the entry in the extra data array.
+     */
+    int getBranchTableEntryLocation(int location, int index) {
         return location + BR_TABLE_ENTRY_OFFSET + index * BR_TABLE_ENTRY_LENGTH;
     }
 
-    public void addIndirectCall(int nodeIndex) {
+    /**
+     * Adds the indirect call information to the extra data array.
+     * 
+     * @param nodeIndex The index of the call node.
+     */
+    void addIndirectCall(int nodeIndex) {
         ensureExtraDataSize(CALL_INDIRECT_LENGTH);
         extraData[extraDataCount + CALL_INDIRECT_NODE_INDEX] = nodeIndex;
         // initializes condition profile with 0.
         extraDataCount += CALL_INDIRECT_LENGTH;
     }
 
-    public void addCall(int nodeIndex) {
+    /**
+     * Adds the direct call information to the extra data array.
+     * 
+     * @param nodeIndex The index of the call node.
+     */
+    void addCall(int nodeIndex) {
         ensureExtraDataSize(CALL_LENGTH);
         extraData[extraDataCount + CALL_NODE_INDEX] = nodeIndex;
         extraDataCount += CALL_LENGTH;
     }
 
-    public int getLocation() {
+    /**
+     * @return The current location in the extra data array.
+     */
+    int getLocation() {
         return extraDataCount;
     }
 
-    public int[] getExtraDataArray() {
+    int[] getExtraDataArray() {
         int[] result = new int[extraDataCount];
         if (extraData == null) {
             return EMPTY_EXTRA_DATA;

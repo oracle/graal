@@ -50,6 +50,7 @@ import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_IF_EXTRA_INDEX;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_IF_LENGTH;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_IF_STACK_INFO;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_STACK_INFO;
+import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_TABLE_COUNT;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_TABLE_ENTRY_BYTECODE_INDEX;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_TABLE_ENTRY_EXTRA_INDEX;
 import static org.graalvm.wasm.constants.ExtraDataOffsets.BR_TABLE_ENTRY_LENGTH;
@@ -325,12 +326,12 @@ public final class WasmBlockNode extends Node implements BytecodeOSRNode {
         assert Integer.bitCount(REPORT_LOOP_STRIDE) == 1 : "must be a power of 2";
     }
 
-    @CompilationFinal private final WasmInstance instance;
-    @CompilationFinal private final WasmCodeEntry codeEntry;
-    @CompilationFinal private final int functionStartOffset;
-    @CompilationFinal private final int functionEndOffset;
-    @CompilationFinal private final byte returnTypeId;
-    @CompilationFinal private final int functionReturnLength;
+    private final WasmInstance instance;
+    private final WasmCodeEntry codeEntry;
+    private final int functionStartOffset;
+    private final int functionEndOffset;
+    private final byte returnTypeId;
+    private final int functionReturnLength;
     @Children private Node[] callNodes;
 
     @CompilationFinal private Object osrMetadata;
@@ -372,7 +373,7 @@ public final class WasmBlockNode extends Node implements BytecodeOSRNode {
     public Object executeOSR(VirtualFrame osrFrame, int target, Object interpreterState) {
         WasmOSRInterpreterState state = (WasmOSRInterpreterState) interpreterState;
         WasmContext context = WasmContext.get(this);
-        return executeBodyFromBCI(context, osrFrame, target, state.extraOffset, state.stackPointer);
+        return executeBodyFromOffset(context, osrFrame, target, state.extraOffset, state.stackPointer);
     }
 
     @Override
@@ -388,14 +389,14 @@ public final class WasmBlockNode extends Node implements BytecodeOSRNode {
     // endregion OSR support
 
     public void execute(WasmContext context, VirtualFrame frame) {
-        executeBodyFromBCI(context, frame, functionStartOffset, 0, codeEntry.numLocals());
+        executeBodyFromOffset(context, frame, functionStartOffset, 0, codeEntry.numLocals());
     }
 
     @BytecodeInterpreterSwitch
     @BytecodeInterpreterSwitchBoundary
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
     @SuppressWarnings("UnusedAssignment")
-    public Object executeBodyFromBCI(WasmContext context, VirtualFrame frame, int startOffset, int startExtraOffset, int startStackPointer) {
+    public Object executeBodyFromOffset(WasmContext context, VirtualFrame frame, int startOffset, int startExtraOffset, int startStackPointer) {
         final WasmCodeEntry wasmCodeEntry = codeEntry;
         final int numLocals = wasmCodeEntry.numLocals();
         final byte[] data = wasmCodeEntry.data();
@@ -412,10 +413,11 @@ public final class WasmBlockNode extends Node implements BytecodeOSRNode {
         final WasmMemory memory = instance.memory();
 
         check(data.length, (1 << 31) - 1);
-        check(extraData.length, (1 << 31) - 1);
+        // Generates invalid frame states in OSR.
+        // check(extraData.length, (1 << 31) - 1);
 
         int opcode = UNREACHABLE;
-        while (offset < functionEndOffset) {
+        loop: while (offset < functionEndOffset) {
             byte byteOpcode = BinaryStreamParser.rawPeek1(data, offset);
             opcode = byteOpcode & 0xFF;
             offset++;
@@ -463,7 +465,7 @@ public final class WasmBlockNode extends Node implements BytecodeOSRNode {
                     break;
                 }
                 case ELSE:
-                    // The then branch was executed at this point. Jump to end of if statement.
+                    // The then branch was executed at this point. Jump to end of the if statement.
                     offset = extraData[extraOffset + ELSE_BYTECODE_INDEX];
                     extraOffset = extraData[extraOffset + ELSE_EXTRA_INDEX];
                     break;
@@ -476,7 +478,7 @@ public final class WasmBlockNode extends Node implements BytecodeOSRNode {
 
                     unwindStack(frame, stackPointer, targetStackPointer, targetReturnLength);
 
-                    // Jump to target block.
+                    // Jump to the target block.
                     offset = extraData[extraOffset + BR_BYTECODE_INDEX];
                     extraOffset = extraData[extraOffset + BR_EXTRA_INDEX];
                     stackPointer = targetStackPointer + targetReturnLength;
@@ -491,7 +493,7 @@ public final class WasmBlockNode extends Node implements BytecodeOSRNode {
 
                         unwindStack(frame, stackPointer, targetStackPointer, targetReturnValueCount);
 
-                        // Jump to target block.
+                        // Jump to the target block.
                         offset = extraData[extraOffset + BR_IF_BYTECODE_INDEX];
                         extraOffset = extraData[extraOffset + BR_IF_EXTRA_INDEX];
                         stackPointer = targetStackPointer + targetReturnValueCount;
@@ -513,30 +515,41 @@ public final class WasmBlockNode extends Node implements BytecodeOSRNode {
                         index = size - 1;
                     }
 
-                    // This loop is implemented to create a separate path for every index. This
-                    // guarantees that all values inside the if statement are treated as compile
-                    // time constants, since the loop is unrolled.
-                    // TODO:
-                    // if (CompilerDirectives.inInterpreter()) {
-                    // jumps without loop, direct jump
-                    // Find benchmark that uses branch tables intensively
-                    //
-                    // }
-                    final int lookupOffset = extraOffset + BR_TABLE_ENTRY_OFFSET;
-                    for (int i = 0; i < size; i++) {
-                        if (WasmCodeEntry.profileCondition(extraData, lookupOffset + (i * BR_TABLE_ENTRY_LENGTH) + BR_TABLE_ENTRY_PROFILE, i == index)) {
-                            final int indexLocation = lookupOffset + (i * BR_TABLE_ENTRY_LENGTH);
+                    // TODO: Find benchmark that heavily uses branch tables.
+                    if (CompilerDirectives.inInterpreter()) {
+                        final int indexLocation = extraOffset + BR_TABLE_ENTRY_OFFSET + (index * BR_TABLE_ENTRY_LENGTH);
 
-                            final int stackInfo = extraData[indexLocation + BR_TABLE_ENTRY_STACK_INFO];
-                            final int targetStackPointer = numLocals + (stackInfo & STACK_INFO_STACK_SIZE_MASK);
-                            final int targetReturnLength = (stackInfo >> STACK_INFO_RETURN_LENGTH_SHIFT);
+                        WasmCodeEntry.updateTableConditionProfile(extraData, extraOffset + BR_TABLE_COUNT, indexLocation + BR_TABLE_ENTRY_PROFILE);
 
-                            unwindStack(frame, stackPointer, targetStackPointer, targetReturnLength);
+                        final int stackInfo = extraData[indexLocation + BR_TABLE_ENTRY_STACK_INFO];
+                        final int targetStackPointer = numLocals + (stackInfo & STACK_INFO_STACK_SIZE_MASK);
+                        final int targetReturnLength = (stackInfo >> STACK_INFO_RETURN_LENGTH_SHIFT);
 
-                            // Jump to branch target.
-                            offset = extraData[indexLocation + BR_TABLE_ENTRY_BYTECODE_INDEX];
-                            extraOffset = extraData[indexLocation + BR_TABLE_ENTRY_EXTRA_INDEX];
-                            stackPointer = targetStackPointer + targetReturnLength;
+                        unwindStack(frame, stackPointer, targetStackPointer, targetReturnLength);
+
+                        // Jump to the branch target.
+                        offset = extraData[indexLocation + BR_TABLE_ENTRY_BYTECODE_INDEX];
+                        extraOffset = extraData[indexLocation + BR_TABLE_ENTRY_EXTRA_INDEX];
+                        stackPointer = targetStackPointer + targetReturnLength;
+                    } else {
+                        // This loop is implemented to create a separate path for every index. This
+                        // guarantees that all values inside the if statement are treated as compile
+                        // time constants, since the loop is unrolled.
+                        for (int i = 0; i < size; i++) {
+                            final int indexLocation = extraOffset + BR_TABLE_ENTRY_OFFSET + (i * BR_TABLE_ENTRY_LENGTH);
+                            if (WasmCodeEntry.injectTableConditionProfile(extraData, extraOffset + BR_TABLE_COUNT, indexLocation + BR_TABLE_ENTRY_PROFILE, i == index)) {
+                                final int stackInfo = extraData[indexLocation + BR_TABLE_ENTRY_STACK_INFO];
+                                final int targetStackPointer = numLocals + (stackInfo & STACK_INFO_STACK_SIZE_MASK);
+                                final int targetReturnLength = (stackInfo >> STACK_INFO_RETURN_LENGTH_SHIFT);
+
+                                unwindStack(frame, stackPointer, targetStackPointer, targetReturnLength);
+
+                                // Jump to the branch target.
+                                offset = extraData[indexLocation + BR_TABLE_ENTRY_BYTECODE_INDEX];
+                                extraOffset = extraData[indexLocation + BR_TABLE_ENTRY_EXTRA_INDEX];
+                                stackPointer = targetStackPointer + targetReturnLength;
+                                continue loop;
+                            }
                         }
                     }
                     break;

@@ -44,7 +44,10 @@ package org.graalvm.wasm.parser.validation;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
-public class LoopFrame extends ControlFrame {
+/**
+ * Representation of a wasm loop during module validation.
+ */
+class LoopFrame extends ControlFrame {
     private final int target;
     private final int extraTarget;
 
@@ -55,17 +58,17 @@ public class LoopFrame extends ControlFrame {
     }
 
     @Override
-    public byte[] getLabelTypes() {
+    byte[] getLabelTypes() {
         return getParamTypes();
     }
 
     @Override
-    public void enterElse(ParserState state, ExtraDataList extraData, int offset) {
+    void enterElse(ParserState state, ExtraDataList extraData, int offset) {
         throw WasmException.create(Failure.TYPE_MISMATCH, "Expected then branch. Else branch requires preceding then branch.");
     }
 
     @Override
-    public void exit(ExtraDataList extraData, int offset) {
+    void exit(ExtraDataList extraData, int offset) {
         for (int location : conditionalBranches()) {
             extraData.setConditionalBranchTarget(location, target, extraTarget, getInitialStackSize(), getLabelTypeLength());
         }

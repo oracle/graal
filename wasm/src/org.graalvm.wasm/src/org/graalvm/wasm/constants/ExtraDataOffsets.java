@@ -44,8 +44,7 @@ package org.graalvm.wasm.constants;
 /**
  * Represents the offsets of entries in the extra data array.
  */
-public class ExtraDataOffsets {
-
+public final class ExtraDataOffsets {
     /**
      * If:
      * 
@@ -143,15 +142,19 @@ public class ExtraDataOffsets {
      * Br_table:
      * 
      * <code>
-     *     | size | entry | ... | entry |
+     *     | size | count | entry | ... | entry | default entry |
      * </code>
      * 
      * size: The number of entries in the branch table.
      * 
+     * count: The number of times the branch table instruction has been executed. Used for
+     * calculating the branch probability.
+     * 
      * entry: A branch table entry.
      */
     public static final int BR_TABLE_SIZE = 0;
-    public static final int BR_TABLE_ENTRY_OFFSET = 1;
+    public static final int BR_TABLE_COUNT = 1;
+    public static final int BR_TABLE_ENTRY_OFFSET = 2;
 
     /**
      * Br_table_entry:
@@ -204,4 +207,7 @@ public class ExtraDataOffsets {
      */
     public static final int CALL_NODE_INDEX = 0;
     public static final int CALL_LENGTH = 1;
+
+    private ExtraDataOffsets() {
+    }
 }

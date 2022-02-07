@@ -150,6 +150,30 @@ public final class WasmCodeEntry {
         }
     }
 
+    public static void updateTableConditionProfile(int[] profileArray, int counterIndex, int profileIndex) {
+        if (profileArray[counterIndex] < Integer.MAX_VALUE) {
+            profileArray[counterIndex]++;
+            profileArray[profileIndex]++;
+        }
+    }
+
+    public static boolean injectTableConditionProfile(int[] profileArray, int counterIndex, int profileIndex, boolean condition) {
+        int t = profileArray[profileIndex];
+        int sum = profileArray[counterIndex];
+        double probability = (double) t / (double) sum;
+        if (condition) {
+            if (t == 0) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+            }
+            return CompilerDirectives.injectBranchProbability(probability, true);
+        } else {
+            if (t == sum) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+            }
+            return CompilerDirectives.injectBranchProbability(1.0 - probability, false);
+        }
+    }
+
     public void errorBranch() {
         errorBranch.enter();
     }

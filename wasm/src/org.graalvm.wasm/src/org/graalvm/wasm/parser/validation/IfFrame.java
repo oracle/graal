@@ -44,7 +44,10 @@ package org.graalvm.wasm.parser.validation;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 
-public class IfFrame extends ControlFrame {
+/**
+ * Representation of a wasm if and else block during module validation.
+ */
+class IfFrame extends ControlFrame {
     private int falseJumpLocation;
     private boolean elseBranch;
 
@@ -55,23 +58,25 @@ public class IfFrame extends ControlFrame {
     }
 
     @Override
-    public byte[] getLabelTypes() {
+    byte[] getLabelTypes() {
         return getResultTypes();
     }
 
     @Override
-    public void enterElse(ParserState state, ExtraDataList extraData, int offset) {
+    void enterElse(ParserState state, ExtraDataList extraData, int offset) {
         int endJumpLocation = extraData.addElseLocation();
         extraData.setIfTarget(falseJumpLocation, offset, extraData.getLocation());
         falseJumpLocation = endJumpLocation;
         elseBranch = true;
         state.checkStackAfterFrameExit(this, getResultTypes());
+        // Since else is a separate block the unreachable state has to be reset.
+        resetUnreachable();
     }
 
     @Override
-    public void exit(ExtraDataList extraData, int offset) {
+    void exit(ExtraDataList extraData, int offset) {
         if (!elseBranch && getLabelTypeLength() > 0) {
-            throw WasmException.format(Failure.TYPE_MISMATCH, "Expected else branch. If with result value requires then and else branch.");
+            throw WasmException.create(Failure.TYPE_MISMATCH, "Expected else branch. If with result value requires then and else branch.");
         }
         if (elseBranch) {
             extraData.setElseTarget(falseJumpLocation, offset, extraData.getLocation());

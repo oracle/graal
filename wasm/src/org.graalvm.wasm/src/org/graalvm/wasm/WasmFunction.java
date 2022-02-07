@@ -40,6 +40,7 @@
  */
 package org.graalvm.wasm;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 public final class WasmFunction {
@@ -47,8 +48,8 @@ public final class WasmFunction {
     private final int index;
     private final ImportDescriptor importDescriptor;
     private final int typeIndex;
-    private int typeEquivalenceClass;
-    private String debugName;
+    @CompilationFinal private int typeEquivalenceClass;
+    @CompilationFinal private String debugName;
 
     /**
      * Represents a WebAssembly function.

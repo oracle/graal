@@ -244,6 +244,14 @@ public class ParserState {
         }
     }
 
+    /**
+     * The ControlFrame already supports multiple return types which is not part of our runtime yet.
+     * This helper method generates a single element array from the given return type.
+     * 
+     * @param returnType The return type of the frame.
+     * @return A single element array of the return type or an empty array if the return types is
+     *         void.
+     */
     private static byte[] getReturnTypeArray(byte returnType) {
         byte[] out = EMPTY_ARRAY;
         if (returnType != WasmType.VOID_TYPE) {
@@ -253,10 +261,10 @@ public class ParserState {
     }
 
     /**
-     * Creates a new control frame that holds information about the current scope and pushes it onto
+     * Creates a new block frame that holds information about the current block and pushes it onto
      * the control frame stack.
      *
-     * @param returnType The return type of the control structure that was entered.
+     * @param returnType The return type of the block that was entered.
      */
     public void enterBlock(byte returnType) {
         ControlFrame frame = new BlockFrame(EMPTY_ARRAY, getReturnTypeArray(returnType), valueStack.size(), false);
@@ -264,27 +272,44 @@ public class ParserState {
     }
 
     /**
-     * Creates a new control frame that holds information about the current scope and pushes it onto
-     * the control frame stack. The control frame represents a loop.
+     * Creates a new loop frame that holds information about the current loop and pushes it onto the
+     * control frame stack.
      *
-     * @param returnType The return type of the control structure that was entered.
-     * @param offset The offset of the control structure that was entered in the wasm binary.
+     * @param returnType The return type of the loop that was entered.
+     * @param offset The offset of the loop that was entered in the wasm binary.
      */
     public void enterLoop(byte returnType, int offset) {
         ControlFrame frame = new LoopFrame(EMPTY_ARRAY, getReturnTypeArray(returnType), valueStack.size(), false, offset, extraData.getLocation());
         controlStack.push(frame);
     }
 
+    /**
+     * Creates a new if frame that holds information about the current if and pushes it onto the
+     * control frame stack.
+     *
+     * @param returnType The return type of the if and else branch that was entered.
+     */
     public void enterIf(byte returnType) {
         ControlFrame frame = new IfFrame(EMPTY_ARRAY, getReturnTypeArray(returnType), valueStack.size(), false, extraData.addIfLocation());
         controlStack.push(frame);
     }
 
+    /**
+     * Gets the current control frame and tries to enter the else branch.
+     *
+     * @param offset The offset of the else branch that was entered in the wasm binary.
+     */
     public void enterElse(int offset) {
         ControlFrame frame = controlStack.peek();
         frame.enterElse(this, extraData, offset);
     }
 
+    /**
+     * Performs the necessary branch checks and adds the conditional branch information in the extra
+     * data array.
+     *
+     * @param branchLabel The target label.
+     */
     public void addConditionalBranch(int branchLabel) {
         checkLabelExists(branchLabel);
         ControlFrame frame = getFrame(branchLabel);
@@ -294,6 +319,12 @@ public class ParserState {
         frame.addConditionalBranch(extraData);
     }
 
+    /**
+     * Performs the necessary branch checks and adds the unconditional branch information to the
+     * extra data array.
+     * 
+     * @param branchLabel The target label.
+     */
     public void addUnconditionalBranch(int branchLabel) {
         checkLabelExists(branchLabel);
         ControlFrame frame = getFrame(branchLabel);
@@ -302,6 +333,12 @@ public class ParserState {
         frame.addUnconditionalBranch(extraData);
     }
 
+    /**
+     * Performs the necessary branch checks and adds the branch table information to the extra data
+     * array.
+     * 
+     * @param branchLabels The target labels.
+     */
     public void addBranchTable(int[] branchLabels) {
         int branchLabel = branchLabels[branchLabels.length - 1];
         checkLabelExists(branchLabel);
@@ -315,21 +352,34 @@ public class ParserState {
             byte[] otherBranchLabelReturnTypes = frame.getLabelTypes();
             checkLabelTypes(branchLabelReturnTypes, otherBranchLabelReturnTypes);
             pushAll(popAll(otherBranchLabelReturnTypes));
-            frame.addUnconditionalBranchTableEntry(extraData, location, i);
+            frame.addBranchTableEntry(extraData, location, i);
         }
         popAll(branchLabelReturnTypes);
     }
 
+    /**
+     * Performs the necessary checks for a function return.
+     */
     public void addReturn() {
         ControlFrame frame = getRootBlock();
         Assert.assertIntLessOrEqual(frame.getLabelTypeLength(), 1, Failure.INVALID_RESULT_ARITY);
         checkReturnTypes(frame);
     }
 
+    /**
+     * Adds the index of an indirect call node to the extra data array.
+     * 
+     * @param nodeIndex The index of the indirect call.
+     */
     public void addIndirectCall(int nodeIndex) {
         extraData.addIndirectCall(nodeIndex);
     }
 
+    /**
+     * Adds the index of a direct call node to the extra data array.
+     * 
+     * @param nodeIndex The index of the direct call.
+     */
     public void addCall(int nodeIndex) {
         extraData.addCall(nodeIndex);
     }
@@ -354,7 +404,13 @@ public class ParserState {
         pushAll(resultTypes);
     }
 
-    public void checkStackAfterFrameExit(ControlFrame frame, byte[] resultTypes) {
+    /**
+     * Checks that the expected return types are actually on the value stack.
+     * 
+     * @param frame The frame that is exited.
+     * @param resultTypes The expected return types of the frame.
+     */
+    void checkStackAfterFrameExit(ControlFrame frame, byte[] resultTypes) {
         if (availableStackSize() > resultTypes.length) {
             byte[] actualTypes = popAvailableUnchecked();
             if (!checkTypes(resultTypes, actualTypes)) {
@@ -364,10 +420,17 @@ public class ParserState {
         checkReturnTypes(frame);
     }
 
+    /**
+     * @param index The index of the frame from the top of the stack.
+     * @return The frame at the given index.
+     */
     public ControlFrame getFrame(int index) {
         return controlStack.get(index);
     }
 
+    /**
+     * @return The first (lowest) frame on the stack.
+     */
     public ControlFrame getRootBlock() {
         return controlStack.getFirst();
     }
