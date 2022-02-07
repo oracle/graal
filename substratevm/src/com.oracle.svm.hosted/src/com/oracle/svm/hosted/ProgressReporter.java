@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -115,6 +115,7 @@ public class ProgressReporter {
     private Timer debugInfoTimer;
     private boolean initializeStageEndCompleted = false;
     private boolean creationStageEndCompleted = false;
+    private boolean reportStringBytes = true;
 
     private enum BuildStage {
         INITIALIZING("Initializing"),
@@ -195,6 +196,10 @@ public class ProgressReporter {
         numJNIClasses = numClasses;
         numJNIFields = numFields;
         numJNIMethods = numMethods;
+    }
+
+    public void disableStringBytesReporting() {
+        reportStringBytes = false;
     }
 
     public void printStart(String imageName) {
@@ -480,7 +485,7 @@ public class ProgressReporter {
         for (ObjectInfo o : heapObjects) {
             classNameToSize.merge(o.getClazz().toJavaName(true), o.getSize(), Long::sum);
             Object javaObject = o.getObject();
-            if (javaObject instanceof String) {
+            if (reportStringBytes && javaObject instanceof String) {
                 stringByteLength += getInternalByteArrayLength((String) javaObject);
             }
         }
@@ -488,11 +493,15 @@ public class ProgressReporter {
         Long byteArraySize = classNameToSize.remove("byte[]");
         if (byteArraySize != null) {
             long remainingBytes = byteArraySize;
-            classNameToSize.put(BREAKDOWN_BYTE_ARRAY_PREFIX + "java.lang.String", stringByteLength);
-            remainingBytes -= stringByteLength;
+            if (stringByteLength > 0) {
+                classNameToSize.put(BREAKDOWN_BYTE_ARRAY_PREFIX + "java.lang.String", stringByteLength);
+                remainingBytes -= stringByteLength;
+            }
             long codeInfoSize = CodeInfoTable.getImageCodeCache().getTotalByteArraySize();
-            classNameToSize.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linePrinter.asDocLink("code metadata", "#glossary-code-metadata"), codeInfoSize);
-            remainingBytes -= codeInfoSize;
+            if (codeInfoSize > 0) {
+                classNameToSize.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linePrinter.asDocLink("code metadata", "#glossary-code-metadata"), codeInfoSize);
+                remainingBytes -= codeInfoSize;
+            }
             long metadataByteLength = ImageSingletons.lookup(MethodMetadataDecoder.class).getMetadataByteLength();
             if (metadataByteLength > 0) {
                 classNameToSize.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linePrinter.asDocLink("method metadata", "#glossary-method-metadata"), metadataByteLength);
