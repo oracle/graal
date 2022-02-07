@@ -24,11 +24,14 @@
  */
 package org.graalvm.compiler.core.test;
 
+import org.graalvm.compiler.api.directives.GraalDirectives;
+import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.calc.FloatingIntegerDivNode;
 import org.graalvm.compiler.nodes.calc.FloatingIntegerRemNode;
 import org.graalvm.compiler.nodes.calc.SignedDivNode;
 import org.graalvm.compiler.nodes.calc.SignedRemNode;
+import org.graalvm.compiler.options.OptionValues;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -113,6 +116,25 @@ public class FloatingDivTest extends GraalCompilerTest {
         check(false);
         test("snippet3", 10);
         test("snippet3", Integer.MIN_VALUE);
+        check(true);
+    }
+
+    public static int snippet4(int a, @SuppressWarnings("unused") int b) {
+        int i = 0;
+        for (; i < a; i++) {
+            // GraalDirectives.controlFlowAnchor();
+            GraalDirectives.sideEffect();
+        }
+        int res1 = i / 100000;
+        GraalDirectives.sideEffect();
+        return a / (res1 + 1);
+    }
+
+    @Test
+    public void test04() {
+        check(false);
+        OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false);
+        test(opt, "snippet4", 10, 3);
         check(true);
     }
 }
