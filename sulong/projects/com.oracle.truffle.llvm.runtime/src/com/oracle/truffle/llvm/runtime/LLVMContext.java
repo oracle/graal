@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -28,21 +28,6 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 package com.oracle.truffle.llvm.runtime;
-
-import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.security.SecureRandom;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.logging.Level;
-import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
@@ -78,8 +63,22 @@ import com.oracle.truffle.llvm.runtime.pointer.LLVMManagedPointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMNativePointer;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 import com.oracle.truffle.llvm.runtime.pthread.LLVMPThreadContext;
-
 import org.graalvm.collections.EconomicMap;
+
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.security.SecureRandom;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Level;
+import java.util.stream.Collectors;
 
 public final class LLVMContext {
     public static final String SULONG_INIT_CONTEXT = "__sulong_init_context";
@@ -174,6 +173,7 @@ public final class LLVMContext {
     @CompilationFinal Object freeGlobalsBlockFunction;
     @CompilationFinal Object allocateGlobalsBlockFunction;
     @CompilationFinal Object protectGlobalsBlockFunction;
+    @CompilationFinal SulongEngineOption.OSRMode osrMode = null;
 
     protected boolean initialized;
     protected boolean cleanupNecessary;
@@ -524,6 +524,14 @@ public final class LLVMContext {
             freeGlobalsBlockFunction = nativeContextExtension.getNativeFunction("__sulong_free_globals_block", "(POINTER):VOID");
         }
         return freeGlobalsBlockFunction;
+    }
+
+    public SulongEngineOption.OSRMode getOSRMode() {
+        if (osrMode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            this.osrMode = env.getOptions().get(SulongEngineOption.OSR_MODE);
+        }
+        return osrMode;
     }
 
     public Object getProtectReadOnlyGlobalsBlockFunction() {
