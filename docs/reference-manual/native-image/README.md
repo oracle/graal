@@ -77,14 +77,14 @@ xcode-select --install
 
 #### Prerequisites for Using Native Image on Windows
 
-To start using Native Image on Windows, install [Visual Studio](https://visualstudio.microsoft.com/vs/) and Microsoft Visual C++(MSVC). There are two installation options:
-  * Install the Visual Studio Code Build Tools with the Windows 10 SDK
-  * Install Visual Studio Code with the Windows 10 SDK
+To start using Native Image on Windows, install [Visual Studio](https://visualstudio.microsoft.com/vs/) and Microsoft Visual C++ (MSVC). There are two installation options:
+  * Install the Visual Studio Build Tools with the Windows 10 SDK
+  * Install Visual Studio with the Windows 10 SDK
 
 You can use Visual Studio 2017 version 15.9 or later.
 
 Lastly, on Windows, the `native-image` builder will only work when it is executed from the **x64 Native Tools Command Prompt**.
-The command for initiating an x64 Native Tools command prompt is different if you only have the Visual Studio Build Tools installed, versus if you have the full VS Code 2019 installed.
+The command for initiating an x64 Native Tools command prompt is different if you only have the Visual Studio Build Tools installed, versus if you have the full VS 2019 installed.
 Check [this link](https://medium.com/graalvm/using-graalvm-and-native-image-on-windows-10-9954dc071311) for step-by-step instructions.
 
 ## Build a Native Image
