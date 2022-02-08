@@ -26,22 +26,24 @@ package org.graalvm.compiler.phases.common;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph.NodeEventScope;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.NodeView;
+import org.graalvm.compiler.nodes.PiNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.BinaryArithmeticNode;
 import org.graalvm.compiler.nodes.calc.BinaryNode;
+import org.graalvm.compiler.nodes.calc.FloatingIntegerDivNode;
+import org.graalvm.compiler.nodes.calc.FloatingIntegerRemNode;
 import org.graalvm.compiler.nodes.calc.IntegerDivRemNode;
 import org.graalvm.compiler.nodes.calc.IntegerMulHighNode;
 import org.graalvm.compiler.nodes.calc.MulNode;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
-import org.graalvm.compiler.nodes.calc.FloatingIntegerDivNode;
-import org.graalvm.compiler.nodes.calc.FloatingIntegerRemNode;
 import org.graalvm.compiler.nodes.calc.RightShiftNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.SignedDivNode;
@@ -54,6 +56,15 @@ import org.graalvm.compiler.phases.common.util.EconomicSetNodeEventListener;
 
 import jdk.vm.ci.code.CodeUtil;
 
+/**
+ * Phase that optimizes integer division operation by using various mathematical foundations to
+ * express it in faster, equivalent, arithmetic.
+ *
+ * Note on stamps: When this phase replaces a node with a faster computed version we inject a pi
+ * node with the old stamp. This is done to ensure a stamp never gets worse and subject to the
+ * weaknesses of our integer stamp representation. This phase injects "magic" knowledge about two's
+ * complement division into the graph that cannot be expressed otherwise.
+ */
 public class OptimizeDivPhase extends BasePhase<CoreProviders> {
     protected final CanonicalizerPhase canon;
 
@@ -110,9 +121,10 @@ public class OptimizeDivPhase extends BasePhase<CoreProviders> {
         ValueNode mul = BinaryArithmeticNode.mul(graph, div, rem.getY(), NodeView.DEFAULT);
         ValueNode result = BinaryArithmeticNode.sub(graph, rem.getX(), mul, NodeView.DEFAULT);
         if (rem instanceof IntegerDivRemNode) {
-            graph.replaceFixedWithFloating((FixedWithNextNode) rem, result);
+            // see phase documentation note on stamps
+            graph.replaceFixedWithFloating((FixedWithNextNode) rem, graph.maybeAddOrUnique(PiNode.create(result, ((IntegerDivRemNode) rem).stamp(NodeView.DEFAULT))));
         } else {
-            ((ValueNode) rem).replaceAndDelete(result);
+            ((ValueNode) rem).replaceAndDelete(graph.maybeAddOrUnique(PiNode.create(result, ((ValueNode) rem).stamp(NodeView.DEFAULT))));
         }
     }
 
@@ -209,9 +221,12 @@ public class OptimizeDivPhase extends BasePhase<CoreProviders> {
 
         StructuredGraph graph = ((ValueNode) div).graph();
         if (div instanceof SignedDivNode) {
-            graph.replaceFixed((FixedWithNextNode) div, graph.addOrUniqueWithInputs(value));
+            Stamp oldStamp = ((SignedDivNode) div).stamp(NodeView.DEFAULT);
+            // see phase documentation note on stamps
+            graph.replaceFixed((FixedWithNextNode) div, graph.addOrUniqueWithInputs(PiNode.create(value, oldStamp)));
         } else if (div instanceof FloatingIntegerDivNode) {
-            ((FloatingIntegerDivNode) div).replaceAndDelete(graph.addOrUniqueWithInputs(value));
+            // see phase documentation note on stamps
+            ((FloatingIntegerDivNode) div).replaceAndDelete(graph.addOrUniqueWithInputs(PiNode.create(value, ((FloatingIntegerDivNode) div).stamp(NodeView.DEFAULT))));
         } else {
             throw GraalError.shouldNotReachHere("Unknown or invalid div:" + div);
         }
