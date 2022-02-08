@@ -2,7 +2,6 @@
 
 GraalVM Insight (hereafter "Insight") is a multipurpose, flexible tool that can reduce the effort of writing reliable microservices solutions.
 The dynamic nature of the tool helps to selectively apply complex insights by gathering hooks on already deployed applications running at full speed.
-<!-- Insight further blurs the difference between various DevOps tasks - code once, apply your insights anytime, anywhere! -->
 
 Find out more about Insight from its [formal API specification](https://www.graalvm.org/tools/javadoc/org/graalvm/tools/insight/Insight.html) and the [Insight Manual](Insight-Manual.md).
 
