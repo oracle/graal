@@ -152,14 +152,6 @@ public final class UnimplementedGraalIntrinsics {
                         "java/util/Arrays.copyOf([Ljava/lang/Object;ILjava/lang/Class;)[Ljava/lang/Object;",
                         "java/util/Arrays.copyOfRange([Ljava/lang/Object;IILjava/lang/Class;)[Ljava/lang/Object;");
 
-        if (arch instanceof AMD64) {
-            if (!((AMD64) arch).getFeatures().contains(AMD64.CPUFeature.POPCNT)) {
-                add(ignore,
-                                "java/lang/Integer.bitCount(I)I",
-                                "java/lang/Long.bitCount(J)I");
-            }
-        }
-
         // Relevant for Java flight recorder
         // [GR-10106] These JFR intrinsics are used for firing socket/file events via Java
         // instrumentation and are of low priority.
@@ -170,6 +162,7 @@ public final class UnimplementedGraalIntrinsics {
 
         add(ignore,
                         "jdk/jfr/internal/JVM.counterTime()J",
+                        "jdk/jfr/internal/JVM.getBufferWriter()Ljava/lang/Object;",
                         "jdk/jfr/internal/JVM.getClassId(Ljava/lang/Class;)J",
                         "jdk/jfr/internal/JVM.getEventWriter()Ljava/lang/Object;");
 
@@ -191,12 +184,6 @@ public final class UnimplementedGraalIntrinsics {
         // See JDK-8207146.
         String oopName = isJDK12OrHigher() ? "Reference" : "Object";
 
-        // Relevant for Java flight recorder
-        add(toBeInvestigated,
-                        "jdk/jfr/internal/JVM.counterTime()J",
-                        "jdk/jfr/internal/JVM.getBufferWriter()Ljava/lang/Object;",
-                        "jdk/jfr/internal/JVM.getClassId(Ljava/lang/Class;)J");
-
         add(toBeInvestigated,
                         // Only used as a marker for vectorization?
                         "java/util/stream/Streams$RangeIntSpliterator.forEachRemaining(Ljava/util/function/IntConsumer;)V",
@@ -205,15 +192,15 @@ public final class UnimplementedGraalIntrinsics {
                         // Only implemented on non-AMD64 platforms (some logic and runtime call)
                         "java/util/zip/Adler32.updateBytes(I[BII)I",
                         // Emits a slow and a fast path and some dispatching logic
-                        "jdk/internal/misc/Unsafe.allocateUninitializedArray0(Ljava/lang/Class;I)Ljava/lang/Object;",
+                        "jdk/internal/misc/Unsafe.allocateUninitializedArray0(Ljava/lang/Class;I)Ljava/lang/Object;");
 
-                        // HotSpot MacroAssembler-based intrinsic
-                        "sun/nio/cs/ISO_8859_1$Encoder.implEncodeISOArray([CI[BII)I");
+        if (arch instanceof AArch64) {
+            add(toBeInvestigated,
+                            "sun/nio/cs/ISO_8859_1$Encoder.implEncodeISOArray([CI[BII)I",
+                            "java/lang/StringCoding.hasNegatives([BII)Z",
+                            "java/lang/StringCoding.implEncodeISOArray([BI[BII)I");
+        }
 
-        // Compact string support - HotSpot MacroAssembler-based intrinsic or complex C2 logic.
-        add(toBeInvestigated,
-                        "java/lang/StringCoding.hasNegatives([BII)Z",
-                        "java/lang/StringCoding.implEncodeISOArray([BI[BII)I");
         add(ignore,
                         // handled through an intrinsic for String.equals itself
                         "java/lang/StringLatin1.equals([B[B)Z",
@@ -235,20 +222,7 @@ public final class UnimplementedGraalIntrinsics {
                         "java/lang/StringUTF16.indexOfLatin1([BI[BII)I",
                         "java/lang/StringUTF16.indexOfLatin1([B[B)I");
 
-        if (!config.useAESCTRIntrinsics) {
-            add(ignore,
-                            "com/sun/crypto/provider/CounterMode.implCrypt([BII[BI)I");
-        }
-        if (!config.useGHASHIntrinsics()) {
-            add(ignore,
-                            "com/sun/crypto/provider/GHASH.processBlocks([BII[J[J)V");
-        }
-        if (!config.useFMAIntrinsics) {
-            add(ignore,
-                            "java/lang/Math.fma(DDD)D",
-                            "java/lang/Math.fma(FFF)F");
-        }
-        if (!(arch instanceof AArch64)) {
+        if (arch instanceof AMD64) {
             add(toBeInvestigated,
                             "java/lang/Math.multiplyHigh(JJ)J");
         }
@@ -263,20 +237,6 @@ public final class UnimplementedGraalIntrinsics {
             add(toBeInvestigated,
                             "java/lang/Math.abs(I)I",
                             "java/lang/Math.abs(J)J");
-
-            if (!((AMD64) arch).getFeatures().contains(AMD64.CPUFeature.AVX)) {
-                add(ignore,
-                                "java/lang/Math.max(DD)D",
-                                "java/lang/Math.max(FF)F",
-                                "java/lang/Math.min(DD)D",
-                                "java/lang/Math.min(FF)F");
-            }
-
-            if (!((AMD64) arch).getFeatures().contains(AMD64.CPUFeature.AVX512VL)) {
-                add(ignore,
-                                "java/lang/Math.copySign(DD)D",
-                                "java/lang/Math.copySign(FF)F");
-            }
         }
         add(toBeInvestigated,
                         "java/lang/CharacterDataLatin1.isDigit(I)Z",
@@ -284,32 +244,12 @@ public final class UnimplementedGraalIntrinsics {
                         "java/lang/CharacterDataLatin1.isUpperCase(I)Z",
                         "java/lang/CharacterDataLatin1.isWhitespace(I)Z",
                         "jdk/jfr/internal/JVM.getEventWriter()Ljava/lang/Object;");
-        if (!config.useBase64Intrinsics()) {
-            add(ignore,
-                            "java/util/Base64$Encoder.encodeBlock([BII[BIZ)V");
-        }
 
         if (isJDK13OrHigher()) {
-            if (!(arch instanceof AArch64)) {
+            if (arch instanceof AMD64) {
                 add(toBeInvestigated,
                                 "java/lang/Math.abs(I)I",
                                 "java/lang/Math.abs(J)J");
-
-                if (arch instanceof AMD64) {
-                    if (!((AMD64) arch).getFeatures().contains(AMD64.CPUFeature.AVX)) {
-                        add(ignore,
-                                        "java/lang/Math.max(DD)D",
-                                        "java/lang/Math.max(FF)F",
-                                        "java/lang/Math.min(DD)D",
-                                        "java/lang/Math.min(FF)F");
-                    }
-                } else {
-                    add(toBeInvestigated,
-                                    "java/lang/Math.max(DD)D",
-                                    "java/lang/Math.max(FF)F",
-                                    "java/lang/Math.min(DD)D",
-                                    "java/lang/Math.min(FF)F");
-                }
             }
         }
 
@@ -371,14 +311,7 @@ public final class UnimplementedGraalIntrinsics {
                             "sun/security/provider/SHA3.implCompress0([BI)V");
         }
 
-        if (!config.inlineNotify()) {
-            add(ignore, "java/lang/Object.notify()V");
-        }
-        if (!config.inlineNotifyAll()) {
-            add(ignore, "java/lang/Object.notifyAll()V");
-        }
-
-        if (!(arch instanceof AMD64)) {
+        if (arch instanceof AArch64) {
             // Can we implement these on non-AMD64 platforms? C2 seems to.
             add(toBeInvestigated,
                             "com/sun/crypto/provider/CounterMode.implCrypt([BII[BI)I",
@@ -407,6 +340,51 @@ public final class UnimplementedGraalIntrinsics {
          * the HotSpot side (e.g., because they require certain CPU features). So, we are ignoring
          * them if the HotSpot config tells us that they can't be used.
          */
+        if (arch instanceof AMD64) {
+            if (!((AMD64) arch).getFeatures().contains(AMD64.CPUFeature.POPCNT)) {
+                add(ignore,
+                                "java/lang/Integer.bitCount(I)I",
+                                "java/lang/Long.bitCount(J)I");
+            }
+            if (!((AMD64) arch).getFeatures().contains(AMD64.CPUFeature.AVX)) {
+                add(ignore,
+                                "java/lang/Math.max(DD)D",
+                                "java/lang/Math.max(FF)F",
+                                "java/lang/Math.min(DD)D",
+                                "java/lang/Math.min(FF)F");
+            }
+            if (!((AMD64) arch).getFeatures().contains(AMD64.CPUFeature.AVX512VL)) {
+                add(ignore,
+                                "java/lang/Math.copySign(DD)D",
+                                "java/lang/Math.copySign(FF)F");
+            }
+        }
+
+        if (!config.inlineNotify()) {
+            add(ignore, "java/lang/Object.notify()V");
+        }
+        if (!config.inlineNotifyAll()) {
+            add(ignore, "java/lang/Object.notifyAll()V");
+        }
+
+        if (!config.useBase64Intrinsics()) {
+            add(ignore,
+                            "java/util/Base64$Encoder.encodeBlock([BII[BIZ)V");
+        }
+
+        if (!config.useAESCTRIntrinsics) {
+            add(ignore,
+                            "com/sun/crypto/provider/CounterMode.implCrypt([BII[BI)I");
+        }
+        if (!config.useGHASHIntrinsics()) {
+            add(ignore,
+                            "com/sun/crypto/provider/GHASH.processBlocks([BII[J[J)V");
+        }
+        if (!config.useFMAIntrinsics) {
+            add(ignore,
+                            "java/lang/Math.fma(DDD)D",
+                            "java/lang/Math.fma(FFF)F");
+        }
 
         // CRC32 intrinsics
         if (!config.useCRC32Intrinsics) {
@@ -423,18 +401,13 @@ public final class UnimplementedGraalIntrinsics {
                             "java/util/zip/CRC32C.updateDirectByteBuffer(IJII)I");
         }
 
-        String cbcEncryptName = HotSpotGraphBuilderPlugins.lookupIntrinsicName(config, "com/sun/crypto/provider/CipherBlockChaining", "implEncrypt", "encrypt");
-        String cbcDecryptName = HotSpotGraphBuilderPlugins.lookupIntrinsicName(config, "com/sun/crypto/provider/CipherBlockChaining", "implDecrypt", "decrypt");
-        String aesEncryptName = HotSpotGraphBuilderPlugins.lookupIntrinsicName(config, "com/sun/crypto/provider/AESCrypt", "implEncryptBlock", "encryptBlock");
-        String aesDecryptName = HotSpotGraphBuilderPlugins.lookupIntrinsicName(config, "com/sun/crypto/provider/AESCrypt", "implDecryptBlock", "decryptBlock");
-
         // AES intrinsics
         if (!config.useAESIntrinsics) {
             add(ignore,
-                            "com/sun/crypto/provider/AESCrypt." + aesDecryptName + "([BI[BI)V",
-                            "com/sun/crypto/provider/AESCrypt." + aesEncryptName + "([BI[BI)V",
-                            "com/sun/crypto/provider/CipherBlockChaining." + cbcDecryptName + "([BII[BI)I",
-                            "com/sun/crypto/provider/CipherBlockChaining." + cbcEncryptName + "([BII[BI)I");
+                            "com/sun/crypto/provider/AESCrypt.implDecryptBlock([BI[BI)V",
+                            "com/sun/crypto/provider/AESCrypt.implEncryptBlock([BI[BI)V",
+                            "com/sun/crypto/provider/CipherBlockChaining.implDecrypt([BII[BI)I",
+                            "com/sun/crypto/provider/CipherBlockChaining.implEncrypt([BII[BI)I");
         }
 
         // BigInteger intrinsics
@@ -459,15 +432,14 @@ public final class UnimplementedGraalIntrinsics {
             add(ignore, "sun/security/provider/DigestBase.implCompressMultiBlock0([BII)I");
         }
         // SHA intrinsics
-        String shaCompressName = HotSpotGraphBuilderPlugins.lookupIntrinsicName(config, "sun/security/provider/SHA", "implCompress0", "implCompress");
         if (!config.useSHA1Intrinsics()) {
-            add(ignore, "sun/security/provider/SHA." + shaCompressName + "([BI)V");
+            add(ignore, "sun/security/provider/SHA.implCompress0([BI)V");
         }
         if (!config.useSHA256Intrinsics()) {
-            add(ignore, "sun/security/provider/SHA2." + shaCompressName + "([BI)V");
+            add(ignore, "sun/security/provider/SHA2.implCompress0([BI)V");
         }
         if (!config.useSHA512Intrinsics()) {
-            add(ignore, "sun/security/provider/SHA5." + shaCompressName + "([BI)V");
+            add(ignore, "sun/security/provider/SHA5.implCompress0([BI)V");
         }
     }
 

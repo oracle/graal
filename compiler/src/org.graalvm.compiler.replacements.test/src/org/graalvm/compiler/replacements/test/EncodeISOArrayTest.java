@@ -78,7 +78,7 @@ public class EncodeISOArrayTest extends GraalCompilerTest {
         }
     }
 
-    private Result executeCompiledMethod(InstalledCode compiledMethod, Object... args) {
+    private static Result executeCompiledMethod(InstalledCode compiledMethod, Object... args) {
         try {
             return new Result(compiledMethod.executeVarargs(args), null);
         } catch (Throwable e) {

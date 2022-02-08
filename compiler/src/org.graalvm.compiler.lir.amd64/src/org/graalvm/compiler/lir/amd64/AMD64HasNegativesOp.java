@@ -48,7 +48,6 @@ import org.graalvm.compiler.lir.StubPort;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
-import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
@@ -107,8 +106,7 @@ public final class AMD64HasNegativesOp extends AMD64LIRInstruction {
     }
 
     private static boolean supportsAVX2(TargetDescription target) {
-        AMD64 arch = (AMD64) target.arch;
-        return arch.getFeatures().contains(CPUFeature.AVX2);
+        return supports(target, CPUFeature.AVX2);
     }
 
     private static boolean supportsAVX3(TargetDescription target) {
@@ -216,7 +214,7 @@ public final class AMD64HasNegativesOp extends AMD64LIRInstruction {
                 masm.bind(labelCompareTail); // len is zero
                 masm.movl(len, result);
                 // Fallthru to tail compare
-            } else {
+            } else if (supports(crb.target, CPUFeature.SSE4_2)) {
                 // With SSE4.2, use double quad vector compare
                 Label labelCompareWideVectors = new Label();
                 Label labelCompareTail = new Label();

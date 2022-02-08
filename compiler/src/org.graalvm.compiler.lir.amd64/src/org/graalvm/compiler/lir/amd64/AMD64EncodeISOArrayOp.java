@@ -104,6 +104,10 @@ public final class AMD64EncodeISOArrayOp extends AMD64LIRInstruction {
         this.ascii = ascii;
     }
 
+    private static boolean supportsSSE42(TargetDescription target) {
+        return supports(target, CPUFeature.SSE4_2);
+    }
+
     private static boolean supportsAVX(TargetDescription target) {
         return supports(target, CPUFeature.AVX);
     }
@@ -122,14 +126,8 @@ public final class AMD64EncodeISOArrayOp extends AMD64LIRInstruction {
         Label labelDone = new Label();
         Label labelCopy1Char = new Label();
         Label labelCopy1CharExit = new Label();
-        Label labelCopy8Chars = new Label();
-        Label labelCopy8CharsExit = new Label();
-        Label labelChars16Check = new Label();
-        Label labelCopy16Chars = new Label();
-        Label labelCopy16CharsExit = new Label();
 
         AMD64Move.move(crb, masm, srcValue, originSrcValue);
-        // This was killed
         AMD64Move.move(crb, masm, dstValue, originDstValue);
         AMD64Move.move(crb, masm, lenValue, originLengthValue);
 
@@ -156,83 +154,91 @@ public final class AMD64EncodeISOArrayOp extends AMD64LIRInstruction {
         masm.leaq(dst, new AMD64Address(dst, len, Scale.Times1));
         masm.negq(len);
 
-        if (supportsAVX2(crb.target)) {
-            Label labelChars32Check = new Label();
-            Label labelCopy32Chars = new Label();
-            Label labelCopy32CharsExit = new Label();
+        if (supportsAVX2(crb.target) || supportsSSE42(crb.target)) {
+            Label labelCopy8Chars = new Label();
+            Label labelCopy8CharsExit = new Label();
+            Label labelChars16Check = new Label();
+            Label labelCopy16Chars = new Label();
+            Label labelCopy16CharsExit = new Label();
 
-            masm.movl(temp5, mask); // create mask to test for Unicode chars in vector
-            masm.movdl(vectorTemp1, temp5);
-            masm.emit(VPBROADCASTD, vectorTemp1, vectorTemp1, AVXSize.YMM);
-            masm.jmp(labelChars32Check);
+            if (supportsAVX2(crb.target)) {
+                Label labelChars32Check = new Label();
+                Label labelCopy32Chars = new Label();
+                Label labelCopy32CharsExit = new Label();
 
-            masm.bind(labelCopy32Chars);
-            masm.vmovdqu(vectorTemp3, new AMD64Address(src, len, Scale.Times2, -64));
-            masm.vmovdqu(vectorTemp4, new AMD64Address(src, len, Scale.Times2, -32));
-            masm.emit(VPOR, vectorTemp2, vectorTemp3, vectorTemp4, AVXSize.YMM);
-            masm.vptest(vectorTemp2, vectorTemp1);
-            masm.jcc(ConditionFlag.NotZero, labelCopy32CharsExit, true);
-            masm.emit(VPACKUSWB, vectorTemp3, vectorTemp3, vectorTemp4, AVXSize.YMM);
-            masm.emit(VPERMQ, vectorTemp4, vectorTemp3, 0xD8, AVXSize.YMM);
-            masm.vmovdqu(new AMD64Address(dst, len, Scale.Times1, -32), vectorTemp4);
+                masm.movl(temp5, mask); // create mask to test for Unicode chars in vector
+                masm.movdl(vectorTemp1, temp5);
+                masm.emit(VPBROADCASTD, vectorTemp1, vectorTemp1, AVXSize.YMM);
+                masm.jmp(labelChars32Check);
 
-            masm.bind(labelChars32Check);
-            masm.addqAndJcc(len, 32, ConditionFlag.LessEqual, labelCopy32Chars, false);
+                masm.bind(labelCopy32Chars);
+                masm.vmovdqu(vectorTemp3, new AMD64Address(src, len, Scale.Times2, -64));
+                masm.vmovdqu(vectorTemp4, new AMD64Address(src, len, Scale.Times2, -32));
+                masm.emit(VPOR, vectorTemp2, vectorTemp3, vectorTemp4, AVXSize.YMM);
+                masm.vptest(vectorTemp2, vectorTemp1);
+                masm.jcc(ConditionFlag.NotZero, labelCopy32CharsExit, true);
+                masm.emit(VPACKUSWB, vectorTemp3, vectorTemp3, vectorTemp4, AVXSize.YMM);
+                masm.emit(VPERMQ, vectorTemp4, vectorTemp3, 0xD8, AVXSize.YMM);
+                masm.vmovdqu(new AMD64Address(dst, len, Scale.Times1, -32), vectorTemp4);
 
-            masm.bind(labelCopy32CharsExit);
-            masm.subqAndJcc(len, 16, ConditionFlag.Greater, labelCopy16CharsExit, true);
-        } else {
-            masm.movl(temp5, mask); // create mask to test for Unicode chars in vector
-            masm.movdl(vectorTemp1, temp5);
-            masm.pshufd(vectorTemp1, vectorTemp1, 0);
-            masm.jmpb(labelChars16Check);
-        }
+                masm.bind(labelChars32Check);
+                masm.addqAndJcc(len, 32, ConditionFlag.LessEqual, labelCopy32Chars, false);
 
-        masm.bind(labelCopy16Chars);
-
-        if (supportsAVX2(crb.target)) {
-            masm.vmovdqu(vectorTemp2, new AMD64Address(src, len, Scale.Times2, -32));
-            masm.vptest(vectorTemp2, vectorTemp1);
-            masm.jcc(ConditionFlag.NotZero, labelCopy16CharsExit);
-            masm.emit(VPACKUSWB, vectorTemp2, vectorTemp2, vectorTemp1, AVXSize.YMM);
-            masm.emit(VPERMQ, vectorTemp3, vectorTemp2, 0xD8, AVXSize.YMM);
-        } else {
-            if (supportsAVX(crb.target)) {
-                masm.movdqu(vectorTemp3, new AMD64Address(src, len, Scale.Times2, -32));
-                masm.movdqu(vectorTemp4, new AMD64Address(src, len, Scale.Times2, -16));
-                masm.emit(VPOR, vectorTemp2, vectorTemp3, vectorTemp4, AVXSize.XMM);
-            } else {
-                masm.movdqu(vectorTemp3, new AMD64Address(src, len, Scale.Times2, -32));
-                masm.por(vectorTemp2, vectorTemp3);
-                masm.movdqu(vectorTemp4, new AMD64Address(src, len, Scale.Times2, -16));
-                masm.por(vectorTemp2, vectorTemp4);
+                masm.bind(labelCopy32CharsExit);
+                masm.subqAndJcc(len, 16, ConditionFlag.Greater, labelCopy16CharsExit, true);
+            } else if (supportsSSE42(crb.target)) {
+                masm.movl(temp5, mask); // create mask to test for Unicode chars in vector
+                masm.movdl(vectorTemp1, temp5);
+                masm.pshufd(vectorTemp1, vectorTemp1, 0);
+                masm.jmpb(labelChars16Check);
             }
 
-            masm.ptest(vectorTemp2, vectorTemp1);
-            masm.jccb(ConditionFlag.NotZero, labelCopy16CharsExit);
-            masm.packuswb(vectorTemp3, vectorTemp4);
+            masm.bind(labelCopy16Chars);
+
+            if (supportsAVX2(crb.target)) {
+                masm.vmovdqu(vectorTemp2, new AMD64Address(src, len, Scale.Times2, -32));
+                masm.vptest(vectorTemp2, vectorTemp1);
+                masm.jcc(ConditionFlag.NotZero, labelCopy16CharsExit);
+                masm.emit(VPACKUSWB, vectorTemp2, vectorTemp2, vectorTemp1, AVXSize.YMM);
+                masm.emit(VPERMQ, vectorTemp3, vectorTemp2, 0xD8, AVXSize.YMM);
+            } else {
+                if (supportsAVX(crb.target)) {
+                    masm.movdqu(vectorTemp3, new AMD64Address(src, len, Scale.Times2, -32));
+                    masm.movdqu(vectorTemp4, new AMD64Address(src, len, Scale.Times2, -16));
+                    masm.emit(VPOR, vectorTemp2, vectorTemp3, vectorTemp4, AVXSize.XMM);
+                } else {
+                    masm.movdqu(vectorTemp3, new AMD64Address(src, len, Scale.Times2, -32));
+                    masm.por(vectorTemp2, vectorTemp3);
+                    masm.movdqu(vectorTemp4, new AMD64Address(src, len, Scale.Times2, -16));
+                    masm.por(vectorTemp2, vectorTemp4);
+                }
+
+                masm.ptest(vectorTemp2, vectorTemp1);
+                masm.jccb(ConditionFlag.NotZero, labelCopy16CharsExit);
+                masm.packuswb(vectorTemp3, vectorTemp4);
+            }
+
+            masm.movdqu(new AMD64Address(dst, len, Scale.Times1, -16), vectorTemp3);
+
+            masm.bind(labelChars16Check);
+            masm.addqAndJcc(len, 16, ConditionFlag.LessEqual, labelCopy16Chars, false);
+
+            masm.bind(labelCopy16CharsExit);
+            masm.subqAndJcc(len, 8, ConditionFlag.Greater, labelCopy8CharsExit, true);
+
+            masm.bind(labelCopy8Chars);
+            masm.movdqu(vectorTemp3, new AMD64Address(src, len, Scale.Times2, -16));
+            masm.ptest(vectorTemp3, vectorTemp1);
+            masm.jccb(ConditionFlag.NotZero, labelCopy8CharsExit);
+
+            masm.packuswb(vectorTemp3, vectorTemp1);
+            masm.movq(new AMD64Address(dst, len, Scale.Times1, -8), vectorTemp3);
+
+            masm.addqAndJcc(len, 8, ConditionFlag.LessEqual, labelCopy8Chars, true);
+
+            masm.bind(labelCopy8CharsExit);
+            masm.subqAndJcc(len, 8, ConditionFlag.Zero, labelDone, true);
         }
-
-        masm.movdqu(new AMD64Address(dst, len, Scale.Times1, -16), vectorTemp3);
-
-        masm.bind(labelChars16Check);
-        masm.addqAndJcc(len, 16, ConditionFlag.LessEqual, labelCopy16Chars, false);
-
-        masm.bind(labelCopy16CharsExit);
-        masm.subqAndJcc(len, 8, ConditionFlag.Greater, labelCopy8CharsExit, true);
-
-        masm.bind(labelCopy8Chars);
-        masm.movdqu(vectorTemp3, new AMD64Address(src, len, Scale.Times2, -16));
-        masm.ptest(vectorTemp3, vectorTemp1);
-        masm.jccb(ConditionFlag.NotZero, labelCopy8CharsExit);
-
-        masm.packuswb(vectorTemp3, vectorTemp1);
-        masm.movq(new AMD64Address(dst, len, Scale.Times1, -8), vectorTemp3);
-
-        masm.addqAndJcc(len, 8, ConditionFlag.LessEqual, labelCopy8Chars, true);
-
-        masm.bind(labelCopy8CharsExit);
-        masm.subqAndJcc(len, 8, ConditionFlag.Zero, labelDone, true);
 
         masm.bind(labelCopy1Char);
         masm.movzwl(temp5, new AMD64Address(src, len, Scale.Times2, 0));
