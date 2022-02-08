@@ -93,6 +93,7 @@ import org.graalvm.compiler.nodes.calc.RoundNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.SignumNode;
 import org.graalvm.compiler.nodes.calc.SqrtNode;
+import org.graalvm.compiler.nodes.calc.SubNode;
 import org.graalvm.compiler.nodes.calc.UnsignedDivNode;
 import org.graalvm.compiler.nodes.calc.UnsignedRemNode;
 import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
@@ -202,6 +203,7 @@ public class StandardGraphBuilderPlugins {
         registerUnsignedMathPlugins(plugins);
         registerStringPlugins(plugins, replacements, snippetReflection, arrayEqualsSubstitution);
         registerCharacterPlugins(plugins);
+        registerCharacterDataLatin1Plugins(plugins);
         registerShortPlugins(plugins);
         registerIntegerLongPlugins(plugins, JavaKind.Int);
         registerIntegerLongPlugins(plugins, JavaKind.Long);
@@ -639,6 +641,20 @@ public class StandardGraphBuilderPlugins {
                 RightShiftNode rightShift = b.add(new RightShiftNode(reverse, b.add(ConstantNode.forInt(16))));
                 ZeroExtendNode charCast = b.add(new ZeroExtendNode(b.add(new NarrowNode(rightShift, 16)), 32));
                 b.push(JavaKind.Char, b.append(charCast.canonical(null)));
+                return true;
+            }
+        });
+    }
+
+    private static void registerCharacterDataLatin1Plugins(InvocationPlugins plugins) {
+        Registration r = new Registration(plugins, "java.lang.CharacterDataLatin1");
+        r.register(new OptionalInvocationPlugin("isDigit", Receiver.class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode ch) {
+                b.nullCheckedValue(receiver.get());
+                ValueNode sub = b.add(SubNode.create(ch, ConstantNode.forInt('0'), NodeView.DEFAULT));
+                LogicNode isDigit = b.add(IntegerBelowNode.create(sub, ConstantNode.forInt(10), NodeView.DEFAULT));
+                b.addPush(JavaKind.Boolean, ConditionalNode.create(isDigit, NodeView.DEFAULT));
                 return true;
             }
         });

@@ -131,75 +131,17 @@ public final class UnimplementedGraalIntrinsics {
                         "java/lang/Math.max(II)I",
                         "java/lang/Math.min(II)I");
 
-        // These are known to be implemented down stream
-        add(enterprise,
-                        "java/lang/Integer.toString(I)Ljava/lang/String;",
-                        "java/lang/String.<init>(Ljava/lang/String;)V",
-                        "java/lang/StringBuffer.<init>()V",
-                        "java/lang/StringBuffer.<init>(I)V",
-                        "java/lang/StringBuffer.<init>(Ljava/lang/String;)V",
-                        "java/lang/StringBuffer.append(C)Ljava/lang/StringBuffer;",
-                        "java/lang/StringBuffer.append(I)Ljava/lang/StringBuffer;",
-                        "java/lang/StringBuffer.append(Ljava/lang/String;)Ljava/lang/StringBuffer;",
-                        "java/lang/StringBuffer.toString()Ljava/lang/String;",
-                        "java/lang/StringBuilder.<init>()V",
-                        "java/lang/StringBuilder.<init>(I)V",
-                        "java/lang/StringBuilder.<init>(Ljava/lang/String;)V",
-                        "java/lang/StringBuilder.append(C)Ljava/lang/StringBuilder;",
-                        "java/lang/StringBuilder.append(I)Ljava/lang/StringBuilder;",
-                        "java/lang/StringBuilder.append(Ljava/lang/String;)Ljava/lang/StringBuilder;",
-                        "java/lang/StringBuilder.toString()Ljava/lang/String;",
-                        "java/util/Arrays.copyOf([Ljava/lang/Object;ILjava/lang/Class;)[Ljava/lang/Object;",
-                        "java/util/Arrays.copyOfRange([Ljava/lang/Object;IILjava/lang/Class;)[Ljava/lang/Object;");
-
         // Relevant for Java flight recorder
         // [GR-10106] These JFR intrinsics are used for firing socket/file events via Java
         // instrumentation and are of low priority.
         add(ignore,
-                        "oracle/jrockit/jfr/Timing.counterTime()J",
-                        "oracle/jrockit/jfr/VMJFR.classID0(Ljava/lang/Class;)J",
-                        "oracle/jrockit/jfr/VMJFR.threadID()I");
-
-        add(ignore,
                         "jdk/jfr/internal/JVM.counterTime()J",
                         "jdk/jfr/internal/JVM.getBufferWriter()Ljava/lang/Object;",
                         "jdk/jfr/internal/JVM.getClassId(Ljava/lang/Class;)J",
-                        "jdk/jfr/internal/JVM.getEventWriter()Ljava/lang/Object;");
-
-        add(toBeInvestigated,
-                        // Similar to addExact
-                        "java/lang/Math.negateExact(I)I",
-                        // Similar to addExact
-                        "java/lang/Math.negateExact(J)J",
-                        // HotSpot MacroAssembler-based intrinsic
-                        "java/lang/String.indexOf(Ljava/lang/String;)I",
-                        // Can share most implementation parts with with
-                        // Unsafe.allocateUninitializedArray0
-                        "java/lang/reflect/Array.newArray(Ljava/lang/Class;I)Ljava/lang/Object;",
-                        // HotSpot MacroAssembler-based intrinsic
-                        "sun/nio/cs/ISO_8859_1$Encoder.encodeISOArray([CI[BII)I",
-                        // We have implemented implCompressMultiBlock0 on JDK9+.
-                        "sun/security/provider/DigestBase.implCompressMultiBlock([BII)I");
-
-        // See JDK-8207146.
-        String oopName = isJDK12OrHigher() ? "Reference" : "Object";
-
-        add(toBeInvestigated,
-                        // Only used as a marker for vectorization?
-                        "java/util/stream/Streams$RangeIntSpliterator.forEachRemaining(Ljava/util/function/IntConsumer;)V",
-                        // Only implemented on non-AMD64 platforms (some logic and runtime call)
-                        "java/util/zip/Adler32.updateByteBuffer(IJII)I",
-                        // Only implemented on non-AMD64 platforms (some logic and runtime call)
-                        "java/util/zip/Adler32.updateBytes(I[BII)I",
-                        // Emits a slow and a fast path and some dispatching logic
-                        "jdk/internal/misc/Unsafe.allocateUninitializedArray0(Ljava/lang/Class;I)Ljava/lang/Object;");
-
-        if (arch instanceof AArch64) {
-            add(toBeInvestigated,
-                            "java/lang/StringCoding.hasNegatives([BII)Z",
-                            "java/lang/StringCoding.implEncodeISOArray([BI[BII)I",
-                            "sun/nio/cs/ISO_8859_1$Encoder.implEncodeISOArray([CI[BII)I");
-        }
+                        "jdk/jfr/internal/JVM.getEventWriter()Ljava/lang/Object;",
+                        "oracle/jrockit/jfr/Timing.counterTime()J",
+                        "oracle/jrockit/jfr/VMJFR.classID0(Ljava/lang/Class;)J",
+                        "oracle/jrockit/jfr/VMJFR.threadID()I");
 
         add(ignore,
                         // handled through an intrinsic for String.equals itself
@@ -222,23 +164,145 @@ public final class UnimplementedGraalIntrinsics {
                         "java/lang/StringUTF16.indexOfLatin1([BI[BII)I",
                         "java/lang/StringUTF16.indexOfLatin1([B[B)I");
 
+        /*
+         * The intrinsics down here are known to be implemented but they are not always enabled on
+         * the HotSpot side (e.g., because they require certain CPU features). So, we are ignoring
+         * them if the HotSpot config tells us that they can't be used.
+         */
+        if (arch instanceof AMD64) {
+            if (!((AMD64) arch).getFeatures().contains(AMD64.CPUFeature.POPCNT)) {
+                add(ignore,
+                                "java/lang/Integer.bitCount(I)I",
+                                "java/lang/Long.bitCount(J)I");
+            }
+            if (!((AMD64) arch).getFeatures().contains(AMD64.CPUFeature.AVX)) {
+                add(ignore,
+                                "java/lang/Math.max(DD)D",
+                                "java/lang/Math.max(FF)F",
+                                "java/lang/Math.min(DD)D",
+                                "java/lang/Math.min(FF)F");
+            }
+            if (!((AMD64) arch).getFeatures().contains(AMD64.CPUFeature.AVX512VL)) {
+                add(ignore,
+                                "java/lang/Math.copySign(DD)D",
+                                "java/lang/Math.copySign(FF)F");
+            }
+        }
+
+        if (!config.inlineNotify()) {
+            add(ignore, "java/lang/Object.notify()V");
+        }
+        if (!config.inlineNotifyAll()) {
+            add(ignore, "java/lang/Object.notifyAll()V");
+        }
+
+        if (!config.useBase64Intrinsics()) {
+            add(ignore,
+                            "java/util/Base64$Encoder.encodeBlock([BII[BIZ)V");
+        }
+
+        if (!config.useAESCTRIntrinsics) {
+            add(ignore,
+                            "com/sun/crypto/provider/CounterMode.implCrypt([BII[BI)I");
+        }
+        if (!config.useGHASHIntrinsics()) {
+            add(ignore,
+                            "com/sun/crypto/provider/GHASH.processBlocks([BII[J[J)V");
+        }
+        if (!config.useFMAIntrinsics) {
+            add(ignore,
+                            "java/lang/Math.fma(DDD)D",
+                            "java/lang/Math.fma(FFF)F");
+        }
+
+        // CRC32 intrinsics
+        if (!config.useCRC32Intrinsics) {
+            add(ignore,
+                            "java/util/zip/CRC32.update(II)I",
+                            "java/util/zip/CRC32.updateByteBuffer0(IJII)I",
+                            "java/util/zip/CRC32.updateBytes0(I[BII)I");
+        }
+
+        // CRC32C intrinsics
+        if (!config.useCRC32CIntrinsics) {
+            add(ignore,
+                            "java/util/zip/CRC32C.updateBytes(I[BII)I",
+                            "java/util/zip/CRC32C.updateDirectByteBuffer(IJII)I");
+        }
+
+        // AES intrinsics
+        if (!config.useAESIntrinsics) {
+            add(ignore,
+                            "com/sun/crypto/provider/AESCrypt.implDecryptBlock([BI[BI)V",
+                            "com/sun/crypto/provider/AESCrypt.implEncryptBlock([BI[BI)V",
+                            "com/sun/crypto/provider/CipherBlockChaining.implDecrypt([BII[BI)I",
+                            "com/sun/crypto/provider/CipherBlockChaining.implEncrypt([BII[BI)I");
+        }
+
+        // BigInteger intrinsics
+        if (!config.useMultiplyToLenIntrinsic()) {
+            add(ignore, "java/math/BigInteger.implMultiplyToLen([II[II[I)[I");
+        }
+        if (!config.useMulAddIntrinsic()) {
+            add(ignore, "java/math/BigInteger.implMulAdd([I[IIII)I");
+        }
+        if (!config.useMontgomeryMultiplyIntrinsic()) {
+            add(ignore, "java/math/BigInteger.implMontgomeryMultiply([I[I[IIJ[I)[I");
+        }
+        if (!config.useMontgomerySquareIntrinsic()) {
+            add(ignore, "java/math/BigInteger.implMontgomerySquare([I[IIJ[I)[I");
+        }
+        if (!config.useSquareToLenIntrinsic()) {
+            add(ignore, "java/math/BigInteger.implSquareToLen([II[II)[I");
+        }
+        // DigestBase intrinsics
+        if (HotSpotGraphBuilderPlugins.isIntrinsicName(config, "sun/security/provider/DigestBase", "implCompressMultiBlock0") &&
+                        !(config.useSHA1Intrinsics() || config.useSHA256Intrinsics() || config.useSHA512Intrinsics())) {
+            add(ignore, "sun/security/provider/DigestBase.implCompressMultiBlock0([BII)I");
+        }
+        // SHA intrinsics
+        if (!config.useSHA1Intrinsics()) {
+            add(ignore, "sun/security/provider/SHA.implCompress0([BI)V");
+        }
+        if (!config.useSHA256Intrinsics()) {
+            add(ignore, "sun/security/provider/SHA2.implCompress0([BI)V");
+        }
+        if (!config.useSHA512Intrinsics()) {
+            add(ignore, "sun/security/provider/SHA5.implCompress0([BI)V");
+        }
+
+        if (isJDK16OrHigher()) {
+            // JDK-8258558
+            add(ignore, "java/lang/Object.<blackhole>*");
+        }
+
+        // to be investigated intrinsics
+        add(toBeInvestigated,
+                        // TODO confirm the following are only omitting array boundary tests.
+                        "java/lang/CharacterDataLatin1.isLowerCase(I)Z",
+                        "java/lang/CharacterDataLatin1.isUpperCase(I)Z",
+                        "java/lang/CharacterDataLatin1.isWhitespace(I)Z",
+                        // Similar to addExact
+                        "java/lang/Math.negateExact(I)I",
+                        // Similar to addExact
+                        "java/lang/Math.negateExact(J)J",
+                        // Can share most implementation parts with with
+                        // Unsafe.allocateUninitializedArray0
+                        "java/lang/reflect/Array.newArray(Ljava/lang/Class;I)Ljava/lang/Object;",
+                        // Only used as a marker for vectorization?
+                        "java/util/stream/Streams$RangeIntSpliterator.forEachRemaining(Ljava/util/function/IntConsumer;)V",
+                        // Only implemented on non-AMD64 platforms (some logic and runtime call)
+                        "java/util/zip/Adler32.updateByteBuffer(IJII)I",
+                        // Only implemented on non-AMD64 platforms (some logic and runtime call)
+                        "java/util/zip/Adler32.updateBytes(I[BII)I",
+                        // Emits a slow and a fast path and some dispatching logic
+                        "jdk/internal/misc/Unsafe.allocateUninitializedArray0(Ljava/lang/Class;I)Ljava/lang/Object;");
+
         if (hasAESElectronicCodebookStubRoutineFields(config)) {
             add(toBeInvestigated,
                             "com/sun/crypto/provider/ElectronicCodeBook.implECBDecrypt([BII[BI)I",
                             "com/sun/crypto/provider/ElectronicCodeBook.implECBEncrypt([BII[BI)I");
         }
-
-        if (arch instanceof AMD64) {
-            add(toBeInvestigated,
-                            "java/lang/Math.abs(I)I",
-                            "java/lang/Math.abs(J)J");
-        }
-        add(toBeInvestigated,
-                        "java/lang/CharacterDataLatin1.isDigit(I)Z",
-                        "java/lang/CharacterDataLatin1.isLowerCase(I)Z",
-                        "java/lang/CharacterDataLatin1.isUpperCase(I)Z",
-                        "java/lang/CharacterDataLatin1.isWhitespace(I)Z",
-                        "jdk/jfr/internal/JVM.getEventWriter()Ljava/lang/Object;");
 
         if (isJDK14OrHigher()) {
             add(toBeInvestigated,
@@ -247,9 +311,6 @@ public final class UnimplementedGraalIntrinsics {
         }
 
         if (isJDK16OrHigher()) {
-            // JDK-8258558
-            add(ignore, "java/lang/Object.<blackhole>*");
-
             add(toBeInvestigated,
                             // Added by JDK-8173585: Intrinsify StringLatin1.indexOf(char)
                             // TODO: Enhance StringLatin1IndexOfNode to support this
@@ -312,7 +373,11 @@ public final class UnimplementedGraalIntrinsics {
                             "java/lang/StringUTF16.indexOf([B[B)I",
                             "java/lang/StringUTF16.indexOfChar([BIII)I",
                             "java/lang/StringUTF16.indexOfLatin1([BI[BII)I",
-                            "java/lang/StringUTF16.indexOfLatin1([B[B)I",
+                            "java/lang/StringUTF16.indexOfLatin1([B[B)I");
+
+            // See JDK-8207146.
+            String oopName = isJDK12OrHigher() ? "Reference" : "Object";
+            add(toBeInvestigated,
                             "sun/misc/Unsafe.getAndSet" + oopName + "(Ljava/lang/Object;JLjava/lang/Object;)Ljava/lang/Object;");
 
             add(toBeInvestigated,
@@ -320,114 +385,34 @@ public final class UnimplementedGraalIntrinsics {
                             "java/util/ArraysSupport.vectorizedMismatch(Ljava/lang/Object;JLjava/lang/Object;JII)I");
             add(toBeInvestigated,
                             "jdk/internal/util/ArraysSupport.vectorizedMismatch(Ljava/lang/Object;JLjava/lang/Object;JII)I");
+
+            add(toBeInvestigated,
+                            "java/lang/StringCoding.hasNegatives([BII)Z",
+                            "java/lang/StringCoding.implEncodeISOArray([BI[BII)I",
+                            "sun/nio/cs/ISO_8859_1$Encoder.implEncodeISOArray([CI[BII)I");
         }
 
-        /*
-         * The intrinsics down here are known to be implemented but they are not always enabled on
-         * the HotSpot side (e.g., because they require certain CPU features). So, we are ignoring
-         * them if the HotSpot config tells us that they can't be used.
-         */
-        if (arch instanceof AMD64) {
-            if (!((AMD64) arch).getFeatures().contains(AMD64.CPUFeature.POPCNT)) {
-                add(ignore,
-                                "java/lang/Integer.bitCount(I)I",
-                                "java/lang/Long.bitCount(J)I");
-            }
-            if (!((AMD64) arch).getFeatures().contains(AMD64.CPUFeature.AVX)) {
-                add(ignore,
-                                "java/lang/Math.max(DD)D",
-                                "java/lang/Math.max(FF)F",
-                                "java/lang/Math.min(DD)D",
-                                "java/lang/Math.min(FF)F");
-            }
-            if (!((AMD64) arch).getFeatures().contains(AMD64.CPUFeature.AVX512VL)) {
-                add(ignore,
-                                "java/lang/Math.copySign(DD)D",
-                                "java/lang/Math.copySign(FF)F");
-            }
-        }
+        // These are known to be implemented down stream
+        add(enterprise,
+                        "java/lang/Integer.toString(I)Ljava/lang/String;",
+                        "java/lang/String.<init>(Ljava/lang/String;)V",
+                        "java/lang/StringBuffer.<init>()V",
+                        "java/lang/StringBuffer.<init>(I)V",
+                        "java/lang/StringBuffer.<init>(Ljava/lang/String;)V",
+                        "java/lang/StringBuffer.append(C)Ljava/lang/StringBuffer;",
+                        "java/lang/StringBuffer.append(I)Ljava/lang/StringBuffer;",
+                        "java/lang/StringBuffer.append(Ljava/lang/String;)Ljava/lang/StringBuffer;",
+                        "java/lang/StringBuffer.toString()Ljava/lang/String;",
+                        "java/lang/StringBuilder.<init>()V",
+                        "java/lang/StringBuilder.<init>(I)V",
+                        "java/lang/StringBuilder.<init>(Ljava/lang/String;)V",
+                        "java/lang/StringBuilder.append(C)Ljava/lang/StringBuilder;",
+                        "java/lang/StringBuilder.append(I)Ljava/lang/StringBuilder;",
+                        "java/lang/StringBuilder.append(Ljava/lang/String;)Ljava/lang/StringBuilder;",
+                        "java/lang/StringBuilder.toString()Ljava/lang/String;",
+                        "java/util/Arrays.copyOf([Ljava/lang/Object;ILjava/lang/Class;)[Ljava/lang/Object;",
+                        "java/util/Arrays.copyOfRange([Ljava/lang/Object;IILjava/lang/Class;)[Ljava/lang/Object;");
 
-        if (!config.inlineNotify()) {
-            add(ignore, "java/lang/Object.notify()V");
-        }
-        if (!config.inlineNotifyAll()) {
-            add(ignore, "java/lang/Object.notifyAll()V");
-        }
-
-        if (!config.useBase64Intrinsics()) {
-            add(ignore,
-                            "java/util/Base64$Encoder.encodeBlock([BII[BIZ)V");
-        }
-
-        if (!config.useAESCTRIntrinsics) {
-            add(ignore,
-                            "com/sun/crypto/provider/CounterMode.implCrypt([BII[BI)I");
-        }
-        if (!config.useGHASHIntrinsics()) {
-            add(ignore,
-                            "com/sun/crypto/provider/GHASH.processBlocks([BII[J[J)V");
-        }
-        if (!config.useFMAIntrinsics) {
-            add(ignore,
-                            "java/lang/Math.fma(DDD)D",
-                            "java/lang/Math.fma(FFF)F");
-        }
-
-        // CRC32 intrinsics
-        if (!config.useCRC32Intrinsics) {
-            add(ignore, "java/util/zip/CRC32.update(II)I");
-            add(ignore,
-                            "java/util/zip/CRC32.updateByteBuffer0(IJII)I",
-                            "java/util/zip/CRC32.updateBytes0(I[BII)I");
-        }
-
-        // CRC32C intrinsics
-        if (!config.useCRC32CIntrinsics) {
-            add(ignore,
-                            "java/util/zip/CRC32C.updateBytes(I[BII)I",
-                            "java/util/zip/CRC32C.updateDirectByteBuffer(IJII)I");
-        }
-
-        // AES intrinsics
-        if (!config.useAESIntrinsics) {
-            add(ignore,
-                            "com/sun/crypto/provider/AESCrypt.implDecryptBlock([BI[BI)V",
-                            "com/sun/crypto/provider/AESCrypt.implEncryptBlock([BI[BI)V",
-                            "com/sun/crypto/provider/CipherBlockChaining.implDecrypt([BII[BI)I",
-                            "com/sun/crypto/provider/CipherBlockChaining.implEncrypt([BII[BI)I");
-        }
-
-        // BigInteger intrinsics
-        if (!config.useMultiplyToLenIntrinsic()) {
-            add(ignore, "java/math/BigInteger.implMultiplyToLen([II[II[I)[I");
-        }
-        if (!config.useMulAddIntrinsic()) {
-            add(ignore, "java/math/BigInteger.implMulAdd([I[IIII)I");
-        }
-        if (!config.useMontgomeryMultiplyIntrinsic()) {
-            add(ignore, "java/math/BigInteger.implMontgomeryMultiply([I[I[IIJ[I)[I");
-        }
-        if (!config.useMontgomerySquareIntrinsic()) {
-            add(ignore, "java/math/BigInteger.implMontgomerySquare([I[IIJ[I)[I");
-        }
-        if (!config.useSquareToLenIntrinsic()) {
-            add(ignore, "java/math/BigInteger.implSquareToLen([II[II)[I");
-        }
-        // DigestBase intrinsics
-        if (HotSpotGraphBuilderPlugins.isIntrinsicName(config, "sun/security/provider/DigestBase", "implCompressMultiBlock0") &&
-                        !(config.useSHA1Intrinsics() || config.useSHA256Intrinsics() || config.useSHA512Intrinsics())) {
-            add(ignore, "sun/security/provider/DigestBase.implCompressMultiBlock0([BII)I");
-        }
-        // SHA intrinsics
-        if (!config.useSHA1Intrinsics()) {
-            add(ignore, "sun/security/provider/SHA.implCompress0([BI)V");
-        }
-        if (!config.useSHA256Intrinsics()) {
-            add(ignore, "sun/security/provider/SHA2.implCompress0([BI)V");
-        }
-        if (!config.useSHA512Intrinsics()) {
-            add(ignore, "sun/security/provider/SHA5.implCompress0([BI)V");
-        }
     }
 
     /**
