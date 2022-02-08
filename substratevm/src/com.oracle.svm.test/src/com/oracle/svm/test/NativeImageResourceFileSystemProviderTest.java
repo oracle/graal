@@ -615,10 +615,6 @@ public class NativeImageResourceFileSystemProviderTest {
         Assert.assertTrue("ClassLoader.getSystemResources(\"module-info.class\") must return many module-info.class URLs",
                         urlList.size() > 3);
 
-        for (URL url : urlList) {
-            System.out.println(url);
-        }
-
         URL thirdEntry = urlList.get(2);
         String thirdEntryExternalForm = thirdEntry.toExternalForm();
         URL thirdEntryFromExternalForm = null;
