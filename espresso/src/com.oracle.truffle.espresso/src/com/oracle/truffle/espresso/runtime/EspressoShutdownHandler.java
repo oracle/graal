@@ -28,7 +28,6 @@ import java.util.Iterator;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.espresso.impl.ContextAccess;
-import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.threads.EspressoThreadRegistry;
 import com.oracle.truffle.espresso.threads.ThreadsAccess;
 
@@ -127,19 +126,13 @@ final class EspressoShutdownHandler implements ContextAccess {
                 // Wake up spinning natural exiting thread if needed.
                 sync.notifyAll();
             }
-            teardown(!context.ExitHost);
+            teardown(false);
         }
-        if (context.ExitHost) {
-            System.exit(getExitStatus());
-            throw EspressoError.shouldNotReachHere();
-        } else {
-            /*
-             * At this point, the exit code given should have been registered. If not, this means
-             * that another closing was started before us, and we should use the previous' exit
-             * code.
-             */
-            throw new EspressoExitException(getExitStatus());
-        }
+        /*
+         * At this point, the exit code given should have been registered. If not, this means that
+         * another closing was started before us, and we should use the previous' exit code.
+         */
+        throw new EspressoExitException(getExitStatus());
     }
 
     /**

@@ -197,7 +197,6 @@ public final class EspressoContext {
     public final boolean EnableManagement;
     public final boolean Polyglot;
     public final boolean HotSwapAPI;
-    public final boolean ExitHost;
     public final boolean EnableSignals;
     private final String multiThreadingDisabled;
     public final boolean NativeAccessAllowed;
@@ -268,7 +267,6 @@ public final class EspressoContext {
         this.referenceDrainer = new EspressoReferenceDrainer(this);
 
         boolean softExit = env.getOptions().get(EspressoOptions.SoftExit);
-        this.ExitHost = env.getOptions().get(EspressoOptions.ExitHost);
         this.shutdownManager = new EspressoShutdownHandler(this, threadRegistry, referenceDrainer, softExit);
 
         this.timers = TimerCollection.create(env.getOptions().get(EspressoOptions.EnableTimers));
@@ -955,6 +953,10 @@ public final class EspressoContext {
         return shutdownManager.getShutdownSynchronizer();
     }
 
+    public void truffleExit(Node location, int exitCode) {
+        getEnv().getContext().closeExited(location, exitCode);
+    }
+
     public void doExit(int code) {
         shutdownManager.doExit(code);
     }
@@ -977,10 +979,6 @@ public final class EspressoContext {
 
     public EspressoError abort(String message) {
         getLogger().severe(message);
-        if (ExitHost) {
-            System.exit(1);
-            throw EspressoError.shouldNotReachHere();
-        }
         throw new EspressoExitException(1);
     }
 

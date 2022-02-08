@@ -424,12 +424,6 @@ public final class EspressoOptions {
                     usageSyntax = "false|true") //
     public static final OptionKey<Boolean> SoftExit = new OptionKey<>(false);
 
-    @Option(help = "Guest VM exit causes the host VM to exit. This should not be used in most cases as it will take down the whole host VM abruptly.", //
-                    category = OptionCategory.EXPERT, //
-                    stability = OptionStability.EXPERIMENTAL, //
-                    usageSyntax = "false|true") //
-    public static final OptionKey<Boolean> ExitHost = new OptionKey<>(false);
-
     @Option(help = "Enables espresso runtime timers.", //
                     category = OptionCategory.INTERNAL, //
                     stability = OptionStability.STABLE, //
