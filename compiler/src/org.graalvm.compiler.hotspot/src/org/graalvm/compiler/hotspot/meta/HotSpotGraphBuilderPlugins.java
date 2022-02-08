@@ -588,30 +588,6 @@ public class HotSpotGraphBuilderPlugins {
 
     public static final String reflectionClass = "jdk.internal.reflect.Reflection";
 
-    /**
-     * Returns a pair of Strings where the left one represents the matched intrinsic name and the
-     * right one represents the mismatched intrinsic name.
-     */
-    public static Pair<String, String> selectIntrinsicName(GraalHotSpotVMConfig config, String className, String name1, String name2) {
-        boolean foundName1 = false;
-        boolean foundName2 = false;
-        for (VMIntrinsicMethod intrinsic : config.getStore().getIntrinsics()) {
-            if (className.equals(intrinsic.declaringClass)) {
-                if (name1.equals(intrinsic.name)) {
-                    foundName1 = true;
-                } else if (name2.equals(intrinsic.name)) {
-                    foundName2 = true;
-                }
-            }
-        }
-        if (foundName1 && !foundName2) {
-            return Pair.create(name1, name2);
-        } else if (foundName2 && !foundName1) {
-            return Pair.create(name2, name1);
-        }
-        throw GraalError.shouldNotReachHere();
-    }
-
     public static boolean isIntrinsicName(GraalHotSpotVMConfig config, String className, String name) {
         for (VMIntrinsicMethod intrinsic : config.getStore().getIntrinsics()) {
             if (className.equals(intrinsic.declaringClass)) {

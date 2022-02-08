@@ -144,6 +144,10 @@ public final class UnimplementedGraalIntrinsics {
                         "oracle/jrockit/jfr/VMJFR.threadID()I");
 
         add(ignore,
+                        // ppc only
+                        "java/lang/CharacterDataLatin1.isLowerCase(I)Z",
+                        "java/lang/CharacterDataLatin1.isUpperCase(I)Z",
+                        "java/lang/CharacterDataLatin1.isWhitespace(I)Z",
                         // handled through an intrinsic for String.equals itself
                         "java/lang/StringLatin1.equals([B[B)Z",
 
@@ -278,10 +282,6 @@ public final class UnimplementedGraalIntrinsics {
 
         // to be investigated intrinsics
         add(toBeInvestigated,
-                        // TODO confirm the following are only omitting array boundary tests.
-                        "java/lang/CharacterDataLatin1.isLowerCase(I)Z",
-                        "java/lang/CharacterDataLatin1.isUpperCase(I)Z",
-                        "java/lang/CharacterDataLatin1.isWhitespace(I)Z",
                         // Similar to addExact
                         "java/lang/Math.negateExact(I)I",
                         // Similar to addExact
