@@ -767,6 +767,9 @@ public final class EspressoContext {
             }
             disposeCalled = true;
         }
+    }
+
+    public void cleanupNativeEnv() {
         if (initialized) {
             getVM().dispose();
             getJNI().dispose();

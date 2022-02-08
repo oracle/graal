@@ -453,7 +453,10 @@ public final class VM extends NativeEnv {
     }
 
     public void dispose() {
-        assert !getUncached().isNull(mokapotEnvPtr) : "Mokapot already disposed";
+        if (getUncached().isNull(mokapotEnvPtr)) {
+            return; // Mokapot disposed or uninitialized.
+        }
+        assert !getUncached().isNull(mokapotEnvPtr);
         try {
             if (management != null) {
                 assert getContext().EnableManagement;
@@ -1476,7 +1479,7 @@ public final class VM extends NativeEnv {
     public static int DestroyJavaVM(@Inject EspressoContext context) {
         assert context.getCurrentThread() != null;
         try {
-            context.destroyVM(!context.ExitHost);
+            context.destroyVM(true);
         } catch (AbstractTruffleException exit) {
             // expected
         }

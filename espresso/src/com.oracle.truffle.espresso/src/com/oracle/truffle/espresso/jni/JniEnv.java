@@ -393,7 +393,10 @@ public final class JniEnv extends NativeEnv {
     }
 
     public void dispose() {
-        assert jniEnvPtr != null : "JNIEnv already disposed";
+        if (getUncached().isNull(jniEnvPtr)) {
+            return; // JniEnv disposed or uninitialized.
+        }
+        assert !getUncached().isNull(jniEnvPtr) : "JNIEnv already disposed";
         try {
             getUncached().execute(disposeNativeContext, jniEnvPtr, RawPointer.nullInstance());
             this.jniEnvPtr = null;
@@ -401,7 +404,7 @@ public final class JniEnv extends NativeEnv {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere("Cannot dispose Espresso native interface");
         }
-        assert jniEnvPtr == null;
+        assert getUncached().isNull(jniEnvPtr);
     }
 
     public long sizeMax() {
