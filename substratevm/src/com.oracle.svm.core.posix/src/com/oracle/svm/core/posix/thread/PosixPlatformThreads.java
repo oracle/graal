@@ -129,11 +129,11 @@ public final class PosixPlatformThreads extends PlatformThreads {
         toTarget(thread).pthreadIdentifier = pthread;
     }
 
-    private static Pthread.pthread_t getPthreadIdentifier(Thread thread) {
+    static Pthread.pthread_t getPthreadIdentifier(Thread thread) {
         return toTarget(thread).pthreadIdentifier;
     }
 
-    private static boolean hasThreadIdentifier(Thread thread) {
+    static boolean hasThreadIdentifier(Thread thread) {
         return toTarget(thread).hasPthreadIdentifier;
     }
 
