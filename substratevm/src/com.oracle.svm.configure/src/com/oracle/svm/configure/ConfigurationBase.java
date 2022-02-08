@@ -27,6 +27,7 @@ package com.oracle.svm.configure;
 import java.util.function.Consumer;
 
 import com.oracle.svm.configure.json.JsonPrintable;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 public abstract class ConfigurationBase<T extends ConfigurationBase<T, P>, P> implements JsonPrintable {
 
@@ -35,6 +36,8 @@ public abstract class ConfigurationBase<T extends ConfigurationBase<T, P>, P> im
     public abstract T copy();
 
     protected abstract void merge(T other);
+
+    protected abstract void mergeConditional(ConfigurationCondition condition, T other);
 
     protected abstract void subtract(T other);
 

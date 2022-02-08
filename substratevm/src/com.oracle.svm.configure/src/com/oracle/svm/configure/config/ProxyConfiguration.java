@@ -76,7 +76,8 @@ public final class ProxyConfiguration extends ConfigurationBase<ProxyConfigurati
         interfaceLists.removeAll(other.interfaceLists);
     }
 
-    public void addWithCondition(ConfigurationCondition condition, ProxyConfiguration other) {
+    @Override
+    public void mergeConditional(ConfigurationCondition condition, ProxyConfiguration other) {
         for (ConditionalElement<List<String>> interfaceList : other.interfaceLists) {
             add(condition, new ArrayList<>(interfaceList.getElement()));
         }

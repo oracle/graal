@@ -75,7 +75,7 @@ public final class PredefinedClassesConfiguration extends ConfigurationBase<Pred
 
     @Override
     protected void intersect(PredefinedClassesConfiguration other) {
-        classes.keySet().retainAll(classes.keySet());
+        classes.keySet().retainAll(other.classes.keySet());
     }
 
     @Override
@@ -83,7 +83,8 @@ public final class PredefinedClassesConfiguration extends ConfigurationBase<Pred
         classes.values().removeIf(predicate::testPredefinedClass);
     }
 
-    public void addWithCondition(ConfigurationCondition condition, PredefinedClassesConfiguration other) {
+    @Override
+    public void mergeConditional(ConfigurationCondition condition, PredefinedClassesConfiguration other) {
         /* Not implemented with conditions yet */
         classes.putAll(other.classes);
     }

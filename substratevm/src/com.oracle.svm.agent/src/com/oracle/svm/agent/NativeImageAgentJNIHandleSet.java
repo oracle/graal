@@ -26,8 +26,6 @@ package com.oracle.svm.agent;
 
 import static com.oracle.svm.jni.JNIObjectHandles.nullHandle;
 
-import com.oracle.svm.jvmtiagentbase.Support;
-import jdk.vm.ci.meta.MetaUtil;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.jni.nativeapi.JNIEnvironment;
@@ -234,38 +232,5 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
             javaUtilResourceBundleGetLocale = getMethodId(env, javaUtilResourceBundle, "getLocale", "()Ljava/util/Locale;", false);
         }
         return javaUtilResourceBundleGetLocale;
-    }
-
-    private JNIMethodId javaLangClassGetProtectionDomain = WordFactory.nullPointer();
-    private JNIMethodId javaSecurityProtectionDomainGetCodeSource = WordFactory.nullPointer();
-    private JNIMethodId javaSecurityCodeSourceGetLocation = WordFactory.nullPointer();
-    private JNIMethodId javaNetURLGetPath = WordFactory.nullPointer();
-
-    public String getClassLocationOrNull(JNIEnvironment env, String className) {
-        String classNameInternal = MetaUtil.toInternalName(className);
-        JNIObjectHandle clazz = findClass(env, classNameInternal);
-        if (clazz == null) {
-            return null;
-        }
-
-        if (javaLangClassGetProtectionDomain.isNull()) {
-            javaLangClassGetProtectionDomain = getMethodId(env, javaLangClass, "getProtectionDomain", "()Ljava/security/ProtectionDomain;", false);
-
-            JNIObjectHandle protDomainClass = findClass(env, "java/security/ProtectionDomain");
-            javaSecurityProtectionDomainGetCodeSource = getMethodId(env, protDomainClass, "getCodeSource", "()Ljava/security/CodeSource;", false);
-
-            JNIObjectHandle codeSourceClass = findClass(env, "java/security/CodeSource");
-            javaSecurityCodeSourceGetLocation = getMethodId(env, codeSourceClass, "getLocation", "()Ljava/net/URL;", false);
-
-            JNIObjectHandle urlClass = findClass(env, "java/net/URL");
-            javaNetURLGetPath = getMethodId(env, urlClass, "getPath", "()Ljava/lang/String;", false);
-        }
-
-        /* return clazz.getProtectionDomain().getCodeSource().getLocation().getPath() */
-        JNIObjectHandle protectionDomain = Support.callObjectMethod(env, clazz, javaLangClassGetProtectionDomain);
-        JNIObjectHandle codeSource = Support.callObjectMethod(env, protectionDomain, javaSecurityProtectionDomainGetCodeSource);
-        JNIObjectHandle location = Support.callObjectMethod(env, codeSource, javaSecurityCodeSourceGetLocation);
-        JNIObjectHandle path = Support.callObjectMethod(env, location, javaNetURLGetPath);
-        return Support.fromJniString(env, path);
     }
 }

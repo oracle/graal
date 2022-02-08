@@ -210,9 +210,7 @@ public class ConfigurationType implements JsonPrintable {
         if (fields != null) {
             if (other.fields != null) {
                 fields.keySet().retainAll(other.fields.keySet());
-                for (Map.Entry<String, FieldInfo> fieldEntry : other.fields.entrySet()) {
-                    fields.computeIfPresent(fieldEntry.getKey(), (key, value) -> value.newIntersectedWith(fieldEntry.getValue()));
-                }
+                fields.replaceAll((key, value) -> value.newIntersectedWith(other.fields.get(key)));
             } else {
                 fields = null;
             }

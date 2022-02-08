@@ -69,9 +69,8 @@ public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration
 
     @Override
     public void subtract(TypeConfiguration other) {
-        types.forEach((key, type) -> {
-            ConfigurationType subtractType = other.types.get(key);
-            types.compute(key, (k, v) -> ConfigurationType.copyAndSubtract(type, subtractType));
+        other.types.forEach((key, type) -> {
+            types.computeIfPresent(key, (k, v) -> ConfigurationType.copyAndSubtract(v, type));
         });
     }
 
@@ -118,7 +117,8 @@ public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration
         return types.computeIfAbsent(new ConditionalElement<>(condition, qualifiedForNameString), p -> new ConfigurationType(p.getCondition(), p.getElement()));
     }
 
-    public void addWithCondition(ConfigurationCondition condition, TypeConfiguration other) {
+    @Override
+    public void mergeConditional(ConfigurationCondition condition, TypeConfiguration other) {
         other.types.forEach((key, value) -> {
             addOrMerge(new ConfigurationType(value, condition));
         });

@@ -499,7 +499,7 @@ def conditional_config_task(native_image):
     config_dir = join(svmbuild_dir(), 'cond-config-test-config')
     if exists(config_dir):
         mx.rmtree(config_dir)
-    agent_opts = ['config-output-dir=' + config_dir, 'experimental-conditional-configuration=com.oracle.svm.configure.test.conditionalconfig']
+    agent_opts = ['config-output-dir=' + config_dir, 'experimental-conditional-configuration-for-packages=com.oracle.svm.configure.test.conditionalconfig']
     jvm_unittest(['-agentpath:' + agent_path + '=' + ','.join(agent_opts)]
                  + ['com.oracle.svm.configure.test.conditionalconfig.ConfigurationGenerator'])
 

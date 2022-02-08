@@ -130,8 +130,8 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
         boolean experimentalOmitClasspathConfig = false;
         boolean build = false;
         boolean configurationWithOrigins = false;
-        Set<String> predefinedConfigurationPackages = new HashSet<>();
-        Set<Pattern> classNamePatterns = new HashSet<>();
+        Set<String> conditionalConfigurationUserCodePackagePrefixes = new HashSet<>();
+        Set<Pattern> conditionalConfigurationClassNameExcludePatterns = new HashSet<>();
         int configWritePeriod = -1; // in seconds
         int configWritePeriodInitialDelay = 1; // in seconds
         boolean trackReflectionMetadata = true;
@@ -203,12 +203,12 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                 build = Boolean.parseBoolean(getTokenValue(token));
             } else if (token.equals("experimental-configuration-with-origins")) {
                 configurationWithOrigins = true;
-            } else if (token.startsWith("experimental-conditional-configuration=")) {
-                String applicationPackages = getTokenValue(token);
-                Collections.addAll(predefinedConfigurationPackages, applicationPackages.split(","));
-            } else if (token.startsWith("class-name-filter=")) {
+            } else if (token.startsWith("experimental-conditional-configuration-for-packages=")) {
+                String userPackagePrefixes = getTokenValue(token);
+                Collections.addAll(conditionalConfigurationUserCodePackagePrefixes, userPackagePrefixes.split(","));
+            } else if (token.startsWith("conditional-configuration-class-name-exclude-patterns=")) {
                 String classNamePattern = getTokenValue(token);
-                Arrays.stream(classNamePattern.split(",")).map(Pattern::compile).forEach(classNamePatterns::add);
+                Arrays.stream(classNamePattern.split(",")).map(Pattern::compile).forEach(conditionalConfigurationClassNameExcludePatterns::add);
             } else if (token.equals("track-reflection-metadata")) {
                 trackReflectionMetadata = true;
             } else if (token.startsWith("track-reflection-metadata=")) {
@@ -223,7 +223,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
             inform("no output/build options provided, tracking dynamic accesses and writing configuration to directory: " + configOutputDir);
         }
 
-        if (configurationWithOrigins && !predefinedConfigurationPackages.isEmpty()) {
+        if (configurationWithOrigins && !conditionalConfigurationUserCodePackagePrefixes.isEmpty()) {
             return error(5, "The agent can only be used in either the configuration with origins mode or the predefined classes mode.");
         }
 
@@ -258,7 +258,7 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
             }
         }
 
-        boolean shouldTraceOriginInformation = configurationWithOrigins || !predefinedConfigurationPackages.isEmpty();
+        boolean shouldTraceOriginInformation = configurationWithOrigins || !conditionalConfigurationUserCodePackagePrefixes.isEmpty();
         final MethodInfoRecordKeeper recordKeeper = new MethodInfoRecordKeeper(shouldTraceOriginInformation);
         final Supplier<InterceptedState> interceptedStateSupplier = shouldTraceOriginInformation ? EagerlyLoadedJavaStackAccess.stackAccessSupplier()
                         : OnDemandJavaStackAccess.stackAccessSupplier();
@@ -308,9 +308,9 @@ public final class NativeImageAgent extends JvmtiAgentBase<NativeImageAgentJNIHa
                     ConfigurationWithOriginsResultWriter writer = new ConfigurationWithOriginsResultWriter(advisor, recordKeeper);
                     tracer = writer;
                     tracingResultWriter = writer;
-                } else if (!predefinedConfigurationPackages.isEmpty()) {
-                    ConditionalConfigurationPredicate filter = new ConditionalConfigurationPredicate(classNamePatterns);
-                    ConditionalConfigurationWriter writer = new ConditionalConfigurationWriter(advisor, recordKeeper, predefinedConfigurationPackages, filter);
+                } else if (!conditionalConfigurationUserCodePackagePrefixes.isEmpty()) {
+                    ConditionalConfigurationPredicate filter = new ConditionalConfigurationPredicate(conditionalConfigurationClassNameExcludePatterns);
+                    ConditionalConfigurationWriter writer = new ConditionalConfigurationWriter(advisor, recordKeeper, conditionalConfigurationUserCodePackagePrefixes, filter);
                     tracer = writer;
                     tracingResultWriter = writer;
                 } else {

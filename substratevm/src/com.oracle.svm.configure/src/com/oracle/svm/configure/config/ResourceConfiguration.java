@@ -146,7 +146,8 @@ public final class ResourceConfiguration extends ConfigurationBase<ResourceConfi
         bundles.entrySet().removeIf(entry -> predicate.testIncludedBundle(entry.getKey(), entry.getValue()));
     }
 
-    public void addWithCondition(ConfigurationCondition condition, ResourceConfiguration other) {
+    @Override
+    public void mergeConditional(ConfigurationCondition condition, ResourceConfiguration other) {
         for (Map.Entry<ConditionalElement<String>, Pattern> entry : other.addedResources.entrySet()) {
             addedResources.put(new ConditionalElement<>(condition, entry.getKey().getElement()), entry.getValue());
         }

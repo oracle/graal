@@ -187,22 +187,22 @@ public class ConditionalConfigurationWriter extends ConfigurationWithOriginsResu
 
     private void addConfigurationWithCondition(ConfigurationSet nodeConfig, ConfigurationCondition condition) {
         TypeConfiguration reflectionConfig = nodeConfig.getReflectionConfiguration();
-        configurationContainer.getReflectionConfiguration().addWithCondition(condition, reflectionConfig);
+        configurationContainer.getReflectionConfiguration().mergeConditional(condition, reflectionConfig);
 
         TypeConfiguration jniConfig = nodeConfig.getJniConfiguration();
-        configurationContainer.getJniConfiguration().addWithCondition(condition, jniConfig);
+        configurationContainer.getJniConfiguration().mergeConditional(condition, jniConfig);
 
         ResourceConfiguration resourceConfiguration = nodeConfig.getResourceConfiguration();
-        configurationContainer.getResourceConfiguration().addWithCondition(condition, resourceConfiguration);
+        configurationContainer.getResourceConfiguration().mergeConditional(condition, resourceConfiguration);
 
         ProxyConfiguration proxyConfiguration = nodeConfig.getProxyConfiguration();
-        configurationContainer.getProxyConfiguration().addWithCondition(condition, proxyConfiguration);
+        configurationContainer.getProxyConfiguration().mergeConditional(condition, proxyConfiguration);
 
         SerializationConfiguration serializationConfiguration = nodeConfig.getSerializationConfiguration();
-        configurationContainer.getSerializationConfiguration().addWithCondition(condition, serializationConfiguration);
+        configurationContainer.getSerializationConfiguration().mergeConditional(condition, serializationConfiguration);
 
         PredefinedClassesConfiguration predefinedClassesConfiguration = nodeConfig.getPredefinedClassesConfiguration();
-        configurationContainer.getPredefinedClassesConfiguration().addWithCondition(condition, predefinedClassesConfiguration);
+        configurationContainer.getPredefinedClassesConfiguration().mergeConditional(condition, predefinedClassesConfiguration);
     }
 
     private void filterConfiguration() {
@@ -234,29 +234,22 @@ public class ConditionalConfigurationWriter extends ConfigurationWithOriginsResu
     private boolean methodOriginatesFromApplicationPackage(MethodInfo methodInfo) {
         return applicationPackagePrefixes.stream().anyMatch(prefix -> methodInfo.getJavaDeclaringClassName().startsWith(prefix));
     }
-
-    private int findIndexOfMethodFromApplicationPackage(MethodInfo[] stackTrace, boolean fromBeginning) {
-        int firstMethodOriginatingInPackage = fromBeginning ? 0 : stackTrace.length - 1;
-        int step = fromBeginning ? 1 : -1;
-        while (firstMethodOriginatingInPackage >= 0 && firstMethodOriginatingInPackage < stackTrace.length) {
-            if (methodOriginatesFromApplicationPackage(stackTrace[firstMethodOriginatingInPackage])) {
-                return firstMethodOriginatingInPackage;
-            }
-            firstMethodOriginatingInPackage = firstMethodOriginatingInPackage + step;
-        }
-        return -1;
-    }
-
     @Override
     protected MethodInfo[] filterStackTrace(MethodInfo[] stackTrace) {
         /* Keep only the classes from the selected package names on the stack trace. */
-        int firstMethodIndex = findIndexOfMethodFromApplicationPackage(stackTrace, true);
-        if (firstMethodIndex == -1) {
+        int dest = 0;
+        for (int i = 0; i < stackTrace.length; ++i) {
+            if (methodOriginatesFromApplicationPackage(stackTrace[i])) {
+                stackTrace[dest++] = stackTrace[i];
+            }
+        }
+
+        /* No classes on this trace originated from user code */
+        if (dest == 0) {
             return null;
         }
-        int lastMethodIndex = findIndexOfMethodFromApplicationPackage(stackTrace, false);
 
-        return Arrays.copyOfRange(stackTrace, firstMethodIndex, lastMethodIndex);
+        return Arrays.copyOfRange(stackTrace, 0, dest);
     }
 
     @Override

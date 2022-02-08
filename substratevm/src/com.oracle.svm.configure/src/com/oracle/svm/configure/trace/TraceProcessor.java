@@ -104,21 +104,22 @@ public class TraceProcessor extends AbstractProcessor {
         return classLoadingProcessor.getPredefinedClassesConfiguration();
     }
 
-    public ConfigurationBase<?, ?> getConfiguration(ConfigurationFile configFile) {
+    @SuppressWarnings("unchecked")
+    public <T extends ConfigurationBase<T, ?>> T getConfiguration(ConfigurationFile configFile) {
         assert configFile.canBeGeneratedByAgent();
         switch (configFile) {
             case DYNAMIC_PROXY:
-                return getProxyConfiguration();
+                return (T) getProxyConfiguration();
             case JNI:
-                return getJniConfiguration();
+                return (T) getJniConfiguration();
             case REFLECTION:
-                return getReflectionConfiguration();
+                return (T) getReflectionConfiguration();
             case RESOURCES:
-                return getResourceConfiguration();
+                return (T) getResourceConfiguration();
             case SERIALIZATION:
-                return getSerializationConfiguration();
+                return (T) getSerializationConfiguration();
             case PREDEFINED_CLASSES_NAME:
-                return getPredefinedClassesConfiguration();
+                return (T) getPredefinedClassesConfiguration();
             default:
                 assert false; // should never reach here
         }
