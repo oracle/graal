@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.heap;
 
-import com.oracle.svm.core.IsolateArgumentParser;
-import com.oracle.svm.core.SubstrateOptions;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -34,6 +32,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.Feature;
 
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.AutomaticFeature;
 import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.thread.VMThreads;
@@ -102,11 +101,6 @@ public final class ReferenceHandlerThread implements Runnable {
     @Fold
     static boolean isSupported() {
         return SubstrateOptions.MultiThreaded.getValue() && SubstrateOptions.AllowVMInternalThreads.getValue();
-    }
-
-    static boolean isEnabled() {
-        int optionIndex = IsolateArgumentParser.getOptionIndex(SubstrateOptions.ConcealedOptions.UseReferenceHandlerThread);
-        return IsolateArgumentParser.getBooleanOptionValue(optionIndex);
     }
 }
 

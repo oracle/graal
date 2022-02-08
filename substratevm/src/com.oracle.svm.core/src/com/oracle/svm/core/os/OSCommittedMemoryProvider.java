@@ -77,7 +77,21 @@ public class OSCommittedMemoryProvider extends AbstractCommittedMemoryProvider {
     }
 
     @Override
-    public Pointer allocate(UnsignedWord size, UnsignedWord alignment, boolean executable) {
+    public Pointer allocateAlignedChunk(UnsignedWord nbytes, UnsignedWord alignment) {
+        return allocate(nbytes, alignment, false);
+    }
+
+    @Override
+    public Pointer allocateUnalignedChunk(UnsignedWord nbytes) {
+        return allocate(nbytes, WordFactory.unsigned(1), false);
+    }
+
+    @Override
+    public Pointer allocateExecutableMemory(UnsignedWord nbytes, UnsignedWord alignment) {
+        return allocate(nbytes, alignment, true);
+    }
+
+    private Pointer allocate(UnsignedWord size, UnsignedWord alignment, boolean executable) {
         int access = VirtualMemoryProvider.Access.READ | VirtualMemoryProvider.Access.WRITE;
         if (executable) {
             access |= VirtualMemoryProvider.Access.EXECUTE;
@@ -108,12 +122,27 @@ public class OSCommittedMemoryProvider extends AbstractCommittedMemoryProvider {
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean free(PointerBase start, UnsignedWord nbytes, UnsignedWord alignment, boolean executable) {
+    public void freeAlignedChunk(PointerBase start, UnsignedWord nbytes, UnsignedWord alignment) {
+        free(start, nbytes);
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void freeUnalignedChunk(PointerBase start, UnsignedWord nbytes) {
+        free(start, nbytes);
+    }
+
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public void freeExecutableMemory(PointerBase start, UnsignedWord nbytes, UnsignedWord alignment) {
+        free(start, nbytes);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private void free(PointerBase start, UnsignedWord nbytes) {
         if (VirtualMemoryProvider.get().free(start, nbytes) == 0) {
             tracker.untrack(nbytes);
-            return true;
         }
-        return false;
     }
 
     private final VirtualMemoryTracker tracker = new VirtualMemoryTracker();
