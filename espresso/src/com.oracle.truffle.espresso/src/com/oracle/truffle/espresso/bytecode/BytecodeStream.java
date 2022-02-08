@@ -427,7 +427,7 @@ public final class BytecodeStream {
                 out.println(str.toString());
             }
         } catch (Throwable e) {
-            throw EspressoError.unexpected("Exception thrown during bytecode printing, aborting...", e);
+            throw EspressoError.shouldNotReachHere("Exception thrown during bytecode printing, aborting...", e);
         }
     }
 

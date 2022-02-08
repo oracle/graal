@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.meta;
 import java.util.ArrayList;
 import java.util.Locale;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
@@ -36,43 +37,43 @@ public final class EspressoError extends Error {
     private static final long serialVersionUID = 2625263796982958128L;
 
     public static RuntimeException unimplemented() {
-        CompilerDirectives.transferToInterpreter();
+        CompilerAsserts.neverPartOfCompilation();
         throw new EspressoError("unimplemented");
     }
 
-    public static RuntimeException unimplemented(Object... msg) {
-        CompilerDirectives.transferToInterpreter();
-        throw new EspressoError("unimplemented: %s", cat(msg));
+    public static RuntimeException unimplemented(String message) {
+        CompilerAsserts.neverPartOfCompilation();
+        throw new EspressoError("unimplemented: " + message);
+    }
+
+    public static RuntimeException fatal(String message) {
+        CompilerAsserts.neverPartOfCompilation();
+        throw new EspressoError("fatal: " + message);
     }
 
     public static RuntimeException shouldNotReachHere() {
-        CompilerDirectives.transferToInterpreter();
+        CompilerAsserts.neverPartOfCompilation();
         throw new EspressoError("should not reach here");
     }
 
-    public static RuntimeException shouldNotReachHere(Object... msg) {
-        CompilerDirectives.transferToInterpreter();
-        throw new EspressoError("should not reach here: %s", cat(msg));
+    public static RuntimeException shouldNotReachHere(String message) {
+        CompilerAsserts.neverPartOfCompilation();
+        throw new EspressoError("should not reach here: " + message);
     }
 
     public static RuntimeException shouldNotReachHere(String message, Throwable cause) {
-        CompilerDirectives.transferToInterpreter();
-        throw new EspressoError(message, cause);
+        CompilerAsserts.neverPartOfCompilation();
+        throw new EspressoError("should not reach here: " + message, cause);
     }
 
     public static RuntimeException shouldNotReachHere(Throwable cause) {
-        CompilerDirectives.transferToInterpreter();
-        throw new EspressoError(cause);
+        CompilerAsserts.neverPartOfCompilation();
+        throw new EspressoError("should not reach here", cause);
     }
 
     public static RuntimeException fatal(Object... msg) {
-        CompilerDirectives.transferToInterpreter();
-        throw new EspressoError("fatal: %s", cat(msg));
-    }
-
-    public static RuntimeException unexpected(String msg, Throwable cause) {
-        CompilerDirectives.transferToInterpreter();
-        throw new EspressoError(msg, cause);
+        CompilerAsserts.neverPartOfCompilation();
+        throw new EspressoError("fatal: " + cat(msg));
     }
 
     @TruffleBoundary
@@ -91,46 +92,33 @@ public final class EspressoError extends Error {
      * if possible.
      *
      * @param condition the condition to check
-     * @param msg the message that will be associated with the error, in
-     *            {@link String#format(String, Object...)} syntax
-     * @param args arguments to the format string
+     * @param message the message that will be associated with the error
      */
-    public static void guarantee(boolean condition, String msg, Object... args) {
+    public static void guarantee(boolean condition, String message) {
         if (!condition) {
-            CompilerDirectives.transferToInterpreter();
-            throw new EspressoError("failed guarantee: " + msg, args);
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw new EspressoError("failed guarantee: " + message);
         }
     }
 
     /**
      * This constructor creates a {@link EspressoError} with a given message.
      *
-     * @param msg the message that will be associated with the error
+     * @param message the message that will be associated with the error
      */
-    public EspressoError(String msg) {
-        super(msg);
+    private EspressoError(String message) {
+        super(message);
     }
 
     /**
-     * This constructor creates a {@link EspressoError} with a message assembled via
-     * {@link String#format(String, Object...)}. It always uses the ENGLISH locale in order to
-     * always generate the same output.
+     * This constructor creates a {@link EspressoError} with a given message and a given causing
+     * Throwable instance.
      *
-     * @param msg the message that will be associated with the error, in String.format syntax
-     * @param args parameters to String.format - parameters that implement {@link Iterable} will be
-     *            expanded into a [x, x, ...] representation.
-     */
-    public EspressoError(String msg, Object... args) {
-        super(format(msg, args));
-    }
-
-    /**
-     * This constructor creates a {@link EspressoError} for a given causing Throwable instance.
-     *
+     * @param message the message that will be associated with the error
      * @param cause the original exception that contains additional information on this error
      */
-    public EspressoError(Throwable cause) {
-        super(cause);
+    private EspressoError(String message, Throwable cause) {
+        super(message, cause);
     }
 
     @TruffleBoundary

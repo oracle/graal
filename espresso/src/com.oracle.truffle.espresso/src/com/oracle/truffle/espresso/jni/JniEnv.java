@@ -308,7 +308,7 @@ public final class JniEnv extends NativeEnv {
                 case Object  : args[i] = varargs.popObject();  break;
                 default:
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    throw EspressoError.shouldNotReachHere("invalid parameter kind: ", kind);
+                    throw EspressoError.shouldNotReachHere("invalid parameter kind: " + kind);
             }
             // @formatter:on
         }
@@ -1694,7 +1694,7 @@ public final class JniEnv extends NativeEnv {
             System.exit(1);
             throw EspressoError.shouldNotReachHere();
         }
-        throw new EspressoError(msg);
+        throw EspressoError.fatal(msg);
     }
 
     // endregion Exception handling

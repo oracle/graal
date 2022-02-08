@@ -1088,7 +1088,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     public final Field requireDeclaredField(Symbol<Name> fieldName, Symbol<Type> fieldType) {
         Field obj = lookupDeclaredField(fieldName, fieldType);
         if (obj == null) {
-            throw EspressoError.shouldNotReachHere("Missing field: ", fieldName, ": ", fieldType, " in ", this);
+            throw EspressoError.shouldNotReachHere("Missing field: " + fieldName + ": " + fieldType + " in " + this);
         }
         return obj;
     }
@@ -1178,7 +1178,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     public final Method requireMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
         Method obj = lookupMethod(methodName, signature);
         if (obj == null) {
-            throw EspressoError.shouldNotReachHere("Missing method: ", methodName, ": ", signature, " starting at ", this);
+            throw EspressoError.shouldNotReachHere("Missing method: " + methodName + ": " + signature + " starting at " + this);
         }
         return obj;
     }
@@ -1186,7 +1186,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     public final Method requireDeclaredMethod(Symbol<Name> methodName, Symbol<Signature> signature) {
         Method obj = lookupDeclaredMethod(methodName, signature);
         if (obj == null) {
-            throw EspressoError.shouldNotReachHere("Missing method: ", methodName, ": ", signature, " in ", this);
+            throw EspressoError.shouldNotReachHere("Missing method: " + methodName + ": " + signature + " in " + this);
         }
         return obj;
     }

@@ -929,7 +929,7 @@ public final class ObjectKlass extends Klass {
                 return f;
             }
         }
-        throw EspressoError.shouldNotReachHere("Missing hidden field ", fieldName, " in ", this);
+        throw EspressoError.shouldNotReachHere("Missing hidden field " + fieldName + " in " + this);
     }
 
     // Exposed to LookupVirtualMethodNode
