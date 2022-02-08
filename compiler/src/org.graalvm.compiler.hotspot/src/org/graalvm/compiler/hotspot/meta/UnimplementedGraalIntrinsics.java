@@ -196,9 +196,9 @@ public final class UnimplementedGraalIntrinsics {
 
         if (arch instanceof AArch64) {
             add(toBeInvestigated,
-                            "sun/nio/cs/ISO_8859_1$Encoder.implEncodeISOArray([CI[BII)I",
                             "java/lang/StringCoding.hasNegatives([BII)Z",
-                            "java/lang/StringCoding.implEncodeISOArray([BI[BII)I");
+                            "java/lang/StringCoding.implEncodeISOArray([BI[BII)I",
+                            "sun/nio/cs/ISO_8859_1$Encoder.implEncodeISOArray([CI[BII)I");
         }
 
         add(ignore,

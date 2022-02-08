@@ -588,10 +588,6 @@ public class HotSpotGraphBuilderPlugins {
 
     public static final String reflectionClass = "jdk.internal.reflect.Reflection";
 
-    public static String lookupIntrinsicName(GraalHotSpotVMConfig config, String className, String name1, String name2) {
-        return selectIntrinsicName(config, className, name1, name2).getLeft();
-    }
-
     /**
      * Returns a pair of Strings where the left one represents the matched intrinsic name and the
      * right one represents the mismatched intrinsic name.

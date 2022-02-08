@@ -33,7 +33,6 @@ import java.security.NoSuchProviderException;
 import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
-import org.graalvm.compiler.hotspot.meta.HotSpotGraphBuilderPlugins;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.junit.Test;
 import org.junit.internal.AssumptionViolatedException;
@@ -73,8 +72,7 @@ public class TestSHASubstitutions extends HotSpotGraalCompilerTest {
     @Test
     public void testSha1() {
         assumeTrue("SHA1 not supported", getConfig().useSHA1Intrinsics());
-        String implCompressName = HotSpotGraphBuilderPlugins.lookupIntrinsicName(getConfig(), "sun/security/provider/SHA", "implCompress0", "implCompress");
-        testWithInstalledIntrinsic("sun.security.provider.SHA", implCompressName, "testDigest", "SHA-1", getData());
+        testWithInstalledIntrinsic("sun.security.provider.SHA", "implCompress0", "testDigest", "SHA-1", getData());
     }
 
     void testWithInstalledIntrinsic(String className, String methodName, String testSnippetName, Object... args) {
@@ -106,15 +104,13 @@ public class TestSHASubstitutions extends HotSpotGraalCompilerTest {
     @Test
     public void testSha256() {
         assumeTrue("SHA256 not supported", getConfig().useSHA256Intrinsics());
-        String implCompressName = HotSpotGraphBuilderPlugins.lookupIntrinsicName(getConfig(), "sun/security/provider/SHA", "implCompress0", "implCompress");
-        testWithInstalledIntrinsic("sun.security.provider.SHA2", implCompressName, "testDigest", "SHA-256", getData());
+        testWithInstalledIntrinsic("sun.security.provider.SHA2", "implCompress0", "testDigest", "SHA-256", getData());
     }
 
     @Test
     public void testSha512() {
         assumeTrue("SHA512 not supported", getConfig().useSHA512Intrinsics());
-        String implCompressName = HotSpotGraphBuilderPlugins.lookupIntrinsicName(getConfig(), "sun/security/provider/SHA", "implCompress0", "implCompress");
-        testWithInstalledIntrinsic("sun.security.provider.SHA5", implCompressName, "testDigest", "SHA-512", getData());
+        testWithInstalledIntrinsic("sun.security.provider.SHA5", "implCompress0", "testDigest", "SHA-512", getData());
     }
 
 }
