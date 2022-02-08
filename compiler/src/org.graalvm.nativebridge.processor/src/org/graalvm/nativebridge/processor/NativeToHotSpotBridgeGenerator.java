@@ -589,7 +589,7 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
 
     private static boolean needsExplicitIsolateParameter(MethodData methodData) {
         for (int i = 0; i < methodData.element.getParameters().size(); i++) {
-            MarshallerData marshallerData = methodData.getParameterMarshaller(0);
+            MarshallerData marshallerData = methodData.getParameterMarshaller(i);
             if (marshallerData.kind == MarshallerData.Kind.REFERENCE && !marshallerData.sameDirection) {
                 return true;
             }
