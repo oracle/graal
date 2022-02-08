@@ -874,6 +874,20 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
+        r.register(new InvocationPlugin("abs", int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                b.push(JavaKind.Int, b.append(new AbsNode(value).canonical(null)));
+                return true;
+            }
+        });
+        r.register(new InvocationPlugin("abs", long.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
+                b.push(JavaKind.Long, b.append(new AbsNode(value).canonical(null)));
+                return true;
+            }
+        });
     }
 
     private static void registerRound(boolean supportsRound, Registration r, String name, RoundingMode mode) {

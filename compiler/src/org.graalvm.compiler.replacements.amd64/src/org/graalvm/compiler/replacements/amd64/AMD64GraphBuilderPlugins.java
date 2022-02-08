@@ -112,7 +112,6 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 registerMathPlugins(invocationPlugins, arch, replacements);
                 registerArraysEqualsPlugins(invocationPlugins, replacements);
                 registerStringCodingPlugins(invocationPlugins, replacements);
-                registerISO_8859_1EncoderPlugins(invocationPlugins, replacements);
             }
         });
     }
@@ -569,10 +568,8 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 return JavaVersionUtil.JAVA_SPEC < 18;
             }
         });
-    }
 
-    private static void registerISO_8859_1EncoderPlugins(InvocationPlugins plugins, Replacements replacements) {
-        Registration r = new Registration(plugins, "sun.nio.cs.ISO_8859_1$Encoder", replacements);
+        r = new Registration(plugins, "sun.nio.cs.ISO_8859_1$Encoder", replacements);
         r.register(new InvocationPlugin("implEncodeISOArray", char[].class, int.class, byte[].class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode sa, ValueNode sp,

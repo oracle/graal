@@ -144,7 +144,6 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             });
         }
         registerFMA(r);
-        registerIntegerAbs(r);
         registerMinMax(r);
 
         r.register(new InvocationPlugin("copySign", float.class, float.class) {
@@ -185,25 +184,6 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                             ValueNode nb,
                             ValueNode nc) {
                 b.push(JavaKind.Float, b.append(new FusedMultiplyAddNode(na, nb, nc)));
-                return true;
-            }
-        });
-    }
-
-    private static void registerIntegerAbs(Registration r) {
-        r.register(new InvocationPlugin("abs", int.class) {
-
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                b.push(JavaKind.Int, b.append(new AbsNode(value).canonical(null)));
-                return true;
-            }
-        });
-        r.register(new InvocationPlugin("abs", long.class) {
-
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value) {
-                b.push(JavaKind.Long, b.append(new AbsNode(value).canonical(null)));
                 return true;
             }
         });

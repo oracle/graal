@@ -76,5 +76,4 @@ public class CharsetEncodeDecodeBenchmark {
         ByteBuffer byteBuffer = ByteBuffer.wrap(bytes);
         return decoder.decode(byteBuffer);
     }
-
 }
