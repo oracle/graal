@@ -122,9 +122,9 @@ public class TimerCollection implements ImageBuildStatistics.TimerCollectionPrin
             Timer timer = it.next();
             StatisticsPrinter.print(out, timer.getName() + "_time", ((int) timer.getTotalTime()));
             if (it.hasNext()) {
-                StatisticsPrinter.print(out, timer.getName() + "_memory", ((int) timer.getTotalMemory()));
+                StatisticsPrinter.print(out, timer.getName() + "_memory", timer.getTotalMemory());
             } else {
-                StatisticsPrinter.printLast(out, timer.getName() + "_memory", ((int) timer.getTotalMemory()));
+                StatisticsPrinter.printLast(out, timer.getName() + "_memory", timer.getTotalMemory());
             }
         }
     }

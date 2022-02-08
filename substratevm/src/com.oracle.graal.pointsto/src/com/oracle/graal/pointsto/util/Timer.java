@@ -71,6 +71,7 @@ public class Timer {
     public void stop() {
         long addTime = System.nanoTime() - startTime;
         totalTime += addTime;
+        totalMemory = Runtime.getRuntime().totalMemory();
         if (autoPrint) {
             print(addTime);
         }
@@ -89,7 +90,6 @@ public class Timer {
         } else {
             concurrentPrefix = "";
         }
-        totalMemory = Runtime.getRuntime().totalMemory();
         double totalMemoryGB = totalMemory / 1024.0 / 1024.0 / 1024.0;
         System.out.format("%s%12s: %,10.2f ms, %,5.2f GB%n", concurrentPrefix, name, time / 1000000d, totalMemoryGB);
     }
