@@ -772,11 +772,12 @@ public class DebugProtocolServer {
         }
     }
 
+    @SuppressWarnings("serial")
     public static class ExceptionWithMessage extends RuntimeException {
 
         private static final long serialVersionUID = 4950848492025420535L;
 
-        private Message debugMessage;
+        private final Message debugMessage;
 
         public ExceptionWithMessage(Message debugMessage, String message) {
             super(message);
