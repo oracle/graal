@@ -651,7 +651,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                     case PARSE_ERROR   : return meta.polyglot.ExceptionType_PARSE_ERROR.getObject(staticStorage);
                     default:
                         CompilerDirectives.transferToInterpreterAndInvalidate();
-                        throw EspressoError.shouldNotReachHere("Unexpected ExceptionType: ", exceptionType);
+                        throw EspressoError.shouldNotReachHere("Unexpected ExceptionType: " + exceptionType);
                 }
                 // @formatter:on
             } catch (InteropException e) {
