@@ -82,6 +82,7 @@ import org.graalvm.compiler.nodes.calc.FloatEqualsNode;
 import org.graalvm.compiler.nodes.calc.IntegerBelowNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
+import org.graalvm.compiler.nodes.calc.IntegerMulHighNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.calc.LeftShiftNode;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
@@ -830,6 +831,13 @@ public class StandardGraphBuilderPlugins {
                 });
             }
         }
+        r.register(new InvocationPlugin("multiplyHigh", long.class, long.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
+                b.push(JavaKind.Long, b.append(new IntegerMulHighNode(x, y)));
+                return true;
+            }
+        });
         r.register(new InvocationPlugin("abs", float.class) {
 
             @Override

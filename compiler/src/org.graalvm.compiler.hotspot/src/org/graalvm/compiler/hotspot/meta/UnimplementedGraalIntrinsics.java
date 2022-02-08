@@ -222,11 +222,6 @@ public final class UnimplementedGraalIntrinsics {
                         "java/lang/StringUTF16.indexOfLatin1([BI[BII)I",
                         "java/lang/StringUTF16.indexOfLatin1([B[B)I");
 
-        if (arch instanceof AMD64) {
-            add(toBeInvestigated,
-                            "java/lang/Math.multiplyHigh(JJ)J");
-        }
-
         if (hasAESElectronicCodebookStubRoutineFields(config)) {
             add(toBeInvestigated,
                             "com/sun/crypto/provider/ElectronicCodeBook.implECBDecrypt([BII[BI)I",
@@ -244,14 +239,6 @@ public final class UnimplementedGraalIntrinsics {
                         "java/lang/CharacterDataLatin1.isUpperCase(I)Z",
                         "java/lang/CharacterDataLatin1.isWhitespace(I)Z",
                         "jdk/jfr/internal/JVM.getEventWriter()Ljava/lang/Object;");
-
-        if (isJDK13OrHigher()) {
-            if (arch instanceof AMD64) {
-                add(toBeInvestigated,
-                                "java/lang/Math.abs(I)I",
-                                "java/lang/Math.abs(J)J");
-            }
-        }
 
         if (isJDK14OrHigher()) {
             add(toBeInvestigated,

@@ -30,7 +30,6 @@ import org.graalvm.compiler.nodes.calc.IntegerMulHighNode;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.junit.Test;
 
-import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.TargetDescription;
 
 public class MathMultiplyHighTest extends MethodSubstitutionTest {
@@ -44,9 +43,7 @@ public class MathMultiplyHighTest extends MethodSubstitutionTest {
     @Test
     public void testMultiplyHigh() {
         TargetDescription target = Graal.getRequiredCapability(RuntimeProvider.class).getHostBackend().getTarget();
-        if (target.arch instanceof AArch64) {
-            assertInGraph(testGraph("multiplyHigh"), IntegerMulHighNode.class);
-        }
+        assertInGraph(testGraph("multiplyHigh"), IntegerMulHighNode.class);
         for (long input1 : INPUT) {
             for (long input2 : INPUT) {
                 test("multiplyHigh", input1, input2);

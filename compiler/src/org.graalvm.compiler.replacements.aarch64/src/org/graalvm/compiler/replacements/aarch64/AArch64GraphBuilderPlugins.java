@@ -145,14 +145,6 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
         }
         registerFMA(r);
         registerIntegerAbs(r);
-
-        r.register(new InvocationPlugin("multiplyHigh", long.class, long.class) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
-                b.push(JavaKind.Long, b.append(new IntegerMulHighNode(x, y)));
-                return true;
-            }
-        });
         registerMinMax(r);
 
         r.register(new InvocationPlugin("copySign", float.class, float.class) {
