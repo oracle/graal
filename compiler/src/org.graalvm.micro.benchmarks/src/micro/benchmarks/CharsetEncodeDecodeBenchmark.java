@@ -41,8 +41,8 @@ import org.openjdk.jmh.annotations.State;
 @State(Scope.Thread)
 public class CharsetEncodeDecodeBenchmark {
 
-    private byte[] BYTES;
-    private char[] CHARS;
+    private byte[] bytes;
+    private char[] chars;
 
     private CharsetEncoder encoder;
     private CharsetDecoder decoder;
@@ -53,12 +53,12 @@ public class CharsetEncodeDecodeBenchmark {
 
     @Setup
     public void prepare() {
-        BYTES = new byte[size];
-        CHARS = new char[size];
+        bytes = new byte[size];
+        chars = new char[size];
         for (int i = 0; i < size; ++i) {
             int val = 48 + (i % 16);
-            BYTES[i] = (byte) val;
-            CHARS[i] = (char) val;
+            bytes[i] = (byte) val;
+            chars[i] = (char) val;
         }
 
         encoder = Charset.forName(type).newEncoder();
@@ -67,13 +67,13 @@ public class CharsetEncodeDecodeBenchmark {
 
     @Benchmark
     public ByteBuffer encode() throws CharacterCodingException {
-        CharBuffer charBuffer = CharBuffer.wrap(CHARS);
+        CharBuffer charBuffer = CharBuffer.wrap(chars);
         return encoder.encode(charBuffer);
     }
 
     @Benchmark
     public CharBuffer decode() throws CharacterCodingException {
-        ByteBuffer byteBuffer = ByteBuffer.wrap(BYTES);
+        ByteBuffer byteBuffer = ByteBuffer.wrap(bytes);
         return decoder.decode(byteBuffer);
     }
 

@@ -27,10 +27,10 @@ package org.graalvm.compiler.replacements.test;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.test.AddExports;
 import org.junit.Test;
 
-import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @AddExports("java.base/java.lang")
@@ -59,26 +59,23 @@ public class HasNegativeTest extends GraalCompilerTest {
     public void testStringCoding() throws ClassNotFoundException {
         Class<?> klass = Class.forName("java.lang.StringCoding");
         ResolvedJavaMethod method = getResolvedJavaMethod(klass, "hasNegatives");
-        StructuredGraph graph = getReplacements().getIntrinsicGraph(method, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext(), StructuredGraph.AllowAssumptions.YES, null);
-        InstalledCode compiledMethod = getCode(method, graph);
 
         for (String input : testData) {
             byte[] bytes = input.getBytes();
             for (int off : new int[]{0, 2, -2}) {
                 for (int len : new int[]{bytes.length, 2, 0, -2}) {
-                    Result expected = executeExpected(method, null, bytes, off, len);
-                    Result actual = executeCompiledMethod(compiledMethod, bytes, off, len);
-                    assertEquals(expected, actual);
+                    test(method, null, bytes, off, len);
                 }
             }
         }
     }
 
-    private static Result executeCompiledMethod(InstalledCode compiledMethod, Object... args) {
-        try {
-            return new Result(compiledMethod.executeVarargs(args), null);
-        } catch (Throwable e) {
-            return new Result(null, e);
+    @Override
+    protected StructuredGraph parseForCompile(ResolvedJavaMethod method, CompilationIdentifier compilationId, OptionValues options) {
+        StructuredGraph graph = getReplacements().getIntrinsicGraph(method, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext(), StructuredGraph.AllowAssumptions.YES, null);
+        if (graph != null) {
+            return graph;
         }
+        return super.parseForCompile(method, compilationId, options);
     }
 }

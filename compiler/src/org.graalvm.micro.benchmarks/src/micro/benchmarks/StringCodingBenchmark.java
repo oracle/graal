@@ -35,10 +35,10 @@ import org.openjdk.jmh.annotations.State;
 @State(Scope.Thread)
 public class StringCodingBenchmark {
 
-    private byte[] BYTES;
+    private byte[] bytes;
 
-    private final Charset ASCII = Charset.forName("ASCII");
-    private final Charset ISO_8859_1 = Charset.forName("ISO_8859_1");
+    private final Charset ascii = Charset.forName("ASCII");
+    private final Charset iso8859 = Charset.forName("ISO-8859-1");
 
     @Param("1024") private int size;
 
@@ -48,20 +48,20 @@ public class StringCodingBenchmark {
 
     @Setup
     public void prepare() {
-        BYTES = new byte[size];
+        bytes = new byte[size];
         for (int i = 0; i < size; ++i) {
             int val = 48 + (i % 16);
-            BYTES[i] = (byte) val;
+            bytes[i] = (byte) val;
         }
     }
 
     @Benchmark
     public String testHasNegative() {
-        return new String(BYTES, 0, BYTES.length, ASCII);
+        return new String(bytes, 0, bytes.length, ascii);
     }
 
     @Benchmark
-    public byte[] testISO_8859_1_encoding() {
-        return loremUTF8.getBytes(ISO_8859_1);
+    public byte[] testISO8859encoding() {
+        return loremUTF8.getBytes(iso8859);
     }
 }
