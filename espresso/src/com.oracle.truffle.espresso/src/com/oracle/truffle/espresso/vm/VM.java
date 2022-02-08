@@ -60,6 +60,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.IntFunction;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.options.OptionValues;
 
@@ -390,6 +391,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             assert getUncached().isPointer(ptr);
             return ptr;
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere("getJavaVM failed", e);
         }
     }
@@ -699,7 +701,7 @@ public final class VM extends NativeEnv implements ContextAccess {
                     case Void:
                     case ReturnAddress:
                     case Illegal:
-                        CompilerDirectives.transferToInterpreter();
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
                         throw EspressoError.shouldNotReachHere("Unexpected primitive kind: " + componentType.getJavaKind());
                 }
 
@@ -3028,6 +3030,7 @@ public final class VM extends NativeEnv implements ContextAccess {
         } else if (meta.java_lang_reflect_Constructor.isAssignableFrom(executable.getKlass())) {
             method = Method.getHostReflectiveConstructorRoot(executable, meta);
         } else {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere();
         }
 
@@ -3098,6 +3101,7 @@ public final class VM extends NativeEnv implements ContextAccess {
             assert constructorRoot != null;
             return (StaticObject) getMeta().HIDDEN_CONSTRUCTOR_RUNTIME_VISIBLE_TYPE_ANNOTATIONS.getHiddenObject(constructorRoot);
         } else {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere();
         }
     }

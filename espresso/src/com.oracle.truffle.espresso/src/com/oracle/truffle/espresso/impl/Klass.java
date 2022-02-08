@@ -717,7 +717,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         if (this instanceof ObjectKlass) {
             return ((ObjectKlass) this).getStaticsImpl();
         }
-        CompilerDirectives.transferToInterpreter();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         throw EspressoError.shouldNotReachHere("Primitives/arrays do not have static fields");
     }
 
@@ -1162,7 +1162,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
         }
         // Unreachable?
         assert this instanceof PrimitiveKlass;
-        CompilerDirectives.transferToInterpreter();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         throw EspressoError.shouldNotReachHere("lookupFieldTable on primitive type");
     }
 
@@ -1171,7 +1171,7 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
             return ((ObjectKlass) this).lookupStaticFieldTableImpl(slot);
         }
         // Array nor primitives have static fields.
-        CompilerDirectives.transferToInterpreter();
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         throw EspressoError.shouldNotReachHere("lookupStaticFieldTable on primitive/array type");
     }
 

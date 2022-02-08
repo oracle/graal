@@ -443,7 +443,7 @@ public final class Target_java_lang_System {
                 library.writeArrayElement(dest, destPos + i, cpy);
             }
         } catch (UnsupportedMessageException | UnsupportedTypeException e) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere();
         } catch (InvalidArrayIndexException e) {
             throw throwArrayStoreEx(meta, profiler);

@@ -27,6 +27,7 @@ import static com.oracle.truffle.espresso.runtime.Classpath.JAVA_BASE;
 
 import java.nio.ByteBuffer;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -210,6 +211,7 @@ class JImageLibrary implements ContextAccess {
         try {
             return uncached.execute(target, args);
         } catch (UnsupportedTypeException | UnsupportedMessageException | ArityException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere(e);
         }
     }

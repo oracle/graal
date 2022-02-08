@@ -478,7 +478,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     case 'J' : setLocalLong(frame, curSlot, (long) arguments[i + receiverSlot]);     ++curSlot; break;
                     case 'D' : setLocalDouble(frame, curSlot, (double) arguments[i + receiverSlot]); ++curSlot; break;
                     default      :
-                        CompilerDirectives.transferToInterpreter();
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
                         throw EspressoError.shouldNotReachHere("unexpected kind");
                 }
                 // @formatter:on
@@ -1355,7 +1355,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                                 continue loop;
                             }
                             default:
-                                CompilerDirectives.transferToInterpreter();
+                                CompilerDirectives.transferToInterpreterAndInvalidate();
                                 throw EspressoError.shouldNotReachHere(Bytecodes.nameOf(curOpcode));
                         }
                         livenessAnalysis.performPostBCI(frame, curBCI, skipLivenessActions);
@@ -1369,7 +1369,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     case MULTIANEWARRAY: top += allocateMultiArray(frame, top, resolveType(MULTIANEWARRAY, readCPI(curBCI)), bs.readUByte(curBCI + 3)); break;
 
                     case BREAKPOINT:
-                        CompilerDirectives.transferToInterpreter();
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
                         throw EspressoError.unimplemented(Bytecodes.nameOf(curOpcode) + " not supported.");
 
                     case INVOKEDYNAMIC:
@@ -1396,7 +1396,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                         break;
 
                     default:
-                        CompilerDirectives.transferToInterpreter();
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
                         throw EspressoError.shouldNotReachHere(Bytecodes.nameOf(curOpcode));
                 }
                 // @formatter:on
@@ -1615,7 +1615,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
             case IFNULL    : return StaticObject.isNull(operand);
             case IFNONNULL : return StaticObject.notNull(operand);
             default        :
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere("expected IFNULL or IFNONNULL bytecode");
         }
         // @formatter:on
@@ -1632,7 +1632,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
             case IFGT      : return operand  > 0;
             case IFLE      : return operand <= 0;
             default        :
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere("expecting IFEQ,IFNE,IFLT,IFGE,IFGT,IFLE");
         }
         // @formatter:on
@@ -1649,7 +1649,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
             case IF_ICMPGT : return operand1  < operand2;
             case IF_ICMPLE : return operand1 >= operand2;
             default        :
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere("expecting IF_ICMPEQ,IF_ICMPNE,IF_ICMPLT,IF_ICMPGE,IF_ICMPGT,IF_ICMPLE");
         }
         // @formatter:on
@@ -1662,7 +1662,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
             case IF_ACMPEQ : return operand1 == operand2;
             case IF_ACMPNE : return operand1 != operand2;
             default        :
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere("expecting IF_ACMPEQ,IF_ACMPNE");
         }
         // @formatter:on
@@ -1698,7 +1698,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                 case DALOAD: putDouble(frame, top - 2, getInterpreterToVM().getArrayDouble(index, array, this)); break;
                 case AALOAD: putObject(frame, top - 2, getInterpreterToVM().getArrayObject(index, array, this));       break;
                 default:
-                    CompilerDirectives.transferToInterpreter();
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw EspressoError.shouldNotReachHere();
             }
             // @formatter:on
@@ -1730,7 +1730,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                 case DASTORE: getInterpreterToVM().setArrayDouble(popDouble(frame, top - 1), index, array, this);     break;
                 case AASTORE: referenceArrayStore(frame, top, index, array);     break;
                 default:
-                    CompilerDirectives.transferToInterpreter();
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw EspressoError.shouldNotReachHere();
             }
             // @formatter:on
@@ -1850,7 +1850,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
             DynamicConstant.Resolved dynamicConstant = pool.resolvedDynamicConstantAt(getDeclaringKlass(), cpi);
             dynamicConstant.putResolved(frame, top, this);
         } else {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.unimplemented(constant.toString());
         }
     }
@@ -2039,7 +2039,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     case DALOAD: arrayLoadNode = new DoubleArrayLoadQuickNode(top, curBCI); break;
                     case AALOAD: arrayLoadNode = new ReferenceArrayLoadQuickNode(top, curBCI); break;
                     default:
-                        CompilerDirectives.transferToInterpreter();
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
                         throw EspressoError.shouldNotReachHere("unexpected kind");
                 }
                 // @formatter:on
@@ -2068,7 +2068,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     case DASTORE: arrayStoreNode = new DoubleArrayStoreQuickNode(top, curBCI); break;
                     case AASTORE: arrayStoreNode = new ReferenceArrayStoreQuickNode(top, curBCI); break;
                     default:
-                        CompilerDirectives.transferToInterpreter();
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
                         throw EspressoError.shouldNotReachHere("unexpected kind");
                 }
                 // @formatter:on
@@ -2154,7 +2154,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                 }
                 break;
             default:
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.unimplemented("Quickening for " + Bytecodes.nameOf(opcode));
         }
 
@@ -2183,7 +2183,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                 case INVOKEVIRTUAL   : invoke = new InvokeVirtualQuickNode(resolved, top, curBCI);   break;
                 case INVOKESPECIAL   : invoke = new InvokeSpecialQuickNode(resolved, top, curBCI);        break;
                 default              :
-                    CompilerDirectives.transferToInterpreter();
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw EspressoError.unimplemented("Quickening for " + Bytecodes.nameOf(opcode));
             }
             // @formatter:on
@@ -2560,7 +2560,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                 InterpreterToVM.setFieldObject(value, receiver, field);
                 break;
             default:
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere("unexpected kind");
         }
         return -field.getKind().getSlotCount();
@@ -2636,7 +2636,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                 break;
             }
             default :
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere("unexpected kind");
         }
         // @formatter:on
@@ -2676,7 +2676,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     case 'J' : args[i + extraParam] = popLong(frame, argAt);   --argAt; break;
                     case 'D' : args[i + extraParam] = popDouble(frame, argAt); --argAt; break;
                     default  :
-                        CompilerDirectives.transferToInterpreter();
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
                         throw EspressoError.shouldNotReachHere();
                 }
                 // @formatter:on
@@ -2713,7 +2713,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
                     case 'J' : args[i + start] = popLong(frame, argAt);   --argAt; break;
                     case 'D' : args[i + start] = popDouble(frame, argAt); --argAt; break;
                     default  :
-                        CompilerDirectives.transferToInterpreter();
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
                         throw EspressoError.shouldNotReachHere();
                 }
                 // @formatter:on
@@ -2748,7 +2748,7 @@ public final class BytecodeNode extends EspressoMethodNode implements BytecodeOS
             case Object  : putObject(frame, top, (StaticObject) value);         break;
             case Void    : /* ignore */                                        break;
             default      :
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere();
         }
         // @formatter:on

@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.runtime.dispatch;
 
 import static com.oracle.truffle.espresso.runtime.StaticObject.EMPTY_ARRAY;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -72,6 +73,7 @@ public class MapEntryInterop extends EspressoInterop {
         try {
             invoke.execute(m, receiver, new Object[]{value});
         } catch (ArityException | UnsupportedTypeException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere(e);
         }
     }
@@ -91,6 +93,7 @@ public class MapEntryInterop extends EspressoInterop {
         try {
             return invoke.execute(m, receiver, EMPTY_ARRAY);
         } catch (ArityException | UnsupportedTypeException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere(e);
         }
     }

@@ -82,7 +82,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             try {
                 return valueInterop.asString(value);
             } catch (UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
@@ -650,7 +650,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                     case RUNTIME_ERROR : return meta.polyglot.ExceptionType_RUNTIME_ERROR.getObject(staticStorage);
                     case PARSE_ERROR   : return meta.polyglot.ExceptionType_PARSE_ERROR.getObject(staticStorage);
                     default:
-                        CompilerDirectives.transferToInterpreter();
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
                         throw EspressoError.shouldNotReachHere("Unexpected ExceptionType: ", exceptionType);
                 }
                 // @formatter:on

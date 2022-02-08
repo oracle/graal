@@ -187,6 +187,7 @@ public final class JniEnv extends NativeEnv {
             try {
                 return (boolean) getUncached().execute(popBoolean, nativePointer);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
@@ -196,6 +197,7 @@ public final class JniEnv extends NativeEnv {
             try {
                 return (byte) getUncached().execute(popByte, nativePointer);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
@@ -205,6 +207,7 @@ public final class JniEnv extends NativeEnv {
             try {
                 return (char) getUncached().execute(popChar, nativePointer);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
@@ -214,6 +217,7 @@ public final class JniEnv extends NativeEnv {
             try {
                 return (short) getUncached().execute(popShort, nativePointer);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
@@ -223,6 +227,7 @@ public final class JniEnv extends NativeEnv {
             try {
                 return (int) getUncached().execute(popInt, nativePointer);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
@@ -232,6 +237,7 @@ public final class JniEnv extends NativeEnv {
             try {
                 return (float) getUncached().execute(popFloat, nativePointer);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
@@ -241,6 +247,7 @@ public final class JniEnv extends NativeEnv {
             try {
                 return (double) getUncached().execute(popDouble, nativePointer);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
@@ -250,6 +257,7 @@ public final class JniEnv extends NativeEnv {
             try {
                 return (long) getUncached().execute(popLong, nativePointer);
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
@@ -270,10 +278,12 @@ public final class JniEnv extends NativeEnv {
                         // figure out just what is happening here.
                         return StaticObject.NULL;
                     } else {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
                         throw EspressoError.unimplemented("non null native pointer in JniEnv");
                     }
                 }
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException | ClassCastException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
@@ -297,8 +307,8 @@ public final class JniEnv extends NativeEnv {
                 case Double  : args[i] = varargs.popDouble();  break;
                 case Object  : args[i] = varargs.popObject();  break;
                 default:
-                    CompilerDirectives.transferToInterpreter();
-                    throw EspressoError.shouldNotReachHere("invalid parameter kind: " + kind);
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    throw EspressoError.shouldNotReachHere("invalid parameter kind: ", kind);
             }
             // @formatter:on
         }
@@ -380,7 +390,8 @@ public final class JniEnv extends NativeEnv {
             getUncached().execute(disposeNativeContext, jniEnvPtr, RawPointer.nullInstance());
             this.jniEnvPtr = null;
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-            throw EspressoError.shouldNotReachHere("Cannot initialize Espresso native interface");
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere("Cannot dispose Espresso native interface");
         }
         assert jniEnvPtr == null;
     }
@@ -395,7 +406,7 @@ public final class JniEnv extends NativeEnv {
                 }
                 cachedSizeMax = result;
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
@@ -1883,6 +1894,7 @@ public final class JniEnv extends NativeEnv {
                 case Long    : SetLongArrayRegion(array, 0, length, bufPtr);    break;
                 case Double  : SetDoubleArrayRegion(array, 0, length, bufPtr);  break;
                 default:
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw EspressoError.shouldNotReachHere();
             }
             // @formatter:on
@@ -2187,7 +2199,8 @@ public final class JniEnv extends NativeEnv {
             }
         }
 
-        throw EspressoError.shouldNotReachHere("Method/constructor not found ", method);
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw EspressoError.shouldNotReachHere("Method/constructor not found " + method);
     }
 
     /**
@@ -2213,7 +2226,8 @@ public final class JniEnv extends NativeEnv {
             }
         }
 
-        throw EspressoError.shouldNotReachHere("Field not found ", field);
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        throw EspressoError.shouldNotReachHere("Field not found " + field);
     }
 
     /**
@@ -2243,6 +2257,7 @@ public final class JniEnv extends NativeEnv {
         } else if (InterpreterToVM.instanceOf(method, getMeta().java_lang_reflect_Constructor)) {
             guestMethod = Method.getHostReflectiveConstructorRoot(method, getMeta());
         } else {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere();
         }
         guestMethod.getDeclaringKlass().initialize();
@@ -2528,6 +2543,7 @@ public final class JniEnv extends NativeEnv {
             case Void    : // fall through
             case Illegal : // fall through
             default:
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere();
         }
         // @formatter:on
@@ -2554,6 +2570,7 @@ public final class JniEnv extends NativeEnv {
                 case Long    : SetLongArrayRegion(array, 0, length, carrayPtr);    break;
                 case Double  : SetDoubleArrayRegion(array, 0, length, carrayPtr);  break;
                 default:
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw EspressoError.shouldNotReachHere();
             }
             // @formatter:on

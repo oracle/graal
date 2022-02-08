@@ -193,6 +193,7 @@ public final class Target_sun_misc_Unsafe {
 
     private static Field getInstanceFieldFromIndex(StaticObject holder, int slot) {
         if (!(0 <= slot && slot < (1 << 16)) && slot >= 0) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere("the field offset is not normalized");
         }
         try {
@@ -203,6 +204,7 @@ public final class Target_sun_misc_Unsafe {
                 return holder.getKlass().lookupFieldTable(slot);
             }
         } catch (IndexOutOfBoundsException ex) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere("invalid field offset");
         }
     }
@@ -286,6 +288,7 @@ public final class Target_sun_misc_Unsafe {
         Field f = getInstanceFieldFromIndex(holder, Math.toIntExact(offset) - SAFETY_FIELD_OFFSET);
         assert f != null;
         if (f.getKind() != JavaKind.Object) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere();
         }
         return f.compareAndExchangeObject(holder, before, after);
@@ -307,6 +310,7 @@ public final class Target_sun_misc_Unsafe {
             case Float:
                 return Float.floatToRawIntBits(f.compareAndExchangeFloat(holder, Float.intBitsToFloat(before), Float.intBitsToFloat(after)));
             default:
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere();
         }
     }
@@ -339,6 +343,7 @@ public final class Target_sun_misc_Unsafe {
             case Byte:
                 return f.compareAndExchangeByte(holder, before, after);
             default:
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere();
         }
     }
@@ -360,6 +365,7 @@ public final class Target_sun_misc_Unsafe {
             case Char:
                 return (short) f.compareAndExchangeChar(holder, (char) before, (char) after);
             default:
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere();
         }
     }
@@ -379,6 +385,7 @@ public final class Target_sun_misc_Unsafe {
             case Double:
                 return Double.doubleToRawLongBits(f.compareAndExchangeDouble(holder, Double.longBitsToDouble(before), Double.longBitsToDouble(after)));
             default:
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere();
         }
     }
@@ -421,7 +428,7 @@ public final class Target_sun_misc_Unsafe {
         try {
             ptr = InteropLibrary.getUncached().asPointer(buffer);
         } catch (UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere(e);
         }
         return ptr;

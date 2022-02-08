@@ -606,7 +606,7 @@ public final class InterpreterToVM implements ContextAccess {
             case 10 : return StaticObject.wrap(new int[length], meta);
             case 11 : return StaticObject.wrap(new long[length], meta);
             default :
-                CompilerDirectives.transferToInterpreter();
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere();
         }
         // @formatter:on

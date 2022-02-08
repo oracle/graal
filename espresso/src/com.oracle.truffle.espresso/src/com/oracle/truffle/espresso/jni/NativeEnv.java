@@ -134,6 +134,7 @@ public abstract class NativeEnv implements ContextAccess {
         try {
             res = (TruffleObject) getUncached().execute(initializeFunctionPointer, newArgs);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere(e);
         } finally {
             // Free up helper structures
@@ -186,10 +187,12 @@ public abstract class NativeEnv implements ContextAccess {
                     processCallBackResult(name, factory, args);
                     return createNativeClosureForFactory(factory, name);
                 } catch (ClassCastException e) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw EspressoError.shouldNotReachHere(e);
-                } catch (RuntimeException e) {
+                } catch (StackOverflowError | OutOfMemoryError | RuntimeException e) {
                     throw e;
                 } catch (Throwable e) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
                     throw EspressoError.shouldNotReachHere(e);
                 }
             }

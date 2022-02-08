@@ -485,6 +485,7 @@ public final class ObjectKlass extends Klass {
                 break;
             }
             default:
+                CompilerAsserts.neverPartOfCompilation();
                 throw EspressoError.shouldNotReachHere("invalid constant field kind");
         }
     }

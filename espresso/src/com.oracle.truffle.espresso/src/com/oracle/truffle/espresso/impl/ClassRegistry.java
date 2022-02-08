@@ -30,6 +30,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.espresso.classfile.ClassfileParser;
 import com.oracle.truffle.espresso.classfile.ClassfileStream;
 import com.oracle.truffle.espresso.classfile.Constants;
@@ -192,6 +193,7 @@ public abstract class ClassRegistry implements ContextAccess {
 
         Symbol<Type> pop() {
             if (isEmpty()) {
+                CompilerAsserts.neverPartOfCompilation();
                 throw EspressoError.shouldNotReachHere();
             }
             Symbol<Type> res = head.entry;

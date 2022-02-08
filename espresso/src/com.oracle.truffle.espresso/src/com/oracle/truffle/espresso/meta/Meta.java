@@ -1555,6 +1555,7 @@ public final class Meta implements ContextAccess {
         if (arg instanceof Double) {
             return meta.boxDouble((double) arg);
         }
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         throw EspressoError.shouldNotReachHere();
     }
 

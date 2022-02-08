@@ -244,6 +244,7 @@ public class StaticObject implements TruffleObject, Cloneable {
                 // of generated subtypes.
                 obj = (StaticObject) clone();
             } catch (CloneNotSupportedException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             }
         }
@@ -320,7 +321,7 @@ public class StaticObject implements TruffleObject, Cloneable {
     public final EspressoLock getLock(EspressoContext context) {
         checkNotForeign();
         if (isNull(this)) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere("StaticObject.NULL.getLock()");
         }
         EspressoLock l = lockOrForeignMarker;
@@ -341,7 +342,7 @@ public class StaticObject implements TruffleObject, Cloneable {
 
     public final void checkNotForeign() {
         if (isForeignObject()) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere("Unexpected foreign object");
         }
     }
@@ -539,6 +540,7 @@ public class StaticObject implements TruffleObject, Cloneable {
         assert array != null;
         assert array.getClass().isArray() && array.getClass().getComponentType().isPrimitive();
         if (array instanceof boolean[]) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere("Cannot wrap a boolean[]. Create a byte[] and call `StaticObject.createArray(meta._boolean_array, byteArray)`.");
         }
         if (array instanceof byte[]) {
@@ -562,6 +564,7 @@ public class StaticObject implements TruffleObject, Cloneable {
         if (array instanceof long[]) {
             return wrap((long[]) array, meta);
         }
+        CompilerDirectives.transferToInterpreterAndInvalidate();
         throw EspressoError.shouldNotReachHere("Not a primitive array " + array);
     }
 

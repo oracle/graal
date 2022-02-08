@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.classfile.constantpool;
 
 import java.nio.ByteBuffer;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.classfile.ConstantPool.Tag;
@@ -300,11 +301,13 @@ public interface DynamicConstant extends PoolConstant {
 
         @Override
         public void putResolved(VirtualFrame frame, int top, BytecodeNode node) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere("Failure should have arose earlier.");
         }
 
         @Override
         public Object value() {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere("Failure should have arose earlier.");
         }
 

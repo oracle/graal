@@ -110,7 +110,7 @@ public final class NativeMethodNode extends EspressoMethodNode {
             Object result = executeNative.execute(boundNative, nativeArgs);
             return processResult(env, result);
         } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-            CompilerDirectives.transferToInterpreter();
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere(e);
         } finally {
             env.getHandles().popFramesIncluding(nativeFrame);
