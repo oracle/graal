@@ -76,7 +76,6 @@ import com.oracle.svm.util.ReflectionUtil;
 
 public class ProgressReporter {
     private static final int CHARACTERS_PER_LINE;
-    private static final int PROGRESS_BAR_START = 30;
     private static final boolean IS_CI = System.console() == null || System.getenv("CI") != null;
     private static final boolean IS_DUMB_TERM = isDumbTerm();
     private static final int MAX_NUM_FEATURES = 50;
@@ -88,25 +87,19 @@ public class ProgressReporter {
     private static final double EXCESSIVE_GC_RATIO = 0.5;
     private static final String BREAKDOWN_BYTE_ARRAY_PREFIX = "byte[] for ";
 
-    private static final double MILLIS_TO_SECONDS = 1000d;
-    private static final double NANOS_TO_SECONDS = 1000d * 1000d * 1000d;
-    private static final double BYTES_TO_KiB = 1024d;
-    private static final double BYTES_TO_MiB = 1024d * 1024d;
-    private static final double BYTES_TO_GiB = 1024d * 1024d * 1024d;
-
     private final NativeImageSystemIOWrappers builderIO;
 
-    private final boolean isEnabled;
-    private final LinePrinter linePrinter;
+    private final boolean isEnabled; // TODO: clean up when deprecating old output (GR-35721).
+    private final DirectPrinter linePrinter = new DirectPrinter();
+    private final StagePrinter<?> stagePrinter;
+    private final ColorStrategy colorStrategy;
+    private final LinkStrategy linkStrategy;
     private final boolean usePrefix;
-    private final boolean showLinks;
     private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
 
-    private ScheduledFuture<?> periodicPrintingTask;
-
-    private int numStageChars = 0;
+    private String outputPrefix = "";
     private long lastGCCheckTimeMillis = System.currentTimeMillis();
-    private GCStats lastGCStats = getCurrentGCStats();
+    private GCStats lastGCStats = GCStats.getCurrent();
     private long numRuntimeCompiledMethods = -1;
     private long graphEncodingByteLength = 0;
     private int numJNIClasses = -1;
@@ -148,6 +141,10 @@ public class ProgressReporter {
         return ImageSingletons.lookup(ProgressReporter.class);
     }
 
+    public static boolean isInstalled() {
+        return ImageSingletons.contains(ProgressReporter.class);
+    }
+
     public ProgressReporter(OptionValues options) {
         builderIO = NativeImageSystemIOWrappers.singleton();
 
@@ -160,13 +157,8 @@ public class ProgressReporter {
         if (SubstrateOptions.BuildOutputColorful.hasBeenSet(options)) {
             enableColors = SubstrateOptions.BuildOutputColorful.getValue(options);
         }
-        boolean loggingDisabled = DebugOptions.Log.getValue(options) == null;
-        boolean enableProgress = !IS_DUMB_TERM && !IS_CI && loggingDisabled;
-        if (SubstrateOptions.BuildOutputProgress.hasBeenSet(options)) {
-            enableProgress = SubstrateOptions.BuildOutputProgress.getValue(options);
-        }
         if (enableColors) {
-            linePrinter = new ColorfulLinePrinter(enableProgress);
+            colorStrategy = new ColorfulStrategy();
             /* Add a shutdown hook to reset the ANSI mode. */
             try {
                 Runtime.getRuntime().addShutdownHook(new Thread(ProgressReporter::resetANSIMode));
@@ -174,14 +166,24 @@ public class ProgressReporter {
                 /* If the VM is already shutting down, we do not need to register shutdownHook. */
             }
         } else {
-            linePrinter = new ColorlessLinePrinter(enableProgress);
+            colorStrategy = new ColorlessStrategy();
         }
-        showLinks = SubstrateOptions.BuildOutputColorful.getValue(options);
-    }
 
-    private LinePrinter l() {
-        assert linePrinter.isEmpty() : "Line printer should be empty before printing a new line";
-        return linePrinter;
+        /*
+         * When logging is enabled, progress cannot be reported as logging works around
+         * NativeImageSystemIOWrappers to access stdio handles.
+         */
+        boolean loggingEnabled = DebugOptions.Log.getValue(options) != null;
+        boolean enableProgress = !IS_DUMB_TERM && !IS_CI && !loggingEnabled;
+        if (SubstrateOptions.BuildOutputProgress.hasBeenSet(options)) {
+            enableProgress = SubstrateOptions.BuildOutputProgress.getValue(options);
+        }
+        stagePrinter = enableProgress ? new CharacterwiseStagePrinter() : new LinewiseStagePrinter();
+        boolean showLinks = enableColors;
+        if (SubstrateOptions.BuildOutputLinks.hasBeenSet(options)) {
+            showLinks = SubstrateOptions.BuildOutputLinks.getValue(options);
+        }
+        linkStrategy = showLinks ? new LinkyStrategy() : new LinklessStrategy();
     }
 
     public void setNumRuntimeCompiledMethods(int value) {
@@ -205,26 +207,27 @@ public class ProgressReporter {
     public void printStart(String imageName) {
         if (usePrefix) {
             // Add the PID to further disambiguate concurrent builds of images with the same name
-            linePrinter.outputPrefix = String.format("[%s:%s] ", imageName, GraalServices.getExecutionID());
+            outputPrefix = String.format("[%s:%s] ", imageName, GraalServices.getExecutionID());
+            stagePrinter.progressBarStart += outputPrefix.length();
         }
         l().printHeadlineSeparator();
         l().blueBold().link("GraalVM Native Image", "https://www.graalvm.org/native-image/").reset()
-                        .a(": Generating '").bold().a(imageName).reset().a("'...").flushln();
+                        .a(": Generating '").bold().a(imageName).reset().a("'...").println();
         l().printHeadlineSeparator();
-        printStageStart(BuildStage.INITIALIZING);
+        stagePrinter.start(BuildStage.INITIALIZING);
     }
 
     public void printInitializeEnd(Timer classlistTimer, Timer setupTimer) {
         if (initializeStageEndCompleted) {
             return;
         }
-        printStageEnd(classlistTimer.getTotalTime() + setupTimer.getTotalTime());
+        stagePrinter.end(classlistTimer.getTotalTime() + setupTimer.getTotalTime());
         initializeStageEndCompleted = true;
     }
 
     public void printInitializeEnd(Timer classlistTimer, Timer setupTimer, Collection<String> libraries) {
         printInitializeEnd(classlistTimer, setupTimer);
-        l().a(" ").doclink("Version info", "#glossary-version-info").a(": '").a(ImageSingletons.lookup(VM.class).version).a("'").flushln();
+        l().a(" ").doclink("Version info", "#glossary-version-info").a(": '").a(ImageSingletons.lookup(VM.class).version).a("'").println();
         printNativeLibraries(libraries);
     }
 
@@ -232,9 +235,9 @@ public class ProgressReporter {
         int numLibraries = libraries.size();
         if (numLibraries > 0) {
             if (numLibraries == 1) {
-                l().a(" 1 native library: ").a(libraries.iterator().next()).flushln();
+                l().a(" 1 native library: ").a(libraries.iterator().next()).println();
             } else {
-                l().a(" ").a(numLibraries).a(" native libraries: ").a(String.join(", ", libraries)).flushln();
+                l().a(" ").a(numLibraries).a(" native libraries: ").a(String.join(", ", libraries)).println();
             }
         }
     }
@@ -242,16 +245,16 @@ public class ProgressReporter {
     public void printFeatures(List<String> list) {
         int numUserFeatures = list.size();
         if (numUserFeatures > 0) {
-            l().a(" ").a(numUserFeatures).a(" ").doclink("user-provided feature(s)", "#glossary-user-provided-features").flushln();
+            l().a(" ").a(numUserFeatures).a(" ").doclink("user-provided feature(s)", "#glossary-user-provided-features").println();
             if (numUserFeatures <= MAX_NUM_FEATURES) {
                 for (String name : list) {
-                    l().a("  - ").a(name).flushln();
+                    l().a("  - ").a(name).println();
                 }
             } else {
                 for (int i = 0; i < MAX_NUM_FEATURES; i++) {
-                    l().a("  - ").a(list.get(i)).flushln();
+                    l().a("  - ").a(list.get(i)).println();
                 }
-                l().a("  ... ").a(numUserFeatures - MAX_NUM_FEATURES).a(" more").flushln();
+                l().a("  ... ").a(numUserFeatures - MAX_NUM_FEATURES).a(" more").println();
             }
         }
     }
@@ -259,113 +262,102 @@ public class ProgressReporter {
     public ReporterClosable printAnalysis(BigBang bb) {
         Timer timer = bb.getAnalysisTimer();
         timer.start();
-        printStageStart(BuildStage.ANALYSIS);
-        printProgressStart();
+        stagePrinter.start(BuildStage.ANALYSIS).startProgress();
         return new ReporterClosable() {
             @Override
             public void closeAction() {
                 timer.stop();
-                printProgressEnd();
-                printStageEnd(bb.getAnalysisTimer());
-                String actualVsTotalFormat = "%,8d (%5.2f%%) of %,6d";
-                long reachableClasses = bb.getUniverse().getTypes().stream().filter(t -> t.isReachable()).count();
-                long totalClasses = bb.getUniverse().getTypes().size();
-                l().a(actualVsTotalFormat, reachableClasses, reachableClasses / (double) totalClasses * 100, totalClasses)
-                                .a(" classes ").doclink("reachable", "#glossary-reachability").flushln();
-                Collection<AnalysisField> fields = bb.getUniverse().getFields();
-                long reachableFields = fields.stream().filter(f -> f.isAccessed()).count();
-                int totalFields = fields.size();
-                l().a(actualVsTotalFormat, reachableFields, reachableFields / (double) totalFields * 100, totalFields)
-                                .a(" fields ").doclink("reachable", "#glossary-reachability").flushln();
-                Collection<AnalysisMethod> methods = bb.getUniverse().getMethods();
-                long reachableMethods = methods.stream().filter(m -> m.isReachable()).count();
-                int totalMethods = methods.size();
-                l().a(actualVsTotalFormat, reachableMethods, reachableMethods / (double) totalMethods * 100, totalMethods)
-                                .a(" methods ").doclink("reachable", "#glossary-reachability").flushln();
-                if (numRuntimeCompiledMethods >= 0) {
-                    l().a(actualVsTotalFormat, numRuntimeCompiledMethods, numRuntimeCompiledMethods / (double) totalMethods * 100, totalMethods)
-                                    .a(" methods included for ").doclink("runtime compilation", "#glossary-runtime-methods").flushln();
-                }
-                String classesFieldsMethodFormat = "%,8d classes, %,5d fields, and %,5d methods ";
-                RuntimeReflectionSupport rs = ImageSingletons.lookup(RuntimeReflectionSupport.class);
-                l().a(classesFieldsMethodFormat, rs.getReflectionClassesCount(), rs.getReflectionFieldsCount(), rs.getReflectionMethodsCount())
-                                .doclink("registered for reflection", "#glossary-reflection-registrations").flushln();
-                if (numJNIClasses > 0) {
-                    l().a(classesFieldsMethodFormat, numJNIClasses, numJNIFields, numJNIMethods)
-                                    .doclink("registered for JNI access", "#glossary-jni-access-registrations").flushln();
-                }
+                stagePrinter.stopProgress().end(bb.getAnalysisTimer());
+                printAnalysisStatistics(bb.getUniverse());
             }
         };
+    }
 
+    private void printAnalysisStatistics(AnalysisUniverse universe) {
+        String actualVsTotalFormat = "%,8d (%5.2f%%) of %,6d";
+        long reachableClasses = universe.getTypes().stream().filter(t -> t.isReachable()).count();
+        long totalClasses = universe.getTypes().size();
+        l().a(actualVsTotalFormat, reachableClasses, reachableClasses / (double) totalClasses * 100, totalClasses)
+                        .a(" classes ").doclink("reachable", "#glossary-reachability").println();
+        Collection<AnalysisField> fields = universe.getFields();
+        long reachableFields = fields.stream().filter(f -> f.isAccessed()).count();
+        int totalFields = fields.size();
+        l().a(actualVsTotalFormat, reachableFields, reachableFields / (double) totalFields * 100, totalFields)
+                        .a(" fields ").doclink("reachable", "#glossary-reachability").println();
+        Collection<AnalysisMethod> methods = universe.getMethods();
+        long reachableMethods = methods.stream().filter(m -> m.isReachable()).count();
+        int totalMethods = methods.size();
+        l().a(actualVsTotalFormat, reachableMethods, reachableMethods / (double) totalMethods * 100, totalMethods)
+                        .a(" methods ").doclink("reachable", "#glossary-reachability").println();
+        if (numRuntimeCompiledMethods >= 0) {
+            l().a(actualVsTotalFormat, numRuntimeCompiledMethods, numRuntimeCompiledMethods / (double) totalMethods * 100, totalMethods)
+                            .a(" methods included for ").doclink("runtime compilation", "#glossary-runtime-methods").println();
+        }
+        String classesFieldsMethodFormat = "%,8d classes, %,5d fields, and %,5d methods ";
+        RuntimeReflectionSupport rs = ImageSingletons.lookup(RuntimeReflectionSupport.class);
+        l().a(classesFieldsMethodFormat, rs.getReflectionClassesCount(), rs.getReflectionFieldsCount(), rs.getReflectionMethodsCount())
+                        .doclink("registered for reflection", "#glossary-reflection-registrations").println();
+        if (numJNIClasses > 0) {
+            l().a(classesFieldsMethodFormat, numJNIClasses, numJNIFields, numJNIMethods)
+                            .doclink("registered for JNI access", "#glossary-jni-access-registrations").println();
+        }
     }
 
     public ReporterClosable printUniverse(Timer timer) {
         timer.start();
-        printStageStart(BuildStage.UNIVERSE);
+        stagePrinter.start(BuildStage.UNIVERSE);
         return new ReporterClosable() {
             @Override
             public void closeAction() {
                 timer.stop();
-                printStageEnd(timer);
+                stagePrinter.end(timer);
             }
         };
     }
 
     public ReporterClosable printParsing(Timer timer) {
         timer.start();
-        printStageStart(BuildStage.PARSING);
-        printProgressStart();
-        startPeriodicPrinting();
+        stagePrinter.start(BuildStage.PARSING).startPeriodicProgress();
         return new ReporterClosable() {
             @Override
             public void closeAction() {
                 timer.stop();
-                stopPeriodicPrinting();
-                printProgressEnd();
-                printStageEnd(timer);
+                stagePrinter.stopPeriodicProgress().end(timer);
             }
         };
     }
 
     public ReporterClosable printInlining(Timer timer) {
         timer.start();
-        printStageStart(BuildStage.INLINING);
-        printProgressStart();
+        stagePrinter.start(BuildStage.INLINING).startProgress();
         return new ReporterClosable() {
             @Override
             public void closeAction() {
                 timer.stop();
-                printProgressEnd();
-                printStageEnd(timer);
+                stagePrinter.stopProgress().end(timer);
             }
         };
     }
 
     public void printInliningSkipped() {
-        printStageStart(BuildStage.INLINING);
-        linePrinter.a(progressBarStartPadding()).dim().a("(skipped)").reset().flushln(false);
-        numStageChars = 0;
+        stagePrinter.start(BuildStage.INLINING).skipped();
     }
 
     public ReporterClosable printCompiling(Timer timer) {
         timer.start();
-        printStageStart(BuildStage.COMPILING);
-        printProgressStart();
-        startPeriodicPrinting();
+        stagePrinter.start(BuildStage.COMPILING).startPeriodicProgress();
         return new ReporterClosable() {
             @Override
             public void closeAction() {
                 timer.stop();
-                stopPeriodicPrinting();
-                printProgressEnd();
-                printStageEnd(timer);
+                stagePrinter.stopPeriodicProgress().end(timer);
             }
         };
     }
 
-    // TODO: merge printCreationStart and printCreationEnd at some point (GR-35238).
+    // TODO: merge printCreationStart and printCreationEnd at some point (GR-35721).
     public void printCreationStart() {
-        printStageStart(BuildStage.CREATING);
+        stagePrinter.start(BuildStage.CREATING);
     }
 
     public void setDebugInfoTimer(Timer timer) {
@@ -374,38 +366,32 @@ public class ProgressReporter {
 
     public void printCreationEnd(Timer creationTimer, Timer writeTimer, int imageSize, AnalysisUniverse universe, int numHeapObjects, long imageHeapSize, int codeCacheSize,
                     int numCompilations, int debugInfoSize) {
-        printStageEnd(creationTimer.getTotalTime() + writeTimer.getTotalTime());
+        stagePrinter.end(creationTimer.getTotalTime() + writeTimer.getTotalTime());
         creationStageEndCompleted = true;
         String format = "%9s (%5.2f%%) for ";
-        l().a(format, bytesToHuman(codeCacheSize), codeCacheSize / (double) imageSize * 100)
-                        .doclink("code area", "#glossary-code-area").a(":%,9d compilation units", numCompilations).flushln();
+        l().a(format, Utils.bytesToHuman(codeCacheSize), codeCacheSize / (double) imageSize * 100)
+                        .doclink("code area", "#glossary-code-area").a(":%,9d compilation units", numCompilations).println();
         long numInstantiatedClasses = universe.getTypes().stream().filter(t -> t.isInstantiated()).count();
-        l().a(format, bytesToHuman(imageHeapSize), imageHeapSize / (double) imageSize * 100)
-                        .doclink("image heap", "#glossary-image-heap").a(":%,8d classes and %,d objects", numInstantiatedClasses, numHeapObjects).flushln();
+        l().a(format, Utils.bytesToHuman(imageHeapSize), imageHeapSize / (double) imageSize * 100)
+                        .doclink("image heap", "#glossary-image-heap").a(":%,8d classes and %,d objects", numInstantiatedClasses, numHeapObjects).println();
         if (debugInfoSize > 0) {
-            LinePrinter l = l().a(format, bytesToHuman(debugInfoSize), debugInfoSize / (double) imageSize * 100)
+            DirectPrinter l = l().a(format, Utils.bytesToHuman(debugInfoSize), debugInfoSize / (double) imageSize * 100)
                             .doclink("debug info", "#glossary-debug-info");
             if (debugInfoTimer != null) {
-                l.a(" generated in %.1fs", millisToSeconds(debugInfoTimer.getTotalTime()));
+                l.a(" generated in %.1fs", Utils.millisToSeconds(debugInfoTimer.getTotalTime()));
             }
-            l.flushln();
+            l.println();
         }
         long otherBytes = imageSize - codeCacheSize - imageHeapSize - debugInfoSize;
-        l().a(format, bytesToHuman(otherBytes), otherBytes / (double) imageSize * 100)
-                        .doclink("other data", "#glossary-other-data").flushln();
-        l().a("%9s in total", bytesToHuman(imageSize)).flushln();
+        l().a(format, Utils.bytesToHuman(otherBytes), otherBytes / (double) imageSize * 100)
+                        .doclink("other data", "#glossary-other-data").println();
+        l().a("%9s in total", Utils.bytesToHuman(imageSize)).println();
     }
 
     public void ensureCreationStageEndCompleted() {
         if (!creationStageEndCompleted) {
-            linePrinter.flushln();
-            restoreBuilderIO();
+            println();
         }
-    }
-
-    private void restoreBuilderIO() {
-        builderIO.useCapturing = false;
-        builderIO.flushCapturedContent();
     }
 
     public void printBreakdowns(Collection<CompileTask> compilationTasks, Collection<ObjectInfo> heapObjects) {
@@ -419,7 +405,8 @@ public class ProgressReporter {
         Iterator<Entry<String, Long>> typesBySizeInHeap = heapBreakdown.entrySet().stream()
                         .sorted(Entry.comparingByValue(Comparator.reverseOrder())).iterator();
 
-        l().yellowBold().a(CODE_BREAKDOWN_TITLE).jumpToMiddle().a(HEAP_BREAKDOWN_TITLE).reset().flushln();
+        final TwoColumnPrinter p = new TwoColumnPrinter();
+        p.l().yellowBold().a(CODE_BREAKDOWN_TITLE).jumpToMiddle().a(HEAP_BREAKDOWN_TITLE).reset().flushln();
 
         List<Entry<String, Long>> printedCodeSizeEntries = new ArrayList<>();
         List<Entry<String, Long>> printedHeapSizeEntries = new ArrayList<>();
@@ -427,8 +414,8 @@ public class ProgressReporter {
             String codeSizePart = "";
             if (packagesBySize.hasNext()) {
                 Entry<String, Long> e = packagesBySize.next();
-                String className = truncateClassOrPackageName(e.getKey());
-                codeSizePart = String.format("%9s %s", bytesToHuman(e.getValue()), className);
+                String className = Utils.truncateClassOrPackageName(e.getKey());
+                codeSizePart = String.format("%9s %s", Utils.bytesToHuman(e.getValue()), className);
                 printedCodeSizeEntries.add(e);
             }
 
@@ -438,22 +425,24 @@ public class ProgressReporter {
                 String className = e.getKey();
                 // Do not truncate special breakdown items, they can contain links.
                 if (!className.startsWith(BREAKDOWN_BYTE_ARRAY_PREFIX)) {
-                    className = truncateClassOrPackageName(className);
+                    className = Utils.truncateClassOrPackageName(className);
                 }
-                heapSizePart = String.format("%9s %s", bytesToHuman(e.getValue()), className);
+                heapSizePart = String.format("%9s %s", Utils.bytesToHuman(e.getValue()), className);
                 printedHeapSizeEntries.add(e);
             }
             if (codeSizePart.isEmpty() && heapSizePart.isEmpty()) {
                 break;
             }
-            l().a(codeSizePart).jumpToMiddle().a(heapSizePart).flushln();
+            p.l().a(codeSizePart).jumpToMiddle().a(heapSizePart).flushln();
         }
 
-        l().a("      ... ").a(numCodeBreakdownItems - printedHeapSizeEntries.size()).a(" additional packages")
+        p.l().a("      ... ").a(numCodeBreakdownItems - printedHeapSizeEntries.size()).a(" additional packages")
                         .jumpToMiddle()
                         .a("      ... ").a(numHeapBreakdownItems - printedCodeSizeEntries.size()).a(" additional object types").flushln();
 
-        l().dim().a("(use ").link("GraalVM Dashboard", "https://www.graalvm.org/dashboard/?ojr=help%3Btopic%3Dgetting-started.md").a(" to see all)").reset().flushCenteredln();
+        new CenteredTextPrinter().dim()
+                        .a("(use ").link("GraalVM Dashboard", "https://www.graalvm.org/dashboard/?ojr=help%3Btopic%3Dgetting-started.md").a(" to see all)")
+                        .reset().flushln();
     }
 
     private static Map<String, Long> calculateCodeBreakdown(Collection<CompileTask> compilationTasks) {
@@ -469,16 +458,6 @@ public class ProgressReporter {
         return classNameToCodeSize;
     }
 
-    private static final Field STRING_VALUE = ReflectionUtil.lookupField(String.class, "value");
-
-    private static int getInternalByteArrayLength(String string) {
-        try {
-            return ((byte[]) STRING_VALUE.get(string)).length;
-        } catch (ReflectiveOperationException ex) {
-            throw VMError.shouldNotReachHere(ex);
-        }
-    }
-
     private Map<String, Long> calculateHeapBreakdown(Collection<ObjectInfo> heapObjects) {
         Map<String, Long> classNameToSize = new HashMap<>();
         long stringByteLength = 0;
@@ -486,7 +465,7 @@ public class ProgressReporter {
             classNameToSize.merge(o.getClazz().toJavaName(true), o.getSize(), Long::sum);
             Object javaObject = o.getObject();
             if (reportStringBytes && javaObject instanceof String) {
-                stringByteLength += getInternalByteArrayLength((String) javaObject);
+                stringByteLength += Utils.getInternalByteArrayLength((String) javaObject);
             }
         }
 
@@ -499,43 +478,43 @@ public class ProgressReporter {
             }
             long codeInfoSize = CodeInfoTable.getImageCodeCache().getTotalByteArraySize();
             if (codeInfoSize > 0) {
-                classNameToSize.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linePrinter.asDocLink("code metadata", "#glossary-code-metadata"), codeInfoSize);
+                classNameToSize.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linkStrategy.asDocLink("code metadata", "#glossary-code-metadata"), codeInfoSize);
                 remainingBytes -= codeInfoSize;
             }
             long metadataByteLength = ImageSingletons.lookup(MethodMetadataDecoder.class).getMetadataByteLength();
             if (metadataByteLength > 0) {
-                classNameToSize.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linePrinter.asDocLink("method metadata", "#glossary-method-metadata"), metadataByteLength);
+                classNameToSize.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linkStrategy.asDocLink("method metadata", "#glossary-method-metadata"), metadataByteLength);
                 remainingBytes -= metadataByteLength;
             }
             if (graphEncodingByteLength > 0) {
-                classNameToSize.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linePrinter.asDocLink("graph encodings", "#glossary-graph-encodings"), graphEncodingByteLength);
+                classNameToSize.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linkStrategy.asDocLink("graph encodings", "#glossary-graph-encodings"), graphEncodingByteLength);
                 remainingBytes -= graphEncodingByteLength;
             }
             assert remainingBytes >= 0;
-            classNameToSize.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linePrinter.asDocLink("general heap data", "#glossary-general-heap-data"), remainingBytes);
+            classNameToSize.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linkStrategy.asDocLink("general heap data", "#glossary-general-heap-data"), remainingBytes);
         }
         return classNameToSize;
     }
 
     public void printEpilog(String imageName, NativeImageGenerator generator, boolean wasSuccessfulBuild, Timer totalTimer, OptionValues parsedHostedOptions) {
         l().printLineSeparator();
-        printResourceStats();
+        printResourceStatistics();
         l().printLineSeparator();
 
-        l().yellowBold().a("Produced artifacts:").reset().flushln();
+        l().yellowBold().a("Produced artifacts:").reset().println();
         generator.getBuildArtifacts().forEach((artifactType, paths) -> {
             for (Path p : paths) {
-                l().a(" ").link(p).dim().a(" (").a(artifactType.name().toLowerCase()).a(")").reset().flushln();
+                l().a(" ").link(p).dim().a(" (").a(artifactType.name().toLowerCase()).a(")").reset().println();
             }
         });
         if (generator.getBigbang() != null && ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(parsedHostedOptions)) {
-            l().a(" ").link(reportImageBuildStatistics(imageName, generator.getBigbang())).flushln();
+            l().a(" ").link(reportImageBuildStatistics(imageName, generator.getBigbang())).println();
         }
-        l().a(" ").link(reportBuildArtifacts(imageName, generator.getBuildArtifacts())).flushln();
+        l().a(" ").link(reportBuildArtifacts(imageName, generator.getBuildArtifacts())).println();
 
         l().printHeadlineSeparator();
 
-        double totalSeconds = millisToSeconds(totalTimer.getTotalTime());
+        double totalSeconds = Utils.millisToSeconds(totalTimer.getTotalTime());
         String timeStats;
         if (totalSeconds < 60) {
             timeStats = String.format("%.1fs", totalSeconds);
@@ -543,7 +522,7 @@ public class ProgressReporter {
             timeStats = String.format("%dm %ds", (int) totalSeconds / 60, (int) totalSeconds % 60);
         }
         l().a(wasSuccessfulBuild ? "Finished" : "Failed").a(" generating '").bold().a(imageName).reset().a("' ")
-                        .a(wasSuccessfulBuild ? "in" : "after").a(" ").a(timeStats).a(".").flushln();
+                        .a(wasSuccessfulBuild ? "in" : "after").a(" ").a(timeStats).a(".").println();
         executor.shutdown();
     }
 
@@ -576,105 +555,39 @@ public class ProgressReporter {
         return ReportUtils.report("build artifacts", buildDir.resolve(imageName + ".build_artifacts.txt"), writerConsumer, !isEnabled);
     }
 
-    private void printResourceStats() {
-        double totalProcessTimeSeconds = millisToSeconds(System.currentTimeMillis() - ManagementFactory.getRuntimeMXBean().getStartTime());
-        GCStats gcStats = getCurrentGCStats();
-        double gcSeconds = millisToSeconds(gcStats.totalTimeMillis);
-        LinePrinter l = l().a("%.1fs (%.1f%% of total time) in %d ", gcSeconds, gcSeconds / totalProcessTimeSeconds * 100, gcStats.totalCount)
+    private void printResourceStatistics() {
+        double totalProcessTimeSeconds = Utils.millisToSeconds(System.currentTimeMillis() - ManagementFactory.getRuntimeMXBean().getStartTime());
+        GCStats gcStats = GCStats.getCurrent();
+        double gcSeconds = Utils.millisToSeconds(gcStats.totalTimeMillis);
+        CenteredTextPrinter p = new CenteredTextPrinter();
+        p.a("%.1fs (%.1f%% of total time) in %d ", gcSeconds, gcSeconds / totalProcessTimeSeconds * 100, gcStats.totalCount)
                         .doclink("GCs", "#glossary-garbage-collections");
         long peakRSS = ProgressReporterCHelper.getPeakRSS();
         if (peakRSS >= 0) {
-            l.a(" | ").doclink("Peak RSS", "#glossary-peak-rss").a(": ").a("%.2fGB", bytesToGiB(peakRSS));
+            p.a(" | ").doclink("Peak RSS", "#glossary-peak-rss").a(": ").a("%.2fGB", Utils.bytesToGiB(peakRSS));
         }
         OperatingSystemMXBean osMXBean = ManagementFactory.getOperatingSystemMXBean();
         long processCPUTime = ((com.sun.management.OperatingSystemMXBean) osMXBean).getProcessCpuTime();
         if (processCPUTime > 0) {
-            l.a(" | ").doclink("CPU load", "#glossary-cpu-load").a(": ").a("%.2f", nanosToSeconds(processCPUTime) / totalProcessTimeSeconds);
+            p.a(" | ").doclink("CPU load", "#glossary-cpu-load").a(": ").a("%.2f", Utils.nanosToSeconds(processCPUTime) / totalProcessTimeSeconds);
         }
-        l.flushCenteredln();
-    }
-
-    private void printStageStart(BuildStage stage) {
-        assert numStageChars == 0;
-        l().appendPrefix().flush();
-        linePrinter.blue()
-                        .a("[").a(1 + stage.ordinal()).a("/").a(BuildStage.NUM_STAGES).a("] ").reset().blueBold()
-                        .doclink(stage.message, "#stage-" + stage.name().toLowerCase()).a("...").reset();
-        numStageChars = linePrinter.getCurrentTextLength();
-        linePrinter.flush();
-        builderIO.useCapturing = true;
-    }
-
-    private void printProgressStart() {
-        linePrinter.a(progressBarStartPadding()).dim().a("[");
-        numStageChars = PROGRESS_BAR_START + 1; /* +1 for [ */
-        linePrinter.flush();
-    }
-
-    private String progressBarStartPadding() {
-        return stringFilledWith(PROGRESS_BAR_START - numStageChars, " ");
-    }
-
-    private void printProgressEnd() {
-        linePrinter.printRaw(']');
-        numStageChars++; // for ]
-    }
-
-    public void printStageProgress() {
-        linePrinter.printRaw('*');
-        numStageChars++; // for *
-    }
-
-    private void startPeriodicPrinting() {
-        periodicPrintingTask = executor.scheduleAtFixedRate(new Runnable() {
-            int countdown;
-            int numPrints;
-
-            @Override
-            public void run() {
-                if (--countdown < 0) {
-                    printStageProgress();
-                    countdown = ++numPrints > 2 ? numPrints * 2 : numPrints;
-                }
-            }
-        }, 0, 1, TimeUnit.SECONDS);
-    }
-
-    private void stopPeriodicPrinting() {
-        periodicPrintingTask.cancel(false);
-    }
-
-    private void printStageEnd(Timer timer) {
-        printStageEnd(timer.getTotalTime());
-    }
-
-    private void printStageEnd(double totalTime) {
-        assert numStageChars >= 0;
-        String suffix = String.format("(%.1fs @ %.2fGB)", millisToSeconds(totalTime), getUsedMemory());
-        String padding = stringFilledWith(Math.max(0, CHARACTERS_PER_LINE - numStageChars - suffix.length()), " ");
-        linePrinter.a(padding).dim().a(suffix).reset().flushln(false);
-        numStageChars = 0;
-        boolean optionsAvailable = ImageSingletonsSupport.isInstalled() && ImageSingletons.contains(HostedOptionValues.class);
-        if (optionsAvailable && SubstrateOptions.BuildOutputGCWarnings.getValue()) {
-            checkForExcessiveGarbageCollection();
-        }
-        restoreBuilderIO();
+        p.flushln();
     }
 
     private void checkForExcessiveGarbageCollection() {
         long current = System.currentTimeMillis();
         long timeDeltaMillis = current - lastGCCheckTimeMillis;
         lastGCCheckTimeMillis = current;
-        GCStats currentGCStats = getCurrentGCStats();
+        GCStats currentGCStats = GCStats.getCurrent();
         long gcTimeDeltaMillis = currentGCStats.totalTimeMillis - lastGCStats.totalTimeMillis;
         double ratio = gcTimeDeltaMillis / (double) timeDeltaMillis;
         if (gcTimeDeltaMillis > EXCESSIVE_GC_MIN_THRESHOLD_MILLIS && ratio > EXCESSIVE_GC_RATIO) {
             l().redBold().a("GC warning").reset()
                             .a(": %.1fs spent in %d GCs during the last stage, taking up %.2f%% of the time.",
-                                            millisToSeconds(gcTimeDeltaMillis), currentGCStats.totalCount - lastGCStats.totalCount, ratio * 100)
-                            .flushln();
-            l().a("            Please ensure more than %.2fGB of memory is available for Native Image", bytesToGiB(ProgressReporterCHelper.getPeakRSS())).flushln();
-            l().a("            to reduce GC overhead and improve image build time.").flushln();
+                                            Utils.millisToSeconds(gcTimeDeltaMillis), currentGCStats.totalCount - lastGCStats.totalCount, ratio * 100)
+                            .println();
+            l().a("            Please ensure more than %.2fGB of memory is available for Native Image", Utils.bytesToGiB(ProgressReporterCHelper.getPeakRSS())).println();
+            l().a("            to reduce GC overhead and improve image build time.").println();
         }
         lastGCStats = currentGCStats;
     }
@@ -684,105 +597,123 @@ public class ProgressReporter {
      */
 
     private static void resetANSIMode() {
-        NativeImageSystemIOWrappers.singleton().getOut().print(ANSIColors.RESET);
+        NativeImageSystemIOWrappers.singleton().getOut().print(ANSI.RESET);
     }
 
-    private static String stringFilledWith(int size, String fill) {
-        return new String(new char[size]).replace("\0", fill);
-    }
+    private static class Utils {
+        private static final double MILLIS_TO_SECONDS = 1000d;
+        private static final double NANOS_TO_SECONDS = 1000d * 1000d * 1000d;
+        private static final double BYTES_TO_KiB = 1024d;
+        private static final double BYTES_TO_MiB = 1024d * 1024d;
+        private static final double BYTES_TO_GiB = 1024d * 1024d * 1024d;
 
-    protected static String truncateClassOrPackageName(String classOrPackageName) {
-        int classNameLength = classOrPackageName.length();
-        int maxLength = CHARACTERS_PER_LINE / 2 - 10;
-        if (classNameLength <= maxLength) {
-            return classOrPackageName;
+        private static final Field STRING_VALUE = ReflectionUtil.lookupField(String.class, "value");
+
+        private static String bytesToHuman(long bytes) {
+            return bytesToHuman("%4.2f", bytes);
         }
-        StringBuilder sb = new StringBuilder();
-        int currentDot = -1;
-        while (true) {
-            int nextDot = classOrPackageName.indexOf('.', currentDot + 1);
-            if (nextDot < 0) { // Not more dots, handle the rest and return.
-                String rest = classOrPackageName.substring(currentDot + 1);
-                int sbLength = sb.length();
-                int restLength = rest.length();
-                if (sbLength + restLength <= maxLength) {
-                    sb.append(rest);
-                } else {
-                    int remainingSpaceDivBy2 = (maxLength - sbLength) / 2;
-                    sb.append(rest.substring(0, remainingSpaceDivBy2 - 1) + "~" + rest.substring(restLength - remainingSpaceDivBy2, restLength));
+
+        private static String bytesToHuman(String format, long bytes) {
+            if (bytes < BYTES_TO_KiB) {
+                return String.format(format, (double) bytes) + "B";
+            } else if (bytes < BYTES_TO_MiB) {
+                return String.format(format, bytesToKiB(bytes)) + "KB";
+            } else if (bytes < BYTES_TO_GiB) {
+                return String.format(format, bytesToMiB(bytes)) + "MB";
+            } else {
+                return String.format(format, bytesToGiB(bytes)) + "GB";
+            }
+        }
+
+        private static double bytesToKiB(long bytes) {
+            return bytes / BYTES_TO_KiB;
+        }
+
+        private static double bytesToGiB(long bytes) {
+            return bytes / BYTES_TO_GiB;
+        }
+
+        private static double bytesToMiB(long bytes) {
+            return bytes / BYTES_TO_MiB;
+        }
+
+        private static double millisToSeconds(double millis) {
+            return millis / MILLIS_TO_SECONDS;
+        }
+
+        private static double nanosToSeconds(double nanos) {
+            return nanos / NANOS_TO_SECONDS;
+        }
+
+        private static int getInternalByteArrayLength(String string) {
+            try {
+                return ((byte[]) STRING_VALUE.get(string)).length;
+            } catch (ReflectiveOperationException ex) {
+                throw VMError.shouldNotReachHere(ex);
+            }
+        }
+
+        private static double getUsedMemory() {
+            return bytesToGiB(Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory());
+        }
+
+        private static String stringFilledWith(int size, String fill) {
+            return new String(new char[size]).replace("\0", fill);
+        }
+
+        private static String truncateClassOrPackageName(String classOrPackageName) {
+            int classNameLength = classOrPackageName.length();
+            int maxLength = CHARACTERS_PER_LINE / 2 - 10;
+            if (classNameLength <= maxLength) {
+                return classOrPackageName;
+            }
+            StringBuilder sb = new StringBuilder();
+            int currentDot = -1;
+            while (true) {
+                int nextDot = classOrPackageName.indexOf('.', currentDot + 1);
+                if (nextDot < 0) { // Not more dots, handle the rest and return.
+                    String rest = classOrPackageName.substring(currentDot + 1);
+                    int sbLength = sb.length();
+                    int restLength = rest.length();
+                    if (sbLength + restLength <= maxLength) {
+                        sb.append(rest);
+                    } else {
+                        int remainingSpaceDivBy2 = (maxLength - sbLength) / 2;
+                        sb.append(rest.substring(0, remainingSpaceDivBy2 - 1) + "~" + rest.substring(restLength - remainingSpaceDivBy2, restLength));
+                    }
+                    break;
                 }
-                break;
+                sb.append(classOrPackageName.charAt(currentDot + 1)).append('.');
+                if (sb.length() + (classNameLength - nextDot) <= maxLength) {
+                    // Rest fits maxLength, append and return.
+                    sb.append(classOrPackageName.substring(nextDot + 1));
+                    break;
+                }
+                currentDot = nextDot;
             }
-            sb.append(classOrPackageName.charAt(currentDot + 1)).append('.');
-            if (sb.length() + (classNameLength - nextDot) <= maxLength) {
-                // Rest fits maxLength, append and return.
-                sb.append(classOrPackageName.substring(nextDot + 1));
-                break;
-            }
-            currentDot = nextDot;
+            return sb.toString();
         }
-        return sb.toString();
-    }
-
-    private static double getUsedMemory() {
-        return bytesToGiB(Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory());
-    }
-
-    private static String bytesToHuman(long bytes) {
-        return bytesToHuman("%4.2f", bytes);
-    }
-
-    private static String bytesToHuman(String format, long bytes) {
-        if (bytes < BYTES_TO_KiB) {
-            return String.format(format, (double) bytes) + "B";
-        } else if (bytes < BYTES_TO_MiB) {
-            return String.format(format, bytesToKiB(bytes)) + "KB";
-        } else if (bytes < BYTES_TO_GiB) {
-            return String.format(format, bytesToMiB(bytes)) + "MB";
-        } else {
-            return String.format(format, bytesToGiB(bytes)) + "GB";
-        }
-    }
-
-    private static double bytesToKiB(long bytes) {
-        return bytes / BYTES_TO_KiB;
-    }
-
-    private static double bytesToGiB(long bytes) {
-        return bytes / BYTES_TO_GiB;
-    }
-
-    private static double bytesToMiB(long bytes) {
-        return bytes / BYTES_TO_MiB;
-    }
-
-    private static double millisToSeconds(double millis) {
-        return millis / MILLIS_TO_SECONDS;
-    }
-
-    private static double nanosToSeconds(double nanos) {
-        return nanos / NANOS_TO_SECONDS;
-    }
-
-    private static GCStats getCurrentGCStats() {
-        long totalCount = 0;
-        long totalTime = 0;
-        for (GarbageCollectorMXBean bean : ManagementFactory.getGarbageCollectorMXBeans()) {
-            long collectionCount = bean.getCollectionCount();
-            if (collectionCount > 0) {
-                totalCount += collectionCount;
-            }
-            long collectionTime = bean.getCollectionTime();
-            if (collectionTime > 0) {
-                totalTime += collectionTime;
-            }
-        }
-        return new GCStats(totalCount, totalTime);
     }
 
     private static class GCStats {
         private final long totalCount;
         private final long totalTimeMillis;
+
+        private static GCStats getCurrent() {
+            long totalCount = 0;
+            long totalTime = 0;
+            for (GarbageCollectorMXBean bean : ManagementFactory.getGarbageCollectorMXBeans()) {
+                long collectionCount = bean.getCollectionCount();
+                if (collectionCount > 0) {
+                    totalCount += collectionCount;
+                }
+                long collectionTime = bean.getCollectionTime();
+                if (collectionTime > 0) {
+                    totalTime += collectionTime;
+                }
+            }
+            return new GCStats(totalCount, totalTime);
+        }
 
         GCStats(long totalCount, long totalTime) {
             this.totalCount = totalCount;
@@ -796,7 +727,7 @@ public class ProgressReporter {
 
         @Override
         public void duringAnalysis(DuringAnalysisAccess access) {
-            reporter.printStageProgress();
+            reporter.reportStageProgress();
         }
     }
 
@@ -810,285 +741,485 @@ public class ProgressReporter {
     }
 
     /*
-     * COLORFUL OUTPUT
+     * CORE PRINTING
      */
 
-    abstract class LinePrinter {
-        private final List<String> textBuffer = new ArrayList<>();
-        private final StringBuilder printBuffer;
-        protected final String headlineSeparator = stringFilledWith(CHARACTERS_PER_LINE, "=");
-        protected final String lineSeparator = stringFilledWith(CHARACTERS_PER_LINE, "-");
-        private String outputPrefix = "";
-
-        LinePrinter(boolean enableProgress) {
-            printBuffer = enableProgress ? null : new StringBuilder();
+    private void print(char text) {
+        if (isEnabled) {
+            builderIO.getOut().print(text);
         }
+    }
 
-        protected LinePrinter a(String text) {
-            if (isEnabled) {
-                textBuffer.add(text);
-            }
-            return this;
+    private void print(String text) {
+        if (isEnabled) {
+            builderIO.getOut().print(text);
         }
+    }
 
-        protected LinePrinter a(String text, Object... args) {
+    private void println() {
+        if (isEnabled) {
+            builderIO.getOut().println();
+        }
+    }
+
+    /*
+     * PRINTERS
+     */
+
+    abstract class AbstractPrinter<T extends AbstractPrinter<T>> {
+        abstract T getThis();
+
+        abstract T a(String text);
+
+        final T a(String text, Object... args) {
             return a(String.format(text, args));
         }
 
-        protected LinePrinter a(int i) {
+        final T a(int i) {
             return a(String.valueOf(i));
         }
 
-        protected LinePrinter a(long i) {
+        final T a(long i) {
             return a(String.valueOf(i));
         }
 
-        protected LinePrinter appendPrefix() {
-            return a(outputPrefix);
+        final T bold() {
+            colorStrategy.bold(this);
+            return getThis();
         }
 
-        protected LinePrinter jumpToMiddle() {
-            int remaining = (CHARACTERS_PER_LINE / 2) - getCurrentTextLength();
-            assert remaining >= 0 : "Column text too wide";
-            a(stringFilledWith(remaining, " "));
-            assert !isEnabled || getCurrentTextLength() == CHARACTERS_PER_LINE / 2;
+        final T blue() {
+            colorStrategy.blue(this);
+            return getThis();
+        }
+
+        final T blueBold() {
+            colorStrategy.blueBold(this);
+            return getThis();
+        }
+
+        final T redBold() {
+            colorStrategy.redBold(this);
+            return getThis();
+        }
+
+        final T yellowBold() {
+            colorStrategy.yellowBold(this);
+            return getThis();
+        }
+
+        final T dim() {
+            colorStrategy.dim(this);
+            return getThis();
+        }
+
+        final T reset() {
+            colorStrategy.reset(this);
+            return getThis();
+        }
+
+        final T link(String text, String url) {
+            linkStrategy.link(this, text, url);
+            return getThis();
+        }
+
+        final T link(Path path) {
+            linkStrategy.link(this, path);
+            return getThis();
+        }
+
+        final T doclink(String text, String htmlAnchor) {
+            linkStrategy.doclink(this, text, htmlAnchor);
+            return getThis();
+        }
+    }
+
+    /** Start printing a new line. */
+    private DirectPrinter l() {
+        return linePrinter.a(outputPrefix);
+    }
+
+    final class DirectPrinter extends AbstractPrinter<DirectPrinter> {
+        private final String headlineSeparator = Utils.stringFilledWith(CHARACTERS_PER_LINE, "=");
+        private final String lineSeparator = Utils.stringFilledWith(CHARACTERS_PER_LINE, "-");
+
+        @Override
+        DirectPrinter getThis() {
             return this;
         }
 
-        protected abstract LinePrinter bold();
-
-        protected abstract LinePrinter blue();
-
-        protected abstract LinePrinter blueBold();
-
-        protected abstract LinePrinter redBold();
-
-        protected abstract LinePrinter yellowBold();
-
-        protected abstract LinePrinter dim();
-
-        protected abstract LinePrinter reset();
-
-        protected abstract LinePrinter link(String text, String url);
-
-        protected abstract LinePrinter link(Path path);
-
-        protected abstract LinePrinter doclink(String text, String htmlAnchor);
-
-        protected abstract String asDocLink(String text, String htmlAnchor);
-
-        private void flush() {
-            if (!isEnabled) {
-                return;
-            }
-            if (printBuffer != null) {
-                textBuffer.forEach(printBuffer::append);
-            } else {
-                textBuffer.forEach(builderIO.getOut()::print);
-            }
-            textBuffer.clear();
+        @Override
+        DirectPrinter a(String text) {
+            print(text);
+            return this;
         }
 
-        private void printRaw(char value) {
-            if (!isEnabled) {
-                return;
-            }
-            if (printBuffer != null) {
-                printBuffer.append(value);
-            } else {
-                builderIO.getOut().print(value);
-            }
+        void println() {
+            ProgressReporter.this.println();
         }
 
-        private void flushln() {
-            flushln(true);
+        void printHeadlineSeparator() {
+            dim().a(headlineSeparator).reset().println();
         }
 
-        private void flushln(boolean useOutputPrefix) {
-            if (!isEnabled) {
-                return;
-            }
-            if (useOutputPrefix) {
-                builderIO.getOut().print(outputPrefix);
-            }
-            if (printBuffer != null) {
-                builderIO.getOut().print(printBuffer);
-                printBuffer.setLength(0); // Clear buffer.
-            }
-            textBuffer.forEach(builderIO.getOut()::print);
-            textBuffer.clear();
-            builderIO.getOut().println();
+        void printLineSeparator() {
+            dim().a(lineSeparator).reset().println();
+        }
+    }
+
+    abstract class LinePrinter<T extends LinePrinter<T>> extends AbstractPrinter<T> {
+        protected final List<String> lineParts = new ArrayList<>();
+
+        @Override
+        T a(String value) {
+            lineParts.add(value);
+            return getThis();
         }
 
-        private void flushCenteredln() {
-            if (!isEnabled) {
-                return;
-            }
-            String padding = stringFilledWith((Math.max(0, CHARACTERS_PER_LINE - getCurrentTextLength())) / 2, " ");
-            textBuffer.add(0, padding);
-            flushln();
+        T l() {
+            assert lineParts.isEmpty();
+            return getThis();
         }
 
-        // Ignores ansi escape sequences
-        private int getCurrentTextLength() {
+        final int getCurrentTextLength() {
             int textLength = 0;
-            for (String text : textBuffer) {
-                if (!text.startsWith(ANSIColors.ESCAPE)) {
+            for (String text : lineParts) {
+                if (!text.startsWith(ANSI.ESCAPE)) { // Ignore ANSI escape sequences.
                     textLength += text.length();
                 }
             }
             return textLength;
         }
 
-        private boolean isEmpty() {
-            return textBuffer.isEmpty();
+        final void printLineParts() {
+            lineParts.forEach(ProgressReporter.this::print);
         }
 
-        private void printHeadlineSeparator() {
-            dim().a(headlineSeparator).reset().flushln();
-        }
-
-        private void printLineSeparator() {
-            dim().a(lineSeparator).reset().flushln();
+        void flushln() {
+            printLineParts();
+            lineParts.clear();
+            println();
         }
     }
 
-    private final class ColorfulLinePrinter extends LinePrinter {
+    public void reportStageProgress() {
+        stagePrinter.reportProgress();
+    }
 
-        ColorfulLinePrinter(boolean enableProgress) {
-            super(enableProgress);
+    public void beforeNextStdioWrite() {
+        stagePrinter.beforeNextStdioWrite();
+    }
+
+    abstract class StagePrinter<T extends StagePrinter<T>> extends LinePrinter<T> {
+        private int progressBarStart = 30;
+
+        private ScheduledFuture<?> periodicPrintingTask;
+
+        final void startProgress() {
+            a(progressBarStartPadding()).dim().a("[");
         }
 
-        @Override
-        protected LinePrinter bold() {
-            return a(ANSIColors.BOLD);
+        final String progressBarStartPadding() {
+            return Utils.stringFilledWith(progressBarStart - getCurrentTextLength(), " ");
         }
 
-        @Override
-        protected LinePrinter blue() {
-            return a(ANSIColors.BLUE);
+        final void reportProgress() {
+            a("*");
         }
 
-        @Override
-        protected LinePrinter blueBold() {
-            return a(ANSIColors.BLUE_BOLD);
+        final void startPeriodicProgress() {
+            startProgress();
+            periodicPrintingTask = executor.scheduleAtFixedRate(new Runnable() {
+                int countdown;
+                int numPrints;
+
+                @Override
+                public void run() {
+                    if (--countdown < 0) {
+                        reportProgress();
+                        countdown = ++numPrints > 2 ? numPrints * 2 : numPrints;
+                    }
+                }
+            }, 0, 1, TimeUnit.SECONDS);
         }
 
-        @Override
-        protected LinePrinter redBold() {
-            return a(ANSIColors.RED_BOLD);
+        final T stopPeriodicProgress() {
+            periodicPrintingTask.cancel(false);
+            stopProgress();
+            return getThis();
         }
 
-        @Override
-        protected LinePrinter yellowBold() {
-            return a(ANSIColors.YELLOW_BOLD);
+        final T stopProgress() {
+            a("]").reset();
+            return getThis();
         }
 
-        @Override
-        protected LinePrinter dim() {
-            return a(ANSIColors.DIM);
+        T start(BuildStage stage) {
+            a(outputPrefix).blue().a(String.format("[%s/%s] ", 1 + stage.ordinal(), BuildStage.NUM_STAGES)).reset()
+                            .blueBold().doclink(stage.message, "#stage-" + stage.name().toLowerCase()).a("...").reset();
+            return getThis();
         }
 
-        @Override
-        protected LinePrinter link(String text, String url) {
-            if (showLinks) {
-                /* links added as a single item so that jumpToMiddle can ignore url text. */
-                a(ANSIColors.LINK_START + url).a(ANSIColors.LINK_TEXT).a(text).a(ANSIColors.LINK_END);
-            } else {
-                a(text);
+        final void skipped() {
+            a(progressBarStartPadding()).dim().a("(skipped)").reset().flushln();
+        }
+
+        final void end(Timer timer) {
+            end(timer.getTotalTime());
+        }
+
+        void end(double totalTime) {
+            end(totalTime, getCurrentTextLength());
+        }
+
+        final void end(double totalTime, int textLength) {
+            assert textLength >= 0;
+            String suffix = String.format("(%.1fs @ %.2fGB)", Utils.millisToSeconds(totalTime), Utils.getUsedMemory());
+            String padding = Utils.stringFilledWith(Math.max(0, CHARACTERS_PER_LINE - textLength - suffix.length()), " ");
+            a(padding).dim().a(suffix).reset().flushln();
+
+            boolean optionsAvailable = ImageSingletonsSupport.isInstalled() && ImageSingletons.contains(HostedOptionValues.class);
+            if (optionsAvailable && SubstrateOptions.BuildOutputGCWarnings.getValue()) {
+                checkForExcessiveGarbageCollection();
             }
+        }
+
+        abstract void beforeNextStdioWrite();
+    }
+
+    /**
+     * A {@link StagePrinter} that prints full lines to stdout at the end of each stage. This
+     * printer should be used when interactive progress bars are not desired, e.g., when logging is
+     * enabled or in dumb terminals.
+     */
+    final class LinewiseStagePrinter extends StagePrinter<LinewiseStagePrinter> {
+        @Override
+        LinewiseStagePrinter getThis() {
             return this;
         }
 
         @Override
-        protected LinePrinter link(Path path) {
+        void beforeNextStdioWrite() {
+            throw VMError.shouldNotReachHere("LinewiseStagePrinter not allowed to set builderIO.listenForNextStdioWrite");
+        }
+    }
+
+    /**
+     * A {@link StagePrinter} that produces interactive progress bars on the command line. It should
+     * only be used in rich terminals with cursor and ANSI support. It is also the only component
+     * that interacts with {@link NativeImageSystemIOWrappers#listenForNextStdioWrite}.
+     */
+    final class CharacterwiseStagePrinter extends StagePrinter<CharacterwiseStagePrinter> {
+        @Override
+        CharacterwiseStagePrinter getThis() {
+            return this;
+        }
+
+        @Override
+        CharacterwiseStagePrinter start(BuildStage stage) {
+            super.start(stage);
+            builderIO.listenForNextStdioWrite = true;
+            return this;
+        }
+
+        @Override
+        void end(double totalTime) {
+            if (builderIO.listenForNextStdioWrite) {
+                builderIO.listenForNextStdioWrite = false;
+                int textLength = getCurrentTextLength();
+                lineParts.clear(); // Already printed, clear.
+                super.end(totalTime, textLength);
+            } else {
+                super.end(totalTime);
+            }
+        }
+
+        @Override
+        CharacterwiseStagePrinter a(String value) {
+            if (!builderIO.listenForNextStdioWrite) {
+                printLineParts(); // Re-print line.
+            }
+            super.a(value);
+            print(value);
+            builderIO.listenForNextStdioWrite = true;
+            return this;
+        }
+
+        @Override
+        void flushln() {
+            lineParts.clear();
+            println();
+        }
+
+        @Override
+        void beforeNextStdioWrite() {
+            colorStrategy.reset(); // Ensure color is reset.
+            // Clear the current line.
+            print('\r');
+            int textLength = getCurrentTextLength();
+            assert textLength > 0 : "linePrinter expected to hold current line content";
+            for (int i = 0; i <= textLength; i++) {
+                print(' ');
+            }
+            print('\r');
+        }
+    }
+
+    final class TwoColumnPrinter extends LinePrinter<TwoColumnPrinter> {
+        @Override
+        TwoColumnPrinter getThis() {
+            return this;
+        }
+
+        @Override
+        TwoColumnPrinter a(String value) {
+            super.a(value);
+            return this;
+        }
+
+        TwoColumnPrinter jumpToMiddle() {
+            int remaining = (CHARACTERS_PER_LINE / 2) - getCurrentTextLength();
+            assert remaining >= 0 : "Column text too wide";
+            a(Utils.stringFilledWith(remaining, " "));
+            assert !isEnabled || getCurrentTextLength() == CHARACTERS_PER_LINE / 2;
+            return this;
+        }
+
+        @Override
+        void flushln() {
+            print(outputPrefix);
+            super.flushln();
+        }
+    }
+
+    final class CenteredTextPrinter extends LinePrinter<CenteredTextPrinter> {
+        @Override
+        CenteredTextPrinter getThis() {
+            return this;
+        }
+
+        @Override
+        void flushln() {
+            print(outputPrefix);
+            String padding = Utils.stringFilledWith((Math.max(0, CHARACTERS_PER_LINE - getCurrentTextLength())) / 2, " ");
+            print(padding);
+            super.flushln();
+        }
+    }
+
+    @SuppressWarnings("unused")
+    private interface ColorStrategy {
+        default void bold(AbstractPrinter<?> printer) {
+        }
+
+        default void blue(AbstractPrinter<?> printer) {
+        }
+
+        default void blueBold(AbstractPrinter<?> printer) {
+        }
+
+        default void redBold(AbstractPrinter<?> printer) {
+        }
+
+        default void yellowBold(AbstractPrinter<?> printer) {
+        }
+
+        default void dim(AbstractPrinter<?> printer) {
+        }
+
+        default void reset(AbstractPrinter<?> printer) {
+        }
+
+        default void reset() {
+        }
+    }
+
+    final class ColorlessStrategy implements ColorStrategy {
+    }
+
+    final class ColorfulStrategy implements ColorStrategy {
+        @Override
+        public void bold(AbstractPrinter<?> printer) {
+            printer.a(ANSI.BOLD);
+        }
+
+        @Override
+        public void blue(AbstractPrinter<?> printer) {
+            printer.a(ANSI.BLUE);
+        }
+
+        @Override
+        public void blueBold(AbstractPrinter<?> printer) {
+            printer.a(ANSI.BLUE_BOLD);
+        }
+
+        @Override
+        public void redBold(AbstractPrinter<?> printer) {
+            printer.a(ANSI.RED_BOLD);
+        }
+
+        @Override
+        public void yellowBold(AbstractPrinter<?> printer) {
+            printer.a(ANSI.YELLOW_BOLD);
+        }
+
+        @Override
+        public void dim(AbstractPrinter<?> printer) {
+            printer.a(ANSI.DIM);
+        }
+
+        @Override
+        public void reset(AbstractPrinter<?> printer) {
+            printer.a(ANSI.RESET);
+        }
+
+        @Override
+        public void reset() {
+            print(ANSI.RESET);
+        }
+    }
+
+    private interface LinkStrategy {
+        void link(AbstractPrinter<?> printer, String text, String url);
+
+        String asDocLink(String text, String htmlAnchor);
+
+        default void link(AbstractPrinter<?> printer, Path path) {
             Path normalized = path.normalize();
-            return link(normalized.toString(), normalized.toUri().toString());
+            link(printer, normalized.toString(), normalized.toUri().toString());
         }
 
-        @Override
-        protected LinePrinter doclink(String text, String htmlAnchor) {
-            return link(text, STAGE_DOCS_URL + htmlAnchor);
-        }
-
-        @Override
-        protected LinePrinter reset() {
-            return a(ANSIColors.RESET);
-        }
-
-        @Override
-        protected String asDocLink(String text, String htmlAnchor) {
-            if (showLinks) {
-                return String.format(ANSIColors.LINK_FORMAT, STAGE_DOCS_URL + htmlAnchor, text);
-            } else {
-                return text;
-            }
+        default void doclink(AbstractPrinter<?> printer, String text, String htmlAnchor) {
+            link(printer, text, STAGE_DOCS_URL + htmlAnchor);
         }
     }
 
-    private final class ColorlessLinePrinter extends LinePrinter {
-
-        ColorlessLinePrinter(boolean enableProgress) {
-            super(enableProgress);
+    final class LinklessStrategy implements LinkStrategy {
+        @Override
+        public void link(AbstractPrinter<?> printer, String text, String url) {
+            printer.a(text);
         }
 
         @Override
-        protected LinePrinter bold() {
-            return this;
-        }
-
-        @Override
-        protected LinePrinter blue() {
-            return this;
-        }
-
-        @Override
-        protected LinePrinter blueBold() {
-            return this;
-        }
-
-        @Override
-        protected LinePrinter redBold() {
-            return this;
-        }
-
-        @Override
-        protected LinePrinter yellowBold() {
-            return this;
-        }
-
-        @Override
-        protected LinePrinter dim() {
-            return this;
-        }
-
-        @Override
-        protected LinePrinter link(String text, String url) {
-            return a(text);
-        }
-
-        @Override
-        protected LinePrinter link(Path path) {
-            return a(path.normalize().toString());
-        }
-
-        @Override
-        protected LinePrinter doclink(String text, String htmlAnchor) {
-            return a(text);
-        }
-
-        @Override
-        protected LinePrinter reset() {
-            return this;
-        }
-
-        @Override
-        protected String asDocLink(String text, String htmlAnchor) {
+        public String asDocLink(String text, String htmlAnchor) {
             return text;
         }
     }
 
-    private static class ANSIColors {
+    final class LinkyStrategy implements LinkStrategy {
+        /** Adding link part individually for {@link LinePrinter#getCurrentTextLength()}. */
+        @Override
+        public void link(AbstractPrinter<?> printer, String text, String url) {
+            printer.a(ANSI.LINK_START + url).a(ANSI.LINK_TEXT).a(text).a(ANSI.LINK_END);
+        }
+
+        @Override
+        public String asDocLink(String text, String htmlAnchor) {
+            return String.format(ANSI.LINK_FORMAT, STAGE_DOCS_URL + htmlAnchor, text);
+        }
+    }
+
+    private static class ANSI {
         static final String ESCAPE = "\033";
         static final String RESET = ESCAPE + "[0m";
         static final String BOLD = ESCAPE + "[1m";
