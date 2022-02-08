@@ -455,14 +455,14 @@ public abstract class Klass implements ModifiersProvider, ContextAccess, KlassRe
     // Threshold for using binary search instead of linear search for interface lookup.
     private static final int LINEAR_SEARCH_THRESHOLD = 8;
 
-    static final Comparator<Klass> KLASS_ID_COMPARATOR = new Comparator<Klass>() {
+    static final Comparator<Klass> KLASS_ID_COMPARATOR = new Comparator<>() {
         @Override
         public int compare(Klass k1, Klass k2) {
             return Integer.compare(k1.id, k2.id);
         }
     };
 
-    static final Comparator<ObjectKlass.KlassVersion> KLASS_VERSION_ID_COMPARATOR = new Comparator<ObjectKlass.KlassVersion>() {
+    static final Comparator<ObjectKlass.KlassVersion> KLASS_VERSION_ID_COMPARATOR = new Comparator<>() {
         @Override
         public int compare(ObjectKlass.KlassVersion k1, ObjectKlass.KlassVersion k2) {
             return Integer.compare(k1.getKlass().getId(), k2.getKlass().getId());

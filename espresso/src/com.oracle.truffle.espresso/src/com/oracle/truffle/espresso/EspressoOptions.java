@@ -444,9 +444,17 @@ public final class EspressoOptions {
                     category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
     public static final OptionKey<Integer> TrivialMethodSize = new OptionKey<>(18);
 
+    @Option(help = "Use the host FinalReference to implement guest finalizers. If set to false, FinalReference will fallback to WeakReference semantics.", //
+                    category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Boolean> UseHostFinalReference = new OptionKey<>(true);
+
     // These are host properties e.g. use --vm.Despresso.DebugCounters=true .
     public static final boolean DebugCounters = booleanProperty("espresso.DebugCounters", false);
     public static final boolean DumpDebugCounters = booleanProperty("espresso.DumpDebugCounters", true);
+
+    // Properties for FinalizationSupport e.g. --vm.Despresso.finalization.UnsafeOverride=false .
+    public static final boolean UnsafeOverride = booleanProperty("espresso.finalization.UnsafeOverride", true);
+    public static final boolean InjectClasses = booleanProperty("espresso.finalization.InjectClasses", true);
 
     private static boolean booleanProperty(String name, boolean defaultValue) {
         String value = System.getProperty(name);

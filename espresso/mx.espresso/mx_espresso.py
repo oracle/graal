@@ -180,7 +180,7 @@ espresso_library_config = mx_sdk_vm.LibraryConfig(
         '-H:+EnableSignalAPI',
         '-R:+EnableSignalHandling',
         '-R:+InstallSegfaultHandler',
-        '--features=com.oracle.truffle.espresso.FinalizationFeature',
+        '--features=com.oracle.truffle.espresso.ref.FinalizationFeature',
     ],
     home_finder=True,
 )
