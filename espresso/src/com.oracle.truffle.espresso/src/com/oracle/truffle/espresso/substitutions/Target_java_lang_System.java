@@ -225,7 +225,7 @@ public final class Target_java_lang_System {
                         @JavaType(Object.class) StaticObject dest, int destPos, int length, @Inject Meta meta, @Inject SubstitutionProfiler profiler) {
             SYSTEM_ARRAYCOPY_COUNT.inc();
             try {
-                System.arraycopy(src.unwrap(), srcPos, dest.unwrap(), destPos, length);
+                System.arraycopy(src.<StaticObject[]> unwrap(), srcPos, dest.<StaticObject[]> unwrap(), destPos, length);
             } catch (ArrayIndexOutOfBoundsException e) {
                 throw throwOutOfBoundsEx(meta, profiler);
             }
@@ -247,7 +247,7 @@ public final class Target_java_lang_System {
                         @Bind("getComponentType(dest)") Klass destComponentType) {
             SYSTEM_ARRAYCOPY_COUNT.inc();
             try {
-                System.arraycopy(src.unwrap(), srcPos, dest.unwrap(), destPos, length);
+                System.arraycopy(src.<StaticObject[]> unwrap(), srcPos, dest.<StaticObject[]> unwrap(), destPos, length);
             } catch (ArrayIndexOutOfBoundsException e) {
                 throw throwOutOfBoundsEx(meta, profiler);
             }
