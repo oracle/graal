@@ -24,6 +24,7 @@
 package com.oracle.truffle.espresso.nodes.commands;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -36,7 +37,9 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
  * naturally terminate
  *
  * @see EspressoContext#destroyVM(boolean)
+ * @deprecated {@link TruffleContext#close()} goes through the same route.
  */
+@Deprecated
 public final class DestroyVMNode extends RootNode {
     public static final String EVAL_NAME = "<DestroyJavaVM>";
 

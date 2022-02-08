@@ -492,8 +492,6 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
             contextBuilder.option(entry.getKey(), entry.getValue());
         }
 
-        int rc = 1;
-
         contextBuilder.allowCreateThread(true);
         // We use the host system exit for compatibility with the reference implementation.
         contextBuilder.useSystemExit(true);
@@ -542,35 +540,8 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                 } else if (!e.isExit()) {
                     handleMainUncaught(context, e);
                 }
-            } finally {
-                try {
-                    context.eval("java", "<DestroyJavaVM>").execute();
-                } catch (PolyglotException e) {
-                    /*
-                     * If everything went well, an exit exception is expected here. Failure to see
-                     * an exit exception most likely means something went wrong during context
-                     * initialization.
-                     */
-                    if (e.isExit()) {
-                        rc = e.getExitStatus();
-                    } else {
-                        e.printStackTrace();
-                        throw handleUnexpectedDestroy(e);
-                    }
-                }
             }
         }
-    }
-
-    private AbortException handleUnexpectedDestroy(PolyglotException e) {
-        String message = e.getMessage();
-        if (message != null) {
-            int colonIdx = message.indexOf(':');
-            if (colonIdx >= 0 && colonIdx + 1 < message.length()) {
-                throw abort(message.substring(colonIdx + 1));
-            }
-        }
-        throw abort(message);
     }
 
     private static void handleMainUncaught(Context context, PolyglotException e) {
