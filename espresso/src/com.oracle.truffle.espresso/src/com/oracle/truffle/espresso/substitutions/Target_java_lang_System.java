@@ -118,6 +118,7 @@ public final class Target_java_lang_System {
             if (!src.isArray() || !dest.isArray()) {
                 throw meta.throwException(meta.java_lang_ArrayStoreException);
             }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere("expected null or non-array input");
         }
 
