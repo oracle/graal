@@ -113,17 +113,20 @@ suite = {
         "org.graalvm.polybench" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
-            "javaCompliance" : "1.8+",
+            "javaCompliance" : "11+",
             "license" : "GPLv2-CPE",
             "checkstyle": "org.graalvm.component.installer",
             "dependencies": [
                 "sdk:LAUNCHER_COMMON",
             ],
+            "requires": [
+                "java.logging",
+            ],
         },
         "org.graalvm.polybench.micro" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
-            "javaCompliance" : "1.8+",
+            "javaCompliance" : "11+",
             "license" : "GPLv2-CPE",
             "checkstyle": "org.graalvm.component.installer",
             "dependencies": [
@@ -136,11 +139,14 @@ suite = {
         "org.graalvm.polybench.instruments" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
-            "javaCompliance" : "1.8+",
+            "javaCompliance" : "11+",
             "license" : "GPLv2-CPE",
             "checkstyle": "org.graalvm.component.installer",
             "dependencies": [
                 "truffle:TRUFFLE_API",
+            ],
+            "requires": [
+                "jdk.management",
             ],
             "annotationProcessors": [
                 "truffle:TRUFFLE_DSL_PROCESSOR",
