@@ -396,8 +396,14 @@ abstract class AbstractBridgeGenerator {
                 newArgs.add(jniEnvFieldName);
                 args = newArgs;
             }
+            CharSequence proxy = createProxy(builder, NativeToHotSpotBridgeGenerator.START_POINT_FACTORY_NAME, args);
+            if (marshallerData.factoryMethod != null) {
+                CodeBuilder factory = new CodeBuilder(builder).invokeStatic((DeclaredType) marshallerData.factoryMethod.getEnclosingElement().asType(),
+                                marshallerData.factoryMethod.getSimpleName(), proxy);
+                proxy = factory.build();
+            }
             CodeBuilder result = new CodeBuilder(builder);
-            result.invoke(parameterName, "isNonNull").write(" ? ").write(createProxy(builder, NativeToHotSpotBridgeGenerator.START_POINT_FACTORY_NAME, args)).write(" : ").write("null");
+            result.invoke(parameterName, "isNonNull").write(" ? ").write(proxy).write(" : ").write("null");
             return result.build();
         }
 
@@ -408,8 +414,14 @@ abstract class AbstractBridgeGenerator {
             if (hasGeneratedFactory && !isNativeObject) {
                 args = Collections.singletonList(new CodeBuilder(builder).newInstance(cache.nativeObject, args.toArray(new CharSequence[args.size()])).build());
             }
+            CharSequence proxy = createProxy(builder, HotSpotToNativeBridgeGenerator.START_POINT_FACTORY_NAME, args);
+            if (marshallerData.factoryMethod != null) {
+                CodeBuilder factory = new CodeBuilder(builder).invokeStatic((DeclaredType) marshallerData.factoryMethod.getEnclosingElement().asType(),
+                                marshallerData.factoryMethod.getSimpleName(), proxy);
+                proxy = factory.build();
+            }
             CodeBuilder result = new CodeBuilder(builder);
-            result.write(parameterName).write(" != 0L ? ").write(createProxy(builder, HotSpotToNativeBridgeGenerator.START_POINT_FACTORY_NAME, args)).write(" : ").write("null");
+            result.write(parameterName).write(" != 0L ? ").write(proxy).write(" : ").write("null");
             return result.build();
         }
 

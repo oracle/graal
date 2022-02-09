@@ -65,10 +65,10 @@ final class HotSpotToNativeBridgeParser extends AbstractBridgeParser {
     @Override
     DefinitionData createDefinitionData(DeclaredType annotatedType, AnnotationMirror annotation, DeclaredType serviceType,
                     Collection<MethodData> toGenerate, List<? extends VariableElement> annotatedTypeConstructorParams,
-                    ExecutableElement delegateAccessor, ExecutableElement receiverAccessor, ExecutableElement exceptionHandler,
+                    ExecutableElement dispatchAccessor, ExecutableElement receiverAccessor, ExecutableElement exceptionHandler,
                     VariableElement endPointHandle, DeclaredType jniConfig, Set<DeclaredType> annotationsToCopy) {
         DeclaredType centryPointPredicate = (DeclaredType) getAnnotationValue(annotation, "include");
-        return new HotSpotToNativeDefinitionData(annotatedType, serviceType, toGenerate, annotatedTypeConstructorParams, delegateAccessor, receiverAccessor, exceptionHandler, endPointHandle,
+        return new HotSpotToNativeDefinitionData(annotatedType, serviceType, toGenerate, annotatedTypeConstructorParams, dispatchAccessor, receiverAccessor, exceptionHandler, endPointHandle,
                         centryPointPredicate, jniConfig, annotationsToCopy);
     }
 

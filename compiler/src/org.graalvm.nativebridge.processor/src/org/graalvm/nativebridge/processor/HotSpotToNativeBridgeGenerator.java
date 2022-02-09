@@ -365,13 +365,13 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
 
         CharSequence resolvedDispatch;
         if (data.hasExplicitReceiver()) {
-            TypeMirror receiverType = data.delegateAccessor.getParameters().get(0).asType();
+            TypeMirror receiverType = data.dispatchAccessor.getParameters().get(0).asType();
             CodeBuilder classLiteralBuilder = new CodeBuilder(builder).classLiteral(receiverType);
             CharSequence nativeObject = "nativeObject";
             resolvedDispatch = "resolvedDispatch";
             builder.lineStart().write(receiverType).space().write(nativeObject).write(" = ").invokeStatic(typeCache.nativeObjectHandles, "resolve", "objectId", classLiteralBuilder.build()).lineEnd(
                             ";");
-            builder.lineStart().write(data.serviceType).space().write(resolvedDispatch).write(" = ").invokeStatic(data.annotatedType, data.delegateAccessor.getSimpleName(), nativeObject).lineEnd(
+            builder.lineStart().write(data.serviceType).space().write(resolvedDispatch).write(" = ").invokeStatic(data.annotatedType, data.dispatchAccessor.getSimpleName(), nativeObject).lineEnd(
                             ";");
             builder.lineStart().write(typeCache.object).space().write("receiverObject").write(" = ").invokeStatic(data.annotatedType, data.receiverAccessor.getSimpleName(), nativeObject).lineEnd(
                             ";");

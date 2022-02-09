@@ -527,7 +527,7 @@ public class NativeToHotSpotBridgeGenerator extends AbstractBridgeGenerator {
         if (data.hasExplicitReceiver()) {
             CharSequence explicitReceiver = methodParameters.get(0).getSimpleName();
             resolvedDispatch = "resolvedDispatch";
-            builder.lineStart().write(data.serviceType).space().write(resolvedDispatch).write(" = ").invokeStatic(data.annotatedType, data.delegateAccessor.getSimpleName(), explicitReceiver).lineEnd(
+            builder.lineStart().write(data.serviceType).space().write(resolvedDispatch).write(" = ").invokeStatic(data.annotatedType, data.dispatchAccessor.getSimpleName(), explicitReceiver).lineEnd(
                             ";");
             builder.lineStart().write(typeCache.object).space().write("receiverObject").write(" = ").invokeStatic(data.annotatedType, data.receiverAccessor.getSimpleName(), explicitReceiver).lineEnd(
                             ";");
