@@ -915,7 +915,13 @@ public class ProgressReporter {
 
         private ScheduledFuture<?> periodicPrintingTask;
 
-        final void startProgress() {
+        final T start(BuildStage stage) {
+            a(outputPrefix).blue().a(String.format("[%s/%s] ", 1 + stage.ordinal(), BuildStage.NUM_STAGES)).reset()
+                            .blueBold().doclink(stage.message, "#stage-" + stage.name().toLowerCase()).a("...").reset();
+            return getThis();
+        }
+
+        void startProgress() {
             a(progressBarStartPadding()).dim().a("[");
         }
 
@@ -923,7 +929,7 @@ public class ProgressReporter {
             return Utils.stringFilledWith(progressBarStart - getCurrentTextLength(), " ");
         }
 
-        final void reportProgress() {
+        void reportProgress() {
             a("*");
         }
 
@@ -949,14 +955,8 @@ public class ProgressReporter {
             return getThis();
         }
 
-        final T stopProgress() {
+        T stopProgress() {
             a("]").reset();
-            return getThis();
-        }
-
-        T start(BuildStage stage) {
-            a(outputPrefix).blue().a(String.format("[%s/%s] ", 1 + stage.ordinal(), BuildStage.NUM_STAGES)).reset()
-                            .blueBold().doclink(stage.message, "#stage-" + stage.name().toLowerCase()).a("...").reset();
             return getThis();
         }
 
@@ -968,13 +968,11 @@ public class ProgressReporter {
             end(timer.getTotalTime());
         }
 
-        void end(double totalTime) {
-            end(totalTime, getCurrentTextLength());
-        }
-
-        final void end(double totalTime, int textLength) {
-            assert textLength >= 0;
+        final void end(double totalTime) {
             String suffix = String.format("(%.1fs @ %.2fGB)", Utils.millisToSeconds(totalTime), Utils.getUsedMemory());
+            int textLength = getCurrentTextLength();
+            // TODO: `assert textLength > 0;` should be used here but tests do not start stages
+            // properly (GR-35721)
             String padding = Utils.stringFilledWith(Math.max(0, CHARACTERS_PER_LINE - textLength - suffix.length()), " ");
             a(padding).dim().a(suffix).reset().flushln();
 
@@ -1015,38 +1013,50 @@ public class ProgressReporter {
             return this;
         }
 
-        @Override
-        CharacterwiseStagePrinter start(BuildStage stage) {
-            super.start(stage);
-            builderIO.listenForNextStdioWrite = true;
-            return this;
-        }
-
-        @Override
-        void end(double totalTime) {
-            if (builderIO.listenForNextStdioWrite) {
-                builderIO.listenForNextStdioWrite = false;
-                int textLength = getCurrentTextLength();
-                lineParts.clear(); // Already printed, clear.
-                super.end(totalTime, textLength);
-            } else {
-                super.end(totalTime);
-            }
-        }
-
+        /**
+         * Print directly and only append to keep track of the current line in case it needs to be
+         * re-printed.
+         */
         @Override
         CharacterwiseStagePrinter a(String value) {
-            if (!builderIO.listenForNextStdioWrite) {
-                printLineParts(); // Re-print line.
-            }
-            super.a(value);
             print(value);
+            return super.a(value);
+        }
+
+        @Override
+        void startProgress() {
+            super.startProgress();
             builderIO.listenForNextStdioWrite = true;
-            return this;
+        }
+
+        @Override
+        void reportProgress() {
+            reprintLineIfNecessary();
+            // Ensure builderIO is not listening for the next stdio write when printing progress
+            // characters to stdout.
+            builderIO.listenForNextStdioWrite = false;
+            super.reportProgress();
+            // Now that progress has been printed and has not been stopped, make sure builderIO
+            // listens for the next stdio write again.
+            builderIO.listenForNextStdioWrite = true;
+        }
+
+        @Override
+        CharacterwiseStagePrinter stopProgress() {
+            reprintLineIfNecessary();
+            builderIO.listenForNextStdioWrite = false;
+            return super.stopProgress();
+        }
+
+        void reprintLineIfNecessary() {
+            if (!builderIO.listenForNextStdioWrite) {
+                printLineParts();
+            }
         }
 
         @Override
         void flushln() {
+            // No need to print lineParts because they are only needed for re-printing.
             lineParts.clear();
             println();
         }
