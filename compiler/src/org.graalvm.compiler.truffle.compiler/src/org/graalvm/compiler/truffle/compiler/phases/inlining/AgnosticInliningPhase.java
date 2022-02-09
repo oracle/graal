@@ -51,6 +51,7 @@ public final class AgnosticInliningPhase extends BasePhase<CoreProviders> {
 
     private final PartialEvaluator partialEvaluator;
     private final PartialEvaluator.Request request;
+    private int inlined;
 
     public AgnosticInliningPhase(PartialEvaluator partialEvaluator, PartialEvaluator.Request request) {
         this.partialEvaluator = partialEvaluator;
@@ -88,6 +89,7 @@ public final class AgnosticInliningPhase extends BasePhase<CoreProviders> {
         }
         tree.finalizeGraph();
         tree.trace();
+        inlined = tree.getInlinedCount();
     }
 
     private boolean optionsAllowInlining() {
@@ -100,4 +102,7 @@ public final class AgnosticInliningPhase extends BasePhase<CoreProviders> {
         return false;
     }
 
+    public boolean hasInlined() {
+        return inlined > 1;
+    }
 }
